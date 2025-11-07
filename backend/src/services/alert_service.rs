@@ -2,10 +2,16 @@
 // ? compl?ter avec la logique d'alerte, relance, notification sonore/mail, etc.
 
 use crate::models::alert_model::Alert;
-use sqlx::PgPool;
 use chrono::Utc;
+use sqlx::PgPool;
 
-pub async fn create_alert(pool: &PgPool, user_id: i32, service_id: i32, client_id: i32, alert_type: &str) -> Result<Alert, sqlx::Error> {
+pub async fn create_alert(
+    pool: &PgPool,
+    user_id: i32,
+    service_id: i32,
+    client_id: i32,
+    alert_type: &str,
+) -> Result<Alert, sqlx::Error> {
     let rec = sqlx::query_as!(Alert,
         r#"INSERT INTO alerts (user_id, service_id, client_id, alert_type, is_read, created_at)
            VALUES ($1, $2, $3, $4, FALSE, $5)

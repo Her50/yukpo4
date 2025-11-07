@@ -1,6 +1,8 @@
 use chrono::{Duration, Utc};
-use jsonwebtoken::{encode, decode, Header, Validation, EncodingKey, DecodingKey, Algorithm, TokenData};
-use serde::{Serialize, Deserialize};
+use jsonwebtoken::{
+    decode, encode, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation,
+};
+use serde::{Deserialize, Serialize};
 
 use crate::core::types::AppError;
 
@@ -17,7 +19,14 @@ pub struct UserClaims {
 }
 
 impl UserClaims {
-    pub fn new(user_id: i32, role: &str, email: &str, name: Option<String>, tokens_balance: i64, ttl_secs: i64) -> Self {
+    pub fn new(
+        user_id: i32,
+        role: &str,
+        email: &str,
+        name: Option<String>,
+        tokens_balance: i64,
+        ttl_secs: i64,
+    ) -> Self {
         let now = Utc::now();
         Self {
             sub: user_id,

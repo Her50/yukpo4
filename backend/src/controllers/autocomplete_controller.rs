@@ -2,19 +2,19 @@
 // 1. autocomplete_characteristics (valeurs individuelles validées) → Routes /api/autocomplete/*
 // 2. autocomplete_combinations (vecteurs complets IA) → Routes /api/combinations/*
 
+use crate::services::autocomplete_combinations_service;
+use crate::services::autocomplete_history_service;
+use crate::services::autocomplete_search_service;
+use crate::state::AppState;
 use axum::{
-    extract::{Query, State, Path},
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
-use serde::Deserialize;
-use std::sync::Arc;
 use log::info;
-use crate::state::AppState;
-use crate::services::autocomplete_history_service;
-use crate::services::autocomplete_combinations_service;
-use crate::services::autocomplete_search_service;  // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT avec priorité + GPS
-// use crate::services::autocomplete_client_service;  // ❌ Remplacé par autocomplete_search_service
+use serde::Deserialize;
+use std::sync::Arc; // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT avec priorité + GPS
+                    // use crate::services::autocomplete_client_service;  // ❌ Remplacé par autocomplete_search_service
 
 #[derive(Debug, Deserialize)]
 pub struct AutocompleteSuggestionsQuery {
@@ -59,14 +59,14 @@ pub async fn get_autocomplete_suggestions(
         &query.sous_caracteristique,
         query.prefix.as_deref(),
         limit,
-    ).await {
-        Ok(suggestions) => {
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "data": suggestions,
-                "count": suggestions.len()
-            })))
-        }
+    )
+    .await
+    {
+        Ok(suggestions) => Ok(Json(serde_json::json!({
+            "success": true,
+            "data": suggestions,
+            "count": suggestions.len()
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur récupération suggestions: {:?}", e);
             Err((
@@ -85,13 +85,11 @@ pub async fn get_sub_characteristics(
     let pool = &state.pg;
 
     match autocomplete_history_service::get_sub_characteristics(pool, &identifiant_base).await {
-        Ok(sub_chars) => {
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "data": sub_chars,
-                "count": sub_chars.len()
-            })))
-        }
+        Ok(sub_chars) => Ok(Json(serde_json::json!({
+            "success": true,
+            "data": sub_chars,
+            "count": sub_chars.len()
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur récupération sous-caractéristiques: {:?}", e);
             Err((
@@ -113,14 +111,14 @@ pub async fn get_all_values(
         pool,
         &identifiant_base,
         &sous_caracteristique,
-    ).await {
-        Ok(values) => {
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "data": values,
-                "count": values.len()
-            })))
-        }
+    )
+    .await
+    {
+        Ok(values) => Ok(Json(serde_json::json!({
+            "success": true,
+            "data": values,
+            "count": values.len()
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur récupération valeurs: {:?}", e);
             Err((
@@ -147,14 +145,14 @@ pub async fn upsert_autocomplete_characteristic(
         &origine_champs,
         payload.user_id,
         payload.service_id,
-    ).await {
-        Ok(id) => {
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "id": id,
-                "message": "Caractéristique sauvegardée"
-            })))
-        }
+    )
+    .await
+    {
+        Ok(id) => Ok(Json(serde_json::json!({
+            "success": true,
+            "id": id,
+            "message": "Caractéristique sauvegardée"
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur upsert caractéristique: {:?}", e);
             Err((
@@ -182,15 +180,15 @@ pub async fn historize_autocomplete_field(
         &origine_champs,
         payload.user_id,
         payload.service_id,
-    ).await {
-        Ok(ids) => {
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "ids": ids,
-                "count": ids.len(),
-                "message": "Caractéristiques historisées"
-            })))
-        }
+    )
+    .await
+    {
+        Ok(ids) => Ok(Json(serde_json::json!({
+            "success": true,
+            "ids": ids,
+            "count": ids.len(),
+            "message": "Caractéristiques historisées"
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur historisation: {:?}", e);
             Err((
@@ -205,7 +203,7 @@ pub async fn historize_autocomplete_field(
 
 #[derive(Debug, Deserialize)]
 pub struct SearchCombinationsRequest {
-    pub query: String, // Texte de recherche libre
+    pub query: String,                 // Texte de recherche libre
     pub user_location: Option<String>, // Localisation de l'utilisateur pour scoring géographique (texte)
     pub limit: Option<i64>,
     // ✅ NOUVEAU 2025-11-06: Support GPS pour tri par proximité
@@ -227,7 +225,7 @@ pub struct LinkCombinationsRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct SearchByAutocompleteRequest {
-    pub combination_vector: Vec<String>,  // ["Nike", "Air Max", "42", "Douala"]
+    pub combination_vector: Vec<String>, // ["Nike", "Air Max", "42", "Douala"]
     pub user_location: Option<UserLocation>,
     pub limit: Option<i64>,
 }
@@ -248,9 +246,12 @@ pub async fn search_combinations(
     let query = request.query.trim();
     let user_location = request.user_location.as_deref();
     let limit = request.limit.unwrap_or(20);
-    
-    info!("🔍 Recherche combinaisons: '{}' (location: {:?}, limit: {})", query, user_location, limit);
-    
+
+    info!(
+        "🔍 Recherche combinaisons: '{}' (location: {:?}, limit: {})",
+        query, user_location, limit
+    );
+
     if query.is_empty() {
         return Ok(Json(serde_json::json!({
             "success": true,
@@ -258,8 +259,10 @@ pub async fn search_combinations(
             "count": 0
         })));
     }
-    
-    match autocomplete_combinations_service::search_combinations(pool, query, user_location, limit).await {
+
+    match autocomplete_combinations_service::search_combinations(pool, query, user_location, limit)
+        .await
+    {
         Ok(results) => {
             info!("✅ {} résultats trouvés", results.len());
             Ok(Json(serde_json::json!({
@@ -272,7 +275,7 @@ pub async fn search_combinations(
             eprintln!("❌ Erreur recherche combinaisons: {:?}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Erreur recherche: {}", e)
+                format!("Erreur recherche: {}", e),
             ))
         }
     }
@@ -285,30 +288,37 @@ pub async fn save_ai_combinations(
     Json(request): Json<SaveAICombinationsRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
-    
-    info!("💾 Sauvegarde combinaisons IA (session: {})", request.session_id);
-    
+
+    info!(
+        "💾 Sauvegarde combinaisons IA (session: {})",
+        request.session_id
+    );
+
     // Extraire les combinaisons depuis le JSON
-    let combinations = request.combinations
+    let combinations = request
+        .combinations
         .into_iter()
         .filter_map(|combo_json| {
-            autocomplete_combinations_service::extract_combinations_from_ai_response(&combo_json).ok()
+            autocomplete_combinations_service::extract_combinations_from_ai_response(&combo_json)
+                .ok()
         })
         .flatten()
         .collect::<Vec<_>>();
-    
+
     if combinations.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            "Aucune combinaison valide trouvée".to_string()
+            "Aucune combinaison valide trouvée".to_string(),
         ));
     }
-    
+
     match autocomplete_combinations_service::save_ai_combinations_batch(
         pool,
         combinations,
-        &request.session_id
-    ).await {
+        &request.session_id,
+    )
+    .await
+    {
         Ok(ids) => {
             info!("✅ {} combinaisons sauvegardées", ids.len());
             Ok(Json(serde_json::json!({
@@ -322,7 +332,7 @@ pub async fn save_ai_combinations(
             eprintln!("❌ Erreur sauvegarde combinaisons: {:?}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Erreur sauvegarde: {}", e)
+                format!("Erreur sauvegarde: {}", e),
             ))
         }
     }
@@ -335,23 +345,23 @@ pub async fn get_combinations_by_session(
     Path(session_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
-    
+
     info!("📥 Récupération combinaisons session: {}", session_id);
-    
+
     match autocomplete_combinations_service::get_combinations_by_session(pool, &session_id).await {
         Ok(combinations) => {
             info!("✅ {} combinaisons récupérées", combinations.len());
-    Ok(Json(serde_json::json!({
-        "success": true,
-                "data": combinations,
-                "count": combinations.len()
-            })))
+            Ok(Json(serde_json::json!({
+            "success": true,
+                    "data": combinations,
+                    "count": combinations.len()
+                })))
         }
         Err(e) => {
             eprintln!("❌ Erreur récupération combinaisons: {:?}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Erreur récupération: {}", e)
+                format!("Erreur récupération: {}", e),
             ))
         }
     }
@@ -364,14 +374,19 @@ pub async fn link_combinations_to_service(
     Json(request): Json<LinkCombinationsRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
-    
-    info!("🔗 Liaison combinaisons au service {} (session: {})", request.service_id, request.session_id);
-    
+
+    info!(
+        "🔗 Liaison combinaisons au service {} (session: {})",
+        request.service_id, request.session_id
+    );
+
     match autocomplete_combinations_service::link_combinations_to_service(
         pool,
         &request.session_id,
-        request.service_id
-    ).await {
+        request.service_id,
+    )
+    .await
+    {
         Ok(count) => {
             info!("✅ {} combinaisons liées au service", count);
             Ok(Json(serde_json::json!({
@@ -384,7 +399,7 @@ pub async fn link_combinations_to_service(
             eprintln!("❌ Erreur liaison combinaisons: {:?}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Erreur liaison: {}", e)
+                format!("Erreur liaison: {}", e),
             ))
         }
     }
@@ -401,13 +416,12 @@ pub async fn search_product_suggestions(
     let pool = &state.pg;
     let query = request.query.trim();
     let limit = request.limit.unwrap_or(10);
-    
+
     info!(
         "💡 Suggestions produits CLIENT: '{}' (limit: {})",
-        query,
-        limit
+        query, limit
     );
-    
+
     if query.is_empty() {
         return Ok(Json(serde_json::json!({
             "success": true,
@@ -415,33 +429,35 @@ pub async fn search_product_suggestions(
             "count": 0
         })));
     }
-    
+
     // ✅ Parser la query en vecteur de mots
-    let combination_vector: Vec<String> = query
-        .split_whitespace()
-        .map(|s| s.to_string())
-        .collect();
-    
+    let combination_vector: Vec<String> = query.split_whitespace().map(|s| s.to_string()).collect();
+
     // ✅ GPS optionnel (pour tri par proximité)
     let user_location = if let (Some(lat), Some(lng)) = (request.user_lat, request.user_lng) {
         Some((lat, lng))
     } else {
         None
     };
-    
+
     if user_location.is_some() {
         info!("📍 GPS client fourni: {:?}", user_location);
     }
-    
+
     // ✅ UTILISER LE SERVICE AVANCÉ (priorité chosen_location + GPS)
     match autocomplete_search_service::search_by_autocomplete_vector(
         pool,
         &combination_vector,
         user_location,
-        limit
-    ).await {
+        limit,
+    )
+    .await
+    {
         Ok(suggestions) => {
-            info!("✅ {} suggestions avec priorité chosen_location + GPS", suggestions.len());
+            info!(
+                "✅ {} suggestions avec priorité chosen_location + GPS",
+                suggestions.len()
+            );
             Ok(Json(serde_json::json!({
                 "success": true,
                 "data": suggestions,
@@ -452,9 +468,8 @@ pub async fn search_product_suggestions(
             eprintln!("❌ Erreur suggestions CLIENT: {:?}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Erreur suggestions: {}", e)
+                format!("Erreur suggestions: {}", e),
             ))
         }
     }
 }
-

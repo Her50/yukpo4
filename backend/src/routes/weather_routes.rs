@@ -1,14 +1,14 @@
-use std::sync::Arc;
 use axum::{
     extract::{Query, State},
+    http::StatusCode,
     response::Json,
     routing::get,
     Router,
-    http::StatusCode,
 };
-use serde::{Deserialize, Serialize};
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::sync::Arc;
 
 use crate::state::AppState;
 
@@ -78,15 +78,15 @@ pub async fn get_weather(
             });
         }
     };
-    
+
     let units = params.units.unwrap_or_else(|| "metric".to_string());
     let lang = params.lang.unwrap_or_else(|| "fr".to_string());
-    
+
     let url = format!(
         "https://api.openweathermap.org/data/2.5/weather?lat={}&lon={}&appid={}&units={}&lang={}",
         params.lat, params.lon, api_key, units, lang
     );
-    
+
     let client = Client::new();
     let response = match client.get(&url).send().await {
         Ok(resp) => resp,
@@ -109,7 +109,7 @@ pub async fn get_weather(
             });
         }
     };
-    
+
     if !response.status().is_success() {
         return Json(WeatherResponse {
             main: WeatherMain {
@@ -128,7 +128,7 @@ pub async fn get_weather(
             },
         });
     }
-    
+
     let weather_data: WeatherResponse = match response.json().await {
         Ok(data) => data,
         Err(_) => {
@@ -150,7 +150,7 @@ pub async fn get_weather(
             });
         }
     };
-    
+
     Json(weather_data)
 }
 
@@ -160,7 +160,7 @@ pub async fn get_weather_config(
 ) -> Result<Json<Value>, StatusCode> {
     let api_key = std::env::var("OPENWEATHER_API_KEY")
         .unwrap_or_else(|_| "YOUR_OPENWEATHER_API_KEY".to_string());
-    
+
     Ok(Json(json!({
         "apiKey": api_key,
         "status": "success",
@@ -174,4 +174,3 @@ pub fn weather_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/weather/config", get(get_weather_config))
         .with_state(state)
 }
-

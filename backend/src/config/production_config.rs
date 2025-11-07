@@ -25,9 +25,7 @@ pub struct ApiTimeoutsConfig {
 
 impl Default for ApiTimeoutsConfig {
     fn default() -> Self {
-        Self {
-            multimodal: 60,
-        }
+        Self { multimodal: 60 }
     }
 }
 
@@ -64,14 +62,22 @@ impl ProductionConfig {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     pub fn get_optimization_info(&self) -> String {
         format!(
             "GPU: {}, MaxSize: {}px, Quality: {}, Parallel: {}",
-            if self.gpu_enabled { "Enabled" } else { "Disabled" },
+            if self.gpu_enabled {
+                "Enabled"
+            } else {
+                "Disabled"
+            },
             self.image_optimization.max_size,
             self.image_optimization.quality,
-            if self.image_optimization.parallel_processing { "Yes" } else { "No" }
+            if self.image_optimization.parallel_processing {
+                "Yes"
+            } else {
+                "No"
+            }
         )
     }
 }

@@ -1,22 +1,21 @@
 // Routes pour le chat et messagerie
-use std::sync::Arc;
-use axum::{
-    routing::{post, get},
-    Router,
-    extract::{State, Path},
-    response::Json,
-    Extension,
-    http::StatusCode,
+use crate::{
+    middlewares::jwt::{jwt_auth, AuthenticatedUser},
+    services::{notification_service, push_notification_service},
+    state::AppState,
 };
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::Json,
+    routing::{get, post},
+    Extension, Router,
+};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
-use chrono::{DateTime, Utc};
-use crate::{
-    state::AppState,
-    middlewares::jwt::{jwt_auth, AuthenticatedUser},
-    services::{notification_service, push_notification_service},
-};
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 pub struct NotifyMessageRequest {
@@ -34,9 +33,12 @@ pub async fn notify_new_message(
     Extension(_user): Extension<AuthenticatedUser>,
     Json(payload): Json<NotifyMessageRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    log::info!("[ChatController] 💬 Notification message: {} → {}", 
-        payload.sender_id, payload.recipient_id);
-    
+    log::info!(
+        "[ChatController] 💬 Notification message: {} → {}",
+        payload.sender_id,
+        payload.recipient_id
+    );
+
     // 1. Créer une notification en base de données
     let notification_data = json!({
         "service_id": payload.service_id,
@@ -45,18 +47,23 @@ pub async fn notify_new_message(
         "sender_name": payload.sender_name,
         "message_preview": payload.message_preview
     });
-    
+
     if let Err(e) = notification_service::create_notification(
         &state.pg,
         payload.recipient_id,
         notification_service::NotificationType::NewMessage,
         format!("💬 Message de {}", payload.sender_name),
-        format!("Au sujet de: {}\n\n\"{}\"", payload.service_title, payload.message_preview),
+        format!(
+            "Au sujet de: {}\n\n\"{}\"",
+            payload.service_title, payload.message_preview
+        ),
         Some(notification_data.clone()),
-    ).await {
+    )
+    .await
+    {
         log::error!("[ChatController] ❌ Erreur création notification: {}", e);
     }
-    
+
     // 2. Envoyer une push notification
     let push_title = format!("💬 {}", payload.sender_name);
     let push_body = if payload.message_preview.len() > 100 {
@@ -64,7 +71,7 @@ pub async fn notify_new_message(
     } else {
         payload.message_preview.clone()
     };
-    
+
     match push_notification_service::send_push_notification(
         &state.pg,
         payload.recipient_id,
@@ -77,7 +84,9 @@ pub async fn notify_new_message(
             "sender_name": payload.sender_name,
         })),
         Some("message_notification.mp3".to_string()),
-    ).await {
+    )
+    .await
+    {
         Ok(count) => {
             log::info!("[ChatController] ✅ {} push notifications envoyées", count);
             Ok(Json(json!({
@@ -132,7 +141,10 @@ pub async fn get_user_conversations(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> Result<Json<Vec<Conversation>>, StatusCode> {
-    log::info!("[ChatController] 📋 Récupération conversations pour user_id={}", user.id);
+    log::info!(
+        "[ChatController] 📋 Récupération conversations pour user_id={}",
+        user.id
+    );
 
     // ✅ Récupérer les conversations depuis PostgreSQL
     let rows = sqlx::query(
@@ -178,16 +190,26 @@ pub async fn get_user_conversations(
                     id: row.try_get("id").unwrap_or_default(),
                     client_id: row.try_get("client_id").unwrap_or_default(),
                     prestataire_id: row.try_get("prestataire_id").unwrap_or_default(),
-                    client_name: row.try_get("client_name").unwrap_or_else(|_| "Client".to_string()),
-                    prestataire_name: row.try_get("prestataire_name").unwrap_or_else(|_| "Prestataire".to_string()),
+                    client_name: row
+                        .try_get("client_name")
+                        .unwrap_or_else(|_| "Client".to_string()),
+                    prestataire_name: row
+                        .try_get("prestataire_name")
+                        .unwrap_or_else(|_| "Prestataire".to_string()),
                     client_photo: row.try_get("client_photo").ok(),
                     prestataire_photo: row.try_get("prestataire_photo").ok(),
-                    last_message: row.try_get("last_message").unwrap_or_else(|_| "".to_string()),
-                    last_message_time: row.try_get("last_message_at").unwrap_or_else(|_| Utc::now()),
+                    last_message: row
+                        .try_get("last_message")
+                        .unwrap_or_else(|_| "".to_string()),
+                    last_message_time: row
+                        .try_get("last_message_at")
+                        .unwrap_or_else(|_| Utc::now()),
                     unread_count: row.try_get("unread_count").unwrap_or(0),
                     is_active: row.try_get("is_active").unwrap_or(true),
                     service_title: row.try_get("service_title").ok(),
-                    status: row.try_get("status").unwrap_or_else(|_| "active".to_string()),
+                    status: row
+                        .try_get("status")
+                        .unwrap_or_else(|_| "active".to_string()),
                 });
             }
         }
@@ -196,8 +218,11 @@ pub async fn get_user_conversations(
             // Retourner tableau vide en cas d'erreur
         }
     }
-    
-    log::info!("[ChatController] ✅ {} conversations trouvées", conversations.len());
+
+    log::info!(
+        "[ChatController] ✅ {} conversations trouvées",
+        conversations.len()
+    );
     Ok(Json(conversations))
 }
 
@@ -207,12 +232,15 @@ pub async fn get_conversation_messages(
     Extension(user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<String>,
 ) -> Result<Json<Vec<ChatMessage>>, StatusCode> {
-    log::info!("[ChatController] 📨 Récupération messages conversation={} user={}", 
-        conversation_id, user.id);
+    log::info!(
+        "[ChatController] 📨 Récupération messages conversation={} user={}",
+        conversation_id,
+        user.id
+    );
 
     // ✅ Vérifier que l'utilisateur fait partie de la conversation
     let conversation_check = sqlx::query(
-        "SELECT 1 FROM conversations WHERE id = $1 AND (client_id = $2 OR prestataire_id = $2)"
+        "SELECT 1 FROM conversations WHERE id = $1 AND (client_id = $2 OR prestataire_id = $2)",
     )
     .bind(&conversation_id)
     .bind(user.id)
@@ -220,7 +248,11 @@ pub async fn get_conversation_messages(
     .await;
 
     if conversation_check.is_err() || conversation_check.unwrap().is_none() {
-        log::warn!("[ChatController] ❌ Utilisateur {} n'a pas accès à la conversation {}", user.id, conversation_id);
+        log::warn!(
+            "[ChatController] ❌ Utilisateur {} n'a pas accès à la conversation {}",
+            user.id,
+            conversation_id
+        );
         return Err(StatusCode::FORBIDDEN);
     }
 
@@ -240,7 +272,7 @@ pub async fn get_conversation_messages(
         WHERE conversation_id = $1
         ORDER BY created_at ASC
         LIMIT 500
-        "#
+        "#,
     )
     .bind(&conversation_id)
     .fetch_all(&state.pg)
@@ -252,8 +284,12 @@ pub async fn get_conversation_messages(
         Ok(rows) => {
             for row in rows {
                 let from_user_id: i32 = row.try_get("from_user_id").unwrap_or(0);
-                let from = if from_user_id == user.id { "prestataire" } else { "client" };
-                
+                let from = if from_user_id == user.id {
+                    "prestataire"
+                } else {
+                    "client"
+                };
+
                 messages.push(ChatMessage {
                     id: row.try_get("id").unwrap_or_default(),
                     conversation_id: row.try_get("conversation_id").unwrap_or_default(),
@@ -288,7 +324,7 @@ pub async fn get_conversation_messages(
             log::error!("[ChatController] ❌ Erreur DB: {:?}", e);
         }
     }
-    
+
     log::info!("[ChatController] ✅ {} messages trouvés", messages.len());
     Ok(Json(messages))
 }
@@ -309,8 +345,11 @@ pub async fn send_message(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<SendMessageRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    log::info!("[ChatController] 📤 Envoi message de user={} vers user={}", 
-        user.id, payload.recipient_id);
+    log::info!(
+        "[ChatController] 📤 Envoi message de user={} vers user={}",
+        user.id,
+        payload.recipient_id
+    );
 
     // ✅ 1. Créer ou récupérer la conversation
     let conversation_id = if let Some(conv_id) = &payload.conversation_id {
@@ -318,14 +357,14 @@ pub async fn send_message(
     } else {
         // Créer une nouvelle conversation
         let new_conv_id = format!("conv_{}", chrono::Utc::now().timestamp_millis());
-        
+
         let insert_result = sqlx::query(
             r#"
             INSERT INTO conversations (id, client_id, prestataire_id, service_id, service_title)
             VALUES ($1, $2, $3, $4, 'Conversation directe')
             ON CONFLICT DO NOTHING
             RETURNING id
-            "#
+            "#,
         )
         .bind(&new_conv_id)
         .bind(user.id)
@@ -336,14 +375,14 @@ pub async fn send_message(
 
         match insert_result {
             Ok(Some(row)) => row.try_get("id").unwrap_or(new_conv_id.clone()),
-            _ => new_conv_id
+            _ => new_conv_id,
         }
     };
 
     // ✅ 2. Sauvegarder le message
     let message_id = format!("msg_{}", chrono::Utc::now().timestamp_millis());
     let message_type = payload.r#type.unwrap_or_else(|| "text".to_string());
-    
+
     let insert_message = sqlx::query(
         r#"
         INSERT INTO chat_messages (id, conversation_id, from_user_id, content, message_type, metadata)
@@ -367,9 +406,13 @@ pub async fn send_message(
     // ✅ 3. Le trigger PostgreSQL s'occupe automatiquement de:
     //    - Mettre à jour last_message_at dans conversations
     //    - Incrémenter unread_count pour le destinataire
-    
-    log::info!("[ChatController] ✅ Message {} créé dans conversation {}", message_id, conversation_id);
-    
+
+    log::info!(
+        "[ChatController] ✅ Message {} créé dans conversation {}",
+        message_id,
+        conversation_id
+    );
+
     Ok(Json(json!({
         "success": true,
         "message_id": message_id,
@@ -382,15 +425,14 @@ pub fn chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // ✅ AJOUT: Routes pour conversations et messages
         .route("/api/chat/conversations", get(get_user_conversations))
-        .route("/api/chat/messages/{conversation_id}", get(get_conversation_messages))
+        .route(
+            "/api/chat/messages/{conversation_id}",
+            get(get_conversation_messages),
+        )
         .route("/api/chat/messages", post(send_message))
-        
         // Notifier un nouveau message
         .route("/api/chat/notify-message", post(notify_new_message))
-        
         // Appliquer l'authentification
         .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }
-
-

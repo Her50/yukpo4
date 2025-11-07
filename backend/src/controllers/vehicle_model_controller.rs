@@ -1,3 +1,4 @@
+use crate::state::AppState;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -5,7 +6,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct VehicleModelQuery {
@@ -49,7 +49,7 @@ pub async fn get_vehicle_models(
     } else {
         // Tous les modèles
         sqlx::query(
-            "SELECT id, brand, model, created_at FROM vehicle_models ORDER BY brand ASC, model ASC"
+            "SELECT id, brand, model, created_at FROM vehicle_models ORDER BY brand ASC, model ASC",
         )
         .fetch_all(pool)
         .await
@@ -61,17 +61,20 @@ pub async fn get_vehicle_models(
             )
         })?
     };
-    
+
     use sqlx::Row;
-    let models: Vec<VehicleModel> = rows.iter().map(|row| {
-        let created_at: chrono::NaiveDateTime = row.get("created_at");
-        VehicleModel {
-            id: row.get("id"),
-            brand: row.get("brand"),
-            model: row.get("model"),
-            created_at: created_at.to_string(),
-        }
-    }).collect();
+    let models: Vec<VehicleModel> = rows
+        .iter()
+        .map(|row| {
+            let created_at: chrono::NaiveDateTime = row.get("created_at");
+            VehicleModel {
+                id: row.get("id"),
+                brand: row.get("brand"),
+                model: row.get("model"),
+                created_at: created_at.to_string(),
+            }
+        })
+        .collect();
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -102,20 +105,19 @@ pub async fn create_vehicle_model(
     }
 
     // Vérifier si existe déjà
-    let existing = sqlx::query(
-        "SELECT id FROM vehicle_models WHERE brand = $1 AND LOWER(model) = LOWER($2)"
-    )
-    .bind(&payload.brand)
-    .bind(payload.model.trim())
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        eprintln!("❌ Erreur vérification modèle existant: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Erreur vérification: {}", e),
-        )
-    })?;
+    let existing =
+        sqlx::query("SELECT id FROM vehicle_models WHERE brand = $1 AND LOWER(model) = LOWER($2)")
+            .bind(&payload.brand)
+            .bind(payload.model.trim())
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| {
+                eprintln!("❌ Erreur vérification modèle existant: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Erreur vérification: {}", e),
+                )
+            })?;
 
     if existing.is_some() {
         return Ok(Json(serde_json::json!({
@@ -140,7 +142,7 @@ pub async fn create_vehicle_model(
             format!("Erreur création: {}", e),
         )
     })?;
-    
+
     use sqlx::Row;
     let created_at: chrono::NaiveDateTime = row.get("created_at");
     let model = VehicleModel {
@@ -158,4 +160,3 @@ pub async fn create_vehicle_model(
         "message": "Modèle créé avec succès"
     })))
 }
-

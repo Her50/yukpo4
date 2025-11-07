@@ -1,10 +1,15 @@
 use axum::{
-    routing::{get, patch, post, put, delete},
+    routing::{delete, get, patch, post, put},
     Router,
 };
 use std::sync::Arc;
 
-use crate::controllers::user_controller::{delete_user_data, deduct_balance, export_user_data, get_user_balance, get_user_by_id, get_user_profile, get_consumption_history, get_payment_history, purchase_pack, recharge_tokens, update_gps_consent, update_gps_location, update_user_profile, get_user_conversations};
+use crate::controllers::user_controller::{
+    deduct_balance, delete_user_data, export_user_data, get_consumption_history,
+    get_payment_history, get_user_balance, get_user_by_id, get_user_conversations,
+    get_user_profile, purchase_pack, recharge_tokens, update_gps_consent, update_gps_location,
+    update_user_profile,
+};
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
 use axum::middleware;
@@ -14,7 +19,10 @@ pub fn user_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/user/me", get(get_user_profile))
         .route("/api/user/me", put(update_user_profile))
         .route("/api/users/balance", get(get_user_balance))
-        .route("/api/users/consumption-history", get(get_consumption_history))
+        .route(
+            "/api/users/consumption-history",
+            get(get_consumption_history),
+        )
         .route("/api/users/payment-history", get(get_payment_history))
         .route("/api/users/purchase_pack", post(purchase_pack))
         .route("/api/users/deduct-balance", post(deduct_balance))
@@ -30,4 +38,3 @@ pub fn user_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }
-

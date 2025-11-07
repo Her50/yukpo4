@@ -13,8 +13,3 @@ pub async fn run_service_checker() {
         sleep(Duration::from_secs(86400)).await; // 24h
     }
 }
-
-
-
-
-

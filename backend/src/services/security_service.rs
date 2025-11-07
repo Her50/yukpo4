@@ -1,15 +1,15 @@
 // backend/src/services/security_service.rs
 // Service de s?curit? ultra-moderne pour Yukpo
 
-use std::sync::Arc;
-use serde_json::{Value, json};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::sync::RwLock;
 use crate::core::types::AppResult;
 use crate::models::input_model::MultiModalInput;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::sync::RwLock;
 
 /// ??? Configuration de s?curit? ultra-moderne
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,7 +110,9 @@ impl SecurityService {
             security_threshold: 0.7,
         };
 
-        let threat_patterns = config.blocked_patterns.iter()
+        let threat_patterns = config
+            .blocked_patterns
+            .iter()
             .map(|pattern| Regex::new(pattern).unwrap())
             .collect();
 
@@ -213,7 +215,11 @@ impl SecurityService {
             content_safety_score,
             behavioral_score,
             recommendations,
-            blocked_reason: if is_safe { None } else { Some("Contenu non conforme aux politiques de s?curit?".to_string()) },
+            blocked_reason: if is_safe {
+                None
+            } else {
+                Some("Contenu non conforme aux politiques de s?curit?".to_string())
+            },
             risk_factors,
         })
     }
@@ -223,13 +229,21 @@ impl SecurityService {
         // V?rification de la taille totale
         let total_size = self.calculate_input_size(input);
         if total_size > self.config.max_input_size {
-            return Err(format!("Taille d'input d?pass?e: {} bytes (max: {})", total_size, self.config.max_input_size).into());
+            return Err(format!(
+                "Taille d'input d?pass?e: {} bytes (max: {})",
+                total_size, self.config.max_input_size
+            )
+            .into());
         }
 
         // V?rification du nombre de fichiers
         let file_count = self.count_files(input);
         if file_count > self.config.max_files_per_request {
-            return Err(format!("Nombre de fichiers d?pass?: {} (max: {})", file_count, self.config.max_files_per_request).into());
+            return Err(format!(
+                "Nombre de fichiers d?pass?: {} (max: {})",
+                file_count, self.config.max_files_per_request
+            )
+            .into());
         }
 
         Ok(())
@@ -273,7 +287,11 @@ impl SecurityService {
 
         SecurityAnalysis {
             is_safe: threats.is_empty(),
-            threat_level: if threats.is_empty() { "low".to_string() } else { "high".to_string() },
+            threat_level: if threats.is_empty() {
+                "low".to_string()
+            } else {
+                "high".to_string()
+            },
             detected_threats: threats,
             security_score,
             content_safety_score,
@@ -316,7 +334,11 @@ impl SecurityService {
 
         SecurityAnalysis {
             is_safe: threats.is_empty(),
-            threat_level: if threats.is_empty() { "low".to_string() } else { "medium".to_string() },
+            threat_level: if threats.is_empty() {
+                "low".to_string()
+            } else {
+                "medium".to_string()
+            },
             detected_threats: threats,
             security_score,
             content_safety_score: 0.8,
@@ -329,7 +351,10 @@ impl SecurityService {
 
     /// ?? V?rification du rate limiting
     async fn check_rate_limit(&self, user_ip: &str) -> AppResult<()> {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         let window_start = now - 60; // Fen?tre de 1 minute
 
         let mut cache = self.rate_limit_cache.write().await;
@@ -362,7 +387,10 @@ impl SecurityService {
         // V?rifier si l'utilisateur est bloqu?
         let blocked_users = self.blocked_users.read().await;
         if let Some(blocked_until) = blocked_users.get(user_ip) {
-            let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
             if now < *blocked_until {
                 threats.push(ThreatType::BehavioralAnomaly);
                 risk_factors.insert("user_blocked".to_string(), 1.0);
@@ -373,9 +401,13 @@ impl SecurityService {
         // Analyser les patterns de comportement
         let behavioral_patterns = self.behavioral_patterns.read().await;
         if let Some(patterns) = behavioral_patterns.get(user_ip) {
-            let recent_patterns = patterns.iter()
+            let recent_patterns = patterns
+                .iter()
                 .filter(|&&timestamp| {
-                    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                    let now = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs();
                     now - timestamp < 3600 // Derni?re heure
                 })
                 .count();
@@ -391,7 +423,11 @@ impl SecurityService {
 
         SecurityAnalysis {
             is_safe: threats.is_empty(),
-            threat_level: if threats.is_empty() { "low".to_string() } else { "medium".to_string() },
+            threat_level: if threats.is_empty() {
+                "low".to_string()
+            } else {
+                "medium".to_string()
+            },
             detected_threats: threats.clone(),
             security_score,
             content_safety_score: 0.8,
@@ -410,7 +446,7 @@ impl SecurityService {
 
         let total_risk: f64 = risk_factors.values().sum();
         let max_risk = risk_factors.len() as f64;
-        
+
         (max_risk - total_risk) / max_risk
     }
 
@@ -420,8 +456,16 @@ impl SecurityService {
             return 1.0;
         }
 
-        let content_threats = threats.iter()
-            .filter(|t| matches!(t, ThreatType::ContentViolation | ThreatType::SuspiciousPattern | ThreatType::InjectionAttempt))
+        let content_threats = threats
+            .iter()
+            .filter(|t| {
+                matches!(
+                    t,
+                    ThreatType::ContentViolation
+                        | ThreatType::SuspiciousPattern
+                        | ThreatType::InjectionAttempt
+                )
+            })
             .count();
 
         1.0 - (content_threats as f64 * 0.3)
@@ -429,8 +473,13 @@ impl SecurityService {
 
     /// ?? Calcul du score comportemental
     fn calculate_behavioral_score(&self, risk_factors: &HashMap<String, f64>) -> f64 {
-        let behavioral_risks = risk_factors.iter()
-            .filter(|(key, _)| key.contains("behavioral") || key.contains("rate_limit") || key.contains("user_blocked"))
+        let behavioral_risks = risk_factors
+            .iter()
+            .filter(|(key, _)| {
+                key.contains("behavioral")
+                    || key.contains("rate_limit")
+                    || key.contains("user_blocked")
+            })
             .map(|(_, &value)| value)
             .sum::<f64>();
 
@@ -544,7 +593,7 @@ impl SecurityService {
         // Extraction du type MIME
         if let Some(mime_type) = file_data.split(';').next() {
             let mime_type = mime_type.replace("data:", "");
-            
+
             if !self.config.allowed_file_types.contains(&mime_type) {
                 return Err(format!("Type de fichier non autoris?: {}", mime_type).into());
             }
@@ -558,7 +607,11 @@ impl SecurityService {
     /// ?? Bloquer un utilisateur temporairement
     pub async fn block_user(&self, user_ip: &str, duration_seconds: u64) {
         let mut blocked_users = self.blocked_users.write().await;
-        let block_until = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + duration_seconds;
+        let block_until = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + duration_seconds;
         blocked_users.insert(user_ip.to_string(), block_until);
     }
 
@@ -575,4 +628,4 @@ impl SecurityService {
             "security_config": self.config,
         })
     }
-} 
+}

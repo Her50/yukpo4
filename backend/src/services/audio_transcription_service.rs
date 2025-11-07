@@ -3,7 +3,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::utils::log::{log_error, log_info, log_warn};
-use base64::{Engine as _, engine::general_purpose};
+use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::env;
 
@@ -33,7 +33,10 @@ impl AudioTranscriptionService {
         };
 
         let audio_bytes = general_purpose::STANDARD.decode(audio_data).map_err(|e| {
-            log_error(&format!("[AudioTranscription] Erreur décodage base64: {}", e));
+            log_error(&format!(
+                "[AudioTranscription] Erreur décodage base64: {}",
+                e
+            ));
             AppError::Internal(format!("Erreur décodage audio: {}", e))
         })?;
 
@@ -66,7 +69,10 @@ impl AudioTranscriptionService {
                 Ok(result)
             }
             Err(e) => {
-                log_error(&format!("[AudioTranscription] Erreur transcription: {:?}", e));
+                log_error(&format!(
+                    "[AudioTranscription] Erreur transcription: {:?}",
+                    e
+                ));
                 // Fallback: retourner un message d'erreur
                 Ok(TranscriptionResult {
                     text: format!("[Erreur transcription audio: {}]", e),
@@ -104,7 +110,10 @@ impl AudioTranscriptionService {
             .send()
             .await
             .map_err(|e| {
-                log_error(&format!("[AudioTranscription] Erreur requête Whisper: {}", e));
+                log_error(&format!(
+                    "[AudioTranscription] Erreur requête Whisper: {}",
+                    e
+                ));
                 AppError::Internal(format!("Erreur requête Whisper: {}", e))
             })?;
 
@@ -114,19 +123,22 @@ impl AudioTranscriptionService {
                 "[AudioTranscription] Erreur Whisper API: {}",
                 error_text
             ));
-            return Err(AppError::Internal(format!("Erreur Whisper API: {}", error_text)));
+            return Err(AppError::Internal(format!(
+                "Erreur Whisper API: {}",
+                error_text
+            )));
         }
 
         let whisper_response: serde_json::Value = response.json().await.map_err(|e| {
-            log_error(&format!("[AudioTranscription] Erreur parsing réponse: {}", e));
+            log_error(&format!(
+                "[AudioTranscription] Erreur parsing réponse: {}",
+                e
+            ));
             AppError::Internal(format!("Erreur parsing réponse: {}", e))
         })?;
 
         // Extraire le texte et les métadonnées
-        let text = whisper_response["text"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+        let text = whisper_response["text"].as_str().unwrap_or("").to_string();
         let language = whisper_response["language"].as_str().map(|s| s.to_string());
         let duration = whisper_response["duration"].as_f64().map(|d| d as f32);
 
@@ -180,4 +192,3 @@ mod tests {
         );
     }
 }
-

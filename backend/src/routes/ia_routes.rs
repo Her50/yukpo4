@@ -1,17 +1,17 @@
-use std::sync::Arc;
 use axum::{
-    routing::{post, get},
+    routing::{get, post},
     Router,
 };
+use std::sync::Arc;
 
 use crate::{
-    controllers::ia_controller::{analyze_behavior, predict_ia, enrichir_contexte_ia, analyze_text_input},
+    controllers::ia_controller::{
+        analyze_behavior, analyze_text_input, enrichir_contexte_ia, predict_ia,
+    },
     controllers::ia_status_controller::get_ia_status,
     middlewares::jwt::jwt_auth,
     state::AppState,
 };
-
-
 
 /// ?? Routes centralis?es pour toutes les fonctionnalit?s IA
 pub fn ia_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
@@ -30,4 +30,3 @@ pub fn ia_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }
-

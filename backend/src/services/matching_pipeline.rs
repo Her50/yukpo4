@@ -1,6 +1,6 @@
 // Rust: Pipeline de matching dynamique Yukpo (pseudo-code simplifi?)
-use sqlx::PgPool;
 use crate::utils::embedding_client::{EmbeddingClient, SearchEmbeddingPineconeRequest};
+use sqlx::PgPool;
 // use crate::services::semantic_exclusion::is_excluded_semantic_field;
 
 pub struct MatchedService {
@@ -16,13 +16,18 @@ pub struct MatchedService {
 pub async fn match_services(
     pool: &PgPool,
     besoin_json: &serde_json::Value,
-    __embedding_client: &EmbeddingClient
+    __embedding_client: &EmbeddingClient,
 ) -> anyhow::Result<Vec<MatchedService>> {
-    let besoin_obj = besoin_json.as_object().ok_or_else(|| anyhow::anyhow!("Besoin non objet"))?;
+    let besoin_obj = besoin_json
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("Besoin non objet"))?;
 
     // Extraction du point de r?f?rence g?ospatial (gps_souhaite ou gps)
     let mut _point_ref: Option<(f64, f64)> = None;
-    if let Some(gps) = besoin_obj.get("gps_souhaite").or_else(|| besoin_obj.get("gps")) {
+    if let Some(gps) = besoin_obj
+        .get("gps_souhaite")
+        .or_else(|| besoin_obj.get("gps"))
+    {
         if let Some(arr) = gps.as_array() {
             if arr.len() == 2 {
                 let lon = arr[0].as_f64().unwrap_or(0.0);
@@ -74,19 +79,26 @@ pub async fn match_services(
     }
 
     let scored_services: Vec<(i32, f64)> = Vec::new(); // (service_id, semantic_score)
-    // NOTE: Exclusion stricte centralis?e : les champs 'reponse_intelligente' et 'suggestions_complementaires' sont exclus de toute recherche s?mantique (voir semantic_exclusion.rs)
-    // Seuls les champs pertinents pour la recherche sémantique
+                                                       // NOTE: Exclusion stricte centralis?e : les champs 'reponse_intelligente' et 'suggestions_complementaires' sont exclus de toute recherche s?mantique (voir semantic_exclusion.rs)
+                                                       // Seuls les champs pertinents pour la recherche sémantique
     let champs_pertinents = ["titre", "description", "category", "titre_service"];
-    
+
     for (champ_besoin, valeur_besoin) in besoin_obj.iter() {
         // Filtrer uniquement les champs pertinents
         if !champs_pertinents.contains(&champ_besoin.as_str()) {
-            log::info!("[MATCHING][EXCLUSION] Champ '{}' exclu de la recherche s?mantique (non pertinent)", champ_besoin);
+            log::info!(
+                "[MATCHING][EXCLUSION] Champ '{}' exclu de la recherche s?mantique (non pertinent)",
+                champ_besoin
+            );
             continue;
         }
-        
+
         let type_donnee = "texte"; // ? adapter dynamiquement
-        log::info!("[MATCHING][DEBUG] Recherche Pinecone pour champ '{}' : {}", champ_besoin, valeur_besoin);
+        log::info!(
+            "[MATCHING][DEBUG] Recherche Pinecone pour champ '{}' : {}",
+            champ_besoin,
+            valeur_besoin
+        );
         // Appel ? la fonction de recherche d'embedding (? remplacer par l'impl?mentation r?elle)
         // TODO: Remplacer par l'appel r?el ? Pinecone/embedding_client
         let _req = SearchEmbeddingPineconeRequest {
@@ -100,7 +112,7 @@ pub async fn match_services(
         };
         // NOTE: PINECONE SUSPENDU - Utilisation de la recherche native PostgreSQL
         log::info!("[MATCHING][DEBUG] Pinecone suspendu - Recherche native PostgreSQL utilisée");
-        
+
         // Simuler des résultats vides pour compatibilité (Pinecone suspendu)
         // TODO: Remplacer par la recherche native PostgreSQL quand nécessaire
     }
@@ -108,17 +120,28 @@ pub async fn match_services(
     use std::collections::HashMap;
     let mut best_scores: HashMap<i32, f64> = HashMap::new();
     for (sid, sem) in scored_services {
-        best_scores.entry(sid).and_modify(|e| { if sem > *e { *e = sem; } }).or_insert(sem);
+        best_scores
+            .entry(sid)
+            .and_modify(|e| {
+                if sem > *e {
+                    *e = sem;
+                }
+            })
+            .or_insert(sem);
     }
     // Fetch real service data and interaction score
     let mut results = Vec::new();
     for (&service_id, &semantic_score) in &best_scores {
-        let rec = sqlx::query!("SELECT id, data, gps FROM services WHERE id = $1", service_id)
-            .fetch_optional(pool).await?;
+        let rec = sqlx::query!(
+            "SELECT id, data, gps FROM services WHERE id = $1",
+            service_id
+        )
+        .fetch_optional(pool)
+        .await?;
         if let Some(svc) = rec {
             // R?cup?rer le score depuis MongoDB au lieu de PostgreSQL
             let interaction_score = 1.0; // Valeur par d?faut, sera calcul?e via le service de scoring MongoDB
-            // Combine scores avec une formule plus robuste
+                                         // Combine scores avec une formule plus robuste
             let final_score = if semantic_score >= 0.7 {
                 // Si le score sémantique est élevé, l'utiliser principalement
                 0.9 * semantic_score + 0.1 * interaction_score
@@ -139,7 +162,10 @@ pub async fn match_services(
                 gps: svc.gps,
             });
         } else {
-            log::warn!("[MATCHING][DEBUG] service_id={} ignor? : service non trouv? en base", service_id);
+            log::warn!(
+                "[MATCHING][DEBUG] service_id={} ignor? : service non trouv? en base",
+                service_id
+            );
         }
     }
     // Sort by final score descending, limit to 10
@@ -147,14 +173,28 @@ pub async fn match_services(
         .unwrap_or_else(|_| "0.40".to_string())
         .parse::<f64>()
         .unwrap_or(0.40);
-    let mut results: Vec<_> = results.into_iter().filter(|r| r.score >= seuil_final).collect();
+    let mut results: Vec<_> = results
+        .into_iter()
+        .filter(|r| r.score >= seuil_final)
+        .collect();
     if results.is_empty() {
-        log::info!("[MATCHING][DEBUG] Aucun service match? (score final < seuil: {:.2})", seuil_final);
+        log::info!(
+            "[MATCHING][DEBUG] Aucun service match? (score final < seuil: {:.2})",
+            seuil_final
+        );
     }
-    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    results.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     results.truncate(10);
-    log::info!("[MATCHING][DEBUG] R?sultats finaux (apr?s filtrage/tri): {:?}", results.iter().map(|r| (r.service_id, r.score)).collect::<Vec<_>>());
+    log::info!(
+        "[MATCHING][DEBUG] R?sultats finaux (apr?s filtrage/tri): {:?}",
+        results
+            .iter()
+            .map(|r| (r.service_id, r.score))
+            .collect::<Vec<_>>()
+    );
     Ok(results)
 }
-
-

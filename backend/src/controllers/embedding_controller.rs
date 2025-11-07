@@ -1,13 +1,12 @@
+use crate::middlewares::jwt::AuthenticatedUser;
+use crate::state::AppState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    Json,
-    Extension,
+    Extension, Json,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use crate::state::AppState;
-use crate::middlewares::jwt::AuthenticatedUser;
 // use crate::services::embedding_tracker::{EmbeddingStatus, EmbeddingTracker};
 
 /// ? R?ponse pour le statut d'embedding d'un service
@@ -38,7 +37,7 @@ pub async fn get_embedding_status(
     Path(_service_id): Path<i32>,
 ) -> Result<Json<EmbeddingStatusResponse>, StatusCode> {
     // let tracker = EmbeddingTracker::new(state.pg.clone(), state.redis_client.clone());
-    
+
     // let status = tracker.get_status(service_id).await
     //     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -74,7 +73,7 @@ pub async fn retry_embedding(
     Json(_request): Json<RetryEmbeddingRequest>,
 ) -> Result<Json<EmbeddingStatusResponse>, StatusCode> {
     // let tracker = EmbeddingTracker::new(state.pg.clone(), state.redis_client.clone());
-    
+
     // let status = tracker.retry_embedding(service_id, user.id).await
     //     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -101,7 +100,7 @@ pub async fn get_user_services_embedding_status(
     Extension(_user): Extension<AuthenticatedUser>,
 ) -> Result<Json<Vec<EmbeddingStatusResponse>>, StatusCode> {
     // let tracker = EmbeddingTracker::new(state.pg.clone(), state.redis_client.clone());
-    
+
     // let statuses = tracker.get_user_services_status(user.id).await
     //     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -130,4 +129,4 @@ pub async fn get_user_services_embedding_status(
 
     // Ok(Json(responses))
     Err(StatusCode::INTERNAL_SERVER_ERROR)
-} 
+}

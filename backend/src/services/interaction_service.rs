@@ -3,10 +3,10 @@
 
 use crate::services::mongo_history_service::MongoHistoryService;
 use chrono::Utc;
+use futures::TryStreamExt;
+use serde_json::json;
 use serde_json::Value;
 use std::sync::Arc;
-use serde_json::json;
-use futures::TryStreamExt;
 
 pub async fn save_interaction(
     mongo_history: Arc<MongoHistoryService>,
@@ -54,8 +54,13 @@ pub async fn get_interactions(
         .await
         .map_err(|e| format!("Erreur MongoDB: {e}"))?;
     let mut results = Vec::new();
-    while let Some(doc) = cursor.try_next().await.map_err(|e| format!("Erreur it?ration: {e}"))? {
-        let v: Value = mongodb::bson::from_document(doc).map_err(|e| format!("Erreur conversion: {e}"))?;
+    while let Some(doc) = cursor
+        .try_next()
+        .await
+        .map_err(|e| format!("Erreur it?ration: {e}"))?
+    {
+        let v: Value =
+            mongodb::bson::from_document(doc).map_err(|e| format!("Erreur conversion: {e}"))?;
         results.push(v);
     }
     if let Some(lim) = limit {
@@ -111,8 +116,13 @@ pub async fn get_reviews(
         .await
         .map_err(|e| format!("Erreur MongoDB: {e}"))?;
     let mut results = Vec::new();
-    while let Some(doc) = cursor.try_next().await.map_err(|e| format!("Erreur it?ration: {e}"))? {
-        let v: Value = mongodb::bson::from_document(doc).map_err(|e| format!("Erreur conversion: {e}"))?;
+    while let Some(doc) = cursor
+        .try_next()
+        .await
+        .map_err(|e| format!("Erreur it?ration: {e}"))?
+    {
+        let v: Value =
+            mongodb::bson::from_document(doc).map_err(|e| format!("Erreur conversion: {e}"))?;
         results.push(v);
     }
     if let Some(lim) = limit {

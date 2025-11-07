@@ -1,13 +1,13 @@
+use crate::state::AppState;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
     response::Json,
 };
+use log;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::sync::Arc;
-use log;
-use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct GetRecommendationsQuery {
@@ -50,51 +50,64 @@ pub async fn get_recommended_products(
     Query(params): Query<GetRecommendationsQuery>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
-    
+
     let user_id = params.user_id.unwrap_or(0);
-    let session_id = params.session_id.unwrap_or_else(|| format!("session_{}", chrono::Utc::now().timestamp()));
+    let session_id = params
+        .session_id
+        .unwrap_or_else(|| format!("session_{}", chrono::Utc::now().timestamp()));
     let limit = params.limit.unwrap_or(15);
-    
+
     // Parser les catégories
-    let categories: Vec<String> = params.categories
+    let categories: Vec<String> = params
+        .categories
         .map(|c| c.split(',').map(|s| s.trim().to_string()).collect())
         .unwrap_or_default();
-    
-    log::info!("📦 [Recommandations] Récupération produits pour user_id: {}, categories: {:?}", user_id, categories);
-    
+
+    log::info!(
+        "📦 [Recommandations] Récupération produits pour user_id: {}, categories: {:?}",
+        user_id,
+        categories
+    );
+
     // Utiliser la fonction SQL pour obtenir les produits éligibles
-    let result = sqlx::query(
-        "SELECT * FROM get_eligible_organic_products($1, $2, $3, $4)"
-    )
-    .bind(user_id)
-    .bind(&session_id)
-    .bind(&categories)
-    .bind(limit)
-    .fetch_all(pool)
-    .await;
-    
+    let result = sqlx::query("SELECT * FROM get_eligible_organic_products($1, $2, $3, $4)")
+        .bind(user_id)
+        .bind(&session_id)
+        .bind(&categories)
+        .bind(limit)
+        .fetch_all(pool)
+        .await;
+
     match result {
         Ok(rows) => {
-            let products: Vec<serde_json::Value> = rows.iter().map(|row| {
-                let product_data: serde_json::Value = row.try_get("product_data").unwrap_or(serde_json::json!({}));
-                let relevance_score: f64 = row.try_get::<sqlx::types::BigDecimal, _>("relevance_score")
-                    .map(|d| d.to_string().parse().unwrap_or(0.0))
-                    .unwrap_or(0.0);
-                
-                let mut data = product_data.as_object().cloned().unwrap_or_default();
-                data.insert("relevance_score".to_string(), serde_json::json!(relevance_score));
-                
-                serde_json::Value::Object(data)
-            }).collect();
-            
+            let products: Vec<serde_json::Value> = rows
+                .iter()
+                .map(|row| {
+                    let product_data: serde_json::Value =
+                        row.try_get("product_data").unwrap_or(serde_json::json!({}));
+                    let relevance_score: f64 = row
+                        .try_get::<sqlx::types::BigDecimal, _>("relevance_score")
+                        .map(|d| d.to_string().parse().unwrap_or(0.0))
+                        .unwrap_or(0.0);
+
+                    let mut data = product_data.as_object().cloned().unwrap_or_default();
+                    data.insert(
+                        "relevance_score".to_string(),
+                        serde_json::json!(relevance_score),
+                    );
+
+                    serde_json::Value::Object(data)
+                })
+                .collect();
+
             log::info!("✅ [Recommandations] {} produits trouvés", products.len());
-            
+
             Ok(Json(serde_json::json!({
                 "success": true,
                 "data": products,
                 "count": products.len()
             })))
-        },
+        }
         Err(e) => {
             log::error!("❌ [Recommandations] Erreur: {:?}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -108,13 +121,19 @@ pub async fn get_mixed_content(
     Query(params): Query<GetRecommendationsQuery>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
-    
+
     let user_id = params.user_id.unwrap_or(0);
-    let _session_id = params.session_id.unwrap_or_else(|| format!("session_{}", chrono::Utc::now().timestamp()));
+    let _session_id = params
+        .session_id
+        .unwrap_or_else(|| format!("session_{}", chrono::Utc::now().timestamp()));
     let limit = params.limit.unwrap_or(15);
-    
-    log::info!("🎯 [MixedContent] Génération feed mixte pour user_id: {} (limit: {})", user_id, limit);
-    
+
+    log::info!(
+        "🎯 [MixedContent] Génération feed mixte pour user_id: {} (limit: {})",
+        user_id,
+        limit
+    );
+
     // ✅ NOUVEAU: Version simplifiée sans dépendre des fonctions SQL complexes
     // Charger produits organiques directement depuis services
     let organic_result = sqlx::query!(
@@ -136,7 +155,7 @@ pub async fn get_mixed_content(
     )
     .fetch_all(pool)
     .await;
-    
+
     // Charger publicités actives
     // ✅ CORRECTION 2025-11-06: Utiliser sqlx::query() pour compatibilité offline mode
     let paid_result = sqlx::query(
@@ -162,18 +181,22 @@ pub async fn get_mixed_content(
             END,
             vues ASC
         LIMIT 10
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await;
-    
+
     // Traiter les résultats
     let mut organic_products: Vec<serde_json::Value> = vec![];
     if let Ok(rows) = organic_result {
         for row in rows {
             // Extraire les produits du service
             if let Some(produits) = row.data.get("produits") {
-                if let Some(produits_array) = produits.as_object().and_then(|p| p.get("valeur")).and_then(|v| v.as_array()) {
+                if let Some(produits_array) = produits
+                    .as_object()
+                    .and_then(|p| p.get("valeur"))
+                    .and_then(|v| v.as_array())
+                {
                     for (index, product) in produits_array.iter().enumerate() {
                         organic_products.push(serde_json::json!({
                             "type": "organic",
@@ -224,7 +247,7 @@ pub async fn get_mixed_content(
             }
         }
     }
-    
+
     let mut paid_ads: Vec<serde_json::Value> = vec![];
     if let Ok(rows) = paid_result {
         for row in rows {
@@ -233,11 +256,15 @@ pub async fn get_mixed_content(
             let titre: String = row.try_get("titre").unwrap_or_default();
             let description: Option<String> = row.try_get("description").ok();
             let videos: Vec<String> = row.try_get::<Vec<String>, _>("videos").unwrap_or_default();
-            let thumbnails: Vec<String> = row.try_get::<Vec<String>, _>("thumbnails").unwrap_or_default();
+            let thumbnails: Vec<String> = row
+                .try_get::<Vec<String>, _>("thumbnails")
+                .unwrap_or_default();
             let boost_level: Option<String> = row.try_get("boost_level").ok();
             let frequency_ratio: Option<f64> = row.try_get("frequency_ratio").ok();
-            let produits_indexes: Vec<String> = row.try_get::<Vec<String>, _>("produits_indexes").unwrap_or_default();
-            
+            let produits_indexes: Vec<String> = row
+                .try_get::<Vec<String>, _>("produits_indexes")
+                .unwrap_or_default();
+
             paid_ads.push(serde_json::json!({
                 "type": "paid",
                 "is_paid": true,
@@ -254,13 +281,17 @@ pub async fn get_mixed_content(
             }));
         }
     }
-    
+
     // ✅ Mélanger intelligemment selon les règles de fréquence
     let mixed = mix_content_intelligently(&paid_ads, &organic_products);
-    
-    log::info!("✅ [MixedContent] Feed généré: {} items total ({} organiques, {} publicités)", 
-        mixed.len(), organic_products.len(), paid_ads.len());
-    
+
+    log::info!(
+        "✅ [MixedContent] Feed généré: {} items total ({} organiques, {} publicités)",
+        mixed.len(),
+        organic_products.len(),
+        paid_ads.len()
+    );
+
     Ok(Json(serde_json::json!({
         "success": true,
         "data": mixed,
@@ -271,48 +302,54 @@ pub async fn get_mixed_content(
 /// Mélanger intelligemment publicités et produits organiques
 fn mix_content_intelligently(
     paid_ads: &Vec<serde_json::Value>,
-    organic_products: &Vec<serde_json::Value>
+    organic_products: &Vec<serde_json::Value>,
 ) -> Vec<serde_json::Value> {
     let mut result: Vec<serde_json::Value> = vec![];
     let mut organic_index = 0;
-    
+
     // Grouper les publicités par niveau de boost
-    let mut ultra_ads: Vec<_> = paid_ads.iter().filter(|ad| 
-        ad.get("boost_level").and_then(|v| v.as_str()) == Some("ultra")
-    ).cloned().collect();
-    
-    let mut premium_ads: Vec<_> = paid_ads.iter().filter(|ad| 
-        ad.get("boost_level").and_then(|v| v.as_str()) == Some("premium")
-    ).cloned().collect();
-    
-    let mut basic_ads: Vec<_> = paid_ads.iter().filter(|ad| 
-        ad.get("boost_level").and_then(|v| v.as_str()) == Some("basic")
-    ).cloned().collect();
-    
+    let mut ultra_ads: Vec<_> = paid_ads
+        .iter()
+        .filter(|ad| ad.get("boost_level").and_then(|v| v.as_str()) == Some("ultra"))
+        .cloned()
+        .collect();
+
+    let mut premium_ads: Vec<_> = paid_ads
+        .iter()
+        .filter(|ad| ad.get("boost_level").and_then(|v| v.as_str()) == Some("premium"))
+        .cloned()
+        .collect();
+
+    let mut basic_ads: Vec<_> = paid_ads
+        .iter()
+        .filter(|ad| ad.get("boost_level").and_then(|v| v.as_str()) == Some("basic"))
+        .cloned()
+        .collect();
+
     let mut position = 0;
-    
+
     // Générer 20 cartes
     for _ in 0..20 {
         position += 1;
-        
+
         // ✅ Ultra: 1 toutes les 1 carte (50% du feed)
         if position % 2 == 0 && !ultra_ads.is_empty() {
             result.push(ultra_ads.remove(0));
             continue;
         }
-        
+
         // ✅ Premium: 1 toutes les 2 cartes (après ultra)
         if position % 2 == 0 && !premium_ads.is_empty() {
             result.push(premium_ads.remove(0));
             continue;
         }
-        
+
         // ✅ Basic: 1 toutes les 3 cartes
         if position % 3 == 0 && !basic_ads.is_empty() {
             result.push(basic_ads.remove(0));
             continue;
         }
-        
+
         // ✅ Sinon, produit organique
         if organic_index < organic_products.len() {
             result.push(organic_products[organic_index].clone());
@@ -328,7 +365,7 @@ fn mix_content_intelligently(
             }
         }
     }
-    
+
     result
 }
 
@@ -338,10 +375,14 @@ pub async fn track_visibility(
     Json(payload): Json<TrackVisibilityRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
-    
-    log::info!("👁️ [Visibility] Tracking {} {} pour user {}", 
-        payload.content_type, payload.content_id, payload.user_id);
-    
+
+    log::info!(
+        "👁️ [Visibility] Tracking {} {} pour user {}",
+        payload.content_type,
+        payload.content_id,
+        payload.user_id
+    );
+
     // Insérer dans content_visibility_tracking
     let result = sqlx::query(
         r#"
@@ -361,36 +402,34 @@ pub async fn track_visibility(
     .bind(payload.clicked.unwrap_or(false))
     .execute(pool)
     .await;
-    
+
     match result {
         Ok(_) => {
             // Si c'est une publicité et qu'elle a été vue, incrémenter le compteur
             if payload.content_type == "paid" && payload.viewed.unwrap_or(false) {
                 let _ = sqlx::query(
-                    "UPDATE publicites SET impressions = impressions + 1 WHERE id = $1"
+                    "UPDATE publicites SET impressions = impressions + 1 WHERE id = $1",
                 )
                 .bind(payload.content_id.parse::<i32>().unwrap_or(0))
                 .execute(pool)
                 .await;
             }
-            
+
             // Si cliqué, incrémenter le compteur de clics
             if payload.clicked.unwrap_or(false) {
                 if payload.content_type == "paid" {
-                    let _ = sqlx::query(
-                        "UPDATE publicites SET clics = clics + 1 WHERE id = $1"
-                    )
-                    .bind(payload.content_id.parse::<i32>().unwrap_or(0))
-                    .execute(pool)
-                    .await;
+                    let _ = sqlx::query("UPDATE publicites SET clics = clics + 1 WHERE id = $1")
+                        .bind(payload.content_id.parse::<i32>().unwrap_or(0))
+                        .execute(pool)
+                        .await;
                 }
             }
-            
+
             Ok(Json(serde_json::json!({
                 "success": true,
                 "message": "Visibilité trackée"
             })))
-        },
+        }
         Err(e) => {
             log::error!("❌ [Visibility] Erreur tracking: {:?}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -403,15 +442,13 @@ pub async fn get_fairness_stats(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
-    
+
     log::info!("📊 [Fairness] Récupération stats d'équité");
-    
-    let result = sqlx::query(
-        "SELECT * FROM visibility_fairness_stats ORDER BY content_type"
-    )
-    .fetch_all(pool)
-    .await;
-    
+
+    let result = sqlx::query("SELECT * FROM visibility_fairness_stats ORDER BY content_type")
+        .fetch_all(pool)
+        .await;
+
     match result {
         Ok(rows) => {
             let stats: Vec<serde_json::Value> = rows.iter().map(|row| {
@@ -424,31 +461,36 @@ pub async fn get_fairness_stats(
                     "avg_appearances_per_item": row.try_get::<Option<i64>, _>("avg_appearances_per_item").unwrap_or(None)
                 })
             }).collect();
-            
+
             // Calculer le ratio d'équité
-            let organic_avg = stats.iter()
+            let organic_avg = stats
+                .iter()
                 .find(|s| s["content_type"] == "organic")
                 .and_then(|s| s["avg_appearances_per_item"].as_i64())
                 .unwrap_or(0) as f64;
-            
-            let paid_avg = stats.iter()
+
+            let paid_avg = stats
+                .iter()
                 .find(|s| s["content_type"] == "paid")
                 .and_then(|s| s["avg_appearances_per_item"].as_i64())
                 .unwrap_or(1) as f64;
-            
-            let fairness_ratio = if paid_avg > 0.0 { organic_avg / paid_avg } else { 0.0 };
-            
+
+            let fairness_ratio = if paid_avg > 0.0 {
+                organic_avg / paid_avg
+            } else {
+                0.0
+            };
+
             Ok(Json(serde_json::json!({
                 "success": true,
                 "data": stats,
                 "fairness_ratio": fairness_ratio,
                 "is_fair": fairness_ratio <= 0.5 // Organiques doivent avoir max 50% de visibilité des payants
             })))
-        },
+        }
         Err(e) => {
             log::error!("❌ [Fairness] Erreur: {:?}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
 }
-

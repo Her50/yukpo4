@@ -1,8 +1,8 @@
 use axum::{
     extract::{Query, State},
     http::StatusCode,
-    Json,
     response::IntoResponse,
+    Json,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -15,9 +15,9 @@ pub struct PlacesAutocompleteQuery {
     #[serde(rename = "type")]
     pub place_type: Option<String>, // 'city', 'neighborhood', 'point', 'hospital', 'pharmacy', 'health'
     pub city: Option<String>, // Contexte de ville pour filtrer les résultats
-    pub lat: Option<f64>, // Latitude pour recherche par proximité
-    pub lng: Option<f64>, // Longitude pour recherche par proximité
-    pub radius: Option<u32>, // Rayon en mètres (défaut: 5000m = 5km)
+    pub lat: Option<f64>,     // Latitude pour recherche par proximité
+    pub lng: Option<f64>,     // Longitude pour recherche par proximité
+    pub radius: Option<u32>,  // Rayon en mètres (défaut: 5000m = 5km)
 }
 
 #[derive(Debug, Serialize)]
@@ -41,7 +41,7 @@ pub async fn autocomplete_places(
         params.place_type.as_deref(),
         Some("hospital") | Some("pharmacy") | Some("health")
     );
-    
+
     // ✅ CORRECTION 2025-11-06: Si query vide ou absente, retourner suggestions par défaut au lieu de 400
     let query_str = params.query.as_deref().unwrap_or("").trim();
     if !is_health_search && query_str.is_empty() {
@@ -53,7 +53,7 @@ pub async fn autocomplete_places(
             "Garoua, Cameroun".to_string(),
             "Maroua, Cameroun".to_string(),
         ];
-        
+
         return (
             StatusCode::OK,
             Json(PlacesAutocompleteResponse {
@@ -68,12 +68,11 @@ pub async fn autocomplete_places(
     let place_type = params.place_type.as_deref();
 
     // ✅ NOUVEAU 2025-11-06: Utiliser la clé API Google Maps (même clé que geocoding_service)
-    let google_api_key = std::env::var("GOOGLE_MAPS_API_KEY")
-        .unwrap_or_else(|_| {
-            // Utiliser la même clé par défaut que geocoding_service
-            "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ".to_string()
-        });
-    
+    let google_api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_else(|_| {
+        // Utiliser la même clé par défaut que geocoding_service
+        "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ".to_string()
+    });
+
     if google_api_key.is_empty() {
         // Pas de clé API configurée, retourner vide pour fallback local
         return (
@@ -203,5 +202,5 @@ pub async fn autocomplete_places(
     }
 }
 
-// Note: Le router pour les routes places n'est pas défini ici car les routes 
+// Note: Le router pour les routes places n'est pas défini ici car les routes
 // sont définies directement dans router_yukpo.rs (lignes 67-68)

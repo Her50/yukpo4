@@ -107,9 +107,12 @@ impl PaymentService {
     }
 
     /// Traiter un paiement
-    pub async fn process_payment(&self, request: PaymentRequest) -> Result<PaymentResponse, String> {
+    pub async fn process_payment(
+        &self,
+        request: PaymentRequest,
+    ) -> Result<PaymentResponse, String> {
         let transaction_id = Uuid::new_v4().to_string();
-        
+
         // Enregistrer la transaction en base
         let payment_record = sqlx::query_as::<_, PaymentRecord>(
             r#"
@@ -117,7 +120,7 @@ impl PaymentService {
             (transaction_id, user_id, amount, currency, payment_method, status, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, NOW())
             RETURNING id, created_at
-            "#
+            "#,
         )
         .bind(&transaction_id)
         .bind(request.user_id)
@@ -131,21 +134,64 @@ impl PaymentService {
 
         // Traiter selon la méthode de paiement
         let (status, gateway_response) = match &request.payment_method {
-            PaymentMethod::OrangeMoney { phone_number, country_code } => {
-                self.process_orange_money_payment(&transaction_id, phone_number, country_code, request.amount).await?
-            },
-            PaymentMethod::MTNMoney { phone_number, country_code } => {
-                self.process_mtn_money_payment(&transaction_id, phone_number, country_code, request.amount).await?
-            },
-            PaymentMethod::Visa { card_number, expiry_date, cvv, cardholder_name } => {
-                self.process_visa_payment(&transaction_id, card_number, expiry_date, cvv, cardholder_name, request.amount).await?
-            },
+            PaymentMethod::OrangeMoney {
+                phone_number,
+                country_code,
+            } => {
+                self.process_orange_money_payment(
+                    &transaction_id,
+                    phone_number,
+                    country_code,
+                    request.amount,
+                )
+                .await?
+            }
+            PaymentMethod::MTNMoney {
+                phone_number,
+                country_code,
+            } => {
+                self.process_mtn_money_payment(
+                    &transaction_id,
+                    phone_number,
+                    country_code,
+                    request.amount,
+                )
+                .await?
+            }
+            PaymentMethod::Visa {
+                card_number,
+                expiry_date,
+                cvv,
+                cardholder_name,
+            } => {
+                self.process_visa_payment(
+                    &transaction_id,
+                    card_number,
+                    expiry_date,
+                    cvv,
+                    cardholder_name,
+                    request.amount,
+                )
+                .await?
+            }
             PaymentMethod::PayPal { email } => {
-                self.process_paypal_payment(&transaction_id, email, request.amount).await?
-            },
-            PaymentMethod::BankTransfer { account_number, bank_code, account_name } => {
-                self.process_bank_transfer(&transaction_id, account_number, bank_code, account_name, request.amount).await?
-            },
+                self.process_paypal_payment(&transaction_id, email, request.amount)
+                    .await?
+            }
+            PaymentMethod::BankTransfer {
+                account_number,
+                bank_code,
+                account_name,
+            } => {
+                self.process_bank_transfer(
+                    &transaction_id,
+                    account_number,
+                    bank_code,
+                    account_name,
+                    request.amount,
+                )
+                .await?
+            }
         };
 
         // Mettre à jour le statut
@@ -161,7 +207,8 @@ impl PaymentService {
 
         // Si le paiement est réussi, ajouter les tokens
         if matches!(status, PaymentStatus::Completed) {
-            self.add_tokens_to_user(request.user_id, request.amount).await?;
+            self.add_tokens_to_user(request.user_id, request.amount)
+                .await?;
         }
 
         Ok(PaymentResponse {
@@ -187,7 +234,7 @@ impl PaymentService {
         // TODO: Intégration avec l'API Orange Money
         // Pour l'instant, simulation
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-        
+
         // Simuler une réponse de l'API Orange Money
         let gateway_response = serde_json::json!({
             "provider": "orange_money",
@@ -213,7 +260,7 @@ impl PaymentService {
         // TODO: Intégration avec l'API MTN Money
         // Pour l'instant, simulation
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-        
+
         // Simuler une réponse de l'API MTN Money
         let gateway_response = serde_json::json!({
             "provider": "mtn_money",
@@ -241,7 +288,7 @@ impl PaymentService {
         // TODO: Intégration avec l'API Visa/Mastercard
         // Pour l'instant, simulation
         tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-        
+
         // Simuler une réponse de l'API Visa
         let gateway_response = serde_json::json!({
             "provider": "visa",
@@ -266,7 +313,7 @@ impl PaymentService {
         // TODO: Intégration avec l'API PayPal
         // Pour l'instant, simulation
         tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-        
+
         // Simuler une réponse de l'API PayPal
         let gateway_response = serde_json::json!({
             "provider": "paypal",
@@ -321,14 +368,12 @@ impl PaymentService {
         let total_tokens = tokens + bonus;
 
         // Mettre à jour le solde de l'utilisateur (requête dynamique pour éviter les problèmes de compilation)
-        sqlx::query(
-            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
-        )
-        .bind(total_tokens as i64)
-        .bind(user_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| format!("Erreur mise à jour solde: {}", e))?;
+        sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
+            .bind(total_tokens as i64)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Erreur mise à jour solde: {}", e))?;
 
         // Enregistrer la transaction de tokens
         sqlx::query(
@@ -336,7 +381,7 @@ impl PaymentService {
             INSERT INTO token_transactions 
             (user_id, amount, bonus, total, transaction_type, description, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, NOW())
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(tokens as i32)
@@ -352,7 +397,12 @@ impl PaymentService {
     }
 
     /// Obtenir l'historique des paiements d'un utilisateur
-    pub async fn get_payment_history(&self, user_id: i32, limit: i32, offset: i32) -> Result<Vec<PaymentReceipt>, String> {
+    pub async fn get_payment_history(
+        &self,
+        user_id: i32,
+        limit: i32,
+        offset: i32,
+    ) -> Result<Vec<PaymentReceipt>, String> {
         let payments = sqlx::query_as::<_, PaymentHistoryRow>(
             r#"
             SELECT 
@@ -372,7 +422,7 @@ impl PaymentService {
             WHERE pt.user_id = $1
             ORDER BY pt.created_at DESC
             LIMIT $2 OFFSET $3
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(limit)
@@ -381,8 +431,9 @@ impl PaymentService {
         .await
         .map_err(|e| format!("Erreur récupération historique: {}", e))?;
 
-        let receipts = payments.into_iter().map(|payment| {
-            PaymentReceipt {
+        let receipts = payments
+            .into_iter()
+            .map(|payment| PaymentReceipt {
                 transaction_id: payment.transaction_id,
                 user_id: payment.user_id,
                 amount: payment.amount,
@@ -396,16 +447,22 @@ impl PaymentService {
                 reference: payment.gateway_response.and_then(|gr| {
                     serde_json::from_value::<serde_json::Value>(gr)
                         .ok()
-                        .and_then(|v| v.get("transaction_reference").and_then(|r| r.as_str().map(|s| s.to_string())))
+                        .and_then(|v| {
+                            v.get("transaction_reference")
+                                .and_then(|r| r.as_str().map(|s| s.to_string()))
+                        })
                 }),
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(receipts)
     }
 
     /// Obtenir un reçu de paiement
-    pub async fn get_payment_receipt(&self, transaction_id: &str) -> Result<Option<PaymentReceipt>, String> {
+    pub async fn get_payment_receipt(
+        &self,
+        transaction_id: &str,
+    ) -> Result<Option<PaymentReceipt>, String> {
         let payment = sqlx::query_as::<_, PaymentHistoryRow>(
             r#"
             SELECT 
@@ -423,7 +480,7 @@ impl PaymentService {
             FROM payment_transactions pt
             LEFT JOIN token_transactions tt ON pt.transaction_id = tt.transaction_id
             WHERE pt.transaction_id = $1
-            "#
+            "#,
         )
         .bind(transaction_id)
         .fetch_optional(&self.pool)
@@ -445,7 +502,10 @@ impl PaymentService {
                 reference: payment.gateway_response.and_then(|gr| {
                     serde_json::from_value::<serde_json::Value>(gr)
                         .ok()
-                        .and_then(|v| v.get("transaction_reference").and_then(|r| r.as_str().map(|s| s.to_string())))
+                        .and_then(|v| {
+                            v.get("transaction_reference")
+                                .and_then(|r| r.as_str().map(|s| s.to_string()))
+                        })
                 }),
             }))
         } else {
@@ -453,4 +513,3 @@ impl PaymentService {
         }
     }
 }
-

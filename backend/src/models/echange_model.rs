@@ -1,6 +1,6 @@
 // Rust: Mod?le Echange enrichi pour Yukpo
-use serde::{Deserialize, Serialize};
 use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Echange {
@@ -16,9 +16,9 @@ pub struct Echange {
     pub disponibilite: Option<serde_json::Value>, // ex: jours, heures, r?currence
     pub contraintes: Option<serde_json::Value>,   // contraintes personnalis?es
     pub reputation: Option<f64>,                  // score de r?putation utilisateur
-    pub gps_fixe_lat: Option<f64>,               // latitude GPS fixe
-    pub gps_fixe_lon: Option<f64>,               // longitude GPS fixe
-    pub don: bool,                               // true si don, false sinon
+    pub gps_fixe_lat: Option<f64>,                // latitude GPS fixe
+    pub gps_fixe_lon: Option<f64>,                // longitude GPS fixe
+    pub don: bool,                                // true si don, false sinon
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }

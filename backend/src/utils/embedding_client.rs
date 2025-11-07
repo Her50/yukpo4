@@ -3,8 +3,8 @@
 // Place ce fichier dans src/utils/embedding_client.rs
 
 use crate::services::creer_service;
-use serde::{Deserialize, Serialize};
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use std::env;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -51,10 +51,10 @@ pub struct AddEmbeddingPineconeRequest {
     pub service_id: i32,
     pub gps_lat: Option<f64>,
     pub gps_lon: Option<f64>,
-    pub langue: Option<String>, // Ajout langue d'origine
-    pub unite: Option<String>,  // Ajout unit? (pour num?riques)
-    pub devise: Option<String>, // Ajout devise (pour prix)
-    pub active: Option<bool>,   // Statut actif (synchronis? avec Pinecone)
+    pub langue: Option<String>,      // Ajout langue d'origine
+    pub unite: Option<String>,       // Ajout unit? (pour num?riques)
+    pub devise: Option<String>,      // Ajout devise (pour prix)
+    pub active: Option<bool>,        // Statut actif (synchronis? avec Pinecone)
     pub type_metier: Option<String>, // Tag m?tier: "service" ou "echange"
 }
 
@@ -87,7 +87,7 @@ impl EmbeddingClient {
     pub fn new(base_url: &str, api_key: &str) -> Self {
         // Charger la configuration depuis le fichier TOML
         let config = Self::load_config();
-        
+
         let url = if !base_url.is_empty() {
             base_url.to_string()
         } else if !config.api_url.is_empty() {
@@ -97,7 +97,7 @@ impl EmbeddingClient {
         } else {
             "http://localhost:8000".to_string()
         };
-        
+
         let key = if !api_key.is_empty() {
             api_key.to_string()
         } else if !config.api_key.is_empty() {
@@ -107,46 +107,46 @@ impl EmbeddingClient {
         } else {
             "yukpo_embedding_key_2024".to_string()
         };
-        
+
         let key_preview = if key.len() > 8 {
             format!("{}... (len={})", &key[..8], key.len())
         } else {
             format!("{} (len={})", key, key.len())
         };
-        
+
         log::info!("[EMBEDDING_CLIENT] Configuration charg?e:");
         log::info!("[EMBEDDING_CLIENT] - URL: {}", url);
         log::info!("[EMBEDDING_CLIENT] - API Key: {}", key_preview);
         log::info!("[EMBEDDING_CLIENT] - Timeout: {}s", config.timeout_seconds);
         log::info!("[EMBEDDING_CLIENT] - Max retries: {}", config.max_retries);
-        
+
         Self {
             base_url: url,
             client: Client::new(),
             api_key: key,
         }
     }
-    
+
     /// Charge la configuration depuis les variables d'environnement ou utilise les valeurs par d?faut
     fn load_config() -> EmbeddingConfig {
-        let api_url = env::var("EMBEDDING_API_URL")
-            .unwrap_or_else(|_| "http://localhost:8000".to_string());
-        
-        let api_key = env::var("YUKPO_API_KEY")
-            .unwrap_or_else(|_| "yukpo_embedding_key_2024".to_string());
-        
+        let api_url =
+            env::var("EMBEDDING_API_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
+
+        let api_key =
+            env::var("YUKPO_API_KEY").unwrap_or_else(|_| "yukpo_embedding_key_2024".to_string());
+
         let timeout_seconds = env::var("EMBEDDING_TIMEOUT_SECONDS")
             .unwrap_or_else(|_| "60".to_string()) // Augment? de 30 ? 60
             .parse()
             .unwrap_or(60); // Augment? de 30 ? 60
-        
+
         let max_retries = env::var("EMBEDDING_MAX_RETRIES")
             .unwrap_or_else(|_| "3".to_string())
             .parse()
             .unwrap_or(3);
-        
+
         log::info!("[EMBEDDING_CLIENT] Configuration charg?e depuis les variables d'environnement");
-        
+
         EmbeddingConfig {
             api_url,
             api_key,
@@ -161,44 +161,79 @@ impl EmbeddingClient {
         }
     }
 
-    pub async fn get_embedding(&self, req: &EmbeddingRequest) -> Result<serde_json::Value, reqwest::Error> {
+    pub async fn get_embedding(
+        &self,
+        req: &EmbeddingRequest,
+    ) -> Result<serde_json::Value, reqwest::Error> {
         let url = format!("{}/embedding", self.base_url);
-        let resp = self.client.post(&url)
+        let resp = self
+            .client
+            .post(&url)
             .header("x-api-key", &self.api_key)
-            .json(req).send().await?;
+            .json(req)
+            .send()
+            .await?;
         resp.json().await
     }
 
-    pub async fn add_embedding_pinecone(&self, req: &AddEmbeddingPineconeRequest) -> Result<serde_json::Value, reqwest::Error> {
+    pub async fn add_embedding_pinecone(
+        &self,
+        req: &AddEmbeddingPineconeRequest,
+    ) -> Result<serde_json::Value, reqwest::Error> {
         let url = format!("{}/add_embedding_pinecone", self.base_url);
-        let resp = self.client.post(&url)
+        let resp = self
+            .client
+            .post(&url)
             .header("x-api-key", &self.api_key)
-            .json(req).send().await?;
+            .json(req)
+            .send()
+            .await?;
         resp.json().await
     }
 
-    pub async fn search_embedding_pinecone(&self, req: &SearchEmbeddingPineconeRequest) -> Result<serde_json::Value, reqwest::Error> {
+    pub async fn search_embedding_pinecone(
+        &self,
+        req: &SearchEmbeddingPineconeRequest,
+    ) -> Result<serde_json::Value, reqwest::Error> {
         let url = format!("{}/search_embedding_pinecone", self.base_url);
-        let resp = self.client.post(&url)
+        let resp = self
+            .client
+            .post(&url)
             .header("x-api-key", &self.api_key)
-            .json(req).send().await?;
+            .json(req)
+            .send()
+            .await?;
         resp.json().await
     }
 
-    pub async fn delete_embedding_pinecone(&self, service_id: i32) -> Result<serde_json::Value, reqwest::Error> {
+    pub async fn delete_embedding_pinecone(
+        &self,
+        service_id: i32,
+    ) -> Result<serde_json::Value, reqwest::Error> {
         let url = format!("{}/delete_embedding_pinecone", self.base_url);
         let req = serde_json::json!({"service_id": service_id});
-        let resp = self.client.post(&url)
+        let resp = self
+            .client
+            .post(&url)
             .header("x-api-key", &self.api_key)
-            .json(&req).send().await?;
+            .json(&req)
+            .send()
+            .await?;
         resp.json().await
     }
 
-    pub async fn update_embedding_status(&self, req: &UpdateEmbeddingStatusRequest) -> Result<serde_json::Value, reqwest::Error> {
+    pub async fn update_embedding_status(
+        &self,
+        req: &UpdateEmbeddingStatusRequest,
+    ) -> Result<serde_json::Value, reqwest::Error> {
         let url = format!("{}/update_embedding_status", self.base_url);
-        let resp = self.client.post(&url)
+        let resp = self
+            .client
+            .post(&url)
             .header("x-api-key", &self.api_key)
-            .json(req).send().await?;
+            .json(req)
+            .send()
+            .await?;
         resp.json().await
     }
 

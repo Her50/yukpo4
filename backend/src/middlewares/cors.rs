@@ -1,25 +1,16 @@
-﻿use axum::{
-    http::HeaderValue,
-    response::Response,
-    extract::Request,
-    middleware::Next,
-};
 use crate::config::cloud_architecture::CORSConfig;
+use axum::{extract::Request, http::HeaderValue, middleware::Next, response::Response};
 
-pub async fn cors_middleware(
-    request: Request,
-    next: Next,
-) -> Response {
+pub async fn cors_middleware(request: Request, next: Next) -> Response {
     // Extraire l'origin avant de consommer la request
     let origin = request.headers().get("origin").cloned();
-    
+
     let mut response = next.run(request).await;
-    
+
     let config = CORSConfig {
         allowed_origins: vec![
             // 🌍 Domaine principal
             "https://yukpomnang.com".to_string(),
-            
             // 🚀 Plateformes de déploiement spécialisées
             "https://yukpomnang.vercel.app".to_string(),
             "https://yukpomnang.netlify.app".to_string(),
@@ -30,32 +21,27 @@ pub async fn cors_middleware(
             "https://yukpomnang.herokuapp.com".to_string(),
             "https://yukpomnang.onrender.com".to_string(),
             "https://yukpomnang.surge.sh".to_string(),
-            
             // ☁️ Cloud Providers
             "https://yukpomnang.azurewebsites.net".to_string(), // Azure
-            "https://yukpomnang.appspot.com".to_string(), // Google App Engine
-            "https://yukpomnang.run.app".to_string(), // Google Cloud Run
-            "https://yukpomnang.firebaseapp.com".to_string(), // Firebase Hosting
-            "https://yukpomnang.web.app".to_string(), // Firebase Hosting
-            "https://yukpomnang.aws.amazon.com".to_string(), // AWS
+            "https://yukpomnang.appspot.com".to_string(),       // Google App Engine
+            "https://yukpomnang.run.app".to_string(),           // Google Cloud Run
+            "https://yukpomnang.firebaseapp.com".to_string(),   // Firebase Hosting
+            "https://yukpomnang.web.app".to_string(),           // Firebase Hosting
+            "https://yukpomnang.aws.amazon.com".to_string(),    // AWS
             "https://yukpomnang.s3-website.amazonaws.com".to_string(), // AWS S3
-            "https://yukpomnang.cloudfront.net".to_string(), // AWS CloudFront
-            "https://yukpomnang.amplifyapp.com".to_string(), // AWS Amplify
-            
+            "https://yukpomnang.cloudfront.net".to_string(),    // AWS CloudFront
+            "https://yukpomnang.amplifyapp.com".to_string(),    // AWS Amplify
             // 🏢 Plateformes d'hébergement traditionnel
             "https://yukpomnang.digitalocean.app".to_string(), // DigitalOcean
-            "https://yukpomnang.linode.com".to_string(), // Linode
-            "https://yukpomnang.vultr.com".to_string(), // Vultr
-            
+            "https://yukpomnang.linode.com".to_string(),       // Linode
+            "https://yukpomnang.vultr.com".to_string(),        // Vultr
             // 🔧 Plateformes de développement
             "https://yukpomnang.gitlab.io".to_string(), // GitLab Pages
             "https://yukpomnang.github.io".to_string(), // GitHub Pages
             "https://yukpomnang.bitbucket.io".to_string(), // Bitbucket
-            
             // 🐳 Plateformes de conteneurisation (domaines personnalisés)
             "https://yukpomnang.docker.com".to_string(),
             "https://yukpomnang.k8s.com".to_string(),
-            
             // 📱 Applications mobiles
             "capacitor://localhost".to_string(),
             "ionic://localhost".to_string(),
@@ -64,7 +50,6 @@ pub async fn cors_middleware(
             // Applications mobiles en production (pas d'origin header)
             "null".to_string(),
             "".to_string(),
-            
             // 🌐 Développement local
             "http://localhost:3000".to_string(),
             "http://localhost:5173".to_string(),
@@ -72,16 +57,22 @@ pub async fn cors_middleware(
             "http://127.0.0.1:3000".to_string(),
             "http://127.0.0.1:5173".to_string(),
             "http://127.0.0.1:8080".to_string(),
-            
             // 🔄 Environnements de test
             "https://staging.yukpomnang.com".to_string(),
             "https://dev.yukpomnang.com".to_string(),
             "https://test.yukpomnang.com".to_string(),
         ],
-        allowed_methods: vec!["GET".to_string(), "POST".to_string(), "PUT".to_string(), "DELETE".to_string(), "OPTIONS".to_string(), "PATCH".to_string()],
+        allowed_methods: vec![
+            "GET".to_string(),
+            "POST".to_string(),
+            "PUT".to_string(),
+            "DELETE".to_string(),
+            "OPTIONS".to_string(),
+            "PATCH".to_string(),
+        ],
         allowed_headers: vec![
-            "Content-Type".to_string(), 
-            "Authorization".to_string(), 
+            "Content-Type".to_string(),
+            "Authorization".to_string(),
             "X-Requested-With".to_string(),
             "Accept".to_string(),
             "Origin".to_string(),
@@ -92,32 +83,31 @@ pub async fn cors_middleware(
         ],
         allow_credentials: true,
     };
-    
+
     // Configuration CORS corrigée pour les applications mobiles
     if let Some(origin) = origin {
         let origin_str = origin.to_str().unwrap_or("");
         println!("[CORS DEBUG] Origin reçu: {}", origin_str);
-        
+
         // Vérifier si l'origin est dans la liste autorisée
-        if config.allowed_origins.contains(&origin_str.to_string()) || 
-           origin_str.starts_with("http://localhost") || 
-           origin_str.starts_with("https://localhost") ||
-           origin_str == "capacitor://localhost" ||
-           origin_str == "ionic://localhost" {
-            response.headers_mut().insert(
-                "access-control-allow-origin",
-                origin,
-            );
+        if config.allowed_origins.contains(&origin_str.to_string())
+            || origin_str.starts_with("http://localhost")
+            || origin_str.starts_with("https://localhost")
+            || origin_str == "capacitor://localhost"
+            || origin_str == "ionic://localhost"
+        {
+            response
+                .headers_mut()
+                .insert("access-control-allow-origin", origin);
             response.headers_mut().insert(
                 "access-control-allow-credentials",
                 HeaderValue::from_static("true"),
             );
         } else {
             // Origin non autorisé, utiliser wildcard sans credentials
-            response.headers_mut().insert(
-                "access-control-allow-origin",
-                HeaderValue::from_static("*"),
-            );
+            response
+                .headers_mut()
+                .insert("access-control-allow-origin", HeaderValue::from_static("*"));
         }
     } else {
         // CORRECTION : Pour les applications mobiles sans origin header
@@ -132,50 +122,47 @@ pub async fn cors_middleware(
             HeaderValue::from_static("true"),
         );
     }
-    
+
     response.headers_mut().insert(
         "access-control-allow-methods",
         HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS, PATCH"),
     );
-    
+
     response.headers_mut().insert(
         "access-control-allow-headers",
         HeaderValue::from_static("Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Cache-Control, Pragma"),
     );
-    
-    response.headers_mut().insert(
-        "access-control-max-age",
-        HeaderValue::from_static("86400"),
-    );
-    
+
+    response
+        .headers_mut()
+        .insert("access-control-max-age", HeaderValue::from_static("86400"));
+
     response
 }
 
 pub async fn cors_preflight_handler() -> Response {
     let mut response = Response::new(axum::body::Body::empty());
-    
+
     // Configuration ultra-permissive pour le preflight
-    response.headers_mut().insert(
-        "access-control-allow-origin",
-        HeaderValue::from_static("*"),
-    );
-    
+    response
+        .headers_mut()
+        .insert("access-control-allow-origin", HeaderValue::from_static("*"));
+
     response.headers_mut().insert(
         "access-control-allow-methods",
         HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS, PATCH"),
     );
-    
+
     response.headers_mut().insert(
         "access-control-allow-headers",
         HeaderValue::from_static("Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Cache-Control, Pragma"),
     );
-    
-    response.headers_mut().insert(
-        "access-control-max-age",
-        HeaderValue::from_static("86400"),
-    );
-    
+
+    response
+        .headers_mut()
+        .insert("access-control-max-age", HeaderValue::from_static("86400"));
+
     *response.status_mut() = axum::http::StatusCode::OK;
-    
+
     response
 }

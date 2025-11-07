@@ -6,8 +6,8 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::state::AppState;
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::state::AppState;
 
 // ===========================
 // STRUCTURES DE DONNÉES
@@ -66,7 +66,7 @@ pub async fn get_custom_modalities(
     let mut query = String::from(
         "SELECT id, product_type, field_name, modality, added_by, added_at, usage_count, is_system 
          FROM product_modalities 
-         WHERE 1=1"
+         WHERE 1=1",
     );
 
     // Filtres optionnels
@@ -193,7 +193,7 @@ pub async fn create_custom_modality(
     // Vérifier si la modalité existe déjà
     let existing = sqlx::query(
         "SELECT id FROM product_modalities 
-         WHERE product_type = $1 AND field_name = $2 AND modality = $3"
+         WHERE product_type = $1 AND field_name = $2 AND modality = $3",
     )
     .bind(&product_type)
     .bind(&field_name)
@@ -255,7 +255,7 @@ pub async fn increment_modality_usage(
     sqlx::query(
         "UPDATE product_modalities 
          SET usage_count = usage_count + 1, updated_at = NOW()
-         WHERE product_type = $1 AND field_name = $2 AND modality = $3"
+         WHERE product_type = $1 AND field_name = $2 AND modality = $3",
     )
     .bind(&product_type)
     .bind(&field_name)
@@ -325,16 +325,14 @@ pub async fn delete_modality(
     Path(id): Path<i32>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
     // Vérifier si la modalité existe et n'est pas système
-    let modality = sqlx::query(
-        "SELECT is_system, added_by FROM product_modalities WHERE id = $1"
-    )
-    .bind(id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        eprintln!("Erreur vérification modalité: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let modality = sqlx::query("SELECT is_system, added_by FROM product_modalities WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| {
+            eprintln!("Erreur vérification modalité: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     match modality {
         None => {
@@ -348,7 +346,7 @@ pub async fn delete_modality(
             use sqlx::Row;
             let is_system: bool = m.try_get("is_system").unwrap_or(false);
             let added_by: Option<i32> = m.try_get("added_by").ok();
-            
+
             if is_system {
                 return Ok(Json(ApiResponse {
                     success: false,
@@ -394,16 +392,29 @@ pub async fn delete_modality(
 
 /// Construit le routeur pour les modalités de produits
 pub fn modality_routes(state: Arc<AppState>) -> axum::Router<Arc<AppState>> {
-    use axum::{routing::{get, post, delete}, Router};
     use crate::middlewares::jwt::jwt_auth;
-    
+    use axum::{
+        routing::{delete, get, post},
+        Router,
+    };
+
     Router::<Arc<AppState>>::new()
         .route("/api/modalities/custom", get(get_custom_modalities))
-        .route("/api/modalities/custom", post(create_custom_modality)
-            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)))
+        .route(
+            "/api/modalities/custom",
+            post(create_custom_modality).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                jwt_auth,
+            )),
+        )
         .route("/api/modalities/usage", post(increment_modality_usage))
         .route("/api/modalities/popular", get(get_popular_modalities))
-        .route("/api/modalities/{id}", delete(delete_modality)
-            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)))
+        .route(
+            "/api/modalities/{id}",
+            delete(delete_modality).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                jwt_auth,
+            )),
+        )
         .with_state(state)
 }

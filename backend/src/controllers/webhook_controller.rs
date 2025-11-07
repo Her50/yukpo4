@@ -1,21 +1,16 @@
-use axum::{
-    extract::State,
-    http::HeaderMap,
-    Json,
-    response::Json as JsonResponse,
-};
+use axum::{extract::State, http::HeaderMap, response::Json as JsonResponse, Json};
+use hex;
+use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::Arc;
-use hmac::{Hmac, Mac};
 use sha2::Sha256;
-use hex;
+use std::sync::Arc;
 
-use crate::{
-    core::types::{AppResult, AppError},
-    services::phone_validation_service::{PhoneValidationService, PhoneValidationRequest},
-};
 use crate::state::AppState;
+use crate::{
+    core::types::{AppError, AppResult},
+    services::phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
+};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -85,8 +80,13 @@ pub async fn orange_money_webhook(
     });
 
     if !phone_validation.is_valid {
-        log::warn!("[orange_money_webhook] Numéro de téléphone invalide: {}", webhook.phone_number);
-        return Err(AppError::BadRequest("Numéro de téléphone invalide".to_string()));
+        log::warn!(
+            "[orange_money_webhook] Numéro de téléphone invalide: {}",
+            webhook.phone_number
+        );
+        return Err(AppError::BadRequest(
+            "Numéro de téléphone invalide".to_string(),
+        ));
     }
 
     // Traiter le webhook
@@ -99,7 +99,8 @@ pub async fn orange_money_webhook(
         &webhook.phone_number,
         "orange_money",
         &webhook.reference,
-    ).await?;
+    )
+    .await?;
 
     Ok(Json(WebhookResponse {
         success: true,
@@ -130,8 +131,13 @@ pub async fn mtn_money_webhook(
     });
 
     if !phone_validation.is_valid {
-        log::warn!("[mtn_money_webhook] Numéro de téléphone invalide: {}", webhook.phone_number);
-        return Err(AppError::BadRequest("Numéro de téléphone invalide".to_string()));
+        log::warn!(
+            "[mtn_money_webhook] Numéro de téléphone invalide: {}",
+            webhook.phone_number
+        );
+        return Err(AppError::BadRequest(
+            "Numéro de téléphone invalide".to_string(),
+        ));
     }
 
     // Traiter le webhook
@@ -144,7 +150,8 @@ pub async fn mtn_money_webhook(
         &webhook.phone_number,
         "mtn_money",
         &webhook.reference,
-    ).await?;
+    )
+    .await?;
 
     Ok(Json(WebhookResponse {
         success: true,
@@ -178,8 +185,13 @@ pub async fn generic_webhook(
         });
 
         if !phone_validation.is_valid {
-            log::warn!("[generic_webhook] Numéro de téléphone invalide: {}", phone_number);
-            return Err(AppError::BadRequest("Numéro de téléphone invalide".to_string()));
+            log::warn!(
+                "[generic_webhook] Numéro de téléphone invalide: {}",
+                phone_number
+            );
+            return Err(AppError::BadRequest(
+                "Numéro de téléphone invalide".to_string(),
+            ));
         }
     }
 
@@ -193,7 +205,8 @@ pub async fn generic_webhook(
         webhook.phone_number.as_deref().unwrap_or(""),
         &webhook.payment_method,
         &webhook.reference,
-    ).await?;
+    )
+    .await?;
 
     Ok(Json(WebhookResponse {
         success: true,
@@ -213,7 +226,12 @@ async fn process_payment_webhook(
     _payment_method: &str,
     reference: &Option<String>,
 ) -> AppResult<()> {
-    log::info!("[process_payment_webhook] Traitement: {} - {} - {}", transaction_id, status, amount);
+    log::info!(
+        "[process_payment_webhook] Traitement: {} - {} - {}",
+        transaction_id,
+        status,
+        amount
+    );
 
     // Rechercher la tentative de paiement correspondante
     let payment_attempt = sqlx::query!(
@@ -228,14 +246,22 @@ async fn process_payment_webhook(
     let payment_attempt = match payment_attempt {
         Some(attempt) => attempt,
         None => {
-            log::warn!("[process_payment_webhook] Tentative de paiement non trouvée: {}", transaction_id);
-            return Err(AppError::NotFound("Tentative de paiement non trouvée".to_string()));
+            log::warn!(
+                "[process_payment_webhook] Tentative de paiement non trouvée: {}",
+                transaction_id
+            );
+            return Err(AppError::NotFound(
+                "Tentative de paiement non trouvée".to_string(),
+            ));
         }
     };
 
     // Vérifier si le paiement n'est pas déjà traité
     if payment_attempt.status != "pending" {
-        log::warn!("[process_payment_webhook] Paiement déjà traité: {}", transaction_id);
+        log::warn!(
+            "[process_payment_webhook] Paiement déjà traité: {}",
+            transaction_id
+        );
         return Ok(()); // Retourner OK car le webhook a déjà été traité
     }
 
@@ -268,7 +294,7 @@ async fn process_payment_webhook(
     // Si le paiement est réussi, créditer les tokens
     if internal_status == "success" {
         let tokens_to_add = payment_attempt.amount_xaf;
-        
+
         sqlx::query!(
             "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2",
             tokens_to_add,
@@ -277,14 +303,21 @@ async fn process_payment_webhook(
         .execute(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;
-        
-        log::info!("[process_payment_webhook] {} tokens crédités pour utilisateur {}", tokens_to_add, payment_attempt.user_id);
-        
+
+        log::info!(
+            "[process_payment_webhook] {} tokens crédités pour utilisateur {}",
+            tokens_to_add,
+            payment_attempt.user_id
+        );
+
         // Envoyer une notification à l'utilisateur (optionnel)
         // TODO: Implémenter le système de notifications
     }
 
-    log::info!("[process_payment_webhook] Webhook traité avec succès: {}", transaction_id);
+    log::info!(
+        "[process_payment_webhook] Webhook traité avec succès: {}",
+        transaction_id
+    );
     Ok(())
 }
 
@@ -298,27 +331,33 @@ fn verify_webhook_signature(_headers: &HeaderMap, signature: &str, provider: &st
     };
 
     if secret_key.is_empty() {
-        log::warn!("[verify_webhook_signature] Clé secrète manquante pour {}", provider);
+        log::warn!(
+            "[verify_webhook_signature] Clé secrète manquante pour {}",
+            provider
+        );
         return false;
     }
 
     // Récupérer le body du webhook (dans un vrai cas, il faudrait le récupérer du body)
     // Pour l'instant, on simule la vérification
     let body = "webhook_body"; // En réalité, il faudrait récupérer le body complet
-    
+
     // Calculer la signature HMAC
     let mut mac = HmacSha256::new_from_slice(secret_key.as_bytes())
         .expect("HMAC peut être créé avec n'importe quelle taille de clé");
     mac.update(body.as_bytes());
     let expected_signature = hex::encode(mac.finalize().into_bytes());
-    
+
     // Comparer les signatures
     let is_valid = signature == expected_signature;
-    
+
     if !is_valid {
-        log::warn!("[verify_webhook_signature] Signature invalide pour {}", provider);
+        log::warn!(
+            "[verify_webhook_signature] Signature invalide pour {}",
+            provider
+        );
     }
-    
+
     is_valid
 }
 
@@ -330,27 +369,33 @@ pub async fn test_webhook(
     log::info!("[test_webhook] Test webhook: {:?}", test_data);
 
     // Simuler un webhook de test
-    let transaction_id = test_data.get("transaction_id")
+    let transaction_id = test_data
+        .get("transaction_id")
         .and_then(|v| v.as_str())
         .unwrap_or("test_txn_123");
-    
-    let status = test_data.get("status")
+
+    let status = test_data
+        .get("status")
         .and_then(|v| v.as_str())
         .unwrap_or("SUCCESS");
-    
-    let amount = test_data.get("amount")
+
+    let amount = test_data
+        .get("amount")
         .and_then(|v| v.as_i64())
         .unwrap_or(1000);
-    
-    let currency = test_data.get("currency")
+
+    let currency = test_data
+        .get("currency")
         .and_then(|v| v.as_str())
         .unwrap_or("XAF");
-    
-    let phone_number = test_data.get("phone_number")
+
+    let phone_number = test_data
+        .get("phone_number")
         .and_then(|v| v.as_str())
         .unwrap_or("675123456");
-    
-    let payment_method = test_data.get("payment_method")
+
+    let payment_method = test_data
+        .get("payment_method")
         .and_then(|v| v.as_str())
         .unwrap_or("orange_money");
 
@@ -364,7 +409,8 @@ pub async fn test_webhook(
         phone_number,
         payment_method,
         &None,
-    ).await?;
+    )
+    .await?;
 
     Ok(Json(WebhookResponse {
         success: true,

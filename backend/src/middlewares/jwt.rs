@@ -1,9 +1,9 @@
-use axum::{http::Request, middleware::Next, response::Response};
-use axum::http::StatusCode;
-use axum::body::Body;
-use std::env;
 use crate::utils::jwt_manager::decode_jwt;
+use axum::body::Body;
+use axum::http::StatusCode;
+use axum::{http::Request, middleware::Next, response::Response};
 use base64::{engine::general_purpose, Engine as _};
+use std::env;
 
 /// ? Authenticated user structure
 #[derive(Debug, Clone)]
@@ -26,10 +26,10 @@ pub async fn jwt_auth(
 
     if let Some(auth_header) = auth_header {
         eprintln!("[DEBUG] Authorization header trouv?: {}", auth_header);
-        
+
         if let Some(token) = auth_header.strip_prefix("Bearer ") {
             eprintln!("[DEBUG] Token extrait (longueur: {})", token.len());
-            
+
             // Mode d?veloppement : accepter les tokens de dev
             if token.ends_with(".dev_signature") {
                 eprintln!("[DEBUG] Token de d?veloppement d?tect?");
@@ -37,24 +37,28 @@ pub async fn jwt_auth(
                 if parts.len() == 3 {
                     // D?coder le payload
                     if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
-                        if let Ok(payload) = serde_json::from_slice::<serde_json::Value>(&payload_str) {
+                        if let Ok(payload) =
+                            serde_json::from_slice::<serde_json::Value>(&payload_str)
+                        {
                             let authenticated_user = AuthenticatedUser {
                                 id: payload["sub"].as_str().unwrap_or("1").parse().unwrap_or(1),
                                 role: payload["role"].as_str().unwrap_or("admin").to_string(),
                             };
                             req.extensions_mut().insert(authenticated_user.clone());
-                            eprintln!("[DEBUG] Utilisateur dev authentifi?: {:?}", authenticated_user);
+                            eprintln!(
+                                "[DEBUG] Utilisateur dev authentifi?: {:?}",
+                                authenticated_user
+                            );
                             return Ok(next.run(req).await);
                         }
                     }
                 }
             }
-            
-            let secret = env::var("JWT_SECRET")
-                .map_err(|_| {
-                    eprintln!("[ERROR] JWT_SECRET manquant dans les variables d'environnement");
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Missing JWT_SECRET")
-                })?;
+
+            let secret = env::var("JWT_SECRET").map_err(|_| {
+                eprintln!("[ERROR] JWT_SECRET manquant dans les variables d'environnement");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Missing JWT_SECRET")
+            })?;
 
             match decode_jwt(token, &secret) {
                 Ok(token_data) => {
@@ -63,7 +67,10 @@ pub async fn jwt_auth(
                         role: token_data.claims.role,
                     };
 
-                    eprintln!("[DEBUG] JWT valide pour utilisateur: {:?}", authenticated_user);
+                    eprintln!(
+                        "[DEBUG] JWT valide pour utilisateur: {:?}",
+                        authenticated_user
+                    );
                     // Add the authenticated user to the request extensions
                     req.extensions_mut().insert(authenticated_user.clone());
                 }
@@ -95,10 +102,7 @@ pub fn extract_user_id_from_token(token: &str) -> Result<i32, String> {
 
 /// Middleware optionnel qui essaie d'extraire le JWT mais ne bloque pas si absent
 /// Utile pour les routes publiques qui peuvent être utilisées avec ou sans authentification
-pub async fn optional_jwt_auth(
-    mut req: Request<Body>,
-    next: Next,
-) -> Response {
+pub async fn optional_jwt_auth(mut req: Request<Body>, next: Next) -> Response {
     let auth_header = req
         .headers()
         .get("Authorization")
@@ -111,7 +115,9 @@ pub async fn optional_jwt_auth(
                 let parts: Vec<&str> = token.split('.').collect();
                 if parts.len() == 3 {
                     if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
-                        if let Ok(payload) = serde_json::from_slice::<serde_json::Value>(&payload_str) {
+                        if let Ok(payload) =
+                            serde_json::from_slice::<serde_json::Value>(&payload_str)
+                        {
                             let authenticated_user = AuthenticatedUser {
                                 id: payload["sub"].as_str().unwrap_or("1").parse().unwrap_or(1),
                                 role: payload["role"].as_str().unwrap_or("admin").to_string(),
@@ -122,7 +128,7 @@ pub async fn optional_jwt_auth(
                     }
                 }
             }
-            
+
             let secret = match env::var("JWT_SECRET") {
                 Ok(s) => s,
                 Err(_) => {

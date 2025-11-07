@@ -12,9 +12,9 @@ pub struct CORSConfig {
 impl Default for CORSConfig {
     fn default() -> Self {
         Self {
-                    allowed_origins: vec![
-                        "http://localhost:3000".to_string(),
-                        "http://localhost:5173".to_string(),
+            allowed_origins: vec![
+                "http://localhost:3000".to_string(),
+                "http://localhost:5173".to_string(),
                 "https://yukpomnang-app.netlify.app".to_string(),
                 "https://yukpomnang.onrender.com".to_string(),
             ],
@@ -33,7 +33,7 @@ impl Default for CORSConfig {
                 "Accept".to_string(),
                 "Origin".to_string(),
             ],
-                    allow_credentials: true,
+            allow_credentials: true,
         }
     }
 }

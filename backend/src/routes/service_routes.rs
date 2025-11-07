@@ -1,19 +1,15 @@
 // ?? src/routes/service_routes.rs
 
-use axum::{routing::{post, get, put}, Router};
+use axum::{
+    routing::{get, post, put},
+    Router,
+};
 use std::sync::Arc;
 
 use crate::controllers::service_controller::{
-    creer_service,
-    filter_services,
-    get_related_services,
+    creer_service, filter_services, get_last_service_for_user, get_my_services,
+    get_related_services, get_services_list, get_services_recent, get_shared_service, insert_user,
     reactivate_service,
-    insert_user,
-    get_last_service_for_user,
-    get_shared_service,
-    get_services_list,
-    get_services_recent,
-    get_my_services,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -31,9 +27,11 @@ pub fn service_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/services/filter", get(filter_services))
         .route("/services/related/{id}", get(get_related_services))
         .route("/services/last", get(get_last_service_for_user))
-        .route("/services/reactivate/{service_id}/{user_id}", put(reactivate_service))
+        .route(
+            "/services/reactivate/{service_id}/{user_id}",
+            put(reactivate_service),
+        )
         .route("/services/insert_user", post(insert_user))
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }
-

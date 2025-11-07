@@ -1,3 +1,4 @@
+use crate::state::AppState;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -5,7 +6,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct HealthStructureQuery {
@@ -47,17 +47,20 @@ pub async fn get_health_structures(
             format!("Erreur récupération structures: {}", e),
         )
     })?;
-    
+
     use sqlx::Row;
-    let structures: Vec<HealthStructure> = rows.iter().map(|row| {
-        let created_at: chrono::NaiveDateTime = row.get("created_at");
-        HealthStructure {
-            id: row.get("id"),
-            structure_type: row.get("structure_type"),
-            name: row.get("name"),
-            created_at: created_at.to_string(),
-        }
-    }).collect();
+    let structures: Vec<HealthStructure> = rows
+        .iter()
+        .map(|row| {
+            let created_at: chrono::NaiveDateTime = row.get("created_at");
+            HealthStructure {
+                id: row.get("id"),
+                structure_type: row.get("structure_type"),
+                name: row.get("name"),
+                created_at: created_at.to_string(),
+            }
+        })
+        .collect();
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -91,7 +94,7 @@ pub async fn create_health_structure(
 
     // Vérifier si la structure existe déjà (insensible à la casse)
     let existing = sqlx::query(
-        "SELECT id FROM health_structures WHERE structure_type = $1 AND LOWER(name) = LOWER($2)"
+        "SELECT id FROM health_structures WHERE structure_type = $1 AND LOWER(name) = LOWER($2)",
     )
     .bind(&payload.structure_type)
     .bind(payload.name.trim())
@@ -128,7 +131,7 @@ pub async fn create_health_structure(
             format!("Erreur création structure: {}", e),
         )
     })?;
-    
+
     use sqlx::Row;
     let created_at: chrono::NaiveDateTime = row.get("created_at");
     let structure = HealthStructure {
@@ -138,7 +141,10 @@ pub async fn create_health_structure(
         created_at: created_at.to_string(),
     };
 
-    println!("✅ Structure de santé créée: {} ({})", structure.name, structure.structure_type);
+    println!(
+        "✅ Structure de santé créée: {} ({})",
+        structure.name, structure.structure_type
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -164,17 +170,20 @@ pub async fn get_all_health_structures(
             format!("Erreur récupération: {}", e),
         )
     })?;
-    
+
     use sqlx::Row;
-    let structures: Vec<HealthStructure> = rows.iter().map(|row| {
-        let created_at: chrono::NaiveDateTime = row.get("created_at");
-        HealthStructure {
-            id: row.get("id"),
-            structure_type: row.get("structure_type"),
-            name: row.get("name"),
-            created_at: created_at.to_string(),
-        }
-    }).collect();
+    let structures: Vec<HealthStructure> = rows
+        .iter()
+        .map(|row| {
+            let created_at: chrono::NaiveDateTime = row.get("created_at");
+            HealthStructure {
+                id: row.get("id"),
+                structure_type: row.get("structure_type"),
+                name: row.get("name"),
+                created_at: created_at.to_string(),
+            }
+        })
+        .collect();
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -182,4 +191,3 @@ pub async fn get_all_health_structures(
         "count": structures.len()
     })))
 }
-

@@ -1,12 +1,10 @@
-use std::sync::Arc;
 use axum::{extract::State, Json};
+use log::{error, info};
 use serde::{Deserialize, Serialize};
-use sqlx::{Row, query};
-use log::{info, error};
+use sqlx::{query, Row};
+use std::sync::Arc;
 
-use crate::{
-    core::types::AppResult,
-};
+use crate::core::types::AppResult;
 
 use crate::state::AppState;
 
@@ -24,7 +22,8 @@ pub async fn list_token_packs(
     info!("[list_token_packs] Called");
     let rows = match query("SELECT id, name, tokens, price FROM token_packs ORDER BY price ASC")
         .fetch_all(&state.pg)
-        .await {
+        .await
+    {
         Ok(r) => r,
         Err(e) => {
             error!("[list_token_packs] Query error: {e:?}");
@@ -55,20 +54,24 @@ pub async fn create_token_pack(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<NewTokenPack>,
 ) -> AppResult<Json<TokenPack>> {
-    info!("[create_token_pack] Called for name={}, tokens={}, price={}?", payload.name, payload.tokens, payload.price);
+    info!(
+        "[create_token_pack] Called for name={}, tokens={}, price={}?",
+        payload.name, payload.tokens, payload.price
+    );
     let price_centimes = (payload.price * 100.0).round() as i32;
     let row = match query(
         r#"
         INSERT INTO token_packs (name, tokens, price)
         VALUES ($1, $2, $3)
         RETURNING id, name, tokens, price
-        "#
+        "#,
     )
     .bind(&payload.name)
     .bind(payload.tokens)
     .bind(price_centimes)
     .fetch_one(&state.pg)
-    .await {
+    .await
+    {
         Ok(r) => r,
         Err(e) => {
             error!("[create_token_pack] Insert error: {e:?}");

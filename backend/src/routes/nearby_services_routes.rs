@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use axum::{
     extract::{Query, State},
     response::Json,
@@ -6,6 +5,7 @@ use axum::{
     Router,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::state::AppState;
 
@@ -45,7 +45,7 @@ pub async fn get_nearby_services(
 ) -> Json<NearbyServicesResponse> {
     let radius = params.radius.unwrap_or(5000); // 5km par défaut
     let limit = params.limit.unwrap_or(20); // 20 services par défaut
-    
+
     // Requête simplifiée pour éviter les problèmes de types
     let services = match sqlx::query!(
         r#"
@@ -111,7 +111,7 @@ pub async fn get_nearby_services(
             return Json(NearbyServicesResponse { services: vec![] });
         }
     };
-    
+
     Json(NearbyServicesResponse { services })
 }
 
@@ -120,4 +120,3 @@ pub fn nearby_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/services/nearby", get(get_nearby_services))
         .with_state(state)
 }
-

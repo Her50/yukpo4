@@ -1,9 +1,9 @@
-use base64::{engine::general_purpose, Engine as _};
-use calamine::{open_workbook_from_rs, Reader, Xlsx, DataType};
-use docx_rs::{read_docx, DocumentChild, ParagraphChild, RunChild};
-use std::io::Cursor;
 use crate::core::types::AppResult;
+use base64::{engine::general_purpose, Engine as _};
+use calamine::{open_workbook_from_rs, DataType, Reader, Xlsx};
+use docx_rs::{read_docx, DocumentChild, ParagraphChild, RunChild};
 use serde_json::{json, Value};
+use std::io::Cursor;
 // use std::collections::HashMap;
 
 pub fn extract_text_from_base64(
@@ -119,25 +119,32 @@ impl UniversalFileExtractor {
         // 2. Extraction selon le type
         match content_type.as_str() {
             "excel" => {
-                self.extract_excel_content(file_data, &mut extracted_data).await?;
+                self.extract_excel_content(file_data, &mut extracted_data)
+                    .await?;
             }
             "csv" => {
-                self.extract_csv_content(file_data, &mut extracted_data).await?;
+                self.extract_csv_content(file_data, &mut extracted_data)
+                    .await?;
             }
             "pdf" => {
-                self.extract_pdf_content(file_data, &mut extracted_data).await?;
+                self.extract_pdf_content(file_data, &mut extracted_data)
+                    .await?;
             }
             "word" => {
-                self.extract_word_content(file_data, &mut extracted_data).await?;
+                self.extract_word_content(file_data, &mut extracted_data)
+                    .await?;
             }
             "image" => {
-                self.extract_image_content(file_data, &mut extracted_data).await?;
+                self.extract_image_content(file_data, &mut extracted_data)
+                    .await?;
             }
             "json" => {
-                self.extract_json_content(file_data, &mut extracted_data).await?;
+                self.extract_json_content(file_data, &mut extracted_data)
+                    .await?;
             }
             _ => {
-                self.extract_generic_content(file_data, &mut extracted_data).await?;
+                self.extract_generic_content(file_data, &mut extracted_data)
+                    .await?;
             }
         }
 
@@ -174,7 +181,11 @@ impl UniversalFileExtractor {
     }
 
     /// ?? Extraction Excel
-    async fn extract_excel_content(&self, _data: &[u8], extracted_data: &mut Value) -> AppResult<()> {
+    async fn extract_excel_content(
+        &self,
+        _data: &[u8],
+        extracted_data: &mut Value,
+    ) -> AppResult<()> {
         // TODO: Impl?menter avec calamine
         // Pour l'instant, simulation
         extracted_data["content"]["text"] = json!("Contenu Excel extrait");
@@ -188,7 +199,7 @@ impl UniversalFileExtractor {
                 ]
             }
         ]);
-        
+
         // Extraction automatique des produits
         if let Some(tables) = extracted_data["content"]["tables"].as_array() {
             for table in tables {
@@ -213,7 +224,7 @@ impl UniversalFileExtractor {
         if lines.len() > 1 {
             let headers: Vec<&str> = lines[0].split(',').collect();
             let mut rows = Vec::new();
-            
+
             for line in lines.iter().skip(1) {
                 let row: Vec<&str> = line.split(',').collect();
                 if row.len() == headers.len() {
@@ -246,14 +257,22 @@ impl UniversalFileExtractor {
     }
 
     /// ?? Extraction Word
-    async fn extract_word_content(&self, _data: &[u8], extracted_data: &mut Value) -> AppResult<()> {
+    async fn extract_word_content(
+        &self,
+        _data: &[u8],
+        extracted_data: &mut Value,
+    ) -> AppResult<()> {
         // TODO: Impl?menter avec docx-rs
         extracted_data["content"]["text"] = json!("Contenu Word extrait");
         Ok(())
     }
 
     /// ??? Extraction Image
-    async fn extract_image_content(&self, data: &[u8], extracted_data: &mut Value) -> AppResult<()> {
+    async fn extract_image_content(
+        &self,
+        data: &[u8],
+        extracted_data: &mut Value,
+    ) -> AppResult<()> {
         // TODO: Impl?menter OCR avec tesseract-rs
         extracted_data["content"]["text"] = json!("Texte extrait de l'image");
         extracted_data["content"]["images"] = json!([
@@ -271,7 +290,7 @@ impl UniversalFileExtractor {
         if let Ok(json_value) = serde_json::from_slice::<Value>(data) {
             extracted_data["content"]["structured_data"] = json_value.clone();
             extracted_data["content"]["text"] = json!(json_value.to_string());
-            
+
             // Extraction automatique des produits depuis JSON
             if let Some(products) = self.extract_products_from_json(&json_value) {
                 extracted_data["content"]["products_list"] = json!(products);
@@ -281,7 +300,11 @@ impl UniversalFileExtractor {
     }
 
     /// ?? Extraction g?n?rique
-    async fn extract_generic_content(&self, data: &[u8], extracted_data: &mut Value) -> AppResult<()> {
+    async fn extract_generic_content(
+        &self,
+        data: &[u8],
+        extracted_data: &mut Value,
+    ) -> AppResult<()> {
         let text = String::from_utf8_lossy(data);
         extracted_data["content"]["text"] = json!(text);
         Ok(())
@@ -326,10 +349,10 @@ impl UniversalFileExtractor {
     fn extract_products_from_table(&self, table: &Value) -> Option<Vec<Value>> {
         if let (Some(headers), Some(rows)) = (
             table.get("headers").and_then(|h| h.as_array()),
-            table.get("rows").and_then(|r| r.as_array())
+            table.get("rows").and_then(|r| r.as_array()),
         ) {
             let mut products = Vec::new();
-            
+
             for row in rows {
                 if let Some(row_array) = row.as_array() {
                     let mut product = json!({
@@ -382,23 +405,27 @@ impl UniversalFileExtractor {
                             }
                         }
                     }
-                    
+
                     products.push(product);
                 }
             }
-            
+
             if !products.is_empty() {
                 return Some(products);
             }
         }
-        
+
         None
     }
 
     /// ??? Extraction produits depuis CSV
-    fn extract_products_from_csv_headers(&self, headers: &[&str], rows: &[Vec<&str>]) -> Option<Vec<Value>> {
+    fn extract_products_from_csv_headers(
+        &self,
+        headers: &[&str],
+        rows: &[Vec<&str>],
+    ) -> Option<Vec<Value>> {
         let mut products = Vec::new();
-        
+
         for row in rows {
             let mut product = json!({
                 "type_donnee": "produit",
@@ -447,10 +474,10 @@ impl UniversalFileExtractor {
                     }
                 }
             }
-            
+
             products.push(product);
         }
-        
+
         if !products.is_empty() {
             Some(products)
         } else {
@@ -461,7 +488,8 @@ impl UniversalFileExtractor {
     /// ??? Extraction produits depuis JSON
     fn extract_products_from_json(&self, json_data: &Value) -> Option<Vec<Value>> {
         // Chercher des tableaux de produits dans le JSON
-        if let Some(products_array) = json_data.get("produits")
+        if let Some(products_array) = json_data
+            .get("produits")
             .or(json_data.get("products"))
             .or(json_data.get("listeproduit"))
             .and_then(|v| v.as_array())
@@ -472,7 +500,7 @@ impl UniversalFileExtractor {
                     "type_donnee": "produit",
                     "origine_champs": "fichier_json"
                 });
-                
+
                 if let Some(product_obj) = product.as_object() {
                     for (key, value) in product_obj {
                         structured_product[key] = json!({
@@ -482,15 +510,15 @@ impl UniversalFileExtractor {
                         });
                     }
                 }
-                
+
                 products.push(structured_product);
             }
-            
+
             if !products.is_empty() {
                 return Some(products);
             }
         }
-        
+
         None
     }
 

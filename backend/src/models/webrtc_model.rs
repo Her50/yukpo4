@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 /// Type de message WebRTC signaling
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,29 +27,29 @@ pub struct SignalingMessage {
     /// Type de message
     #[serde(rename = "type")]
     pub message_type: SignalingMessageType,
-    
+
     /// ID de l'utilisateur expéditeur
     pub from: String,
-    
+
     /// ID de l'utilisateur destinataire
     pub to: String,
-    
+
     /// Description de session (SDP) pour offer/answer
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sdp: Option<serde_json::Value>,
-    
+
     /// Candidat ICE
     #[serde(skip_serializing_if = "Option::is_none")]
     pub candidate: Option<serde_json::Value>,
-    
+
     /// Type d'appel (audio/video)
     #[serde(rename = "callType", skip_serializing_if = "Option::is_none")]
     pub call_type: Option<String>,
-    
+
     /// ID du service lié (optionnel)
     #[serde(rename = "serviceId", skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
-    
+
     /// Timestamp du message
     #[serde(default = "Utc::now")]
     pub timestamp: DateTime<Utc>,
@@ -60,17 +60,17 @@ pub struct SignalingMessage {
 pub struct PeerState {
     /// ID de l'utilisateur
     pub user_id: String,
-    
+
     /// Est en ligne
     pub is_online: bool,
-    
+
     /// Est en appel
     pub is_in_call: bool,
-    
+
     /// ID de l'appel en cours
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current_call_id: Option<String>,
-    
+
     /// Timestamp de la dernière activité
     pub last_activity: DateTime<Utc>,
 }
@@ -92,4 +92,3 @@ impl SignalingError {
         }
     }
 }
-

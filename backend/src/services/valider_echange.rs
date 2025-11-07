@@ -17,8 +17,14 @@ pub fn valider_echange_json(data: &Value) -> Result<(), AppError> {
     let result = compiled.validate(data);
     if let Err(errors) = result {
         let details: Vec<String> = errors.map(|e| e.to_string()).collect();
-        log::warn!("[VALIDER_ECHANGE_JSON] Erreurs de validation: {:?}", details);
-        return Err(AppError::BadRequest(format!("Validation JSON ?chou?e: {}", details.join(", "))));
+        log::warn!(
+            "[VALIDER_ECHANGE_JSON] Erreurs de validation: {:?}",
+            details
+        );
+        return Err(AppError::BadRequest(format!(
+            "Validation JSON ?chou?e: {}",
+            details.join(", ")
+        )));
     }
     // Validation m?tier stricte du champ mode
     if let Some(mode) = data.get("mode").and_then(|v| v.as_str()) {

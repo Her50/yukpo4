@@ -1,7 +1,7 @@
 // src/middlewares/rate_limit.rs
 // Placeholder for global or per-route rate limiting
-use axum::{http::Request, middleware::Next, response::Response};
 use axum::body::Body;
+use axum::{http::Request, middleware::Next, response::Response};
 use http::StatusCode;
 
 pub async fn rate_limit(req: Request<Body>, next: Next) -> Result<Response, StatusCode> {

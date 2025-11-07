@@ -70,7 +70,7 @@ pub async fn get_product_media(
             COALESCE(is_main_image, FALSE) DESC,  -- Image principale en premier
             COALESCE(display_order, 0) ASC,        -- Puis par ordre
             id ASC                                  -- Puis par ID
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(product_index)
@@ -95,7 +95,9 @@ pub async fn get_product_media(
             path: row.get("path"),
             is_main_image: row.get("is_main_image"),
             display_order: row.get("display_order"),
-            uploaded_at: row.get::<chrono::NaiveDateTime, _>("uploaded_at").to_string(),
+            uploaded_at: row
+                .get::<chrono::NaiveDateTime, _>("uploaded_at")
+                .to_string(),
             ai_description: row.get("ai_description"),
             ai_tags: row.get("ai_tags"),
         })
@@ -136,7 +138,7 @@ pub async fn get_product_images(
             COALESCE(is_main_image, FALSE) DESC,
             COALESCE(display_order, 0) ASC,
             id ASC
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(product_index)
@@ -181,7 +183,7 @@ pub async fn get_product_videos(
         ORDER BY 
             COALESCE(display_order, 0) ASC,
             id ASC
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(product_index)
@@ -209,21 +211,22 @@ pub async fn set_main_image(
     State(state): State<Arc<AppState>>,
     Path(media_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    log_info(&format!("[MediaProduct] Définir image principale: media_id={}", media_id));
+    log_info(&format!(
+        "[MediaProduct] Définir image principale: media_id={}",
+        media_id
+    ));
 
     let pool = &state.pg;
 
     // Récupérer les infos du média
-    let media_info = sqlx::query(
-        "SELECT service_id, product_index FROM media WHERE id = $1"
-    )
-    .bind(media_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        log_error(&format!("[MediaProduct] Erreur récupération média: {}", e));
-        AppError::Internal(format!("Média introuvable: {}", e))
-    })?;
+    let media_info = sqlx::query("SELECT service_id, product_index FROM media WHERE id = $1")
+        .bind(media_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            log_error(&format!("[MediaProduct] Erreur récupération média: {}", e));
+            AppError::Internal(format!("Média introuvable: {}", e))
+        })?;
 
     if let Some(row) = media_info {
         let service_id: i32 = row.get("service_id");
@@ -238,7 +241,7 @@ pub async fn set_main_image(
                 WHERE service_id = $1
                 AND product_index = $2
                 AND type = 'image'
-                "#
+                "#,
             )
             .bind(service_id)
             .bind(prod_idx)
@@ -247,15 +250,16 @@ pub async fn set_main_image(
             .map_err(|e| AppError::Internal(format!("Erreur désactivation: {}", e)))?;
 
             // Définir cette image comme principale
-            sqlx::query(
-                "UPDATE media SET is_main_image = TRUE WHERE id = $1"
-            )
-            .bind(media_id)
-            .execute(pool)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur activation: {}", e)))?;
+            sqlx::query("UPDATE media SET is_main_image = TRUE WHERE id = $1")
+                .bind(media_id)
+                .execute(pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur activation: {}", e)))?;
 
-            log_info(&format!("[MediaProduct] ✅ Image {} définie comme principale", media_id));
+            log_info(&format!(
+                "[MediaProduct] ✅ Image {} définie comme principale",
+                media_id
+            ));
 
             return Ok(Json(serde_json::json!({
                 "success": true,
@@ -264,6 +268,7 @@ pub async fn set_main_image(
         }
     }
 
-    Err(AppError::NotFound("Média introuvable ou sans product_index".to_string()))
+    Err(AppError::NotFound(
+        "Média introuvable ou sans product_index".to_string(),
+    ))
 }
-

@@ -1,18 +1,14 @@
 // Contrôleur pour les notifications utilisateur
-use std::sync::Arc;
+use crate::{middlewares::jwt::AuthenticatedUser, services::notification_service, state::AppState};
 use axum::{
     extract::{Path, Query, State},
+    http::StatusCode,
     response::Json,
     Extension,
-    http::StatusCode,
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
-use crate::{
-    state::AppState,
-    middlewares::jwt::AuthenticatedUser,
-    services::notification_service,
-};
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 pub struct NotificationsQuery {
@@ -26,14 +22,17 @@ pub async fn get_user_notifications(
     Query(query): Query<NotificationsQuery>,
 ) -> Result<Json<Value>, StatusCode> {
     let limit = query.limit.unwrap_or(50);
-    
+
     match notification_service::get_user_notifications(&state.pg, user.id, limit).await {
         Ok(notifications) => Ok(Json(json!({
             "success": true,
             "data": notifications
         }))),
         Err(e) => {
-            log::error!("[NotificationController] Erreur récupération notifications: {}", e);
+            log::error!(
+                "[NotificationController] Erreur récupération notifications: {}",
+                e
+            );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -50,7 +49,10 @@ pub async fn count_unread_notifications(
             "count": count
         }))),
         Err(e) => {
-            log::error!("[NotificationController] Erreur comptage notifications: {}", e);
+            log::error!(
+                "[NotificationController] Erreur comptage notifications: {}",
+                e
+            );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -62,14 +64,18 @@ pub async fn mark_notification_as_read(
     Extension(user): Extension<AuthenticatedUser>,
     Path(notification_id): Path<i32>,
 ) -> Result<Json<Value>, StatusCode> {
-    match notification_service::mark_notification_as_read(&state.pg, notification_id, user.id).await {
+    match notification_service::mark_notification_as_read(&state.pg, notification_id, user.id).await
+    {
         Ok(true) => Ok(Json(json!({
             "success": true,
             "message": "Notification marquée comme lue"
         }))),
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
-            log::error!("[NotificationController] Erreur marquage notification: {}", e);
+            log::error!(
+                "[NotificationController] Erreur marquage notification: {}",
+                e
+            );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -87,7 +93,10 @@ pub async fn mark_all_notifications_as_read(
             "message": format!("{} notifications marquées comme lues", count)
         }))),
         Err(e) => {
-            log::error!("[NotificationController] Erreur marquage toutes notifications: {}", e);
+            log::error!(
+                "[NotificationController] Erreur marquage toutes notifications: {}",
+                e
+            );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -106,9 +115,11 @@ pub async fn delete_notification(
         }))),
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
-            log::error!("[NotificationController] Erreur suppression notification: {}", e);
+            log::error!(
+                "[NotificationController] Erreur suppression notification: {}",
+                e
+            );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
 }
-

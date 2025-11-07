@@ -1,13 +1,13 @@
 use crate::core::types::AppResult;
 use crate::models::echange_model::Echange;
 use crate::services::valider_echange::valider_echange_json;
-use crate::utils::embedding_client::{EmbeddingClient, AddEmbeddingPineconeRequest};
+use crate::utils::embedding_client::{AddEmbeddingPineconeRequest, EmbeddingClient};
+use once_cell::sync::Lazy;
+use redis::AsyncCommands;
 use serde_json::Value;
 use sqlx::PgPool;
-use redis::AsyncCommands;
 use std::collections::HashMap;
 use tokio::sync::RwLock;
-use once_cell::sync::Lazy;
 
 // Seuil configurable via variable d'environnement
 fn get_match_threshold() -> f64 {
@@ -47,9 +47,8 @@ impl Default for ScoringWeights {
 }
 
 /// Cache pour les r?putations utilisateur
-static REPUTATION_CACHE: Lazy<RwLock<HashMap<i32, f64>>> = Lazy::new(|| {
-    RwLock::new(HashMap::new())
-});
+static REPUTATION_CACHE: Lazy<RwLock<HashMap<i32, f64>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
 
 /// ?? Traite une demande d'?change utilisateur (OPTIMIS?)
 ///
@@ -70,11 +69,18 @@ pub async fn traiter_echange(
     pool: &PgPool,
     redis_client: Option<&redis::Client>,
 ) -> AppResult<Value> {
-    log::info!("[TRAITER_ECHANGE] Entr?e: user_id={:?}, data={:?}", user_id, data);
-    
+    log::info!(
+        "[TRAITER_ECHANGE] Entr?e: user_id={:?}, data={:?}",
+        user_id,
+        data
+    );
+
     // Validation stricte du JSON de troc g?n?r? par l'IA
     if let Err(e) = valider_echange_json(data) {
-        log::warn!("[TRAITER_ECHANGE] Validation ?chou?e, retour imm?diat: {}", e);
+        log::warn!(
+            "[TRAITER_ECHANGE] Validation ?chou?e, retour imm?diat: {}",
+            e
+        );
         return Err(e);
     }
 
@@ -99,14 +105,19 @@ pub async fn traiter_echange(
     // --- V?rification de doublon d'?change (avec cache Redis) ---
     let cache_key = format!("echange_duplicate:{}:{}:{}", user_id, &offre, &besoin);
     if let Some(redis) = redis_client {
-        let mut conn = redis.get_multiplexed_async_connection().await.map_err(|e| {
-            log::warn!("[TRAITER_ECHANGE] Erreur connexion Redis: {}", e);
-            crate::core::types::AppError::Internal("Erreur cache Redis".to_string())
-        })?;
-        
+        let mut conn = redis
+            .get_multiplexed_async_connection()
+            .await
+            .map_err(|e| {
+                log::warn!("[TRAITER_ECHANGE] Erreur connexion Redis: {}", e);
+                crate::core::types::AppError::Internal("Erreur cache Redis".to_string())
+            })?;
+
         if let Ok(exists) = conn.exists::<_, bool>(&cache_key).await {
             if exists {
-                return Ok(serde_json::json!({"error": "Un ?change identique existe d?j? pour cet utilisateur."}));
+                return Ok(
+                    serde_json::json!({"error": "Un ?change identique existe d?j? pour cet utilisateur."}),
+                );
             }
         }
     }
@@ -120,17 +131,23 @@ pub async fn traiter_echange(
     )
     .fetch_optional(pool)
     .await?;
-    
+
     if doublon.is_some() {
         // Mettre en cache le doublon
         if let Some(redis) = redis_client {
-            let mut conn = redis.get_multiplexed_async_connection().await.map_err(|e| {
-                log::warn!("[TRAITER_ECHANGE] Erreur connexion Redis: {}", e);
-                crate::core::types::AppError::Internal("Erreur cache Redis".to_string())
-            })?;
-            let _: Result<(), redis::RedisError> = conn.set_ex(&cache_key, "1", CACHE_TTL as u64).await;
+            let mut conn = redis
+                .get_multiplexed_async_connection()
+                .await
+                .map_err(|e| {
+                    log::warn!("[TRAITER_ECHANGE] Erreur connexion Redis: {}", e);
+                    crate::core::types::AppError::Internal("Erreur cache Redis".to_string())
+                })?;
+            let _: Result<(), redis::RedisError> =
+                conn.set_ex(&cache_key, "1", CACHE_TTL as u64).await;
         }
-        return Ok(serde_json::json!({"error": "Un ?change identique existe d?j? pour cet utilisateur."}));
+        return Ok(
+            serde_json::json!({"error": "Un ?change identique existe d?j? pour cet utilisateur."}),
+        );
     }
 
     // 1. Enregistrer la demande d'?change ou de don en base
@@ -144,7 +161,8 @@ pub async fn traiter_echange(
         &offre,
         &besoin,
         don
-    )    .fetch_one(pool)
+    )
+    .fetch_one(pool)
     .await?;
     let echange_id = rec.id;
 
@@ -152,10 +170,13 @@ pub async fn traiter_echange(
     let embedding_client = EmbeddingClient::new("", "");
     let offre_clone = offre.clone();
     let besoin_clone = besoin.clone();
-    
+
     tokio::spawn(async move {
         // Offre
-        if let Some(offre_str) = offre_clone.as_str().or_else(|| offre_clone.get("valeur").and_then(|v| v.as_str())) {
+        if let Some(offre_str) = offre_clone
+            .as_str()
+            .or_else(|| offre_clone.get("valeur").and_then(|v| v.as_str()))
+        {
             let req = AddEmbeddingPineconeRequest {
                 value: offre_str.to_string(),
                 type_donnee: "texte".to_string(),
@@ -178,7 +199,10 @@ pub async fn traiter_echange(
                 });
         }
         // Besoin
-        if let Some(besoin_str) = besoin_clone.as_str().or_else(|| besoin_clone.get("valeur").and_then(|v| v.as_str())) {
+        if let Some(besoin_str) = besoin_clone
+            .as_str()
+            .or_else(|| besoin_clone.get("valeur").and_then(|v| v.as_str()))
+        {
             let req = AddEmbeddingPineconeRequest {
                 value: besoin_str.to_string(),
                 type_donnee: "texte".to_string(),
@@ -205,7 +229,9 @@ pub async fn traiter_echange(
     // 2. Matching optimis? avec pagination et cache
     let mode = data.get("mode").and_then(|v| v.as_str()).unwrap_or("");
     if mode == "achat" {
-        return Err(crate::core::types::AppError::BadRequest("Le mode 'achat' n'est pas support?".to_string()));
+        return Err(crate::core::types::AppError::BadRequest(
+            "Le mode 'achat' n'est pas support?".to_string(),
+        ));
     }
 
     // R?cup?ration des candidats par batch pour ?viter la surcharge m?moire
@@ -233,16 +259,19 @@ pub async fn traiter_echange(
         }
 
         // Filtrer les candidats selon la logique m?tier du mode
-        let candidats_filtres: Vec<_> = candidats.into_iter().filter(|c| {
-            let offre_ok = c.offre.as_object().map(|o| !o.is_empty()).unwrap_or(false);
-            let besoin_ok = c.besoin.as_object().map(|b| !b.is_empty()).unwrap_or(false);
-            match mode {
-                "echange" => offre_ok && besoin_ok,
-                "don" => (offre_ok && !besoin_ok) || (!offre_ok && besoin_ok),
-                "achat" => besoin_ok && !offre_ok,
-                _ => false
-            }
-        }).collect();
+        let candidats_filtres: Vec<_> = candidats
+            .into_iter()
+            .filter(|c| {
+                let offre_ok = c.offre.as_object().map(|o| !o.is_empty()).unwrap_or(false);
+                let besoin_ok = c.besoin.as_object().map(|b| !b.is_empty()).unwrap_or(false);
+                match mode {
+                    "echange" => offre_ok && besoin_ok,
+                    "don" => (offre_ok && !besoin_ok) || (!offre_ok && besoin_ok),
+                    "achat" => besoin_ok && !offre_ok,
+                    _ => false,
+                }
+            })
+            .collect();
 
         // Traitement par batch des candidats
         for c in &candidats_filtres {
@@ -251,12 +280,20 @@ pub async fn traiter_echange(
             let is_candidat_don = c.don;
             let is_offre_seule = !offre.is_null() && (besoin.is_null() || besoin == Value::Null);
             let is_besoin_seul = !besoin.is_null() && (offre.is_null() || offre == Value::Null);
-            let is_candidat_offre_seule = !c.offre.is_null() && (c.besoin.is_null() || c.besoin == Value::Null);
-            let is_candidat_besoin_seul = !c.besoin.is_null() && (c.offre.is_null() || c.offre == Value::Null);
-            
+            let is_candidat_offre_seule =
+                !c.offre.is_null() && (c.besoin.is_null() || c.besoin == Value::Null);
+            let is_candidat_besoin_seul =
+                !c.besoin.is_null() && (c.offre.is_null() || c.offre == Value::Null);
+
             if is_don || is_candidat_don.unwrap_or(false) {
-                let match_don = (is_don && is_besoin_seul && is_candidat_don.unwrap_or(false) && is_candidat_offre_seule)
-                    || (is_candidat_don.unwrap_or(false) && is_candidat_besoin_seul && is_don && is_offre_seule);
+                let match_don = (is_don
+                    && is_besoin_seul
+                    && is_candidat_don.unwrap_or(false)
+                    && is_candidat_offre_seule)
+                    || (is_candidat_don.unwrap_or(false)
+                        && is_candidat_besoin_seul
+                        && is_don
+                        && is_offre_seule);
                 if !match_don {
                     continue;
                 }
@@ -326,7 +363,7 @@ pub async fn traiter_echange(
         }
 
         offset += BATCH_SIZE;
-        
+
         // Limite de s?curit? pour ?viter les boucles infinies
         if offset > 1000 {
             break;
@@ -340,24 +377,32 @@ pub async fn traiter_echange(
                 "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2",
                 matched_id,
                 echange_id
-            ).execute(pool).await;
-            
+            )
+            .execute(pool)
+            .await;
+
             let result2 = sqlx::query!(
                 "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2",
                 echange_id,
                 matched_id
-            ).execute(pool).await;
-            
+            )
+            .execute(pool)
+            .await;
+
             // Vérifier les résultats
             if let (Ok(_), Ok(_)) = (result1, result2) {
-                log::info!("Échanges mis à jour avec succès: {} et {}", echange_id, matched_id);
+                log::info!(
+                    "Échanges mis à jour avec succès: {} et {}",
+                    echange_id,
+                    matched_id
+                );
             } else {
                 log::error!("Erreur lors de la mise à jour des échanges");
             }
             // Notifications asynchrones
             let _user_email = "user@example.com"; // TODO: R?cup?rer le vrai email
             let _matched_user_email = "matched_user@example.com"; // TODO: R?cup?rer le vrai email
-            // Notifications asynchrones
+                                                                  // Notifications asynchrones
             tokio::spawn(async move {
                 // Log simple pour ?viter les erreurs de compilation
                 log::info!("?change match?: {} avec {}", echange_id, matched_id);
@@ -367,7 +412,7 @@ pub async fn traiter_echange(
                 "status": "match_trouve",
                 "message": format!("?? ?change match? avec succ?s (score: {:.2})", best_score),
                 "echange_id": echange_id,
-               
+
                 "score": best_score
             }));
         }
@@ -433,11 +478,15 @@ pub fn score_json_inclusion(a: &serde_json::Value, b: &serde_json::Value) -> f64
     // Score 1.0 si tous les champs de
     if let (serde_json::Value::Object(obj_a), serde_json::Value::Object(obj_b)) = (a, b) {
         let total = obj_a.len();
-        if total == 0 { return 0.0; }
+        if total == 0 {
+            return 0.0;
+        }
         let mut matches = 0;
         for (k, v) in obj_a.iter() {
             if let Some(vb) = obj_b.get(k) {
-                if v == vb { matches += 1; }
+                if v == vb {
+                    matches += 1;
+                }
             }
         }
         return matches as f64 / total as f64;
@@ -458,12 +507,25 @@ pub fn score_echange(
     // Quantit? (matching partiel possible)
     let quantite_score = if let (Some(qa), Some(qb)) = (a.quantite_offerte, b.quantite_requise) {
         (qa.min(qb) / qa.max(qb)).min(1.0)
-    } else { 1.0 };
+    } else {
+        1.0
+    };
     // Distance g?ographique (si gps)
-    let geo_score = if let (Some(lat1), Some(lon1), Some(lat2), Some(lon2)) = (a.gps_fixe_lat, a.gps_fixe_lon, b.gps_fixe_lat, b.gps_fixe_lon) {
+    let geo_score = if let (Some(lat1), Some(lon1), Some(lat2), Some(lon2)) = (
+        a.gps_fixe_lat,
+        a.gps_fixe_lon,
+        b.gps_fixe_lat,
+        b.gps_fixe_lon,
+    ) {
         let dist = haversine_distance(lon1, lat1, lon2, lat2);
-        if dist < 1.0 { 1.0 } else { (10.0 / (dist + 1.0)).min(1.0) }
-    } else { 0.5 };
+        if dist < 1.0 {
+            1.0
+        } else {
+            (10.0 / (dist + 1.0)).min(1.0)
+        }
+    } else {
+        0.5
+    };
     let dispo_score = 1.0;
     let contraintes_score = 1.0;
     let reputation_score = user_reputation;
@@ -489,27 +551,50 @@ fn score_json(a: &Value, b: &Value) -> f64 {
                 let mut best = 0.0;
                 for vb in arr_b {
                     let s = score_json_object_tolerant(va, vb);
-                    if s > best { best = s; }
+                    if s > best {
+                        best = s;
+                    }
                 }
                 score_sum += best;
                 count += 1.0;
             }
-            if count > 0.0 { score_sum / count } else { 0.0 }
-        },
+            if count > 0.0 {
+                score_sum / count
+            } else {
+                0.0
+            }
+        }
         (Value::String(sa), Value::String(sb)) => {
-            if sa == sb { 1.0 } else { jaccard_str(sa, sb) }
-        },
-        (Value::Object(_), Value::Object(_)) => {
-            score_json_object_tolerant(a, b)
-        },
-        _ => if a == b { 1.0 } else { 0.0 }
+            if sa == sb {
+                1.0
+            } else {
+                jaccard_str(sa, sb)
+            }
+        }
+        (Value::Object(_), Value::Object(_)) => score_json_object_tolerant(a, b),
+        _ => {
+            if a == b {
+                1.0
+            } else {
+                0.0
+            }
+        }
     }
 }
 
 fn score_json_object_tolerant(a: &Value, b: &Value) -> f64 {
     // Compare deux objets JSON en tenant compte de plus de champs produits, avec pond?ration
-    let main_keys = ["nom", "categorie", "nature_produit", "quantite", "unite", "prix"];
-    let secondary_keys = ["lot", "isbn", "titre", "etat", "marque", "origine", "occasion"];
+    let main_keys = [
+        "nom",
+        "categorie",
+        "nature_produit",
+        "quantite",
+        "unite",
+        "prix",
+    ];
+    let secondary_keys = [
+        "lot", "isbn", "titre", "etat", "marque", "origine", "occasion",
+    ];
     let mut matched = 0.0;
     let mut total = 0.0;
     // Champs principaux (poids 2)
@@ -518,7 +603,9 @@ fn score_json_object_tolerant(a: &Value, b: &Value) -> f64 {
         let vb = b.get(k);
         if va.is_some() || vb.is_some() {
             total += 2.0;
-            if va == vb && va.is_some() { matched += 2.0; }
+            if va == vb && va.is_some() {
+                matched += 2.0;
+            }
         }
     }
     // Champs secondaires (poids 1)
@@ -527,10 +614,16 @@ fn score_json_object_tolerant(a: &Value, b: &Value) -> f64 {
         let vb = b.get(k);
         if va.is_some() || vb.is_some() {
             total += 1.0;
-            if va == vb && va.is_some() { matched += 1.0; }
+            if va == vb && va.is_some() {
+                matched += 1.0;
+            }
         }
     }
-    if total > 0.0 { matched / total } else { 0.0 }
+    if total > 0.0 {
+        matched / total
+    } else {
+        0.0
+    }
 }
 
 fn jaccard_str(a: &str, b: &str) -> f64 {
@@ -538,5 +631,9 @@ fn jaccard_str(a: &str, b: &str) -> f64 {
     let set_b: std::collections::HashSet<_> = b.split_whitespace().collect();
     let inter = set_a.intersection(&set_b).count() as f64;
     let union = set_a.union(&set_b).count() as f64;
-    if union > 0.0 { inter / union } else { 0.0 }
+    if union > 0.0 {
+        inter / union
+    } else {
+        0.0
+    }
 }

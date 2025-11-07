@@ -1,6 +1,6 @@
+use crate::core::types::AppResult;
 use serde_json::Value;
 use sqlx::PgPool;
-use crate::core::types::AppResult;
 
 /// Ajoute ou met ? jour un programme scolaire (par ?tablissement, classe, ann?e optionnelle)
 pub async fn upsert_programme_scolaire(

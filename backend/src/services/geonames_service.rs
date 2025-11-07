@@ -1,9 +1,9 @@
 // Service pour enrichissement géographique avec GeoNames API
+use crate::core::types::AppError;
+use log::{info, warn};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use log::{info, warn};
-use crate::core::types::AppError;
 
 const GEONAMES_BASE: &str = "http://api.geonames.org";
 const MAX_DEPTH: u8 = 7; // Quartier max
@@ -34,87 +34,89 @@ pub async fn search_geoname(
     place_name: &str,
     country_context: Option<&str>,
 ) -> Result<GeoNamePlace, AppError> {
-    let username = std::env::var("GEONAMES_USERNAME")
-        .unwrap_or_else(|_| "demo".to_string());
-    
+    let username = std::env::var("GEONAMES_USERNAME").unwrap_or_else(|_| "demo".to_string());
+
     let client = Client::new();
-    
+
     // Construire query avec contexte pays si fourni
     let query = if let Some(country) = country_context {
         format!("{}, {}", place_name, country)
     } else {
         place_name.to_string()
     };
-    
+
     let search_url = format!(
         "{}/searchJSON?name={}&maxRows=1&username={}",
         GEONAMES_BASE,
         urlencoding::encode(&query),
         username
     );
-    
+
     info!("🌍 Recherche GeoNames: {}", query);
-    
-    let response = client.get(&search_url)
+
+    let response = client
+        .get(&search_url)
         .send()
         .await
         .map_err(|e| AppError::Internal(format!("GeoNames request failed: {}", e)))?;
-    
-    let search_data: GeoNameSearchResponse = response.json()
+
+    let search_data: GeoNameSearchResponse = response
+        .json()
         .await
         .map_err(|e| AppError::Internal(format!("GeoNames JSON parse failed: {}", e)))?;
-    
-    search_data.geonames
-        .into_iter()
-        .next()
-        .ok_or_else(|| AppError::NotFound(format!("Lieu '{}' non trouvé dans GeoNames", place_name)))
+
+    search_data.geonames.into_iter().next().ok_or_else(|| {
+        AppError::NotFound(format!("Lieu '{}' non trouvé dans GeoNames", place_name))
+    })
 }
 
 /// Récupère la hiérarchie (parents) d'un lieu
 pub async fn get_hierarchy(geoname_id: i64) -> Result<Vec<GeoNamePlace>, AppError> {
-    let username = std::env::var("GEONAMES_USERNAME")
-        .unwrap_or_else(|_| "demo".to_string());
-    
+    let username = std::env::var("GEONAMES_USERNAME").unwrap_or_else(|_| "demo".to_string());
+
     let client = Client::new();
-    
+
     let hierarchy_url = format!(
         "{}/hierarchyJSON?geonameId={}&username={}",
         GEONAMES_BASE, geoname_id, username
     );
-    
-    let response = client.get(&hierarchy_url)
+
+    let response = client
+        .get(&hierarchy_url)
         .send()
         .await
         .map_err(|e| AppError::Internal(format!("GeoNames hierarchy failed: {}", e)))?;
-    
-    let hierarchy_data: GeoNameSearchResponse = response.json()
+
+    let hierarchy_data: GeoNameSearchResponse = response
+        .json()
         .await
         .map_err(|e| AppError::Internal(format!("GeoNames hierarchy JSON failed: {}", e)))?;
-    
+
     Ok(hierarchy_data.geonames)
 }
 
 /// Récupère les enfants (descendants) d'un lieu
 pub async fn get_children(geoname_id: i64) -> Result<Vec<GeoNamePlace>, AppError> {
-    let username = std::env::var("GEONAMES_USERNAME")
-        .unwrap_or_else(|_| "demo".to_string());
-    
+    let username = std::env::var("GEONAMES_USERNAME").unwrap_or_else(|_| "demo".to_string());
+
     let client = Client::new();
-    
+
     let children_url = format!(
         "{}/childrenJSON?geonameId={}&username={}",
         GEONAMES_BASE, geoname_id, username
     );
-    
-    let response = client.get(&children_url)
+
+    let response = client
+        .get(&children_url)
         .send()
         .await
         .map_err(|e| AppError::Internal(format!("GeoNames children failed: {}", e)))?;
-    
-    let children_data: GeoNameSearchResponse = response.json()
+
+    let children_data: GeoNameSearchResponse = response
+        .json()
         .await
         .map_err(|e| AppError::Internal(format!("GeoNames children JSON failed: {}", e)))?;
-    
+
     Ok(children_data.geonames)
 }
 
@@ -124,35 +126,39 @@ pub async fn enrich_location_bidirectional(
     place_name: &str,
     country_context: Option<&str>,
 ) -> Result<Vec<String>, AppError> {
-    info!("🌍 Enrichissement bidirectionnel pour: {} ({})", place_name, country_context.unwrap_or("?"));
-    
+    info!(
+        "🌍 Enrichissement bidirectionnel pour: {} ({})",
+        place_name,
+        country_context.unwrap_or("?")
+    );
+
     // 1. Chercher dans cache d'abord
     let cached = sqlx::query_as::<_, (Vec<String>,)>(
         "SELECT location_vector FROM geo_hierarchy 
-         WHERE place_name = $1 AND parent_country = $2"
+         WHERE place_name = $1 AND parent_country = $2",
     )
     .bind(place_name)
     .bind(country_context.unwrap_or(""))
     .fetch_optional(pool)
     .await?;
-    
+
     if let Some(cached) = cached {
         info!("✅ Trouvé en cache pour {}", place_name);
         return Ok(cached.0);
     }
-    
+
     // 2. Pas en cache → Chercher dans GeoNames
     let geoname_place = search_geoname(place_name, country_context).await?;
     let geoname_id = geoname_place.geoname_id;
-    
+
     info!("📍 GeoName ID trouvé: {} pour {}", geoname_id, place_name);
-    
+
     // 3. Récupérer hiérarchie (parents)
     let hierarchy = get_hierarchy(geoname_id).await?;
-    
+
     // 4. Récupérer enfants
     let all_children = get_children(geoname_id).await?;
-    
+
     // 5. Filtrer enfants selon profondeur et type
     let valid_children: Vec<GeoNamePlace> = all_children
         .into_iter()
@@ -161,14 +167,18 @@ pub async fn enrich_location_bidirectional(
             level <= MAX_DEPTH as i32 && !is_excluded_fcode(&c.fcode)
         })
         .collect();
-    
+
     let is_leaf = valid_children.is_empty();
-    
-    info!("🌳 Hiérarchie: {} parents, {} enfants valides", hierarchy.len(), valid_children.len());
-    
+
+    info!(
+        "🌳 Hiérarchie: {} parents, {} enfants valides",
+        hierarchy.len(),
+        valid_children.len()
+    );
+
     // 6. Construire vecteur : [Choix, Enfants..., Parents...]
     let mut vector = vec![place_name.to_string()];
-    
+
     // Ajouter enfants (max 50 pour éviter explosion)
     for (i, child) in valid_children.iter().enumerate() {
         if i >= 50 {
@@ -177,7 +187,7 @@ pub async fn enrich_location_bidirectional(
         }
         vector.push(child.name.clone());
     }
-    
+
     // Ajouter parents (filtrés, min niveau 2 = pays)
     for parent in hierarchy.iter().rev() {
         let level = admin_level_from_fcode(&parent.fcode);
@@ -185,33 +195,35 @@ pub async fn enrich_location_bidirectional(
             vector.push(parent.name.clone());
         }
     }
-    
+
     // 7. Extraire infos pays
-    let country_name = hierarchy.iter()
+    let country_name = hierarchy
+        .iter()
         .find(|p| p.fcode == "PCLI")
         .and_then(|p| p.country_name.as_ref())
         .unwrap_or(&geoname_place.country_name.clone().unwrap_or_default())
         .clone();
-    
-    let country_code = hierarchy.iter()
+
+    let country_code = hierarchy
+        .iter()
         .find(|p| p.fcode == "PCLI")
         .and_then(|p| p.country_code.as_ref())
         .unwrap_or(&geoname_place.country_code.clone().unwrap_or_default())
         .clone();
-    
+
     let admin_level = admin_level_from_fcode(&geoname_place.fcode);
-    
+
     // 8. Construire display_name
     let display_name = if !country_name.is_empty() {
         format!("{}, {}", place_name, country_name)
     } else {
         place_name.to_string()
     };
-    
+
     // 9. Parser coordonnées
     let lat: f64 = geoname_place.lat.parse().unwrap_or(0.0);
     let lng: f64 = geoname_place.lng.parse().unwrap_or(0.0);
-    
+
     // 10. Sauvegarder dans geo_hierarchy
     sqlx::query(
         "INSERT INTO geo_hierarchy 
@@ -222,7 +234,7 @@ pub async fn enrich_location_bidirectional(
          ON CONFLICT (geoname_id) DO UPDATE SET
             location_vector = $9,
             last_enriched_at = NOW(),
-            times_used = geo_hierarchy.times_used + 1"
+            times_used = geo_hierarchy.times_used + 1",
     )
     .bind(geoname_id)
     .bind(place_name)
@@ -239,9 +251,13 @@ pub async fn enrich_location_bidirectional(
     .bind(geoname_place.timezone)
     .execute(pool)
     .await?;
-    
-    info!("✅ Enrichissement terminé pour {} → {} éléments dans vecteur", place_name, vector.len());
-    
+
+    info!(
+        "✅ Enrichissement terminé pour {} → {} éléments dans vecteur",
+        place_name,
+        vector.len()
+    );
+
     Ok(vector)
 }
 
@@ -254,17 +270,17 @@ pub async fn build_location_vector(
     // Chercher dans cache
     let cached = sqlx::query_as::<_, (Vec<String>,)>(
         "SELECT location_vector FROM geo_hierarchy 
-         WHERE place_name = $1 AND parent_country = $2"
+         WHERE place_name = $1 AND parent_country = $2",
     )
     .bind(chosen_place)
     .bind(country_context.unwrap_or(""))
     .fetch_optional(pool)
     .await?;
-    
+
     if let Some(cached) = cached {
         return Ok(cached.0);
     }
-    
+
     // Pas en cache → Enrichir
     enrich_location_bidirectional(pool, chosen_place, country_context).await
 }
@@ -278,12 +294,12 @@ pub async fn expand_location_search(
         "SELECT location_vector FROM geo_hierarchy 
          WHERE place_name = $1
          ORDER BY times_used DESC
-         LIMIT 1"
+         LIMIT 1",
     )
     .bind(location)
     .fetch_optional(pool)
     .await?;
-    
+
     if let Some(geo) = geo {
         Ok(geo.0)
     } else {
@@ -293,34 +309,31 @@ pub async fn expand_location_search(
 }
 
 /// Obtenir geoname_id d'un lieu
-pub async fn get_geoname_id(
-    pool: &PgPool,
-    place_name: &str,
-) -> Result<Option<i64>, AppError> {
+pub async fn get_geoname_id(pool: &PgPool, place_name: &str) -> Result<Option<i64>, AppError> {
     let result = sqlx::query_as::<_, (i64,)>(
         "SELECT geoname_id FROM geo_hierarchy 
          WHERE place_name = $1
          ORDER BY times_used DESC
-         LIMIT 1"
+         LIMIT 1",
     )
     .bind(place_name)
     .fetch_optional(pool)
     .await?;
-    
+
     Ok(result.map(|r| r.0))
 }
 
 /// Convertit feature code GeoNames en niveau administratif
 pub fn admin_level_from_fcode(fcode: &str) -> i32 {
     match fcode {
-        "CONT" => 1,         // Continent
-        "PCLI" => 2,         // Pays
-        "ADM1" => 3,         // Région/État
-        "ADM2" => 4,         // Département
-        "ADM3" => 5,         // Arrondissement
-        "PPL" | "PPLA" | "PPLC" => 6,  // Ville
-        "PPLX" => 7,         // Quartier
-        _ => 8,              // Autre (moins important)
+        "CONT" => 1,                  // Continent
+        "PCLI" => 2,                  // Pays
+        "ADM1" => 3,                  // Région/État
+        "ADM2" => 4,                  // Département
+        "ADM3" => 5,                  // Arrondissement
+        "PPL" | "PPLA" | "PPLC" => 6, // Ville
+        "PPLX" => 7,                  // Quartier
+        _ => 8,                       // Autre (moins important)
     }
 }
 
@@ -338,4 +351,3 @@ pub fn extract_country_from_lieu(lieu_str: &str) -> Option<String> {
         None
     }
 }
-

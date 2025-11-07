@@ -1,5 +1,5 @@
-use crate::models::ia_model::{IARequest, IAResponse};
 use crate::core::types::{AppError, AppResult};
+use crate::models::ia_model::{IARequest, IAResponse};
 
 /// ?? Appelle le bon fournisseur LLM (OpenAI, Mistral, etc.)
 pub async fn call_llm_provider(input: IARequest) -> AppResult<IAResponse> {

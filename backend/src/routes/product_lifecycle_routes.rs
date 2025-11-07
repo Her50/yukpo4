@@ -1,6 +1,6 @@
-use std::sync::Arc;
-use axum::Router;
 use crate::state::AppState;
+use axum::Router;
+use std::sync::Arc;
 
 pub fn product_lifecycle_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
@@ -9,10 +9,7 @@ pub fn product_lifecycle_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // .route("/products/{service_id}/status", get(product_lifecycle_controller::get_products_status))
         // .route("/products/reactivate-multiple", post(product_lifecycle_controller::reactivate_multiple))
         // .route("/products/reactivation-cost", get(product_lifecycle_controller::get_reactivation_cost))
-        
         // ✅ Routes actuellement implémentées
         // Note: deactivate_product et reactivate_product sont utilisés via router_yukpo.rs
-        
         .with_state(state)
 }
-

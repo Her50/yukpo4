@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Vérifier les services spécifiques mentionnés dans les logs
     let service_ids = vec![531974, 862419, 20977, 518829, 939282, 742692, 27];
-    
+
     for service_id in service_ids {
         let row = sqlx::query!(
             "SELECT id, is_active, created_at, user_id FROM services WHERE id = $1",
@@ -29,13 +29,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         match row {
             Some(service) => {
-                println!("✅ Service {}: ACTIF={}, User={}, Créé={}", 
-                    service.id, 
-                    service.is_active, 
-                    service.user_id,
-                    service.created_at
+                println!(
+                    "✅ Service {}: ACTIF={}, User={}, Créé={}",
+                    service.id, service.is_active, service.user_id, service.created_at
                 );
-            },
+            }
             None => {
                 println!("❌ Service {}: N'EXISTE PAS", service_id);
             }
@@ -43,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("\n📈 Statistiques générales:");
-    
+
     // Compter tous les services
     let total_count = sqlx::query!("SELECT COUNT(*) as count FROM services")
         .fetch_one(&pool)
@@ -51,16 +49,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Total des services: {}", total_count.count.unwrap_or(0));
 
     // Compter les services actifs
-    let active_count = sqlx::query!("SELECT COUNT(*) as count FROM services WHERE is_active = true")
-        .fetch_one(&pool)
-        .await?;
+    let active_count =
+        sqlx::query!("SELECT COUNT(*) as count FROM services WHERE is_active = true")
+            .fetch_one(&pool)
+            .await?;
     println!("   Services actifs: {}", active_count.count.unwrap_or(0));
 
     // Compter les services inactifs
-    let inactive_count = sqlx::query!("SELECT COUNT(*) as count FROM services WHERE is_active = false")
-        .fetch_one(&pool)
-        .await?;
-    println!("   Services inactifs: {}", inactive_count.count.unwrap_or(0));
+    let inactive_count =
+        sqlx::query!("SELECT COUNT(*) as count FROM services WHERE is_active = false")
+            .fetch_one(&pool)
+            .await?;
+    println!(
+        "   Services inactifs: {}",
+        inactive_count.count.unwrap_or(0)
+    );
 
     // Afficher les 10 derniers services créés
     println!("\n🕒 10 derniers services créés:");
@@ -71,13 +74,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     for service in recent_services {
-        println!("   ID={}, ACTIF={}, User={}, Créé={}", 
-            service.id, 
-            service.is_active, 
-            service.user_id,
-            service.created_at
+        println!(
+            "   ID={}, ACTIF={}, User={}, Créé={}",
+            service.id, service.is_active, service.user_id, service.created_at
         );
     }
 
     Ok(())
-} 
+}

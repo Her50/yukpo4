@@ -1,7 +1,15 @@
-use axum::{body::Body, http::{Request, StatusCode}, response::Response};
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+    response::Response,
+};
 use futures::FutureExt; // for catch_unwind
 use serde_json::json;
-use std::{future::Future, pin::Pin, task::{Context, Poll}};
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
 use tower::{Layer, Service};
 
 #[derive(Clone, Copy)]
@@ -21,7 +29,10 @@ pub struct CatchUnwindMiddleware<S> {
 
 impl<S, ReqBody> Service<Request<ReqBody>> for CatchUnwindMiddleware<S>
 where
-    S: Service<Request<ReqBody>, Response = Response, Error = axum::BoxError> + Clone + Send + 'static,
+    S: Service<Request<ReqBody>, Response = Response, Error = axum::BoxError>
+        + Clone
+        + Send
+        + 'static,
     S::Future: Send + 'static,
     ReqBody: Send + 'static,
 {
@@ -53,7 +64,8 @@ where
                         serde_json::to_string(&json!({
                             "error": "Internal server error (panic)",
                             "details": err_msg
-                        })).unwrap()
+                        }))
+                        .unwrap(),
                     );
                     let mut resp = Response::new(body);
                     *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
@@ -64,12 +76,12 @@ where
     }
 }
 
-pub async fn catch_unwind_handler(
-    req: Request<Body>,
-    next: axum::middleware::Next,
-) -> Response {
+pub async fn catch_unwind_handler(req: Request<Body>, next: axum::middleware::Next) -> Response {
     eprintln!("[DEBUG] catch_unwind_handler appel?");
-    match std::panic::AssertUnwindSafe(next.run(req)).catch_unwind().await {
+    match std::panic::AssertUnwindSafe(next.run(req))
+        .catch_unwind()
+        .await
+    {
         Ok(resp) => resp,
         Err(e) => {
             let err_msg = if let Some(s) = e.downcast_ref::<&str>() {
@@ -83,7 +95,8 @@ pub async fn catch_unwind_handler(
                 serde_json::to_string(&json!({
                     "error": "Internal server error (panic)",
                     "details": err_msg
-                })).unwrap()
+                }))
+                .unwrap(),
             );
             let mut resp = Response::new(body);
             *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;

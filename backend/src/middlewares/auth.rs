@@ -1,7 +1,7 @@
 use axum::http::{HeaderMap, StatusCode};
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm, TokenData};
+use base64::{engine::general_purpose, Engine as _};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, TokenData, Validation};
 use serde::Deserialize;
-use base64::{Engine as _, engine::general_purpose};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Claims {
@@ -18,13 +18,19 @@ pub struct AuthUser {
 
 /// Extrait et valide le token d'authentification depuis les headers
 pub fn extract_auth_user(headers: &HeaderMap) -> Result<AuthUser, (StatusCode, String)> {
-    let auth_header = headers.get("Authorization")
+    let auth_header = headers
+        .get("Authorization")
         .and_then(|h| h.to_str().ok())
-        .ok_or((StatusCode::UNAUTHORIZED, "Missing Authorization header".to_string()))?;
-    
-    let token = auth_header.strip_prefix("Bearer ")
-        .ok_or((StatusCode::UNAUTHORIZED, "Invalid Authorization header".to_string()))?;
-    
+        .ok_or((
+            StatusCode::UNAUTHORIZED,
+            "Missing Authorization header".to_string(),
+        ))?;
+
+    let token = auth_header.strip_prefix("Bearer ").ok_or((
+        StatusCode::UNAUTHORIZED,
+        "Invalid Authorization header".to_string(),
+    ))?;
+
     // Mode développement : accepter les tokens de dev
     if token.ends_with(".dev_signature") {
         let parts: Vec<&str> = token.split('.').collect();
@@ -39,7 +45,7 @@ pub fn extract_auth_user(headers: &HeaderMap) -> Result<AuthUser, (StatusCode, S
             }
         }
     }
-    
+
     // Mode développement simplifié
     if token == "dev_token_pinecone" {
         return Ok(AuthUser {
@@ -47,15 +53,16 @@ pub fn extract_auth_user(headers: &HeaderMap) -> Result<AuthUser, (StatusCode, S
             role: "admin".to_string(),
         });
     }
-    
+
     // Authentification normale avec JWT
     let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev_secret".to_string());
     let token_data: TokenData<Claims> = decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),
-        &Validation::new(Algorithm::HS256)
-    ).map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid token".to_string()))?;
-    
+        &Validation::new(Algorithm::HS256),
+    )
+    .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid token".to_string()))?;
+
     Ok(AuthUser {
         user_id: token_data.claims.sub,
         role: token_data.claims.role,
@@ -66,6 +73,9 @@ pub fn require_role(user: &AuthUser, allowed_roles: &[&str]) -> Result<(), (Stat
     if allowed_roles.contains(&user.role.as_str()) {
         Ok(())
     } else {
-        Err((StatusCode::FORBIDDEN, "Insufficient permissions".to_string()))
+        Err((
+            StatusCode::FORBIDDEN,
+            "Insufficient permissions".to_string(),
+        ))
     }
 }

@@ -1,18 +1,11 @@
 // Contrôleur pour les push notifications
-use std::sync::Arc;
-use axum::{
-    extract::State,
-    response::Json,
-    Extension,
-    http::StatusCode,
+use crate::{
+    middlewares::jwt::AuthenticatedUser, services::push_notification_service, state::AppState,
 };
+use axum::{extract::State, http::StatusCode, response::Json, Extension};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use crate::{
-    state::AppState,
-    middlewares::jwt::AuthenticatedUser,
-    services::push_notification_service,
-};
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterPushTokenRequest {
@@ -35,15 +28,20 @@ pub async fn register_push_token(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<RegisterPushTokenRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    log::info!("[PushController] Enregistrement token pour user {}", user.id);
-    
+    log::info!(
+        "[PushController] Enregistrement token pour user {}",
+        user.id
+    );
+
     match push_notification_service::register_push_token(
         &state.pg,
         user.id,
         payload.push_token,
         payload.device_type,
         payload.device_id,
-    ).await {
+    )
+    .await
+    {
         Ok(token_id) => Ok(Json(json!({
             "success": true,
             "token_id": token_id,
@@ -62,11 +60,13 @@ pub async fn deactivate_push_token(
     Extension(_user): Extension<AuthenticatedUser>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
-    let push_token = payload.get("push_token")
+    let push_token = payload
+        .get("push_token")
         .and_then(|v| v.as_str())
         .ok_or(StatusCode::BAD_REQUEST)?;
-    
-    match push_notification_service::deactivate_push_token(&state.pg, push_token.to_string()).await {
+
+    match push_notification_service::deactivate_push_token(&state.pg, push_token.to_string()).await
+    {
         Ok(true) => Ok(Json(json!({
             "success": true,
             "message": "Token désactivé"
@@ -86,7 +86,7 @@ pub async fn send_push_notification(
     Json(payload): Json<SendPushRequest>,
 ) -> Result<Json<Value>, StatusCode> {
     log::info!("[PushController] Envoi push à user {}", payload.user_id);
-    
+
     match push_notification_service::send_push_notification(
         &state.pg,
         payload.user_id,
@@ -94,7 +94,9 @@ pub async fn send_push_notification(
         payload.body,
         payload.data,
         Some("default".to_string()),
-    ).await {
+    )
+    .await
+    {
         Ok(count) => Ok(Json(json!({
             "success": true,
             "sent_count": count,
@@ -106,4 +108,3 @@ pub async fn send_push_notification(
         }
     }
 }
-

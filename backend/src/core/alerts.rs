@@ -13,8 +13,3 @@ pub fn send_whatsapp(to: &str, message: &str) -> Result<(), Box<dyn Error>> {
     println!("?? WhatsApp envoy? ? {to}: {message}");
     Ok(())
 }
-
-
-
-
-

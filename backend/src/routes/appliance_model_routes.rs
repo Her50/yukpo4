@@ -1,9 +1,9 @@
+use crate::state::AppState;
 use axum::{
     routing::{get, post},
     Router,
 };
 use std::sync::Arc;
-use crate::state::AppState;
 
 use crate::controllers::appliance_model_controller::{
     create_appliance_model, get_appliance_models,
@@ -20,4 +20,3 @@ pub fn appliance_model_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/appliance-models", post(create_appliance_model))
         .with_state(state)
 }
-

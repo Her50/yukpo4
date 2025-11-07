@@ -15,4 +15,4 @@ pub fn prestataire_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/prestataires/batch", post(get_prestataires_batch))
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
-} 
+}

@@ -2,9 +2,9 @@ use crate::core::types::AppResult;
 use sqlx::Row;
 
 // use crate::utils::embedding_client::SearchEmbeddingPineconeRequest; // SUSPENDU - Recherche native PostgreSQL uniquement
-use crate::utils::log::{log_info, log_warn};
-use serde_json::{Value, json};
 use crate::services::native_search_service::NativeSearchService;
+use crate::utils::log::{log_info, log_warn};
+use serde_json::{json, Value};
 
 /// Recherche de fallback SQL quand Pinecone n'est pas disponible
 async fn search_services_fallback(
@@ -17,21 +17,21 @@ async fn search_services_fallback(
 
     // Extraire les termes de recherche
     let mut search_terms = Vec::new();
-    
+
     // Titre
     if let Some(titre) = besoin_obj.get("titre") {
         if let Some(valeur) = titre.get("valeur").and_then(|v| v.as_str()) {
             search_terms.push(valeur.to_lowercase());
         }
     }
-    
+
     // Description
     if let Some(description) = besoin_obj.get("description") {
         if let Some(valeur) = description.get("valeur").and_then(|v| v.as_str()) {
             search_terms.push(valeur.to_lowercase());
         }
     }
-    
+
     // Category
     if let Some(category) = besoin_obj.get("category") {
         if let Some(valeur) = category.get("valeur").and_then(|v| v.as_str()) {
@@ -45,7 +45,7 @@ async fn search_services_fallback(
 
     // Recherche SQL avec LIKE pour chaque terme
     let mut all_results = Vec::new();
-    
+
     for term in search_terms {
         let services = sqlx::query!(
             r#"
@@ -91,19 +91,21 @@ async fn search_services_fallback(
         )
         .fetch_all(pool)
         .await
-        .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur recherche SQL: {}", e)))?;
+        .map_err(|e| {
+            crate::core::types::AppError::Internal(format!("Erreur recherche SQL: {}", e))
+        })?;
 
         for service in services {
             let data: Value = service.data;
-            
+
             // Calculer un score simple basé sur la correspondance
             let mut score = 0.0;
             let data_str = data.to_string().to_lowercase();
-            
+
             if data_str.contains(&term) {
                 score += 0.5;
             }
-            
+
             // Bonus pour correspondance exacte dans le titre
             if let Some(titre) = data.get("titre_service") {
                 if let Some(titre_str) = titre.as_str() {
@@ -112,7 +114,7 @@ async fn search_services_fallback(
                     }
                 }
             }
-            
+
             // Bonus pour correspondance dans la catégorie
             if let Some(cat) = data.get("category") {
                 if let Some(cat_str) = cat.as_str() {
@@ -121,7 +123,7 @@ async fn search_services_fallback(
                     }
                 }
             }
-            
+
             // Bonus pour correspondance dans les produits
             if let Some(produits) = data.get("produits") {
                 if let Some(produits_array) = produits.as_array() {
@@ -159,9 +161,11 @@ async fn search_services_fallback(
                     }
                 }
             }
-            
+
             // Bonus pour services récents
-            let days_old = chrono::Utc::now().signed_duration_since(service.created_at).num_days();
+            let days_old = chrono::Utc::now()
+                .signed_duration_since(service.created_at)
+                .num_days();
             if days_old <= 7 {
                 score += 0.1; // Bonus pour services créés dans la semaine
             }
@@ -174,22 +178,24 @@ async fn search_services_fallback(
                 "interaction_score": 0.0,
                 "gps": None::<String>
             });
-            
+
             all_results.push(result);
         }
     }
-    
+
     // Trier par score et dédupliquer
     all_results.sort_by(|a, b| {
-        b.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0)
+        b.get("score")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0)
             .partial_cmp(&a.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    
+
     // Dédupliquer par service_id
     let mut seen_ids = std::collections::HashSet::new();
     let mut unique_results = Vec::new();
-    
+
     for result in all_results {
         if let Some(service_id) = result.get("service_id").and_then(|v| v.as_i64()) {
             if !seen_ids.contains(&service_id) {
@@ -198,7 +204,7 @@ async fn search_services_fallback(
             }
         }
     }
-    
+
     // Ne pas limiter les résultats, laisser le frontend/mobile gérer la pagination
     Ok(unique_results)
 }
@@ -207,52 +213,73 @@ async fn search_services_fallback(
 pub fn valider_besoin_json(data: &Value) -> Result<Value, crate::core::types::AppError> {
     // Transformation automatique des données pour compatibilité avec le schéma
     let mut transformed_data = data.clone();
-    
+
     // Si intention est une chaîne simple, la transformer en objet structuré selon le schéma
     if let Some(intention_str) = data.get("intention").and_then(|v| v.as_str()) {
         if let Some(obj) = transformed_data.as_object_mut() {
-            obj.insert("intention".to_string(), json!({
-                "type_donnee": "string",
-                "valeur": intention_str
-                // Note: pas d'origine_champs pour intention selon le schéma
-            }));
+            obj.insert(
+                "intention".to_string(),
+                json!({
+                    "type_donnee": "string",
+                    "valeur": intention_str
+                    // Note: pas d'origine_champs pour intention selon le schéma
+                }),
+            );
         }
     }
-    
+
     // Transformer tokens_consumed si c'est un nombre
     if let Some(tokens_num) = data.get("tokens_consumed").and_then(|v| v.as_u64()) {
         if let Some(obj) = transformed_data.as_object_mut() {
-            obj.insert("tokens_consumed".to_string(), json!({
-                "type_donnee": "number",
-                "valeur": tokens_num,
-                "origine_champs": "ia"
-            }));
+            obj.insert(
+                "tokens_consumed".to_string(),
+                json!({
+                    "type_donnee": "number",
+                    "valeur": tokens_num,
+                    "origine_champs": "ia"
+                }),
+            );
         }
     }
-    
+
     // Charger et valider le schéma
-    let schema_str = std::fs::read_to_string("src/schemas/besoin_schema.json")
-        .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur lecture schéma JSON: {e}")))?;
-    let schema_json: Value = serde_json::from_str(&schema_str)
-        .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur parsing schéma JSON: {e}")))?;
-    
+    let schema_str = std::fs::read_to_string("src/schemas/besoin_schema.json").map_err(|e| {
+        crate::core::types::AppError::Internal(format!("Erreur lecture schéma JSON: {e}"))
+    })?;
+    let schema_json: Value = serde_json::from_str(&schema_str).map_err(|e| {
+        crate::core::types::AppError::Internal(format!("Erreur parsing schéma JSON: {e}"))
+    })?;
+
     // Validation avec le schéma
     if !jsonschema::is_valid(&schema_json, &transformed_data) {
         // Log détaillé des erreurs de validation
-        let instance = jsonschema::JSONSchema::compile(&schema_json)
-            .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur compilation schéma JSON: {e}")))?;
-        
+        let instance = jsonschema::JSONSchema::compile(&schema_json).map_err(|e| {
+            crate::core::types::AppError::Internal(format!("Erreur compilation schéma JSON: {e}"))
+        })?;
+
         let validation_result = instance.validate(&transformed_data);
         if let Err(errors) = validation_result {
-            let error_details: Vec<String> = errors.map(|e| format!("{} à {}", e, e.instance_path)).collect();
-            log::error!("[valider_besoin_json] Erreurs de validation: {:?}", error_details);
-            return Err(crate::core::types::AppError::BadRequest(format!("Données non conformes au schéma besoin: {}", error_details.join(", "))));
+            let error_details: Vec<String> = errors
+                .map(|e| format!("{} à {}", e, e.instance_path))
+                .collect();
+            log::error!(
+                "[valider_besoin_json] Erreurs de validation: {:?}",
+                error_details
+            );
+            return Err(crate::core::types::AppError::BadRequest(format!(
+                "Données non conformes au schéma besoin: {}",
+                error_details.join(", ")
+            )));
         }
-        
-        return Err(crate::core::types::AppError::BadRequest("Données non conformes au schéma besoin".to_string()));
+
+        return Err(crate::core::types::AppError::BadRequest(
+            "Données non conformes au schéma besoin".to_string(),
+        ));
     }
-    
-    log_info(&format!("[valider_besoin_json] Schéma JSON besoin validé avec succès"));
+
+    log_info(&format!(
+        "[valider_besoin_json] Schéma JSON besoin validé avec succès"
+    ));
     Ok(transformed_data)
 }
 
@@ -260,65 +287,95 @@ pub fn valider_besoin_json(data: &Value) -> Result<Value, crate::core::types::Ap
 pub async fn rechercher_besoin_direct(
     user_id: Option<i32>,
     user_text: &str,
-    gps_zone: Option<&str>,  // Nouveau paramètre GPS
-    search_radius_km: Option<i32>,  // Nouveau paramètre rayon
+    gps_zone: Option<&str>,        // Nouveau paramètre GPS
+    search_radius_km: Option<i32>, // Nouveau paramètre rayon
 ) -> AppResult<(Value, u32)> {
-    use crate::utils::log::log_info;
     use crate::services::orchestration_ia::extract_keywords_from_text;
-    
+    use crate::utils::log::log_info;
+
     log_info(&format!("[RECHERCHE_DIRECTE] Recherche directe avec texte utilisateur: '{}' (GPS: {:?}, Rayon: {:?}km)", 
         user_text, gps_zone, search_radius_km));
-    
+
     // Extraire les mots-clés pertinents
     let keywords = extract_keywords_from_text(user_text);
-    log_info(&format!("[RECHERCHE_DIRECTE] Mots-clés extraits: {:?}", keywords));
-    
+    log_info(&format!(
+        "[RECHERCHE_DIRECTE] Mots-clés extraits: {:?}",
+        keywords
+    ));
+
     if keywords.is_empty() {
-        return Ok((json!({
-            "resultats": [],
-            "nombre_matchings": 0,
-            "message": "Aucun mot-clé pertinent trouvé"
-        }), 1));
+        return Ok((
+            json!({
+                "resultats": [],
+                "nombre_matchings": 0,
+                "message": "Aucun mot-clé pertinent trouvé"
+            }),
+            1,
+        ));
     }
-    
+
     // Utiliser le premier mot-clé comme terme de recherche principal
     let primary_keyword = &keywords[0];
-    log_info(&format!("[RECHERCHE_DIRECTE] Mot-clé principal: '{}'", primary_keyword));
-    
-    let pool = sqlx::PgPool::connect(&std::env::var("DATABASE_URL").expect("DATABASE_URL doit être défini")).await.map_err(|e| crate::core::types::AppError::Internal(format!("Erreur connexion base: {}", e)))?;
-    
+    log_info(&format!(
+        "[RECHERCHE_DIRECTE] Mot-clé principal: '{}'",
+        primary_keyword
+    ));
+
+    let pool = sqlx::PgPool::connect(
+        &std::env::var("DATABASE_URL").expect("DATABASE_URL doit être défini"),
+    )
+    .await
+    .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur connexion base: {}", e)))?;
+
     // Configuration de la recherche native
     let config = crate::config::search_config::SearchConfig::default();
     let native_search = NativeSearchService::with_config(pool.clone(), config);
-    
+
     // ✅ NOUVEAU 2025-11-04 : PRÉ-FILTRE INTELLIGENT PAR LIEU BIDIRECTIONNEL
     // Passer l'INPUT COMPLET (pas un lieu détecté) pour matching flexible
     // Le SQL vérifiera si UN ÉLÉMENT du location_vector de chaque produit est dans l'input
-    log_info(&format!("[RECHERCHE_DIRECTE] 🗺️ PRÉ-FILTRE lieu bidirectionnel avec input complet: '{}'", user_text));
-    
+    log_info(&format!(
+        "[RECHERCHE_DIRECTE] 🗺️ PRÉ-FILTRE lieu bidirectionnel avec input complet: '{}'",
+        user_text
+    ));
+
     // Recherche native intelligente avec le mot-clé principal ET filtrage GPS + LIEU
-    let native_results = match native_search.intelligent_search_with_location_prefilter(
-        primary_keyword,
-        user_text,          // ✅ INPUT COMPLET pour pré-filtre lieu
-        None,               // Pas de filtre de catégorie
-        user_id,
-        gps_zone,           // Passer la zone GPS (gps_fixe/gps_courant)
-        search_radius_km    // Passer le rayon de recherche
-    ).await {
+    let native_results = match native_search
+        .intelligent_search_with_location_prefilter(
+            primary_keyword,
+            user_text, // ✅ INPUT COMPLET pour pré-filtre lieu
+            None,      // Pas de filtre de catégorie
+            user_id,
+            gps_zone,         // Passer la zone GPS (gps_fixe/gps_courant)
+            search_radius_km, // Passer le rayon de recherche
+        )
+        .await
+    {
         Ok(results) => {
-            log_info(&format!("[RECHERCHE_DIRECTE] Recherche native réussie avec {} résultats (GPS filtré: {})", 
-                results.len(), gps_zone.is_some()));
+            log_info(&format!(
+                "[RECHERCHE_DIRECTE] Recherche native réussie avec {} résultats (GPS filtré: {})",
+                results.len(),
+                gps_zone.is_some()
+            ));
             results
-        },
+        }
         Err(e) => {
-            log_info(&format!("[RECHERCHE_DIRECTE] Échec recherche native: {}. Utilisation du fallback SQL.", e));
+            log_info(&format!(
+                "[RECHERCHE_DIRECTE] Échec recherche native: {}. Utilisation du fallback SQL.",
+                e
+            ));
             // Fallback vers recherche SQL simple avec tous les mots-clés
-            let fallback_results = search_services_direct_fallback(&pool, primary_keyword, &keywords).await?;
-            log_info(&format!("[RECHERCHE_DIRECTE] Fallback SQL réussi avec {} résultats", fallback_results.len()));
-            
+            let fallback_results =
+                search_services_direct_fallback(&pool, primary_keyword, &keywords).await?;
+            log_info(&format!(
+                "[RECHERCHE_DIRECTE] Fallback SQL réussi avec {} résultats",
+                fallback_results.len()
+            ));
+
             // Convertir les résultats du fallback en format SearchResult
-            fallback_results.into_iter().map(|r| {
-                crate::services::native_search_service::SearchResult {
+            fallback_results
+                .into_iter()
+                .map(|r| crate::services::native_search_service::SearchResult {
                     service_id: r["service_id"].as_i64().unwrap_or(0) as i32,
                     data: r["data"].clone(),
                     total_score: r["score"].as_f64().unwrap_or(0.0) as f32,
@@ -328,55 +385,68 @@ pub async fn rechercher_besoin_direct(
                     category_score: 0.0,
                     search_method: "fallback".to_string(),
                     matched_fields: vec![],
-                }
-            }).collect()
+                })
+                .collect()
         }
     };
-    
+
     // Convertir les résultats natifs en format MatchedService pour compatibilité
-    let mut matches: Vec<crate::services::matching_pipeline::MatchedService> = native_results.into_iter().map(|result| {
-        // Extraire le GPS (priorité: gps_fixe du service)
-        let gps = result.data.get("gps_fixe")
-            .and_then(|v| v.get("valeur"))
-            .and_then(|v| v.as_str())
-            .or_else(|| result.data.get("gps_fixe").and_then(|v| v.as_str()))
-            .map(|s| s.to_string());
-            
-        crate::services::matching_pipeline::MatchedService {
-            service_id: result.service_id,
-            data: result.data,
-            score: result.total_score as f64,
-            semantic_score: result.fulltext_score as f64,
-            interaction_score: result.recency_score as f64,
-            gps,
-        }
-    }).collect();
-    
+    let mut matches: Vec<crate::services::matching_pipeline::MatchedService> = native_results
+        .into_iter()
+        .map(|result| {
+            // Extraire le GPS (priorité: gps_fixe du service)
+            let gps = result
+                .data
+                .get("gps_fixe")
+                .and_then(|v| v.get("valeur"))
+                .and_then(|v| v.as_str())
+                .or_else(|| result.data.get("gps_fixe").and_then(|v| v.as_str()))
+                .map(|s| s.to_string());
+
+            crate::services::matching_pipeline::MatchedService {
+                service_id: result.service_id,
+                data: result.data,
+                score: result.total_score as f64,
+                semantic_score: result.fulltext_score as f64,
+                interaction_score: result.recency_score as f64,
+                gps,
+            }
+        })
+        .collect();
+
     // Trier par score total décroissant (pertinence + proximité déjà inclus dans total_score)
     matches.sort_by(|a, b| {
-        b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal)
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
-    
+
     // Convertir en format de réponse
-    let results_array: Vec<Value> = matches.into_iter().map(|matched_service| {
-        json!({
-            "service_id": matched_service.service_id,
-            "data": matched_service.data,
-            "score": matched_service.score,
-            "semantic_score": matched_service.semantic_score,
-            "interaction_score": matched_service.interaction_score,
-            "gps": matched_service.gps
+    let results_array: Vec<Value> = matches
+        .into_iter()
+        .map(|matched_service| {
+            json!({
+                "service_id": matched_service.service_id,
+                "data": matched_service.data,
+                "score": matched_service.score,
+                "semantic_score": matched_service.semantic_score,
+                "interaction_score": matched_service.interaction_score,
+                "gps": matched_service.gps
+            })
         })
-    }).collect();
-    
-    log_info(&format!("[RECHERCHE_DIRECTE] {} résultats convertis", results_array.len()));
-    
+        .collect();
+
+    log_info(&format!(
+        "[RECHERCHE_DIRECTE] {} résultats convertis",
+        results_array.len()
+    ));
+
     let final_result = json!({
         "resultats": results_array,
         "nombre_matchings": results_array.len(),
         "message": "Recherche directe PostgreSQL réussie"
     });
-    
+
     Ok((final_result, 1)) // 1 token pour la recherche directe
 }
 
@@ -389,7 +459,7 @@ async fn search_services_direct_fallback(
     // Construire la requête SQL avec tous les mots-clés
     let mut conditions = Vec::new();
     let mut params = Vec::new();
-    
+
     for (i, keyword) in all_keywords.iter().enumerate() {
         let param_name = format!("${}", i + 1);
         conditions.push(format!(
@@ -398,13 +468,13 @@ async fn search_services_direct_fallback(
         ));
         params.push(format!("%{}%", keyword));
     }
-    
+
     let where_clause = if conditions.is_empty() {
         "s.is_active = true".to_string()
     } else {
         format!("s.is_active = true AND ({})", conditions.join(" OR "))
     };
-    
+
     let query = format!(
         r#"
         SELECT s.id, s.user_id, s.data, s.is_active, s.created_at
@@ -414,17 +484,16 @@ async fn search_services_direct_fallback(
         "#,
         where_clause
     );
-    
+
     // Exécuter la requête avec les paramètres
     let mut query_builder = sqlx::query(&query);
     for param in &params {
         query_builder = query_builder.bind(param);
     }
-    
-    let services = query_builder
-        .fetch_all(pool)
-        .await
-        .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur recherche SQL directe: {}", e)))?;
+
+    let services = query_builder.fetch_all(pool).await.map_err(|e| {
+        crate::core::types::AppError::Internal(format!("Erreur recherche SQL directe: {}", e))
+    })?;
 
     let mut results = Vec::new();
     for row in services {
@@ -434,20 +503,20 @@ async fn search_services_direct_fallback(
         let data: Value = row.try_get("data")?;
         let _is_active: bool = row.try_get("is_active")?;
         let created_at: chrono::DateTime<chrono::Utc> = row.try_get("created_at")?;
-        
+
         // Calculer un score basé sur tous les mots-clés
         let mut score = 0.0;
         let data_str = data.to_string().to_lowercase();
-        
+
         // Score pour chaque mot-clé trouvé
         for (i, keyword) in all_keywords.iter().enumerate() {
             let keyword_lower = keyword.to_lowercase();
-            
+
             // Score de base pour présence du mot-clé
             if data_str.contains(&keyword_lower) {
                 score += 0.3;
             }
-            
+
             // Bonus pour correspondance exacte dans le titre (poids plus élevé pour le mot-clé principal)
             if let Some(titre) = data.get("titre_service") {
                 if let Some(titre_str) = titre.as_str() {
@@ -456,7 +525,7 @@ async fn search_services_direct_fallback(
                     }
                 }
             }
-            
+
             // Bonus pour correspondance dans la catégorie
             if let Some(cat) = data.get("category") {
                 if let Some(cat_str) = cat.as_str() {
@@ -466,9 +535,11 @@ async fn search_services_direct_fallback(
                 }
             }
         }
-        
+
         // Bonus pour services récents
-        let days_old = chrono::Utc::now().signed_duration_since(created_at).num_days();
+        let days_old = chrono::Utc::now()
+            .signed_duration_since(created_at)
+            .num_days();
         if days_old <= 7 {
             score += 0.1;
         }
@@ -481,28 +552,27 @@ async fn search_services_direct_fallback(
             "interaction_score": 0.0,
             "gps": None::<String>
         });
-        
+
         results.push(result);
     }
-    
+
     // Trier par score
     results.sort_by(|a, b| {
-        b.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0)
+        b.get("score")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0)
             .partial_cmp(&a.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    
+
     Ok(results)
 }
 
 /// ?? Recherche de besoins utilisateur avec matching dynamique
-pub async fn rechercher_besoin(
-    user_id: Option<i32>,
-    data: &Value,
-) -> AppResult<(Value, u32)> {
+pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<(Value, u32)> {
     // Initialiser le tracking des tokens
     let mut token_consumption = TokenConsumption::new();
-    
+
     // Validation sch?ma besoin (avant toute extraction ou validation manuelle)
     valider_besoin_json(data)?;
     // Extraction robuste du JSON IA (m?me si la sortie IA n'est pas un objet JSON pur)
@@ -515,16 +585,24 @@ pub async fn rechercher_besoin(
                     if let Ok(val) = serde_json::from_str::<Value>(json_str) {
                         data_obj = val;
                     } else {
-                        return Err(crate::core::types::AppError::BadRequest("Sortie IA non exploitable : JSON introuvable".to_string()));
+                        return Err(crate::core::types::AppError::BadRequest(
+                            "Sortie IA non exploitable : JSON introuvable".to_string(),
+                        ));
                     }
                 } else {
-                    return Err(crate::core::types::AppError::BadRequest("Sortie IA non exploitable : accolade fermante manquante".to_string()));
+                    return Err(crate::core::types::AppError::BadRequest(
+                        "Sortie IA non exploitable : accolade fermante manquante".to_string(),
+                    ));
                 }
             } else {
-                return Err(crate::core::types::AppError::BadRequest("Sortie IA non exploitable : accolade ouvrante manquante".to_string()));
+                return Err(crate::core::types::AppError::BadRequest(
+                    "Sortie IA non exploitable : accolade ouvrante manquante".to_string(),
+                ));
             }
         } else {
-            return Err(crate::core::types::AppError::BadRequest("Sortie IA non exploitable : pas d'objet JSON ou de texte exploitable".to_string()));
+            return Err(crate::core::types::AppError::BadRequest(
+                "Sortie IA non exploitable : pas d'objet JSON ou de texte exploitable".to_string(),
+            ));
         }
     }
     let obj = data_obj.as_object().ok_or_else(|| {
@@ -532,7 +610,13 @@ pub async fn rechercher_besoin(
     })?;
 
     // Validation stricte des champs obligatoires (pr?sence, non vide, typage explicite, type reconnu)
-    let required_fields = ["titre", "description", "category", "reponse_intelligente", "intention"];
+    let required_fields = [
+        "titre",
+        "description",
+        "category",
+        "reponse_intelligente",
+        "intention",
+    ];
     for &field in &required_fields {
         match obj.get(field) {
             Some(Value::Object(o)) => {
@@ -558,10 +642,12 @@ pub async fn rechercher_besoin(
                     _ => false,
                 };
                 if is_empty {
-                    return Err(crate::core::types::AppError::BadRequest(format!("Le champ '{field}.valeur' ne doit pas ?tre vide")));
+                    return Err(crate::core::types::AppError::BadRequest(format!(
+                        "Le champ '{field}.valeur' ne doit pas ?tre vide"
+                    )));
                 }
-            },
-            Some(Value::String(s)) if field == "intention" && !s.trim().is_empty() => {},
+            }
+            Some(Value::String(s)) if field == "intention" && !s.trim().is_empty() => {}
             _ => {
                 if field == "intention" {
                     return Err(crate::core::types::AppError::BadRequest("Le champ 'intention' est obligatoire et doit ?tre une cha?ne non vide ou un objet structur? dans le besoin IA".to_string()));
@@ -573,11 +659,58 @@ pub async fn rechercher_besoin(
     }
     // Validation stricte du typage explicite pour chaque champ dynamique
     let allowed_types = [
-        "string", "bool", "int", "float", "array", "object", "date", "file", "email", "url", "phone", "gps", "null", "dropdown", "listeproduit", "image", "audio", "video"
+        "string",
+        "bool",
+        "int",
+        "float",
+        "array",
+        "object",
+        "date",
+        "file",
+        "email",
+        "url",
+        "phone",
+        "gps",
+        "null",
+        "dropdown",
+        "listeproduit",
+        "image",
+        "audio",
+        "video",
     ];
     for (key, _value) in obj.iter() {
         // Exclure les champs système et métier standard
-        if ["intention", "titre", "description", "category", "reponse_intelligente", "suggestions_complementaires", "zone_gps", "gps", "tokens_consumed", "tokens_breakdown", "model_used", "processing_time_ms", "status", "message", "resultats", "processing_time", "direct_processing", "ia_model_used", "confidence", "processing_mode", "interaction_id", "gpu_enabled", "optimization_level"].contains(&key.as_str()) || key.ends_with("_type") || key.ends_with("_options") { continue; }
+        if [
+            "intention",
+            "titre",
+            "description",
+            "category",
+            "reponse_intelligente",
+            "suggestions_complementaires",
+            "zone_gps",
+            "gps",
+            "tokens_consumed",
+            "tokens_breakdown",
+            "model_used",
+            "processing_time_ms",
+            "status",
+            "message",
+            "resultats",
+            "processing_time",
+            "direct_processing",
+            "ia_model_used",
+            "confidence",
+            "processing_mode",
+            "interaction_id",
+            "gpu_enabled",
+            "optimization_level",
+        ]
+        .contains(&key.as_str())
+            || key.ends_with("_type")
+            || key.ends_with("_options")
+        {
+            continue;
+        }
         let type_field = format!("{}_type", key);
         match obj.get(&type_field) {
             Some(Value::String(t)) if allowed_types.contains(&t.as_str()) => {
@@ -585,18 +718,22 @@ pub async fn rechercher_besoin(
                 if t == "dropdown" {
                     let options_field = format!("{}_options", key);
                     match obj.get(&options_field) {
-                        Some(Value::Array(arr)) if !arr.is_empty() => {},
+                        Some(Value::Array(arr)) if !arr.is_empty() => {}
                         _ => {
                             return Err(crate::core::types::AppError::BadRequest(format!("Le champ '{key}' de type dropdown doit avoir un tableau 'options' non vide")));
                         }
                     }
                 }
-            },
+            }
             Some(Value::String(t)) => {
-                return Err(crate::core::types::AppError::BadRequest(format!("Type non reconnu pour le champ {key}: {t}")));
-            },
+                return Err(crate::core::types::AppError::BadRequest(format!(
+                    "Type non reconnu pour le champ {key}: {t}"
+                )));
+            }
             _ => {
-                return Err(crate::core::types::AppError::BadRequest(format!("Typage explicite manquant pour le champ {key}")));
+                return Err(crate::core::types::AppError::BadRequest(format!(
+                    "Typage explicite manquant pour le champ {key}"
+                )));
             }
         }
     }
@@ -609,10 +746,12 @@ pub async fn rechercher_besoin(
     // Initialisation du client d'embedding pour Pinecone
     let _embedding_client = crate::utils::embedding_client::EmbeddingClient::new("", "");
     let mut champs_embeddes = Vec::new();
-    
+
     // NOTE: SUSPENSION COMPLÈTE DE PINECONE - Recherche native PostgreSQL uniquement
-    log_info(&format!("[PINECONE][SUSPENDU] Recherche sémantique Pinecone temporairement suspendue"));
-    
+    log_info(&format!(
+        "[PINECONE][SUSPENDU] Recherche sémantique Pinecone temporairement suspendue"
+    ));
+
     // TODO: Réactiver Pinecone plus tard quand nécessaire
     /*
     // NOTE: Exclusion stricte centralisée : les champs 'reponse_intelligente' et 'suggestions_complementaires' sont exclus de toute vectorisation/matching sémantique (voir semantic_exclusion.rs)
@@ -730,7 +869,7 @@ pub async fn rechercher_besoin(
                 if !ocr_text.is_empty() {
                     // Tracker l'appel OCR
                     token_consumption.add_ocr_call(value_str.len());
-                    
+
                     let ocr_lang = crate::services::creer_service::detect_lang(&ocr_text);
                     let ocr_text_en = crate::services::creer_service::translate_to_en(&ocr_text, &ocr_lang).await;
                     // Tracker la traduction OCR
@@ -790,50 +929,74 @@ pub async fn rechercher_besoin(
         }
     }
     */
-    
+
     // Simulation des champs embeddés pour compatibilité (vide car Pinecone suspendu)
-    champs_embeddes.push(("titre_service".to_string(), "Recherche native PostgreSQL".to_string()));
-    
+    champs_embeddes.push((
+        "titre_service".to_string(),
+        "Recherche native PostgreSQL".to_string(),
+    ));
+
     if champs_embeddes.is_empty() {
-        return Err(crate::core::types::AppError::BadRequest("Aucun champ exploitable pour l'embedding dans le JSON IA".to_string()));
+        return Err(crate::core::types::AppError::BadRequest(
+            "Aucun champ exploitable pour l'embedding dans le JSON IA".to_string(),
+        ));
     }
 
-    let pool = sqlx::PgPool::connect(&std::env::var("DATABASE_URL").expect("DATABASE_URL doit ?tre d?fini")).await.map_err(|e| crate::core::types::AppError::Internal(format!("Erreur connexion base: {}", e)))?;
-    
+    let pool = sqlx::PgPool::connect(
+        &std::env::var("DATABASE_URL").expect("DATABASE_URL doit ?tre d?fini"),
+    )
+    .await
+    .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur connexion base: {}", e)))?;
+
     // RECHERCHE NATIVE POSTGRESQL (SUSPENDUE TEMPORAIREMENT LA RECHERCHE SEMANTIQUE)
-    log_info(&format!("[RECHERCHE] Utilisation de la recherche native PostgreSQL intelligente"));
-    
+    log_info(&format!(
+        "[RECHERCHE] Utilisation de la recherche native PostgreSQL intelligente"
+    ));
+
     // Extraire les termes de recherche du JSON IA
     let search_query = extract_search_query_from_ia_json(&data_with_media)?;
     let category_filter = extract_category_from_ia_json(&data_with_media);
     let location_filter = extract_location_from_ia_json(&data_with_media);
-    
+
     // Configuration de la recherche native
     let config = crate::config::search_config::SearchConfig::default();
     let native_search = NativeSearchService::with_config(pool.clone(), config);
-    
+
     // Recherche native intelligente
-    let native_results = match native_search.intelligent_search(
-        &search_query,
-        category_filter.as_deref(),
-        location_filter.as_deref(),
-        user_id,
-        None,  // Pas de zone GPS pour cette recherche
-        None   // Pas de rayon GPS pour cette recherche
-    ).await {
+    let native_results = match native_search
+        .intelligent_search(
+            &search_query,
+            category_filter.as_deref(),
+            location_filter.as_deref(),
+            user_id,
+            None, // Pas de zone GPS pour cette recherche
+            None, // Pas de rayon GPS pour cette recherche
+        )
+        .await
+    {
         Ok(results) => {
-            log_info(&format!("[RECHERCHE] Recherche native r?ussie avec {} r?sultats", results.len()));
+            log_info(&format!(
+                "[RECHERCHE] Recherche native r?ussie avec {} r?sultats",
+                results.len()
+            ));
             results
-        },
+        }
         Err(e) => {
-            log_warn(&format!("[RECHERCHE] ?chec recherche native: {}. Utilisation du fallback SQL.", e));
+            log_warn(&format!(
+                "[RECHERCHE] ?chec recherche native: {}. Utilisation du fallback SQL.",
+                e
+            ));
             // Fallback vers recherche SQL simple
             let fallback_results = search_services_fallback(&pool, &data_with_media).await?;
-            log_info(&format!("[RECHERCHE] Fallback SQL r?ussi avec {} r?sultats", fallback_results.len()));
-            
+            log_info(&format!(
+                "[RECHERCHE] Fallback SQL r?ussi avec {} r?sultats",
+                fallback_results.len()
+            ));
+
             // Convertir les r?sultats du fallback en format SearchResult
-            fallback_results.into_iter().map(|r| {
-                crate::services::native_search_service::SearchResult {
+            fallback_results
+                .into_iter()
+                .map(|r| crate::services::native_search_service::SearchResult {
                     service_id: r["service_id"].as_i64().unwrap_or(0) as i32,
                     data: r["data"].clone(),
                     total_score: r["score"].as_f64().unwrap_or(0.0) as f32,
@@ -843,14 +1006,20 @@ pub async fn rechercher_besoin(
                     category_score: 0.0,
                     search_method: "fallback".to_string(),
                     matched_fields: vec![],
-                }
-            }).collect()
+                })
+                .collect()
         }
     };
-    
-            // Convertir les résultats natifs en format MatchedService pour compatibilité
-        let matches: Vec<crate::services::matching_pipeline::MatchedService> = native_results.into_iter().map(|r| {
-            let gps = r.data.get("gps_fixe").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+    // Convertir les résultats natifs en format MatchedService pour compatibilité
+    let matches: Vec<crate::services::matching_pipeline::MatchedService> = native_results
+        .into_iter()
+        .map(|r| {
+            let gps = r
+                .data
+                .get("gps_fixe")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
             crate::services::matching_pipeline::MatchedService {
                 service_id: r.service_id,
                 data: r.data,
@@ -859,43 +1028,54 @@ pub async fn rechercher_besoin(
                 interaction_score: 0.0,
                 gps,
             }
-        }).collect();
-    
+        })
+        .collect();
+
     // Tracker la complexit? du matching
     token_consumption.add_matching_complexity(matches.len(), champs_embeddes.len());
-    
+
     // Trier par score total (pertinence + proximité) et ne PAS limiter
-    let mut resultats: Vec<_> = matches.into_iter().map(|m| {
-        serde_json::json!({
-            "service_id": m.service_id,
-            "data": m.data,
-            "score": m.score,
-            "semantic_score": m.semantic_score,
-            "interaction_score": m.interaction_score,
-            "gps": m.gps
+    let mut resultats: Vec<_> = matches
+        .into_iter()
+        .map(|m| {
+            serde_json::json!({
+                "service_id": m.service_id,
+                "data": m.data,
+                "score": m.score,
+                "semantic_score": m.semantic_score,
+                "interaction_score": m.interaction_score,
+                "gps": m.gps
+            })
         })
-    }).collect();
-    
+        .collect();
+
     // Trier par score décroissant (meilleurs résultats en premier)
     resultats.sort_by(|a, b| {
-        b.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0)
+        b.get("score")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0)
             .partial_cmp(&a.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     // VALIDATION CRITIQUE: Filtrer les services inexistants en base de données
     let resultats_valides = validate_services_exist(&pool, &resultats).await?;
-    
-    log_info(&format!("[RECHERCHE] Services validés: {}/{} existent en base de données", 
-        resultats_valides.len(), resultats.len()));
 
-    let reponse_intelligente = obj.get("reponse_intelligente")
+    log_info(&format!(
+        "[RECHERCHE] Services validés: {}/{} existent en base de données",
+        resultats_valides.len(),
+        resultats.len()
+    ));
+
+    let reponse_intelligente = obj
+        .get("reponse_intelligente")
         .or_else(|| obj.get("suggestion_ia"))
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
     // Correction?: expose la valeur de donnees_validees.reponse_intelligente.valeur si pr?sente
-    let reponse_intelligente_valeur = obj.get("reponse_intelligente")
+    let reponse_intelligente_valeur = obj
+        .get("reponse_intelligente")
         .and_then(|v| v.get("valeur"))
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
@@ -904,12 +1084,18 @@ pub async fn rechercher_besoin(
     // Correction extraction intention (supporte string ou objet structur?)
     let intention = match obj.get("intention") {
         Some(Value::String(s)) => Some(s.clone()),
-        Some(Value::Object(o)) => o.get("valeur").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        Some(Value::Object(o)) => o
+            .get("valeur")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
         _ => None,
     };
     let zone_gps_utilisee = obj.get("zone_gps").cloned();
 
-    log_info(&format!("[RECHERCHE_BESOIN] Tokens consomm?s pour utilisateur {:?}: {:?}", user_id, token_consumption));
+    log_info(&format!(
+        "[RECHERCHE_BESOIN] Tokens consomm?s pour utilisateur {:?}: {:?}",
+        user_id, token_consumption
+    ));
 
     let response = serde_json::json!({
         "message": if resultats_valides.is_empty() {
@@ -956,24 +1142,24 @@ impl TokenConsumption {
             total_tokens: 0,
         }
     }
-    
+
     pub fn add_embedding_call(&mut self, complexity: i64) {
         self.embedding_calls += complexity;
         self.total_tokens += complexity;
     }
-    
+
     pub fn add_translation_call(&mut self, text_length: usize) {
         let tokens = (text_length / 100).max(1) as i64; // 1 token per 100 chars
         self.translation_calls += tokens;
         self.total_tokens += tokens;
     }
-    
+
     pub fn add_ocr_call(&mut self, image_size_estimate: usize) {
         let tokens = (image_size_estimate / 1000).max(2) as i64; // 2 tokens minimum for OCR
         self.ocr_calls += tokens;
         self.total_tokens += tokens;
     }
-    
+
     pub fn add_matching_complexity(&mut self, num_results: usize, num_fields: usize) {
         let tokens = ((num_results * num_fields) / 10).max(1) as i64;
         self.matching_complexity += tokens;
@@ -984,10 +1170,10 @@ impl TokenConsumption {
 /// VALIDATION CRITIQUE: Vérifier que les services retournés par Pinecone existent en base de données
 async fn validate_services_exist(
     pool: &sqlx::PgPool,
-    resultats: &[serde_json::Value]
+    resultats: &[serde_json::Value],
 ) -> Result<Vec<serde_json::Value>, crate::core::types::AppError> {
     let mut resultats_valides = Vec::new();
-    
+
     for resultat in resultats {
         if let Some(service_id) = resultat.get("service_id").and_then(|v| v.as_i64()) {
             // Vérifier si le service existe et est actif
@@ -997,19 +1183,25 @@ async fn validate_services_exist(
             )
             .fetch_optional(pool)
             .await
-            .map_err(|e| crate::core::types::AppError::Internal(
-                format!("Erreur validation service {}: {}", service_id, e)
-            ))?;
-            
+            .map_err(|e| {
+                crate::core::types::AppError::Internal(format!(
+                    "Erreur validation service {}: {}",
+                    service_id, e
+                ))
+            })?;
+
             if service_exists.is_some() {
                 resultats_valides.push(resultat.clone());
                 log_info(&format!("[VALIDATION] Service {} validé", service_id));
             } else {
-                log_warn(&format!("[VALIDATION] Service {} ignoré - n'existe pas ou inactif", service_id));
+                log_warn(&format!(
+                    "[VALIDATION] Service {} ignoré - n'existe pas ou inactif",
+                    service_id
+                ));
             }
         }
     }
-    
+
     Ok(resultats_valides)
 }
 
@@ -1021,7 +1213,7 @@ fn extract_search_query_from_ia_json(data: &Value) -> Result<String, crate::core
 
     // Extraire les mots-clés pertinents depuis le titre et la description
     let mut search_terms = Vec::new();
-    
+
     // Extraire depuis le titre
     if let Some(titre) = obj.get("titre") {
         if let Some(valeur) = titre.get("valeur").and_then(|v| v.as_str()) {
@@ -1076,7 +1268,9 @@ fn extract_search_query_from_ia_json(data: &Value) -> Result<String, crate::core
         }
     }
 
-    Err(crate::core::types::AppError::BadRequest("Impossible d'extraire une requête de recherche du JSON IA".to_string()))
+    Err(crate::core::types::AppError::BadRequest(
+        "Impossible d'extraire une requête de recherche du JSON IA".to_string(),
+    ))
 }
 
 /// Extraire la catégorie du JSON IA

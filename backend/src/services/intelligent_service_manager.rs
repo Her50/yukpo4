@@ -1,13 +1,15 @@
-use sqlx::PgPool;
-use chrono::{Utc, Duration};
 use crate::core::types::AppError;
+use chrono::{Duration, Utc};
 use log::info;
+use sqlx::PgPool;
 
 /// Coût de base pour la réactivation d'un service (1000 FCFA)
 const COUT_REACTIVATION_BASE: i64 = 1000;
 
 /// 🚀 Fonction publique pour traiter les services expirés intelligemment
-pub async fn process_expired_services_intelligently(pool: &PgPool) -> Result<ProcessResult, AppError> {
+pub async fn process_expired_services_intelligently(
+    pool: &PgPool,
+) -> Result<ProcessResult, AppError> {
     let now = Utc::now();
     let mut result = ProcessResult::new();
 
@@ -30,7 +32,7 @@ pub async fn process_expired_services_intelligently(pool: &PgPool) -> Result<Pro
 
     for service in expired_non_tarissable {
         let balance = service.tokens_balance;
-        
+
         if balance >= COUT_REACTIVATION_BASE {
             // 💰 Solde suffisant : Renouvellement automatique
             let updated_balance = sqlx::query!(
@@ -69,7 +71,7 @@ pub async fn process_expired_services_intelligently(pool: &PgPool) -> Result<Pro
 
             result.auto_renewed += 1;
             result.total_debited += COUT_REACTIVATION_BASE;
-            
+
             info!("✅ Service {} (utilisateur {}) renouvelé automatiquement pour {} FCFA (solde restant: {})", 
                   service.id, service.user_id, COUT_REACTIVATION_BASE, updated_balance);
         } else {
@@ -96,9 +98,11 @@ pub async fn process_expired_services_intelligently(pool: &PgPool) -> Result<Pro
             .map_err(AppError::from)?;
 
             result.manually_deactivated += 1;
-            
-            info!("❌ Service {} (utilisateur {}) désactivé: Solde insuffisant ({} FCFA)", 
-                  service.id, service.user_id, balance);
+
+            info!(
+                "❌ Service {} (utilisateur {}) désactivé: Solde insuffisant ({} FCFA)",
+                service.id, service.user_id, balance
+            );
         }
     }
 
@@ -121,7 +125,10 @@ pub async fn process_expired_services_intelligently(pool: &PgPool) -> Result<Pro
 
     for service in rapid_count {
         result.tarissable_deactivated += 1;
-        info!("🍎 Service tarissable rapide {} désactivé (7 jours)", service.id);
+        info!(
+            "🍎 Service tarissable rapide {} désactivé (7 jours)",
+            service.id
+        );
     }
 
     // Désactiver les services tarissables moyens (14 jours)
@@ -142,7 +149,10 @@ pub async fn process_expired_services_intelligently(pool: &PgPool) -> Result<Pro
 
     for service in medium_count {
         result.tarissable_deactivated += 1;
-        info!("🍎 Service tarissable moyen {} désactivé (14 jours)", service.id);
+        info!(
+            "🍎 Service tarissable moyen {} désactivé (14 jours)",
+            service.id
+        );
     }
 
     // Désactiver les services tarissables lents (30 jours)
@@ -163,7 +173,10 @@ pub async fn process_expired_services_intelligently(pool: &PgPool) -> Result<Pro
 
     for service in slow_count {
         result.tarissable_deactivated += 1;
-        info!("🍎 Service tarissable lent {} désactivé (30 jours)", service.id);
+        info!(
+            "🍎 Service tarissable lent {} désactivé (30 jours)",
+            service.id
+        );
     }
 
     Ok(result)
@@ -197,7 +210,7 @@ mod tests {
         assert_eq!(result.tarissable_deactivated, 0);
         assert_eq!(result.total_debited, 0);
         assert_eq!(result.errors, 0);
-        
+
         println!("✅ ProcessResult créé avec succès");
     }
 

@@ -1,5 +1,7 @@
 // Contrôleur pour la recherche avec planifications
-use crate::services::scheduling_search_service::{SchedulingSearchService, PharmacyOnDuty, MedicalServiceAvailability};
+use crate::services::scheduling_search_service::{
+    MedicalServiceAvailability, PharmacyOnDuty, SchedulingSearchService,
+};
 use crate::state::AppState;
 use axum::{
     extract::{Query, State},
@@ -55,26 +57,32 @@ pub async fn search_with_scheduling(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<SchedulingSearchResponse>, StatusCode> {
     let scheduling_service = SchedulingSearchService::new(state.pg.clone());
-    
+
     // Analyser l'intention de recherche
     let intent = scheduling_service.analyze_search_intent(&params.query);
-    
-    let results = scheduling_service.search_with_scheduling(
-        &params.query,
-        None, // Utilise NOW()
-        params.lat,
-        params.lng,
-        params.max_distance,
-    ).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let search_results: Vec<SchedulingSearchResult> = results.into_iter().map(|r| SchedulingSearchResult {
-        service_id: r.service_id,
-        product_data: r.product_data,
-        relevance_score: r.relevance_score,
-        distance_km: r.distance_km,
-        is_available_now: r.is_available_now,
-        availability_info: r.availability_info,
-    }).collect();
+    let results = scheduling_service
+        .search_with_scheduling(
+            &params.query,
+            None, // Utilise NOW()
+            params.lat,
+            params.lng,
+            params.max_distance,
+        )
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let search_results: Vec<SchedulingSearchResult> = results
+        .into_iter()
+        .map(|r| SchedulingSearchResult {
+            service_id: r.service_id,
+            product_data: r.product_data,
+            relevance_score: r.relevance_score,
+            distance_km: r.distance_km,
+            is_available_now: r.is_available_now,
+            availability_info: r.availability_info,
+        })
+        .collect();
 
     let total = search_results.len();
 
@@ -91,12 +99,11 @@ pub async fn get_pharmacies_on_duty(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<PharmacyOnDuty>>, StatusCode> {
     let scheduling_service = SchedulingSearchService::new(state.pg.clone());
-    
-    let results = scheduling_service.search_pharmacies_on_duty(
-        params.lat,
-        params.lng,
-        params.max_distance,
-    ).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let results = scheduling_service
+        .search_pharmacies_on_duty(params.lat, params.lng, params.max_distance)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(results))
 }
@@ -107,13 +114,16 @@ pub async fn get_available_medical_services(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<MedicalServiceAvailability>>, StatusCode> {
     let scheduling_service = SchedulingSearchService::new(state.pg.clone());
-    
-    let results = scheduling_service.search_available_medical_services(
-        params.service.as_deref(),
-        params.lat,
-        params.lng,
-        params.max_distance,
-    ).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let results = scheduling_service
+        .search_available_medical_services(
+            params.service.as_deref(),
+            params.lat,
+            params.lng,
+            params.max_distance,
+        )
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(results))
 }
@@ -123,8 +133,9 @@ pub async fn refresh_pharmacies_on_duty(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let scheduling_service = SchedulingSearchService::new(state.pg.clone());
-    
-    scheduling_service.refresh_pharmacies_on_duty()
+
+    scheduling_service
+        .refresh_pharmacies_on_duty()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

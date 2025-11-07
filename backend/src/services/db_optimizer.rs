@@ -1,10 +1,10 @@
-use sqlx::{PgPool, Row};
+use log::{info, warn};
 use redis::AsyncCommands;
+use serde::{Deserialize, Serialize};
+use sqlx::{PgPool, Row};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde::{Serialize, Deserialize};
-use log::{info, warn};
 
 lazy_static::lazy_static! {
     static ref QUERY_CACHE: Arc<RwLock<HashMap<String, (Vec<u8>, u64)>>> = Arc::new(RwLock::new(HashMap::new()));
@@ -42,7 +42,13 @@ impl DbOptimizer {
         category: Option<&str>,
         active_only: bool,
     ) -> Result<Vec<ServiceSummary>, sqlx::Error> {
-        let cache_key = format!("services:{}:{}:{}:{}", limit, offset, category.unwrap_or("all"), active_only);
+        let cache_key = format!(
+            "services:{}:{}:{}:{}",
+            limit,
+            offset,
+            category.unwrap_or("all"),
+            active_only
+        );
 
         // V?rifier le cache Redis
         if let Some(_redis) = &self.redis_client {
@@ -59,7 +65,7 @@ impl DbOptimizer {
         // Construire la requ?te dynamiquement
         let mut query = String::from(
             "SELECT id, user_id, data->>'category' as category, is_active, gps, created_at 
-             FROM services WHERE 1=1"
+             FROM services WHERE 1=1",
         );
 
         let mut params: Vec<String> = vec![];
@@ -88,13 +94,17 @@ impl DbOptimizer {
 
         // Ex?cuter la requ?te avec les param?tres
         let mut sql_query = sqlx::query(&query);
-        
+
         // Binder les param?tres de mani?re appropri?e
         for (i, param) in params.iter().enumerate() {
             match i {
                 0 if category.is_some() => sql_query = sql_query.bind(param),
-                1 if category.is_some() && active_only => sql_query = sql_query.bind(param == "true"),
-                0 if category.is_none() && active_only => sql_query = sql_query.bind(param == "true"),
+                1 if category.is_some() && active_only => {
+                    sql_query = sql_query.bind(param == "true")
+                }
+                0 if category.is_none() && active_only => {
+                    sql_query = sql_query.bind(param == "true")
+                }
                 _ => {
                     if param.parse::<i64>().is_ok() {
                         sql_query = sql_query.bind(param.parse::<i64>().unwrap());
@@ -106,7 +116,7 @@ impl DbOptimizer {
         }
 
         let rows = sql_query.fetch_all(&self.pool).await?;
-        
+
         let services: Vec<ServiceSummary> = rows
             .into_iter()
             .map(|row| ServiceSummary {
@@ -126,7 +136,8 @@ impl DbOptimizer {
     }
 
     /// R?cup?re les statistiques utilisateur avec cache
-    pub async fn get_user_stats_cached(&self, user_id: i32) -> Result<UserStats, sqlx::Error> {        let cache_key = format!("user_stats:{}", user_id);
+    pub async fn get_user_stats_cached(&self, user_id: i32) -> Result<UserStats, sqlx::Error> {
+        let cache_key = format!("user_stats:{}", user_id);
 
         // V?rifier le cache Redis
         if let Some(_redis) = &self.redis_client {
@@ -168,7 +179,8 @@ impl DbOptimizer {
         query: &str,
         limit: i64,
         category: Option<&str>,
-    ) -> Result<Vec<ServiceSummary>, sqlx::Error> {        let cache_key = format!("search:{}:{}:{}", query, limit, category.unwrap_or("all"));
+    ) -> Result<Vec<ServiceSummary>, sqlx::Error> {
+        let cache_key = format!("search:{}:{}:{}", query, limit, category.unwrap_or("all"));
 
         // V?rifier le cache Redis
         if let Some(_redis) = &self.redis_client {
@@ -201,7 +213,7 @@ impl DbOptimizer {
         query_builder = query_builder.bind(limit);
 
         let rows = query_builder.fetch_all(&self.pool).await?;
-        
+
         let services: Vec<ServiceSummary> = rows
             .into_iter()
             .map(|row| ServiceSummary {
@@ -272,7 +284,10 @@ impl DbOptimizer {
         if let Some(redis) = &self.redis_client {
             if let Ok(serialized) = bincode::serialize(data) {
                 if let Ok(mut conn) = redis.get_multiplexed_async_connection().await {
-                    if let Err(e) = conn.set_ex::<&str, Vec<u8>, ()>(key, serialized, CACHE_TTL as u64).await {
+                    if let Err(e) = conn
+                        .set_ex::<&str, Vec<u8>, ()>(key, serialized, CACHE_TTL as u64)
+                        .await
+                    {
                         warn!("Erreur cache Redis: {}", e);
                     }
                 }
@@ -282,7 +297,7 @@ impl DbOptimizer {
         // Cache m?moire
         if let Ok(serialized) = bincode::serialize(data) {
             let mut cache = QUERY_CACHE.write().await;
-            
+
             // Nettoyer le cache si trop plein
             if cache.len() >= MAX_CACHE_SIZE {
                 let mut to_remove: Vec<String> = vec![];
@@ -301,7 +316,10 @@ impl DbOptimizer {
     }
 
     /// R?cup?re depuis le cache Redis
-    async fn get_from_redis_cache<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Result<T, Box<dyn std::error::Error>> {
+    async fn get_from_redis_cache<T: for<'de> Deserialize<'de>>(
+        &self,
+        key: &str,
+    ) -> Result<T, Box<dyn std::error::Error>> {
         if let Some(redis) = &self.redis_client {
             let mut conn = redis.get_multiplexed_async_connection().await?;
             let data: Vec<u8> = conn.get(key).await?;

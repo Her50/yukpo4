@@ -1,12 +1,17 @@
 // Service Rust pour g?n?rer automatiquement le besoin de fournitures pour la classe sup?rieure
+use crate::core::types::{AppError, AppResult};
 use serde_json::Value;
-use crate::core::types::{AppResult, AppError};
 
 /// G?n?re le besoin pour la classe sup?rieure ? partir de l'?tablissement et de la classe actuelle
-pub async fn generer_besoin_classe_superieure(etablissement: &str, classe_actuelle: &str) -> AppResult<Value> {
+pub async fn generer_besoin_classe_superieure(
+    etablissement: &str,
+    classe_actuelle: &str,
+) -> AppResult<Value> {
     // TODO: Remplacer cette logique par une vraie g?n?ration bas?e sur le programme scolaire
     if etablissement.is_empty() || classe_actuelle.is_empty() {
-        return Err(AppError::BadRequest("?tablissement ou classe manquant pour la g?n?ration du besoin".to_string()));
+        return Err(AppError::BadRequest(
+            "?tablissement ou classe manquant pour la g?n?ration du besoin".to_string(),
+        ));
     }
     // Exemple de stub : retourne un besoin g?n?rique
     Ok(serde_json::json!({

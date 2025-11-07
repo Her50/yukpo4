@@ -1,9 +1,9 @@
+use crate::state::AppState;
 use axum::{
     routing::{get, post},
     Router,
 };
 use std::sync::Arc;
-use crate::state::AppState;
 
 use crate::controllers::health_structure_controller::{
     create_health_structure, get_all_health_structures, get_health_structures,
@@ -20,4 +20,3 @@ pub fn health_structure_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/health-structures", post(create_health_structure))
         .with_state(state)
 }
-

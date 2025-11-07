@@ -1,14 +1,14 @@
 use axum::{
-    extract::{State, Path},
+    extract::{Path, State},
     Json,
 };
 use sqlx::PgPool;
 use std::sync::Arc;
 
-use crate::state::AppState;
-use serde_json::json;
 use crate::models::echange::CreerEchangeRequest;
+use crate::state::AppState;
 use crate::tasks::matching_echange_cron::relancer_matching_echanges_once;
+use serde_json::json;
 
 /// POST /echanges ? cr?e un nouvel ?change (production)
 pub async fn creer_echange(
@@ -23,21 +23,58 @@ pub async fn creer_echange(
     // Construction d'un JSON strict pour validation m?tier et matching
     let mut data = serde_json::Map::new();
     // intention - extraire depuis les données plutôt que de forcer "echange"
-    let intention = serde_json::to_value(&payload).ok()
-        .and_then(|v| v.get("intention").and_then(|v| v.as_str()).map(|s| s.to_string()))
-        .or_else(|| payload.offre.get("intention").and_then(|v| v.as_str()).map(|s| s.to_string()))
-        .or_else(|| payload.besoin.get("intention").and_then(|v| v.as_str()).map(|s| s.to_string()))
+    let intention = serde_json::to_value(&payload)
+        .ok()
+        .and_then(|v| {
+            v.get("intention")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
+        .or_else(|| {
+            payload
+                .offre
+                .get("intention")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
+        .or_else(|| {
+            payload
+                .besoin
+                .get("intention")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
         .unwrap_or_else(|| "".to_string());
     if !intention.is_empty() {
-        data.insert("intention".to_string(), serde_json::Value::String(intention));
+        data.insert(
+            "intention".to_string(),
+            serde_json::Value::String(intention),
+        );
     }
     // Mode : on tente de l'extraire de l'offre/besoin, pas de valeur par défaut forcée
 
     // Extraction du mode : racine, puis offre, puis besoin
-    let mode = serde_json::to_value(&payload).ok()
-        .and_then(|v| v.get("mode").and_then(|v| v.as_str()).map(|s| s.to_string()))
-        .or_else(|| payload.offre.get("mode").and_then(|v| v.as_str()).map(|s| s.to_string()))
-        .or_else(|| payload.besoin.get("mode").and_then(|v| v.as_str()).map(|s| s.to_string()))
+    let mode = serde_json::to_value(&payload)
+        .ok()
+        .and_then(|v| {
+            v.get("mode")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
+        .or_else(|| {
+            payload
+                .offre
+                .get("mode")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
+        .or_else(|| {
+            payload
+                .besoin
+                .get("mode")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
         .unwrap_or_else(|| "".to_string());
     // Validation : seulement si mode est présent et non autorisé
     if !mode.is_empty() && mode != "echange" && mode != "don" {
@@ -47,24 +84,47 @@ pub async fn creer_echange(
     let mut offre = payload.offre.clone();
     let mut besoin = payload.besoin.clone();
     if offre.get("mode").is_none() {
-        offre.as_object_mut().map(|o| o.insert("mode".to_string(), serde_json::Value::String(mode.clone())));
+        offre
+            .as_object_mut()
+            .map(|o| o.insert("mode".to_string(), serde_json::Value::String(mode.clone())));
     }
     if besoin.get("mode").is_none() {
-        besoin.as_object_mut().map(|b| b.insert("mode".to_string(), serde_json::Value::String(mode.clone())));
+        besoin
+            .as_object_mut()
+            .map(|b| b.insert("mode".to_string(), serde_json::Value::String(mode.clone())));
     }
     data.insert("mode".to_string(), serde_json::Value::String(mode.clone()));
     // mode_troc : racine, puis offre, puis besoin
-    let mode_troc = serde_json::to_value(&payload).ok()
-        .and_then(|v| v.get("mode_troc").and_then(|v| v.as_str()).map(|s| s.to_string()))
-        .or_else(|| offre.get("mode_troc").and_then(|v| v.as_str()).map(|s| s.to_string()))
-        .or_else(|| besoin.get("mode_troc").and_then(|v| v.as_str()).map(|s| s.to_string()))
+    let mode_troc = serde_json::to_value(&payload)
+        .ok()
+        .and_then(|v| {
+            v.get("mode_troc")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
+        .or_else(|| {
+            offre
+                .get("mode_troc")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
+        .or_else(|| {
+            besoin
+                .get("mode_troc")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
         .unwrap_or_else(|| "".to_string());
     if mode_troc.is_empty() {
         return Json(json!({"error": "Le champ 'mode_troc' est obligatoire"}));
     }
-    data.insert("mode_troc".to_string(), serde_json::Value::String(mode_troc));
+    data.insert(
+        "mode_troc".to_string(),
+        serde_json::Value::String(mode_troc),
+    );
     // gps : racine, puis offre, puis besoin
-    let gps = serde_json::to_value(&payload).ok()
+    let gps = serde_json::to_value(&payload)
+        .ok()
         .and_then(|v| v.get("gps").cloned())
         .or_else(|| offre.get("gps").cloned())
         .or_else(|| besoin.get("gps").cloned());
@@ -73,22 +133,34 @@ pub async fn creer_echange(
     }
     data.insert("gps".to_string(), gps.unwrap());
     // user_id (optionnel dans le sch?ma)
-    data.insert("user_id".to_string(), serde_json::Value::from(payload.user_id));
+    data.insert(
+        "user_id".to_string(),
+        serde_json::Value::from(payload.user_id),
+    );
     // On n'impose plus la pr?sence de 'listeproduit' : on accepte offre/besoin libres
     if let Some(liste) = offre.get("listeproduit").and_then(|v| v.as_array()) {
         if !liste.is_empty() {
-            data.insert("listeproduit".to_string(), serde_json::Value::Array(liste.clone()));
+            data.insert(
+                "listeproduit".to_string(),
+                serde_json::Value::Array(liste.clone()),
+            );
         }
     }
     // Ajout des produits pour la logique m?tier (matching), sans violer le sch?ma strict
     if let Some(liste) = offre.get("listeproduit").and_then(|v| v.as_array()) {
         if !liste.is_empty() {
-            data.insert("offre_produits".to_string(), serde_json::Value::Array(liste.clone()));
+            data.insert(
+                "offre_produits".to_string(),
+                serde_json::Value::Array(liste.clone()),
+            );
         }
     }
     if let Some(liste) = besoin.get("listeproduit").and_then(|v| v.as_array()) {
         if !liste.is_empty() {
-            data.insert("besoin_produits".to_string(), serde_json::Value::Array(liste.clone()));
+            data.insert(
+                "besoin_produits".to_string(),
+                serde_json::Value::Array(liste.clone()),
+            );
         }
     }
     // On n'ajoute PAS 'offre' ni 'besoin' dans le JSON transmis ? la logique m?tier !
@@ -100,11 +172,15 @@ pub async fn creer_echange(
     let besoin_nonvide = besoin_obj.map(|b| !b.is_empty()).unwrap_or(false);
     if mode == "don" {
         if (offre_nonvide && besoin_nonvide) || (!offre_nonvide && !besoin_nonvide) {
-            return Json(json!({"error": "Pour un don, il faut soit une offre seule, soit un besoin seul, mais pas les deux ni aucun."}));
+            return Json(
+                json!({"error": "Pour un don, il faut soit une offre seule, soit un besoin seul, mais pas les deux ni aucun."}),
+            );
         }
     } else if mode == "echange" {
         if !offre_nonvide || !besoin_nonvide {
-            return Json(json!({"error": "L'offre et le besoin doivent contenir au moins un bien (cl? non vide)"}));
+            return Json(
+                json!({"error": "L'offre et le besoin doivent contenir au moins un bien (cl? non vide)"}),
+            );
         }
     }
     // Appels ? traiter_echange d?sactiv?s temporairement
@@ -145,16 +221,14 @@ pub async fn get_echange_status(
                 "created_at": e.created_at,
                 "updated_at": e.updated_at
             }))
-        },
+        }
         Ok(None) => Json(json!({"error": "Echange introuvable"})),
         Err(e) => Json(json!({"error": format!("Erreur DB: {}", e)})),
     }
 }
 
 /// POST /echanges/relancer-matching ? relance le matching automatique imm?diatement (pour tests)
-pub async fn relancer_matching(
-    State(state): State<Arc<AppState>>,
-) -> Json<serde_json::Value> {
+pub async fn relancer_matching(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let _pool: &PgPool = &state.pg;
     relancer_matching_echanges_once(_pool).await;
     Json(json!({"status": "matching d?clench?"}))

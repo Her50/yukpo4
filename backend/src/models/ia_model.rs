@@ -1,16 +1,16 @@
 // src/models/ia_model.rs
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use chrono::{DateTime, Utc};
 
 /// ?? Entr?e utilisateur pour l'analyse IA
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InputIA {
     pub prompt: String,
-    pub model: Option<String>,           // ex: "openai", "mistral", "local"
-    pub lang: Option<String>,            // ex: "fr", "en"
-    pub context: Option<Value>,          // JSON libre selon l'appli (ex: user, session, etc.)
+    pub model: Option<String>,  // ex: "openai", "mistral", "local"
+    pub lang: Option<String>,   // ex: "fr", "en"
+    pub context: Option<Value>, // JSON libre selon l'appli (ex: user, session, etc.)
 }
 
 /// ?? R?ponse g?n?r?e par un moteur IA
@@ -18,8 +18,8 @@ pub struct InputIA {
 pub struct OutputIA {
     pub content: String,
     pub tokens_used: Option<u32>,
-    pub engine: Option<String>,          // ex: "openai", "mistral"
-    pub confidence: Option<f32>,         // si disponible
+    pub engine: Option<String>,  // ex: "openai", "mistral"
+    pub confidence: Option<f32>, // si disponible
     pub lang: Option<String>,
     pub cached: bool,
     pub timestamp: Option<DateTime<Utc>>,
@@ -49,7 +49,7 @@ pub struct CacheIA {
 pub struct IARequest {
     pub prompt: String,
     pub context: Option<serde_json::Value>,
-    pub engine: String, 
+    pub engine: String,
 }
 
 /// R?ponse IA simplifi?e

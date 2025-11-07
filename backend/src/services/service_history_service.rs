@@ -1,14 +1,14 @@
-use chrono::Utc;
-use sqlx::PgPool;
 use crate::core::types::{AppError, AppResult};
 use crate::models::history_model::ConsultationHistorique;
+use chrono::Utc;
+use sqlx::PgPool;
 // use crate::services::mongo_history_service::MongoHistoryService;
-use std::sync::atomic::{AtomicI64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::collections::HashMap;
-use std::sync::Mutex;
-use serde_json::json;
 use chrono::DateTime;
+use serde_json::json;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Montant unique configurable pour le pr?l?vement de tokens ? chaque clic sur un service
 /// Par d?faut?: 50 tokens Yukpo (valeur Yukpo = 100x valeur token IA externe)
@@ -32,7 +32,10 @@ pub async fn enregistrer_consultation(
     service_id: i32,
 ) -> AppResult<String> {
     // 1. Protection?: ne d?bite pas si m?me user/service < 10min
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
     let should_debit = {
         let mut last_click = LAST_CLICK.lock().unwrap();
         if let Some(&last) = last_click.get(&(user_id, service_id)) {
@@ -77,22 +80,32 @@ pub async fn enregistrer_consultation(
     let cout = TOKEN_DEBIT_PER_CLICK.load(Ordering::Relaxed);
 
     // 4. D?biter le solde du prestataire (PostgreSQL)
-    let user = sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", provider_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Internal(format!("Prestataire introuvable: {}", e)))?;
+    let user = sqlx::query!(
+        "SELECT tokens_balance FROM users WHERE id = $1",
+        provider_id
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("Prestataire introuvable: {}", e)))?;
     let nouveau_solde = user.tokens_balance - cout;
-    sqlx::query!("UPDATE users SET tokens_balance = $1 WHERE id = $2", nouveau_solde, provider_id)
-        .execute(pool)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur d?bit tokens: {}", e)))?;
+    sqlx::query!(
+        "UPDATE users SET tokens_balance = $1 WHERE id = $2",
+        nouveau_solde,
+        provider_id
+    )
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur d?bit tokens: {}", e)))?;
 
     // 5. Si solde <= 0, d?sactiver tous les services du prestataire (PostgreSQL)
     if nouveau_solde <= 0 {
-        sqlx::query!("UPDATE services SET is_active = FALSE WHERE user_id = $1", provider_id)
-            .execute(pool)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur d?sactivation services: {}", e)))?;
+        sqlx::query!(
+            "UPDATE services SET is_active = FALSE WHERE user_id = $1",
+            provider_id
+        )
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur d?sactivation services: {}", e)))?;
     }
 
     Ok("Consultation enregistr?e".to_string())
@@ -104,10 +117,10 @@ pub async fn get_consultations_utilisateur(
     _user_id: i32,
 ) -> AppResult<Vec<ConsultationHistorique>> {
     let events = Vec::new(); // Placeholder for now, as MongoHistoryService is commented out
-    // let events = mongo_history
-    //     .get_service_consultations(user_id, Some(5))
-    //     .await
-    //     .map_err(|e| AppError::Internal(format!("Erreur r?cup?ration historique MongoDB: {}", e)))?;
+                             // let events = mongo_history
+                             //     .get_service_consultations(user_id, Some(5))
+                             //     .await
+                             //     .map_err(|e| AppError::Internal(format!("Erreur r?cup?ration historique MongoDB: {}", e)))?;
 
     // Convertir les ?v?nements MongoDB en ConsultationHistorique
     let consultations: Vec<ConsultationHistorique> = events
@@ -115,9 +128,16 @@ pub async fn get_consultations_utilisateur(
         .map(|event: &serde_json::Value| {
             ConsultationHistorique {
                 id: 0, // Placeholder
-                timestamp: event.get("timestamp").and_then(|t| t.as_str()).and_then(|s| DateTime::parse_from_rfc3339(s).ok()).map(|dt| dt.with_timezone(&Utc)),
+                timestamp: event
+                    .get("timestamp")
+                    .and_then(|t| t.as_str())
+                    .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                    .map(|dt| dt.with_timezone(&Utc)),
                 user_id: event.get("user_id").and_then(|u| u.as_i64()).unwrap_or(0) as i32,
-                service_id: event.get("service_id").and_then(|s| s.as_i64()).unwrap_or(0) as i32,
+                service_id: event
+                    .get("service_id")
+                    .and_then(|s| s.as_i64())
+                    .unwrap_or(0) as i32,
             }
         })
         .collect();
@@ -132,16 +152,17 @@ pub async fn get_service_consultation_stats(
     days: Option<i64>,
 ) -> AppResult<serde_json::Value> {
     let events = Vec::new(); // Placeholder for now, as MongoHistoryService is commented out
-    // let events = mongo_history
-    //     .get_service_consultations_by_service(service_id, None)
-    //     .await
-    //     .map_err(|e| AppError::Internal(format!("Erreur r?cup?ration stats MongoDB: {}", e)))?;
+                             // let events = mongo_history
+                             //     .get_service_consultations_by_service(service_id, None)
+                             //     .await
+                             //     .map_err(|e| AppError::Internal(format!("Erreur r?cup?ration stats MongoDB: {}", e)))?;
 
     let now = Utc::now();
     let cutoff = days.map(|d| now - chrono::Duration::days(d));
 
     let filtered_events: Vec<_> = if let Some(cutoff) = cutoff {
-        events.into_iter()
+        events
+            .into_iter()
             .filter(|event: &serde_json::Value| {
                 if let Some(timestamp) = event.get("timestamp").and_then(|t| t.as_str()) {
                     if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(timestamp) {
@@ -169,12 +190,21 @@ pub async fn get_service_consultation_stats(
         users.len()
     };
 
-    let total_debits = filtered_events.iter()
+    let total_debits = filtered_events
+        .iter()
         .filter_map(|event| {
-            event.get("data").and_then(|d| d.get("debit_applied"))
+            event
+                .get("data")
+                .and_then(|d| d.get("debit_applied"))
                 .and_then(|v| v.as_bool())
                 .filter(|&applied| applied)
-                .map(|_| event.get("data").and_then(|d| d.get("token_cost")).and_then(|v| v.as_i64()).unwrap_or(0))
+                .map(|_| {
+                    event
+                        .get("data")
+                        .and_then(|d| d.get("token_cost"))
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0)
+                })
         })
         .sum::<i64>();
 

@@ -1,13 +1,12 @@
 // Routes pour les réactions sur les produits
+use crate::controllers::product_reactions_controller::{
+    get_product_reactions, toggle_product_reaction,
+};
+use crate::state::AppState;
 use axum::{
     routing::{get, post},
     Router,
 };
-use crate::controllers::product_reactions_controller::{
-    toggle_product_reaction,
-    get_product_reactions,
-};
-use crate::state::AppState;
 use std::sync::Arc;
 
 pub fn product_reactions_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {

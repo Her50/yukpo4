@@ -1,10 +1,13 @@
-use mongodb::{Client as MongoClient, bson::{doc, DateTime}, Collection};
-use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
-use std::sync::Arc;
-use chrono::Utc;
 use crate::core::types::AppResult;
+use chrono::Utc;
 use futures::TryStreamExt;
+use mongodb::{
+    bson::{doc, DateTime},
+    Client as MongoClient, Collection,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::sync::Arc;
 
 /// ??? Types d'?v?nements historis?s
 #[derive(Debug, Serialize, Deserialize)]
@@ -161,7 +164,7 @@ impl MongoHistoryService {
         limit: Option<i64>,
     ) -> AppResult<Vec<HistoryEvent>> {
         let collection = self.get_collection("history").await;
-        
+
         let filter = doc! {
             "event_type": "IAInteraction",
             "user_id": user_id,
@@ -173,8 +176,11 @@ impl MongoHistoryService {
             .map_err(|e| format!("Erreur r?cup?ration historique IA: {}", e))?;
 
         let mut events = Vec::new();
-        while let Some(doc) = cursor.try_next().await
-            .map_err(|e| format!("Erreur it?ration historique: {}", e))? {
+        while let Some(doc) = cursor
+            .try_next()
+            .await
+            .map_err(|e| format!("Erreur it?ration historique: {}", e))?
+        {
             if let Ok(event) = mongodb::bson::from_document::<HistoryEvent>(doc) {
                 events.push(event);
             }
@@ -192,7 +198,7 @@ impl MongoHistoryService {
     /// ?? R?cup?rer les statistiques de feedback
     pub async fn get_feedback_stats(&self, model_used: Option<&str>) -> AppResult<Value> {
         let collection = self.get_collection("history").await;
-        
+
         let mut pipeline = vec![
             doc! { "$match": { "event_type": "Feedback" } },
             doc! {
@@ -207,7 +213,7 @@ impl MongoHistoryService {
                         "$sum": { "$cond": [{ "$lte": ["$data.rating", 2] }, 1, 0] }
                     }
                 }
-            }
+            },
         ];
 
         if let Some(model) = model_used {
@@ -225,8 +231,11 @@ impl MongoHistoryService {
             .map_err(|e| format!("Erreur agr?gation feedback: {}", e))?;
 
         let mut stats = serde_json::Map::new();
-        while let Some(doc) = cursor.try_next().await
-            .map_err(|e| format!("Erreur it?ration stats: {}", e))? {
+        while let Some(doc) = cursor
+            .try_next()
+            .await
+            .map_err(|e| format!("Erreur it?ration stats: {}", e))?
+        {
             if let Ok(bson) = mongodb::bson::to_bson(&doc) {
                 if let Ok(json) = serde_json::to_value(bson) {
                     if let Some(model) = json["_id"].as_str() {
@@ -242,11 +251,12 @@ impl MongoHistoryService {
     /// ?? Nettoyer les anciens ?v?nements
     pub async fn cleanup_old_events(&self, days_old: i64) -> AppResult<u64> {
         let collection = self.get_collection("history").await;
-        
+
         let cutoff_date = DateTime::from_system_time(
-            std::time::SystemTime::now() - std::time::Duration::from_secs((days_old * 24 * 60 * 60) as u64)
+            std::time::SystemTime::now()
+                - std::time::Duration::from_secs((days_old * 24 * 60 * 60) as u64),
         );
-        
+
         let filter = doc! {
             "timestamp": { "$lt": cutoff_date }
         };
@@ -262,7 +272,7 @@ impl MongoHistoryService {
     /// ?? Ins?rer un ?v?nement dans la collection
     async fn insert_event(&self, event: HistoryEvent) -> AppResult<()> {
         let collection = self.get_collection("history").await;
-        
+
         let doc = mongodb::bson::to_document(&event)
             .map_err(|e| format!("Erreur s?rialisation ?v?nement: {}", e))?;
 
@@ -275,7 +285,10 @@ impl MongoHistoryService {
     }
 
     /// ??? Obtenir la collection history
-    pub async fn get_collection(&self, collection_name: &str) -> Collection<mongodb::bson::Document> {
+    pub async fn get_collection(
+        &self,
+        collection_name: &str,
+    ) -> Collection<mongodb::bson::Document> {
         self.client
             .database(&self.database_name)
             .collection::<mongodb::bson::Document>(collection_name)
@@ -311,7 +324,7 @@ impl MongoHistoryService {
         limit: Option<i64>,
     ) -> AppResult<Vec<HistoryEvent>> {
         let collection = self.get_collection("history").await;
-        
+
         let filter = doc! {
             "event_type": "UserAction",
             "user_id": user_id,
@@ -324,8 +337,11 @@ impl MongoHistoryService {
             .map_err(|e| format!("Erreur r?cup?ration consultations: {}", e))?;
 
         let mut events = Vec::new();
-        while let Some(doc) = cursor.try_next().await
-            .map_err(|e| format!("Erreur it?ration consultations: {}", e))? {
+        while let Some(doc) = cursor
+            .try_next()
+            .await
+            .map_err(|e| format!("Erreur it?ration consultations: {}", e))?
+        {
             if let Ok(event) = mongodb::bson::from_document::<HistoryEvent>(doc) {
                 events.push(event);
             }
@@ -347,7 +363,7 @@ impl MongoHistoryService {
         limit: Option<i64>,
     ) -> AppResult<Vec<HistoryEvent>> {
         let collection = self.get_collection("history").await;
-        
+
         let filter = doc! {
             "event_type": "UserAction",
             "service_id": service_id,
@@ -360,8 +376,11 @@ impl MongoHistoryService {
             .map_err(|e| format!("Erreur r?cup?ration consultations service: {}", e))?;
 
         let mut events = Vec::new();
-        while let Some(doc) = cursor.try_next().await
-            .map_err(|e| format!("Erreur it?ration consultations service: {}", e))? {
+        while let Some(doc) = cursor
+            .try_next()
+            .await
+            .map_err(|e| format!("Erreur it?ration consultations service: {}", e))?
+        {
             if let Ok(event) = mongodb::bson::from_document::<HistoryEvent>(doc) {
                 events.push(event);
             }
@@ -379,13 +398,13 @@ impl MongoHistoryService {
     /// ?? R?cup?rer les statistiques globales de consultations
     pub async fn get_global_consultation_stats(&self, days: Option<i64>) -> AppResult<Value> {
         let collection = self.get_collection("history").await;
-        
+
         let mut pipeline = vec![
-            doc! { 
-                "$match": { 
+            doc! {
+                "$match": {
                     "event_type": "UserAction",
                     "metadata.action_type": "service_consultation"
-                } 
+                }
             },
             doc! {
                 "$group": {
@@ -412,12 +431,13 @@ impl MongoHistoryService {
                     "unique_services": { "$size": "$unique_services" },
                     "total_debits": 1
                 }
-            }
+            },
         ];
 
         if let Some(days) = days {
             let cutoff_date = DateTime::from_system_time(
-                std::time::SystemTime::now() - std::time::Duration::from_secs((days * 24 * 60 * 60) as u64)
+                std::time::SystemTime::now()
+                    - std::time::Duration::from_secs((days * 24 * 60 * 60) as u64),
             );
             pipeline[0] = doc! {
                 "$match": {
@@ -434,8 +454,11 @@ impl MongoHistoryService {
             .map_err(|e| format!("Erreur agr?gation stats globales: {}", e))?;
 
         let mut stats = serde_json::Map::new();
-        if let Some(doc) = cursor.try_next().await
-            .map_err(|e| format!("Erreur it?ration stats globales: {}", e))? {
+        if let Some(doc) = cursor
+            .try_next()
+            .await
+            .map_err(|e| format!("Erreur it?ration stats globales: {}", e))?
+        {
             if let Ok(bson) = mongodb::bson::to_bson(&doc) {
                 if let Ok(json) = serde_json::to_value(bson) {
                     stats = json.as_object().unwrap().clone();
@@ -445,4 +468,4 @@ impl MongoHistoryService {
 
         Ok(serde_json::Value::Object(stats))
     }
-} 
+}

@@ -1,13 +1,13 @@
-pub mod prompt_manager;
 pub mod intention_detector;
+pub mod prompt_manager;
 
-use std::sync::Arc;
+use crate::core::types::AppResult;
+use crate::models::input_model::MultiModalInput;
+use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
-use serde_json::{Value, json};
-use crate::core::types::{AppResult};
-use crate::models::input_model::MultiModalInput;
 // use crate::models::service_model::Service;
 // use crate::models::user_model::User;
 use crate::services::app_ia::AppIA;
@@ -58,7 +58,7 @@ impl OptimizedIAService {
         let intention_detector = IntentionDetector::new(app_ia.clone()).await?;
         let prompt_manager = PromptManager::new().await?;
         let semantic_cache = SemanticCache::new_default();
-        
+
         Ok(Self {
             app_ia,
             intention_detector,
@@ -67,80 +67,115 @@ impl OptimizedIAService {
             semantic_cache: Arc::new(semantic_cache),
         })
     }
-    
+
     /// Traite une demande utilisateur avec l'architecture optimis?e ET MESURES DE TEMPS D?TAILL?ES
     pub async fn process_user_request(&self, input: &MultiModalInput) -> AppResult<Value> {
         let start_time = std::time::Instant::now();
-        
+
         // 1. Extraire le texte de la demande
         let step1_start = std::time::Instant::now();
         let user_text = self.extract_user_text(input);
         let step1_time = step1_start.elapsed();
-        log::info!("[OptimizedIAService][TIMING] ?tape 1 - Extraction texte: {:?}", step1_time);
-        
+        log::info!(
+            "[OptimizedIAService][TIMING] ?tape 1 - Extraction texte: {:?}",
+            step1_time
+        );
+
         // 2. D?tecter l'intention (PREMIER APPEL IA)
         let step2_start = std::time::Instant::now();
-        let (intention, tokens_detection_reels) = self.intention_detector.detect_intention(&user_text).await?;
+        let (intention, tokens_detection_reels) =
+            self.intention_detector.detect_intention(&user_text).await?;
         let step2_time = step2_start.elapsed();
-        log::info!("[OptimizedIAService][TIMING] ?tape 2 - D?tection intention: {:?} -> {}", step2_time, intention);
-        
+        log::info!(
+            "[OptimizedIAService][TIMING] ?tape 2 - D?tection intention: {:?} -> {}",
+            step2_time,
+            intention
+        );
+
         // ? OPTIMISATION : V?rifier le cache exact en premier
         let step3_start = std::time::Instant::now();
         let cache_key = format!("{}:{}", user_text, intention);
         if let Some(cached) = self.get_cached_response(&cache_key).await {
             let step3_time = step3_start.elapsed();
-            log::info!("[OptimizedIAService] ? Cache exact hit en {:?}!", step3_time);
+            log::info!(
+                "[OptimizedIAService] ? Cache exact hit en {:?}!",
+                step3_time
+            );
             return Ok(cached);
         }
         let step3_time = step3_start.elapsed();
-        log::info!("[OptimizedIAService][TIMING] ?tape 3 - V?rification cache exact: {:?} (miss)", step3_time);
-        
+        log::info!(
+            "[OptimizedIAService][TIMING] ?tape 3 - V?rification cache exact: {:?} (miss)",
+            step3_time
+        );
+
         // 3. V?rification cache s?mantique avec timeout ?quilibr?
         let step4_start = std::time::Instant::now();
         let semantic_result = tokio::time::timeout(
             Duration::from_millis(1500), // Timeout ?quilibr? : 1.5s pour la pr?cision
-            self.semantic_cache.get_semantic_cache(&user_text, &intention)
-        ).await;
+            self.semantic_cache
+                .get_semantic_cache(&user_text, &intention),
+        )
+        .await;
         let step4_time = step4_start.elapsed();
-        log::info!("[OptimizedIAService][TIMING] ?tape 4 - V?rification cache s?mantique: {:?}", step4_time);
-        
+        log::info!(
+            "[OptimizedIAService][TIMING] ?tape 4 - V?rification cache s?mantique: {:?}",
+            step4_time
+        );
+
         // 4. Si cache s?mantique trouv? rapidement, l'utiliser
         if let Ok(Ok(Some(cached_response))) = semantic_result {
             log::info!("[OptimizedIAService] ? Cache s?mantique hit - r?ponse rapide!");
-            
+
             let parsed_json = serde_json::from_str(&cached_response)?;
-            
+
             // Mise en cache en arri?re-plan (non-bloquant)
             let _cache_key_cloned = cache_key.clone();
             let semantic_cache_cloned = self.semantic_cache.clone();
             let user_text_cloned = user_text.clone();
             let intention_cloned = intention.clone();
-            
+
             tokio::spawn(async move {
-                let _ = semantic_cache_cloned.store_semantic_cache(&user_text_cloned, &intention_cloned, &cached_response).await;
+                let _ = semantic_cache_cloned
+                    .store_semantic_cache(&user_text_cloned, &intention_cloned, &cached_response)
+                    .await;
             });
-            
+
             return Ok(parsed_json);
         }
-        
+
         // 5. G?n?ration prompt optimis?
         let step5_start = std::time::Instant::now();
-        let enriched_prompt = self.prompt_manager.get_optimized_prompt(&intention, &user_text).await;
+        let enriched_prompt = self
+            .prompt_manager
+            .get_optimized_prompt(&intention, &user_text)
+            .await;
         let step5_time = step5_start.elapsed();
-        log::info!("[OptimizedIAService][TIMING] ?tape 5 - G?n?ration prompt: {:?}", step5_time);
-        
+        log::info!(
+            "[OptimizedIAService][TIMING] ?tape 5 - G?n?ration prompt: {:?}",
+            step5_time
+        );
+
         // 6. Appel IA externe (DEUXI?ME APPEL IA) - Multimodal si images présentes
         let step6_start = std::time::Instant::now();
-        let (json_response, model_name, tokens_used) = if input.base64_image.is_some() && !input.base64_image.as_ref().unwrap().is_empty() {
+        let (json_response, model_name, tokens_used) = if input.base64_image.is_some()
+            && !input.base64_image.as_ref().unwrap().is_empty()
+        {
             log::info!("[OptimizedIAService] Images détectées, utilisation de predict_multimodal");
-            self.app_ia.predict_multimodal(&enriched_prompt, input.base64_image.clone()).await?
+            self.app_ia
+                .predict_multimodal(&enriched_prompt, input.base64_image.clone())
+                .await?
         } else {
             log::info!("[OptimizedIAService] Aucune image, utilisation de predict standard");
             self.app_ia.predict(&enriched_prompt).await?
         };
         let step6_time = step6_start.elapsed();
-        log::info!("[OptimizedIAService][TIMING] ?tape 6 - Appel IA externe: {:?} ({} tokens)", step6_time, tokens_used);
-        
+        log::info!(
+            "[OptimizedIAService][TIMING] ?tape 6 - Appel IA externe: {:?} ({} tokens)",
+            step6_time,
+            tokens_used
+        );
+
         // 7. Nettoyage et parsing
         let step7_start = std::time::Instant::now();
         let cleaned_json = json_response
@@ -148,12 +183,15 @@ impl OptimizedIAService {
             .replace("```", "")
             .trim()
             .to_string();
-        
+
         let parsed_json: Value = serde_json::from_str(&cleaned_json)
             .map_err(|e| format!("Erreur parsing JSON: {}", e))?;
         let step7_time = step7_start.elapsed();
-        log::info!("[OptimizedIAService][TIMING] ?tape 7 - Nettoyage et parsing: {:?}", step7_time);
-        
+        log::info!(
+            "[OptimizedIAService][TIMING] ?tape 7 - Nettoyage et parsing: {:?}",
+            step7_time
+        );
+
         // 8. Mise en cache en arri?re-plan (non-bloquant pour UX)
         let cache_key_cloned = cache_key.clone();
         let parsed_json_cloned = parsed_json.clone();
@@ -166,7 +204,10 @@ impl OptimizedIAService {
         tokio::spawn(async move {
             // Cache exact
             let mut cache = response_cache_cloned.write().await;
-            cache.insert(cache_key_cloned, CachedResponse::new(parsed_json_cloned, 3600));
+            cache.insert(
+                cache_key_cloned,
+                CachedResponse::new(parsed_json_cloned, 3600),
+            );
 
             // Cache s?mantique en arri?re-plan
             let semantic_start = std::time::Instant::now();
@@ -175,103 +216,144 @@ impl OptimizedIAService {
             let cleaned_json_owned = cleaned_json_cloned.clone();
             match tokio::time::timeout(
                 Duration::from_secs(2),
-                semantic_cache_cloned.store_semantic_cache(&user_text_owned, &intention_owned, &cleaned_json_owned)
-            ).await {
+                semantic_cache_cloned.store_semantic_cache(
+                    &user_text_owned,
+                    &intention_owned,
+                    &cleaned_json_owned,
+                ),
+            )
+            .await
+            {
                 Ok(Ok(())) => {
-                    log::info!("[BackgroundTasks] ? Cache s?mantique mis ? jour en {:?}", semantic_start.elapsed());
-                },
+                    log::info!(
+                        "[BackgroundTasks] ? Cache s?mantique mis ? jour en {:?}",
+                        semantic_start.elapsed()
+                    );
+                }
                 Ok(Err(e)) => {
                     log::warn!("[BackgroundTasks] ?? Erreur cache s?mantique: {}", e);
-                },
+                }
                 Err(_) => {
                     log::warn!("[BackgroundTasks] ? Timeout cache s?mantique (2s)");
                 }
             }
         });
-        
+
         let total_time = start_time.elapsed();
-        log::info!("[OptimizedIAService] ? Traitement parall?le termin? en {:?}", total_time);
-        
+        log::info!(
+            "[OptimizedIAService] ? Traitement parall?le termin? en {:?}",
+            total_time
+        );
+
         // ?? R?cup?rer l'intention finale depuis la r?ponse IA (peut ?tre diff?rente de l'intention d?tect?e)
-        let intention_finale = parsed_json.get("intention")
+        let intention_finale = parsed_json
+            .get("intention")
             .and_then(|v| v.as_str())
             .unwrap_or(&intention)
             .to_string();
-        
+
         // ?? Calculer les tokens totaux (d?tection d'intention + g?n?ration de r?ponse)
         let tokens_totaux = tokens_detection_reels + tokens_used;
-        
-        log::info!("[OptimizedIAService] ?? Tokens totaux: {} (d?tection: {} + g?n?ration: {})", 
-                  tokens_totaux, tokens_detection_reels, tokens_used);
-        log::info!("[OptimizedIAService] ?? Intention finale: {} (d?tect?e: {})", intention_finale, intention);
-        
+
+        log::info!(
+            "[OptimizedIAService] ?? Tokens totaux: {} (d?tection: {} + g?n?ration: {})",
+            tokens_totaux,
+            tokens_detection_reels,
+            tokens_used
+        );
+        log::info!(
+            "[OptimizedIAService] ?? Intention finale: {} (d?tect?e: {})",
+            intention_finale,
+            intention
+        );
+
         // Ajouter les tokens consomm?s au r?sultat
         let mut final_result = parsed_json;
         if let Some(obj) = final_result.as_object_mut() {
             obj.insert("tokens_consumed".to_string(), json!(tokens_totaux));
-            obj.insert("tokens_breakdown".to_string(), json!({
-                "detection": tokens_detection_reels,
-                "generation": tokens_used,
-                "total": tokens_totaux
-            }));
+            obj.insert(
+                "tokens_breakdown".to_string(),
+                json!({
+                    "detection": tokens_detection_reels,
+                    "generation": tokens_used,
+                    "total": tokens_totaux
+                }),
+            );
             obj.insert("intention".to_string(), json!(intention_finale));
             obj.insert("model_used".to_string(), json!(model_name));
-            obj.insert("processing_time_ms".to_string(), json!(total_time.as_millis()));
+            obj.insert(
+                "processing_time_ms".to_string(),
+                json!(total_time.as_millis()),
+            );
         }
-        
+
         Ok(final_result)
     }
-    
+
     /// Traite une demande utilisateur avec r?ponse imm?diate au frontend + traitements en arri?re-plan
-    pub async fn process_user_request_immediate_response(&self, input: &MultiModalInput) -> AppResult<Value> {
+    pub async fn process_user_request_immediate_response(
+        &self,
+        input: &MultiModalInput,
+    ) -> AppResult<Value> {
         let start_time = std::time::Instant::now();
-        
+
         // 1. Extraction texte (rapide)
         let user_text = self.extract_user_text(input);
-        
+
         // 2. D?tection intention (rapide) - PREMIER APPEL IA
-        let (intention, tokens_detection_reels) = self.intention_detector.detect_intention(&user_text).await?;
-        
+        let (intention, tokens_detection_reels) =
+            self.intention_detector.detect_intention(&user_text).await?;
+
         // 3. V?rification cache exact (tr?s rapide)
         let cache_key = format!("{}:{}", user_text, intention);
         if let Some(cached) = self.get_cached_response(&cache_key).await {
             log::info!("[OptimizedIAService] ? Cache exact hit - r?ponse imm?diate!");
-            
+
             // Traitements en arri?re-plan (non-bloquant)
-            self.spawn_background_tasks(&cache_key, &user_text, &intention, &cached).await;
-            
+            self.spawn_background_tasks(&cache_key, &user_text, &intention, &cached)
+                .await;
+
             return Ok(cached);
         }
-        
+
         // 4. V?rification cache s?mantique avec timeout ?quilibr?
         let semantic_result = tokio::time::timeout(
             Duration::from_millis(1500),
-            self.semantic_cache.get_semantic_cache(&user_text, &intention)
-        ).await;
-        
+            self.semantic_cache
+                .get_semantic_cache(&user_text, &intention),
+        )
+        .await;
+
         // 5. Si cache s?mantique trouv? rapidement, l'utiliser
         if let Ok(Ok(Some(cached_response))) = semantic_result {
             log::info!("[OptimizedIAService] ? Cache s?mantique hit - r?ponse rapide!");
-            
+
             let parsed_json = serde_json::from_str(&cached_response)?;
-            
+
             // Traitements en arri?re-plan (non-bloquant)
-            self.spawn_background_tasks(&cache_key, &user_text, &intention, &parsed_json).await;
-            
+            self.spawn_background_tasks(&cache_key, &user_text, &intention, &parsed_json)
+                .await;
+
             return Ok(parsed_json);
         }
-        
+
         // 6. G?n?ration prompt
-        let enriched_prompt = self.prompt_manager.get_optimized_prompt(&intention, &user_text).await;
-        
+        let enriched_prompt = self
+            .prompt_manager
+            .get_optimized_prompt(&intention, &user_text)
+            .await;
+
         // 7. Appel IA externe (le plus long) - Support multimodal UNIFI? - DEUXI?ME APPEL IA
         let (json_response, model_name, tokens_used) = {
             // ?? APPROCHE OPTIMALE : Convertir tous les modaux en images + un seul appel IA
             let all_images = convert_all_modals_to_images(input).await;
-            
+
             if !all_images.is_empty() {
-                log::info!("[OptimizedIAService] ??? Pipeline multimodal unifi? avec {} images", all_images.len());
-                
+                log::info!(
+                    "[OptimizedIAService] ??? Pipeline multimodal unifi? avec {} images",
+                    all_images.len()
+                );
+
                 // Prompt optimis? pour extraction structur?e de tous les modaux
                 let multimodal_prompt = format!(
                     r#"
@@ -335,110 +417,148 @@ impl OptimizedIAService {
                     R?PONSE UNIQUEMENT EN JSON VALIDE (pas de texte avant/apr?s).
                     "#
                 );
-                
-                self.app_ia.predict_multimodal(&multimodal_prompt, Some(all_images)).await?
+
+                self.app_ia
+                    .predict_multimodal(&multimodal_prompt, Some(all_images))
+                    .await?
             } else {
                 // Fallback : appel textuel classique
                 self.app_ia.predict(&enriched_prompt).await?
             }
         };
-        
+
         // 8. Nettoyage et parsing
         let cleaned_json = json_response
             .replace("```json", "")
             .replace("```", "")
             .trim()
             .to_string();
-        
+
         let parsed_json: Value = serde_json::from_str(&cleaned_json)
             .map_err(|e| format!("Erreur parsing JSON: {}", e))?;
-        
+
         // 9. R?PONSE IMM?DIATE AU FRONTEND
-        log::info!("[OptimizedIAService] ? R?ponse imm?diate au frontend en {:?}", start_time.elapsed());
-        
+        log::info!(
+            "[OptimizedIAService] ? R?ponse imm?diate au frontend en {:?}",
+            start_time.elapsed()
+        );
+
         // ?? R?cup?rer l'intention finale depuis la r?ponse IA (peut ?tre diff?rente de l'intention d?tect?e)
-        let intention_finale = parsed_json.get("intention")
+        let intention_finale = parsed_json
+            .get("intention")
             .and_then(|v| v.as_str())
             .unwrap_or(&intention)
             .to_string();
-        
+
         // ?? Calculer les tokens totaux (d?tection d'intention + g?n?ration de r?ponse)
         let tokens_totaux = tokens_detection_reels + tokens_used;
-        
-        log::info!("[OptimizedIAService] ?? Tokens totaux: {} (d?tection: {} + g?n?ration: {})", 
-                  tokens_totaux, tokens_detection_reels, tokens_used);
-        log::info!("[OptimizedIAService] ?? Intention finale: {} (d?tect?e: {})", intention_finale, intention);
-        
+
+        log::info!(
+            "[OptimizedIAService] ?? Tokens totaux: {} (d?tection: {} + g?n?ration: {})",
+            tokens_totaux,
+            tokens_detection_reels,
+            tokens_used
+        );
+        log::info!(
+            "[OptimizedIAService] ?? Intention finale: {} (d?tect?e: {})",
+            intention_finale,
+            intention
+        );
+
         // Ajouter les tokens consomm?s au r?sultat
         let mut final_result = parsed_json;
         if let Some(obj) = final_result.as_object_mut() {
             obj.insert("tokens_consumed".to_string(), json!(tokens_totaux));
-            obj.insert("tokens_breakdown".to_string(), json!({
-                "detection": tokens_detection_reels,
-                "generation": tokens_used,
-                "total": tokens_totaux
-            }));
+            obj.insert(
+                "tokens_breakdown".to_string(),
+                json!({
+                    "detection": tokens_detection_reels,
+                    "generation": tokens_used,
+                    "total": tokens_totaux
+                }),
+            );
             obj.insert("intention".to_string(), json!(intention_finale));
             obj.insert("model_used".to_string(), json!(model_name));
-            obj.insert("processing_time_ms".to_string(), json!(start_time.elapsed().as_millis()));
+            obj.insert(
+                "processing_time_ms".to_string(),
+                json!(start_time.elapsed().as_millis()),
+            );
         }
-        
+
         // 10. Traitements en arri?re-plan (non-bloquant pour UX)
-        self.spawn_background_tasks(&cache_key, &user_text, &intention, &final_result).await;
-        
+        self.spawn_background_tasks(&cache_key, &user_text, &intention, &final_result)
+            .await;
+
         Ok(final_result)
     }
-    
+
     /// ?? Traitement utilisateur avec optimisations GPU
-    pub async fn process_user_request_gpu_optimized(&self, input: &MultiModalInput, gpu_optimizer: &crate::services::gpu_optimizer::GPUOptimizer) -> AppResult<Value> {
+    pub async fn process_user_request_gpu_optimized(
+        &self,
+        input: &MultiModalInput,
+        gpu_optimizer: &crate::services::gpu_optimizer::GPUOptimizer,
+    ) -> AppResult<Value> {
         let start_time = std::time::Instant::now();
-        
+
         // 1. Extraction texte (rapide)
         let user_text = self.extract_user_text(input);
-        
+
         // 2. D?tection intention (rapide) - PREMIER APPEL IA
-        let (intention, tokens_detection_reels) = self.intention_detector.detect_intention(&user_text).await?;
-        
+        let (intention, tokens_detection_reels) =
+            self.intention_detector.detect_intention(&user_text).await?;
+
         // 3. V?rification cache exact (tr?s rapide)
         let cache_key = format!("{}:{}", user_text, intention);
         if let Some(cached) = self.get_cached_response(&cache_key).await {
             log::info!("[OptimizedIAService] ? Cache exact hit - r?ponse imm?diate!");
-            
+
             // Traitements en arri?re-plan (non-bloquant)
-            self.spawn_background_tasks(&cache_key, &user_text, &intention, &cached).await;
-            
+            self.spawn_background_tasks(&cache_key, &user_text, &intention, &cached)
+                .await;
+
             return Ok(cached);
         }
-        
+
         // 4. V?rification cache s?mantique avec timeout ?quilibr?
         let semantic_result = tokio::time::timeout(
             Duration::from_millis(1500),
-            self.semantic_cache.get_semantic_cache(&user_text, &intention)
-        ).await;
-        
+            self.semantic_cache
+                .get_semantic_cache(&user_text, &intention),
+        )
+        .await;
+
         // 5. Si cache s?mantique trouv? rapidement, l'utiliser
         if let Ok(Ok(Some(cached_response))) = semantic_result {
             log::info!("[OptimizedIAService] ? Cache s?mantique hit - r?ponse rapide!");
-            
+
             let parsed_json = serde_json::from_str(&cached_response)?;
-            
+
             // Traitements en arri?re-plan (non-bloquant)
-            self.spawn_background_tasks(&cache_key, &user_text, &intention, &parsed_json).await;
-            
+            self.spawn_background_tasks(&cache_key, &user_text, &intention, &parsed_json)
+                .await;
+
             return Ok(parsed_json);
         }
-        
+
         // 6. G?n?ration prompt
-        let enriched_prompt = self.prompt_manager.get_optimized_prompt(&intention, &user_text).await;
-        
+        let enriched_prompt = self
+            .prompt_manager
+            .get_optimized_prompt(&intention, &user_text)
+            .await;
+
         // 7. Appel IA externe avec optimisations GPU - Support multimodal UNIFI? - DEUXI?ME APPEL IA
         let (json_response, model_name, tokens_used) = {
             // ?? APPROCHE OPTIMALE GPU : Convertir tous les modaux en images optimis?es + un seul appel IA
-            let all_images = gpu_optimizer.convert_all_modals_to_images_optimized(input).await;
-            
+            let all_images = gpu_optimizer
+                .convert_all_modals_to_images_optimized(input)
+                .await;
+
             if !all_images.is_empty() {
-                log::info!("[OptimizedIAService] ??? Pipeline multimodal GPU unifi? avec {} images", all_images.len());
-                
+                log::info!(
+                    "[OptimizedIAService] ??? Pipeline multimodal GPU unifi? avec {} images",
+                    all_images.len()
+                );
+
                 // Prompt optimis? pour extraction structur?e de tous les modaux
                 let multimodal_prompt = format!(
                     r#"
@@ -502,85 +622,119 @@ impl OptimizedIAService {
                     R?PONSE UNIQUEMENT EN JSON VALIDE (pas de texte avant/apr?s).
                     "#
                 );
-                
-                self.app_ia.predict_multimodal(&multimodal_prompt, Some(all_images)).await?
+
+                self.app_ia
+                    .predict_multimodal(&multimodal_prompt, Some(all_images))
+                    .await?
             } else {
                 // Fallback : appel textuel classique
                 self.app_ia.predict(&enriched_prompt).await?
             }
         };
-        
+
         // 8. Nettoyage et parsing
         let cleaned_json = json_response
             .replace("```json", "")
             .replace("```", "")
             .trim()
             .to_string();
-        
+
         let parsed_json: Value = serde_json::from_str(&cleaned_json)
             .map_err(|e| format!("Erreur parsing JSON: {}", e))?;
-        
+
         // 9. R?PONSE IMM?DIATE AU FRONTEND
-        log::info!("[OptimizedIAService] ? R?ponse GPU imm?diate au frontend en {:?}", start_time.elapsed());
-        
+        log::info!(
+            "[OptimizedIAService] ? R?ponse GPU imm?diate au frontend en {:?}",
+            start_time.elapsed()
+        );
+
         // ?? R?cup?rer l'intention finale depuis la r?ponse IA (peut ?tre diff?rente de l'intention d?tect?e)
-        let intention_finale = parsed_json.get("intention")
+        let intention_finale = parsed_json
+            .get("intention")
             .and_then(|v| v.as_str())
             .unwrap_or(&intention)
             .to_string();
-        
+
         // ?? Calculer les tokens totaux (d?tection d'intention + g?n?ration de r?ponse)
         let tokens_totaux = tokens_detection_reels + tokens_used;
-        
-        log::info!("[OptimizedIAService] ?? Tokens totaux GPU: {} (d?tection: {} + g?n?ration: {})", 
-                  tokens_totaux, tokens_detection_reels, tokens_used);
-        log::info!("[OptimizedIAService] ?? Intention finale: {} (d?tect?e: {})", intention_finale, intention);
-        
+
+        log::info!(
+            "[OptimizedIAService] ?? Tokens totaux GPU: {} (d?tection: {} + g?n?ration: {})",
+            tokens_totaux,
+            tokens_detection_reels,
+            tokens_used
+        );
+        log::info!(
+            "[OptimizedIAService] ?? Intention finale: {} (d?tect?e: {})",
+            intention_finale,
+            intention
+        );
+
         // Ajouter les tokens consomm?s au r?sultat
         let mut final_result = parsed_json;
         if let Some(obj) = final_result.as_object_mut() {
             obj.insert("tokens_consumed".to_string(), json!(tokens_totaux));
-            obj.insert("tokens_breakdown".to_string(), json!({
-                "detection": tokens_detection_reels,
-                "generation": tokens_used,
-                "total": tokens_totaux
-            }));
+            obj.insert(
+                "tokens_breakdown".to_string(),
+                json!({
+                    "detection": tokens_detection_reels,
+                    "generation": tokens_used,
+                    "total": tokens_totaux
+                }),
+            );
             obj.insert("intention".to_string(), json!(intention_finale));
             obj.insert("model_used".to_string(), json!(model_name));
-            obj.insert("processing_time_ms".to_string(), json!(start_time.elapsed().as_millis()));
+            obj.insert(
+                "processing_time_ms".to_string(),
+                json!(start_time.elapsed().as_millis()),
+            );
             obj.insert("gpu_optimized".to_string(), json!(true));
             obj.insert("optimization_level".to_string(), json!("high"));
         }
-        
+
         // 10. Traitements en arri?re-plan (non-bloquant pour UX)
-        self.spawn_background_tasks(&cache_key, &user_text, &intention, &final_result).await;
-        
+        self.spawn_background_tasks(&cache_key, &user_text, &intention, &final_result)
+            .await;
+
         Ok(final_result)
     }
-    
+
     /// ?? NOUVEAU : Traite du texte brut pour générer un JSON de service structuré
     pub async fn process_text_to_service_json(&self, user_text: &str) -> AppResult<Value> {
-        log::info!("[OptimizedIAService] ?? Traitement du texte brut: {}", user_text);
-        
+        log::info!(
+            "[OptimizedIAService] ?? Traitement du texte brut: {}",
+            user_text
+        );
+
         // 1. Détecter l'intention (rapide)
-        let (intention, _tokens_detection) = self.intention_detector.detect_intention(user_text).await?;
+        let (intention, _tokens_detection) =
+            self.intention_detector.detect_intention(user_text).await?;
         log::info!("[OptimizedIAService] ?? Intention détectée: {}", intention);
-        
+
         // 2. Vérifier si c'est bien une création de service
         if intention != "creation_service" {
-            return Err(crate::core::types::AppError::BadRequest(
-                format!("Le texte '{}' ne correspond pas à une création de service. Intention détectée: {}", user_text, intention)
-            ));
+            return Err(crate::core::types::AppError::BadRequest(format!(
+                "Le texte '{}' ne correspond pas à une création de service. Intention détectée: {}",
+                user_text, intention
+            )));
         }
-        
+
         // 3. Générer le prompt de création de service
-        let enriched_prompt = self.prompt_manager.get_optimized_prompt(&intention, user_text).await;
+        let enriched_prompt = self
+            .prompt_manager
+            .get_optimized_prompt(&intention, user_text)
+            .await;
         log::info!("[OptimizedIAService] ?? Prompt généré pour création de service");
-        
+
         // 4. Appeler l'IA pour générer le JSON structuré
-        let (json_response, model_name, tokens_used) = self.app_ia.predict(&enriched_prompt).await?;
-        log::info!("[OptimizedIAService] ?? Réponse IA reçue ({} tokens, modèle: {})", tokens_used, model_name);
-        
+        let (json_response, model_name, tokens_used) =
+            self.app_ia.predict(&enriched_prompt).await?;
+        log::info!(
+            "[OptimizedIAService] ?? Réponse IA reçue ({} tokens, modèle: {})",
+            tokens_used,
+            model_name
+        );
+
         // 5. Extraire le JSON des backticks si présent
         let json_response_clean = if json_response.contains("```json") {
             let start = json_response.find("```json").unwrap_or(0) + 7;
@@ -593,38 +747,50 @@ impl OptimizedIAService {
         } else {
             json_response.trim()
         };
-        
-        log::info!("[OptimizedIAService] ?? JSON extrait: {}", json_response_clean);
-        
+
+        log::info!(
+            "[OptimizedIAService] ?? JSON extrait: {}",
+            json_response_clean
+        );
+
         // 6. Parser la réponse JSON
         let parsed_json: Value = serde_json::from_str(json_response_clean).map_err(|e| {
             log::error!("[OptimizedIAService] ?? Erreur parsing JSON: {}", e);
             log::error!("[OptimizedIAService] ?? JSON reçu: {}", json_response_clean);
             crate::core::types::AppError::BadRequest(format!("Réponse IA invalide: {}", e))
         })?;
-        
+
         // 7. Ajouter les tokens consommés pour tracking
         let mut final_json = parsed_json.clone();
         if let Some(obj) = final_json.as_object_mut() {
-            obj.insert("tokens_consumed".to_string(), Value::Number(tokens_used.into()));
+            obj.insert(
+                "tokens_consumed".to_string(),
+                Value::Number(tokens_used.into()),
+            );
         }
-        
+
         log::info!("[OptimizedIAService] ?? JSON final généré avec succès");
         Ok(final_json)
     }
-    
+
     /// Lance les traitements en arri?re-plan (non-bloquant)
-    async fn spawn_background_tasks(&self, cache_key: &str, user_text: &str, intention: &str, result: &Value) {
+    async fn spawn_background_tasks(
+        &self,
+        cache_key: &str,
+        user_text: &str,
+        intention: &str,
+        result: &Value,
+    ) {
         let cache_key = cache_key.to_string();
         let _user_text = user_text.to_string();
         let _intention = intention.to_string();
         let result_cloned = result.clone();
         let semantic_cache = self.semantic_cache.clone();
         let response_cache = self.response_cache.clone();
-        
+
         tokio::spawn(async move {
             log::info!("[BackgroundTasks] ?? D?marrage des traitements en arri?re-plan");
-            
+
             // 1. Mise en cache exact
             let cache_start = std::time::Instant::now();
             {
@@ -632,8 +798,11 @@ impl OptimizedIAService {
                 let cached_response = CachedResponse::new(result_cloned.clone(), 3600); // 1 heure
                 cache.insert(cache_key.clone(), cached_response);
             }
-            log::info!("[BackgroundTasks] ? Cache exact mis ? jour en {:?}", cache_start.elapsed());
-            
+            log::info!(
+                "[BackgroundTasks] ? Cache exact mis ? jour en {:?}",
+                cache_start.elapsed()
+            );
+
             // 2. Mise en cache s?mantique (avec timeout ?quilibr?)
             let semantic_start = std::time::Instant::now();
             let user_text_owned = _user_text.clone();
@@ -641,80 +810,94 @@ impl OptimizedIAService {
             let cleaned_json_owned = serde_json::to_string(&result_cloned).unwrap_or_default();
             match tokio::time::timeout(
                 Duration::from_secs(2), // Timeout ?quilibr? pour la pr?cision
-                semantic_cache.store_semantic_cache(&user_text_owned, &intention_owned, &cleaned_json_owned)
-            ).await {
+                semantic_cache.store_semantic_cache(
+                    &user_text_owned,
+                    &intention_owned,
+                    &cleaned_json_owned,
+                ),
+            )
+            .await
+            {
                 Ok(Ok(())) => {
-                    log::info!("[BackgroundTasks] ? Cache s?mantique mis ? jour en {:?}", semantic_start.elapsed());
-                },
+                    log::info!(
+                        "[BackgroundTasks] ? Cache s?mantique mis ? jour en {:?}",
+                        semantic_start.elapsed()
+                    );
+                }
                 Ok(Err(e)) => {
                     log::warn!("[BackgroundTasks] ?? Erreur cache s?mantique: {}", e);
-                },
+                }
                 Err(_) => {
                     log::warn!("[BackgroundTasks] ? Timeout cache s?mantique (2s)");
                 }
             }
-            
+
             log::info!("[BackgroundTasks] ?? Tous les traitements en arri?re-plan termin?s");
         });
     }
-    
+
     /// Extrait le texte de la demande utilisateur
     fn extract_user_text(&self, input: &MultiModalInput) -> String {
         let mut text_parts = Vec::new();
-        
+
         // Texte principal
         if let Some(texte) = &input.texte {
             text_parts.push(texte.clone());
         }
-        
+
         // Informations GPS si disponibles
         if let Some(gps) = &input.gps_mobile {
             text_parts.push(format!("Localisation: {}", gps));
         }
-        
+
         // Informations sur les fichiers
         if let Some(images) = &input.base64_image {
             if !images.is_empty() {
-                log::info!("[OptimizedIAService] Images d?tect?es dans l'input: {} images", images.len());
+                log::info!(
+                    "[OptimizedIAService] Images d?tect?es dans l'input: {} images",
+                    images.len()
+                );
                 text_parts.push(format!("Images jointes: {}", images.len()));
-                
+
                 // Log d?taill? des images
                 for (i, img) in images.iter().enumerate() {
-                    log::info!("[OptimizedIAService] Image {}: taille {} bytes, d?but: {}...", 
-                              i, img.len(), &img[..std::cmp::min(50, img.len())]);
+                    log::info!(
+                        "[OptimizedIAService] Image {}: taille {} bytes, d?but: {}...",
+                        i,
+                        img.len(),
+                        &img[..std::cmp::min(50, img.len())]
+                    );
                 }
             }
         } else {
             log::info!("[OptimizedIAService] Aucune image dans l'input");
         }
-        
+
         if let Some(audios) = &input.audio_base64 {
             if !audios.is_empty() {
                 text_parts.push(format!("Audio joint: {}", audios.len()));
             }
         }
-        
+
         if let Some(docs) = &input.doc_base64 {
             if !docs.is_empty() {
                 text_parts.push(format!("Documents joints: {}", docs.len()));
             }
         }
-        
+
         if let Some(excel) = &input.excel_base64 {
             if !excel.is_empty() {
                 text_parts.push(format!("Fichiers Excel joints: {}", excel.len()));
             }
         }
-        
+
         if let Some(site) = &input.site_web {
             text_parts.push(format!("Site web: {}", site));
         }
-        
+
         text_parts.join(" | ")
     }
-    
 
-    
     /// ? R?cup?re une r?ponse du cache
     async fn get_cached_response(&self, cache_key: &str) -> Option<Value> {
         let cache = self.response_cache.read().await;
@@ -725,25 +908,25 @@ impl OptimizedIAService {
         }
         None
     }
-    
+
     /// ? Met en cache une r?ponse
     #[allow(dead_code)]
     async fn cache_response(&self, cache_key: &str, response: &Value) {
         let cached = CachedResponse::new(response.clone(), 3600); // Cache 1 heure
-        
+
         let mut cache = self.response_cache.write().await;
         cache.insert(cache_key.to_string(), cached);
-        
+
         // Nettoyer le cache si trop volumineux
         if cache.len() > 1000 {
             cache.retain(|_, v| !v.is_expired());
         }
     }
-    
+
     /// Obtient les statistiques de performance
     pub async fn get_performance_stats(&self) -> Value {
         let semantic_stats = self.semantic_cache.get_stats().await;
-        
+
         serde_json::json!({
             "architecture": "optimized_with_semantic_cache",
             "prompts_count": self.prompt_manager.get_supported_intentions().len(),
@@ -762,7 +945,7 @@ impl OptimizedIAService {
 mod tests {
     use super::*;
     use crate::models::input_model::MultiModalInput;
-    
+
     #[tokio::test]
     async fn test_optimized_ia_service_creation() {
         // Note: Ce test n?cessite une configuration compl?te
@@ -770,7 +953,7 @@ mod tests {
         // let service = OptimizedIAService::new(app_ia).await;
         // assert!(service.is_ok());
     }
-    
+
     #[tokio::test]
     async fn test_extract_user_text() {
         // Test de la fonction d'extraction de texte
@@ -784,10 +967,10 @@ mod tests {
             site_web: None,
             gps_mobile: None,
         };
-        
+
         // Note: Ce test n?cessite une instance du service
         // let service = OptimizedIAService::new(...).await.unwrap();
         // let text = service.extract_user_text(&input);
         // assert!(text.contains("Je vends des v?tements"));
     }
-} 
+}

@@ -1,6 +1,6 @@
-use sqlx::PgPool;
-use chrono::Utc;
 use crate::core::types::AppError;
+use chrono::Utc;
+use sqlx::PgPool;
 
 /// ?? V?rifie les services ? d?sactiver et journalise les actions
 pub async fn check_and_update_service_status(pool: &PgPool) -> Result<(), AppError> {

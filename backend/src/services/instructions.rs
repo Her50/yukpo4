@@ -30,8 +30,3 @@ pub fn get_instruction_template() -> String {
         })
     }
 }
-
-
-
-
-

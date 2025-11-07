@@ -1,11 +1,13 @@
 use chrono::Utc;
+use log::info;
 use sqlx::PgPool;
-use log::{info};
 
 /// ⚠️ DÉSACTIVÉ - La logique de désactivation automatique a été déplacée vers les PRODUITS
 /// Les services ne sont plus désactivés automatiquement
 /// Voir: backend/src/tasks/product_deactivation.rs pour la nouvelle logique
-#[deprecated(note = "Logique de désactivation déplacée vers les produits. Utiliser product_deactivation::deactivate_expired_products()")]
+#[deprecated(
+    note = "Logique de désactivation déplacée vers les produits. Utiliser product_deactivation::deactivate_expired_products()"
+)]
 pub async fn desactiver_services_tarissables(_pool: &PgPool) -> Result<(), sqlx::Error> {
     // Cette fonction est maintenant un no-op (ne fait rien)
     // La désactivation automatique est gérée au niveau des PRODUITS, pas des SERVICES
@@ -34,7 +36,10 @@ pub async fn envoyer_alertes_prestataires(pool: &PgPool) -> Result<(), sqlx::Err
 
     for service in services {
         // Envoyer une alerte au prestataire (par email ou notification)
-        info!("Envoi d'une alerte pour le service {} au prestataire {}", service.id, service.user_id);
+        info!(
+            "Envoi d'une alerte pour le service {} au prestataire {}",
+            service.id, service.user_id
+        );
 
         // Correction pour convertir `maintenant` en NaiveDateTime
         let maintenant_naive = maintenant.naive_utc();
@@ -76,7 +81,7 @@ pub async fn reactiver_service(
     user_id: i32,
 ) -> Result<bool, sqlx::Error> {
     const COUT_REACTIVATION: i64 = 1000; // 1000 FCFA pour la réactivation
-    
+
     // Vérifier que le service existe et appartient à l'utilisateur
     let service = sqlx::query!(
         "SELECT id, user_id, is_active FROM services WHERE id = $1 AND user_id = $2",
@@ -93,12 +98,10 @@ pub async fn reactiver_service(
             }
 
             // Vérifier le solde de l'utilisateur
-            let user_balance = sqlx::query!(
-                "SELECT tokens_balance FROM users WHERE id = $1",
-                user_id
-            )
-            .fetch_optional(pool)
-            .await?;
+            let user_balance =
+                sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user_id)
+                    .fetch_optional(pool)
+                    .await?;
 
             match user_balance {
                 Some(user) => {
@@ -120,16 +123,19 @@ pub async fn reactiver_service(
                         .execute(pool)
                         .await?;
 
-                        info!("Service {} réactivé par l'utilisateur {} pour {} FCFA", service_id, user_id, COUT_REACTIVATION);
+                        info!(
+                            "Service {} réactivé par l'utilisateur {} pour {} FCFA",
+                            service_id, user_id, COUT_REACTIVATION
+                        );
                         Ok(true)
                     } else {
                         Ok(false) // Solde insuffisant
                     }
                 }
-                None => Ok(false) // Utilisateur non trouvé
+                None => Ok(false), // Utilisateur non trouvé
             }
         }
-        None => Ok(false) // Service non trouvé
+        None => Ok(false), // Service non trouvé
     }
 }
 
@@ -137,8 +143,3 @@ pub async fn reactiver_service(
 pub fn get_cout_reactivation() -> i32 {
     1000 // 1000 FCFA
 }
-
-
-
-
-

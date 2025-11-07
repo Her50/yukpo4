@@ -1,7 +1,7 @@
 use crate::state::AppState;
+use log::info;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
-use log::info;
 
 /// Relance le matching pour tous les ?changes en attente (une seule fois)
 pub async fn relancer_matching_echanges_once(pool: &sqlx::PgPool) {
@@ -11,7 +11,11 @@ pub async fn relancer_matching_echanges_once(pool: &sqlx::PgPool) {
     .fetch_all(pool)
     .await
     .unwrap_or_default();
-    log::info!("[MATCHING] {} ?changes candidats trouv?s : {:?}", echanges.len(), echanges.iter().map(|e| e.id).collect::<Vec<_>>());
+    log::info!(
+        "[MATCHING] {} ?changes candidats trouv?s : {:?}",
+        echanges.len(),
+        echanges.iter().map(|e| e.id).collect::<Vec<_>>()
+    );
     for e in echanges {
         let _user_id = Some(e.user_id);
         // Patch : construction d'un JSON strict conforme au sch?ma m?tier
@@ -20,57 +24,90 @@ pub async fn relancer_matching_echanges_once(pool: &sqlx::PgPool) {
         let offre_obj = e.offre.as_object().cloned().unwrap_or_default();
         let besoin_obj = e.besoin.as_object().cloned().unwrap_or_default();
         // Mode - extraire depuis les données, pas de valeur par défaut forcée
-        let mode = offre_obj.get("mode").and_then(|v| v.as_str())
+        let mode = offre_obj
+            .get("mode")
+            .and_then(|v| v.as_str())
             .or_else(|| besoin_obj.get("mode").and_then(|v| v.as_str()))
             .unwrap_or("");
         if !mode.is_empty() {
-            data.insert("mode".to_string(), serde_json::Value::String(mode.to_string()));
+            data.insert(
+                "mode".to_string(),
+                serde_json::Value::String(mode.to_string()),
+            );
         }
         // Mode troc - extraire depuis les données, pas de valeur par défaut forcée
-        let mode_troc = offre_obj.get("mode_troc").and_then(|v| v.as_str())
+        let mode_troc = offre_obj
+            .get("mode_troc")
+            .and_then(|v| v.as_str())
             .or_else(|| besoin_obj.get("mode_troc").and_then(|v| v.as_str()))
             .unwrap_or("");
         if !mode_troc.is_empty() {
-            data.insert("mode_troc".to_string(), serde_json::Value::String(mode_troc.to_string()));
+            data.insert(
+                "mode_troc".to_string(),
+                serde_json::Value::String(mode_troc.to_string()),
+            );
         }
         // GPS
-        let gps = offre_obj.get("gps").cloned()
+        let gps = offre_obj
+            .get("gps")
+            .cloned()
             .or_else(|| besoin_obj.get("gps").cloned());
         if let Some(gps_val) = gps {
             data.insert("gps".to_string(), gps_val);
         } else {
             // GPS factice pour ?viter l'erreur de validation, ? adapter selon la logique m?tier
-            data.insert("gps".to_string(), serde_json::json!({"lat": 0.0, "lon": 0.0}));
+            data.insert(
+                "gps".to_string(),
+                serde_json::json!({"lat": 0.0, "lon": 0.0}),
+            );
         }
         // user_id
         data.insert("user_id".to_string(), serde_json::Value::from(e.user_id));
         // listeproduit (optionnel)
         if let Some(liste) = offre_obj.get("listeproduit").and_then(|v| v.as_array()) {
             if !liste.is_empty() {
-                data.insert("listeproduit".to_string(), serde_json::Value::Array(liste.clone()));
+                data.insert(
+                    "listeproduit".to_string(),
+                    serde_json::Value::Array(liste.clone()),
+                );
             }
         }
         // Ajout des produits pour la logique m?tier (matching), sans violer le sch?ma strict
         if let Some(liste) = offre_obj.get("listeproduit").and_then(|v| v.as_array()) {
             if !liste.is_empty() {
-                data.insert("offre_produits".to_string(), serde_json::Value::Array(liste.clone()));
+                data.insert(
+                    "offre_produits".to_string(),
+                    serde_json::Value::Array(liste.clone()),
+                );
             }
         }
         if let Some(liste) = besoin_obj.get("listeproduit").and_then(|v| v.as_array()) {
             if !liste.is_empty() {
-                data.insert("besoin_produits".to_string(), serde_json::Value::Array(liste.clone()));
+                data.insert(
+                    "besoin_produits".to_string(),
+                    serde_json::Value::Array(liste.clone()),
+                );
             }
         }
         // intention - extraire depuis les données plutôt que de forcer "echange"
-        let intention = offre_obj.get("intention").and_then(|v| v.as_str())
+        let intention = offre_obj
+            .get("intention")
+            .and_then(|v| v.as_str())
             .or_else(|| besoin_obj.get("intention").and_then(|v| v.as_str()))
             .unwrap_or("");
         if !intention.is_empty() {
-            data.insert("intention".to_string(), serde_json::Value::String(intention.to_string()));
+            data.insert(
+                "intention".to_string(),
+                serde_json::Value::String(intention.to_string()),
+            );
         }
         // Validation stricte du mode avant appel m?tier (seulement si mode est présent)
         if !mode.is_empty() && mode != "echange" && mode != "don" {
-            log::warn!("[MATCHING_CRON] ?change id={} ignor??: mode non autoris? ('{}')", e.id, mode);
+            log::warn!(
+                "[MATCHING_CRON] ?change id={} ignor??: mode non autoris? ('{}')",
+                e.id,
+                mode
+            );
             continue;
         }
         // Toute r?f?rence ? traiter_echange est comment?e temporairement

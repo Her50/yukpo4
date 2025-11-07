@@ -1,13 +1,12 @@
-use std::convert::Infallible;
+use axum::extract::multipart::MultipartError;
 use axum::{
-    response::{IntoResponse, Response},
     http::StatusCode,
+    response::{IntoResponse, Response},
     Json,
 };
 use serde_json::json;
+use std::convert::Infallible;
 use thiserror::Error;
-use axum::extract::multipart::MultipartError;
-
 
 /// ? Type de retour standardis?
 pub type AppResult<T> = Result<T, AppError>;
@@ -51,12 +50,12 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status = match self {
             AppError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-            AppError::Forbidden(_)    => StatusCode::FORBIDDEN,
-            AppError::NotFound(_)     => StatusCode::NOT_FOUND,
-            AppError::Conflict(_)     => StatusCode::CONFLICT,
-            AppError::BadRequest(_)   => StatusCode::BAD_REQUEST,
-            AppError::Database(_)     => StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::Internal(_)     => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Forbidden(_) => StatusCode::FORBIDDEN,
+            AppError::NotFound(_) => StatusCode::NOT_FOUND,
+            AppError::Conflict(_) => StatusCode::CONFLICT,
+            AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            AppError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         let msg = self.to_string();

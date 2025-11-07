@@ -1,8 +1,8 @@
 // Service pour gérer l'historique des caractéristiques autocomplete
-use sqlx::PgPool;
-use serde::{Deserialize, Serialize};
-use sqlx::Row;
 use crate::core::types::AppError;
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use sqlx::Row;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AutocompleteCharacteristic {
@@ -47,7 +47,7 @@ pub async fn upsert_autocomplete_characteristic(
         SELECT upsert_autocomplete_characteristic(
             $1, $2, $3, $4, $5, $6
         ) as id
-        "#
+        "#,
     )
     .bind(identifiant_base)
     .bind(sous_caracteristique)
@@ -60,7 +60,10 @@ pub async fn upsert_autocomplete_characteristic(
     .map_err(|e| AppError::Internal(format!("Erreur upsert caractéristique: {}", e)))?;
 
     let id: i32 = row.get("id");
-    log::info!("[AutocompleteHistoryService] ✅ Caractéristique sauvegardée: {}", id);
+    log::info!(
+        "[AutocompleteHistoryService] ✅ Caractéristique sauvegardée: {}",
+        id
+    );
 
     Ok(id)
 }
@@ -95,7 +98,7 @@ pub async fn historize_autocomplete_field(
     // Pour chaque valeur concaténée, la découper et historiser chaque sous-caractéristique
     for valeur_concat in valeurs {
         let parts: Vec<&str> = valeur_concat.split(separateur).map(|s| s.trim()).collect();
-        
+
         // Historiser chaque sous-caractéristique
         for (idx, sous_carac_name) in sous_caracs_obj.keys().enumerate() {
             if let Some(valeur_part) = parts.get(idx) {
@@ -108,10 +111,16 @@ pub async fn historize_autocomplete_field(
                         origine_champs,
                         user_id,
                         service_id,
-                    ).await {
+                    )
+                    .await
+                    {
                         Ok(id) => ids.push(id),
                         Err(e) => {
-                            log::warn!("[AutocompleteHistoryService] Erreur historisation {}: {}", sous_carac_name, e);
+                            log::warn!(
+                                "[AutocompleteHistoryService] Erreur historisation {}: {}",
+                                sous_carac_name,
+                                e
+                            );
                         }
                     }
                 }
@@ -119,7 +128,10 @@ pub async fn historize_autocomplete_field(
         }
     }
 
-    log::info!("[AutocompleteHistoryService] ✅ {} caractéristiques historisées", ids.len());
+    log::info!(
+        "[AutocompleteHistoryService] ✅ {} caractéristiques historisées",
+        ids.len()
+    );
     Ok(ids)
 }
 
@@ -141,7 +153,7 @@ pub async fn get_autocomplete_suggestions(
             AND LOWER(valeur) LIKE LOWER($3 || '%')
             ORDER BY usage_count DESC, valeur ASC
             LIMIT $4
-            "#
+            "#,
         )
         .bind(identifiant_base)
         .bind(sous_caracteristique)
@@ -158,7 +170,7 @@ pub async fn get_autocomplete_suggestions(
             AND sous_caracteristique = $2
             ORDER BY usage_count DESC, valeur ASC
             LIMIT $3
-            "#
+            "#,
         )
         .bind(identifiant_base)
         .bind(sous_caracteristique)
@@ -168,10 +180,13 @@ pub async fn get_autocomplete_suggestions(
     }
     .map_err(|e| AppError::Internal(format!("Erreur récupération suggestions: {}", e)))?;
 
-    let suggestions = rows.iter().map(|row| AutocompleteSuggestion {
-        valeur: row.get("valeur"),
-        usage_count: row.get("usage_count"),
-    }).collect();
+    let suggestions = rows
+        .iter()
+        .map(|row| AutocompleteSuggestion {
+            valeur: row.get("valeur"),
+            usage_count: row.get("usage_count"),
+        })
+        .collect();
 
     Ok(suggestions)
 }
@@ -187,14 +202,17 @@ pub async fn get_sub_characteristics(
         FROM autocomplete_characteristics
         WHERE identifiant_base = $1
         ORDER BY sous_caracteristique ASC
-        "#
+        "#,
     )
     .bind(identifiant_base)
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération sous-caractéristiques: {}", e)))?;
 
-    let sub_chars: Vec<String> = rows.iter().map(|row| row.get("sous_caracteristique")).collect();
+    let sub_chars: Vec<String> = rows
+        .iter()
+        .map(|row| row.get("sous_caracteristique"))
+        .collect();
     Ok(sub_chars)
 }
 
@@ -211,7 +229,7 @@ pub async fn get_all_values(
         WHERE identifiant_base = $1
         AND sous_caracteristique = $2
         ORDER BY usage_count DESC, valeur ASC
-        "#
+        "#,
     )
     .bind(identifiant_base)
     .bind(sous_caracteristique)
@@ -224,18 +242,12 @@ pub async fn get_all_values(
 }
 
 /// Supprimer une caractéristique (pour nettoyage)
-pub async fn delete_autocomplete_characteristic(
-    pool: &PgPool,
-    id: i32,
-) -> Result<bool, AppError> {
-    let result = sqlx::query(
-        "DELETE FROM autocomplete_characteristics WHERE id = $1"
-    )
-    .bind(id)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur suppression caractéristique: {}", e)))?;
+pub async fn delete_autocomplete_characteristic(pool: &PgPool, id: i32) -> Result<bool, AppError> {
+    let result = sqlx::query("DELETE FROM autocomplete_characteristics WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur suppression caractéristique: {}", e)))?;
 
     Ok(result.rows_affected() > 0)
 }
-

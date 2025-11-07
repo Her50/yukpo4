@@ -1,12 +1,12 @@
 // backend/src/services/local_ai_ultra_fast.rs
 // Service d'IA locale ultra-rapide optimis? GPU pour performances sub-secondes
 
+use redis::Client as RedisClient;
+use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
 use tokio::sync::RwLock;
-use serde_json::{json, Value};
-use redis::Client as RedisClient;
 
 use crate::core::types::AppResult;
 use crate::utils::log::{log_info, log_warn};
@@ -25,10 +25,10 @@ pub struct LocalAIConfig {
 /// ?? Types de mod?les sp?cialis?s
 #[derive(Debug, Clone)]
 pub enum ModelType {
-    ServiceCreation,    // Llama 3.2 1B quantized - optimis? cr?ation services
-    NeedSearch,        // DistilBERT 350M - ultra-l?ger pour recherche
-    Classification,    // BERT base 110M - classification rapide
-    Universal,         // Mod?le universel fallback
+    ServiceCreation, // Llama 3.2 1B quantized - optimis? cr?ation services
+    NeedSearch,      // DistilBERT 350M - ultra-l?ger pour recherche
+    Classification,  // BERT base 110M - classification rapide
+    Universal,       // Mod?le universel fallback
 }
 
 /// ?? M?triques de performance temps r?el
@@ -111,27 +111,40 @@ impl LocalAIUltraFast {
     }
 
     /// ?? Pr?diction ultra-rapide avec cache intelligent
-    pub async fn predict_ultra_fast(&self, prompt: &str, model_type: ModelType) -> AppResult<(String, f64)> {
+    pub async fn predict_ultra_fast(
+        &self,
+        prompt: &str,
+        model_type: ModelType,
+    ) -> AppResult<(String, f64)> {
         let start_time = Instant::now();
-        
+
         // 1. Cache exact (0.01ms)
         if let Some(cached) = self.get_exact_cache(prompt).await {
             self.update_metrics(start_time, true, false).await;
-            log_info(&format!("[LocalAI] Cache exact hit en {}ms", start_time.elapsed().as_millis()));
+            log_info(&format!(
+                "[LocalAI] Cache exact hit en {}ms",
+                start_time.elapsed().as_millis()
+            ));
             return Ok((cached.content, cached.confidence));
         }
 
         // 2. Cache s?mantique (0.1ms)
         if let Some(similar) = self.get_semantic_cache(prompt).await {
             self.update_metrics(start_time, true, false).await;
-            log_info(&format!("[LocalAI] Cache s?mantique hit en {}ms", start_time.elapsed().as_millis()));
+            log_info(&format!(
+                "[LocalAI] Cache s?mantique hit en {}ms",
+                start_time.elapsed().as_millis()
+            ));
             return Ok((similar.content, similar.confidence));
         }
 
         // 3. Template adaptatif ultra-rapide (0.2ms)
         if let Some(template_result) = self.try_template_adaptation(prompt, &model_type).await? {
             self.update_metrics(start_time, true, false).await;
-            log_info(&format!("[LocalAI] Template adaptatif en {}ms", start_time.elapsed().as_millis()));
+            log_info(&format!(
+                "[LocalAI] Template adaptatif en {}ms",
+                start_time.elapsed().as_millis()
+            ));
             return Ok(template_result);
         }
 
@@ -143,8 +156,9 @@ impl LocalAIUltraFast {
         };
 
         // 5. Cache le r?sultat
-        self.cache_result(prompt, &result, confidence, &model_type).await;
-        
+        self.cache_result(prompt, &result, confidence, &model_type)
+            .await;
+
         self.update_metrics(start_time, false, true).await;
         let elapsed = start_time.elapsed().as_millis();
         log_info(&format!("[LocalAI] Pr?diction GPU/CPU en {}ms", elapsed));
@@ -155,28 +169,35 @@ impl LocalAIUltraFast {
     /// ?? Cr?ation de service ultra-rapide (objectif < 5s)
     pub async fn create_service_ultra_fast(&self, input: &Value) -> AppResult<Value> {
         let start_time = Instant::now();
-        
+
         // Classification instantan?e (50ms)
         let category = self.classify_service_category(input).await?;
-        
+
         // Template adaptatif (100ms)
         let template = self.get_or_create_template(&category).await?;
-        
+
         // Contexte enrichi intelligent (200ms)
         let enriched_context = self.enrich_context_with_template(input, &template).await?;
-        
+
         // Prompt optimis? pour vitesse
         let optimized_prompt = self.build_optimized_prompt(&enriched_context, &template);
-        
+
         // IA ultra-rapide (1-2s)
-        let (ai_response, _confidence) = self.predict_ultra_fast(&optimized_prompt, ModelType::ServiceCreation).await?;
-        
+        let (ai_response, _confidence) = self
+            .predict_ultra_fast(&optimized_prompt, ModelType::ServiceCreation)
+            .await?;
+
         // Validation et structure (100ms)
-        let result = self.validate_and_structure_service(&ai_response, &template).await?;
-        
+        let result = self
+            .validate_and_structure_service(&ai_response, &template)
+            .await?;
+
         let elapsed = start_time.elapsed().as_millis();
-        log_info(&format!("[LocalAI] Service cr?? en {}ms (objectif: <5000ms)", elapsed));
-        
+        log_info(&format!(
+            "[LocalAI] Service cr?? en {}ms (objectif: <5000ms)",
+            elapsed
+        ));
+
         if elapsed < 5000 {
             log_info("?? OBJECTIF ATTEINT : Service cr?? en moins de 5 secondes !");
         } else {
@@ -187,27 +208,40 @@ impl LocalAIUltraFast {
     }
 
     /// ?? Recherche de besoin ultra-rapide (objectif < 2s)
-    pub async fn search_need_ultra_fast(&self, query: &str, location: Option<(f64, f64)>) -> AppResult<Value> {
+    pub async fn search_need_ultra_fast(
+        &self,
+        query: &str,
+        location: Option<(f64, f64)>,
+    ) -> AppResult<Value> {
         let start_time = Instant::now();
-        
+
         // Embedding de la requ?te (100ms)
         let query_embedding = self.compute_query_embedding(query).await?;
-        
+
         // Recherche vectorielle optimis?e (200ms)
-        let vector_matches = self.vector_search_optimized(&query_embedding, location).await?;
-        
+        let vector_matches = self
+            .vector_search_optimized(&query_embedding, location)
+            .await?;
+
         // Classification de l'intention (50ms)
         let intent = self.classify_search_intent(query).await?;
-        
+
         // Filtrage intelligent (100ms)
-        let filtered_results = self.intelligent_filter_results(vector_matches, &intent).await?;
-        
+        let filtered_results = self
+            .intelligent_filter_results(vector_matches, &intent)
+            .await?;
+
         // Ranking final (50ms)
-        let ranked_results = self.rank_results_ultra_fast(filtered_results, query).await?;
-        
+        let ranked_results = self
+            .rank_results_ultra_fast(filtered_results, query)
+            .await?;
+
         let elapsed = start_time.elapsed().as_millis();
-        log_info(&format!("[LocalAI] Recherche effectu?e en {}ms (objectif: <2000ms)", elapsed));
-        
+        log_info(&format!(
+            "[LocalAI] Recherche effectu?e en {}ms (objectif: <2000ms)",
+            elapsed
+        ));
+
         if elapsed < 2000 {
             log_info("?? OBJECTIF ATTEINT : Recherche en moins de 2 secondes !");
         } else {
@@ -226,10 +260,14 @@ impl LocalAIUltraFast {
     }
 
     /// ?? Pr?diction avec GPU optimis?
-    async fn predict_with_gpu(&self, prompt: &str, model_type: &ModelType) -> AppResult<(String, f64)> {
+    async fn predict_with_gpu(
+        &self,
+        prompt: &str,
+        model_type: &ModelType,
+    ) -> AppResult<(String, f64)> {
         // Simulation d'appel GPU optimis?
         // En production, int?grer candle-transformers ou llamacpp-rs
-        
+
         let model_name = match model_type {
             ModelType::ServiceCreation => "llama-3.2-1b-instruct-q4",
             ModelType::NeedSearch => "distilbert-base-uncased-q8",
@@ -237,15 +275,20 @@ impl LocalAIUltraFast {
             ModelType::Universal => "llama-3.2-3b-instruct-q4",
         };
 
-        log_info(&format!("[GPU] Utilisation mod?le {} pour prompt de {} caract?res", model_name, prompt.len()));
-        
+        log_info(&format!(
+            "[GPU] Utilisation mod?le {} pour prompt de {} caract?res",
+            model_name,
+            prompt.len()
+        ));
+
         // Simulation temps r?aliste GPU
         tokio::time::sleep(Duration::from_millis(match model_type {
             ModelType::ServiceCreation => 1500, // 1.5s pour cr?ation service
             ModelType::NeedSearch => 300,       // 0.3s pour recherche
             ModelType::Classification => 100,   // 0.1s pour classification
             ModelType::Universal => 2000,       // 2s pour universel
-        })).await;
+        }))
+        .await;
 
         // Mock r?ponse optimis?e selon le type
         let response = match model_type {
@@ -278,16 +321,21 @@ impl LocalAIUltraFast {
     }
 
     /// ?? Pr?diction CPU optimis?e (fallback)
-    async fn predict_with_cpu_optimized(&self, _prompt: &str, model_type: &ModelType) -> AppResult<(String, f64)> {
+    async fn predict_with_cpu_optimized(
+        &self,
+        _prompt: &str,
+        model_type: &ModelType,
+    ) -> AppResult<(String, f64)> {
         log_warn("[CPU] Fallback CPU utilis? - performance d?grad?e");
-        
+
         // Simulation temps CPU plus lents
         tokio::time::sleep(Duration::from_millis(match model_type {
-            ModelType::ServiceCreation => 8000,  // 8s sur CPU
-            ModelType::NeedSearch => 3000,       // 3s sur CPU
-            ModelType::Classification => 1000,   // 1s sur CPU
-            ModelType::Universal => 12000,       // 12s sur CPU
-        })).await;
+            ModelType::ServiceCreation => 8000, // 8s sur CPU
+            ModelType::NeedSearch => 3000,      // 3s sur CPU
+            ModelType::Classification => 1000,  // 1s sur CPU
+            ModelType::Universal => 12000,      // 12s sur CPU
+        }))
+        .await;
 
         // R?ponse simplifi?e pour CPU
         let response = json!({
@@ -304,18 +352,29 @@ impl LocalAIUltraFast {
 
     /// ?? Classification ultra-rapide de cat?gorie
     async fn classify_service_category(&self, input: &Value) -> AppResult<String> {
-        let text = input.get("texte")
+        let text = input
+            .get("texte")
             .and_then(|t| t.as_str())
             .unwrap_or_default();
 
         // Classification par mots-cl?s ultra-rapide (simulation ML)
-        let category = if text.contains("voiture") || text.contains("auto") || text.contains("moto") {
+        let category = if text.contains("voiture") || text.contains("auto") || text.contains("moto")
+        {
             "vehicules"
-        } else if text.contains("maison") || text.contains("appartement") || text.contains("immobilier") {
+        } else if text.contains("maison")
+            || text.contains("appartement")
+            || text.contains("immobilier")
+        {
             "immobilier"
-        } else if text.contains("ordinateur") || text.contains("smartphone") || text.contains("tech") {
+        } else if text.contains("ordinateur")
+            || text.contains("smartphone")
+            || text.contains("tech")
+        {
             "technologie"
-        } else if text.contains("cours") || text.contains("formation") || text.contains("enseignement") {
+        } else if text.contains("cours")
+            || text.contains("formation")
+            || text.contains("enseignement")
+        {
             "education"
         } else {
             "general"
@@ -327,7 +386,7 @@ impl LocalAIUltraFast {
     /// ?? Templates pr?-calcul?s
     async fn initialize_templates(&mut self) {
         let mut templates = self.service_templates.write().await;
-        
+
         // Template v?hicules
         templates.insert("vehicules".to_string(), ServiceTemplate {
             category: "vehicules".to_string(),
@@ -370,13 +429,17 @@ impl LocalAIUltraFast {
     }
 
     /// ?? Adaptation de template ultra-rapide
-    async fn try_template_adaptation(&self, prompt: &str, model_type: &ModelType) -> AppResult<Option<(String, f64)>> {
+    async fn try_template_adaptation(
+        &self,
+        prompt: &str,
+        model_type: &ModelType,
+    ) -> AppResult<Option<(String, f64)>> {
         if !matches!(model_type, ModelType::ServiceCreation) {
             return Ok(None);
         }
 
         let templates = self.service_templates.read().await;
-        
+
         // D?tection de cat?gorie rapide par mots-cl?s
         let category = if prompt.contains("voiture") || prompt.contains("auto") {
             "vehicules"
@@ -389,22 +452,28 @@ impl LocalAIUltraFast {
         if let Some(template) = templates.get(category) {
             // Adaptation rapide du template
             let mut adapted = template.base_structure.clone();
-            
+
             // Extraction rapide de titre et description depuis le prompt
             let title = self.extract_title_from_prompt(prompt);
             let description = self.extract_description_from_prompt(prompt);
-            
+
             if let Some(obj) = adapted.as_object_mut() {
-                obj.insert("titre".to_string(), json!({
-                    "type_donnee": "string",
-                    "valeur": title,
-                    "origine_champs": "template_adaptatif"
-                }));
-                obj.insert("description".to_string(), json!({
-                    "type_donnee": "string", 
-                    "valeur": description,
-                    "origine_champs": "template_adaptatif"
-                }));
+                obj.insert(
+                    "titre".to_string(),
+                    json!({
+                        "type_donnee": "string",
+                        "valeur": title,
+                        "origine_champs": "template_adaptatif"
+                    }),
+                );
+                obj.insert(
+                    "description".to_string(),
+                    json!({
+                        "type_donnee": "string",
+                        "valeur": description,
+                        "origine_champs": "template_adaptatif"
+                    }),
+                );
             }
 
             return Ok(Some((adapted.to_string(), template.confidence)));
@@ -417,7 +486,7 @@ impl LocalAIUltraFast {
     async fn update_metrics(&self, start_time: Instant, cache_hit: bool, gpu_used: bool) {
         let mut metrics = self.metrics.write().await;
         let elapsed_ms = start_time.elapsed().as_millis() as u64;
-        
+
         metrics.total_requests += 1;
         if cache_hit {
             metrics.cache_hits += 1;
@@ -425,7 +494,7 @@ impl LocalAIUltraFast {
         if gpu_used {
             metrics.gpu_hits += 1;
         }
-        
+
         // Mise ? jour des temps de r?ponse
         if metrics.fastest_response_ms == 0 || elapsed_ms < metrics.fastest_response_ms {
             metrics.fastest_response_ms = elapsed_ms;
@@ -433,9 +502,12 @@ impl LocalAIUltraFast {
         if elapsed_ms > metrics.slowest_response_ms {
             metrics.slowest_response_ms = elapsed_ms;
         }
-        
+
         // Moyenne mobile
-        metrics.avg_response_time_ms = (metrics.avg_response_time_ms * (metrics.total_requests - 1) as f64 + elapsed_ms as f64) / metrics.total_requests as f64;
+        metrics.avg_response_time_ms = (metrics.avg_response_time_ms
+            * (metrics.total_requests - 1) as f64
+            + elapsed_ms as f64)
+            / metrics.total_requests as f64;
     }
 
     /// ?? Obtenir les m?triques actuelles
@@ -444,35 +516,87 @@ impl LocalAIUltraFast {
     }
 
     // M?thodes utilitaires simplifi?es pour le prototype
-    async fn get_exact_cache(&self, _prompt: &str) -> Option<CachedResponse> { None }
-    async fn get_semantic_cache(&self, _prompt: &str) -> Option<CachedResponse> { None }
+    async fn get_exact_cache(&self, _prompt: &str) -> Option<CachedResponse> {
+        None
+    }
+    async fn get_semantic_cache(&self, _prompt: &str) -> Option<CachedResponse> {
+        None
+    }
     async fn get_or_create_template(&self, category: &str) -> AppResult<ServiceTemplate> {
         let templates = self.service_templates.read().await;
-        Ok(templates.get(category).cloned().unwrap_or_else(|| ServiceTemplate {
-            category: category.to_string(),
-            base_structure: json!({}),
-            required_fields: vec![],
-            default_values: HashMap::new(),
-            confidence: 0.5,
-        }))
+        Ok(templates
+            .get(category)
+            .cloned()
+            .unwrap_or_else(|| ServiceTemplate {
+                category: category.to_string(),
+                base_structure: json!({}),
+                required_fields: vec![],
+                default_values: HashMap::new(),
+                confidence: 0.5,
+            }))
     }
-    async fn enrich_context_with_template(&self, _input: &Value, _template: &ServiceTemplate) -> AppResult<Value> { Ok(json!({})) }
-    fn build_optimized_prompt(&self, _context: &Value, _template: &ServiceTemplate) -> String { "prompt optimis?".to_string() }
-    async fn validate_and_structure_service(&self, response: &str, _template: &ServiceTemplate) -> AppResult<Value> {
+    async fn enrich_context_with_template(
+        &self,
+        _input: &Value,
+        _template: &ServiceTemplate,
+    ) -> AppResult<Value> {
+        Ok(json!({}))
+    }
+    fn build_optimized_prompt(&self, _context: &Value, _template: &ServiceTemplate) -> String {
+        "prompt optimis?".to_string()
+    }
+    async fn validate_and_structure_service(
+        &self,
+        response: &str,
+        _template: &ServiceTemplate,
+    ) -> AppResult<Value> {
         serde_json::from_str(response).map_err(|e| e.to_string().into())
     }
-    async fn cache_result(&self, _prompt: &str, _result: &str, _confidence: f64, _model_type: &ModelType) {}
+    async fn cache_result(
+        &self,
+        _prompt: &str,
+        _result: &str,
+        _confidence: f64,
+        _model_type: &ModelType,
+    ) {
+    }
     fn extract_title_from_prompt(&self, prompt: &str) -> String {
-        prompt.split_whitespace().take(5).collect::<Vec<_>>().join(" ")
+        prompt
+            .split_whitespace()
+            .take(5)
+            .collect::<Vec<_>>()
+            .join(" ")
     }
     fn extract_description_from_prompt(&self, prompt: &str) -> String {
         prompt.chars().take(100).collect()
     }
-    
+
     // M?thodes de recherche simplifi?es
-    async fn compute_query_embedding(&self, _query: &str) -> AppResult<Vec<f32>> { Ok(vec![0.0; 768]) }
-    async fn vector_search_optimized(&self, _embedding: &[f32], _location: Option<(f64, f64)>) -> AppResult<Vec<Value>> { Ok(vec![]) }
-    async fn classify_search_intent(&self, _query: &str) -> AppResult<String> { Ok("general".to_string()) }
-    async fn intelligent_filter_results(&self, results: Vec<Value>, _intent: &str) -> AppResult<Vec<Value>> { Ok(results) }
-    async fn rank_results_ultra_fast(&self, results: Vec<Value>, _query: &str) -> AppResult<Vec<Value>> { Ok(results) }
-} 
+    async fn compute_query_embedding(&self, _query: &str) -> AppResult<Vec<f32>> {
+        Ok(vec![0.0; 768])
+    }
+    async fn vector_search_optimized(
+        &self,
+        _embedding: &[f32],
+        _location: Option<(f64, f64)>,
+    ) -> AppResult<Vec<Value>> {
+        Ok(vec![])
+    }
+    async fn classify_search_intent(&self, _query: &str) -> AppResult<String> {
+        Ok("general".to_string())
+    }
+    async fn intelligent_filter_results(
+        &self,
+        results: Vec<Value>,
+        _intent: &str,
+    ) -> AppResult<Vec<Value>> {
+        Ok(results)
+    }
+    async fn rank_results_ultra_fast(
+        &self,
+        results: Vec<Value>,
+        _query: &str,
+    ) -> AppResult<Vec<Value>> {
+        Ok(results)
+    }
+}

@@ -1,7 +1,7 @@
 // ? src/services/ocr_engine.rs
 
-use crate::services::app_ia::AppIA;
 use crate::core::types::AppResult; // ? chemin corrig?
+use crate::services::app_ia::AppIA;
 use crate::utils::log::{log_info, log_warn}; // ? ? condition que ce module existe
 
 /// ?? Analyse OCR automatis?e sur base de PDF encod?s en base64
@@ -38,20 +38,24 @@ pub async fn ocr_image_base64(base64: &str) -> Option<String> {
     // Appel ? l'API FastAPI Python locale
     let client = reqwest::Client::new();
     let url = "http://localhost:8000/ocr_image";
-    
+
     // Envoyer les param?tres comme query parameters avec la cl? API
     let params = [("b64", base64), ("lang", "eng")];
-    
-    match client.post(url)
-        .header("x-api-key", "yukpo_embedding_key_2024")  // Cl? API requise par le microservice Python
+
+    match client
+        .post(url)
+        .header("x-api-key", "yukpo_embedding_key_2024") // Cl? API requise par le microservice Python
         .form(&params)
         .send()
-        .await 
+        .await
     {
         Ok(resp) => {
             if resp.status().is_success() {
                 match resp.json::<serde_json::Value>().await {
-                    Ok(val) => val.get("text").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                    Ok(val) => val
+                        .get("text")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
                     Err(e) => {
                         log::warn!("[OCR] Erreur parsing r?ponse: {}", e);
                         None
@@ -61,7 +65,7 @@ pub async fn ocr_image_base64(base64: &str) -> Option<String> {
                 log::warn!("[OCR] Erreur HTTP: {}", resp.status());
                 None
             }
-        },
+        }
         Err(e) => {
             log::warn!("[OCR] Erreur connexion: {}", e);
             None

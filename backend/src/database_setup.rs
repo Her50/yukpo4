@@ -11,7 +11,7 @@ pub async fn ensure_payment_tables_exist(pool: &PgPool) -> Result<(), sqlx::Erro
         "SELECT EXISTS (
             SELECT FROM information_schema.tables 
             WHERE table_name = 'payment_transactions'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
@@ -33,18 +33,25 @@ pub async fn ensure_payment_tables_exist(pool: &PgPool) -> Result<(), sqlx::Erro
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
 
         // Créer les index
-        sqlx::query("CREATE INDEX idx_payment_transactions_user_id ON payment_transactions(user_id)")
-            .execute(pool).await?;
+        sqlx::query(
+            "CREATE INDEX idx_payment_transactions_user_id ON payment_transactions(user_id)",
+        )
+        .execute(pool)
+        .await?;
         sqlx::query("CREATE INDEX idx_payment_transactions_status ON payment_transactions(status)")
-            .execute(pool).await?;
-        sqlx::query("CREATE INDEX idx_payment_transactions_created_at ON payment_transactions(created_at)")
-            .execute(pool).await?;
+            .execute(pool)
+            .await?;
+        sqlx::query(
+            "CREATE INDEX idx_payment_transactions_created_at ON payment_transactions(created_at)",
+        )
+        .execute(pool)
+        .await?;
 
         println!("✓ Table payment_transactions créée");
     } else {
@@ -56,7 +63,7 @@ pub async fn ensure_payment_tables_exist(pool: &PgPool) -> Result<(), sqlx::Erro
         "SELECT EXISTS (
             SELECT FROM information_schema.tables 
             WHERE table_name = 'token_transactions'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
@@ -76,16 +83,20 @@ pub async fn ensure_payment_tables_exist(pool: &PgPool) -> Result<(), sqlx::Erro
                 description TEXT,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
 
         // Créer les index
         sqlx::query("CREATE INDEX idx_token_transactions_user_id ON token_transactions(user_id)")
-            .execute(pool).await?;
-        sqlx::query("CREATE INDEX idx_token_transactions_type ON token_transactions(transaction_type)")
-            .execute(pool).await?;
+            .execute(pool)
+            .await?;
+        sqlx::query(
+            "CREATE INDEX idx_token_transactions_type ON token_transactions(transaction_type)",
+        )
+        .execute(pool)
+        .await?;
 
         println!("✓ Table token_transactions créée");
     } else {

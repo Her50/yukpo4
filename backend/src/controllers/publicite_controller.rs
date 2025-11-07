@@ -1,13 +1,13 @@
+use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
 };
+use log;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::sync::Arc;
-use log;
-use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePubliciteRequest {
@@ -15,7 +15,7 @@ pub struct CreatePubliciteRequest {
     pub titre: String,
     pub description: Option<String>,
     pub produits_indexes: Vec<String>,
-    pub videos: Vec<String>, // Base64
+    pub videos: Vec<String>,     // Base64
     pub thumbnails: Vec<String>, // Base64
     pub duree_jours: i32,
     pub cout: i32, // En FCFA
@@ -93,7 +93,10 @@ pub async fn create_publicite(
     Json(payload): Json<CreatePubliciteRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
-    log::info!("🎯 [Publicité] Création publicité pour user {}", payload.user_id);
+    log::info!(
+        "🎯 [Publicité] Création publicité pour user {}",
+        payload.user_id
+    );
 
     // Valider les données
     if payload.produits_indexes.is_empty() {
@@ -108,32 +111,31 @@ pub async fn create_publicite(
     let geo_point = if let Some(ref geo_str) = payload.geo_publicitaire {
         match parse_gps_point(geo_str) {
             Some((lat, lng)) => Some(format!("ST_MakePoint({}, {})", lng, lat)),
-            None => None
+            None => None,
         }
     } else {
         None
     };
 
     // Calculer le rayon selon la zone
-    let rayon = payload.rayon_km.unwrap_or_else(|| {
-        match payload.zone_geographique.as_str() {
+    let rayon = payload
+        .rayon_km
+        .unwrap_or_else(|| match payload.zone_geographique.as_str() {
             "local" => 50,
             "regional" => 500,
             _ => 0,
-        }
-    });
+        });
 
     // Vérifier le solde de l'utilisateur
-    let user_balance: Option<i32> = sqlx::query_scalar(
-        "SELECT tokens_balance FROM users WHERE id = $1"
-    )
-    .bind(payload.user_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        log::error!("Erreur vérification solde: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let user_balance: Option<i32> =
+        sqlx::query_scalar("SELECT tokens_balance FROM users WHERE id = $1")
+            .bind(payload.user_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| {
+                log::error!("Erreur vérification solde: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
     let balance = user_balance.unwrap_or(0);
     if balance < payload.cout {
@@ -146,17 +148,15 @@ pub async fn create_publicite(
     }
 
     // Déduire le coût du solde
-    sqlx::query(
-        "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2"
-    )
-    .bind(payload.cout as i64)
-    .bind(payload.user_id)
-    .execute(pool)
-    .await
-    .map_err(|e| {
-        log::error!("Erreur déduction solde: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    sqlx::query("UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2")
+        .bind(payload.cout as i64)
+        .bind(payload.user_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            log::error!("Erreur déduction solde: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     // Insérer la publicité
     let result = if let Some(geo) = geo_point {
@@ -215,9 +215,9 @@ pub async fn create_publicite(
     match result {
         Ok(record) => {
             let pub_id: i32 = record.try_get("id").unwrap_or(0);
-            
+
             log::info!("✅ Publicité créée: ID {}", pub_id);
-            
+
             Ok(Json(serde_json::json!({
                 "success": true,
                 "publicite_id": pub_id,
@@ -234,7 +234,10 @@ pub async fn create_publicite(
 fn parse_gps_point(geo_str: &str) -> Option<(f64, f64)> {
     let parts: Vec<&str> = geo_str.split(',').collect();
     if parts.len() == 2 {
-        if let (Ok(lat), Ok(lng)) = (parts[0].trim().parse::<f64>(), parts[1].trim().parse::<f64>()) {
+        if let (Ok(lat), Ok(lng)) = (
+            parts[0].trim().parse::<f64>(),
+            parts[1].trim().parse::<f64>(),
+        ) {
             return Some((lat, lng));
         }
     }
@@ -256,7 +259,8 @@ pub async fn get_active_publicites(
             date_debut, date_fin, created_at
         FROM publicites
         WHERE status = 'active' AND date_fin > NOW()
-        "#.to_string();
+        "#
+    .to_string();
 
     // Filtrage par user_id désactivé pour le moment
     if let Some(_user_id) = params.user_id {
@@ -265,11 +269,8 @@ pub async fn get_active_publicites(
 
     query_str.push_str(" ORDER BY created_at DESC");
 
-    let rows = sqlx::query(&query_str)
-        .fetch_all(pool)
-    .await
-    .map_err(|e| {
-            log::error!("Erreur récupération publicités: {:?}", e);
+    let rows = sqlx::query(&query_str).fetch_all(pool).await.map_err(|e| {
+        log::error!("Erreur récupération publicités: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -316,7 +317,7 @@ pub async fn get_publicite_dashboard(
             COUNT(CASE WHEN status = 'active' THEN 1 END) as actives
         FROM publicites
         WHERE user_id = $1
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_one(pool)
@@ -352,7 +353,7 @@ pub async fn get_publicite_dashboard(
         FROM publicites
         WHERE user_id = $1
         ORDER BY created_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(pool)
@@ -407,7 +408,7 @@ pub async fn get_publicite_by_id(
     let row = sqlx::query("SELECT * FROM publicites WHERE id = $1")
         .bind(id)
         .fetch_optional(pool)
-    .await
+        .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     match row {
@@ -432,7 +433,7 @@ pub async fn update_publicite(
         UPDATE publicites
         SET titre = $2, description = $3
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(id)
     .bind(&payload.titre)
@@ -452,16 +453,19 @@ pub async fn track_publicite_click(
     Json(payload): Json<TrackClickRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
-    log::info!("👆 [Publicité] Tracking clic publicité ID {}", payload.publicite_id);
+    log::info!(
+        "👆 [Publicité] Tracking clic publicité ID {}",
+        payload.publicite_id
+    );
 
     sqlx::query("UPDATE publicites SET clics = clics + 1 WHERE id = $1")
         .bind(payload.publicite_id)
         .execute(pool)
-    .await
-    .map_err(|e| {
+        .await
+        .map_err(|e| {
             log::error!("Erreur tracking clic: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     Ok(Json(serde_json::json!({ "success": true })))
 }
@@ -471,17 +475,21 @@ pub async fn track_publicite_view(
     Json(payload): Json<TrackClickRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
-    log::info!("👁️ [Publicité] Tracking vue publicité ID {}", payload.publicite_id);
+    log::info!(
+        "👁️ [Publicité] Tracking vue publicité ID {}",
+        payload.publicite_id
+    );
 
-    sqlx::query("UPDATE publicites SET vues = vues + 1, impressions = impressions + 1 WHERE id = $1")
-        .bind(payload.publicite_id)
-        .execute(pool)
+    sqlx::query(
+        "UPDATE publicites SET vues = vues + 1, impressions = impressions + 1 WHERE id = $1",
+    )
+    .bind(payload.publicite_id)
+    .execute(pool)
     .await
     .map_err(|e| {
-            log::error!("Erreur tracking vue: {:?}", e);
+        log::error!("Erreur tracking vue: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
     Ok(Json(serde_json::json!({ "success": true })))
 }
-

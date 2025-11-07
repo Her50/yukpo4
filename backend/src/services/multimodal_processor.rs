@@ -41,50 +41,80 @@ impl MultimodalProcessor {
             }
         });
 
-        for (_i, ((file_data, file_name), mime_type)) in files.iter().zip(file_names.iter()).zip(mime_types.iter()).enumerate() {
+        for (_i, ((file_data, file_name), mime_type)) in files
+            .iter()
+            .zip(file_names.iter())
+            .zip(mime_types.iter())
+            .enumerate()
+        {
             let file_id = Uuid::new_v4().to_string();
             let file_extension = self.get_file_extension(file_name);
-            
+
             // 1. Sauvegarde locale pour URL
             let file_path = format!("{}/{}.{}", self.cache_dir, file_id, file_extension);
             fs::create_dir_all(&self.cache_dir).await?;
             fs::write(&file_path, file_data).await?;
-            
+
             // 2. URL publique pour l'IA externe
             let public_url = format!("{}/uploads/{}.{}", self.upload_url, file_id, file_extension);
-            
+
             // 3. Analyse locale pour m?tadonn?es et r?sum?
-            let local_analysis = self.analyze_file_locally(file_data, mime_type, file_name).await?;
-            
+            let local_analysis = self
+                .analyze_file_locally(file_data, mime_type, file_name)
+                .await?;
+
             // 4. Classification du type de fichier
             match self.classify_file_type(mime_type, &file_extension) {
                 FileType::Image => {
-                    let image_data = self.process_image(file_data, mime_type, &public_url, &local_analysis).await?;
-                    processed_data["data_sources"]["images"].as_array_mut().unwrap().push(image_data);
+                    let image_data = self
+                        .process_image(file_data, mime_type, &public_url, &local_analysis)
+                        .await?;
+                    processed_data["data_sources"]["images"]
+                        .as_array_mut()
+                        .unwrap()
+                        .push(image_data);
                 }
                 FileType::Document => {
-                    let doc_data = self.process_document(file_data, mime_type, &public_url, &local_analysis).await?;
-                    processed_data["data_sources"]["documents"].as_array_mut().unwrap().push(doc_data);
+                    let doc_data = self
+                        .process_document(file_data, mime_type, &public_url, &local_analysis)
+                        .await?;
+                    processed_data["data_sources"]["documents"]
+                        .as_array_mut()
+                        .unwrap()
+                        .push(doc_data);
                 }
                 FileType::Audio => {
-                    let audio_data = self.process_audio(file_data, mime_type, &public_url, &local_analysis).await?;
-                    processed_data["data_sources"]["audio"].as_array_mut().unwrap().push(audio_data);
+                    let audio_data = self
+                        .process_audio(file_data, mime_type, &public_url, &local_analysis)
+                        .await?;
+                    processed_data["data_sources"]["audio"]
+                        .as_array_mut()
+                        .unwrap()
+                        .push(audio_data);
                 }
                 FileType::Unknown => {
                     // Traitement g?n?rique
-                    let generic_data = self.process_generic_file(file_data, mime_type, &public_url, &local_analysis).await?;
-                    processed_data["data_sources"]["documents"].as_array_mut().unwrap().push(generic_data);
+                    let generic_data = self
+                        .process_generic_file(file_data, mime_type, &public_url, &local_analysis)
+                        .await?;
+                    processed_data["data_sources"]["documents"]
+                        .as_array_mut()
+                        .unwrap()
+                        .push(generic_data);
                 }
             }
-            
+
             // 5. Ajout de l'URL pour analyse compl?te par l'IA
-            processed_data["data_sources"]["urls"].as_array_mut().unwrap().push(json!({
-                "url": public_url,
-                "file_name": file_name,
-                "mime_type": mime_type,
-                "file_id": file_id,
-                "local_analysis": local_analysis
-            }));
+            processed_data["data_sources"]["urls"]
+                .as_array_mut()
+                .unwrap()
+                .push(json!({
+                    "url": public_url,
+                    "file_name": file_name,
+                    "mime_type": mime_type,
+                    "file_id": file_id,
+                    "local_analysis": local_analysis
+                }));
         }
 
         // 6. G?n?ration du r?sum? global
@@ -94,7 +124,13 @@ impl MultimodalProcessor {
     }
 
     /// ??? Traitement optimis? des images
-    async fn process_image(&self, data: &[u8], mime_type: &str, url: &str, local_analysis: &Value) -> AppResult<Value> {
+    async fn process_image(
+        &self,
+        data: &[u8],
+        mime_type: &str,
+        url: &str,
+        local_analysis: &Value,
+    ) -> AppResult<Value> {
         let mut image_data = json!({
             "type": "image",
             "url": url,
@@ -121,7 +157,13 @@ impl MultimodalProcessor {
     }
 
     /// ?? Traitement optimis? des documents
-    async fn process_document(&self, data: &[u8], mime_type: &str, url: &str, local_analysis: &Value) -> AppResult<Value> {
+    async fn process_document(
+        &self,
+        data: &[u8],
+        mime_type: &str,
+        url: &str,
+        local_analysis: &Value,
+    ) -> AppResult<Value> {
         let mut doc_data = json!({
             "type": "document",
             "url": url,
@@ -136,18 +178,19 @@ impl MultimodalProcessor {
             "application/pdf" => {
                 if let Ok(text) = self.extract_pdf_text(data).await {
                     doc_data["extracted_text"] = json!(text);
-                    doc_data["ai_analysis_required"] = json!(text.len() < 2000); // Si texte court, pas besoin d'IA compl?te
+                    doc_data["ai_analysis_required"] = json!(text.len() < 2000);
+                    // Si texte court, pas besoin d'IA compl?te
                 }
             }
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" |
-            "application/msword" => {
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            | "application/msword" => {
                 if let Ok(text) = self.extract_doc_text(data).await {
                     doc_data["extracted_text"] = json!(text);
                     doc_data["ai_analysis_required"] = json!(text.len() < 2000);
                 }
             }
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" |
-            "application/vnd.ms-excel" => {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            | "application/vnd.ms-excel" => {
                 if let Ok(tables) = self.extract_excel_tables(data).await {
                     doc_data["extracted_tables"] = json!(tables);
                     doc_data["ai_analysis_required"] = json!(tables.len() < 5); // Si peu de tableaux
@@ -165,7 +208,13 @@ impl MultimodalProcessor {
     }
 
     /// ?? Traitement optimis? de l'audio
-    async fn process_audio(&self, data: &[u8], mime_type: &str, url: &str, local_analysis: &Value) -> AppResult<Value> {
+    async fn process_audio(
+        &self,
+        data: &[u8],
+        mime_type: &str,
+        url: &str,
+        local_analysis: &Value,
+    ) -> AppResult<Value> {
         let mut audio_data = json!({
             "type": "audio",
             "url": url,
@@ -192,10 +241,15 @@ impl MultimodalProcessor {
     }
 
     /// ?? Analyse locale du fichier
-    async fn analyze_file_locally(&self, data: &[u8], mime_type: &str, file_name: &str) -> AppResult<Value> {
+    async fn analyze_file_locally(
+        &self,
+        data: &[u8],
+        mime_type: &str,
+        file_name: &str,
+    ) -> AppResult<Value> {
         let file_size = data.len();
         let file_extension = self.get_file_extension(file_name);
-        
+
         let analysis = json!({
             "file_name": file_name,
             "file_size": file_size,
@@ -214,9 +268,18 @@ impl MultimodalProcessor {
 
     /// ?? G?n?ration du r?sum? global
     async fn generate_global_summary(&self, processed_data: &mut Value) -> AppResult<()> {
-        let total_files = processed_data["data_sources"]["images"].as_array().unwrap().len() +
-                         processed_data["data_sources"]["documents"].as_array().unwrap().len() +
-                         processed_data["data_sources"]["audio"].as_array().unwrap().len();
+        let total_files = processed_data["data_sources"]["images"]
+            .as_array()
+            .unwrap()
+            .len()
+            + processed_data["data_sources"]["documents"]
+                .as_array()
+                .unwrap()
+                .len()
+            + processed_data["data_sources"]["audio"]
+                .as_array()
+                .unwrap()
+                .len();
 
         let mut extracted_text = String::new();
         let mut key_insights = Vec::new();
@@ -272,14 +335,16 @@ impl MultimodalProcessor {
             m if m.starts_with("image/") => FileType::Image,
             m if m.starts_with("audio/") => FileType::Audio,
             m if m.starts_with("video/") => FileType::Audio, // Traitement audio des vid?os
-            m if m.contains("pdf") || m.contains("document") || m.contains("spreadsheet") => FileType::Document,
+            m if m.contains("pdf") || m.contains("document") || m.contains("spreadsheet") => {
+                FileType::Document
+            }
             _ => match extension {
                 "pdf" | "doc" | "docx" | "xls" | "xlsx" | "txt" | "rtf" => FileType::Document,
                 "jpg" | "jpeg" | "png" | "gif" | "bmp" | "webp" => FileType::Image,
                 "mp3" | "wav" | "ogg" | "m4a" | "flac" => FileType::Audio,
                 "mp4" | "avi" | "mov" | "mkv" => FileType::Audio, // Extraction audio
                 _ => FileType::Unknown,
-            }
+            },
         }
     }
 
@@ -316,7 +381,11 @@ impl MultimodalProcessor {
         Ok(String::new())
     }
 
-    async fn detect_objects_locally(&self, _data: &[u8], _mime_type: &str) -> AppResult<Vec<String>> {
+    async fn detect_objects_locally(
+        &self,
+        _data: &[u8],
+        _mime_type: &str,
+    ) -> AppResult<Vec<String>> {
         // TODO: Impl?menter d?tection d'objets locale
         Ok(vec![])
     }
@@ -351,7 +420,13 @@ impl MultimodalProcessor {
         Ok(json!({}))
     }
 
-    async fn process_generic_file(&self, data: &[u8], mime_type: &str, url: &str, local_analysis: &Value) -> AppResult<Value> {
+    async fn process_generic_file(
+        &self,
+        data: &[u8],
+        mime_type: &str,
+        url: &str,
+        local_analysis: &Value,
+    ) -> AppResult<Value> {
         Ok(json!({
             "type": "generic",
             "url": url,
@@ -369,4 +444,4 @@ enum FileType {
     Document,
     Audio,
     Unknown,
-} 
+}

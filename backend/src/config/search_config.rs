@@ -1,6 +1,6 @@
 // Configuration de recherche
-use serde::{Deserialize, Serialize};
 use crate::config::production_config::ProductionConfig;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchConfig {
@@ -30,10 +30,7 @@ impl Default for SearchConfig {
                 "mecanique".to_string(),
                 "electronique".to_string(),
             ],
-            priority_locations: vec![
-                "Douala".to_string(),
-                "Yaounde".to_string(),
-            ],
+            priority_locations: vec!["Douala".to_string(), "Yaounde".to_string()],
             recency_days: 30,
             recency_boost: 1.5,
         }
@@ -42,4 +39,4 @@ impl Default for SearchConfig {
 
 pub fn create_production_config() -> ProductionConfig {
     ProductionConfig::default()
-} 
+}

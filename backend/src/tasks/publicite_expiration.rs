@@ -1,7 +1,7 @@
+use log;
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
-use log;
 
 /// Tâche périodique pour désactiver les publicités expirées
 /// S'exécute toutes les heures
@@ -50,7 +50,7 @@ async fn check_and_deactivate_expired_publicites(pool: &PgPool) -> Result<u64, s
         SET status = 'expired'
         WHERE status = 'active'
         AND date_fin < NOW()
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
@@ -76,7 +76,7 @@ async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<usize, sqlx::Er
                 AND created_at > NOW() - INTERVAL '24 hours'
             )
         )
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await?;
@@ -104,7 +104,7 @@ async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<usize, sqlx::Er
             r#"
             INSERT INTO notifications (user_id, notification_type, message, metadata)
             VALUES ($1, 'publicite_expiring', $2, $3)
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(&message)
@@ -134,4 +134,3 @@ pub async fn deactivate_expired_publicites_now(pool: &PgPool) -> Result<u64, sql
     log::info!("🔧 [Manual] Désactivation manuelle des publicités expirées");
     check_and_deactivate_expired_publicites(pool).await
 }
-

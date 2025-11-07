@@ -12,8 +12,9 @@ pub struct TestConfig {
 impl TestConfig {
     pub fn from_env() -> Self {
         Self {
-            database_url: env::var("TEST_DATABASE_URL")
-                .unwrap_or_else(|_| "postgresql://test:test@localhost:5432/yukpomnang_test".to_string()),
+            database_url: env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
+                "postgresql://test:test@localhost:5432/yukpomnang_test".to_string()
+            }),
             mongodb_url: env::var("TEST_MONGODB_URL")
                 .unwrap_or_else(|_| "mongodb://localhost:27017".to_string()),
             redis_url: env::var("TEST_REDIS_URL")
@@ -33,6 +34,3 @@ impl Default for TestConfig {
         Self::from_env()
     }
 }
-
-
-

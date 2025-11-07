@@ -1,5 +1,7 @@
 // Contrôleur pour les produits populaires
 // Permet au prestataire de voir les produits les plus commercialisés par ses concurrents
+use crate::services::popular_products_service;
+use crate::state::AppState;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -7,8 +9,6 @@ use axum::{
 };
 use serde::Deserialize;
 use std::sync::Arc;
-use crate::state::AppState;
-use crate::services::popular_products_service;
 
 #[derive(Debug, Deserialize)]
 pub struct PopularProductsQuery {
@@ -25,40 +25,26 @@ pub async fn get_popular_products(
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
     let limit = query.limit.unwrap_or(20);
-    
+
     let products = if let Some(search) = query.search {
         // Recherche avec filtre
-        popular_products_service::get_popular_products_similar_to(
-            pool,
-            &search,
-            limit,
-        ).await
+        popular_products_service::get_popular_products_similar_to(pool, &search, limit).await
     } else {
         // TOP produits globaux
-        popular_products_service::get_top_popular_products(
-            pool,
-            query.category.as_deref(),
-            limit,
-        ).await
+        popular_products_service::get_top_popular_products(pool, query.category.as_deref(), limit)
+            .await
     };
-    
+
     match products {
-        Ok(products) => {
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "data": products,
-                "count": products.len(),
-                "message": "Produits populaires récupérés"
-            })))
-        }
+        Ok(products) => Ok(Json(serde_json::json!({
+            "success": true,
+            "data": products,
+            "count": products.len(),
+            "message": "Produits populaires récupérés"
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur récupération produits populaires: {:?}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Erreur: {}", e),
-            ))
+            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur: {}", e)))
         }
     }
 }
-
-

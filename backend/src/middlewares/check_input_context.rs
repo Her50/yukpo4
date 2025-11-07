@@ -1,18 +1,10 @@
-use axum::{
-    body::Body,
-    http::Request,
-    middleware::Next,
-    response::Response,
-};
 use crate::state::AppState;
+use axum::{body::Body, http::Request, middleware::Next, response::Response};
 use std::sync::Arc;
 
 pub async fn check_input_context(req: Request<Body>, next: Next) -> Response {
     // ? Extraction manuelle du state depuis les extensions
-    let state = req
-        .extensions()
-        .get::<Arc<AppState>>()
-        .cloned();
+    let state = req.extensions().get::<Arc<AppState>>().cloned();
 
     if let Some(_state) = state {
         // ici tu peux utiliser _state.pg, _state.ia, etc.

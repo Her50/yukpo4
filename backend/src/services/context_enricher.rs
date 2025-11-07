@@ -1,11 +1,11 @@
+use axum::extract::Multipart;
+use base64::{engine::general_purpose, Engine as _};
 use chrono::Utc;
 use serde_json::{json, Value};
 use std::fs::{create_dir_all, read_to_string, write, File};
 use std::io::Write;
 use std::path::Path;
-use uuid::Uuid;
-use axum::extract::Multipart;
-use base64::{engine::general_purpose, Engine as _}; // ? Import corrig?
+use uuid::Uuid; // ? Import corrig?
 
 use crate::core::types::AppResult;
 
@@ -35,7 +35,11 @@ pub async fn enrichir_input_context(mut multipart: Multipart) -> AppResult<()> {
     while let Some(field) = multipart.next_field().await? {
         let name = field.name().unwrap_or("unknown").to_string();
         let file_name = field.file_name().unwrap_or("fichier").to_string();
-        let ext = file_name.split('.').next_back().unwrap_or("bin").to_lowercase();
+        let ext = file_name
+            .split('.')
+            .next_back()
+            .unwrap_or("bin")
+            .to_lowercase();
         let bytes = field.bytes().await?;
 
         match name.as_str() {
@@ -71,10 +75,14 @@ pub async fn enrichir_input_context(mut multipart: Multipart) -> AppResult<()> {
                 });
 
                 if ext == "xls" || ext == "xlsx" {
-                    if let Some(tableurs) = context.get_mut("tableurs").and_then(|v| v.as_array_mut()) {
+                    if let Some(tableurs) =
+                        context.get_mut("tableurs").and_then(|v| v.as_array_mut())
+                    {
                         tableurs.push(fichier_json);
                     }
-                } else if let Some(docs) = context.get_mut("documents").and_then(|v| v.as_array_mut()) {
+                } else if let Some(docs) =
+                    context.get_mut("documents").and_then(|v| v.as_array_mut())
+                {
                     docs.push(fichier_json);
                 }
             }

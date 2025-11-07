@@ -1,12 +1,9 @@
-use crate::core::types::AppResult;
-use crate::utils::log::{log_info, log_error};
 use crate::config::search_config::SearchConfig;
+use crate::core::types::AppResult;
 use crate::services::scheduling_search_service::SchedulingSearchService;
+use crate::utils::log::{log_error, log_info};
 use serde_json::Value;
 use sqlx::{PgPool, Row};
-
-
-
 
 /// Résultat de recherche avec score détaillé
 #[derive(Debug, Clone)]
@@ -43,7 +40,7 @@ impl NativeSearchService {
         // Configuration déjà chargée par défaut
         Ok(())
     }
-    
+
     /// ✅ NOUVEAU 2025-11-04 : Vérifier si un lieu est mentionné dans l'input
     /// Utilise l'opérateur && (overlap) pour tester intersection entre arrays
     /// Retourne TRUE si au moins UN produit a un lieu qui matche
@@ -55,7 +52,7 @@ impl NativeSearchService {
             .split_whitespace()
             .map(|s| s.to_string())
             .collect();
-        
+
         let result = sqlx::query_scalar::<_, bool>(
             r#"
             SELECT EXISTS (
@@ -83,9 +80,14 @@ impl NativeSearchService {
         .fetch_one(&self.pool)
         .await
         .unwrap_or(false);
-        
-        log::info!("[NativeSearch] Lieu dans input ? {} (input: '{}', words: {:?})", result, user_input, words);
-        
+
+        log::info!(
+            "[NativeSearch] Lieu dans input ? {} (input: '{}', words: {:?})",
+            result,
+            user_input,
+            words
+        );
+
         Ok(result)
     }
 
@@ -93,41 +95,46 @@ impl NativeSearchService {
     /// Vérifie si UN élément du location_vector de chaque produit est dans l'input utilisateur
     pub async fn intelligent_search_with_location_prefilter(
         &self,
-        search_query: &str,        // Mot-clé principal : "Nike"
-        user_input_full: &str,     // Input COMPLET : "Nike Air Douala"
+        search_query: &str,    // Mot-clé principal : "Nike"
+        user_input_full: &str, // Input COMPLET : "Nike Air Douala"
         category_filter: Option<&str>,
         _user_id: Option<i32>,
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
     ) -> AppResult<Vec<SearchResult>> {
         let _start_time = std::time::Instant::now();
-        log_info(&format!("[NativeSearch] Recherche avec pré-filtre lieu: '{}' (input complet: '{}')", 
-            search_query, user_input_full));
-        
+        log_info(&format!(
+            "[NativeSearch] Recherche avec pré-filtre lieu: '{}' (input complet: '{}')",
+            search_query, user_input_full
+        ));
+
         // ✅ NOUVELLE LOGIQUE : Vérifier si l'input contient un lieu
         // En vérifiant si UN élément du location_vector de n'importe quel produit matche
         let has_location_in_input = self.check_if_location_in_input(user_input_full).await?;
-        
+
         // ✅ IMPORTANT : Si AUCUN lieu ne matche → Passer NULL pour utiliser TOUTE la base
         let location_filter = if has_location_in_input {
             log_info("[NativeSearch] 🗺️ Lieu détecté dans input → PRÉ-FILTRE activé");
-            Some(user_input_full)  // Passer input complet pour filtrage
+            Some(user_input_full) // Passer input complet pour filtrage
         } else {
-            log_info("[NativeSearch] ⚠️ AUCUN lieu détecté → Recherche dans TOUTE la base de données");
-            None  // ✅ NULL → Pas de filtre lieu → TOUTE la base
+            log_info(
+                "[NativeSearch] ⚠️ AUCUN lieu détecté → Recherche dans TOUTE la base de données",
+            );
+            None // ✅ NULL → Pas de filtre lieu → TOUTE la base
         };
-        
+
         // Appel à la recherche intelligente existante avec filtre conditionnel
         self.intelligent_search_internal(
             search_query,
             category_filter,
-            location_filter,  // ✅ NULL si aucun lieu, Some(input) si lieu détecté
+            location_filter, // ✅ NULL si aucun lieu, Some(input) si lieu détecté
             _user_id,
             gps_zone,
-            search_radius_km
-        ).await
+            search_radius_km,
+        )
+        .await
     }
-    
+
     /// Recherche intelligente combinant full-text et trigram
     pub async fn intelligent_search(
         &self,
@@ -135,8 +142,8 @@ impl NativeSearchService {
         category_filter: Option<&str>,
         location_filter: Option<&str>,
         _user_id: Option<i32>,
-        gps_zone: Option<&str>,  // Nouveau paramètre GPS
-        search_radius_km: Option<i32>,  // Nouveau paramètre rayon
+        gps_zone: Option<&str>,        // Nouveau paramètre GPS
+        search_radius_km: Option<i32>, // Nouveau paramètre rayon
     ) -> AppResult<Vec<SearchResult>> {
         // Appel à la version interne
         self.intelligent_search_internal(
@@ -145,49 +152,59 @@ impl NativeSearchService {
             location_filter,
             _user_id,
             gps_zone,
-            search_radius_km
-        ).await
+            search_radius_km,
+        )
+        .await
     }
-    
+
     /// Fonction interne de recherche
     async fn intelligent_search_internal(
         &self,
         search_query: &str,
         category_filter: Option<&str>,
-        location_or_input_filter: Option<&str>,  // Peut être lieu OU input complet
+        location_or_input_filter: Option<&str>, // Peut être lieu OU input complet
         _user_id: Option<i32>,
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
     ) -> AppResult<Vec<SearchResult>> {
         let _start_time = std::time::Instant::now();
-        log_info(&format!("[NativeSearch] Début recherche: '{}' (GPS: {:?}, Rayon: {:?}km)", 
-            search_query, gps_zone, search_radius_km));
+        log_info(&format!(
+            "[NativeSearch] Début recherche: '{}' (GPS: {:?}, Rayon: {:?}km)",
+            search_query, gps_zone, search_radius_km
+        ));
 
         // Normaliser la requête
         let normalized_query = self.normalize_query_advanced(search_query);
-        
+
         // Recherche full-text principale avec filtrage GPS
-        let mut fulltext_results = self.fulltext_search_with_gps(
-            &normalized_query, 
-            category_filter, 
-            location_or_input_filter,  // ✅ Input complet pour pré-filtre lieu
-            gps_zone,
-            search_radius_km
-        ).await?;
-        
+        let mut fulltext_results = self
+            .fulltext_search_with_gps(
+                &normalized_query,
+                category_filter,
+                location_or_input_filter, // ✅ Input complet pour pré-filtre lieu
+                gps_zone,
+                search_radius_km,
+            )
+            .await?;
+
         // Recherche trigram de fallback si pas assez de résultats
         if fulltext_results.len() < self.config.max_results as usize {
-            let trigram_results = self.trigram_search_with_gps(
-                &normalized_query, 
-                category_filter, 
-                location_or_input_filter,  // ✅ Input complet pour pré-filtre lieu
-                gps_zone,
-                search_radius_km
-            ).await?;
-            
+            let trigram_results = self
+                .trigram_search_with_gps(
+                    &normalized_query,
+                    category_filter,
+                    location_or_input_filter, // ✅ Input complet pour pré-filtre lieu
+                    gps_zone,
+                    search_radius_km,
+                )
+                .await?;
+
             // Fusionner les résultats en évitant les doublons
             for result in trigram_results {
-                if !fulltext_results.iter().any(|r| r.service_id == result.service_id) {
+                if !fulltext_results
+                    .iter()
+                    .any(|r| r.service_id == result.service_id)
+                {
                     fulltext_results.push(result);
                 }
             }
@@ -195,29 +212,40 @@ impl NativeSearchService {
 
         // Recherche par mots clés individuels si encore pas assez de résultats
         if fulltext_results.len() < self.config.max_results as usize / 2 {
-            let keyword_results = self.keyword_search_with_gps(
-                &normalized_query, 
-                category_filter, 
-                location_or_input_filter,  // ✅ Input complet pour pré-filtre lieu
-                gps_zone,
-                search_radius_km
-            ).await?;
-            
+            let keyword_results = self
+                .keyword_search_with_gps(
+                    &normalized_query,
+                    category_filter,
+                    location_or_input_filter, // ✅ Input complet pour pré-filtre lieu
+                    gps_zone,
+                    search_radius_km,
+                )
+                .await?;
+
             // Fusionner les résultats en évitant les doublons
             for result in keyword_results {
-                if !fulltext_results.iter().any(|r| r.service_id == result.service_id) {
+                if !fulltext_results
+                    .iter()
+                    .any(|r| r.service_id == result.service_id)
+                {
                     fulltext_results.push(result);
                 }
             }
         }
 
         // Trier les résultats (pas de limite)
-        fulltext_results.sort_by(|a, b| b.total_score.partial_cmp(&a.total_score).unwrap_or(std::cmp::Ordering::Equal));
+        fulltext_results.sort_by(|a, b| {
+            b.total_score
+                .partial_cmp(&a.total_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         let duration = _start_time.elapsed();
         log_info(&format!(
             "[NativeSearch] Recherche terminée en {:?}: {} résultats (avec filtrage GPS: {})",
-            duration, fulltext_results.len(), gps_zone.is_some()
+            duration,
+            fulltext_results.len(),
+            gps_zone.is_some()
         ));
 
         Ok(fulltext_results)
@@ -232,7 +260,8 @@ impl NativeSearchService {
         location_filter: Option<&str>,
     ) -> AppResult<Vec<SearchResult>> {
         // Appeler la nouvelle méthode avec GPS désactivé
-        self.fulltext_search_with_gps(query, category_filter, location_filter, None, None).await
+        self.fulltext_search_with_gps(query, category_filter, location_filter, None, None)
+            .await
     }
 
     /// Recherche full-text intelligente avec filtrage GPS et planifications
@@ -247,11 +276,14 @@ impl NativeSearchService {
         // Analyser l'intention de recherche pour détecter les planifications
         let scheduling_service = SchedulingSearchService::new(self.pool.clone());
         let intent = scheduling_service.analyze_search_intent(query);
-        
+
         // Si recherche avec planification, utiliser la fonction spécialisée
         if intent.should_use_scheduling_search() {
-            log_info(&format!("[NativeSearch] Recherche avec planification détectée: {:?}", intent));
-            
+            log_info(&format!(
+                "[NativeSearch] Recherche avec planification détectée: {:?}",
+                intent
+            ));
+
             // Convertir gps_zone en coordonnées si nécessaire
             let (user_lat, user_lng) = if let Some(zone) = gps_zone {
                 // Extraire lat/lng de la zone GPS (format: "lat,lng")
@@ -263,37 +295,46 @@ impl NativeSearchService {
             } else {
                 (None, None)
             };
-            
-            let scheduling_results = scheduling_service.search_with_scheduling(
-                query,
-                None, // Utilise NOW()
-                user_lat,
-                user_lng,
-                search_radius_km.map(|r| r as f64),
-            ).await.map_err(|e| format!("Erreur recherche planifications: {}", e))?;
-            
+
+            let scheduling_results = scheduling_service
+                .search_with_scheduling(
+                    query,
+                    None, // Utilise NOW()
+                    user_lat,
+                    user_lng,
+                    search_radius_km.map(|r| r as f64),
+                )
+                .await
+                .map_err(|e| format!("Erreur recherche planifications: {}", e))?;
+
             // Convertir en SearchResult
-            let results: Vec<SearchResult> = scheduling_results.into_iter().map(|r| SearchResult {
-                service_id: r.service_id,
-                data: r.product_data,
-                total_score: r.relevance_score as f32,
-                fulltext_score: r.relevance_score as f32,
-                trigram_score: 0.0,
-                recency_score: 0.0,
-                category_score: 0.0,
-                search_method: "scheduling_search".to_string(),
-                matched_fields: vec!["planification".to_string(), "disponibilité".to_string()],
-            }).collect();
-            
-            log_info(&format!("[NativeSearch] {} résultats avec planifications trouvés", results.len()));
+            let results: Vec<SearchResult> = scheduling_results
+                .into_iter()
+                .map(|r| SearchResult {
+                    service_id: r.service_id,
+                    data: r.product_data,
+                    total_score: r.relevance_score as f32,
+                    fulltext_score: r.relevance_score as f32,
+                    trigram_score: 0.0,
+                    recency_score: 0.0,
+                    category_score: 0.0,
+                    search_method: "scheduling_search".to_string(),
+                    matched_fields: vec!["planification".to_string(), "disponibilité".to_string()],
+                })
+                .collect();
+
+            log_info(&format!(
+                "[NativeSearch] {} résultats avec planifications trouvés",
+                results.len()
+            ));
             return Ok(results);
         }
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
         if let Some(gps_zone) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
-            
+
             log_info(&format!("[NativeSearch] Utilisation de search_services_gps_final avec GPS: {} et rayon: {}km", gps_zone, radius));
-            
+
             // Appeler notre fonction PostgreSQL optimisée
             let sql = r#"
                 SELECT 
@@ -306,7 +347,7 @@ impl NativeSearchService {
                     gps_source
                 FROM search_services_gps_final($1, $2, $3, $4)
             "#;
-            
+
             let results = sqlx::query(sql)
                 .bind(query)
                 .bind(gps_zone)
@@ -314,8 +355,14 @@ impl NativeSearchService {
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
-                    log_error(&format!("[NativeSearch] Erreur recherche GPS optimisée: {}", e));
-                    crate::core::types::AppError::Internal(format!("Erreur recherche GPS optimisée: {}", e))
+                    log_error(&format!(
+                        "[NativeSearch] Erreur recherche GPS optimisée: {}",
+                        e
+                    ));
+                    crate::core::types::AppError::Internal(format!(
+                        "Erreur recherche GPS optimisée: {}",
+                        e
+                    ))
                 })?;
 
             let mut search_results = Vec::new();
@@ -327,7 +374,7 @@ impl NativeSearchService {
                 let _distance_km: Option<f64> = row.get("distance_km");
                 let relevance_score: f32 = row.get("relevance_score");
                 let _gps_source: Option<String> = row.get("gps_source");
-                
+
                 // Récupérer les données complètes du service
                 let service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
                     .bind(service_id)
@@ -347,21 +394,27 @@ impl NativeSearchService {
                     search_method: "gps_optimized".to_string(),
                     matched_fields: vec!["gps".to_string()],
                 });
-                
-                log_info(&format!("[NativeSearch] Service {} trouvé à {:.2}km (source: {})", 
-                    service_id, 
-                    _distance_km.unwrap_or(0.0), 
-                    _gps_source.unwrap_or_else(|| "unknown".to_string())));
+
+                log_info(&format!(
+                    "[NativeSearch] Service {} trouvé à {:.2}km (source: {})",
+                    service_id,
+                    _distance_km.unwrap_or(0.0),
+                    _gps_source.unwrap_or_else(|| "unknown".to_string())
+                ));
             }
-            
-            log_info(&format!("[NativeSearch] Recherche GPS optimisée: {} résultats trouvés", search_results.len()));
+
+            log_info(&format!(
+                "[NativeSearch] Recherche GPS optimisée: {} résultats trouvés",
+                search_results.len()
+            ));
             return Ok(search_results);
         }
-        
+
         // Fallback vers l'ancienne méthode si pas de GPS
         let partial_conditions = self.create_partial_match_conditions(query);
-        
-        let sql = format!(r#"
+
+        let sql = format!(
+            r#"
 SELECT DISTINCT
                 s.id,
                 s.data,
@@ -638,7 +691,9 @@ SELECT DISTINCT
                 )
             )
             ORDER BY fulltext_score DESC
-        "#, partial_conditions, partial_conditions);
+        "#,
+            partial_conditions, partial_conditions
+        );
 
         let results = sqlx::query(&sql)
             .bind(query)
@@ -687,7 +742,8 @@ SELECT DISTINCT
         location_filter: Option<&str>,
     ) -> AppResult<Vec<SearchResult>> {
         // Appeler la nouvelle méthode avec GPS désactivé
-        self.trigram_search_with_gps(query, category_filter, location_filter, None, None).await
+        self.trigram_search_with_gps(query, category_filter, location_filter, None, None)
+            .await
     }
 
     /// Recherche trigram avec filtrage GPS
@@ -702,9 +758,12 @@ SELECT DISTINCT
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
         if let Some(gps_zone) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
-            
-            log_info(&format!("[NativeSearch] Trigram avec GPS optimisé: {} et rayon: {}km", gps_zone, radius));
-            
+
+            log_info(&format!(
+                "[NativeSearch] Trigram avec GPS optimisé: {} et rayon: {}km",
+                gps_zone, radius
+            ));
+
             // Appeler notre fonction PostgreSQL optimisée
             let sql = r#"
                 SELECT 
@@ -717,7 +776,7 @@ SELECT DISTINCT
                     gps_source
                 FROM search_services_gps_final($1, $2, $3, $4)
             "#;
-            
+
             let results = sqlx::query(sql)
                 .bind(query)
                 .bind(gps_zone)
@@ -725,8 +784,14 @@ SELECT DISTINCT
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
-                    log_error(&format!("[NativeSearch] Erreur trigram GPS optimisé: {}", e));
-                    crate::core::types::AppError::Internal(format!("Erreur trigram GPS optimisé: {}", e))
+                    log_error(&format!(
+                        "[NativeSearch] Erreur trigram GPS optimisé: {}",
+                        e
+                    ));
+                    crate::core::types::AppError::Internal(format!(
+                        "Erreur trigram GPS optimisé: {}",
+                        e
+                    ))
                 })?;
 
             let mut search_results = Vec::new();
@@ -738,7 +803,7 @@ SELECT DISTINCT
                 let _distance_km: Option<f64> = row.get("distance_km");
                 let relevance_score: f32 = row.get("relevance_score");
                 let _gps_source: Option<String> = row.get("gps_source");
-                
+
                 // Récupérer les données complètes du service
                 let service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
                     .bind(service_id)
@@ -759,10 +824,10 @@ SELECT DISTINCT
                     matched_fields: vec!["trigram".to_string(), "gps".to_string()],
                 });
             }
-            
+
             return Ok(search_results);
         }
-        
+
         // Fallback vers l'ancienne méthode si pas de GPS
         let sql = r#"
             SELECT DISTINCT
@@ -860,7 +925,8 @@ SELECT DISTINCT
         location_filter: Option<&str>,
     ) -> AppResult<Vec<SearchResult>> {
         // Appeler la nouvelle méthode avec GPS désactivé
-        self.keyword_search_with_gps(query, category_filter, location_filter, None, None).await
+        self.keyword_search_with_gps(query, category_filter, location_filter, None, None)
+            .await
     }
 
     /// Recherche par mots clés individuels avec filtrage GPS
@@ -875,9 +941,12 @@ SELECT DISTINCT
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
         if let Some(gps_zone) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
-            
-            log_info(&format!("[NativeSearch] Mots-clés avec GPS optimisé: {} et rayon: {}km", gps_zone, radius));
-            
+
+            log_info(&format!(
+                "[NativeSearch] Mots-clés avec GPS optimisé: {} et rayon: {}km",
+                gps_zone, radius
+            ));
+
             // Appeler notre fonction PostgreSQL optimisée
             let sql = r#"
                 SELECT 
@@ -890,7 +959,7 @@ SELECT DISTINCT
                     gps_source
                 FROM search_services_gps_final($1, $2, $3, $4)
             "#;
-            
+
             let results = sqlx::query(sql)
                 .bind(query)
                 .bind(gps_zone)
@@ -898,8 +967,14 @@ SELECT DISTINCT
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
-                    log_error(&format!("[NativeSearch] Erreur mots-clés GPS optimisé: {}", e));
-                    crate::core::types::AppError::Internal(format!("Erreur mots-clés GPS optimisé: {}", e))
+                    log_error(&format!(
+                        "[NativeSearch] Erreur mots-clés GPS optimisé: {}",
+                        e
+                    ));
+                    crate::core::types::AppError::Internal(format!(
+                        "Erreur mots-clés GPS optimisé: {}",
+                        e
+                    ))
                 })?;
 
             let mut search_results = Vec::new();
@@ -911,7 +986,7 @@ SELECT DISTINCT
                 let _distance_km: Option<f64> = row.get("distance_km");
                 let relevance_score: f32 = row.get("relevance_score");
                 let _gps_source: Option<String> = row.get("gps_source");
-                
+
                 // Récupérer les données complètes du service
                 let service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
                     .bind(service_id)
@@ -932,10 +1007,10 @@ SELECT DISTINCT
                     matched_fields: vec!["keywords".to_string(), "gps".to_string()],
                 });
             }
-            
+
             return Ok(search_results);
         }
-        
+
         // Fallback vers l'ancienne méthode si pas de GPS
         let words: Vec<&str> = query.split_whitespace().collect();
         if words.is_empty() {
@@ -949,7 +1024,7 @@ SELECT DISTINCT
                 "s.data->'titre_service'->>'valeur' ILIKE '%{}%' OR s.data->'description'->>'valeur' ILIKE '%{}%' OR s.data->'category'->>'valeur' ILIKE '%{}%'",
                 word, word, word
             ));
-            
+
             // Ajouter variantes sans accents
             let without_accents = word
                 .chars()
@@ -964,7 +1039,7 @@ SELECT DISTINCT
                     _ => c,
                 })
                 .collect::<String>();
-            
+
             if without_accents != word {
                 conditions.push(format!(
                     "s.data->'titre_service'->>'valeur' ILIKE '%{}%' OR s.data->'description'->>'valeur' ILIKE '%{}%' OR s.data->'category'->>'valeur' ILIKE '%{}%'",
@@ -973,7 +1048,8 @@ SELECT DISTINCT
             }
         }
 
-        let sql = format!(r#"
+        let sql = format!(
+            r#"
             SELECT 
                 s.id,
                 s.data,
@@ -1025,7 +1101,9 @@ SELECT DISTINCT
                 )
             )
             ORDER BY keyword_score DESC
-        "#, conditions.join(" OR "));
+        "#,
+            conditions.join(" OR ")
+        );
 
         let results = sqlx::query(&sql)
             .bind(query)
@@ -1034,8 +1112,14 @@ SELECT DISTINCT
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
-                log_error(&format!("[NativeSearch] Erreur recherche par mots clés: {}", e));
-                crate::core::types::AppError::Internal(format!("Erreur recherche par mots clés: {}", e))
+                log_error(&format!(
+                    "[NativeSearch] Erreur recherche par mots clés: {}",
+                    e
+                ));
+                crate::core::types::AppError::Internal(format!(
+                    "Erreur recherche par mots clés: {}",
+                    e
+                ))
             })?;
 
         let mut search_results = Vec::new();
@@ -1069,7 +1153,7 @@ SELECT DISTINCT
     fn calculate_recency_score(&self, created_at: chrono::DateTime<chrono::Utc>) -> f32 {
         let now = chrono::Utc::now();
         let days_old = now.signed_duration_since(created_at).num_days();
-        
+
         if days_old <= self.config.recency_days {
             self.config.recency_boost
         } else {
@@ -1084,20 +1168,20 @@ SELECT DISTINCT
             .to_lowercase()
             .trim()
             .replace(|c: char| !c.is_alphanumeric() && c != ' ', " ");
-        
+
         // Créer des variantes avec et sans accents
         let words: Vec<String> = normalized
             .split_whitespace()
             .flat_map(|word| self.create_word_variants(word))
             .collect();
-        
+
         words.join(" ")
     }
 
     /// Créer des variantes de mots avec et sans accents
     fn create_word_variants(&self, word: &str) -> Vec<String> {
         let mut variants = vec![word.to_string()];
-        
+
         // Variantes sans accents
         let without_accents = word
             .chars()
@@ -1112,11 +1196,11 @@ SELECT DISTINCT
                 _ => c,
             })
             .collect::<String>();
-        
+
         if without_accents != word {
             variants.push(without_accents);
         }
-        
+
         // Variantes avec accents (pour les mots sans accents)
         if !word.chars().any(|c| "àâäéèêëîïôöùûüÿç".contains(c)) {
             let with_accents = word
@@ -1127,13 +1211,13 @@ SELECT DISTINCT
                 .replace("u", "uùûü")
                 .replace("y", "yÿ")
                 .replace("c", "cç");
-            
+
             // Ajouter seulement si le mot original n'a pas d'accents
             if with_accents != word {
                 variants.push(with_accents);
             }
         }
-        
+
         variants
     }
 
@@ -1141,14 +1225,14 @@ SELECT DISTINCT
     fn create_partial_match_conditions(&self, query: &str) -> String {
         let words: Vec<&str> = query.split_whitespace().collect();
         let mut conditions = Vec::new();
-        
+
         for word in words {
             // Correspondances exactes
             conditions.push(format!(
                 "s.data->'titre_service'->>'valeur' ILIKE '%{}%' OR s.data->'description'->>'valeur' ILIKE '%{}%' OR s.data->'category'->>'valeur' ILIKE '%{}%'",
                 word, word, word
             ));
-            
+
             // Correspondances sans accents (uniquement si le mot a des accents)
             let without_accents = word
                 .chars()
@@ -1163,20 +1247,20 @@ SELECT DISTINCT
                     _ => c,
                 })
                 .collect::<String>();
-            
+
             if without_accents != word {
                 conditions.push(format!(
                     "unaccent(s.data->'titre_service'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'description'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'category'->>'valeur') ILIKE '%{}%'",
                     without_accents, without_accents, without_accents
                 ));
             }
-            
+
             // Correspondances bidirectionnelles : mot sans accents dans base avec accents
             conditions.push(format!(
                 "unaccent(s.data->'titre_service'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'description'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'category'->>'valeur') ILIKE '%{}%'",
                 word, word, word
             ));
-            
+
             // Correspondances partielles pour mots longs (ex: "gestionnaire" -> "gestion")
             let chars: Vec<char> = word.chars().collect();
             if chars.len() > 4 {
@@ -1188,13 +1272,13 @@ SELECT DISTINCT
                 ));
             }
         }
-        
+
         conditions.join(" OR ")
     }
 
     /// Recherche par catégorie spécifique
     pub async fn search_by_category(&self, category: &str) -> AppResult<Vec<SearchResult>> {
-                       let sql = r#"
+        let sql = r#"
                    SELECT 
                        s.id,
                        s.data,
@@ -1216,43 +1300,49 @@ SELECT DISTINCT
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
-                log_error(&format!("[NativeSearch] Erreur recherche par catégorie: {}", e));
-                crate::core::types::AppError::Internal(format!("Erreur recherche par catégorie: {}", e))
+                log_error(&format!(
+                    "[NativeSearch] Erreur recherche par catégorie: {}",
+                    e
+                ));
+                crate::core::types::AppError::Internal(format!(
+                    "Erreur recherche par catégorie: {}",
+                    e
+                ))
             })?;
 
         let mut search_results = Vec::new();
-                       for row in results {
-                   let service_id: i32 = row.get("id");
-                   let data: Value = row.get("data");
-                   let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
-                   let _user_id: i32 = row.get("user_id");
-                   let _gps: Option<String> = row.get("gps");
-                   let _category: Option<String> = row.get("category");
-                   
-                   let recency_score = self.calculate_recency_score(created_at);
-                   
-                   search_results.push(SearchResult {
-                       service_id,
-                       data,
-                       total_score: 1.0 + recency_score,
-                       fulltext_score: 0.0,
-                       trigram_score: 0.0,
-                       recency_score,
-                       category_score: 1.0,
-                       search_method: "category".to_string(),
-                       matched_fields: vec!["category".to_string()],
-                   });
-               }
+        for row in results {
+            let service_id: i32 = row.get("id");
+            let data: Value = row.get("data");
+            let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+            let _user_id: i32 = row.get("user_id");
+            let _gps: Option<String> = row.get("gps");
+            let _category: Option<String> = row.get("category");
+
+            let recency_score = self.calculate_recency_score(created_at);
+
+            search_results.push(SearchResult {
+                service_id,
+                data,
+                total_score: 1.0 + recency_score,
+                fulltext_score: 0.0,
+                trigram_score: 0.0,
+                recency_score,
+                category_score: 1.0,
+                search_method: "category".to_string(),
+                matched_fields: vec!["category".to_string()],
+            });
+        }
 
         Ok(search_results)
     }
 
     /// Recherche géospatiale intelligente avec calcul de distance
     pub async fn search_by_location(
-        &self, 
+        &self,
         location: &str,
         user_lat: Option<f64>,
-        user_lng: Option<f64>
+        user_lng: Option<f64>,
     ) -> AppResult<Vec<SearchResult>> {
         let sql = if let (Some(_lat), Some(_lng)) = (user_lat, user_lng) {
             // Recherche avec calcul de distance géographique
@@ -1343,12 +1433,13 @@ SELECT DISTINCT
                 .fetch_all(&self.pool)
                 .await
         } else {
-            sqlx::query(sql)
-                .bind(location)
-                .fetch_all(&self.pool)
-                .await
-        }.map_err(|e| {
-            log_error(&format!("[NativeSearch] Erreur recherche géospatiale: {}", e));
+            sqlx::query(sql).bind(location).fetch_all(&self.pool).await
+        }
+        .map_err(|e| {
+            log_error(&format!(
+                "[NativeSearch] Erreur recherche géospatiale: {}",
+                e
+            ));
             crate::core::types::AppError::Internal(format!("Erreur recherche géospatiale: {}", e))
         })?;
 
@@ -1361,9 +1452,9 @@ SELECT DISTINCT
             let _gps: Option<String> = row.get("gps");
             let _category: Option<String> = row.get("category");
             let location_score: f32 = row.get("location_score");
-            
+
             let recency_score = self.calculate_recency_score(created_at);
-            
+
             search_results.push(SearchResult {
                 service_id,
                 data,
@@ -1401,4 +1492,4 @@ impl SearchResult {
             }
         })
     }
-} 
+}

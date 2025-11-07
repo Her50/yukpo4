@@ -1,12 +1,13 @@
 use axum::{
-    extract::{State, Multipart},
+    extract::{Multipart, State},
     Json,
 };
+use log::{error, info};
 use serde::{Deserialize, Serialize};
-use log::{info, error};
-use std::sync::Arc;
 use serde_json::json;
+use std::sync::Arc;
 
+use crate::state::AppState;
 use crate::{
     core::types::AppResult,
     ia::behavior_engine::{compute_behavior_score, is_suspicious},
@@ -14,7 +15,6 @@ use crate::{
     //     // services::context_enricher::enrichir_input_context,
     // },
 };
-use crate::state::AppState;
 
 /// ?? Analyse comportementale (bas?e sur IP, fr?quence, chemin)
 #[derive(Deserialize)]
@@ -35,7 +35,10 @@ pub async fn analyze_behavior(
     State(_): State<Arc<AppState>>,
     Json(payload): Json<BehaviorInput>,
 ) -> AppResult<Json<BehaviorOutput>> {
-    info!("[analyze_behavior] Called for ip={}, path={}, freq={}", payload.ip, payload.path, payload.freq);
+    info!(
+        "[analyze_behavior] Called for ip={}, path={}, freq={}",
+        payload.ip, payload.path, payload.freq
+    );
     let score = compute_behavior_score(&payload.ip, &payload.path, payload.freq);
     let suspicious = is_suspicious(score, &payload.ip, &payload.path);
     Ok(Json(BehaviorOutput { score, suspicious }))
@@ -52,12 +55,15 @@ pub async fn predict_ia(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<IAPrompt>,
 ) -> AppResult<Json<String>> {
-    info!("[predict_ia] Called for texte length={}", payload.texte.len());
+    info!(
+        "[predict_ia] Called for texte length={}",
+        payload.texte.len()
+    );
     match state.ia.predict(&payload.texte).await {
         Ok((_, result, _tokens)) => {
             info!("[predict_ia] Success");
             Ok(Json(result))
-        },
+        }
         Err(e) => {
             error!("[predict_ia] Error: {e:?}");
             let msg = format!("Erreur IA: {e:?}");
@@ -67,9 +73,7 @@ pub async fn predict_ia(
 }
 
 /// ? POST /ia/enrichir_contexte ? enrichit le fichier input_context.json
-pub async fn enrichir_contexte_ia(
-    _multipart: Multipart,
-) -> AppResult<Json<serde_json::Value>> {
+pub async fn enrichir_contexte_ia(_multipart: Multipart) -> AppResult<Json<serde_json::Value>> {
     info!("[enrichir_contexte_ia] Called");
     // if let Err(e) = enrichir_input_context(multipart).await {
     //     error!("[enrichir_contexte_ia] Error: {e:?}");
@@ -113,12 +117,15 @@ pub async fn analyze_text_input(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<TextAnalysisInput>,
 ) -> AppResult<Json<TextAnalysisOutput>> {
-    info!("[analyze_text_input] Called for text length={}", payload.text.len());
-    
+    info!(
+        "[analyze_text_input] Called for text length={}",
+        payload.text.len()
+    );
+
     // Analyse basique du texte
     let text_lower = payload.text.to_lowercase();
     let word_count = payload.text.split_whitespace().count();
-    
+
     // Calcul de la confiance bas? sur la longueur et le contenu
     let confidence = if word_count > 50 {
         0.9
@@ -127,7 +134,7 @@ pub async fn analyze_text_input(
     } else {
         0.5
     };
-    
+
     // D?tection de la complexit?
     let complexity = if word_count > 100 {
         "complex".to_string()
@@ -136,10 +143,10 @@ pub async fn analyze_text_input(
     } else {
         "simple".to_string()
     };
-    
+
     // Estimation des tokens (approximation)
     let estimated_tokens = ((word_count as f64) * 1.3) as u32;
-    
+
     // Pr?diction d'intention bas?e sur les mots-cl?s
     let intent_prediction = if text_lower.contains("je vends") || text_lower.contains("vente") {
         "vente".to_string()
@@ -150,14 +157,14 @@ pub async fn analyze_text_input(
     } else {
         "general".to_string()
     };
-    
+
     // Score de s?curit? basique
     let security_score = if text_lower.contains("ill?gal") || text_lower.contains("drogue") {
         0.2
     } else {
         0.9
     };
-    
+
     // Suggestions bas?es sur le contexte
     let mut suggestions = Vec::new();
     if word_count < 10 {
@@ -166,16 +173,17 @@ pub async fn analyze_text_input(
     if !text_lower.contains("prix") && intent_prediction == "vente" {
         suggestions.push("Pr?cisez le prix pour attirer plus d'acheteurs".to_string());
     }
-    
+
     // Conseils d'optimisation
     let mut optimization_tips = Vec::new();
     if word_count > 200 {
-        optimization_tips.push("Texte long d?tect?, consid?rez une version plus concise".to_string());
+        optimization_tips
+            .push("Texte long d?tect?, consid?rez une version plus concise".to_string());
     }
     if !text_lower.contains("contact") {
         optimization_tips.push("Ajoutez vos coordonn?es pour faciliter les ?changes".to_string());
     }
-    
+
     // Recommandation de mod?le
     let model_recommendation = if complexity == "complex" {
         "gpt4".to_string()
@@ -184,7 +192,7 @@ pub async fn analyze_text_input(
     } else {
         "auto".to_string()
     };
-    
+
     Ok(Json(TextAnalysisOutput {
         confidence,
         suggestions,

@@ -69,7 +69,10 @@ impl ImageSearchService {
             .fetch_all(&*self.pool)
             .await
             .map_err(|e| {
-                log_error(&format!("[ImageSearch] Erreur recherche par signature: {}", e));
+                log_error(&format!(
+                    "[ImageSearch] Erreur recherche par signature: {}",
+                    e
+                ));
                 AppError::Internal(format!("Erreur recherche par signature: {}", e))
             })?;
 
@@ -79,7 +82,8 @@ impl ImageSearchService {
             let service_id: i32 = row.try_get("service_id").unwrap_or(0);
             let media_path: String = row.try_get("media_path").unwrap_or_default();
             let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(0.0);
-            let service_data: serde_json::Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
+            let service_data: serde_json::Value =
+                row.try_get("service_data").unwrap_or(serde_json::json!({}));
             let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
 
             search_results.push(ImageSearchResult {
@@ -101,7 +105,10 @@ impl ImageSearchService {
     }
 
     /// Rechercher par hash d'image (détection de doublons exacts)
-    pub async fn search_by_image_hash(&self, image_hash: &str) -> AppResult<Vec<ImageSearchResult>> {
+    pub async fn search_by_image_hash(
+        &self,
+        image_hash: &str,
+    ) -> AppResult<Vec<ImageSearchResult>> {
         log_info(&format!("[ImageSearch] Recherche par hash: {}", image_hash));
 
         let sql = r#"
@@ -135,7 +142,8 @@ impl ImageSearchService {
             let service_id: i32 = row.try_get("service_id").unwrap_or(0);
             let media_path: String = row.try_get("media_path").unwrap_or_default();
             let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(1.0);
-            let service_data: serde_json::Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
+            let service_data: serde_json::Value =
+                row.try_get("service_data").unwrap_or(serde_json::json!({}));
             let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
 
             search_results.push(ImageSearchResult {
@@ -148,7 +156,10 @@ impl ImageSearchService {
             });
         }
 
-        log_info(&format!("[ImageSearch] Trouvé {} doublons", search_results.len()));
+        log_info(&format!(
+            "[ImageSearch] Trouvé {} doublons",
+            search_results.len()
+        ));
 
         Ok(search_results)
     }
@@ -209,7 +220,10 @@ impl ImageSearchService {
             .fetch_all(&*self.pool)
             .await
             .map_err(|e| {
-                log_error(&format!("[ImageSearch] Erreur recherche images produits: {}", e));
+                log_error(&format!(
+                    "[ImageSearch] Erreur recherche images produits: {}",
+                    e
+                ));
                 AppError::Internal(format!("Erreur recherche images produits: {}", e))
             })?;
 
@@ -219,7 +233,8 @@ impl ImageSearchService {
             let service_id: i32 = row.try_get("service_id").unwrap_or(0);
             let media_path: String = row.try_get("media_path").unwrap_or_default();
             let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(0.0);
-            let service_data: serde_json::Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
+            let service_data: serde_json::Value =
+                row.try_get("service_data").unwrap_or(serde_json::json!({}));
             let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
 
             search_results.push(ImageSearchResult {
@@ -246,7 +261,7 @@ impl ImageSearchService {
         // TODO: Implémenter la génération de signature avec une bibliothèque comme `image`
         // Pour l'instant, retourne une signature factice
         log_warn("[ImageSearch] Génération de signature factice - À implémenter");
-        
+
         // Génération basique basée sur les pixels
         // Dans une vraie implémentation, utiliser un CNN ou un algorithme de hachage perceptuel
         Ok(vec![0.0; 192])
@@ -262,7 +277,7 @@ impl ImageSearchService {
     pub fn extract_image_metadata(image_data: &[u8]) -> AppResult<serde_json::Value> {
         // TODO: Implémenter l'extraction de métadonnées avec `image` crate
         log_warn("[ImageSearch] Extraction de métadonnées factice - À implémenter");
-        
+
         Ok(serde_json::json!({
             "width": 1920,
             "height": 1080,
@@ -283,11 +298,14 @@ impl ImageSearchService {
 
         // 1. Générer le hash pour recherche exacte
         let image_hash = Self::calculate_image_hash(image_data);
-        
+
         // 2. Chercher d'abord les doublons exacts
         let exact_matches = self.search_by_image_hash(&image_hash).await?;
         if !exact_matches.is_empty() {
-            log_info(&format!("[ImageSearch] Trouvé {} doublons exacts", exact_matches.len()));
+            log_info(&format!(
+                "[ImageSearch] Trouvé {} doublons exacts",
+                exact_matches.len()
+            ));
             return Ok(exact_matches);
         }
 
@@ -295,7 +313,9 @@ impl ImageSearchService {
         let signature = Self::generate_image_signature(image_data)?;
 
         // 4. Rechercher par similarité
-        let similar_images = self.search_by_image_signature(&signature, similarity_threshold, max_results).await?;
+        let similar_images = self
+            .search_by_image_signature(&signature, similarity_threshold, max_results)
+            .await?;
 
         Ok(similar_images)
     }

@@ -1,24 +1,24 @@
+use log::{error, info};
 use sqlx::{PgPool, Row};
-use log::{info, error};
 
 /// Désactive automatiquement les produits expirés (30 jours)
 pub async fn deactivate_expired_products(pool: &PgPool) -> Result<usize, sqlx::Error> {
     info!("🔄 [ProductDeactivation] Début de la désactivation automatique des produits expirés");
-    
+
     // Appeler la fonction PostgreSQL qui désactive les produits
     let rows = sqlx::query("SELECT * FROM deactivate_expired_products()")
         .fetch_all(pool)
         .await?;
-    
+
     let count = rows.len();
     info!("✅ [ProductDeactivation] {} produit(s) désactivé(s)", count);
-    
+
     // Envoyer des notifications aux prestataires
     for row in &rows {
         let service_id: Option<i32> = row.try_get("service_id").ok();
         let user_id: Option<i32> = row.try_get("user_id").ok();
         let product_nom: Option<String> = row.try_get("product_nom").ok();
-        
+
         if let (Some(sid), Some(uid), Some(pnom)) = (service_id, user_id, product_nom) {
             // Envoyer notification au prestataire
             match send_product_deactivation_notification(pool, sid, uid, &pnom).await {
@@ -27,7 +27,7 @@ pub async fn deactivate_expired_products(pool: &PgPool) -> Result<usize, sqlx::E
             }
         }
     }
-    
+
     Ok(count)
 }
 
@@ -70,8 +70,11 @@ async fn send_product_deactivation_notification(
     .bind(serde_json::json!({"service_id": service_id}))
     .execute(pool)
     .await?;
-    
-    info!("📧 [ProductDeactivation] Notification créée pour user {} - produit: {}", user_id, product_nom);
+
+    info!(
+        "📧 [ProductDeactivation] Notification créée pour user {} - produit: {}",
+        user_id, product_nom
+    );
     Ok(())
 }
 
@@ -97,12 +100,12 @@ pub async fn get_inactive_products_for_user(
         WHERE s.user_id = $1
             AND pl.is_active = FALSE
         ORDER BY pl.auto_deactivate_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(pool)
     .await?;
-    
+
     Ok(products)
 }
 
@@ -113,9 +116,11 @@ pub async fn reactivate_single_product(
     product_index: i32,
     user_id: i32,
 ) -> Result<ReactivationResult, String> {
-    info!("🔄 [ProductReactivation] Réactivation produit - Service: {}, Index: {}, User: {}", 
-        service_id, product_index, user_id);
-    
+    info!(
+        "🔄 [ProductReactivation] Réactivation produit - Service: {}, Index: {}, User: {}",
+        service_id, product_index, user_id
+    );
+
     // Appeler la fonction PostgreSQL
     let row = sqlx::query("SELECT reactivate_product($1, $2, $3) AS result")
         .bind(service_id)
@@ -124,21 +129,26 @@ pub async fn reactivate_single_product(
         .fetch_one(pool)
         .await
         .map_err(|e| format!("Erreur DB: {}", e))?;
-    
+
     // Parser le résultat JSON
-    let json_value: sqlx::types::JsonValue = row.try_get("result")
+    let json_value: sqlx::types::JsonValue = row
+        .try_get("result")
         .map_err(|e| format!("Erreur extraction result: {}", e))?;
-    let response: ReactivationResult = serde_json::from_value(json_value)
-        .map_err(|e| format!("Erreur parsing: {}", e))?;
-    
+    let response: ReactivationResult =
+        serde_json::from_value(json_value).map_err(|e| format!("Erreur parsing: {}", e))?;
+
     if response.success {
-        info!("✅ [ProductReactivation] Produit réactivé avec succès - Coût: {} FCFA", 
-            response.cost.unwrap_or(1000));
+        info!(
+            "✅ [ProductReactivation] Produit réactivé avec succès - Coût: {} FCFA",
+            response.cost.unwrap_or(1000)
+        );
     } else {
-        error!("❌ [ProductReactivation] Échec réactivation: {}", 
-            response.error.as_deref().unwrap_or("Erreur inconnue"));
+        error!(
+            "❌ [ProductReactivation] Échec réactivation: {}",
+            response.error.as_deref().unwrap_or("Erreur inconnue")
+        );
     }
-    
+
     Ok(response)
 }
 
@@ -149,8 +159,11 @@ pub async fn reactivate_multiple_products(
     product_indices: Vec<i32>,
     user_id: i32,
 ) -> Result<MultipleReactivationResult, String> {
-    info!("🔄 [ProductReactivation] Réactivation multiple - {} produits", product_indices.len());
-    
+    info!(
+        "🔄 [ProductReactivation] Réactivation multiple - {} produits",
+        product_indices.len()
+    );
+
     // Appeler la fonction PostgreSQL
     let row = sqlx::query("SELECT reactivate_multiple_products($1, $2, $3) AS result")
         .bind(service_id)
@@ -159,22 +172,27 @@ pub async fn reactivate_multiple_products(
         .fetch_one(pool)
         .await
         .map_err(|e| format!("Erreur DB: {}", e))?;
-    
+
     // Parser le résultat JSON
-    let json_value: sqlx::types::JsonValue = row.try_get("result")
+    let json_value: sqlx::types::JsonValue = row
+        .try_get("result")
         .map_err(|e| format!("Erreur extraction result: {}", e))?;
-    let response: MultipleReactivationResult = serde_json::from_value(json_value)
-        .map_err(|e| format!("Erreur parsing: {}", e))?;
-    
+    let response: MultipleReactivationResult =
+        serde_json::from_value(json_value).map_err(|e| format!("Erreur parsing: {}", e))?;
+
     if response.success {
-        info!("✅ [ProductReactivation] {} produits réactivés - Coût total: {} FCFA", 
+        info!(
+            "✅ [ProductReactivation] {} produits réactivés - Coût total: {} FCFA",
             response.reactivated_count.unwrap_or(0),
-            response.total_cost.unwrap_or(0));
+            response.total_cost.unwrap_or(0)
+        );
     } else {
-        error!("❌ [ProductReactivation] Échec réactivation multiple: {}", 
-            response.error.as_deref().unwrap_or("Erreur inconnue"));
+        error!(
+            "❌ [ProductReactivation] Échec réactivation multiple: {}",
+            response.error.as_deref().unwrap_or("Erreur inconnue")
+        );
     }
-    
+
     Ok(response)
 }
 
@@ -229,4 +247,3 @@ mod tests {
         assert_eq!(1000, 1000);
     }
 }
-

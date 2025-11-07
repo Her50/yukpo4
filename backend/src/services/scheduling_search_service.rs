@@ -1,9 +1,9 @@
 // Service de recherche avancée avec planifications
 // Gère la recherche de pharmacies de garde et services médicaux disponibles
 
-use sqlx::PgPool;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use sqlx::Row;
 use std::collections::HashMap;
 
@@ -163,9 +163,7 @@ impl SchedulingSearchService {
                 .fetch_all(&self.pool)
                 .await
         } else {
-            sqlx::query(query)
-                .fetch_all(&self.pool)
-                .await
+            sqlx::query(query).fetch_all(&self.pool).await
         }
         .map_err(|e| format!("Erreur recherche pharmacies de garde: {}", e))?;
 
@@ -285,10 +283,11 @@ impl SchedulingSearchService {
         for row in rows {
             let available_services: Option<serde_json::Value> = row.get("available_services");
             let current_schedule: Option<serde_json::Value> = row.get("current_schedule");
-            
+
             let services_vec = if let Some(services) = available_services {
                 if services.is_array() {
-                    services.as_array()
+                    services
+                        .as_array()
                         .unwrap()
                         .iter()
                         .filter_map(|v| v.as_str())
@@ -303,7 +302,8 @@ impl SchedulingSearchService {
 
             let schedule_map = if let Some(schedule) = current_schedule {
                 if schedule.is_object() {
-                    schedule.as_object()
+                    schedule
+                        .as_object()
                         .unwrap()
                         .iter()
                         .map(|(k, v)| (k.clone(), v.clone()))
@@ -342,30 +342,42 @@ impl SchedulingSearchService {
     /// Analyse une requête de recherche pour détecter les intentions de planification
     pub fn analyze_search_intent(&self, query: &str) -> SearchIntent {
         let query_lower = query.to_lowercase();
-        
+
         // Détection de recherche de pharmacie de garde
-        if query_lower.contains("pharmacie") && 
-           (query_lower.contains("garde") || query_lower.contains("urgent") || 
-            query_lower.contains("nuit") || query_lower.contains("24h")) {
+        if query_lower.contains("pharmacie")
+            && (query_lower.contains("garde")
+                || query_lower.contains("urgent")
+                || query_lower.contains("nuit")
+                || query_lower.contains("24h"))
+        {
             return SearchIntent::PharmacyOnDuty;
         }
-        
+
         // Détection de recherche de service médical
-        if (query_lower.contains("médecin") || query_lower.contains("docteur") || 
-            query_lower.contains("gynécologue") || query_lower.contains("cardiologue") ||
-            query_lower.contains("urgences") || query_lower.contains("hôpital") ||
-            query_lower.contains("clinique")) && 
-           (query_lower.contains("disponible") || query_lower.contains("ouvert") ||
-            query_lower.contains("maintenant") || query_lower.contains("urgent")) {
+        if (query_lower.contains("médecin")
+            || query_lower.contains("docteur")
+            || query_lower.contains("gynécologue")
+            || query_lower.contains("cardiologue")
+            || query_lower.contains("urgences")
+            || query_lower.contains("hôpital")
+            || query_lower.contains("clinique"))
+            && (query_lower.contains("disponible")
+                || query_lower.contains("ouvert")
+                || query_lower.contains("maintenant")
+                || query_lower.contains("urgent"))
+        {
             return SearchIntent::MedicalServiceAvailable;
         }
-        
+
         // Détection de recherche avec contrainte temporelle
-        if query_lower.contains("maintenant") || query_lower.contains("urgent") ||
-           query_lower.contains("immédiat") || query_lower.contains("tout de suite") {
+        if query_lower.contains("maintenant")
+            || query_lower.contains("urgent")
+            || query_lower.contains("immédiat")
+            || query_lower.contains("tout de suite")
+        {
             return SearchIntent::TimeConstrained;
         }
-        
+
         SearchIntent::General
     }
 }
@@ -380,6 +392,11 @@ pub enum SearchIntent {
 
 impl SearchIntent {
     pub fn should_use_scheduling_search(&self) -> bool {
-        matches!(self, SearchIntent::PharmacyOnDuty | SearchIntent::MedicalServiceAvailable | SearchIntent::TimeConstrained)
+        matches!(
+            self,
+            SearchIntent::PharmacyOnDuty
+                | SearchIntent::MedicalServiceAvailable
+                | SearchIntent::TimeConstrained
+        )
     }
 }

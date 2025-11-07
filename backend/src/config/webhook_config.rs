@@ -61,8 +61,9 @@ impl WebhookConfig {
             orange_money: OrangeMoneyConfig {
                 webhook_secret: env::var("ORANGE_MONEY_WEBHOOK_SECRET")
                     .unwrap_or_else(|_| "default_orange_secret".to_string()),
-                api_url: env::var("ORANGE_MONEY_API_URL")
-                    .unwrap_or_else(|_| "https://api.orange.com/orange-money-webpay/cm/v1".to_string()),
+                api_url: env::var("ORANGE_MONEY_API_URL").unwrap_or_else(|_| {
+                    "https://api.orange.com/orange-money-webpay/cm/v1".to_string()
+                }),
                 merchant_key: env::var("ORANGE_MONEY_MERCHANT_KEY")
                     .unwrap_or_else(|_| "default_merchant_key".to_string()),
                 merchant_id: env::var("ORANGE_MONEY_MERCHANT_ID")
@@ -156,17 +157,21 @@ impl WebhookConfig {
         if self.limits.min_payment_amount_xaf <= 0 {
             return Err("MIN_PAYMENT_AMOUNT_XAF must be greater than 0".to_string());
         }
-        
+
         if self.limits.max_payment_amount_xaf <= self.limits.min_payment_amount_xaf {
-            return Err("MAX_PAYMENT_AMOUNT_XAF must be greater than MIN_PAYMENT_AMOUNT_XAF".to_string());
+            return Err(
+                "MAX_PAYMENT_AMOUNT_XAF must be greater than MIN_PAYMENT_AMOUNT_XAF".to_string(),
+            );
         }
 
         if self.limits.min_payment_amount_usd <= 0 {
             return Err("MIN_PAYMENT_AMOUNT_USD must be greater than 0".to_string());
         }
-        
+
         if self.limits.max_payment_amount_usd <= self.limits.min_payment_amount_usd {
-            return Err("MAX_PAYMENT_AMOUNT_USD must be greater than MIN_PAYMENT_AMOUNT_USD".to_string());
+            return Err(
+                "MAX_PAYMENT_AMOUNT_USD must be greater than MIN_PAYMENT_AMOUNT_USD".to_string(),
+            );
         }
 
         // Validation des timeouts
@@ -274,11 +279,8 @@ mod tests {
     fn test_production_detection() {
         let mut config = WebhookConfig::default();
         assert!(!config.is_production());
-        
+
         config.mtn_money.target_environment = "production".to_string();
         assert!(config.is_production());
     }
 }
-
-
-

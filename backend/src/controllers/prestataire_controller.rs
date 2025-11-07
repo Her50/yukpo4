@@ -1,3 +1,5 @@
+use crate::services::prestataire_service::{get_prestataire_info, get_prestataires_info_batch};
+use crate::state::AppState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -6,8 +8,6 @@ use axum::{
 };
 use serde::Deserialize;
 use std::sync::Arc;
-use crate::state::AppState;
-use crate::services::prestataire_service::{get_prestataire_info, get_prestataires_info_batch};
 
 /// GET /prestataires/:id - Récupère les informations d'un prestataire
 pub async fn get_prestataire(
@@ -16,14 +16,24 @@ pub async fn get_prestataire(
 ) -> impl IntoResponse {
     match get_prestataire_info(&state.pg, prestataire_id).await {
         Ok(Some(prestataire)) => Ok(Json(prestataire)),
-        Ok(None) => Err((StatusCode::NOT_FOUND, Json(serde_json::json!({
-            "error": "Prestataire non trouvé"
-        })))),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Prestataire non trouvé"
+            })),
+        )),
         Err(e) => {
-            log::error!("Erreur récupération prestataire {}: {:?}", prestataire_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-                "error": "Erreur serveur"
-            }))))
+            log::error!(
+                "Erreur récupération prestataire {}: {:?}",
+                prestataire_id,
+                e
+            );
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Erreur serveur"
+                })),
+            ))
         }
     }
 }
@@ -45,9 +55,12 @@ pub async fn get_prestataires_batch(
         }))),
         Err(e) => {
             log::error!("Erreur récupération batch prestataires: {:?}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-                "error": "Erreur serveur"
-            }))))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Erreur serveur"
+                })),
+            ))
         }
     }
-} 
+}

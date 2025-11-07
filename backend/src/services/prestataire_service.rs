@@ -1,6 +1,6 @@
 use crate::core::types::AppResult;
-use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PrestataireInfo {
@@ -84,9 +84,7 @@ pub async fn get_prestataires_info_batch(
 }
 
 /// Récupère tous les prestataires avec leurs informations
-pub async fn get_all_prestataires(
-    pool: &PgPool,
-) -> AppResult<Vec<PrestataireInfo>> {
+pub async fn get_all_prestataires(pool: &PgPool) -> AppResult<Vec<PrestataireInfo>> {
     let result = sqlx::query_as!(
         PrestataireInfo,
         r#"
@@ -151,4 +149,4 @@ pub async fn update_user_name(
     .await?;
 
     Ok(())
-} 
+}

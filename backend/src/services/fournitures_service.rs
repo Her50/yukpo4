@@ -11,7 +11,10 @@ pub async fn gestion_fournitures_scolaires(
     payload: &Value,
     _pool: &sqlx::PgPool,
 ) -> AppResult<Value> {
-    let etablissement = payload.get("etablissement").and_then(|v| v.as_str()).unwrap_or("");
+    let etablissement = payload
+        .get("etablissement")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     let classe = payload.get("classe").and_then(|v| v.as_str()).unwrap_or("");
     let _image = payload.get("image_base64").and_then(|v| v.as_str());
     // 1. OCR/NLP si image fournie (fonction extract_livres_from_image ? impl?menter)
@@ -25,7 +28,11 @@ pub async fn gestion_fournitures_scolaires(
     // };
     // TODO: Remplacer par une vraie extraction OCR si besoin
     let (classe_detectee, livres_possedes): (String, Vec<Value>) = (classe.to_string(), vec![]);
-    let classe_finale = if !classe_detectee.is_empty() { &classe_detectee } else { classe };
+    let classe_finale = if !classe_detectee.is_empty() {
+        &classe_detectee
+    } else {
+        classe
+    };
     // 2. R?cup?ration du programme scolaire officiel
     // let programme = get_programme_scolaire(etablissement, classe_finale, pool).await?;
     // 3. G?n?ration automatique du besoin pour la classe sup?rieure
@@ -33,7 +40,11 @@ pub async fn gestion_fournitures_scolaires(
     // 4. Matching ou achat selon le choix utilisateur
     let mode = payload.get("mode").and_then(|v| v.as_str()).unwrap_or("");
     let resultat = if mode == "achat" {
-        log::info!("[FOURNITURES] Re?u une demande avec mode=achat (user_id={:?}, payload={:?})", user_id, payload);
+        log::info!(
+            "[FOURNITURES] Re?u une demande avec mode=achat (user_id={:?}, payload={:?})",
+            user_id,
+            payload
+        );
         // let achats = rechercher_besoin_librairie(&besoin, etablissement, classe_finale).await?;
         // TODO: Impl?menter la fonction rechercher_besoin_librairie si besoin
         serde_json::json!({"mode": "achat", "resultat": "TODO: recherche librairie non impl?ment?e"})

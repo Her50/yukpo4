@@ -1,8 +1,8 @@
 // Service pour gérer l'historique des recherches utilisateurs
-use sqlx::PgPool;
-use serde::{Deserialize, Serialize};
-use sqlx::Row;
 use crate::core::types::AppError;
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use sqlx::Row;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchHistoryEntry {
@@ -64,7 +64,7 @@ pub async fn record_search(
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING id
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(query_text)
@@ -97,7 +97,7 @@ pub async fn record_search_click(
         UPDATE search_history
         SET clicked_result_id = $1, clicked_at = NOW()
         WHERE id = $2
-        "#
+        "#,
     )
     .bind(result_id)
     .bind(search_id)
@@ -125,7 +125,7 @@ pub async fn get_popular_searches(
             GROUP BY query_text
             ORDER BY search_count DESC, last_searched DESC
             LIMIT $3
-            "#
+            "#,
         )
         .bind(days)
         .bind(cat)
@@ -141,7 +141,7 @@ pub async fn get_popular_searches(
             GROUP BY query_text
             ORDER BY search_count DESC, last_searched DESC
             LIMIT $2
-            "#
+            "#,
         )
         .bind(days)
         .bind(limit)
@@ -150,11 +150,14 @@ pub async fn get_popular_searches(
     }
     .map_err(|e| AppError::Internal(format!("Erreur récupération recherches populaires: {}", e)))?;
 
-    let popular = rows.iter().map(|row| PopularSearch {
-        query_text: row.get("query_text"),
-        search_count: row.get("search_count"),
-        last_searched: row.get("last_searched"),
-    }).collect();
+    let popular = rows
+        .iter()
+        .map(|row| PopularSearch {
+            query_text: row.get("query_text"),
+            search_count: row.get("search_count"),
+            last_searched: row.get("last_searched"),
+        })
+        .collect();
 
     Ok(popular)
 }
@@ -182,7 +185,7 @@ pub async fn get_search_suggestions(
                     search_count DESC,
                     MAX(created_at) DESC
                 LIMIT $3
-                "#
+                "#,
             )
             .bind(uid)
             .bind(prefix)
@@ -200,7 +203,7 @@ pub async fn get_search_suggestions(
                 GROUP BY query_text
                 ORDER BY search_count DESC, MAX(created_at) DESC
                 LIMIT $2
-                "#
+                "#,
             )
             .bind(prefix)
             .bind(limit)
@@ -222,7 +225,7 @@ pub async fn get_search_suggestions(
                     search_count DESC,
                     MAX(created_at) DESC
                 LIMIT $2
-                "#
+                "#,
             )
             .bind(uid)
             .bind(limit)
@@ -238,7 +241,7 @@ pub async fn get_search_suggestions(
                 GROUP BY query_text
                 ORDER BY search_count DESC, MAX(created_at) DESC
                 LIMIT $1
-                "#
+                "#,
             )
             .bind(limit)
             .fetch_all(pool)
@@ -247,10 +250,13 @@ pub async fn get_search_suggestions(
     }
     .map_err(|e| AppError::Internal(format!("Erreur récupération suggestions: {}", e)))?;
 
-    let suggestions = rows.iter().map(|row| SearchSuggestion {
-        query_text: row.get("query_text"),
-        search_count: row.get("search_count"),
-    }).collect();
+    let suggestions = rows
+        .iter()
+        .map(|row| SearchSuggestion {
+            query_text: row.get("query_text"),
+            search_count: row.get("search_count"),
+        })
+        .collect();
 
     Ok(suggestions)
 }
@@ -270,7 +276,7 @@ pub async fn get_user_search_history(
         WHERE user_id = $1
         ORDER BY created_at DESC
         LIMIT $2
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(limit)
@@ -278,37 +284,40 @@ pub async fn get_user_search_history(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération historique: {}", e)))?;
 
-    let history = rows.iter().map(|row| SearchHistoryEntry {
-        id: row.get("id"),
-        user_id: row.get("user_id"),
-        query_text: row.get("query_text"),
-        query_type: row.get("query_type"),
-        category: row.get("category"),
-        filters: row.get("filters"),
-        location_lat: row.get("location_lat"),
-        location_lon: row.get("location_lon"),
-        results_count: row.get("results_count"),
-        clicked_result_id: row.get("clicked_result_id"),
-        clicked_at: row.get("clicked_at"),
-        session_id: row.get("session_id"),
-        device_type: row.get("device_type"),
-        created_at: row.get("created_at"),
-    }).collect();
+    let history = rows
+        .iter()
+        .map(|row| SearchHistoryEntry {
+            id: row.get("id"),
+            user_id: row.get("user_id"),
+            query_text: row.get("query_text"),
+            query_type: row.get("query_type"),
+            category: row.get("category"),
+            filters: row.get("filters"),
+            location_lat: row.get("location_lat"),
+            location_lon: row.get("location_lon"),
+            results_count: row.get("results_count"),
+            clicked_result_id: row.get("clicked_result_id"),
+            clicked_at: row.get("clicked_at"),
+            session_id: row.get("session_id"),
+            device_type: row.get("device_type"),
+            created_at: row.get("created_at"),
+        })
+        .collect();
 
     Ok(history)
 }
 
 /// Nettoyer les anciennes recherches
-pub async fn cleanup_old_search_history(
-    pool: &PgPool,
-    days_to_keep: i32,
-) -> Result<i64, AppError> {
-    log::info!("[SearchHistoryService] Nettoyage recherches > {} jours", days_to_keep);
+pub async fn cleanup_old_search_history(pool: &PgPool, days_to_keep: i32) -> Result<i64, AppError> {
+    log::info!(
+        "[SearchHistoryService] Nettoyage recherches > {} jours",
+        days_to_keep
+    );
 
     let row = sqlx::query(
         r#"
         SELECT cleanup_old_search_history($1) as deleted_count
-        "#
+        "#,
     )
     .bind(days_to_keep)
     .fetch_one(pool)
@@ -316,8 +325,10 @@ pub async fn cleanup_old_search_history(
     .map_err(|e| AppError::Internal(format!("Erreur nettoyage historique: {}", e)))?;
 
     let deleted_count: i64 = row.get("deleted_count");
-    log::info!("[SearchHistoryService] ✅ {} recherches supprimées", deleted_count);
+    log::info!(
+        "[SearchHistoryService] ✅ {} recherches supprimées",
+        deleted_count
+    );
 
     Ok(deleted_count)
 }
-

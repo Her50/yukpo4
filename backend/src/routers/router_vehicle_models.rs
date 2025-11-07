@@ -1,15 +1,15 @@
+use crate::{
+    core::types::{AppError, AppResult},
+    middlewares::jwt::AuthenticatedUser,
+    state::AppState,
+};
 use axum::{
-    extract::{Extension, State, Json, Query},
+    extract::{Extension, Json, Query, State},
     http::StatusCode,
 };
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use log::{info, error};
-use crate::{
-    state::AppState,
-    core::types::{AppResult, AppError},
-    middlewares::jwt::AuthenticatedUser,
-};
 
 // ✅ Structures pour vehicle_models
 
@@ -52,7 +52,7 @@ pub async fn get_vehicle_models(
     Query(params): Query<GetVehicleModelsQuery>,
 ) -> AppResult<Json<Vec<VehicleModel>>> {
     let limit = params.limit.unwrap_or(100);
-    
+
     let models = if let Some(brand) = params.brand {
         // Filtrer par marque
         sqlx::query_as::<_, VehicleModel>(
@@ -62,7 +62,7 @@ pub async fn get_vehicle_models(
             WHERE brand = $1
             ORDER BY usage_count DESC, model ASC
             LIMIT $2
-            "#
+            "#,
         )
         .bind(brand)
         .bind(limit as i64)
@@ -81,7 +81,7 @@ pub async fn get_vehicle_models(
             WHERE category = $1
             ORDER BY usage_count DESC, brand ASC, model ASC
             LIMIT $2
-            "#
+            "#,
         )
         .bind(category)
         .bind(limit as i64)
@@ -99,7 +99,7 @@ pub async fn get_vehicle_models(
             FROM vehicle_models
             ORDER BY usage_count DESC, brand ASC, model ASC
             LIMIT $1
-            "#
+            "#,
         )
         .bind(limit as i64)
         .fetch_all(&state.pg)
@@ -120,7 +120,10 @@ pub async fn create_vehicle_model(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateVehicleModelPayload>,
 ) -> AppResult<Json<VehicleModel>> {
-    info!("Création modèle véhicule: {} {}", payload.brand, payload.model);
+    info!(
+        "Création modèle véhicule: {} {}",
+        payload.brand, payload.model
+    );
 
     let model = sqlx::query_as::<_, VehicleModel>(
         r#"
@@ -130,7 +133,7 @@ pub async fn create_vehicle_model(
         SET usage_count = vehicle_models.usage_count + 1,
             updated_at = NOW()
         RETURNING id, brand, model, year_min, year_max, category, fuel_type, usage_count
-        "#
+        "#,
     )
     .bind(&payload.brand)
     .bind(&payload.model)
@@ -159,7 +162,7 @@ pub async fn increment_model_usage(
         SET usage_count = usage_count + 1,
             updated_at = NOW()
         WHERE brand = $1 AND model = $2
-        "#
+        "#,
     )
     .bind(&payload.brand)
     .bind(&payload.model)
@@ -179,14 +182,14 @@ pub async fn get_popular_models(
     Query(params): Query<GetVehicleModelsQuery>,
 ) -> AppResult<Json<Vec<VehicleModel>>> {
     let limit = params.limit.unwrap_or(20);
-    
+
     let models = sqlx::query_as::<_, VehicleModel>(
         r#"
         SELECT id, brand, model, year_min, year_max, category, fuel_type, usage_count
         FROM vehicle_models
         ORDER BY usage_count DESC
         LIMIT $1
-        "#
+        "#,
     )
     .bind(limit as i64)
     .fetch_all(&state.pg)
@@ -198,10 +201,3 @@ pub async fn get_popular_models(
 
     Ok(Json(models))
 }
-
-
-
-
-
-
-

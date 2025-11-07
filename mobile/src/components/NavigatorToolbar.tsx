@@ -130,6 +130,7 @@ export const NavigatorToolbar: React.FC<NavigatorToolbarProps> = ({
 const styles = StyleSheet.create({
     safeContainer: {
         paddingBottom: modernStyles.spacing.sm,
+        flex: 0,
     },
     container: {
         paddingHorizontal: modernStyles.spacing.md,

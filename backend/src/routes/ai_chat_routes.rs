@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -6,8 +5,9 @@ use axum::{
     routing::post,
     Router,
 };
-use serde::{Deserialize, Serialize};
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::state::AppState;
 
@@ -63,17 +63,21 @@ pub async fn chat_ai(
             }));
         }
     };
-    
+
     let client = Client::new();
-    
+
     // Construire le prompt avec le contexte
     let system_prompt = "Tu es Yukpomnang, un assistant intelligent spécialisé dans les services locaux. Réponds de manière utile et concise en français.";
     let user_message = if let Some(context) = payload.context {
-        format!("Contexte: {}\nQuestion: {}", serde_json::to_string(&context).unwrap_or_default(), payload.message)
+        format!(
+            "Contexte: {}\nQuestion: {}",
+            serde_json::to_string(&context).unwrap_or_default(),
+            payload.message
+        )
     } else {
         payload.message
     };
-    
+
     let request_body = serde_json::json!({
         "model": "gpt-3.5-turbo",
         "messages": [
@@ -83,7 +87,7 @@ pub async fn chat_ai(
         "max_tokens": 500,
         "temperature": 0.7
     });
-    
+
     let response = match client
         .post("https://api.openai.com/v1/chat/completions")
         .header("Authorization", format!("Bearer {}", api_key))
@@ -101,7 +105,7 @@ pub async fn chat_ai(
             }));
         }
     };
-    
+
     if !response.status().is_success() {
         return Ok(ResponseJson(ChatResponse {
             message: "Erreur de l'API OpenAI".to_string(),
@@ -109,7 +113,7 @@ pub async fn chat_ai(
             confidence: 0.0,
         }));
     }
-    
+
     let openai_response: serde_json::Value = match response.json().await {
         Ok(data) => data,
         Err(_) => {
@@ -120,19 +124,19 @@ pub async fn chat_ai(
             }));
         }
     };
-    
+
     let message = openai_response["choices"][0]["message"]["content"]
         .as_str()
         .unwrap_or("Désolé, je n'ai pas pu traiter votre demande.")
         .to_string();
-    
+
     // Générer des suggestions basiques
     let suggestions = vec![
         "Plus d'informations".to_string(),
         "Autres services".to_string(),
         "Aide".to_string(),
     ];
-    
+
     Ok(ResponseJson(ChatResponse {
         message,
         suggestions,
@@ -152,7 +156,7 @@ pub async fn get_recommendations(
         "Activité suggérée : Visite du musée".to_string(),
         "Service utile : Pharmacie à proximité".to_string(),
     ];
-    
+
     Ok(ResponseJson(RecommendationsResponse { recommendations }))
 }
 
@@ -162,26 +166,29 @@ pub async fn analyze_text(
     Json(payload): Json<AnalyzeRequest>,
 ) -> Result<ResponseJson<AnalyzeResponse>, StatusCode> {
     // Analyse basique du sentiment
-    let sentiment = if payload.text.to_lowercase().contains("merci") || 
-                       payload.text.to_lowercase().contains("parfait") ||
-                       payload.text.to_lowercase().contains("excellent") {
+    let sentiment = if payload.text.to_lowercase().contains("merci")
+        || payload.text.to_lowercase().contains("parfait")
+        || payload.text.to_lowercase().contains("excellent")
+    {
         "positif"
-    } else if payload.text.to_lowercase().contains("problème") ||
-              payload.text.to_lowercase().contains("erreur") ||
-              payload.text.to_lowercase().contains("mauvais") {
+    } else if payload.text.to_lowercase().contains("problème")
+        || payload.text.to_lowercase().contains("erreur")
+        || payload.text.to_lowercase().contains("mauvais")
+    {
         "négatif"
     } else {
         "neutre"
     };
-    
+
     // Extraire les mots-clés (mots de plus de 3 caractères)
-    let keywords: Vec<String> = payload.text
+    let keywords: Vec<String> = payload
+        .text
         .split_whitespace()
         .filter(|word| word.len() > 3)
         .map(|word| word.to_lowercase())
         .take(5)
         .collect();
-    
+
     Ok(ResponseJson(AnalyzeResponse {
         sentiment: sentiment.to_string(),
         keywords,
@@ -195,4 +202,3 @@ pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/ai/analyze", post(analyze_text))
         .with_state(state)
 }
-

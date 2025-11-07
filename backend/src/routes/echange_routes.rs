@@ -1,7 +1,12 @@
-use axum::{Router, routing::{post, get}};
-use std::sync::Arc;
-use crate::controllers::echange_controller::{creer_echange, get_echange_status, relancer_matching};
+use crate::controllers::echange_controller::{
+    creer_echange, get_echange_status, relancer_matching,
+};
 use crate::state::AppState;
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use std::sync::Arc;
 
 pub fn echange_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
@@ -10,4 +15,3 @@ pub fn echange_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/echanges/relancer-matching", post(relancer_matching))
         .with_state(state)
 }
-

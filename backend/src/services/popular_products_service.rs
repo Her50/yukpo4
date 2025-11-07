@@ -1,19 +1,19 @@
 // Service pour récupérer les produits populaires depuis autocomplete_combinations
 // Permet au prestataire de voir les produits les plus commercialisés par ses concurrents
-use sqlx::{PgPool, Row};
-use serde::{Deserialize, Serialize};
 use crate::core::types::AppError;
+use serde::{Deserialize, Serialize};
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PopularProduct {
-    pub product_vector: Vec<String>,      // ["Nike", "Air Max", "42", "Noir"]
-    pub product_labels: Vec<String>,      // ["marque", "modele", "pointure", "couleur"]
-    pub usage_count: i32,                 // Popularité (nombre de prestataires qui le vendent)
-    pub prix_moyen: Option<f64>,          // Prix moyen
+    pub product_vector: Vec<String>, // ["Nike", "Air Max", "42", "Noir"]
+    pub product_labels: Vec<String>, // ["marque", "modele", "pointure", "couleur"]
+    pub usage_count: i32,            // Popularité (nombre de prestataires qui le vendent)
+    pub prix_moyen: Option<f64>,     // Prix moyen
     pub has_variant: bool,
     pub variant_dimension: Option<String>,
     pub variant_value: Option<String>,
-    pub is_trending: bool,                // ✅ NOUVEAU : Tendance (actif dans les 7 derniers jours)
+    pub is_trending: bool, // ✅ NOUVEAU : Tendance (actif dans les 7 derniers jours)
 }
 
 /// Récupère les produits populaires similaires à une recherche partielle
@@ -29,7 +29,7 @@ pub async fn get_popular_products_similar_to(
         search_query,
         limit
     );
-    
+
     // Recherche dans autocomplete_combinations avec usage_count élevé
     let rows = sqlx::query(
         r#"
@@ -71,27 +71,33 @@ pub async fn get_popular_products_similar_to(
             ac.usage_count DESC,  -- Puis popularité
             ac.prix::FLOAT8 ASC           -- Puis prix
         LIMIT $2
-        "#
+        "#,
     )
     .bind(search_query)
     .bind(limit)
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération produits populaires: {}", e)))?;
-    
-    let products: Vec<PopularProduct> = rows.iter().map(|row| PopularProduct {
-        product_vector: row.get("product_vector"),
-        product_labels: row.get("product_labels"),
-        usage_count: row.get("usage_count"),
-        prix_moyen: row.get("prix_float"),
-        has_variant: row.get("has_variant"),
-        variant_dimension: row.get("variant_dimension"),
-        variant_value: row.get("variant_value"),
-        is_trending: row.try_get("is_trending").unwrap_or(false),
-    }).collect();
-    
-    log::info!("[PopularProductsService] ✅ {} produits populaires trouvés", products.len());
-    
+
+    let products: Vec<PopularProduct> = rows
+        .iter()
+        .map(|row| PopularProduct {
+            product_vector: row.get("product_vector"),
+            product_labels: row.get("product_labels"),
+            usage_count: row.get("usage_count"),
+            prix_moyen: row.get("prix_float"),
+            has_variant: row.get("has_variant"),
+            variant_dimension: row.get("variant_dimension"),
+            variant_value: row.get("variant_value"),
+            is_trending: row.try_get("is_trending").unwrap_or(false),
+        })
+        .collect();
+
+    log::info!(
+        "[PopularProductsService] ✅ {} produits populaires trouvés",
+        products.len()
+    );
+
     Ok(products)
 }
 
@@ -106,7 +112,7 @@ pub async fn get_top_popular_products(
         category_filter,
         limit
     );
-    
+
     let rows = if let Some(category) = category_filter {
         sqlx::query(
             r#"
@@ -138,7 +144,7 @@ pub async fn get_top_popular_products(
             )
             ORDER BY rt.is_trending DESC, ac.usage_count DESC, ac.prix::FLOAT8 ASC
             LIMIT $2
-            "#
+            "#,
         )
         .bind(category)
         .bind(limit)
@@ -171,28 +177,32 @@ pub async fn get_top_popular_products(
             WHERE ac.usage_count >= 2
             ORDER BY rt.is_trending DESC, ac.usage_count DESC, ac.prix::FLOAT8 ASC
             LIMIT $1
-            "#
+            "#,
         )
         .bind(limit)
         .fetch_all(pool)
         .await
     }
     .map_err(|e| AppError::Internal(format!("Erreur récupération TOP produits: {}", e)))?;
-    
-    let products: Vec<PopularProduct> = rows.iter().map(|row| PopularProduct {
-        product_vector: row.get("product_vector"),
-        product_labels: row.get("product_labels"),
-        usage_count: row.get("usage_count"),
-        prix_moyen: row.get("prix_float"),
-        has_variant: row.get("has_variant"),
-        variant_dimension: row.get("variant_dimension"),
-        variant_value: row.get("variant_value"),
-        is_trending: row.try_get("is_trending").unwrap_or(false),
-    }).collect();
-    
-    log::info!("[PopularProductsService] ✅ {} TOP produits trouvés", products.len());
-    
+
+    let products: Vec<PopularProduct> = rows
+        .iter()
+        .map(|row| PopularProduct {
+            product_vector: row.get("product_vector"),
+            product_labels: row.get("product_labels"),
+            usage_count: row.get("usage_count"),
+            prix_moyen: row.get("prix_float"),
+            has_variant: row.get("has_variant"),
+            variant_dimension: row.get("variant_dimension"),
+            variant_value: row.get("variant_value"),
+            is_trending: row.try_get("is_trending").unwrap_or(false),
+        })
+        .collect();
+
+    log::info!(
+        "[PopularProductsService] ✅ {} TOP produits trouvés",
+        products.len()
+    );
+
     Ok(products)
 }
-
-

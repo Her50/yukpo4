@@ -1,7 +1,7 @@
 // Service de gestion des notifications en base de données
-use sqlx::PgPool;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -44,7 +44,7 @@ pub struct Notification {
     pub message: String,
     pub data: Option<serde_json::Value>,
     pub is_read: bool,
-    pub created_at: chrono::NaiveDateTime,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Créer une notification en base de données
@@ -56,15 +56,19 @@ pub async fn create_notification(
     message: String,
     data: Option<serde_json::Value>,
 ) -> Result<i32, sqlx::Error> {
-    log::info!("[NotificationService] Création notification pour user {}: {}", user_id, title);
-    
+    log::info!(
+        "[NotificationService] Création notification pour user {}: {}",
+        user_id,
+        title
+    );
+
     // ✅ CORRECTION: Utiliser le bon nom de colonne (notification_type au lieu de type)
     let row = sqlx::query(
         r#"
         INSERT INTO notifications (user_id, notification_type, title, message, data, is_read)
         VALUES ($1, $2, $3, $4, $5, FALSE)
         RETURNING id
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(notification_type.as_str())
@@ -73,10 +77,10 @@ pub async fn create_notification(
     .bind(&data)
     .fetch_one(pool)
     .await?;
-    
+
     let id: i32 = row.get("id");
     log::info!("[NotificationService] ✅ Notification créée: {}", id);
-    
+
     Ok(id)
 }
 
@@ -102,39 +106,41 @@ pub async fn get_user_notifications(
         WHERE user_id = $1
         ORDER BY created_at DESC
         LIMIT $2
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(limit)
     .fetch_all(pool)
     .await?;
-    
-    let notifications = rows.iter().map(|row| Notification {
-        id: row.get("id"),
-        user_id: row.get("user_id"),
-        notification_type: row.get("notification_type"),
-        title: row.get("title"),
-        message: row.get("message"),
-        data: row.get("data"),
-        is_read: row.get("is_read"),
-        created_at: row.get("created_at"),
-    }).collect();
-    
-    Ok(notifications)
+
+    let notifications: Result<Vec<Notification>, sqlx::Error> = rows
+        .into_iter()
+        .map(|row| {
+            Ok(Notification {
+                id: row.try_get("id")?,
+                user_id: row.try_get("user_id")?,
+                notification_type: row.try_get("notification_type")?,
+                title: row.try_get("title")?,
+                message: row.try_get("message")?,
+                data: row.try_get("data")?,
+                is_read: row.try_get("is_read")?,
+                created_at: row.try_get("created_at")?,
+            })
+        })
+        .collect();
+
+    notifications
 }
 
 /// Compter les notifications non lues
-pub async fn count_unread_notifications(
-    pool: &PgPool,
-    user_id: i32,
-) -> Result<i64, sqlx::Error> {
+pub async fn count_unread_notifications(pool: &PgPool, user_id: i32) -> Result<i64, sqlx::Error> {
     let row = sqlx::query(
-        "SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = FALSE"
+        "SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = FALSE",
     )
     .bind(user_id)
     .fetch_one(pool)
     .await?;
-    
+
     let count: i64 = row.get("count");
     Ok(count)
 }
@@ -145,29 +151,25 @@ pub async fn mark_notification_as_read(
     notification_id: i32,
     user_id: i32,
 ) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query(
-        "UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2"
-    )
-    .bind(notification_id)
-    .bind(user_id)
-    .execute(pool)
-    .await?;
-    
+    let result =
+        sqlx::query("UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2")
+            .bind(notification_id)
+            .bind(user_id)
+            .execute(pool)
+            .await?;
+
     Ok(result.rows_affected() > 0)
 }
 
 /// Marquer toutes les notifications comme lues
-pub async fn mark_all_as_read(
-    pool: &PgPool,
-    user_id: i32,
-) -> Result<u64, sqlx::Error> {
+pub async fn mark_all_as_read(pool: &PgPool, user_id: i32) -> Result<u64, sqlx::Error> {
     let result = sqlx::query(
-        "UPDATE notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE"
+        "UPDATE notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE",
     )
     .bind(user_id)
     .execute(pool)
     .await?;
-    
+
     Ok(result.rows_affected())
 }
 
@@ -177,32 +179,32 @@ pub async fn delete_notification(
     notification_id: i32,
     user_id: i32,
 ) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query(
-        "DELETE FROM notifications WHERE id = $1 AND user_id = $2"
-    )
-    .bind(notification_id)
-    .bind(user_id)
-    .execute(pool)
-    .await?;
-    
+    let result = sqlx::query("DELETE FROM notifications WHERE id = $1 AND user_id = $2")
+        .bind(notification_id)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+
     Ok(result.rows_affected() > 0)
 }
 
 /// Supprimer les anciennes notifications (nettoyage)
-pub async fn cleanup_old_notifications(
-    pool: &PgPool,
-    days: i32,
-) -> Result<u64, sqlx::Error> {
-    log::info!("[NotificationService] Nettoyage des notifications de plus de {} jours", days);
-    
+pub async fn cleanup_old_notifications(pool: &PgPool, days: i32) -> Result<u64, sqlx::Error> {
+    log::info!(
+        "[NotificationService] Nettoyage des notifications de plus de {} jours",
+        days
+    );
+
     let result = sqlx::query(
         "DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '1 day' * $1 AND is_read = TRUE"
     )
     .bind(days)
     .execute(pool)
     .await?;
-    
-    log::info!("[NotificationService] ✅ {} notifications supprimées", result.rows_affected());
+
+    log::info!(
+        "[NotificationService] ✅ {} notifications supprimées",
+        result.rows_affected()
+    );
     Ok(result.rows_affected())
 }
-

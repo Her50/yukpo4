@@ -1,9 +1,9 @@
 use crate::core::types::AppResult;
-use std::sync::Arc;
-use tokio::sync::{RwLock, Semaphore};
-use std::collections::HashMap;
-use std::time::{Instant, Duration};
 use futures::stream::{FuturesUnordered, StreamExt};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::{RwLock, Semaphore};
 
 /// ?? Gestionnaire de charge massive pour des milliers de requ?tes simultan?es
 pub struct MassiveLoadHandler {
@@ -83,7 +83,11 @@ impl MassiveLoadHandler {
     }
 
     /// ?? Traite une requ?te avec gestion de charge massive
-    pub async fn handle_request(&self, request_data: &str, priority: RequestPriority) -> AppResult<String> {
+    pub async fn handle_request(
+        &self,
+        request_data: &str,
+        priority: RequestPriority,
+    ) -> AppResult<String> {
         let start_time = Instant::now();
         let request_id = self.generate_request_id();
 
@@ -94,7 +98,10 @@ impl MassiveLoadHandler {
         }
 
         // Acqu?rir un slot de requ?te
-        let _permit = self.request_semaphore.acquire().await
+        let _permit = self
+            .request_semaphore
+            .acquire()
+            .await
             .map_err(|_| "Limite de requ?tes simultan?es atteinte")?;
 
         // G?rer la connexion
@@ -104,15 +111,18 @@ impl MassiveLoadHandler {
         let result = match priority {
             RequestPriority::Critical => {
                 // Traitement imm?diat pour les requ?tes critiques
-                self.process_critical_request(request_data, &connection).await
-            },
+                self.process_critical_request(request_data, &connection)
+                    .await
+            }
             RequestPriority::High => {
                 // Traitement prioritaire
-                self.process_high_priority_request(request_data, &connection).await
-            },
+                self.process_high_priority_request(request_data, &connection)
+                    .await
+            }
             _ => {
                 // Traitement par lot pour les requ?tes normales/basses
-                self.process_batch_request(request_data, priority.clone(), &connection).await
+                self.process_batch_request(request_data, priority.clone(), &connection)
+                    .await
             }
         };
 
@@ -122,16 +132,24 @@ impl MassiveLoadHandler {
         }
 
         // Mettre ? jour les statistiques
-        self.update_connection_stats(&connection, start_time.elapsed()).await;
+        self.update_connection_stats(&connection, start_time.elapsed())
+            .await;
 
-        log::info!("? Requ?te {} trait?e en {:?} (priorit?: {:?})", 
-            request_id, start_time.elapsed(), priority);
+        log::info!(
+            "? Requ?te {} trait?e en {:?} (priorit?: {:?})",
+            request_id,
+            start_time.elapsed(),
+            priority
+        );
 
         result
     }
 
     /// ?? Traite plusieurs requ?tes en parall?le
-    pub async fn handle_bulk_requests(&self, requests: Vec<(String, RequestPriority)>) -> Vec<AppResult<String>> {
+    pub async fn handle_bulk_requests(
+        &self,
+        requests: Vec<(String, RequestPriority)>,
+    ) -> Vec<AppResult<String>> {
         let start_time = Instant::now();
         let requests_len = requests.len();
         log::info!("?? Traitement de {} requ?tes en lot", requests_len);
@@ -153,27 +171,43 @@ impl MassiveLoadHandler {
             }
         }
 
-        log::info!("? Lot de {} requ?tes trait? en {:?}", 
-            requests_len, start_time.elapsed());
+        log::info!(
+            "? Lot de {} requ?tes trait? en {:?}",
+            requests_len,
+            start_time.elapsed()
+        );
 
         results
     }
 
     /// ?? Traite une requ?te critique (imm?diat)
-    async fn process_critical_request(&self, request_data: &str, _connection: &ConnectionInfo) -> AppResult<String> {
+    async fn process_critical_request(
+        &self,
+        request_data: &str,
+        _connection: &ConnectionInfo,
+    ) -> AppResult<String> {
         // Traitement imm?diat avec priorit? maximale
         Ok(format!("R?ponse critique: {}", request_data))
     }
 
     /// ? Traite une requ?te haute priorit?
-    async fn process_high_priority_request(&self, request_data: &str, _connection: &ConnectionInfo) -> AppResult<String> {
+    async fn process_high_priority_request(
+        &self,
+        request_data: &str,
+        _connection: &ConnectionInfo,
+    ) -> AppResult<String> {
         // Traitement avec d?lai minimal
         tokio::time::sleep(Duration::from_millis(1)).await;
         Ok(format!("R?ponse haute priorit?: {}", request_data))
     }
 
     /// ?? Traite une requ?te par lot
-    async fn process_batch_request(&self, request_data: &str, priority: RequestPriority, _connection: &ConnectionInfo) -> AppResult<String> {
+    async fn process_batch_request(
+        &self,
+        request_data: &str,
+        priority: RequestPriority,
+        _connection: &ConnectionInfo,
+    ) -> AppResult<String> {
         let request = BatchRequest {
             id: self.generate_request_id(),
             data: request_data.to_string(),
@@ -219,13 +253,13 @@ impl MassiveLoadHandler {
     async fn check_cache(&self, request_data: &str) -> Option<String> {
         let cache_key = self.generate_cache_key(request_data);
         let cache = self.request_cache.read().await;
-        
+
         if let Some(cached) = cache.get(&cache_key) {
             if cached.timestamp.elapsed() < cached.ttl {
                 return Some(cached.data.clone());
             }
         }
-        
+
         None
     }
 
@@ -233,18 +267,21 @@ impl MassiveLoadHandler {
     async fn cache_response(&self, request_data: &str, response: &str) {
         let cache_key = self.generate_cache_key(request_data);
         let mut cache = self.request_cache.write().await;
-        
-        cache.insert(cache_key, CachedResponse {
-            data: response.to_string(),
-            timestamp: Instant::now(),
-            ttl: Duration::from_secs(300), // 5 minutes
-        });
+
+        cache.insert(
+            cache_key,
+            CachedResponse {
+                data: response.to_string(),
+                timestamp: Instant::now(),
+                ttl: Duration::from_secs(300), // 5 minutes
+            },
+        );
     }
 
     /// ?? Obtient ou cr?e une connexion
     async fn get_or_create_connection(&self, request_id: &str) -> ConnectionInfo {
         let mut pool = self.connection_pool.write().await;
-        
+
         if let Some(connection) = pool.connections.get_mut(request_id) {
             connection.last_used = Instant::now();
             connection.request_count += 1;
@@ -256,8 +293,9 @@ impl MassiveLoadHandler {
                 last_used: Instant::now(),
                 request_count: 1,
             };
-            
-            pool.connections.insert(request_id.to_string(), connection.clone());
+
+            pool.connections
+                .insert(request_id.to_string(), connection.clone());
             connection
         }
     }
@@ -265,8 +303,12 @@ impl MassiveLoadHandler {
     /// ?? Met ? jour les statistiques de connexion
     async fn update_connection_stats(&self, connection: &ConnectionInfo, response_time: Duration) {
         // Mise ? jour des m?triques de performance
-        log::debug!("?? Connexion {}: {} requ?tes, temps: {:?}", 
-            connection.id, connection.request_count, response_time);
+        log::debug!(
+            "?? Connexion {}: {} requ?tes, temps: {:?}",
+            connection.id,
+            connection.request_count,
+            response_time
+        );
     }
 
     /// ?? G?n?re un ID de requ?te unique
@@ -281,7 +323,7 @@ impl MassiveLoadHandler {
 
     /// ?? G?n?re une cl? de cache
     fn generate_cache_key(&self, request_data: &str) -> String {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(request_data.as_bytes());
         format!("cache_{:x}", hasher.finalize())
@@ -308,9 +350,12 @@ impl MassiveLoadHandler {
     pub fn configure(&mut self, max_concurrent_requests: usize, cache_ttl: Duration) {
         // Reconfigurer le s?maphore
         self.request_semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
-        
-        log::info!("?? Gestionnaire configur?: {} requ?tes max, TTL cache: {:?}", 
-            max_concurrent_requests, cache_ttl);
+
+        log::info!(
+            "?? Gestionnaire configur?: {} requ?tes max, TTL cache: {:?}",
+            max_concurrent_requests,
+            cache_ttl
+        );
     }
 }
 
@@ -326,10 +371,11 @@ impl BatchProcessor {
 
     pub fn add_request(&mut self, request: BatchRequest) {
         self.current_batch.push(request);
-        
+
         // Traiter le lot si plein ou timeout atteint
-        if self.current_batch.len() >= self.batch_size || 
-           self.last_batch_time.elapsed() >= self.batch_timeout {
+        if self.current_batch.len() >= self.batch_size
+            || self.last_batch_time.elapsed() >= self.batch_timeout
+        {
             self.process_batch();
         }
     }
@@ -340,14 +386,21 @@ impl BatchProcessor {
         }
 
         // Trier par priorit?
-        self.current_batch.sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.current_batch
+            .sort_by(|a, b| b.priority.cmp(&a.priority));
 
-        log::info!("?? Traitement du lot de {} requ?tes", self.current_batch.len());
+        log::info!(
+            "?? Traitement du lot de {} requ?tes",
+            self.current_batch.len()
+        );
 
         // Traiter les requ?tes (simulation)
         for request in &self.current_batch {
-            log::debug!("?? Traitement requ?te {} (priorit?: {:?})", 
-                request.id, request.priority);
+            log::debug!(
+                "?? Traitement requ?te {} (priorit?: {:?})",
+                request.id,
+                request.priority
+            );
         }
 
         self.current_batch.clear();
@@ -393,4 +446,4 @@ impl Default for MassiveLoadHandler {
     fn default() -> Self {
         Self::new()
     }
-} 
+}

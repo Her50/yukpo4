@@ -1,6 +1,6 @@
 // src/openapi.rs
 // Exposition OpenAPI/Swagger via utoipa et Swagger UI
-use axum::{Router};
+use axum::Router;
 
 // #[derive(OpenApi)]
 // #[openapi(

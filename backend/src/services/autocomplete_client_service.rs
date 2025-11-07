@@ -1,8 +1,8 @@
 // Service pour suggestions autocomplete CÔTÉ CLIENT
 // Utilise autocomplete_characteristics (VRAIS produits) pour aider le client à préciser sa recherche
-use sqlx::{PgPool, Row};
-use serde::{Deserialize, Serialize};
 use crate::core::types::AppError;
+use serde::{Deserialize, Serialize};
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProductSuggestion {
@@ -32,11 +32,11 @@ pub async fn search_product_suggestions(
         search_query,
         limit
     );
-    
+
     if search_query.trim().is_empty() {
         return Ok(vec![]);
     }
-    
+
     // Recherche dans autocomplete_characteristics avec usage_count élevé
     let rows = sqlx::query(
         r#"
@@ -79,32 +79,36 @@ pub async fn search_product_suggestions(
             )
         ORDER BY relevance_score DESC, ac.usage_count DESC
         LIMIT $2
-        "#
+        "#,
     )
     .bind(search_query)
     .bind(limit)
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur recherche suggestions: {}", e)))?;
-    
-    let suggestions: Vec<ProductSuggestion> = rows.iter().map(|row| ProductSuggestion {
-        service_id: row.get("service_id"),
-        product_vector: row.get("product_vector"),
-        product_labels: row.get("product_labels"),
-        location_vector: row.get("location_vector"),
-        full_vector: row.get("full_vector"),
-        chosen_location: row.get("chosen_location"), // ✅ RESTAURÉ: chosen_location ajouté dans auto_migrate.rs
-        usage_count: row.get("usage_count"),
-        has_variant: row.get("has_variant"),
-        variant_dimension: row.get("variant_dimension"),
-        prix: row.get("prix"),
-        devise: row.get("devise"),
-        final_score: row.get("relevance_score"),
-    }).collect();
-    
-    log::info!("[AutocompleteClientService] ✅ {} suggestions CLIENT trouvées", suggestions.len());
-    
+
+    let suggestions: Vec<ProductSuggestion> = rows
+        .iter()
+        .map(|row| ProductSuggestion {
+            service_id: row.get("service_id"),
+            product_vector: row.get("product_vector"),
+            product_labels: row.get("product_labels"),
+            location_vector: row.get("location_vector"),
+            full_vector: row.get("full_vector"),
+            chosen_location: row.get("chosen_location"), // ✅ RESTAURÉ: chosen_location ajouté dans auto_migrate.rs
+            usage_count: row.get("usage_count"),
+            has_variant: row.get("has_variant"),
+            variant_dimension: row.get("variant_dimension"),
+            prix: row.get("prix"),
+            devise: row.get("devise"),
+            final_score: row.get("relevance_score"),
+        })
+        .collect();
+
+    log::info!(
+        "[AutocompleteClientService] ✅ {} suggestions CLIENT trouvées",
+        suggestions.len()
+    );
+
     Ok(suggestions)
 }
-
-

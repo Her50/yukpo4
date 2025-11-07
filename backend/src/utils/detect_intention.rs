@@ -43,8 +43,3 @@ Et ensuite g?n?re un JSON structur? correspondant ? l?intention d?tect?e.
         raw_response: response,
     })
 }
-
-
-
-
-

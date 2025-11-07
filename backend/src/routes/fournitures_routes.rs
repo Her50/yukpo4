@@ -89,4 +89,3 @@ pub async fn gestion_fournitures(
     }))
 }
 */
-

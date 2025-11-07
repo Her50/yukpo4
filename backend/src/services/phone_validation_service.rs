@@ -32,125 +32,149 @@ struct PhonePattern {
 impl PhoneValidationService {
     pub fn new() -> Self {
         let mut patterns = HashMap::new();
-        
+
         // Patterns pour le Cameroun
-        patterns.insert("CM".to_string(), vec![
-            PhonePattern {
-                regex: Regex::new(r"^(\+237|237)?(6[0-9]{8}|2[0-9]{8})$").unwrap(),
-                carrier: "Orange".to_string(),
-                format: "+237{}".to_string(),
-            },
-            PhonePattern {
-                regex: Regex::new(r"^(\+237|237)?(6[0-9]{8}|2[0-9]{8})$").unwrap(),
-                carrier: "MTN".to_string(),
-                format: "+237{}".to_string(),
-            },
-        ]);
-        
+        patterns.insert(
+            "CM".to_string(),
+            vec![
+                PhonePattern {
+                    regex: Regex::new(r"^(\+237|237)?(6[0-9]{8}|2[0-9]{8})$").unwrap(),
+                    carrier: "Orange".to_string(),
+                    format: "+237{}".to_string(),
+                },
+                PhonePattern {
+                    regex: Regex::new(r"^(\+237|237)?(6[0-9]{8}|2[0-9]{8})$").unwrap(),
+                    carrier: "MTN".to_string(),
+                    format: "+237{}".to_string(),
+                },
+            ],
+        );
+
         // Patterns pour la Côte d'Ivoire
-        patterns.insert("CI".to_string(), vec![
-            PhonePattern {
-                regex: Regex::new(r"^(\+225|225)?(0[0-9]{9}|[0-9]{9})$").unwrap(),
-                carrier: "Orange".to_string(),
-                format: "+225{}".to_string(),
-            },
-            PhonePattern {
-                regex: Regex::new(r"^(\+225|225)?(0[0-9]{9}|[0-9]{9})$").unwrap(),
-                carrier: "MTN".to_string(),
-                format: "+225{}".to_string(),
-            },
-        ]);
-        
+        patterns.insert(
+            "CI".to_string(),
+            vec![
+                PhonePattern {
+                    regex: Regex::new(r"^(\+225|225)?(0[0-9]{9}|[0-9]{9})$").unwrap(),
+                    carrier: "Orange".to_string(),
+                    format: "+225{}".to_string(),
+                },
+                PhonePattern {
+                    regex: Regex::new(r"^(\+225|225)?(0[0-9]{9}|[0-9]{9})$").unwrap(),
+                    carrier: "MTN".to_string(),
+                    format: "+225{}".to_string(),
+                },
+            ],
+        );
+
         // Patterns pour le Burkina Faso
-        patterns.insert("BF".to_string(), vec![
-            PhonePattern {
-                regex: Regex::new(r"^(\+226|226)?(7[0-9]{7}|6[0-9]{7})$").unwrap(),
-                carrier: "Orange".to_string(),
-                format: "+226{}".to_string(),
-            },
-            PhonePattern {
-                regex: Regex::new(r"^(\+226|226)?(7[0-9]{7}|6[0-9]{7})$").unwrap(),
-                carrier: "MTN".to_string(),
-                format: "+226{}".to_string(),
-            },
-        ]);
-        
+        patterns.insert(
+            "BF".to_string(),
+            vec![
+                PhonePattern {
+                    regex: Regex::new(r"^(\+226|226)?(7[0-9]{7}|6[0-9]{7})$").unwrap(),
+                    carrier: "Orange".to_string(),
+                    format: "+226{}".to_string(),
+                },
+                PhonePattern {
+                    regex: Regex::new(r"^(\+226|226)?(7[0-9]{7}|6[0-9]{7})$").unwrap(),
+                    carrier: "MTN".to_string(),
+                    format: "+226{}".to_string(),
+                },
+            ],
+        );
+
         // Patterns pour le Mali
-        patterns.insert("ML".to_string(), vec![
-            PhonePattern {
-                regex: Regex::new(r"^(\+223|223)?(6[0-9]{7}|7[0-9]{7})$").unwrap(),
-                carrier: "Orange".to_string(),
-                format: "+223{}".to_string(),
-            },
-            PhonePattern {
-                regex: Regex::new(r"^(\+223|223)?(6[0-9]{7}|7[0-9]{7})$").unwrap(),
-                carrier: "MTN".to_string(),
-                format: "+223{}".to_string(),
-            },
-        ]);
-        
+        patterns.insert(
+            "ML".to_string(),
+            vec![
+                PhonePattern {
+                    regex: Regex::new(r"^(\+223|223)?(6[0-9]{7}|7[0-9]{7})$").unwrap(),
+                    carrier: "Orange".to_string(),
+                    format: "+223{}".to_string(),
+                },
+                PhonePattern {
+                    regex: Regex::new(r"^(\+223|223)?(6[0-9]{7}|7[0-9]{7})$").unwrap(),
+                    carrier: "MTN".to_string(),
+                    format: "+223{}".to_string(),
+                },
+            ],
+        );
+
         // Patterns pour le Niger
-        patterns.insert("NE".to_string(), vec![
-            PhonePattern {
-                regex: Regex::new(r"^(\+227|227)?(9[0-9]{7}|8[0-9]{7})$").unwrap(),
-                carrier: "Orange".to_string(),
-                format: "+227{}".to_string(),
-            },
-            PhonePattern {
-                regex: Regex::new(r"^(\+227|227)?(9[0-9]{7}|8[0-9]{7})$").unwrap(),
-                carrier: "MTN".to_string(),
-                format: "+227{}".to_string(),
-            },
-        ]);
-        
+        patterns.insert(
+            "NE".to_string(),
+            vec![
+                PhonePattern {
+                    regex: Regex::new(r"^(\+227|227)?(9[0-9]{7}|8[0-9]{7})$").unwrap(),
+                    carrier: "Orange".to_string(),
+                    format: "+227{}".to_string(),
+                },
+                PhonePattern {
+                    regex: Regex::new(r"^(\+227|227)?(9[0-9]{7}|8[0-9]{7})$").unwrap(),
+                    carrier: "MTN".to_string(),
+                    format: "+227{}".to_string(),
+                },
+            ],
+        );
+
         // Patterns pour le Sénégal
-        patterns.insert("SN".to_string(), vec![
-            PhonePattern {
-                regex: Regex::new(r"^(\+221|221)?(7[0-9]{8}|3[0-9]{8})$").unwrap(),
-                carrier: "Orange".to_string(),
-                format: "+221{}".to_string(),
-            },
-            PhonePattern {
-                regex: Regex::new(r"^(\+221|221)?(7[0-9]{8}|3[0-9]{8})$").unwrap(),
-                carrier: "MTN".to_string(),
-                format: "+221{}".to_string(),
-            },
-        ]);
-        
+        patterns.insert(
+            "SN".to_string(),
+            vec![
+                PhonePattern {
+                    regex: Regex::new(r"^(\+221|221)?(7[0-9]{8}|3[0-9]{8})$").unwrap(),
+                    carrier: "Orange".to_string(),
+                    format: "+221{}".to_string(),
+                },
+                PhonePattern {
+                    regex: Regex::new(r"^(\+221|221)?(7[0-9]{8}|3[0-9]{8})$").unwrap(),
+                    carrier: "MTN".to_string(),
+                    format: "+221{}".to_string(),
+                },
+            ],
+        );
+
         // Patterns pour le Togo
-        patterns.insert("TG".to_string(), vec![
-            PhonePattern {
-                regex: Regex::new(r"^(\+228|228)?(9[0-9]{7}|2[0-9]{7})$").unwrap(),
-                carrier: "Orange".to_string(),
-                format: "+228{}".to_string(),
-            },
-            PhonePattern {
-                regex: Regex::new(r"^(\+228|228)?(9[0-9]{7}|2[0-9]{7})$").unwrap(),
-                carrier: "MTN".to_string(),
-                format: "+228{}".to_string(),
-            },
-        ]);
-        
+        patterns.insert(
+            "TG".to_string(),
+            vec![
+                PhonePattern {
+                    regex: Regex::new(r"^(\+228|228)?(9[0-9]{7}|2[0-9]{7})$").unwrap(),
+                    carrier: "Orange".to_string(),
+                    format: "+228{}".to_string(),
+                },
+                PhonePattern {
+                    regex: Regex::new(r"^(\+228|228)?(9[0-9]{7}|2[0-9]{7})$").unwrap(),
+                    carrier: "MTN".to_string(),
+                    format: "+228{}".to_string(),
+                },
+            ],
+        );
+
         // Patterns pour Madagascar
-        patterns.insert("MG".to_string(), vec![
-            PhonePattern {
-                regex: Regex::new(r"^(\+261|261)?(3[0-9]{8}|2[0-9]{8})$").unwrap(),
-                carrier: "Orange".to_string(),
-                format: "+261{}".to_string(),
-            },
-            PhonePattern {
-                regex: Regex::new(r"^(\+261|261)?(3[0-9]{8}|2[0-9]{8})$").unwrap(),
-                carrier: "MTN".to_string(),
-                format: "+261{}".to_string(),
-            },
-        ]);
+        patterns.insert(
+            "MG".to_string(),
+            vec![
+                PhonePattern {
+                    regex: Regex::new(r"^(\+261|261)?(3[0-9]{8}|2[0-9]{8})$").unwrap(),
+                    carrier: "Orange".to_string(),
+                    format: "+261{}".to_string(),
+                },
+                PhonePattern {
+                    regex: Regex::new(r"^(\+261|261)?(3[0-9]{8}|2[0-9]{8})$").unwrap(),
+                    carrier: "MTN".to_string(),
+                    format: "+261{}".to_string(),
+                },
+            ],
+        );
 
         Self { patterns }
     }
 
     pub fn validate_phone_number(&self, request: PhoneValidationRequest) -> PhoneValidationResult {
         let phone_number = request.phone_number.trim();
-        
+
         // Nettoyer le numéro (supprimer espaces, tirets, etc.)
         let cleaned_number = phone_number
             .chars()
@@ -182,7 +206,7 @@ impl PhoneValidationService {
                         };
                     }
                 }
-                
+
                 return PhoneValidationResult {
                     is_valid: false,
                     formatted_number: None,
@@ -221,7 +245,7 @@ impl PhoneValidationService {
     fn format_number(&self, number: &str, format: &str) -> String {
         // Extraire les chiffres du numéro
         let digits: String = number.chars().filter(|c| c.is_ascii_digit()).collect();
-        
+
         // Appliquer le format
         if format.contains("{}") {
             format.replace("{}", &digits)
@@ -256,13 +280,13 @@ mod tests {
     #[test]
     fn test_cameroon_phone_validation() {
         let service = PhoneValidationService::new();
-        
+
         // Test numéro Orange Cameroun
         let request = PhoneValidationRequest {
             phone_number: "675123456".to_string(),
             country: Some("CM".to_string()),
         };
-        
+
         let result = service.validate_phone_number(request);
         assert!(result.is_valid);
         assert_eq!(result.country_code, Some("CM".to_string()));
@@ -272,12 +296,12 @@ mod tests {
     #[test]
     fn test_invalid_phone_validation() {
         let service = PhoneValidationService::new();
-        
+
         let request = PhoneValidationRequest {
             phone_number: "123".to_string(),
             country: Some("CM".to_string()),
         };
-        
+
         let result = service.validate_phone_number(request);
         assert!(!result.is_valid);
         assert!(result.error_message.is_some());
@@ -286,12 +310,12 @@ mod tests {
     #[test]
     fn test_phone_formatting() {
         let service = PhoneValidationService::new();
-        
+
         let request = PhoneValidationRequest {
             phone_number: "675123456".to_string(),
             country: Some("CM".to_string()),
         };
-        
+
         let result = service.validate_phone_number(request);
         assert!(result.is_valid);
         assert!(result.formatted_number.is_some());

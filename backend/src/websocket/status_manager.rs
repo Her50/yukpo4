@@ -1,9 +1,9 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserStatus {
@@ -36,31 +36,38 @@ impl StatusManager {
     pub async fn user_connected(&self, user_id: i32, connection_id: Uuid) {
         let mut users = self.users.write().await;
         let mut connections = self.connections.write().await;
-        
+
         // Mettre à jour le statut de l'utilisateur
-        users.insert(user_id, UserStatus {
+        users.insert(
             user_id,
-            is_online: true,
-            last_seen: Utc::now(),
-            connection_id: Some(connection_id),
-        });
-        
+            UserStatus {
+                user_id,
+                is_online: true,
+                last_seen: Utc::now(),
+                connection_id: Some(connection_id),
+            },
+        );
+
         // Associer la connexion à l'utilisateur
         connections.insert(connection_id, user_id);
-        
-        log::info!("Utilisateur {} connecté (connexion: {})", user_id, connection_id);
+
+        log::info!(
+            "Utilisateur {} connecté (connexion: {})",
+            user_id,
+            connection_id
+        );
     }
 
     pub async fn user_disconnected(&self, connection_id: Uuid) {
         let mut users = self.users.write().await;
         let mut connections = self.connections.write().await;
-        
+
         if let Some(user_id) = connections.remove(&connection_id) {
             if let Some(user_status) = users.get_mut(&user_id) {
                 user_status.is_online = false;
                 user_status.last_seen = Utc::now();
                 user_status.connection_id = None;
-                
+
                 log::info!("Utilisateur {} déconnecté", user_id);
             }
         }
@@ -91,7 +98,7 @@ impl StatusManager {
         let mut users = self.users.write().await;
         let now = Utc::now();
         let timeout = chrono::Duration::minutes(5); // 5 minutes
-        
+
         users.retain(|_, status| {
             if status.is_online && now.signed_duration_since(status.last_seen) > timeout {
                 log::info!("Utilisateur {} marqué comme inactif", status.user_id);
@@ -119,9 +126,9 @@ impl Default for StatusManager {
 // Tâche de nettoyage périodique
 pub async fn start_cleanup_task(status_manager: Arc<StatusManager>) {
     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60)); // Toutes les minutes
-    
+
     loop {
         interval.tick().await;
         status_manager.cleanup_inactive_users().await;
     }
-} 
+}

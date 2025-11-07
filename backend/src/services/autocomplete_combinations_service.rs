@@ -1,7 +1,7 @@
 // Service pour gérer les combinaisons autocomplete vectorielles
-use sqlx::{PgPool, Row};
-use serde::{Deserialize, Serialize};
 use crate::core::types::AppError;
+use serde::{Deserialize, Serialize};
+use sqlx::{PgPool, Row};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -11,8 +11,8 @@ pub struct AutocompleteCombination {
     pub product_vector: Vec<String>,
     pub location_vector: Vec<String>,
     pub full_vector: Vec<String>,
-    pub product_labels: Vec<String>,      // ✅ NOUVEAU : Étiquettes du product_vector
-    pub location_labels: Vec<String>,     // ✅ NOUVEAU : Étiquettes du location_vector
+    pub product_labels: Vec<String>, // ✅ NOUVEAU : Étiquettes du product_vector
+    pub location_labels: Vec<String>, // ✅ NOUVEAU : Étiquettes du location_vector
     pub chosen_location: Option<String>,
     pub usage_count: i32,
     pub is_ai_preferred: bool,
@@ -53,7 +53,7 @@ pub async fn save_ai_combinations_batch(
     for (index, combo) in combinations.iter().enumerate() {
         // Marquer la première combinaison comme préférée par l'IA
         let is_preferred = index == 0;
-        
+
         // Log si combinaison préférée avec explication
         if is_preferred && combo.preferred_explanation.is_some() {
             log::info!(
@@ -62,13 +62,13 @@ pub async fn save_ai_combinations_batch(
                 combo.ai_confidence
             );
         }
-        
+
         match upsert_combination(
             pool,
             &combo.product_vector,
-            &combo.product_labels,           // ✅ Passer les labels
+            &combo.product_labels, // ✅ Passer les labels
             &combo.location_vector,
-            &combo.location_labels,          // ✅ Passer les labels location
+            &combo.location_labels, // ✅ Passer les labels location
             &combo.full_vector,
             combo.chosen_location.as_deref(),
             is_preferred,
@@ -81,21 +81,33 @@ pub async fn save_ai_combinations_batch(
             combo.devise.as_deref().unwrap_or("XAF"),
             combo.stock,
             None, // service_id sera ajouté plus tard lors de la création du service
-        ).await {
+        )
+        .await
+        {
             Ok(id) => {
                 saved_ids.push(id);
                 if is_preferred {
-                    log::info!("[AutocompleteCombinations] ⭐ Combinaison préférée sauvegardée: ID {}", id);
+                    log::info!(
+                        "[AutocompleteCombinations] ⭐ Combinaison préférée sauvegardée: ID {}",
+                        id
+                    );
                 }
             }
             Err(e) => {
-                log::warn!("[AutocompleteCombinations] Erreur sauvegarde combinaison {}: {}", index, e);
+                log::warn!(
+                    "[AutocompleteCombinations] Erreur sauvegarde combinaison {}: {}",
+                    index,
+                    e
+                );
             }
         }
     }
 
-    log::info!("[AutocompleteCombinations] ✅ {} combinaisons sauvegardées sur {}", 
-        saved_ids.len(), combinations.len());
+    log::info!(
+        "[AutocompleteCombinations] ✅ {} combinaisons sauvegardées sur {}",
+        saved_ids.len(),
+        combinations.len()
+    );
 
     Ok(saved_ids)
 }
@@ -104,9 +116,9 @@ pub async fn save_ai_combinations_batch(
 pub async fn upsert_combination(
     pool: &PgPool,
     product_vector: &[String],
-    product_labels: &[String],      // ✅ NOUVEAU : Labels du vecteur
+    product_labels: &[String], // ✅ NOUVEAU : Labels du vecteur
     location_vector: &[String],
-    location_labels: &[String],     // ✅ NOUVEAU : Labels de localisation
+    location_labels: &[String], // ✅ NOUVEAU : Labels de localisation
     full_vector: &[String],
     chosen_location: Option<&str>,
     is_ai_preferred: bool,
@@ -121,14 +133,14 @@ pub async fn upsert_combination(
     service_id: Option<i32>,
 ) -> Result<i32, AppError> {
     let prix_decimal = prix.map(rust_decimal::Decimal::from_f64_retain).flatten();
-    
-    let row = sqlx::query(
+
+    let base_insert = sqlx::query(
         r#"
         SELECT upsert_autocomplete_combination(
             $1::TEXT[], $2::TEXT[], $3::TEXT[], $4::TEXT[], $5::TEXT[], 
             $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
         ) as id
-        "#
+        "#,
     )
     .bind(product_vector)
     .bind(product_labels)
@@ -147,11 +159,77 @@ pub async fn upsert_combination(
     .bind(stock)
     .bind(service_id)
     .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur upsert combinaison: {}", e)))?;
+    .await;
 
-    let id: i32 = row.get("id");
-    Ok(id)
+    match base_insert {
+        Ok(row) => {
+            let id: i32 = row.get("id");
+            Ok(id)
+        }
+        Err(e) => {
+            if let Some(db_err) = e.as_database_error() {
+                if db_err.code() == Some("23505") {
+                    // Contrainte unique sur product_vector: mettre à jour l'entrée existante
+                    let fallback_row = sqlx::query(
+                        r#"
+                        UPDATE autocomplete_combinations
+                        SET 
+                            product_labels = $2::TEXT[],
+                            location_labels = $4::TEXT[],
+                            full_vector = $5::TEXT[],
+                            chosen_location = COALESCE($6, chosen_location),
+                            is_ai_preferred = CASE WHEN $7 THEN TRUE ELSE is_ai_preferred END,
+                            ai_confidence = GREATEST(ai_confidence, $8),
+                            session_id = COALESCE($9, session_id),
+                            has_variant = $10,
+                            variant_dimension = COALESCE($11, variant_dimension),
+                            variant_value = COALESCE($12, variant_value),
+                            prix = COALESCE($13, prix),
+                            devise = COALESCE($14, devise),
+                            stock = COALESCE($15, stock),
+                            service_id = COALESCE($16, service_id),
+                            usage_count = usage_count + 1,
+                            updated_at = NOW()
+                        WHERE product_vector = $1::TEXT[]
+                        RETURNING id
+                        "#,
+                    )
+                    .bind(product_vector)
+                    .bind(product_labels)
+                    .bind(location_vector)
+                    .bind(location_labels)
+                    .bind(full_vector)
+                    .bind(chosen_location)
+                    .bind(is_ai_preferred)
+                    .bind(ai_confidence)
+                    .bind(session_id)
+                    .bind(has_variant)
+                    .bind(variant_dimension)
+                    .bind(variant_value)
+                    .bind(prix_decimal)
+                    .bind(devise)
+                    .bind(stock)
+                    .bind(service_id)
+                    .fetch_one(pool)
+                    .await
+                    .map_err(|update_err| {
+                        AppError::Internal(format!(
+                            "Erreur update combinaison après contrainte unique: {}",
+                            update_err
+                        ))
+                    })?;
+
+                    let id: i32 = fallback_row.get("id");
+                    return Ok(id);
+                }
+            }
+
+            Err(AppError::Internal(format!(
+                "Erreur upsert combinaison: {}",
+                e
+            )))
+        }
+    }
 }
 
 /// Rechercher des combinaisons par filtres textuels
@@ -215,10 +293,7 @@ pub async fn search_combinations(
              + (usage_count::FLOAT / 100.0) * 0.3) DESC
         LIMIT ${}
         "#,
-        location_param_index,
-        where_clause,
-        location_param_index,
-        limit_param_index
+        location_param_index, where_clause, location_param_index, limit_param_index
     );
 
     // Construction de la requête avec bindings
@@ -243,7 +318,11 @@ pub async fn search_combinations(
         .into_iter()
         .map(|combo| {
             let location_score = if let Some(ref loc) = user_location {
-                calculate_location_score_rust(loc, &combo.location_vector, combo.chosen_location.as_deref())
+                calculate_location_score_rust(
+                    loc,
+                    &combo.location_vector,
+                    combo.chosen_location.as_deref(),
+                )
             } else {
                 0.0
             };
@@ -278,7 +357,7 @@ pub async fn get_combinations_by_session(
         FROM autocomplete_combinations
         WHERE session_id = $1
         ORDER BY is_ai_preferred DESC, ai_confidence DESC
-        "#
+        "#,
     )
     .bind(session_id)
     .fetch_all(pool)
@@ -299,7 +378,7 @@ pub async fn get_ai_preferred_combination(
         FROM autocomplete_combinations
         WHERE session_id = $1 AND is_ai_preferred = TRUE
         LIMIT 1
-        "#
+        "#,
     )
     .bind(session_id)
     .fetch_optional(pool)
@@ -320,7 +399,7 @@ pub async fn link_combinations_to_service(
         UPDATE autocomplete_combinations
         SET service_id = $1, updated_at = NOW()
         WHERE session_id = $2 AND service_id IS NULL
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(session_id)
@@ -376,7 +455,9 @@ pub fn extract_combinations_from_ai_response(
     let sous_caracs = produits_field
         .get("sous_caracteristiques")
         .and_then(|sc| sc.as_object())
-        .ok_or_else(|| AppError::BadRequest("Champ 'sous_caracteristiques' manquant".to_string()))?;
+        .ok_or_else(|| {
+            AppError::BadRequest("Champ 'sous_caracteristiques' manquant".to_string())
+        })?;
 
     // Extraire les labels (clés) dans l'ordre
     let product_labels: Vec<String> = sous_caracs
@@ -399,24 +480,25 @@ pub fn extract_combinations_from_ai_response(
         .map(|s| s.to_string());
 
     // Extraire modalités si variation_prix existe
-    let modalites: HashMap<String, (f64, String, Option<i32>)> = if let Some(var_prix) = variation_prix {
-        if let Some(modalites_arr) = var_prix.get("modalites").and_then(|m| m.as_array()) {
-            modalites_arr
-                .iter()
-                .filter_map(|m| {
-                    let valeur = m.get("valeur")?.as_str()?.to_string();
-                    let prix = m.get("prix")?.as_f64()?;
-                    let devise = m.get("devise")?.as_str()?.to_string();
-                    let stock = m.get("stock").and_then(|s| s.as_i64()).map(|s| s as i32);
-                    Some((valeur, (prix, devise, stock)))
-                })
-                .collect()
+    let modalites: HashMap<String, (f64, String, Option<i32>)> =
+        if let Some(var_prix) = variation_prix {
+            if let Some(modalites_arr) = var_prix.get("modalites").and_then(|m| m.as_array()) {
+                modalites_arr
+                    .iter()
+                    .filter_map(|m| {
+                        let valeur = m.get("valeur")?.as_str()?.to_string();
+                        let prix = m.get("prix")?.as_f64()?;
+                        let devise = m.get("devise")?.as_str()?.to_string();
+                        let stock = m.get("stock").and_then(|s| s.as_i64()).map(|s| s as i32);
+                        Some((valeur, (prix, devise, stock)))
+                    })
+                    .collect()
+            } else {
+                HashMap::new()
+            }
         } else {
             HashMap::new()
-        }
-    } else {
-        HashMap::new()
-    };
+        };
 
     // Prix/devise par défaut si pas de variation
     let default_prix = ai_data
@@ -439,12 +521,12 @@ pub fn extract_combinations_from_ai_response(
         .and_then(|pm| pm.get("explanation"))
         .and_then(|e| e.as_str())
         .map(|s| s.to_string());
-    
+
     let preferred_confidence = preferred_match
         .and_then(|pm| pm.get("confidence"))
         .and_then(|c| c.as_f64())
         .map(|f| f as f32);
-    
+
     if let Some(ref expl) = preferred_explanation {
         log::info!(
             "[extract_combinations] ⭐ Combinaison préférée détectée: {} (confiance: {:.2})",
@@ -521,9 +603,9 @@ pub fn extract_combinations_from_ai_response(
 
             combinations.push(AICombinationInput {
                 product_vector,
-                product_labels: product_labels.clone(),      // ✅ Labels du vecteur produit
+                product_labels: product_labels.clone(), // ✅ Labels du vecteur produit
                 location_vector,
-                location_labels,                              // ✅ Labels de localisation (vide)
+                location_labels, // ✅ Labels de localisation (vide)
                 full_vector,
                 chosen_location: None,
                 ai_confidence,
@@ -533,8 +615,12 @@ pub fn extract_combinations_from_ai_response(
                 prix,
                 devise: Some(devise),
                 stock,
-                preferred_explanation: expl,                  // ✅ NOUVEAU 2025-11-03
-                preferred_match_confidence: if index == 0 { preferred_confidence } else { None }, // ✅ NOUVEAU 2025-11-03
+                preferred_explanation: expl, // ✅ NOUVEAU 2025-11-03
+                preferred_match_confidence: if index == 0 {
+                    preferred_confidence
+                } else {
+                    None
+                }, // ✅ NOUVEAU 2025-11-03
             });
         }
     }
@@ -552,9 +638,9 @@ pub fn extract_combinations_from_ai_response(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AICombinationInput {
     pub product_vector: Vec<String>,
-    pub product_labels: Vec<String>,      // ✅ NOUVEAU : Labels du vecteur
+    pub product_labels: Vec<String>, // ✅ NOUVEAU : Labels du vecteur
     pub location_vector: Vec<String>,
-    pub location_labels: Vec<String>,     // ✅ NOUVEAU : Labels de localisation
+    pub location_labels: Vec<String>, // ✅ NOUVEAU : Labels de localisation
     pub full_vector: Vec<String>,
     pub chosen_location: Option<String>,
     pub ai_confidence: f32,
@@ -564,7 +650,7 @@ pub struct AICombinationInput {
     pub prix: Option<f64>,
     pub devise: Option<String>,
     pub stock: Option<i32>,
-    pub preferred_explanation: Option<String>,  // ✅ NOUVEAU 2025-11-03: Explication choix préféré
+    pub preferred_explanation: Option<String>, // ✅ NOUVEAU 2025-11-03: Explication choix préféré
     pub preferred_match_confidence: Option<f32>, // ✅ NOUVEAU 2025-11-03: Confiance du match
 }
 
@@ -595,4 +681,3 @@ fn calculate_location_score_rust(
 
     0.0
 }
-

@@ -1,14 +1,11 @@
 // ?? src/controllers/ia_status_controller.rs
 
-use axum::{
-    extract::State,
-    Json,
-};
+use axum::{extract::State, Json};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::core::types::{AppResult};
+use crate::core::types::AppResult;
 use crate::state::AppState;
 
 /// ?? Analyse comportementale d?un utilisateur
@@ -35,7 +32,10 @@ pub async fn predict_ia(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<IAPrompt>,
 ) -> AppResult<Json<String>> {
-    info!("[predict_ia] Called for texte length={}", payload.texte.len());
+    info!(
+        "[predict_ia] Called for texte length={}",
+        payload.texte.len()
+    );
     match state.ia.predict(&payload.texte).await {
         Ok((_, result, _tokens)) => {
             info!("[predict_ia] Success");
@@ -61,9 +61,7 @@ pub async fn predict_ia(
 // }
 
 /// ?? Statistiques d?usage des moteurs IA (GET /admin/ia/status)
-pub async fn get_ia_status(
-    State(state): State<Arc<AppState>>,
-) -> AppResult<Json<IAStats>> {
+pub async fn get_ia_status(State(state): State<Arc<AppState>>) -> AppResult<Json<IAStats>> {
     info!("[get_ia_status] Called");
     let stats = state.ia_stats.lock().await.clone();
     Ok(Json(stats))

@@ -1,16 +1,9 @@
 // Contrôleur pour les appels WebRTC
-use std::sync::Arc;
-use axum::{
-    extract::State,
-    response::Json,
-    http::StatusCode,
-};
+use crate::{services::push_notification_service, state::AppState};
+use axum::{extract::State, http::StatusCode, response::Json};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use crate::{
-    state::AppState,
-    services::push_notification_service,
-};
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 pub struct NotifyCallRequest {
@@ -26,9 +19,12 @@ pub async fn notify_incoming_call(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<NotifyCallRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    log::info!("[WebRTCController] 📞 Notification d'appel: {} appelle {}", 
-        payload.caller_id, payload.recipient_id);
-    
+    log::info!(
+        "[WebRTCController] 📞 Notification d'appel: {} appelle {}",
+        payload.caller_id,
+        payload.recipient_id
+    );
+
     // Envoyer la push notification
     match push_notification_service::send_call_notification(
         &state.pg,
@@ -36,9 +32,14 @@ pub async fn notify_incoming_call(
         payload.caller_name,
         payload.call_type.clone(),
         payload.service_id,
-    ).await {
+    )
+    .await
+    {
         Ok(count) => {
-            log::info!("[WebRTCController] ✅ {} push notifications envoyées", count);
+            log::info!(
+                "[WebRTCController] ✅ {} push notifications envoyées",
+                count
+            );
             Ok(Json(json!({
                 "success": true,
                 "notifications_sent": count,
@@ -55,4 +56,3 @@ pub async fn notify_incoming_call(
         }
     }
 }
-

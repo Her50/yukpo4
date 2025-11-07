@@ -1,20 +1,17 @@
 // Routes pour les statistiques de consommation de tokens
 use axum::{
-    extract::{Extension, State, Query},
+    extract::{Extension, Query, State},
+    http::StatusCode,
     routing::get,
     Json, Router,
-    http::StatusCode,
 };
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::sync::Arc;
-use log::{info, error};
-use sqlx::Row; // ✅ Pour .get() sur les rows
+use sqlx::Row;
+use std::sync::Arc; // ✅ Pour .get() sur les rows
 
-use crate::{
-    state::AppState,
-    middlewares::jwt::AuthenticatedUser,
-};
+use crate::{middlewares::jwt::AuthenticatedUser, state::AppState};
 
 #[derive(Debug, Deserialize)]
 pub struct TokenStatsQuery {
@@ -56,9 +53,12 @@ pub async fn get_token_stats(
 ) -> Result<Json<TokenStatsResponse>, (StatusCode, Json<Value>)> {
     let user_id = user.id;
     let days = params.days.unwrap_or(30).max(1).min(365); // Entre 1 et 365 jours
-    
-    info!("[TokenStats] Récupération stats pour utilisateur {} (derniers {} jours)", user_id, days);
-    
+
+    info!(
+        "[TokenStats] Récupération stats pour utilisateur {} (derniers {} jours)",
+        user_id, days
+    );
+
     // ✅ Utiliser sqlx::query() au lieu de query!() pour compatibilité SQLX_OFFLINE
     let stats_row = sqlx::query(
         r#"
@@ -70,7 +70,7 @@ pub async fn get_token_stats(
         FROM token_usage_logs
         WHERE user_id = $1
           AND created_at >= CURRENT_TIMESTAMP - ($2 || ' days')::INTERVAL
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(days.to_string())
@@ -78,17 +78,20 @@ pub async fn get_token_stats(
     .await
     .map_err(|e| {
         error!("[TokenStats] Erreur récupération stats globales: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": "Erreur lors de la récupération des statistiques"
-        })))
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": "Erreur lors de la récupération des statistiques"
+            })),
+        )
     })?;
-    
+
     // Extraire manuellement les valeurs
     let total_tokens_consumed = stats_row.get::<i64, _>("total_tokens_consumed");
     let total_cost_xaf = stats_row.get::<i64, _>("total_cost_xaf");
     let total_requests = stats_row.get::<i64, _>("total_requests");
     let avg_tokens_per_request = stats_row.get::<f64, _>("avg_tokens_per_request");
-    
+
     // Stats par intention
     let by_intention_rows = sqlx::query(
         r#"
@@ -102,7 +105,7 @@ pub async fn get_token_stats(
           AND created_at >= CURRENT_TIMESTAMP - ($2 || ' days')::INTERVAL
         GROUP BY intention
         ORDER BY total_tokens DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(days.to_string())
@@ -110,23 +113,29 @@ pub async fn get_token_stats(
     .await
     .map_err(|e| {
         error!("[TokenStats] Erreur stats par intention: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": "Erreur lors de la récupération des stats par intention"
-        })))
-    })?;
-    
-    let by_intention: Value = by_intention_rows.iter().map(|row| {
-        use sqlx::Row;
         (
-            row.get::<String, _>("intention"),
-            json!({
-                "count": row.get::<i64, _>("count"),
-                "tokens": row.get::<i64, _>("total_tokens"),
-                "cost_xaf": row.get::<i64, _>("total_cost_xaf")
-            })
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": "Erreur lors de la récupération des stats par intention"
+            })),
         )
-    }).collect();
-    
+    })?;
+
+    let by_intention: Value = by_intention_rows
+        .iter()
+        .map(|row| {
+            use sqlx::Row;
+            (
+                row.get::<String, _>("intention"),
+                json!({
+                    "count": row.get::<i64, _>("count"),
+                    "tokens": row.get::<i64, _>("total_tokens"),
+                    "cost_xaf": row.get::<i64, _>("total_cost_xaf")
+                }),
+            )
+        })
+        .collect();
+
     // Stats par source
     let by_source_rows = sqlx::query(
         r#"
@@ -139,7 +148,7 @@ pub async fn get_token_stats(
           AND created_at >= CURRENT_TIMESTAMP - ($2 || ' days')::INTERVAL
         GROUP BY response_source
         ORDER BY total_tokens DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(days.to_string())
@@ -147,22 +156,28 @@ pub async fn get_token_stats(
     .await
     .map_err(|e| {
         error!("[TokenStats] Erreur stats par source: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": "Erreur lors de la récupération des stats par source"
-        })))
-    })?;
-    
-    let by_source: Value = by_source_rows.iter().map(|row| {
-        use sqlx::Row;
         (
-            row.get::<String, _>("source"),
-            json!({
-                "count": row.get::<i64, _>("count"),
-                "tokens": row.get::<i64, _>("total_tokens")
-            })
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": "Erreur lors de la récupération des stats par source"
+            })),
         )
-    }).collect();
-    
+    })?;
+
+    let by_source: Value = by_source_rows
+        .iter()
+        .map(|row| {
+            use sqlx::Row;
+            (
+                row.get::<String, _>("source"),
+                json!({
+                    "count": row.get::<i64, _>("count"),
+                    "tokens": row.get::<i64, _>("total_tokens")
+                }),
+            )
+        })
+        .collect();
+
     // Consommation journalière
     let daily_rows = sqlx::query(
         r#"
@@ -176,7 +191,7 @@ pub async fn get_token_stats(
           AND created_at >= CURRENT_TIMESTAMP - ($2 || ' days')::INTERVAL
         GROUP BY DATE(created_at)
         ORDER BY DATE(created_at) DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(days.to_string())
@@ -184,25 +199,31 @@ pub async fn get_token_stats(
     .await
     .map_err(|e| {
         error!("[TokenStats] Erreur stats journalières: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": "Erreur lors de la récupération des stats journalières"
-        })))
-    })?;
-    
-    let daily_consumption: Value = daily_rows.iter().map(|row| {
-        use sqlx::Row;
         (
-            row.get::<Option<chrono::NaiveDate>, _>("consumption_date")
-                .map(|d| d.to_string())
-                .unwrap_or_else(|| "unknown".to_string()),
-            json!({
-                "count": row.get::<i64, _>("count"),
-                "tokens": row.get::<i64, _>("total_tokens"),
-                "cost_xaf": row.get::<i64, _>("total_cost_xaf")
-            })
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": "Erreur lors de la récupération des stats journalières"
+            })),
         )
-    }).collect();
-    
+    })?;
+
+    let daily_consumption: Value = daily_rows
+        .iter()
+        .map(|row| {
+            use sqlx::Row;
+            (
+                row.get::<Option<chrono::NaiveDate>, _>("consumption_date")
+                    .map(|d| d.to_string())
+                    .unwrap_or_else(|| "unknown".to_string()),
+                json!({
+                    "count": row.get::<i64, _>("count"),
+                    "tokens": row.get::<i64, _>("total_tokens"),
+                    "cost_xaf": row.get::<i64, _>("total_cost_xaf")
+                }),
+            )
+        })
+        .collect();
+
     // 10 dernières utilisations
     let recent_usage_rows = sqlx::query(
         r#"
@@ -221,50 +242,57 @@ pub async fn get_token_stats(
         WHERE user_id = $1
         ORDER BY created_at DESC
         LIMIT 10
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| {
         error!("[TokenStats] Erreur récupération historique récent: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": "Erreur lors de la récupération de l'historique"
-        })))
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": "Erreur lors de la récupération de l'historique"
+            })),
+        )
     })?;
-    
-    let recent_usage: Vec<RecentUsageItem> = recent_usage_rows.iter().map(|row| {
-        use sqlx::Row;
-        RecentUsageItem {
-            id: row.get("id"),
-            intention: row.get("intention"),
-            tokens_ia_consumed: row.get("tokens_ia_consumed"),
-            tokens_cost_xaf: row.get("tokens_cost_xaf"),
-            tokens_deducted: row.get("tokens_deducted"),
-            balance_after: row.get("balance_after"),
-            processing_time_ms: row.get("processing_time_ms"),
-            response_source: row.get("response_source"),
-            endpoint: row.get("endpoint"),
-            created_at: row.get("created_at"),
-        }
-    }).collect();
-    
+
+    let recent_usage: Vec<RecentUsageItem> = recent_usage_rows
+        .iter()
+        .map(|row| {
+            use sqlx::Row;
+            RecentUsageItem {
+                id: row.get("id"),
+                intention: row.get("intention"),
+                tokens_ia_consumed: row.get("tokens_ia_consumed"),
+                tokens_cost_xaf: row.get("tokens_cost_xaf"),
+                tokens_deducted: row.get("tokens_deducted"),
+                balance_after: row.get("balance_after"),
+                processing_time_ms: row.get("processing_time_ms"),
+                response_source: row.get("response_source"),
+                endpoint: row.get("endpoint"),
+                created_at: row.get("created_at"),
+            }
+        })
+        .collect();
+
     // Récupérer le solde actuel
-    let balance_row = sqlx::query(
-        "SELECT tokens_balance FROM users WHERE id = $1"
-    )
-    .bind(user_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[TokenStats] Erreur récupération solde: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": "Erreur lors de la récupération du solde"
-        })))
-    })?;
-    
+    let balance_row = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[TokenStats] Erreur récupération solde: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "error": "Erreur lors de la récupération du solde"
+                })),
+            )
+        })?;
+
     let current_balance = balance_row.get::<i64, _>("tokens_balance");
-    
+
     let response = TokenStatsResponse {
         total_requests,
         total_tokens_consumed,
@@ -276,10 +304,12 @@ pub async fn get_token_stats(
         current_balance,
         recent_usage,
     };
-    
-    info!("[TokenStats] ✅ Stats récupérées: {} requêtes, {} tokens consommés", 
-        response.total_requests, response.total_tokens_consumed);
-    
+
+    info!(
+        "[TokenStats] ✅ Stats récupérées: {} requêtes, {} tokens consommés",
+        response.total_requests, response.total_tokens_consumed
+    );
+
     Ok(Json(response))
 }
 
@@ -289,4 +319,3 @@ pub fn token_stats_routes() -> Router<Arc<AppState>> {
         .route("/api/tokens/stats", get(get_token_stats))
         .layer(axum::middleware::from_fn(crate::middlewares::jwt::jwt_auth))
 }
-

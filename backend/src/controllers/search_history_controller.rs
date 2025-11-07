@@ -1,13 +1,13 @@
+use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::search_history_service;
+use crate::state::AppState;
 use axum::{
-    extract::{Query, State, Path, Extension, FromRequestParts},
+    extract::{Extension, FromRequestParts, Path, Query, State},
     http::{request::Parts, StatusCode},
     Json,
 };
 use serde::Deserialize;
 use std::sync::Arc;
-use crate::state::AppState;
-use crate::services::search_history_service;
-use crate::middlewares::jwt::AuthenticatedUser;
 
 /// Extracteur personnalisé pour obtenir optionnellement l'utilisateur authentifié
 pub struct OptionalAuth(pub Option<AuthenticatedUser>);
@@ -78,14 +78,14 @@ pub async fn record_search(
         results_count,
         payload.session_id.as_deref(),
         payload.device_type.as_deref(),
-    ).await {
-        Ok(id) => {
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "id": id,
-                "message": "Recherche enregistrée"
-            })))
-        }
+    )
+    .await
+    {
+        Ok(id) => Ok(Json(serde_json::json!({
+            "success": true,
+            "id": id,
+            "message": "Recherche enregistrée"
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur enregistrement recherche: {:?}", e);
             Err((
@@ -103,20 +103,17 @@ pub async fn record_search_click(
     Json(payload): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
-    let result_id = payload.get("result_id")
+    let result_id = payload
+        .get("result_id")
         .and_then(|v| v.as_i64())
         .map(|v| v as i32)
-        .ok_or_else(|| {
-            (StatusCode::BAD_REQUEST, "result_id requis".to_string())
-        })?;
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "result_id requis".to_string()))?;
 
     match search_history_service::record_search_click(pool, search_id, result_id).await {
-        Ok(success) => {
-            Ok(Json(serde_json::json!({
-                "success": success,
-                "message": if success { "Clic enregistré" } else { "Recherche non trouvée" }
-            })))
-        }
+        Ok(success) => Ok(Json(serde_json::json!({
+            "success": success,
+            "message": if success { "Clic enregistré" } else { "Recherche non trouvée" }
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur enregistrement clic: {:?}", e);
             Err((
@@ -136,19 +133,14 @@ pub async fn get_popular_searches(
     let limit = query.limit.unwrap_or(10);
     let days = query.days.unwrap_or(30);
 
-    match search_history_service::get_popular_searches(
-        pool,
-        limit,
-        query.category.as_deref(),
-        days,
-    ).await {
-        Ok(popular) => {
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "data": popular,
-                "count": popular.len()
-            })))
-        }
+    match search_history_service::get_popular_searches(pool, limit, query.category.as_deref(), days)
+        .await
+    {
+        Ok(popular) => Ok(Json(serde_json::json!({
+            "success": true,
+            "data": popular,
+            "count": popular.len()
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur récupération recherches populaires: {:?}", e);
             Err((
@@ -174,14 +166,14 @@ pub async fn get_search_suggestions(
         user_id,
         query.prefix.as_deref(),
         limit,
-    ).await {
-        Ok(suggestions) => {
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "data": suggestions,
-                "count": suggestions.len()
-            })))
-        }
+    )
+    .await
+    {
+        Ok(suggestions) => Ok(Json(serde_json::json!({
+            "success": true,
+            "data": suggestions,
+            "count": suggestions.len()
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur récupération suggestions: {:?}", e);
             Err((
@@ -203,13 +195,11 @@ pub async fn get_user_search_history(
     let uid = user.id;
 
     match search_history_service::get_user_search_history(pool, uid, limit).await {
-        Ok(history) => {
-            Ok(Json(serde_json::json!({
-                "success": true,
-                "data": history,
-                "count": history.len()
-            })))
-        }
+        Ok(history) => Ok(Json(serde_json::json!({
+            "success": true,
+            "data": history,
+            "count": history.len()
+        }))),
         Err(e) => {
             eprintln!("❌ Erreur récupération historique: {:?}", e);
             Err((
@@ -219,4 +209,3 @@ pub async fn get_user_search_history(
         }
     }
 }
-

@@ -17,7 +17,7 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
 };
-use log::{info, error};
+use log::{error, info};
 
 /// ? Repr?sente un m?dia dans la base
 #[derive(Debug, FromRow, serde::Serialize)]
@@ -36,13 +36,14 @@ pub async fn upload_media(
     Extension(user): Extension<AuthenticatedUser>,
     mut multipart: Multipart,
 ) -> AppResult<Json<Vec<String>>> {
-    info!("[upload_media] Called for user_id={}, service_id={}", user.id, service_id);
-    let owner = match sqlx::query_scalar!(
-        "SELECT user_id FROM services WHERE id = $1",
-        service_id
-    )
-    .fetch_optional(&pool)
-    .await {
+    info!(
+        "[upload_media] Called for user_id={}, service_id={}",
+        user.id, service_id
+    );
+    let owner = match sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
+        .fetch_optional(&pool)
+        .await
+    {
         Ok(o) => o,
         Err(e) => {
             error!("[upload_media] DB error (service owner): {e:?}");
@@ -50,15 +51,24 @@ pub async fn upload_media(
         }
     };
     if owner != Some(user.id) {
-        error!("[upload_media] Unauthorized upload attempt by user_id={}", user.id);
-        return Err(AppError::Unauthorized("? Vous n??tes pas propri?taire de ce service.".to_string()));
+        error!(
+            "[upload_media] Unauthorized upload attempt by user_id={}",
+            user.id
+        );
+        return Err(AppError::Unauthorized(
+            "? Vous n??tes pas propri?taire de ce service.".to_string(),
+        ));
     }
     if let Err(e) = create_dir_all("uploads/services") {
         error!("[upload_media] create_dir_all error: {e:?}");
         return Err(AppError::from(e));
     }
     create_dir_all("logs").ok();
-    let mut log_file = match OpenOptions::new().create(true).append(true).open("logs/media.log") {
+    let mut log_file = match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("logs/media.log")
+    {
         Ok(f) => f,
         Err(e) => {
             error!("[upload_media] log file open error: {e:?}");
@@ -88,7 +98,8 @@ pub async fn upload_media(
             new_path
         )
         .execute(&pool)
-        .await {
+        .await
+        {
             error!("[upload_media] DB error (insert media): {e:?}");
             return Err(AppError::from(e));
         }
@@ -104,7 +115,11 @@ pub async fn upload_media(
         .ok();
         saved_paths.push(new_path);
     }
-    info!("[upload_media] Uploaded {} files for service_id={}", saved_paths.len(), service_id);
+    info!(
+        "[upload_media] Uploaded {} files for service_id={}",
+        saved_paths.len(),
+        service_id
+    );
     Ok(Json(saved_paths))
 }
 
@@ -131,16 +146,15 @@ pub async fn get_service_media(
 }
 
 /// ?? R?cup?re tous les m?dias
-pub async fn get_all_media(
-    Extension(pool): Extension<PgPool>,
-) -> AppResult<Json<Vec<MediaItem>>> {
+pub async fn get_all_media(Extension(pool): Extension<PgPool>) -> AppResult<Json<Vec<MediaItem>>> {
     info!("[get_all_media] Called");
     let rows = match sqlx::query_as!(
         MediaItem,
         "SELECT id, service_id, type, path, uploaded_at FROM media ORDER BY uploaded_at DESC"
     )
     .fetch_all(&pool)
-    .await {
+    .await
+    {
         Ok(r) => r,
         Err(e) => {
             error!("[get_all_media] Query error: {e:?}");
@@ -156,13 +170,17 @@ pub async fn delete_media(
     Extension(pool): Extension<PgPool>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<Json<&'static str>> {
-    info!("[delete_media] Called for media_id={}, user_id={}", media_id, user.id);
+    info!(
+        "[delete_media] Called for media_id={}, user_id={}",
+        media_id, user.id
+    );
     let record = match sqlx::query!(
         "SELECT path, service_id, type FROM media WHERE id = $1",
         media_id
     )
     .fetch_optional(&pool)
-    .await {
+    .await
+    {
         Ok(Some(r)) => r,
         Ok(None) => {
             error!("[delete_media] Media not found: id={}", media_id);
@@ -178,7 +196,8 @@ pub async fn delete_media(
         record.service_id
     )
     .fetch_optional(&pool)
-    .await {
+    .await
+    {
         Ok(o) => o,
         Err(e) => {
             error!("[delete_media] DB error (service owner): {e:?}");
@@ -186,21 +205,28 @@ pub async fn delete_media(
         }
     };
     if owner != Some(user.id) {
-        error!("[delete_media] Unauthorized delete attempt by user_id={}", user.id);
-        return Err(AppError::Unauthorized("? Suppression interdite : vous n??tes pas propri?taire du service.".to_string()));
+        error!(
+            "[delete_media] Unauthorized delete attempt by user_id={}",
+            user.id
+        );
+        return Err(AppError::Unauthorized(
+            "? Suppression interdite : vous n??tes pas propri?taire du service.".to_string(),
+        ));
     }
     let _ = remove_file(&record.path);
-    if let Err(e) = sqlx::query!(
-        "DELETE FROM media WHERE id = $1",
-        media_id
-    )
-    .execute(&pool)
-    .await {
+    if let Err(e) = sqlx::query!("DELETE FROM media WHERE id = $1", media_id)
+        .execute(&pool)
+        .await
+    {
         error!("[delete_media] DB error (delete media): {e:?}");
         return Err(AppError::from(e));
     }
     create_dir_all("logs").ok();
-    let mut log_file = match OpenOptions::new().create(true).append(true).open("logs/media.log") {
+    let mut log_file = match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("logs/media.log")
+    {
         Ok(f) => f,
         Err(e) => {
             error!("[delete_media] log file open error: {e:?}");

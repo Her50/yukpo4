@@ -1,7 +1,7 @@
-use sqlx::PgPool;
-use chrono::{Utc, Duration};
 use crate::core::types::AppError;
+use chrono::{Duration, Utc};
 use serde_json::Value;
+use sqlx::PgPool;
 
 pub async fn reactivate_service(
     pool: &PgPool,
@@ -55,8 +55,13 @@ pub async fn reactivate_service(
     let gps = rec.gps.as_ref().and_then(|s| {
         let parts: Vec<&str> = s.split(',').collect();
         if parts.len() == 2 {
-            Some((parts[0].trim().parse().unwrap_or(0.0), parts[1].trim().parse().unwrap_or(0.0)))
-        } else { None }
+            Some((
+                parts[0].trim().parse().unwrap_or(0.0),
+                parts[1].trim().parse().unwrap_or(0.0),
+            ))
+        } else {
+            None
+        }
     });
     let (_gps_lat, _gps_lon) = gps.map_or((None, None), |(lon, lat)| (Some(lat), Some(lon)));
     // Comment? ou supprim? : embedding_client, AddEmbeddingPineconeRequest, et les appels associ?s

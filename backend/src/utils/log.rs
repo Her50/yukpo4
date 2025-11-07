@@ -19,8 +19,3 @@ pub fn log_warn(message: &str) {
 pub fn log_error(message: &str) {
     eprintln!("? [ERREUR] {}", message);
 }
-
-
-
-
-

@@ -1,13 +1,11 @@
+use crate::state::AppState;
 use axum::{
     routing::{get, post},
     Router,
 };
 use std::sync::Arc;
-use crate::state::AppState;
 
-use crate::controllers::vehicle_model_controller::{
-    create_vehicle_model, get_vehicle_models,
-};
+use crate::controllers::vehicle_model_controller::{create_vehicle_model, get_vehicle_models};
 
 /// Routes pour la gestion des modèles de véhicules
 pub fn vehicle_model_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
@@ -20,4 +18,3 @@ pub fn vehicle_model_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/vehicle-models", post(create_vehicle_model))
         .with_state(state)
 }
-

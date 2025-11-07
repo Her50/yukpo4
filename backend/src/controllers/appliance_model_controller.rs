@@ -1,3 +1,4 @@
+use crate::state::AppState;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -5,7 +6,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct ApplianceModelQuery {
@@ -61,17 +61,20 @@ pub async fn get_appliance_models(
             )
         })?
     };
-    
+
     use sqlx::Row;
-    let models: Vec<ApplianceModel> = rows.iter().map(|row| {
-        let created_at: chrono::NaiveDateTime = row.get("created_at");
-        ApplianceModel {
-            id: row.get("id"),
-            brand: row.get("brand"),
-            model: row.get("model"),
-            created_at: created_at.to_string(),
-        }
-    }).collect();
+    let models: Vec<ApplianceModel> = rows
+        .iter()
+        .map(|row| {
+            let created_at: chrono::NaiveDateTime = row.get("created_at");
+            ApplianceModel {
+                id: row.get("id"),
+                brand: row.get("brand"),
+                model: row.get("model"),
+                created_at: created_at.to_string(),
+            }
+        })
+        .collect();
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -103,14 +106,17 @@ pub async fn create_appliance_model(
 
     // Vérifier si existe déjà
     let existing = sqlx::query(
-        "SELECT id FROM appliance_models WHERE brand = $1 AND LOWER(model) = LOWER($2)"
+        "SELECT id FROM appliance_models WHERE brand = $1 AND LOWER(model) = LOWER($2)",
     )
     .bind(&payload.brand)
     .bind(payload.model.trim())
     .fetch_optional(pool)
     .await
     .map_err(|e| {
-        eprintln!("❌ Erreur vérification modèle électroménager existant: {:?}", e);
+        eprintln!(
+            "❌ Erreur vérification modèle électroménager existant: {:?}",
+            e
+        );
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Erreur vérification: {}", e),
@@ -140,7 +146,7 @@ pub async fn create_appliance_model(
             format!("Erreur création: {}", e),
         )
     })?;
-    
+
     use sqlx::Row;
     let created_at: chrono::NaiveDateTime = row.get("created_at");
     let model = ApplianceModel {
@@ -150,7 +156,10 @@ pub async fn create_appliance_model(
         created_at: created_at.to_string(),
     };
 
-    println!("✅ Modèle électroménager créé: {} {}", model.brand, model.model);
+    println!(
+        "✅ Modèle électroménager créé: {} {}",
+        model.brand, model.model
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -158,4 +167,3 @@ pub async fn create_appliance_model(
         "message": "Modèle créé avec succès"
     })))
 }
-

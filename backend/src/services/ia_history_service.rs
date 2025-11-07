@@ -1,9 +1,8 @@
-
 use crate::services::mongo_history_service::MongoHistoryService;
+use futures::TryStreamExt;
+use mongodb::bson::doc;
 use serde_json::Value;
 use std::sync::Arc;
-use mongodb::bson::doc;
-use futures::TryStreamExt;
 
 /// Historise une interaction IA (requ?te utilisateur, intention, r?ponse IA)
 pub async fn sauvegarder_ia_interaction(
@@ -13,8 +12,9 @@ pub async fn sauvegarder_ia_interaction(
     user_input: &Value,
     ia_response: &Value,
 ) -> Result<(), String> {
-    let interaction_id = format!("ia_{}_{}", 
-        user_id.unwrap_or(0), 
+    let interaction_id = format!(
+        "ia_{}_{}",
+        user_id.unwrap_or(0),
         chrono::Utc::now().timestamp_millis()
     );
 
@@ -29,7 +29,7 @@ pub async fn sauvegarder_ia_interaction(
                 "intention": intention,
                 "user_input_raw": user_input,
                 "ia_response_raw": ia_response,
-            }))
+            })),
         )
         .await
         .map_err(|e| format!("Erreur sauvegarde interaction IA: {}", e))
@@ -71,7 +71,7 @@ pub async fn get_ia_interaction_stats(
     days: Option<i64>,
 ) -> Result<Value, String> {
     let collection = mongo_history.get_collection("history").await;
-    
+
     let mut pipeline = vec![
         doc! { "$match": { "event_type": "IAInteraction" } },
         doc! {
@@ -82,21 +82,22 @@ pub async fn get_ia_interaction_stats(
                 "avg_response_time": { "$avg": "$data.response_time" },
                 "intentions": { "$addToSet": "$data.intention" }
             }
-        }
+        },
     ];
 
     if let Some(uid) = user_id {
-        pipeline[0] = doc! { 
-            "$match": { 
+        pipeline[0] = doc! {
+            "$match": {
                 "event_type": "IAInteraction",
                 "user_id": uid
-            } 
+            }
         };
     }
 
     if let Some(days) = days {
         let cutoff_date = mongodb::bson::DateTime::from_system_time(
-            std::time::SystemTime::now() - std::time::Duration::from_secs((days * 24 * 60 * 60) as u64)
+            std::time::SystemTime::now()
+                - std::time::Duration::from_secs((days * 24 * 60 * 60) as u64),
         );
         let match_stage = pipeline[0].clone();
         pipeline[0] = doc! {
@@ -115,8 +116,11 @@ pub async fn get_ia_interaction_stats(
         .map_err(|e| format!("Erreur agr?gation stats IA: {}", e))?;
 
     let mut stats = serde_json::Map::new();
-    if let Some(doc) = cursor.try_next().await
-        .map_err(|e| format!("Erreur it?ration stats IA: {}", e))? {
+    if let Some(doc) = cursor
+        .try_next()
+        .await
+        .map_err(|e| format!("Erreur it?ration stats IA: {}", e))?
+    {
         if let Ok(bson) = mongodb::bson::to_bson(&doc) {
             if let Ok(json) = serde_json::to_value(bson) {
                 stats = json.as_object().unwrap().clone();

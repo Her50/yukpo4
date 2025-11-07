@@ -10,7 +10,7 @@ pub struct ServiceEmbedding {
     pub embedding_nom: Vec<f32>,
     pub embedding_contenu: Vec<f32>,
     pub gps_prestataire: Option<(f64, f64)>, // (longitude, latitude)
-    pub gps_fixe: Option<(f64, f64)>, // (longitude, latitude)
+    pub gps_fixe: Option<(f64, f64)>,        // (longitude, latitude)
 }
 
 // Pour l'insertion, tu peux utiliser sqlx ou diesel avec Postgres + pgvector

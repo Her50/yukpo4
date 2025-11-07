@@ -7,16 +7,16 @@ use axum::{
     response::Json,
     Extension,
 };
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
-use log::{info, error};
 
 use crate::{
+    core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     state::AppState,
-    core::types::{AppError, AppResult},
 };
 
 #[derive(Debug, Deserialize)]
@@ -68,38 +68,47 @@ pub async fn invite_user_to_conversation(
     Path(conversation_id): Path<String>,
     Json(payload): Json<InviteUserRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
-    info!("[invite_user_to_conversation] User {} inviting {} to conversation {}", 
-          auth_user.id, payload.user_id, conversation_id);
-    
+    info!(
+        "[invite_user_to_conversation] User {} inviting {} to conversation {}",
+        auth_user.id, payload.user_id, conversation_id
+    );
+
     let pool = &state.pg;
-    
+
     // Vérifier que l'utilisateur invitant est bien participant de la conversation
     let is_participant = sqlx::query(
         "SELECT EXISTS(SELECT 1 FROM conversation_participants 
-         WHERE conversation_id = $1 AND user_id = $2 AND is_active = TRUE) as exists"
+         WHERE conversation_id = $1 AND user_id = $2 AND is_active = TRUE) as exists",
     )
     .bind(&conversation_id)
     .bind(auth_user.id)
     .fetch_one(pool)
     .await
     .map_err(|e| {
-        error!("[invite_user_to_conversation] Error checking participant: {:?}", e);
+        error!(
+            "[invite_user_to_conversation] Error checking participant: {:?}",
+            e
+        );
         AppError::Internal("Database error".to_string())
     })?
     .get::<bool, _>("exists");
-    
+
     if !is_participant {
-        return Err(AppError::Forbidden("Vous devez être participant de cette conversation pour inviter quelqu'un".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous devez être participant de cette conversation pour inviter quelqu'un".to_string(),
+        ));
     }
-    
+
     // Récupérer le dernier message_id pour définir first_visible_message_id
-    let last_message_id = sqlx::query("SELECT id FROM chat_messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 1")
-        .bind(&conversation_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Internal(format!("Error fetching last message: {}", e)))?
-        .map(|row| row.get::<String, _>("id"));
-    
+    let last_message_id = sqlx::query(
+        "SELECT id FROM chat_messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 1",
+    )
+    .bind(&conversation_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("Error fetching last message: {}", e)))?
+    .map(|row| row.get::<String, _>("id"));
+
     // Ajouter le nouveau participant
     let result = sqlx::query(
         r#"
@@ -121,13 +130,13 @@ pub async fn invite_user_to_conversation(
         error!("[invite_user_to_conversation] Error inserting participant: {:?}", e);
         AppError::Internal("Failed to add participant".to_string())
     })?;
-    
+
     let participant_id = result.get::<i32, _>("id");
-    
+
     // Enregistrer dans l'historique des tags
     let _ = sqlx::query(
         "INSERT INTO conversation_tag_history (user_id, tagged_user_id, conversation_id, context)
-         VALUES ($1, $2, $3, $4)"
+         VALUES ($1, $2, $3, $4)",
     )
     .bind(auth_user.id)
     .bind(payload.user_id)
@@ -135,17 +144,17 @@ pub async fn invite_user_to_conversation(
     .bind(payload.context.as_deref())
     .execute(pool)
     .await;
-    
+
     // Créer une notification pour l'utilisateur invité
     let conv_info = sqlx::query("SELECT service_title FROM conversations WHERE id = $1")
         .bind(&conversation_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Error fetching conversation: {}", e)))?;
-    
+
     if let Some(conv) = conv_info {
         let service_title = conv.get::<Option<String>, _>("service_title");
-        
+
         // Récupérer le nom de l'inviteur
         let inviter_name = sqlx::query("SELECT nom_complet FROM users WHERE id = $1")
             .bind(auth_user.id)
@@ -155,17 +164,22 @@ pub async fn invite_user_to_conversation(
             .flatten()
             .and_then(|row| row.get::<Option<String>, _>("nom_complet"))
             .unwrap_or_else(|| "Un utilisateur".to_string());
-        
+
         let _ = sqlx::query(
             r#"
             INSERT INTO notifications (user_id, title, message, type, priority, metadata)
             VALUES ($1, $2, $3, 'conversation_invite', 'high', $4)
-            "#
+            "#,
         )
         .bind(payload.user_id)
-        .bind(format!("💬 {} vous a invité dans une conversation", inviter_name))
-        .bind(format!("Au sujet de: {}\n\nVous avez été ajouté à cette conversation.", 
-                service_title.unwrap_or_else(|| "un service".to_string())))
+        .bind(format!(
+            "💬 {} vous a invité dans une conversation",
+            inviter_name
+        ))
+        .bind(format!(
+            "Au sujet de: {}\n\nVous avez été ajouté à cette conversation.",
+            service_title.unwrap_or_else(|| "un service".to_string())
+        ))
         .bind(json!({
             "conversation_id": conversation_id,
             "inviter_id": auth_user.id,
@@ -174,10 +188,12 @@ pub async fn invite_user_to_conversation(
         .execute(pool)
         .await;
     }
-    
-    info!("[invite_user_to_conversation] User {} successfully invited to conversation {}", 
-          payload.user_id, conversation_id);
-    
+
+    info!(
+        "[invite_user_to_conversation] User {} successfully invited to conversation {}",
+        payload.user_id, conversation_id
+    );
+
     Ok(Json(json!({
         "success": true,
         "message": "Utilisateur invité avec succès",
@@ -191,32 +207,35 @@ pub async fn remove_participant_from_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path((conversation_id, user_id)): Path<(String, i32)>,
 ) -> AppResult<Json<serde_json::Value>> {
-    info!("[remove_participant] User {} removing {} from conversation {}", 
-          auth_user.id, user_id, conversation_id);
-    
+    info!(
+        "[remove_participant] User {} removing {} from conversation {}",
+        auth_user.id, user_id, conversation_id
+    );
+
     let pool = &state.pg;
-    
+
     // Vérifier les permissions du participant à retirer
     let participant_info = sqlx::query(
         "SELECT can_remove, role FROM conversation_participants 
-         WHERE conversation_id = $1 AND user_id = $2 AND is_active = TRUE"
+         WHERE conversation_id = $1 AND user_id = $2 AND is_active = TRUE",
     )
     .bind(&conversation_id)
     .bind(user_id)
     .fetch_optional(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Database error: {}", e)))?;
-    
-    let participant = participant_info.ok_or_else(|| 
-        AppError::NotFound("Participant not found".to_string())
-    )?;
-    
+
+    let participant =
+        participant_info.ok_or_else(|| AppError::NotFound("Participant not found".to_string()))?;
+
     let can_remove = participant.get::<bool, _>("can_remove");
-    
+
     if !can_remove {
-        return Err(AppError::Forbidden("Ce participant ne peut pas être retiré (propriétaire de la conversation)".to_string()));
+        return Err(AppError::Forbidden(
+            "Ce participant ne peut pas être retiré (propriétaire de la conversation)".to_string(),
+        ));
     }
-    
+
     // Seuls les owners et le participant lui-même peuvent retirer
     let is_owner = sqlx::query(
         "SELECT EXISTS(SELECT 1 FROM conversation_participants 
@@ -228,26 +247,30 @@ pub async fn remove_participant_from_conversation(
     .await
     .map_err(|e| AppError::Internal(format!("Database error: {}", e)))?
     .get::<bool, _>("exists");
-    
+
     if !is_owner && auth_user.id != user_id {
-        return Err(AppError::Forbidden("Seuls les propriétaires peuvent retirer d'autres participants".to_string()));
+        return Err(AppError::Forbidden(
+            "Seuls les propriétaires peuvent retirer d'autres participants".to_string(),
+        ));
     }
-    
+
     // Marquer le participant comme inactif (soft delete)
     sqlx::query(
         "UPDATE conversation_participants 
          SET is_active = FALSE, left_at = NOW()
-         WHERE conversation_id = $1 AND user_id = $2"
+         WHERE conversation_id = $1 AND user_id = $2",
     )
     .bind(&conversation_id)
     .bind(user_id)
     .execute(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Failed to remove participant: {}", e)))?;
-    
-    info!("[remove_participant] User {} successfully removed from conversation {}", 
-          user_id, conversation_id);
-    
+
+    info!(
+        "[remove_participant] User {} successfully removed from conversation {}",
+        user_id, conversation_id
+    );
+
     Ok(Json(json!({
         "success": true,
         "message": "Participant retiré avec succès"
@@ -261,11 +284,11 @@ pub async fn get_conversation_participants(
     Path(conversation_id): Path<String>,
 ) -> AppResult<Json<Vec<ParticipantInfo>>> {
     let pool = &state.pg;
-    
+
     // Vérifier que l'utilisateur est participant
     let is_participant = sqlx::query(
         "SELECT EXISTS(SELECT 1 FROM conversation_participants 
-         WHERE conversation_id = $1 AND user_id = $2 AND is_active = TRUE) as exists"
+         WHERE conversation_id = $1 AND user_id = $2 AND is_active = TRUE) as exists",
     )
     .bind(&conversation_id)
     .bind(auth_user.id)
@@ -273,11 +296,13 @@ pub async fn get_conversation_participants(
     .await
     .map_err(|e| AppError::Internal(format!("Database error: {}", e)))?
     .get::<bool, _>("exists");
-    
+
     if !is_participant {
-        return Err(AppError::Forbidden("Vous n'êtes pas participant de cette conversation".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas participant de cette conversation".to_string(),
+        ));
     }
-    
+
     // Récupérer la liste des participants
     let rows = sqlx::query(
         r#"
@@ -296,25 +321,32 @@ pub async fn get_conversation_participants(
         LEFT JOIN users inv ON cp.invited_by = inv.id
         WHERE cp.conversation_id = $1 AND cp.is_active = TRUE
         ORDER BY cp.joined_at ASC
-        "#
+        "#,
     )
     .bind(&conversation_id)
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Failed to fetch participants: {}", e)))?;
-    
-    let participants: Vec<ParticipantInfo> = rows.iter().map(|row| ParticipantInfo {
-        user_id: row.get("user_id"),
-        user_name: row.get::<Option<String>, _>("user_name").unwrap_or_else(|| format!("User {}", row.get::<i32, _>("user_id"))),
-        user_email: row.get::<Option<String>, _>("user_email").unwrap_or_default(),
-        user_avatar: row.get("user_avatar"),
-        role: row.get("role"),
-        invited_by: row.get("invited_by"),
-        invited_by_name: row.get("invited_by_name"),
-        joined_at: row.get("joined_at"),
-        can_remove: row.get("can_remove"),
-    }).collect();
-    
+
+    let participants: Vec<ParticipantInfo> = rows
+        .iter()
+        .map(|row| ParticipantInfo {
+            user_id: row.get("user_id"),
+            user_name: row
+                .get::<Option<String>, _>("user_name")
+                .unwrap_or_else(|| format!("User {}", row.get::<i32, _>("user_id"))),
+            user_email: row
+                .get::<Option<String>, _>("user_email")
+                .unwrap_or_default(),
+            user_avatar: row.get("user_avatar"),
+            role: row.get("role"),
+            invited_by: row.get("invited_by"),
+            invited_by_name: row.get("invited_by_name"),
+            joined_at: row.get("joined_at"),
+            can_remove: row.get("can_remove"),
+        })
+        .collect();
+
     Ok(Json(participants))
 }
 
@@ -326,7 +358,7 @@ pub async fn search_users_for_invitation(
 ) -> AppResult<Json<serde_json::Value>> {
     let pool = &state.pg;
     let limit = params.limit.unwrap_or(20).min(50);
-    
+
     let rows = if let Some(query) = params.query {
         let search_pattern = format!("%{}%", query);
         sqlx::query(
@@ -338,7 +370,7 @@ pub async fn search_users_for_invitation(
               AND is_active = TRUE
             ORDER BY is_provider DESC, nom_complet ASC
             LIMIT $3
-            "#
+            "#,
         )
         .bind(search_pattern)
         .bind(auth_user.id)
@@ -360,7 +392,7 @@ pub async fn search_users_for_invitation(
               AND u.is_active = TRUE
             ORDER BY u.is_provider DESC
             LIMIT $3
-            "#
+            "#,
         )
         .bind(category_pattern)
         .bind(auth_user.id)
@@ -371,18 +403,21 @@ pub async fn search_users_for_invitation(
     } else {
         Vec::new()
     };
-    
-    let results: Vec<serde_json::Value> = rows.iter().map(|row| {
-        json!({
-            "id": row.get::<i32, _>("id"),
-            "nom_complet": row.get::<Option<String>, _>("nom_complet"),
-            "email": row.get::<Option<String>, _>("email"),
-            "avatar_url": row.get::<Option<String>, _>("avatar_url"),
-            "is_provider": row.get::<Option<bool>, _>("is_provider"),
-            "role": row.get::<Option<String>, _>("role")
+
+    let results: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            json!({
+                "id": row.get::<i32, _>("id"),
+                "nom_complet": row.get::<Option<String>, _>("nom_complet"),
+                "email": row.get::<Option<String>, _>("email"),
+                "avatar_url": row.get::<Option<String>, _>("avatar_url"),
+                "is_provider": row.get::<Option<bool>, _>("is_provider"),
+                "role": row.get::<Option<String>, _>("role")
+            })
         })
-    }).collect();
-    
+        .collect();
+
     Ok(Json(json!({
         "success": true,
         "data": results,
@@ -398,7 +433,7 @@ pub async fn get_tag_history(
 ) -> AppResult<Json<Vec<TagHistoryItem>>> {
     let pool = &state.pg;
     let limit = params.limit.unwrap_or(10).min(20);
-    
+
     let rows = sqlx::query(
         r#"
         SELECT 
@@ -415,23 +450,28 @@ pub async fn get_tag_history(
         GROUP BY th.tagged_user_id, u.nom_complet, u.avatar_url, th.context
         ORDER BY MAX(th.tagged_at) DESC
         LIMIT $2
-        "#
+        "#,
     )
     .bind(auth_user.id)
     .bind(limit)
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Failed to fetch tag history: {}", e)))?;
-    
-    let results: Vec<TagHistoryItem> = rows.iter().map(|row| TagHistoryItem {
-        user_id: row.get("user_id"),
-        user_name: row.get::<Option<String>, _>("user_name").unwrap_or_else(|| format!("User {}", row.get::<i32, _>("user_id"))),
-        user_avatar: row.get("user_avatar"),
-        tag_count: row.get("tag_count"),
-        last_tagged: row.get("last_tagged"),
-        context: row.get("context"),
-    }).collect();
-    
+
+    let results: Vec<TagHistoryItem> = rows
+        .iter()
+        .map(|row| TagHistoryItem {
+            user_id: row.get("user_id"),
+            user_name: row
+                .get::<Option<String>, _>("user_name")
+                .unwrap_or_else(|| format!("User {}", row.get::<i32, _>("user_id"))),
+            user_avatar: row.get("user_avatar"),
+            tag_count: row.get("tag_count"),
+            last_tagged: row.get("last_tagged"),
+            context: row.get("context"),
+        })
+        .collect();
+
     Ok(Json(results))
 }
 
@@ -447,7 +487,7 @@ pub async fn record_message_mention(
         .execute(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to record mentions: {}", e)))?;
-    
+
     Ok(())
 }
 
@@ -458,42 +498,46 @@ pub async fn check_private_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(target_user_id): Path<i32>,
 ) -> AppResult<Json<serde_json::Value>> {
-    info!("[check_private_conversation] Checking private conversation between {} and {}", 
-          auth_user.id, target_user_id);
-    
+    info!(
+        "[check_private_conversation] Checking private conversation between {} and {}",
+        auth_user.id, target_user_id
+    );
+
     let pool = &state.pg;
-    
+
     // Normaliser les IDs (user_1 < user_2)
     let (user_1, user_2) = if auth_user.id < target_user_id {
         (auth_user.id, target_user_id)
     } else {
         (target_user_id, auth_user.id)
     };
-    
+
     // Chercher conversation privée existante
-    let conversation = sqlx::query(
-        "SELECT id FROM private_conversations WHERE user_1_id = $1 AND user_2_id = $2"
-    )
-    .bind(user_1)
-    .bind(user_2)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        error!("[check_private_conversation] Database error: {:?}", e);
-        AppError::Internal("Database error".to_string())
-    })?;
-    
+    let conversation =
+        sqlx::query("SELECT id FROM private_conversations WHERE user_1_id = $1 AND user_2_id = $2")
+            .bind(user_1)
+            .bind(user_2)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| {
+                error!("[check_private_conversation] Database error: {:?}", e);
+                AppError::Internal("Database error".to_string())
+            })?;
+
     if let Some(conv) = conversation {
         let conv_id = conv.get::<i32, _>("id");
-        info!("[check_private_conversation] Found existing conversation {}", conv_id);
-        
+        info!(
+            "[check_private_conversation] Found existing conversation {}",
+            conv_id
+        );
+
         Ok(Json(json!({
             "success": true,
             "conversation_id": conv_id.to_string()
         })))
     } else {
         info!("[check_private_conversation] No existing conversation found");
-        
+
         Ok(Json(json!({
             "success": false,
             "conversation_id": null
@@ -508,38 +552,45 @@ pub async fn create_private_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreatePrivateConversationRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
-    info!("[create_private_conversation] Creating private conversation between {} and {}", 
-          auth_user.id, payload.target_user_id);
-    
+    info!(
+        "[create_private_conversation] Creating private conversation between {} and {}",
+        auth_user.id, payload.target_user_id
+    );
+
     let pool = &state.pg;
-    
+
     // Vérifier que l'utilisateur cible existe et est actif
-    let target_user = sqlx::query(
-        "SELECT id, nom_complet FROM users WHERE id = $1 AND is_active = TRUE"
-    )
-    .bind(payload.target_user_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        error!("[create_private_conversation] Error checking target user: {:?}", e);
-        AppError::Internal("Database error".to_string())
-    })?;
-    
+    let target_user =
+        sqlx::query("SELECT id, nom_complet FROM users WHERE id = $1 AND is_active = TRUE")
+            .bind(payload.target_user_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| {
+                error!(
+                    "[create_private_conversation] Error checking target user: {:?}",
+                    e
+                );
+                AppError::Internal("Database error".to_string())
+            })?;
+
     if target_user.is_none() {
-        return Err(AppError::NotFound("Utilisateur non trouvé ou inactif".to_string()));
+        return Err(AppError::NotFound(
+            "Utilisateur non trouvé ou inactif".to_string(),
+        ));
     }
-    
-    let target_user_name = target_user.as_ref()
+
+    let target_user_name = target_user
+        .as_ref()
         .and_then(|row| row.get::<Option<String>, _>("nom_complet"))
         .unwrap_or_else(|| format!("User {}", payload.target_user_id));
-    
+
     // Normaliser les IDs (user_1 < user_2)
     let (user_1, user_2) = if auth_user.id < payload.target_user_id {
         (auth_user.id, payload.target_user_id)
     } else {
         (payload.target_user_id, auth_user.id)
     };
-    
+
     // Créer la conversation (ou récupérer si existe déjà)
     let conversation_id = sqlx::query_scalar::<_, i32>(
         r#"
@@ -548,7 +599,7 @@ pub async fn create_private_conversation(
         ON CONFLICT (user_1_id, user_2_id) DO UPDATE
         SET last_message_at = NOW(), context = COALESCE($3, private_conversations.context)
         RETURNING id
-        "#
+        "#,
     )
     .bind(user_1)
     .bind(user_2)
@@ -556,10 +607,13 @@ pub async fn create_private_conversation(
     .fetch_one(pool)
     .await
     .map_err(|e| {
-        error!("[create_private_conversation] Error creating conversation: {:?}", e);
+        error!(
+            "[create_private_conversation] Error creating conversation: {:?}",
+            e
+        );
         AppError::Internal("Failed to create conversation".to_string())
     })?;
-    
+
     // Créer une notification pour l'utilisateur cible
     let current_user_name = sqlx::query("SELECT nom_complet FROM users WHERE id = $1")
         .bind(auth_user.id)
@@ -569,15 +623,18 @@ pub async fn create_private_conversation(
         .flatten()
         .and_then(|row| row.get::<Option<String>, _>("nom_complet"))
         .unwrap_or_else(|| "Un utilisateur".to_string());
-    
+
     let _ = sqlx::query(
         r#"
         INSERT INTO notifications (user_id, title, message, type, priority, metadata)
         VALUES ($1, $2, $3, 'private_conversation', 'normal', $4)
-        "#
+        "#,
     )
     .bind(payload.target_user_id)
-    .bind(format!("💬 {} souhaite discuter avec vous", current_user_name))
+    .bind(format!(
+        "💬 {} souhaite discuter avec vous",
+        current_user_name
+    ))
     .bind("Une nouvelle conversation privée a été créée. Répondez pour commencer à discuter.")
     .bind(json!({
         "conversation_id": conversation_id,
@@ -587,9 +644,12 @@ pub async fn create_private_conversation(
     }))
     .execute(pool)
     .await;
-    
-    info!("[create_private_conversation] Conversation {} created successfully", conversation_id);
-    
+
+    info!(
+        "[create_private_conversation] Conversation {} created successfully",
+        conversation_id
+    );
+
     Ok(Json(json!({
         "success": true,
         "conversation_id": conversation_id.to_string(),

@@ -1,9 +1,9 @@
-use axum::{extract::State, Json};
-use serde_json::{json, Value};
-use log::{info, error};
-use crate::core::types::{AppResult, AppError};
+use crate::core::types::{AppError, AppResult};
 use crate::services::intelligent_service_manager::process_expired_services_intelligently;
 use crate::state::AppState;
+use axum::{extract::State, Json};
+use log::{error, info};
+use serde_json::{json, Value};
 use std::sync::Arc;
 
 /// 🧠 API pour déclencher manuellement le traitement intelligent des services
@@ -12,7 +12,7 @@ pub async fn process_services_intelligently(
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<Value>> {
     info!("🧠 Déclenchement manuel du traitement intelligent des services...");
-    
+
     match process_expired_services_intelligently(&state.ia.pool).await {
         Ok(result) => {
             let response = json!({
@@ -27,15 +27,18 @@ pub async fn process_services_intelligently(
                 },
                 "timestamp": chrono::Utc::now().to_rfc3339()
             });
-            
+
             info!("✅ Traitement intelligent terminé: {} renouvelés, {} désactivés, {} tarissables désactivés, {} FCFA débités", 
                   result.auto_renewed, result.manually_deactivated, result.tarissable_deactivated, result.total_debited);
-            
+
             Ok(Json(response))
         }
         Err(e) => {
             error!("❌ Erreur lors du traitement intelligent: {}", e);
-            Err(AppError::internal_server_error(format!("Erreur lors du traitement intelligent des services: {}", e)))
+            Err(AppError::internal_server_error(format!(
+                "Erreur lors du traitement intelligent des services: {}",
+                e
+            )))
         }
     }
 }
@@ -46,7 +49,7 @@ pub async fn get_services_pending_processing(
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<Value>> {
     let now = chrono::Utc::now();
-    
+
     // Services non tarissables expirés
     let expired_non_tarissable = sqlx::query!(
         r#"
@@ -63,7 +66,8 @@ pub async fn get_services_pending_processing(
     .fetch_one(&state.ia.pool)
     .await
     .map_err(AppError::from)?
-    .count.unwrap_or(0);
+    .count
+    .unwrap_or(0);
 
     // Services tarissables à traiter
     let tarissable_to_process = sqlx::query!(
@@ -78,7 +82,8 @@ pub async fn get_services_pending_processing(
     .fetch_one(&state.ia.pool)
     .await
     .map_err(AppError::from)?
-    .count.unwrap_or(0);
+    .count
+    .unwrap_or(0);
 
     // Utilisateurs avec solde insuffisant
     let users_insufficient_balance = sqlx::query!(
@@ -97,7 +102,8 @@ pub async fn get_services_pending_processing(
     .fetch_one(&state.ia.pool)
     .await
     .map_err(AppError::from)?
-    .count.unwrap_or(0);
+    .count
+    .unwrap_or(0);
 
     let response = json!({
         "success": true,
@@ -120,9 +126,11 @@ pub async fn reactivate_service_intelligent(
     axum::extract::Path(service_id): axum::extract::Path<i32>,
     axum::extract::Json(payload): axum::extract::Json<Value>,
 ) -> AppResult<Json<Value>> {
-    let user_id = payload.get("user_id")
+    let user_id = payload
+        .get("user_id")
         .and_then(|v| v.as_i64())
-        .ok_or_else(|| AppError::BadRequest("user_id requis".to_string()))? as i32;
+        .ok_or_else(|| AppError::BadRequest("user_id requis".to_string()))?
+        as i32;
 
     // Vérifier que le service existe et appartient à l'utilisateur
     let service = sqlx::query!(
@@ -154,15 +162,13 @@ pub async fn reactivate_service_intelligent(
     };
 
     // Vérifier le solde de l'utilisateur
-    let user_balance = sqlx::query!(
-        "SELECT tokens_balance FROM users WHERE id = $1",
-        user_id
-    )
-    .fetch_optional(&state.ia.pool)
-    .await
-    .map_err(AppError::from)?;
+    let user_balance = sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user_id)
+        .fetch_optional(&state.ia.pool)
+        .await
+        .map_err(AppError::from)?;
 
-    let user_balance = user_balance.ok_or_else(|| AppError::NotFound("Utilisateur non trouvé".to_string()))?;
+    let user_balance =
+        user_balance.ok_or_else(|| AppError::NotFound("Utilisateur non trouvé".to_string()))?;
 
     if user_balance.tokens_balance < reactivation_cost {
         return Err(AppError::BadRequest(format!(
@@ -217,8 +223,10 @@ pub async fn reactivate_service_intelligent(
         "prorated_cost_used": service.is_tarissable.unwrap_or(false)
     });
 
-    info!("✅ Service {} réactivé par l'utilisateur {} pour {} FCFA (solde restant: {})", 
-          service_id, user_id, reactivation_cost, updated_balance);
+    info!(
+        "✅ Service {} réactivé par l'utilisateur {} pour {} FCFA (solde restant: {})",
+        service_id, user_id, reactivation_cost, updated_balance
+    );
 
     Ok(Json(response))
 }

@@ -2,10 +2,10 @@
 // Utilise MongoDB pour l'historisation et le calcul des scores
 
 use crate::services::mongo_history_service::MongoHistoryService;
-use serde_json::{Value, json};
-use std::sync::Arc;
 use chrono::Utc;
 use futures::TryStreamExt;
+use serde_json::{json, Value};
+use std::sync::Arc;
 
 /// Structure pour les scores de service (en m?moire)
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -21,7 +21,7 @@ pub async fn compute_score(
     service_id: i32,
 ) -> Result<ServiceScore, String> {
     let collection = mongo_history.get_collection("history").await;
-    
+
     // Calculer la moyenne des notes depuis MongoDB
     let pipeline = vec![
         mongodb::bson::doc! {
@@ -37,7 +37,7 @@ pub async fn compute_score(
                 "avg_rating": { "$avg": "$data.rating" },
                 "total_reviews": { "$sum": 1 }
             }
-        }
+        },
     ];
 
     let mut cursor = collection
@@ -48,12 +48,21 @@ pub async fn compute_score(
     let mut avg_rating = 0.0;
     let mut total_reviews = 0;
 
-    if let Some(doc) = cursor.try_next().await
-        .map_err(|e| format!("Erreur it?ration MongoDB: {}", e))? {
+    if let Some(doc) = cursor
+        .try_next()
+        .await
+        .map_err(|e| format!("Erreur it?ration MongoDB: {}", e))?
+    {
         if let Ok(bson) = mongodb::bson::to_bson(&doc) {
             if let Ok(json) = serde_json::to_value(bson) {
-                avg_rating = json.get("avg_rating").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                total_reviews = json.get("total_reviews").and_then(|v| v.as_u64()).unwrap_or(0) as i32;
+                avg_rating = json
+                    .get("avg_rating")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                total_reviews = json
+                    .get("total_reviews")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0) as i32;
             }
         }
     }
@@ -86,7 +95,7 @@ pub async fn compute_score(
                     }
                 }
             }
-        }
+        },
     ];
 
     let mut cursor = collection
@@ -95,8 +104,11 @@ pub async fn compute_score(
         .map_err(|e| format!("Erreur agr?gation promptitude: {}", e))?;
 
     let mut promptitude_score = 0.0;
-    if let Some(doc) = cursor.try_next().await
-        .map_err(|e| format!("Erreur it?ration promptitude: {}", e))? {
+    if let Some(doc) = cursor
+        .try_next()
+        .await
+        .map_err(|e| format!("Erreur it?ration promptitude: {}", e))?
+    {
         if let Ok(bson) = mongodb::bson::to_bson(&doc) {
             if let Ok(json) = serde_json::to_value(bson) {
                 if let Some(avg_time) = json.get("avg_response_time").and_then(|v| v.as_f64()) {
@@ -146,7 +158,7 @@ pub async fn get_score(
     service_id: i32,
 ) -> Result<ServiceScore, String> {
     let collection = mongo_history.get_collection("history").await;
-    
+
     let filter = mongodb::bson::doc! {
         "event_type": "UserAction",
         "service_id": service_id,
@@ -162,8 +174,11 @@ pub async fn get_score(
     let mut latest_score: Option<ServiceScore> = None;
     let mut latest_timestamp = chrono::DateTime::<Utc>::MIN_UTC;
 
-    while let Some(doc) = cursor.try_next().await
-        .map_err(|e| format!("Erreur it?ration score: {}", e))? {
+    while let Some(doc) = cursor
+        .try_next()
+        .await
+        .map_err(|e| format!("Erreur it?ration score: {}", e))?
+    {
         if let Ok(bson) = mongodb::bson::to_bson(&doc) {
             if let Ok(json) = serde_json::to_value(bson) {
                 if let Some(timestamp) = json.get("timestamp").and_then(|v| v.as_str()) {
@@ -171,7 +186,9 @@ pub async fn get_score(
                         if dt > latest_timestamp {
                             latest_timestamp = dt.with_timezone(&Utc);
                             if let Some(score_data) = json.get("data") {
-                                if let Ok(score) = serde_json::from_value::<ServiceScore>(score_data.clone()) {
+                                if let Ok(score) =
+                                    serde_json::from_value::<ServiceScore>(score_data.clone())
+                                {
                                     latest_score = Some(score);
                                 }
                             }
@@ -186,11 +203,9 @@ pub async fn get_score(
 }
 
 /// R?cup?re les statistiques de scoring globales
-pub async fn get_scoring_stats(
-    mongo_history: Arc<MongoHistoryService>,
-) -> Result<Value, String> {
+pub async fn get_scoring_stats(mongo_history: Arc<MongoHistoryService>) -> Result<Value, String> {
     let collection = mongo_history.get_collection("history").await;
-    
+
     let pipeline = vec![
         mongodb::bson::doc! {
             "$match": {
@@ -206,7 +221,7 @@ pub async fn get_scoring_stats(
                 "min_score": { "$min": "$data.score" },
                 "max_score": { "$max": "$data.score" }
             }
-        }
+        },
     ];
 
     let mut cursor = collection
@@ -215,8 +230,11 @@ pub async fn get_scoring_stats(
         .map_err(|e| format!("Erreur agr?gation stats: {}", e))?;
 
     let mut stats = serde_json::Map::new();
-    if let Some(doc) = cursor.try_next().await
-        .map_err(|e| format!("Erreur it?ration stats: {}", e))? {
+    if let Some(doc) = cursor
+        .try_next()
+        .await
+        .map_err(|e| format!("Erreur it?ration stats: {}", e))?
+    {
         if let Ok(bson) = mongodb::bson::to_bson(&doc) {
             if let Ok(json) = serde_json::to_value(bson) {
                 stats = json.as_object().unwrap().clone();

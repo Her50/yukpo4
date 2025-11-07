@@ -1,9 +1,9 @@
 // backend/src/services/prompt_optimizer_pro.rs
 // Optimiseur de prompts professionnel inspir? de Cursor et GitHub Copilot
 
-use std::collections::HashMap;
-use serde_json::{json, Value};
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::collections::HashMap;
 
 use crate::core::types::AppResult;
 use crate::models::input_model::MultiModalInput;
@@ -49,66 +49,83 @@ impl PromptOptimizerPro {
         let mut optimizer = Self {
             domain_templates: HashMap::new(),
         };
-        
+
         optimizer.initialize_professional_templates();
         optimizer
     }
 
     /// ?? Optimisation de prompt pour GPT-4o (technique Cursor)
-    pub async fn optimize_for_gpt4o(&self, input: &MultiModalInput, context: Option<&str>) -> AppResult<String> {
+    pub async fn optimize_for_gpt4o(
+        &self,
+        input: &MultiModalInput,
+        context: Option<&str>,
+    ) -> AppResult<String> {
         let start_time = std::time::Instant::now();
-        
+
         // 1. Classification automatique du domaine
         let domain = self.classify_request_domain(input).await?;
         log_info(&format!("[PromptOptimizer] Domain classified: {}", domain));
-        
+
         // 2. S?lection du template optimal
-        let template = self.domain_templates.get(&domain)
+        let template = self
+            .domain_templates
+            .get(&domain)
             .unwrap_or(&self.domain_templates["default"]);
-        
+
         // 3. Analyse contextuelle intelligente
         let smart_context = self.analyze_context_intelligence(input, context).await?;
-        
+
         // 4. Construction du prompt ultra-optimis?
-        let optimized_prompt = self.build_ultra_optimized_prompt(template, input, &smart_context).await?;
-        
+        let optimized_prompt = self
+            .build_ultra_optimized_prompt(template, input, &smart_context)
+            .await?;
+
         // 5. Injection des instructions de performance GPT-4o
-        let gpt4o_optimized = self.apply_gpt4o_performance_optimizations(&optimized_prompt, &domain);
-        
+        let gpt4o_optimized =
+            self.apply_gpt4o_performance_optimizations(&optimized_prompt, &domain);
+
         let optimization_time = start_time.elapsed().as_millis() as f64;
-        log_info(&format!("[PromptOptimizer] Optimized in {:.2}ms", optimization_time));
-        
+        log_info(&format!(
+            "[PromptOptimizer] Optimized in {:.2}ms",
+            optimization_time
+        ));
+
         Ok(gpt4o_optimized)
     }
 
     /// ??? Construction de prompt ultra-optimis?
-    async fn build_ultra_optimized_prompt(&self, template: &PromptTemplate, 
-                                         input: &MultiModalInput, context: &Value) -> AppResult<String> {
+    async fn build_ultra_optimized_prompt(
+        &self,
+        template: &PromptTemplate,
+        input: &MultiModalInput,
+        context: &Value,
+    ) -> AppResult<String> {
         let mut prompt_parts = Vec::new();
-        
+
         // 1. Instructions syst?me ultra-pr?cises
         prompt_parts.push(self.build_system_instructions(&template.domain));
-        
+
         // 2. Contexte enrichi intelligent
         prompt_parts.push(self.build_enriched_context(input, context));
-        
+
         // 3. Instructions de performance
         prompt_parts.push(template.base_instruction.clone());
-        
+
         // 4. Format de sortie strict
         prompt_parts.push(self.build_output_format_instructions(&template.output_format));
-        
+
         // 5. Exemples de haute qualit? (few-shot learning)
         if !template.examples.is_empty() {
             prompt_parts.push(self.build_few_shot_examples(&template.examples));
         }
-        
+
         // 6. Donn?es utilisateur trait?es
         prompt_parts.push(self.build_user_data_section(input));
-        
+
         // 7. Instructions finales de qualit?
-        prompt_parts.push(self.build_quality_enforcement_instructions(&template.quality_indicators));
-        
+        prompt_parts
+            .push(self.build_quality_enforcement_instructions(&template.quality_indicators));
+
         Ok(prompt_parts.join("\n\n"))
     }
 
@@ -122,29 +139,35 @@ impl PromptOptimizerPro {
 - Structur?es pour une performance maximale"#;
 
         let domain_specific = match domain {
-            "service_creation" => r#"
+            "service_creation" => {
+                r#"
 SP?CIALISATION : Cr?ation de services/annonces
 - Extrais TOUS les d?tails pertinents du texte et des fichiers
 - Identifie le type de service avec pr?cision
 - D?termine le prix de mani?re r?aliste
 - Cat?gorise selon les standards m?tier
-- Optimise pour la d?couvrabilit?"#,
-            
-            "need_search" => r#"
+- Optimise pour la d?couvrabilit?"#
+            }
+
+            "need_search" => {
+                r#"
 SP?CIALISATION : Recherche et matching de besoins
 - Identifie l'intention de recherche exacte
 - Extrais les crit?res explicites et implicites
 - G?n?re des suggestions de recherche pertinentes
-- Optimise pour le matching s?mantique"#,
-            
-            "classification" => r#"
+- Optimise pour le matching s?mantique"#
+            }
+
+            "classification" => {
+                r#"
 SP?CIALISATION : Classification et cat?gorisation
 - Analyse le contenu avec pr?cision
 - Applique la taxonomie appropri?e
 - D?termine la confiance de classification
-- Identifie les ambigu?t?s potentielles"#,
-            
-            _ => "SP?CIALISATION : Traitement g?n?raliste avec optimisation qualit?"
+- Identifie les ambigu?t?s potentielles"#
+            }
+
+            _ => "SP?CIALISATION : Traitement g?n?raliste avec optimisation qualit?",
         };
 
         format!("{}\n{}", base_system, domain_specific)
@@ -153,20 +176,25 @@ SP?CIALISATION : Classification et cat?gorisation
     /// ?? Contexte enrichi intelligent
     fn build_enriched_context(&self, input: &MultiModalInput, context: &Value) -> String {
         let mut context_parts = Vec::new();
-        
+
         context_parts.push("=== CONTEXTE ENRICHI ===".to_string());
-        
+
         // Analyse du texte principal
         if let Some(texte) = &input.texte {
             let text_analysis = self.analyze_text_intelligence(texte);
-            context_parts.push(format!("TEXTE ANALYS? :\n- Contenu : {}\n- Mots cl?s : {}\n- Intention probable : {}", 
-                texte, text_analysis.keywords, text_analysis.intent));
+            context_parts.push(format!(
+                "TEXTE ANALYS? :\n- Contenu : {}\n- Mots cl?s : {}\n- Intention probable : {}",
+                texte, text_analysis.keywords, text_analysis.intent
+            ));
         }
-        
+
         // M?tadonn?es multimodales
-        if input.base64_image.is_some() || input.audio_base64.is_some() || input.doc_base64.is_some() {
+        if input.base64_image.is_some()
+            || input.audio_base64.is_some()
+            || input.doc_base64.is_some()
+        {
             context_parts.push("CONTENU MULTIMODAL D?TECT? :".to_string());
-            
+
             if let Some(images) = &input.base64_image {
                 context_parts.push(format!("- {} image(s) fournie(s)", images.len()));
             }
@@ -177,12 +205,12 @@ SP?CIALISATION : Classification et cat?gorisation
                 context_parts.push(format!("- {} document(s) fourni(s)", docs.len()));
             }
         }
-        
+
         // Contexte m?tier
         if let Some(intention) = context.get("intention").and_then(|i| i.as_str()) {
             context_parts.push(format!("INTENTION M?TIER : {}", intention));
         }
-        
+
         context_parts.join("\n")
     }
 
@@ -223,8 +251,9 @@ CRITIQUES :
 - Aucun texte avant ou apr?s le JSON
 - Pas de ```json ou balises markdown
 - Valeurs r?alistes et coh?rentes
-- Tous les champs obligatoires pr?sents"#.to_string(),
-            
+- Tous les champs obligatoires pr?sents"#
+                .to_string(),
+
             "need_search_json" => r#"=== FORMAT DE SORTIE OBLIGATOIRE ===
 R?ponds UNIQUEMENT par un objet JSON pour la recherche :
 
@@ -239,9 +268,10 @@ R?ponds UNIQUEMENT par un objet JSON pour la recherche :
     "localisation": "[zone g?ographique]"
   },
   "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
-}"#.to_string(),
-            
-            _ => "R?ponds au format JSON structur? appropri? au contexte.".to_string()
+}"#
+            .to_string(),
+
+            _ => "R?ponds au format JSON structur? appropri? au contexte.".to_string(),
         }
     }
 
@@ -249,14 +279,17 @@ R?ponds UNIQUEMENT par un objet JSON pour la recherche :
     fn build_few_shot_examples(&self, examples: &[PromptExample]) -> String {
         let mut examples_section = Vec::new();
         examples_section.push("=== EXEMPLES DE HAUTE QUALIT? ===".to_string());
-        
-        for (i, example) in examples.iter().take(2).enumerate() { // Limite ? 2 exemples pour ?viter la pollution
+
+        for (i, example) in examples.iter().take(2).enumerate() {
+            // Limite ? 2 exemples pour ?viter la pollution
             examples_section.push(format!(
                 "EXEMPLE {} :\nInput: {}\nOutput attendu: {}\n",
-                i + 1, example.input, example.expected_output
+                i + 1,
+                example.input,
+                example.expected_output
             ));
         }
-        
+
         examples_section.join("\n")
     }
 
@@ -264,24 +297,24 @@ R?ponds UNIQUEMENT par un objet JSON pour la recherche :
     fn build_user_data_section(&self, input: &MultiModalInput) -> String {
         let mut data_section = Vec::new();
         data_section.push("=== DONN?ES UTILISATEUR ? TRAITER ===".to_string());
-        
+
         if let Some(texte) = &input.texte {
             data_section.push(format!("TEXTE PRINCIPAL :\n{}", texte));
         }
-        
+
         // Note: intention field doesn't exist in MultiModalInput, using texte instead
         if let Some(intention) = &input.texte {
             data_section.push(format!("INTENTION D?CLAR?E : {}", intention));
         }
-        
+
         if let Some(gps) = &input.gps_mobile {
             data_section.push(format!("LOCALISATION : {}", gps));
         }
-        
+
         if let Some(site) = &input.site_web {
             data_section.push(format!("SITE WEB R?F?RENCE : {}", site));
         }
-        
+
         data_section.push("=== FIN DONN?ES UTILISATEUR ===".to_string());
         data_section.join("\n")
     }
@@ -291,18 +324,18 @@ R?ponds UNIQUEMENT par un objet JSON pour la recherche :
         let mut quality_section = Vec::new();
         quality_section.push("=== CONTR?LE QUALIT? FINAL ===".to_string());
         quality_section.push("Avant de r?pondre, V?RIFIE :".to_string());
-        
+
         // Instructions g?n?rales de qualit?
         quality_section.push("? JSON valide et bien form?".to_string());
         quality_section.push("? Tous les champs obligatoires pr?sents".to_string());
         quality_section.push("? Valeurs r?alistes et coh?rentes".to_string());
         quality_section.push("? Pas d'hallucination ou d'invention".to_string());
-        
+
         // Indicateurs sp?cifiques au domaine
         for indicator in quality_indicators {
             quality_section.push(format!("? {}", indicator));
         }
-        
+
         quality_section.push("\nNE R?PONDS QUE SI TOUS LES CRIT?RES SONT RESPECT?S.".to_string());
         quality_section.join("\n")
     }
@@ -310,25 +343,25 @@ R?ponds UNIQUEMENT par un objet JSON pour la recherche :
     /// ?? Optimisations sp?cifiques GPT-4o
     fn apply_gpt4o_performance_optimizations(&self, prompt: &str, domain: &str) -> String {
         let mut optimized = prompt.to_string();
-        
+
         // 1. Pr?fixe de performance GPT-4o
         let gpt4o_prefix = match domain {
             "service_creation" => "MODE HAUTE PERFORMANCE : Cr?ation de service optimis?e pour GPT-4o. R?ponse JSON pr?cise et compl?te requise.\n\n",
             "need_search" => "MODE RECHERCHE OPTIMIS?E : Analyse de besoin pour GPT-4o. Extraction intelligente de crit?res requise.\n\n",
             _ => "MODE PERFORMANCE GPT-4o : Traitement optimis? pour r?ponse pr?cise et structur?e.\n\n"
         };
-        
+
         optimized = format!("{}{}", gpt4o_prefix, optimized);
-        
+
         // 2. Suffixe de rappel de format
         let format_reminder = "\n\nRAPPEL CRITIQUE : R?ponds UNIQUEMENT par le JSON demand?, sans aucun texte additionnel.";
         optimized.push_str(format_reminder);
-        
+
         // 3. Optimisation de longueur (GPT-4o performe mieux avec prompts structur?s)
         if optimized.len() > 4000 {
             optimized = self.compress_prompt_intelligently(&optimized);
         }
-        
+
         optimized
     }
 
@@ -336,50 +369,54 @@ R?ponds UNIQUEMENT par un objet JSON pour la recherche :
     async fn classify_request_domain(&self, input: &MultiModalInput) -> AppResult<String> {
         let text = input.texte.as_deref().unwrap_or("");
         let intention = ""; // L'intention sera d?tect?e ? partir du texte
-        
+
         // Classification par mots-cl?s et intention
         if intention.contains("creation") || text.contains("vendre") || text.contains("propose") {
             return Ok("service_creation".to_string());
         }
-        
+
         if intention.contains("recherche") || text.contains("cherche") || text.contains("besoin") {
             return Ok("need_search".to_string());
         }
-        
+
         if text.contains("cat?gorie") || text.contains("classer") {
             return Ok("classification".to_string());
         }
-        
+
         Ok("default".to_string())
     }
 
     /// ?? Analyse contextuelle intelligente
-    async fn analyze_context_intelligence(&self, input: &MultiModalInput, context: Option<&str>) -> AppResult<Value> {
+    async fn analyze_context_intelligence(
+        &self,
+        input: &MultiModalInput,
+        context: Option<&str>,
+    ) -> AppResult<Value> {
         let mut smart_context = json!({
             "timestamp": chrono::Utc::now().timestamp(),
             "has_multimedia": false,
             "complexity_score": 0.5,
             "confidence": 0.8
         });
-        
+
         // Analyse de complexit?
         if let Some(text) = &input.texte {
             let complexity = self.calculate_text_complexity(text);
             smart_context["complexity_score"] = json!(complexity);
             smart_context["word_count"] = json!(text.split_whitespace().count());
         }
-        
+
         // D?tection multim?dia
-        let has_multimedia = input.base64_image.is_some() || 
-                           input.audio_base64.is_some() || 
-                           input.doc_base64.is_some();
+        let has_multimedia = input.base64_image.is_some()
+            || input.audio_base64.is_some()
+            || input.doc_base64.is_some();
         smart_context["has_multimedia"] = json!(has_multimedia);
-        
+
         // Contexte additionnel
         if let Some(ctx) = context {
             smart_context["additional_context"] = json!(ctx);
         }
-        
+
         Ok(smart_context)
     }
 
@@ -430,9 +467,11 @@ OPTIMISATION M?TIER :
         });
 
         // Template recherche de besoin
-        self.domain_templates.insert("need_search".to_string(), PromptTemplate {
-            domain: "need_search".to_string(),
-            base_instruction: r#"Tu dois analyser une requ?te de recherche et l'optimiser.
+        self.domain_templates.insert(
+            "need_search".to_string(),
+            PromptTemplate {
+                domain: "need_search".to_string(),
+                base_instruction: r#"Tu dois analyser une requ?te de recherche et l'optimiser.
 ANALYSE REQUIS :
 1. Identifie l'intention exacte de recherche
 2. Extrais tous les crit?res explicites et implicites
@@ -443,48 +482,54 @@ ANALYSE REQUIS :
 OPTIMISATION RECHERCHE :
 - Mots-cl?s : pertinents et vari?s
 - Filtres : prix, cat?gorie, localisation
-- Suggestions : alternatives intelligentes"#.to_string(),
-            context_enhancers: vec![
-                "Analyse s?mantique de la requ?te".to_string(),
-                "Extraction de crit?res implicites".to_string(),
-            ],
-            output_format: "need_search_json".to_string(),
-            quality_indicators: vec![
-                "Requ?te optimis?e pour matching".to_string(),
-                "Crit?res complets extraits".to_string(),
-                "Suggestions pertinentes".to_string(),
-            ],
-            performance_hints: vec![
-                "Identifie les besoins non explicites".to_string(),
-                "Optimise pour la recherche s?mantique".to_string(),
-            ],
-            examples: vec![],
-        });
+- Suggestions : alternatives intelligentes"#
+                    .to_string(),
+                context_enhancers: vec![
+                    "Analyse s?mantique de la requ?te".to_string(),
+                    "Extraction de crit?res implicites".to_string(),
+                ],
+                output_format: "need_search_json".to_string(),
+                quality_indicators: vec![
+                    "Requ?te optimis?e pour matching".to_string(),
+                    "Crit?res complets extraits".to_string(),
+                    "Suggestions pertinentes".to_string(),
+                ],
+                performance_hints: vec![
+                    "Identifie les besoins non explicites".to_string(),
+                    "Optimise pour la recherche s?mantique".to_string(),
+                ],
+                examples: vec![],
+            },
+        );
 
         // Template par d?faut
-        self.domain_templates.insert("default".to_string(), PromptTemplate {
-            domain: "default".to_string(),
-            base_instruction: "Traite la requ?te de mani?re structur?e et pr?cise.".to_string(),
-            context_enhancers: vec![],
-            output_format: "structured_json".to_string(),
-            quality_indicators: vec![
-                "R?ponse structur?e".to_string(),
-                "Information pr?cise".to_string(),
-            ],
-            performance_hints: vec![],
-            examples: vec![],
-        });
+        self.domain_templates.insert(
+            "default".to_string(),
+            PromptTemplate {
+                domain: "default".to_string(),
+                base_instruction: "Traite la requ?te de mani?re structur?e et pr?cise.".to_string(),
+                context_enhancers: vec![],
+                output_format: "structured_json".to_string(),
+                quality_indicators: vec![
+                    "R?ponse structur?e".to_string(),
+                    "Information pr?cise".to_string(),
+                ],
+                performance_hints: vec![],
+                examples: vec![],
+            },
+        );
     }
 
     // M?thodes utilitaires
     fn analyze_text_intelligence(&self, text: &str) -> TextAnalysisResult {
         let words: Vec<&str> = text.split_whitespace().collect();
-        let keywords: Vec<String> = words.iter()
+        let keywords: Vec<String> = words
+            .iter()
             .filter(|&&word| word.len() > 3)
             .take(5)
             .map(|&s| s.to_string())
             .collect();
-        
+
         let intent = if text.contains("vendre") || text.contains("propose") {
             "creation_service"
         } else if text.contains("cherche") || text.contains("besoin") {
@@ -492,7 +537,7 @@ OPTIMISATION RECHERCHE :
         } else {
             "general"
         };
-        
+
         TextAnalysisResult {
             keywords: keywords.join(", "),
             intent: intent.to_string(),
@@ -502,15 +547,14 @@ OPTIMISATION RECHERCHE :
     fn calculate_text_complexity(&self, text: &str) -> f64 {
         let word_count = text.split_whitespace().count();
         let sentence_count = text.split(['.', '!', '?']).count();
-        let avg_word_length: f64 = text.split_whitespace()
-            .map(|w| w.len())
-            .sum::<usize>() as f64 / word_count.max(1) as f64;
-        
+        let avg_word_length: f64 = text.split_whitespace().map(|w| w.len()).sum::<usize>() as f64
+            / word_count.max(1) as f64;
+
         // Score de complexit? normalis?
-        let complexity = (word_count as f64 / 100.0) + 
-                        (avg_word_length / 10.0) + 
-                        (word_count as f64 / sentence_count.max(1) as f64 / 20.0);
-        
+        let complexity = (word_count as f64 / 100.0)
+            + (avg_word_length / 10.0)
+            + (word_count as f64 / sentence_count.max(1) as f64 / 20.0);
+
         complexity.min(1.0).max(0.1)
     }
 
@@ -518,7 +562,7 @@ OPTIMISATION RECHERCHE :
         // Compression intelligente en gardant les parties essentielles
         let lines: Vec<&str> = prompt.lines().collect();
         let mut compressed = Vec::new();
-        
+
         for line in lines {
             if line.contains("===") || line.contains("CRITIQUE") || line.contains("OBLIGATOIRE") {
                 compressed.push(line); // Garder les sections importantes
@@ -529,7 +573,7 @@ OPTIMISATION RECHERCHE :
                 compressed.push(line);
             }
         }
-        
+
         compressed.join("\n")
     }
 }
@@ -538,4 +582,4 @@ OPTIMISATION RECHERCHE :
 struct TextAnalysisResult {
     keywords: String,
     intent: String,
-} 
+}

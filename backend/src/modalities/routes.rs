@@ -6,14 +6,14 @@ use axum::{
     Router,
 };
 use serde::Deserialize;
-use uuid::Uuid;
 use std::sync::Arc;
+use uuid::Uuid;
 
-use crate::state::AppState;
 use crate::modalities::models::{
-    CreateCustomModalityRequest, CustomModality, CustomModalityResponse, 
-    IncrementUsageRequest, PopularModalitiesRequest, ModalityStats
+    CreateCustomModalityRequest, CustomModality, CustomModalityResponse, IncrementUsageRequest,
+    ModalityStats, PopularModalitiesRequest,
 };
+use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct ModalityQuery {
@@ -28,56 +28,60 @@ pub async fn get_custom_modalities(
     Query(params): Query<ModalityQuery>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
     let pool = &state.pg;
-    let result = if let (Some(product_type), Some(field_name)) = (params.product_type, params.field_name) {
-        // Obtenir les modalités pour un champ spécifique
-        match CustomModality::get_by_field(pool, &product_type, &field_name).await {
-            Ok(modalities) => {
-                // Convertir en CustomModality pour la réponse
-                let custom_modalities = modalities.into_iter().map(|modality| CustomModality {
-                    id: Uuid::new_v4(), // ID temporaire pour la réponse
-                    product_type: product_type.clone(),
-                    field_name: field_name.clone(),
-                    modality,
-                    added_by: None,
-                    added_at: chrono::Utc::now(),
-                    usage_count: 0,
-                    created_at: chrono::Utc::now(),
-                    updated_at: chrono::Utc::now(),
-                }).collect();
+    let result =
+        if let (Some(product_type), Some(field_name)) = (params.product_type, params.field_name) {
+            // Obtenir les modalités pour un champ spécifique
+            match CustomModality::get_by_field(pool, &product_type, &field_name).await {
+                Ok(modalities) => {
+                    // Convertir en CustomModality pour la réponse
+                    let custom_modalities = modalities
+                        .into_iter()
+                        .map(|modality| CustomModality {
+                            id: Uuid::new_v4(), // ID temporaire pour la réponse
+                            product_type: product_type.clone(),
+                            field_name: field_name.clone(),
+                            modality,
+                            added_by: None,
+                            added_at: chrono::Utc::now(),
+                            usage_count: 0,
+                            created_at: chrono::Utc::now(),
+                            updated_at: chrono::Utc::now(),
+                        })
+                        .collect();
 
-                CustomModalityResponse {
+                    CustomModalityResponse {
+                        success: true,
+                        data: Some(custom_modalities),
+                        error: None,
+                    }
+                }
+                Err(e) => {
+                    log::error!("Erreur lors de la récupération des modalités: {}", e);
+                    CustomModalityResponse {
+                        success: false,
+                        data: None,
+                        error: Some("Erreur lors de la récupération des modalités".to_string()),
+                    }
+                }
+            }
+        } else {
+            // Obtenir toutes les modalités
+            match CustomModality::get_all(pool).await {
+                Ok(modalities) => CustomModalityResponse {
                     success: true,
-                    data: Some(custom_modalities),
+                    data: Some(modalities),
                     error: None,
+                },
+                Err(e) => {
+                    log::error!("Erreur lors de la récupération des modalités: {}", e);
+                    CustomModalityResponse {
+                        success: false,
+                        data: None,
+                        error: Some("Erreur lors de la récupération des modalités".to_string()),
+                    }
                 }
             }
-            Err(e) => {
-                log::error!("Erreur lors de la récupération des modalités: {}", e);
-                CustomModalityResponse {
-                    success: false,
-                    data: None,
-                    error: Some("Erreur lors de la récupération des modalités".to_string()),
-                }
-            }
-        }
-    } else {
-        // Obtenir toutes les modalités
-        match CustomModality::get_all(pool).await {
-            Ok(modalities) => CustomModalityResponse {
-                success: true,
-                data: Some(modalities),
-                error: None,
-            },
-            Err(e) => {
-                log::error!("Erreur lors de la récupération des modalités: {}", e);
-                CustomModalityResponse {
-                    success: false,
-                    data: None,
-                    error: Some("Erreur lors de la récupération des modalités".to_string()),
-                }
-            }
-        }
-    };
+        };
 
     Ok(Json(result))
 }
@@ -89,9 +93,10 @@ pub async fn create_custom_modality(
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
     let pool = &state.pg;
     // Valider les données
-    if request.product_type.trim().is_empty() || 
-       request.field_name.trim().is_empty() || 
-       request.modality.trim().is_empty() {
+    if request.product_type.trim().is_empty()
+        || request.field_name.trim().is_empty()
+        || request.modality.trim().is_empty()
+    {
         return Ok(Json(CustomModalityResponse {
             success: false,
             data: None,
@@ -105,7 +110,9 @@ pub async fn create_custom_modality(
         &request.product_type,
         &request.field_name,
         &request.modality,
-    ).await {
+    )
+    .await
+    {
         Ok(exists) => {
             if exists {
                 return Ok(Json(CustomModalityResponse {
@@ -128,9 +135,13 @@ pub async fn create_custom_modality(
     // Créer la modalité
     match CustomModality::create(pool, request).await {
         Ok(modality) => {
-            log::info!("Nouvelle modalité créée: {} - {} - {}", 
-                      modality.product_type, modality.field_name, modality.modality);
-            
+            log::info!(
+                "Nouvelle modalité créée: {} - {} - {}",
+                modality.product_type,
+                modality.field_name,
+                modality.modality
+            );
+
             Ok(Json(CustomModalityResponse {
                 success: true,
                 data: Some(vec![modality]),
@@ -184,7 +195,10 @@ pub async fn get_popular_modalities(
             error: None,
         })),
         Err(e) => {
-            log::error!("Erreur lors de la récupération des modalités populaires: {}", e);
+            log::error!(
+                "Erreur lors de la récupération des modalités populaires: {}",
+                e
+            );
             Ok(Json(CustomModalityResponse {
                 success: false,
                 data: None,
@@ -255,7 +269,7 @@ pub async fn get_smart_suggestions(
 ) -> Result<Json<SuggestionsResponse>, StatusCode> {
     let pool = &state.pg;
     let search_pattern = format!("%{}%", query.search.to_lowercase());
-    
+
     // Récupérer les suggestions depuis custom_modalities
     let result = sqlx::query(
         r#"
@@ -265,7 +279,7 @@ pub async fn get_smart_suggestions(
           AND LOWER(value) LIKE $2
         ORDER BY usage_count DESC, value ASC
         LIMIT 10
-        "#
+        "#,
     )
     .bind(&query.field_type)
     .bind(&search_pattern)
@@ -281,7 +295,9 @@ pub async fn get_smart_suggestions(
         Err(e) => {
             log::error!("Erreur récupération suggestions: {:?}", e);
             // Retourner une liste vide en cas d'erreur
-            Ok(Json(SuggestionsResponse { suggestions: vec![] }))
+            Ok(Json(SuggestionsResponse {
+                suggestions: vec![],
+            }))
         }
     }
 }
@@ -300,10 +316,10 @@ pub async fn create_smart_modality(
     Json(request): Json<SmartModalityRequest>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
     let pool = &state.pg;
-    
+
     // Vérifier si la modalité existe déjà
     let existing = sqlx::query(
-        "SELECT id FROM custom_modalities WHERE field_type = $1 AND LOWER(value) = LOWER($2)"
+        "SELECT id FROM custom_modalities WHERE field_type = $1 AND LOWER(value) = LOWER($2)",
     )
     .bind(&request.field_type)
     .bind(&request.value)
@@ -316,7 +332,7 @@ pub async fn create_smart_modality(
             let id: i32 = record.get("id");
             // Si existe déjà, incrémenter usage_count
             let _ = sqlx::query(
-                "UPDATE custom_modalities SET usage_count = usage_count + 1 WHERE id = $1"
+                "UPDATE custom_modalities SET usage_count = usage_count + 1 WHERE id = $1",
             )
             .bind(id)
             .execute(pool)
@@ -375,5 +391,8 @@ pub fn create_modalities_router() -> Router<Arc<AppState>> {
         .route("/api/modalities/usage", post(increment_usage))
         .route("/api/modalities/popular", get(get_popular_modalities))
         .route("/api/modalities/stats", get(get_modality_stats))
-        .route("/api/modalities/custom/{id}", axum::routing::delete(delete_custom_modality))
+        .route(
+            "/api/modalities/custom/{id}",
+            axum::routing::delete(delete_custom_modality),
+        )
 }

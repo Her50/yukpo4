@@ -1,14 +1,14 @@
 // backend/src/services/semantic_cache.rs
 // Service de cache s?mantique utilisant le microservice d'embedding et Pinecone
 
-use std::sync::Arc;
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
-use serde_json::{json, Value};
-use reqwest::Client;
 use crate::core::types::AppResult;
 use crate::utils::log::{log_info, log_warn};
+use reqwest::Client;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
 
 /// Configuration du cache s?mantique
 #[derive(Debug, Clone)]
@@ -26,7 +26,7 @@ impl Default for SemanticCacheConfig {
             .unwrap_or_else(|_| "0.70".to_string())
             .parse::<f64>()
             .unwrap_or(0.70);
-            
+
         Self {
             embedding_service_url: "http://localhost:8000".to_string(),
             api_key: "yukpo_embedding_key_2024".to_string(),
@@ -111,14 +111,21 @@ impl SemanticCache {
         // V?rifier le cache d'abord
         let cache_key = format!("embedding:{}", text);
         if let Some(cached) = self.get_cached_embedding(&cache_key).await {
-            log_info(&format!("[SemanticCache] Cache hit pour embedding: {} chars", text.len()));
+            log_info(&format!(
+                "[SemanticCache] Cache hit pour embedding: {} chars",
+                text.len()
+            ));
             return Ok(cached);
         }
 
         // Appel au microservice d'embedding
-        log_info(&format!("[SemanticCache] Appel microservice embedding pour: {} chars", text.len()));
-        
-        let response = self.http_client
+        log_info(&format!(
+            "[SemanticCache] Appel microservice embedding pour: {} chars",
+            text.len()
+        ));
+
+        let response = self
+            .http_client
             .post(&format!("{}/embedding", self.config.embedding_service_url))
             .json(&json!({
                 "value": text,
@@ -132,24 +139,37 @@ impl SemanticCache {
             return Err(format!("Microservice embedding erreur: {}", response.status()).into());
         }
 
-        let embedding_response: EmbeddingResponse = response.json().await
+        let embedding_response: EmbeddingResponse = response
+            .json()
+            .await
             .map_err(|e| format!("Erreur parsing r?ponse embedding: {}", e))?;
 
         // Mettre en cache l'embedding
-        self.cache_embedding(&cache_key, &embedding_response.embedding).await;
+        self.cache_embedding(&cache_key, &embedding_response.embedding)
+            .await;
 
-        log_info(&format!("[SemanticCache] Embedding g?n?r? en {}s", embedding_response.inference_time));
+        log_info(&format!(
+            "[SemanticCache] Embedding g?n?r? en {}s",
+            embedding_response.inference_time
+        ));
         Ok(embedding_response.embedding)
     }
 
     /// Recherche s?mantique dans Pinecone via le microservice
     pub async fn search_semantic_cache(&self, text: &str, intention: &str) -> Option<String> {
         let start_time = Instant::now();
-        
-        log_info(&format!("[SemanticCache] Recherche s?mantique pour: '{}' (intention: {})", text, intention));
 
-        let response = match self.http_client
-            .post(&format!("{}/search_embedding_pinecone", self.config.embedding_service_url))
+        log_info(&format!(
+            "[SemanticCache] Recherche s?mantique pour: '{}' (intention: {})",
+            text, intention
+        ));
+
+        let response = match self
+            .http_client
+            .post(&format!(
+                "{}/search_embedding_pinecone",
+                self.config.embedding_service_url
+            ))
             .header("x-api-key", &self.config.api_key)
             .json(&json!({
                 "query": text,
@@ -162,20 +182,29 @@ impl SemanticCache {
         {
             Ok(resp) => resp,
             Err(e) => {
-                log_warn(&format!("[SemanticCache] Erreur appel recherche Pinecone: {}", e));
+                log_warn(&format!(
+                    "[SemanticCache] Erreur appel recherche Pinecone: {}",
+                    e
+                ));
                 return None;
             }
         };
 
         if !response.status().is_success() {
-            log_warn(&format!("[SemanticCache] Erreur HTTP recherche Pinecone: {}", response.status()));
+            log_warn(&format!(
+                "[SemanticCache] Erreur HTTP recherche Pinecone: {}",
+                response.status()
+            ));
             return None;
         }
 
         let search_response: PineconeSearchResponse = match response.json().await {
             Ok(resp) => resp,
             Err(e) => {
-                log_warn(&format!("[SemanticCache] Erreur parsing r?ponse Pinecone: {}", e));
+                log_warn(&format!(
+                    "[SemanticCache] Erreur parsing r?ponse Pinecone: {}",
+                    e
+                ));
                 return None;
             }
         };
@@ -188,33 +217,44 @@ impl SemanticCache {
         let best_match = &search_response.results[0];
         let similarity = best_match.score;
 
-        log_info(&format!("[SemanticCache] Meilleur match: score={}, seuil={}", 
-                         similarity, self.config.similarity_threshold));
+        log_info(&format!(
+            "[SemanticCache] Meilleur match: score={}, seuil={}",
+            similarity, self.config.similarity_threshold
+        ));
 
         if similarity >= self.config.similarity_threshold {
             // R?cup?rer la r?ponse IA depuis les m?tadonn?es
             if let Some(ia_response) = best_match.metadata.get("ia_response") {
                 if let Some(response_str) = ia_response.as_str() {
                     let search_time = start_time.elapsed();
-                    log_info(&format!("[SemanticCache] ? Cache s?mantique hit en {:?} (similarit?: {})", 
-                                     search_time, similarity));
+                    log_info(&format!(
+                        "[SemanticCache] ? Cache s?mantique hit en {:?} (similarit?: {})",
+                        search_time, similarity
+                    ));
                     return Some(response_str.to_string());
                 }
             }
         }
 
-        log_info(&format!("[SemanticCache] Aucun cache s?mantique trouv? (similarit?: {} < {})", 
-                         similarity, self.config.similarity_threshold));
+        log_info(&format!(
+            "[SemanticCache] Aucun cache s?mantique trouv? (similarit?: {} < {})",
+            similarity, self.config.similarity_threshold
+        ));
         None
     }
 
     /// Stocke une r?ponse dans le cache s?mantique
-    pub async fn store_semantic_cache(&self, query: &str, intention: &str, response: &str) -> AppResult<()> {
+    pub async fn store_semantic_cache(
+        &self,
+        query: &str,
+        intention: &str,
+        response: &str,
+    ) -> AppResult<()> {
         let start_time = std::time::Instant::now();
-        
+
         // ?? ?QUILIBRE : Timeout ?quilibr? pour pr?cision vs vitesse
         let timeout = Duration::from_secs(2); // Augment? ? 2s pour la pr?cision
-        
+
         match tokio::time::timeout(timeout, async {
             // Appel au microservice embedding avec timeout ?quilibr?
             let request = json!({
@@ -226,22 +266,31 @@ impl SemanticCache {
                 "langue": "fr",
                 "ia_response": response
             });
-            
-            let response = self.http_client
-                .post(&format!("{}/add_embedding_pinecone", self.config.embedding_service_url))
+
+            let response = self
+                .http_client
+                .post(&format!(
+                    "{}/add_embedding_pinecone",
+                    self.config.embedding_service_url
+                ))
                 .header("x-api-key", &self.config.api_key)
                 .json(&request)
                 .timeout(Duration::from_secs(1500)) // Timeout ?quilibr? (1.5s)
                 .send()
                 .await?;
-            
+
             if response.status().is_success() {
-                log::info!("[SemanticCache] ? Cache s?mantique stock? en {:?}", start_time.elapsed());
+                log::info!(
+                    "[SemanticCache] ? Cache s?mantique stock? en {:?}",
+                    start_time.elapsed()
+                );
                 Ok(())
             } else {
                 Err(format!("Erreur stockage cache: {}", response.status()).into())
             }
-        }).await {
+        })
+        .await
+        {
             Ok(result) => result,
             Err(_) => {
                 log::warn!("[SemanticCache] ? Timeout stockage cache s?mantique (2s) - ?quilibre pr?cision/vitesse");
@@ -254,11 +303,11 @@ impl SemanticCache {
     fn generate_service_id(&self, text: &str, intention: &str) -> i32 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         text.hash(&mut hasher);
         intention.hash(&mut hasher);
-        
+
         (hasher.finish() % 1_000_000) as i32
     }
 
@@ -276,10 +325,10 @@ impl SemanticCache {
     /// Met en cache un embedding
     async fn cache_embedding(&self, cache_key: &str, embedding: &[f32]) {
         let cached = CachedEmbedding::new(embedding.to_vec(), self.config.cache_ttl_seconds);
-        
+
         let mut cache = self.embedding_cache.write().await;
         cache.insert(cache_key.to_string(), cached);
-        
+
         // Nettoyer le cache si trop volumineux
         if cache.len() > self.config.max_cache_size {
             cache.retain(|_, v| !v.is_expired());
@@ -308,12 +357,16 @@ impl SemanticCache {
         })
     }
 
-    pub async fn get_semantic_cache(&self, query: &str, intention: &str) -> AppResult<Option<String>> {
+    pub async fn get_semantic_cache(
+        &self,
+        query: &str,
+        intention: &str,
+    ) -> AppResult<Option<String>> {
         let start_time = std::time::Instant::now();
-        
+
         // ?? ?QUILIBRE : Timeout ?quilibr? pour pr?cision vs vitesse
         let timeout = Duration::from_secs(2); // Augment? de 1s ? 2s pour la pr?cision
-        
+
         match tokio::time::timeout(timeout, async {
             // Appel au microservice embedding avec timeout ?quilibr?
             let request = json!({
@@ -381,4 +434,4 @@ mod tests {
         let id2 = cache.generate_service_id("test2", "creation_service");
         assert_ne!(id1, id2);
     }
-} 
+}

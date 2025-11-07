@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State, Extension},
+    extract::{Extension, Path, State},
     http::StatusCode,
     response::Json,
 };
@@ -29,11 +29,15 @@ pub async fn toggle_product_status(
     Json(payload): Json<ToggleProductRequest>,
 ) -> Result<Json<ApiResponse>, StatusCode> {
     let pool = &state.pg;
-    
+
     log::info!(
         "🔄 Toggle produit {} -> {}",
         product_id,
-        if payload.is_active { "actif" } else { "inactif" }
+        if payload.is_active {
+            "actif"
+        } else {
+            "inactif"
+        }
     );
 
     // Mettre à jour le statut du produit dans products_lifecycle
@@ -64,11 +68,26 @@ pub async fn toggle_product_status(
         }));
     }
 
-    log::info!("✅ Produit {} {}", product_id, if payload.is_active { "activé" } else { "désactivé" });
+    log::info!(
+        "✅ Produit {} {}",
+        product_id,
+        if payload.is_active {
+            "activé"
+        } else {
+            "désactivé"
+        }
+    );
 
     Ok(Json(ApiResponse {
         success: true,
-        message: format!("Produit {}", if payload.is_active { "activé" } else { "désactivé" }),
+        message: format!(
+            "Produit {}",
+            if payload.is_active {
+                "activé"
+            } else {
+                "désactivé"
+            }
+        ),
         data: None,
     }))
 }
@@ -80,7 +99,7 @@ pub async fn delete_product(
     Path(product_id): Path<String>,
 ) -> Result<Json<ApiResponse>, StatusCode> {
     let pool = &state.pg;
-    
+
     log::info!("🗑️ Suppression produit {}", product_id);
 
     // Supprimer le produit de products_lifecycle
@@ -124,10 +143,10 @@ pub async fn get_all_prestataire_products(
     // TODO: Extraire user_id du JWT
 ) -> Result<Json<ApiResponse>, StatusCode> {
     let pool = &state.pg;
-    
+
     // Pour l'instant, exemple simplifié
     // Dans la vraie implémentation, extraire user_id du JWT
-    
+
     log::info!("📦 Récupération produits prestataire");
 
     // Note: Cette requête sera améliorée avec extraction JWT
@@ -187,7 +206,7 @@ pub async fn add_product_to_service(
     Json(payload): Json<AddProductRequest>,
 ) -> Result<Json<ApiResponse>, StatusCode> {
     let pool = &state.pg;
-    
+
     log::info!("➕ Ajout produit au service {}", service_id);
 
     // Récupérer le service
@@ -217,7 +236,7 @@ pub async fn add_product_to_service(
 
     // Parser le JSON data
     let mut service_data: serde_json::Value = service.unwrap().data;
-    
+
     // Ajouter le produit à produits.valeur
     if let Some(produits) = service_data.get_mut("produits") {
         if let Some(valeur) = produits.get_mut("valeur") {
@@ -239,11 +258,14 @@ pub async fn add_product_to_service(
     } else {
         // Si produits n'existe pas du tout, le créer
         if let Some(obj) = service_data.as_object_mut() {
-            obj.insert("produits".to_string(), serde_json::json!({
-                "type_donnee": "listeproduit",
-                "valeur": [payload.product],
-                "origine_champs": "formulaire"
-            }));
+            obj.insert(
+                "produits".to_string(),
+                serde_json::json!({
+                    "type_donnee": "listeproduit",
+                    "valeur": [payload.product],
+                    "origine_champs": "formulaire"
+                }),
+            );
             log::info!("✅ Champ produits créé avec premier produit");
         }
     }
@@ -293,8 +315,13 @@ pub async fn update_product(
 ) -> Result<Json<ApiResponse>, StatusCode> {
     let pool = &state.pg;
     let user_id = user.id;
-    
-    log::info!("✏️ Modification produit {} dans service {} par user {}", product_id, payload.service_id, user_id);
+
+    log::info!(
+        "✏️ Modification produit {} dans service {} par user {}",
+        product_id,
+        payload.service_id,
+        user_id
+    );
 
     // Récupérer le service avec user_id pour vérification
     let service = sqlx::query!(
@@ -322,10 +349,14 @@ pub async fn update_product(
     }
 
     let service_row = service.unwrap();
-    
+
     // ✅ Vérifier que le service appartient à l'utilisateur
     if service_row.user_id != user_id {
-        log::warn!("⚠️ Utilisateur {} n'est pas propriétaire du service {}", user_id, payload.service_id);
+        log::warn!(
+            "⚠️ Utilisateur {} n'est pas propriétaire du service {}",
+            user_id,
+            payload.service_id
+        );
         return Ok(Json(ApiResponse {
             success: false,
             message: "Non autorisé".to_string(),
@@ -335,13 +366,17 @@ pub async fn update_product(
 
     // Parser le JSON data
     let mut service_data: serde_json::Value = service_row.data;
-    
+
     // ✅ Sauvegarder l'ancienne version du produit pour historique
-    let old_product: Option<serde_json::Value> = if let Some(produits) = service_data.get("produits") {
-        if let Some(valeur) = produits.get("valeur") {
-            if let Some(arr) = valeur.as_array() {
-                if payload.product_index >= 0 && (payload.product_index as usize) < arr.len() {
-                    Some(arr[payload.product_index as usize].clone())
+    let old_product: Option<serde_json::Value> =
+        if let Some(produits) = service_data.get("produits") {
+            if let Some(valeur) = produits.get("valeur") {
+                if let Some(arr) = valeur.as_array() {
+                    if payload.product_index >= 0 && (payload.product_index as usize) < arr.len() {
+                        Some(arr[payload.product_index as usize].clone())
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -350,11 +385,8 @@ pub async fn update_product(
             }
         } else {
             None
-        }
-    } else {
-        None
-    };
-    
+        };
+
     // Mettre à jour le produit dans produits.valeur[index]
     if let Some(produits) = service_data.get_mut("produits") {
         if let Some(valeur) = produits.get_mut("valeur") {
@@ -363,7 +395,11 @@ pub async fn update_product(
                     arr[payload.product_index as usize] = payload.updated_product.clone();
                     log::info!("✅ Produit modifié à l'index {}", payload.product_index);
                 } else {
-                    log::error!("❌ Index {} invalide (total: {})", payload.product_index, arr.len());
+                    log::error!(
+                        "❌ Index {} invalide (total: {})",
+                        payload.product_index,
+                        arr.len()
+                    );
                     return Ok(Json(ApiResponse {
                         success: false,
                         message: "Index de produit invalide".to_string(),
@@ -394,10 +430,12 @@ pub async fn update_product(
 
     // ✅ NOUVEAU: Enregistrer l'historique dans service_logs
     if let Some(old_prod) = old_product {
-        let product_name = payload.updated_product.get("nom")
+        let product_name = payload
+            .updated_product
+            .get("nom")
             .and_then(|v| v.as_str())
             .unwrap_or("Produit sans nom");
-        
+
         let modification_details = serde_json::json!({
             "action": "product_update",
             "product_id": product_id,
@@ -406,7 +444,7 @@ pub async fn update_product(
             "old_version": old_prod,
             "new_version": payload.updated_product
         });
-        
+
         sqlx::query!(
             r#"
             INSERT INTO service_logs (service_id, user_id, action, modification)
@@ -420,11 +458,17 @@ pub async fn update_product(
         .execute(pool)
         .await
         .map_err(|e| {
-            log::warn!("⚠️ Erreur enregistrement historique (non bloquant): {:?}", e);
+            log::warn!(
+                "⚠️ Erreur enregistrement historique (non bloquant): {:?}",
+                e
+            );
         })
         .ok();
-        
-        log::info!("✅ Historique de modification enregistré pour produit {}", product_name);
+
+        log::info!(
+            "✅ Historique de modification enregistré pour produit {}",
+            product_name
+        );
     }
 
     log::info!("✅ Produit {} modifié avec succès (GRATUIT)", product_id);
@@ -435,5 +479,3 @@ pub async fn update_product(
         data: None,
     }))
 }
-
-

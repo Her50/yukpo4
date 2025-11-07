@@ -1,16 +1,16 @@
 // Contrôleur pour gérer les réactions/émotions sur les produits
 use axum::{
-    extract::{Path, State, Extension},
+    extract::{Extension, Path, State},
     http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::sync::Arc;
 use sqlx::Row;
+use std::sync::Arc;
 
-use crate::state::AppState;
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct ReactionPayload {
@@ -34,7 +34,14 @@ pub async fn toggle_product_reaction(
     Json(payload): Json<ReactionPayload>,
 ) -> Result<Json<Value>, StatusCode> {
     // Valider le type de réaction
-    let valid_reactions = vec!["love", "like", "wow", "interested", "thinking", "disappointed"];
+    let valid_reactions = vec![
+        "love",
+        "like",
+        "wow",
+        "interested",
+        "thinking",
+        "disappointed",
+    ];
     if !valid_reactions.contains(&payload.reaction_type.as_str()) {
         return Err(StatusCode::BAD_REQUEST);
     }
@@ -45,7 +52,7 @@ pub async fn toggle_product_reaction(
         SELECT id FROM product_reactions 
         WHERE user_id = $1 AND service_id = $2 
           AND product_id = $3 AND reaction_type = $4
-        "#
+        "#,
     )
     .bind(user.id)
     .bind(service_id)
@@ -57,14 +64,14 @@ pub async fn toggle_product_reaction(
 
     if let Some(reaction) = existing {
         // Retirer la réaction
-        let reaction_id: i32 = reaction.try_get("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        sqlx::query(
-            r#"DELETE FROM product_reactions WHERE id = $1"#
-        )
-        .bind(reaction_id)
-        .execute(&state.pg)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let reaction_id: i32 = reaction
+            .try_get("id")
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        sqlx::query(r#"DELETE FROM product_reactions WHERE id = $1"#)
+            .bind(reaction_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         Ok(Json(json!({
             "success": true,
@@ -77,7 +84,7 @@ pub async fn toggle_product_reaction(
             INSERT INTO product_reactions (user_id, service_id, product_id, reaction_type)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (user_id, service_id, product_id, reaction_type) DO NOTHING
-            "#
+            "#,
         )
         .bind(user.id)
         .bind(service_id)
@@ -108,7 +115,7 @@ pub async fn get_product_reactions(
             count,
             users_sample
         FROM get_product_reactions_count($1, $2)
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(&product_id)
@@ -125,7 +132,7 @@ pub async fn get_product_reactions(
         SELECT reaction_type 
         FROM product_reactions
         WHERE user_id = $1 AND service_id = $2 AND product_id = $3
-        "#
+        "#,
     )
     .bind(user.id)
     .bind(service_id)
@@ -146,7 +153,7 @@ pub async fn get_product_reactions(
             let reaction_type: String = r.try_get("reaction_type").ok()?;
             let count: i64 = r.try_get("count").unwrap_or(0);
             let users_sample: Vec<String> = r.try_get("users_sample").unwrap_or_default();
-            
+
             Some(json!({
                 "reaction_type": reaction_type,
                 "count": count,

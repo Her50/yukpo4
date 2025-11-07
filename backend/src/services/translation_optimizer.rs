@@ -1,11 +1,11 @@
 // ?? src/services/translation_optimizer.rs
 // Service d'optimisation des traductions avec cache et parall?lisation
 
+use crate::core::types::AppError;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde_json::Value;
-use crate::core::types::AppError;
 
 /// Cache de traductions pour ?viter les appels API redondants
 #[derive(Debug, Clone)]
@@ -31,7 +31,7 @@ impl TranslationCache {
     /// Ajoute une traduction au cache
     pub async fn set(&self, key: String, value: String) {
         let mut cache = self.cache.write().await;
-        
+
         // Gestion de la taille du cache (LRU simple)
         if cache.len() >= self.max_size {
             // Supprimer le premier ?l?ment (le plus ancien)
@@ -39,7 +39,7 @@ impl TranslationCache {
                 cache.remove(&first_key);
             }
         }
-        
+
         cache.insert(key, value);
     }
 
@@ -59,12 +59,16 @@ impl TranslationOptimizer {
     pub fn new() -> Self {
         Self {
             cache: TranslationCache::new(1000), // Cache de 1000 traductions
-            batch_size: 10, // Traductions par batch
+            batch_size: 10,                     // Traductions par batch
         }
     }
 
     /// Traduit un texte en anglais avec cache
-    pub async fn translate_to_en_cached(&self, text: &str, from_lang: &str) -> Result<String, AppError> {
+    pub async fn translate_to_en_cached(
+        &self,
+        text: &str,
+        from_lang: &str,
+    ) -> Result<String, AppError> {
         // V?rifier le cache d'abord
         let cache_key = TranslationCache::generate_cache_key(text, from_lang, "en");
         if let Some(cached_translation) = self.cache.get(&cache_key).await {
@@ -74,7 +78,7 @@ impl TranslationOptimizer {
         // Si pas en cache, traduire et mettre en cache
         let translation = self.translate_to_en(text, from_lang).await?;
         self.cache.set(cache_key, translation.clone()).await;
-        
+
         Ok(translation)
     }
 
@@ -86,32 +90,36 @@ impl TranslationOptimizer {
     }
 
     /// Traduit plusieurs textes en parall?le
-    pub async fn translate_batch(&self, texts: Vec<(String, String)>) -> Result<Vec<String>, AppError> {
+    pub async fn translate_batch(
+        &self,
+        texts: Vec<(String, String)>,
+    ) -> Result<Vec<String>, AppError> {
         let mut tasks = Vec::new();
         let mut results = Vec::new();
-        
+
         for (text, from_lang) in texts {
             let optimizer = self.clone();
-            let task = tokio::spawn(async move {
-                optimizer.translate_to_en_cached(&text, &from_lang).await
-            });
+            let task =
+                tokio::spawn(
+                    async move { optimizer.translate_to_en_cached(&text, &from_lang).await },
+                );
             tasks.push(task);
         }
-        
+
         for task in tasks {
             match task.await {
                 Ok(Ok(translation)) => results.push(translation),
                 Ok(Err(e)) => {
                     log::error!("[TRANSLATION] Erreur traduction: {}", e);
                     results.push(String::new()); // Fallback
-                },
+                }
                 Err(e) => {
                     log::error!("[TRANSLATION] Erreur task: {}", e);
                     results.push(String::new()); // Fallback
                 }
             }
         }
-        
+
         Ok(results)
     }
 
@@ -124,15 +132,21 @@ impl TranslationOptimizer {
         if let Some(obj) = optimized_data.as_object_mut() {
             for (key, value) in obj.iter_mut() {
                 if let Some(value_obj) = value.as_object() {
-                    if let Some(type_donnee) = value_obj.get("type_donnee").and_then(|v| v.as_str()) {
+                    if let Some(type_donnee) = value_obj.get("type_donnee").and_then(|v| v.as_str())
+                    {
                         if type_donnee == "texte" {
-                            if let Some(text_value) = value_obj.get("valeur").and_then(|v| v.as_str()) {
-                                let detected_lang = crate::services::creer_service::detect_lang(text_value);
+                            if let Some(text_value) =
+                                value_obj.get("valeur").and_then(|v| v.as_str())
+                            {
+                                let detected_lang =
+                                    crate::services::creer_service::detect_lang(text_value);
                                 if detected_lang != "en" {
                                     let optimizer = self.clone();
                                     let text = text_value.to_string();
                                     let task = tokio::spawn(async move {
-                                        optimizer.translate_to_en_cached(&text, &detected_lang).await
+                                        optimizer
+                                            .translate_to_en_cached(&text, &detected_lang)
+                                            .await
                                     });
                                     translation_tasks.push((key.clone(), task));
                                 }
@@ -150,12 +164,17 @@ impl TranslationOptimizer {
                     if let Some(obj) = optimized_data.as_object_mut() {
                         if let Some(value) = obj.get_mut(&key) {
                             if let Some(value_obj) = value.as_object_mut() {
-                                value_obj.insert("valeur_en".to_string(), Value::String(translation));
+                                value_obj
+                                    .insert("valeur_en".to_string(), Value::String(translation));
                             }
                         }
                     }
-                },
-                Ok(Err(e)) => log::warn!("[TranslationOptimizer] Erreur traduction pour {}: {:?}", key, e),
+                }
+                Ok(Err(e)) => log::warn!(
+                    "[TranslationOptimizer] Erreur traduction pour {}: {:?}",
+                    key,
+                    e
+                ),
                 Err(e) => log::warn!("[TranslationOptimizer] Erreur t?che pour {}: {:?}", key, e),
             }
         }
@@ -177,4 +196,4 @@ impl Default for TranslationOptimizer {
     fn default() -> Self {
         Self::new()
     }
-} 
+}

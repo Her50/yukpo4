@@ -1,74 +1,74 @@
-pub mod app_ia;
-pub mod creer_service;
-pub mod embedding_client;
-pub mod embedding_tracker;
-pub mod orchestration_ia;
-pub mod file_extractor;
-pub mod ia_history_service;
-pub mod traiter_echange;
-pub mod rechercher_besoin;
-pub mod valider_programme_scolaire;
-pub mod programme_service;
-pub mod assistance;
-pub mod ia;
-pub mod matching_pipeline;
-pub mod fournitures_service;
-pub mod orchestration_ia_optimized;
-pub mod service_history_service;
-pub mod scoring_service;
-pub mod interaction_service;
-pub mod ia_feedback_service;
-pub mod embedding_service;
-pub mod semantic_cache;
-pub mod translation_optimizer;
-pub mod intelligent_translation_service;
-pub mod ocr_engine;
-pub mod prompt_optimizer_pro;
-pub mod semantic_cache_pro;
-pub mod local_ai_ultra_fast;
-pub mod multimodal_optimizer;
-pub mod multimodal_processor;
-pub mod multimodal_enricher;
-pub mod security_service;
-pub mod db_optimizer;
+pub mod african_locations_service; // ✅ NOUVEAU 2025-11-06: Base locale africaine pour enfants géographiques
 pub mod alert_service;
-pub mod mongo_history_service;
-pub mod semantic_exclusion;
-pub mod valider_echange;
-pub mod besoin_service;
-pub mod notification_service; // ✅ Service de notifications en base de données
-pub mod push_notification_service; // ✅ Service de push notifications Expo
-pub mod service_lifecycle_manager;
-pub mod prestataire_service;
-pub mod llm_service;
-pub mod instructions;
-pub mod context_enricher;
-pub mod sharing_service;
-pub mod gpu_detector;
-pub mod gpu_optimizer;
-pub mod massive_load_handler;
-pub mod native_search_service;
-pub mod image_search_service;
+pub mod app_ia;
+pub mod assistance;
 pub mod audio_transcription_service;
-pub mod intelligent_image_analysis_service;
-pub mod hybrid_image_search_service; // ✅ NOUVEAU: Recherche hybride intelligente
-pub mod scheduling_search_service;
+pub mod autocomplete_client_service; // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT (autocomplete_characteristics)
+pub mod autocomplete_combinations_service;
+pub mod autocomplete_history_service;
+pub mod autocomplete_search_service; // ✅ NOUVEAU 2025-11-04: Recherche par vecteur autocomplete
+pub mod background_combination_generator;
+pub mod besoin_service;
+pub mod context_enricher;
+pub mod creer_service;
+pub mod db_optimizer;
+pub mod embedding_client;
+pub mod embedding_service;
+pub mod embedding_tracker;
+pub mod exhaustive_combination_generator;
+pub mod file_extractor;
+pub mod fournitures_service;
 pub mod geocoding_service;
 pub mod geonames_service; // ✅ NOUVEAU: Service GeoNames pour hiérarchie géographique
 pub mod google_places_service; // ✅ NOUVEAU 2025-11-06: Service Google Places pour hiérarchie bidirectionnelle
-pub mod african_locations_service; // ✅ NOUVEAU 2025-11-06: Base locale africaine pour enfants géographiques
+pub mod gpu_detector;
+pub mod gpu_optimizer;
+pub mod hybrid_image_search_service; // ✅ NOUVEAU: Recherche hybride intelligente
+pub mod ia;
+pub mod ia_feedback_service;
+pub mod ia_history_service;
+pub mod image_search_service;
+pub mod instructions;
+pub mod intelligent_image_analysis_service;
 pub mod intelligent_service_manager;
-pub mod phone_validation_service;
+pub mod intelligent_translation_service;
+pub mod interaction_service;
+pub mod llm_service;
+pub mod local_ai_ultra_fast;
+pub mod massive_load_handler;
+pub mod matching_pipeline;
+pub mod mongo_history_service;
+pub mod multimodal_enricher;
+pub mod multimodal_optimizer;
+pub mod multimodal_processor;
+pub mod native_search_service;
+pub mod notification_service; // ✅ Service de notifications en base de données
+pub mod ocr_engine;
+pub mod orchestration_ia;
+pub mod orchestration_ia_optimized;
 pub mod payment_service;
-pub mod publicite_search_service;
-pub mod autocomplete_history_service;
-pub mod autocomplete_combinations_service;
-pub mod autocomplete_search_service;  // ✅ NOUVEAU 2025-11-04: Recherche par vecteur autocomplete
-pub mod autocomplete_client_service;  // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT (autocomplete_characteristics)
+pub mod phone_validation_service;
 pub mod popular_products_service;
+pub mod prestataire_service;
+pub mod programme_service;
+pub mod prompt_optimizer_pro;
+pub mod publicite_search_service;
+pub mod push_notification_service; // ✅ Service de push notifications Expo
+pub mod rechercher_besoin;
+pub mod scheduling_search_service;
+pub mod scoring_service;
 pub mod search_history_service;
-pub mod exhaustive_combination_generator;
-pub mod background_combination_generator;
+pub mod security_service;
+pub mod semantic_cache;
+pub mod semantic_cache_pro;
+pub mod semantic_exclusion;
+pub mod service_history_service;
+pub mod service_lifecycle_manager;
+pub mod sharing_service;
+pub mod traiter_echange;
+pub mod translation_optimizer;
+pub mod valider_echange;
+pub mod valider_programme_scolaire;
 // pub mod payment_service_temporary;
 // pub mod push_notifications;
 // pub mod typing_status;

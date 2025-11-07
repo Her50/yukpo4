@@ -1,18 +1,16 @@
-﻿use std::sync::Arc;
 use axum::{
-    extract::{Extension, State, Path, Query},
+    extract::{Extension, Path, Query, State},
     Json,
 };
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use log::{info, error};
+use std::sync::Arc;
 
-use crate::{
-    core::types::AppResult,
-    middlewares::jwt::AuthenticatedUser,
-    models::user_model::User,
-};
 use crate::state::AppState;
+use crate::{
+    core::types::AppResult, middlewares::jwt::AuthenticatedUser, models::user_model::User,
+};
 
 #[derive(Serialize)]
 pub struct UserProfileResponse {
@@ -89,7 +87,10 @@ pub async fn purchase_pack(
     State(state): State<Arc<AppState>>,
     Json(req): Json<PurchaseRequest>,
 ) -> AppResult<Json<PurchaseResponse>> {
-    info!("Appel purchase_pack pour user_id={}, pack_id={}", user.id, req.pack_id);
+    info!(
+        "Appel purchase_pack pour user_id={}, pack_id={}",
+        user.id, req.pack_id
+    );
     let row = sqlx::query("SELECT tokens FROM token_packs WHERE id = $1")
         .bind(req.pack_id)
         .fetch_one(&state.pg)
@@ -136,13 +137,17 @@ pub async fn deduct_balance(
     State(state): State<Arc<AppState>>,
     Json(req): Json<DeductBalanceRequest>,
 ) -> AppResult<Json<DeductBalanceResponse>> {
-    info!("Appel deduct_balance pour user_id={}, amount={}, reason={}", user.id, req.amount, req.reason);
-    
+    info!(
+        "Appel deduct_balance pour user_id={}, amount={}, reason={}",
+        user.id, req.amount, req.reason
+    );
+
     // Vérifier le solde actuel
-    let current_balance_result = sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user.id)
-        .fetch_one(&state.pg)
-        .await;
-    
+    let current_balance_result =
+        sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user.id)
+            .fetch_one(&state.pg)
+            .await;
+
     let current_balance = match current_balance_result {
         Ok(row) => row.tokens_balance,
         Err(e) => {
@@ -150,16 +155,22 @@ pub async fn deduct_balance(
             return Err(e.into());
         }
     };
-    
+
     // Vérifier si le solde est suffisant
     if current_balance < req.amount {
-        error!("[deduct_balance] Solde insuffisant: {} < {}", current_balance, req.amount);
-        return Err(crate::core::types::AppError::BadRequest(format!("Solde insuffisant: {} < {}", current_balance, req.amount)));
+        error!(
+            "[deduct_balance] Solde insuffisant: {} < {}",
+            current_balance, req.amount
+        );
+        return Err(crate::core::types::AppError::BadRequest(format!(
+            "Solde insuffisant: {} < {}",
+            current_balance, req.amount
+        )));
     }
-    
+
     // Calculer le nouveau solde
     let new_balance = current_balance - req.amount;
-    
+
     // Mettre à jour le solde
     let update_result = sqlx::query!(
         "UPDATE users SET tokens_balance = $1 WHERE id = $2 RETURNING tokens_balance",
@@ -168,23 +179,24 @@ pub async fn deduct_balance(
     )
     .fetch_one(&state.pg)
     .await;
-    
+
     match update_result {
         Ok(row) => {
-            info!("[deduct_balance] Solde mis à jour pour user_id={}: {} -> {} (déduction: {})", 
-                user.id, current_balance, row.tokens_balance, req.amount);
-            Ok(Json(DeductBalanceResponse { 
-                new_balance: row.tokens_balance, 
-                amount_deducted: req.amount 
+            info!(
+                "[deduct_balance] Solde mis à jour pour user_id={}: {} -> {} (déduction: {})",
+                user.id, current_balance, row.tokens_balance, req.amount
+            );
+            Ok(Json(DeductBalanceResponse {
+                new_balance: row.tokens_balance,
+                amount_deducted: req.amount,
             }))
-        },
+        }
         Err(e) => {
             error!("[deduct_balance] Erreur mise à jour solde: {e:?}");
             Err(e.into())
         }
     }
 }
-
 
 #[derive(Deserialize)]
 pub struct UpdateProfileInput {
@@ -208,7 +220,7 @@ pub async fn update_user_profile(
                   token_price_user, token_price_provider, commission_pct,
                   preferred_lang, created_at, updated_at, gps, gps_consent,
                   nom, prenom, nom_complet, photo_profil, avatar_url
-        "#
+        "#,
     )
     .bind(input.preferred_lang.as_deref())
     .bind(user.id)
@@ -245,7 +257,7 @@ pub async fn update_gps_consent(
         RETURNING id, email, password_hash, role, is_provider, tokens_balance,
                   token_price_user, token_price_provider, commission_pct,
                   preferred_lang, created_at, updated_at, gps, gps_consent
-        "#
+        "#,
     )
     .bind(req.gps_consent)
     .bind(user.id)
@@ -276,7 +288,7 @@ pub async fn update_gps_location(
     Json(req): Json<UpdateGpsLocationRequest>,
 ) -> AppResult<Json<User>> {
     info!("Appel update_gps_location pour user_id={}", user.id);
-    
+
     // Vérifier que l'utilisateur a donné son consentement GPS
     let current_user = sqlx::query_as::<_, User>(
         r#"
@@ -285,21 +297,21 @@ pub async fn update_gps_location(
                preferred_lang, created_at, updated_at, gps, gps_consent,
                nom, prenom, nom_complet, photo_profil, avatar_url
         FROM users WHERE id = $1
-        "#
+        "#,
     )
     .bind(user.id)
     .fetch_one(&state.pg)
     .await?;
-    
+
     if !current_user.gps_consent {
         return Err(crate::core::types::AppError::BadRequest(
-            "Consentement GPS requis pour mettre à jour la position".to_string()
+            "Consentement GPS requis pour mettre à jour la position".to_string(),
         ));
     }
-    
+
     // Formater les coordonnées GPS
     let gps_coords = format!("{:.6},{:.6}", req.longitude, req.latitude);
-    
+
     let updated = sqlx::query_as::<_, User>(
         r#"
         UPDATE users
@@ -310,13 +322,13 @@ pub async fn update_gps_location(
                   token_price_user, token_price_provider, commission_pct,
                   preferred_lang, created_at, updated_at, gps, gps_consent,
                   nom, prenom, nom_complet, photo_profil, avatar_url
-        "#
+        "#,
     )
     .bind(&gps_coords)
     .bind(user.id)
     .fetch_one(&state.pg)
     .await;
-    
+
     let updated = match updated {
         Ok(u) => u,
         Err(e) => {
@@ -324,8 +336,11 @@ pub async fn update_gps_location(
             return Err(e.into());
         }
     };
-    
-    info!("Position GPS mise à jour pour user_id={}: {}", user.id, gps_coords);
+
+    info!(
+        "Position GPS mise à jour pour user_id={}: {}",
+        user.id, gps_coords
+    );
     Ok(Json(updated))
 }
 
@@ -334,9 +349,12 @@ pub async fn export_user_data(
     Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<serde_json::Value>> {
-    let row = sqlx::query!("SELECT id, email, created_at, gps_consent FROM users WHERE id = $1", user.id)
-        .fetch_one(&state.pg)
-        .await?;
+    let row = sqlx::query!(
+        "SELECT id, email, created_at, gps_consent FROM users WHERE id = $1",
+        user.id
+    )
+    .fetch_one(&state.pg)
+    .await?;
     let user_json = serde_json::json!({
         "id": row.id,
         "email": row.email,
@@ -355,7 +373,9 @@ pub async fn delete_user_data(
         .execute(&state.pg)
         .await?;
     if res.rows_affected() == 0 {
-        return Ok(Json(serde_json::json!({"deleted": false, "reason": "not found"})));
+        return Ok(Json(
+            serde_json::json!({"deleted": false, "reason": "not found"}),
+        ));
     }
     Ok(Json(serde_json::json!({"deleted": true})))
 }
@@ -366,7 +386,7 @@ pub async fn get_user_by_id(
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<serde_json::Value>> {
     info!("Appel get_user_by_id pour user_id={}", user_id);
-    
+
     let result = sqlx::query!(
         r#"
         SELECT id, email, role, is_provider, gps, gps_consent,
@@ -390,13 +410,15 @@ pub async fn get_user_by_id(
                 "created_at": user_data.created_at
             });
             Ok(Json(response))
-        },
-        Ok(None) => {
-            Err(crate::core::types::AppError::NotFound("Utilisateur non trouvé".to_string()))
-        },
+        }
+        Ok(None) => Err(crate::core::types::AppError::NotFound(
+            "Utilisateur non trouvé".to_string(),
+        )),
         Err(e) => {
             error!("[get_user_by_id] DB error: {e:?}");
-            Err(crate::core::types::AppError::Database(format!("DB error: {e}")))
+            Err(crate::core::types::AppError::Database(format!(
+                "DB error: {e}"
+            )))
         }
     }
 }
@@ -423,7 +445,7 @@ pub async fn get_consumption_history(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> AppResult<Json<ConsumptionHistoryResponse>> {
     info!("Appel get_consumption_history pour user_id={}", user.id);
-    
+
     // ✅ Calculer la date de début selon la période demandée
     let period = params.get("period").map(|s| s.as_str()).unwrap_or("30d");
     let days_ago = match period {
@@ -433,7 +455,7 @@ pub async fn get_consumption_history(
         "all" => 365 * 10, // 10 ans pour "tout"
         _ => 30,
     };
-    
+
     // Récupérer l'historique des consommations depuis la table token_consumption_logs
     let rows = sqlx::query(
         r#"
@@ -449,7 +471,7 @@ pub async fn get_consumption_history(
         AND created_at >= NOW() - INTERVAL '1 day' * $2
         ORDER BY created_at DESC 
         LIMIT 200
-        "#
+        "#,
     )
     .bind(user.id)
     .bind(days_ago)
@@ -462,10 +484,16 @@ pub async fn get_consumption_history(
         Ok(rows) => {
             for row in rows {
                 let id: String = row.try_get("id").unwrap_or_else(|_| "unknown".to_string());
-                let created_at: chrono::DateTime<chrono::Utc> = row.try_get("created_at").unwrap_or_else(|_| chrono::Utc::now());
-                let service_name: String = row.try_get("service_name").unwrap_or_else(|_| "Service inconnu".to_string());
+                let created_at: chrono::DateTime<chrono::Utc> = row
+                    .try_get("created_at")
+                    .unwrap_or_else(|_| chrono::Utc::now());
+                let service_name: String = row
+                    .try_get("service_name")
+                    .unwrap_or_else(|_| "Service inconnu".to_string());
                 let amount_consumed: i64 = row.try_get("amount_consumed").unwrap_or(0);
-                let description: String = row.try_get("description").unwrap_or_else(|_| "Consommation de tokens".to_string());
+                let description: String = row
+                    .try_get("description")
+                    .unwrap_or_else(|_| "Consommation de tokens".to_string());
 
                 history.push(ConsumptionHistoryItem {
                     id,
@@ -476,7 +504,7 @@ pub async fn get_consumption_history(
                     description,
                 });
             }
-        },
+        }
         Err(e) => {
             error!("[get_consumption_history] DB error: {e:?}");
             // Ne pas retourner d'erreur, juste un historique vide
@@ -498,7 +526,7 @@ pub async fn get_consumption_history(
         AND created_at >= NOW() - INTERVAL '1 day' * $2
         ORDER BY created_at DESC 
         LIMIT 100
-        "#
+        "#,
     )
     .bind(user.id)
     .bind(days_ago)
@@ -509,10 +537,16 @@ pub async fn get_consumption_history(
         Ok(rows) => {
             for row in rows {
                 let id: String = row.try_get("id").unwrap_or_else(|_| "unknown".to_string());
-                let created_at: chrono::DateTime<chrono::Utc> = row.try_get("created_at").unwrap_or_else(|_| chrono::Utc::now());
-                let service_name: String = row.try_get("service_name").unwrap_or_else(|_| "Recharge".to_string());
+                let created_at: chrono::DateTime<chrono::Utc> = row
+                    .try_get("created_at")
+                    .unwrap_or_else(|_| chrono::Utc::now());
+                let service_name: String = row
+                    .try_get("service_name")
+                    .unwrap_or_else(|_| "Recharge".to_string());
                 let amount_paid: i64 = row.try_get("amount_paid").unwrap_or(0);
-                let description: String = row.try_get("description").unwrap_or_else(|_| "Recharge de tokens".to_string());
+                let description: String = row
+                    .try_get("description")
+                    .unwrap_or_else(|_| "Recharge de tokens".to_string());
 
                 history.push(ConsumptionHistoryItem {
                     id,
@@ -523,7 +557,7 @@ pub async fn get_consumption_history(
                     description,
                 });
             }
-        },
+        }
         Err(e) => {
             error!("[get_consumption_history] DB error for recharges: {e:?}");
             // Ne pas retourner d'erreur, juste continuer
@@ -559,7 +593,7 @@ pub async fn get_payment_history(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> AppResult<Json<PaymentHistoryResponse>> {
     info!("Appel get_payment_history pour user_id={}", user.id);
-    
+
     // ✅ Calculer la date de début selon la période demandée
     let period = params.get("period").map(|s| s.as_str()).unwrap_or("30d");
     let days_ago = match period {
@@ -569,7 +603,7 @@ pub async fn get_payment_history(
         "all" => 365 * 10, // 10 ans pour "tout"
         _ => 30,
     };
-    
+
     // Récupérer l'historique des paiements depuis la table purchase_history
     let rows = sqlx::query(
         r#"
@@ -586,7 +620,7 @@ pub async fn get_payment_history(
         AND created_at >= NOW() - INTERVAL '1 day' * $2
         ORDER BY created_at DESC 
         LIMIT 200
-        "#
+        "#,
     )
     .bind(user.id)
     .bind(days_ago)
@@ -599,12 +633,20 @@ pub async fn get_payment_history(
         Ok(rows) => {
             for row in rows {
                 let id: String = row.try_get("id").unwrap_or_else(|_| "unknown".to_string());
-                let created_at: chrono::DateTime<chrono::Utc> = row.try_get("created_at").unwrap_or_else(|_| chrono::Utc::now());
+                let created_at: chrono::DateTime<chrono::Utc> = row
+                    .try_get("created_at")
+                    .unwrap_or_else(|_| chrono::Utc::now());
                 let amount_paid: i64 = row.try_get("amount_paid").unwrap_or(0);
-                let payment_method: String = row.try_get("payment_method").unwrap_or_else(|_| "Inconnu".to_string());
-                let status: String = row.try_get("status").unwrap_or_else(|_| "completed".to_string());
+                let payment_method: String = row
+                    .try_get("payment_method")
+                    .unwrap_or_else(|_| "Inconnu".to_string());
+                let status: String = row
+                    .try_get("status")
+                    .unwrap_or_else(|_| "completed".to_string());
                 let transaction_id: Option<String> = row.try_get("transaction_id").ok();
-                let description: String = row.try_get("description").unwrap_or_else(|_| "Paiement".to_string());
+                let description: String = row
+                    .try_get("description")
+                    .unwrap_or_else(|_| "Paiement".to_string());
 
                 payments.push(PaymentHistoryItem {
                     id,
@@ -616,7 +658,7 @@ pub async fn get_payment_history(
                     description,
                 });
             }
-        },
+        }
         Err(e) => {
             error!("[get_payment_history] DB error: {e:?}");
             // Ne pas retourner d'erreur, juste un historique vide
@@ -650,11 +692,16 @@ pub async fn recharge_tokens(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RechargeRequest>,
 ) -> AppResult<Json<RechargeResponse>> {
-    info!("Appel recharge_tokens pour user_id={}, amount={}", user.id, payload.amount);
-    
+    info!(
+        "Appel recharge_tokens pour user_id={}, amount={}",
+        user.id, payload.amount
+    );
+
     // Validation du montant minimum
     if payload.amount < 2000 {
-        return Err(crate::core::types::AppError::BadRequest("Le montant minimum de recharge est de 2000 FCFA".to_string()));
+        return Err(crate::core::types::AppError::BadRequest(
+            "Le montant minimum de recharge est de 2000 FCFA".to_string(),
+        ));
     }
 
     // Générer un ID de transaction unique
@@ -722,7 +769,10 @@ pub async fn recharge_tokens(
         crate::core::types::AppError::Database(format!("Erreur commit transaction: {e}"))
     })?;
 
-    info!("[recharge_tokens] Recharge réussie pour user_id={}, nouveau solde={}", user.id, new_balance);
+    info!(
+        "[recharge_tokens] Recharge réussie pour user_id={}, nouveau solde={}",
+        user.id, new_balance
+    );
 
     Ok(Json(RechargeResponse {
         success: true,
@@ -737,8 +787,11 @@ pub async fn get_user_profile(
     Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<UserProfileResponse>> {
-    info!("[get_user_profile] Récupération profil pour user_id={}", user.id);
-    
+    info!(
+        "[get_user_profile] Récupération profil pour user_id={}",
+        user.id
+    );
+
     let row = sqlx::query!(
         r#"
         SELECT 
@@ -771,7 +824,10 @@ pub async fn get_user_profile(
         created_at: row.created_at,
     };
 
-    info!("[get_user_profile] Profil récupéré avec succès pour user_id={}", user.id);
+    info!(
+        "[get_user_profile] Profil récupéré avec succès pour user_id={}",
+        user.id
+    );
     Ok(Json(profile))
 }
 
@@ -795,15 +851,17 @@ pub async fn get_user_conversations(
     Extension(user): Extension<AuthenticatedUser>,
     State(_state): State<Arc<AppState>>,
 ) -> AppResult<Json<ConversationsResponse>> {
-    info!("[get_user_conversations] Récupération conversations pour user_id={}", user.id);
-    
+    info!(
+        "[get_user_conversations] Récupération conversations pour user_id={}",
+        user.id
+    );
+
     // Cette fonction nécessite MongoDB car les interactions sont stockées là
     // Pour l'instant, retourner une liste vide
     // TODO: Implémenter avec MongoDB quand disponible
-    
+
     info!("[get_user_conversations] Retour liste vide (MongoDB non disponible)");
     Ok(Json(ConversationsResponse {
-        conversations: vec![]
+        conversations: vec![],
     }))
 }
-

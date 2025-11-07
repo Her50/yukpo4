@@ -63,7 +63,10 @@ pub async fn get_mixed_content(
 
     // 1️⃣ Récupérer les publicités actives (PRIORITAIRES)
     let paid_content = fetch_paid_content(pool, params.limit / 2).await?;
-    log_info(&format!("[MixedContent] 💰 {} publicités récupérées", paid_content.len()));
+    log_info(&format!(
+        "[MixedContent] 💰 {} publicités récupérées",
+        paid_content.len()
+    ));
 
     // 2️⃣ Récupérer les produits organiques selon comportement
     let categories: Vec<String> = params
@@ -82,7 +85,10 @@ pub async fn get_mixed_content(
 
     // 3️⃣ Mélanger le contenu avec priorisation des publicités
     let mixed_content = mix_content(paid_content, organic_content, 3); // 1 pub toutes les 3 cartes
-    log_info(&format!("[MixedContent] ✅ {} éléments mixés au total", mixed_content.len()));
+    log_info(&format!(
+        "[MixedContent] ✅ {} éléments mixés au total",
+        mixed_content.len()
+    ));
 
     Ok(Json(json!({
         "success": true,
@@ -116,7 +122,7 @@ async fn fetch_paid_content(pool: &PgPool, limit: i32) -> AppResult<Vec<ContentI
             END DESC,
             RANDOM() -- Aléatoire pour équité dans chaque niveau
         LIMIT $1
-        "#
+        "#,
     )
     .bind(limit)
     .fetch_all(pool)
@@ -324,4 +330,3 @@ fn mix_content(
 
     mixed
 }
-

@@ -1,9 +1,9 @@
 // 🌍 Service de traduction intelligente pour les prompts IA
-use std::collections::HashMap;
-use serde_json::{json, Value};
-use reqwest::Client;
-use log::{info, warn};
 use crate::core::types::AppError;
+use log::{info, warn};
+use reqwest::Client;
+use serde_json::{json, Value};
+use std::collections::HashMap;
 
 /// 🧠 Service de traduction intelligente pour l'IA
 pub struct IntelligentTranslationService {
@@ -20,7 +20,9 @@ impl IntelligentTranslationService {
             .map_err(|_| AppError::Internal("GOOGLE_TRANSLATE_API_KEY not found".to_string()))?;
 
         if api_key.is_empty() {
-            return Err(AppError::Internal("GOOGLE_TRANSLATE_API_KEY is empty".to_string()));
+            return Err(AppError::Internal(
+                "GOOGLE_TRANSLATE_API_KEY is empty".to_string(),
+            ));
         }
 
         Ok(Self {
@@ -28,8 +30,11 @@ impl IntelligentTranslationService {
             api_key,
             cache: HashMap::new(),
             supported_languages: vec![
-                "fr".to_string(), "en".to_string(), "pt".to_string(), 
-                "ar".to_string(), "ff".to_string()
+                "fr".to_string(),
+                "en".to_string(),
+                "pt".to_string(),
+                "ar".to_string(),
+                "ff".to_string(),
             ],
         })
     }
@@ -42,7 +47,11 @@ impl IntelligentTranslationService {
         context: &str,
     ) -> Result<String, AppError> {
         // Si la langue est déjà l'anglais ou non supportée, retourner le prompt original
-        if user_language == "en" || !self.supported_languages.contains(&user_language.to_string()) {
+        if user_language == "en"
+            || !self
+                .supported_languages
+                .contains(&user_language.to_string())
+        {
             info!("🌍 [IntelligentTranslation] Langue {} non supportée ou déjà en anglais, retour du prompt original", user_language);
             return Ok(prompt.to_string());
         }
@@ -56,23 +65,31 @@ impl IntelligentTranslationService {
 
         // Détecter la langue du prompt
         let detected_language = self.detect_language(prompt).await?;
-        
+
         // Si le prompt est déjà dans la langue de l'utilisateur, pas de traduction nécessaire
         if detected_language == user_language {
-            info!("🌍 [IntelligentTranslation] Prompt déjà dans la langue de l'utilisateur: {}", user_language);
+            info!(
+                "🌍 [IntelligentTranslation] Prompt déjà dans la langue de l'utilisateur: {}",
+                user_language
+            );
             return Ok(prompt.to_string());
         }
 
         // Traduire le prompt
-        let translated_prompt = self.translate_text(prompt, &detected_language, user_language).await?;
-        
+        let translated_prompt = self
+            .translate_text(prompt, &detected_language, user_language)
+            .await?;
+
         // Mettre en cache
         self.cache.insert(cache_key, translated_prompt.clone());
-        
-        info!("🌍 [IntelligentTranslation] Prompt traduit: {} -> {} ({} -> {})", 
-              prompt.chars().take(50).collect::<String>(), 
-              translated_prompt.chars().take(50).collect::<String>(),
-              detected_language, user_language);
+
+        info!(
+            "🌍 [IntelligentTranslation] Prompt traduit: {} -> {} ({} -> {})",
+            prompt.chars().take(50).collect::<String>(),
+            translated_prompt.chars().take(50).collect::<String>(),
+            detected_language,
+            user_language
+        );
 
         Ok(translated_prompt)
     }
@@ -80,13 +97,17 @@ impl IntelligentTranslationService {
     /// 🔍 Détecter la langue d'un texte
     async fn detect_language(&self, text: &str) -> Result<String, AppError> {
         // Utiliser l'API Google Translate pour la détection
-        let url = format!("https://translation.googleapis.com/language/translate/v2/detect?key={}", self.api_key);
-        
+        let url = format!(
+            "https://translation.googleapis.com/language/translate/v2/detect?key={}",
+            self.api_key
+        );
+
         let params = json!({
             "q": text
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .json(&params)
             .send()
@@ -94,10 +115,14 @@ impl IntelligentTranslationService {
             .map_err(|e| AppError::Internal(format!("Erreur détection langue: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(AppError::Internal("Erreur API détection langue".to_string()));
+            return Err(AppError::Internal(
+                "Erreur API détection langue".to_string(),
+            ));
         }
 
-        let result: Value = response.json().await
+        let result: Value = response
+            .json()
+            .await
             .map_err(|e| AppError::Internal(format!("Erreur parsing détection: {}", e)))?;
 
         if let Some(detections) = result["data"]["detections"].as_array() {
@@ -120,8 +145,11 @@ impl IntelligentTranslationService {
         source_lang: &str,
         target_lang: &str,
     ) -> Result<String, AppError> {
-        let url = format!("https://translation.googleapis.com/language/translate/v2?key={}", self.api_key);
-        
+        let url = format!(
+            "https://translation.googleapis.com/language/translate/v2?key={}",
+            self.api_key
+        );
+
         let params = json!({
             "q": text,
             "source": source_lang,
@@ -129,7 +157,8 @@ impl IntelligentTranslationService {
             "format": "text"
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .json(&params)
             .send()
@@ -140,7 +169,9 @@ impl IntelligentTranslationService {
             return Err(AppError::Internal("Erreur API traduction".to_string()));
         }
 
-        let result: Value = response.json().await
+        let result: Value = response
+            .json()
+            .await
             .map_err(|e| AppError::Internal(format!("Erreur parsing traduction: {}", e)))?;
 
         if let Some(translations) = result["data"]["translations"].as_array() {
@@ -151,7 +182,9 @@ impl IntelligentTranslationService {
             }
         }
 
-        Err(AppError::Internal("Réponse de traduction invalide".to_string()))
+        Err(AppError::Internal(
+            "Réponse de traduction invalide".to_string(),
+        ))
     }
 
     /// 🎯 Traduire un objet JSON complet (pour les réponses IA)
@@ -165,10 +198,11 @@ impl IntelligentTranslationService {
         }
 
         let mut translated_response = response.clone();
-        
+
         // Traduire les champs de texte
-        self.translate_json_object(&mut translated_response, user_language).await?;
-        
+        self.translate_json_object(&mut translated_response, user_language)
+            .await?;
+
         Ok(translated_response)
     }
 
@@ -201,7 +235,8 @@ impl IntelligentTranslationService {
                     if !self.is_technical_key(key) {
                         if let Value::String(text) = value {
                             if self.should_translate_text(text) {
-                                let translated = self.translate_text(text, "en", user_language).await?;
+                                let translated =
+                                    self.translate_text(text, "en", user_language).await?;
                                 *value = Value::String(translated);
                             }
                         }
@@ -226,7 +261,11 @@ impl IntelligentTranslationService {
         }
 
         // Ne pas traduire les codes, IDs, etc.
-        if text.chars().all(|c| c.is_alphanumeric() || c.is_whitespace()) && text.len() < 10 {
+        if text
+            .chars()
+            .all(|c| c.is_alphanumeric() || c.is_whitespace())
+            && text.len() < 10
+        {
             return false;
         }
 
@@ -236,10 +275,35 @@ impl IntelligentTranslationService {
     /// 🔧 Déterminer si une clé est technique (ne pas traduire)
     fn is_technical_key(&self, key: &str) -> bool {
         let technical_keys = [
-            "id", "url", "email", "phone", "gps", "coordinates", "latitude", "longitude",
-            "price", "amount", "quantity", "count", "number", "date", "time", "timestamp",
-            "status", "type", "category", "tags", "metadata", "config", "settings",
-            "created_at", "updated_at", "user_id", "service_id", "token", "api_key"
+            "id",
+            "url",
+            "email",
+            "phone",
+            "gps",
+            "coordinates",
+            "latitude",
+            "longitude",
+            "price",
+            "amount",
+            "quantity",
+            "count",
+            "number",
+            "date",
+            "time",
+            "timestamp",
+            "status",
+            "type",
+            "category",
+            "tags",
+            "metadata",
+            "config",
+            "settings",
+            "created_at",
+            "updated_at",
+            "user_id",
+            "service_id",
+            "token",
+            "api_key",
         ];
 
         technical_keys.contains(&key.to_lowercase().as_str())
@@ -253,8 +317,11 @@ impl IntelligentTranslationService {
             entries.sort_by(|a, b| a.0.cmp(&b.0));
             entries.truncate(500);
             self.cache = entries.into_iter().collect();
-            
-            info!("🌍 [IntelligentTranslation] Cache nettoyé, {} entrées conservées", self.cache.len());
+
+            info!(
+                "🌍 [IntelligentTranslation] Cache nettoyé, {} entrées conservées",
+                self.cache.len()
+            );
         }
     }
 
@@ -289,7 +356,9 @@ pub async fn translate_ai_prompt_for_user(
     context: &str,
 ) -> Result<String, AppError> {
     let mut service = IntelligentTranslationService::new()?;
-    service.translate_ai_prompt(prompt, user_language, context).await
+    service
+        .translate_ai_prompt(prompt, user_language, context)
+        .await
 }
 
 /// 🎯 Fonction utilitaire pour traduire une réponse IA

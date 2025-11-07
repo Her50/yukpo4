@@ -1,7 +1,7 @@
 // src/test_utils.rs
 // Test helpers for integration and unit tests
-use std::env;
 use crate::utils::jwt_manager;
+use std::env;
 
 /// Generate a JWT for tests (user or admin)
 pub fn gen_jwt(role: &str, user_id: i32) -> String {
@@ -13,5 +13,6 @@ pub fn gen_jwt(role: &str, user_id: i32) -> String {
         Some(format!("Test User {}", user_id)), // ✅ NOUVEAU: nom de test
         100,
         &secret,
-    ).unwrap()
+    )
+    .unwrap()
 }

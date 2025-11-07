@@ -1,16 +1,21 @@
 // Contr?leur pour les interactions (messages, audio, appels, avis, notes)
 // Squelette de routes ? compl?ter
-use axum::{Json, extract::{Path, State, Extension}};
 use crate::state::AppState;
+use axum::{
+    extract::{Extension, Path, State},
+    Json,
+};
 // use crate::core::types::{AppError, AppResult};
-use crate::services::interaction_service::{save_interaction, get_interactions, save_review, get_reviews};
-use crate::services::scoring_service::{compute_score, get_score, ServiceScore};
-use crate::services::alert_service::create_alert;
-use crate::services::sharing_service::generate_share_link;
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::alert_service::create_alert;
+use crate::services::interaction_service::{
+    get_interactions, get_reviews, save_interaction, save_review,
+};
+use crate::services::scoring_service::{compute_score, get_score, ServiceScore};
+use crate::services::sharing_service::generate_share_link;
 use serde::Deserialize;
+use serde_json::{json, Value};
 use std::sync::Arc;
-use serde_json::{Value, json};
 
 #[derive(Deserialize)]
 pub struct MessagePayload {
@@ -49,15 +54,19 @@ pub async fn post_message(
     let user_id = user.id;
     let interaction = save_interaction(
         state.mongo_history.clone(),
-        user_id, 
-        service_id, 
-        "message", 
-        Some(&payload.content)
-    ).await.expect("save_interaction");
-    
+        user_id,
+        service_id,
+        "message",
+        Some(&payload.content),
+    )
+    .await
+    .expect("save_interaction");
+
     // Cr?e une alerte pour le prestataire
     let service = sqlx::query!("SELECT user_id FROM services WHERE id = $1", service_id)
-        .fetch_one(&state.pg).await.expect("service");
+        .fetch_one(&state.pg)
+        .await
+        .expect("service");
     let _ = create_alert(&state.pg, service.user_id, service_id, user_id, "message").await;
     Json(interaction)
 }
@@ -72,12 +81,14 @@ pub async fn post_review(
     let user_id = user.id;
     let review = save_review(
         state.mongo_history.clone(),
-        user_id, 
-        service_id, 
-        payload.rating, 
-        payload.comment.as_deref()
-    ).await.expect("save_review");
-    
+        user_id,
+        service_id,
+        payload.rating,
+        payload.comment.as_deref(),
+    )
+    .await
+    .expect("save_review");
+
     // Recalcule le score du service
     let _ = compute_score(state.mongo_history.clone(), service_id).await;
     Json(review)
@@ -93,15 +104,19 @@ pub async fn post_audio(
     let user_id = user.id;
     let interaction = save_interaction(
         state.mongo_history.clone(),
-        user_id, 
-        service_id, 
-        "audio", 
-        Some(&payload.audio_url)
-    ).await.expect("save_interaction");
-    
+        user_id,
+        service_id,
+        "audio",
+        Some(&payload.audio_url),
+    )
+    .await
+    .expect("save_interaction");
+
     // Cr?e une alerte pour le prestataire
     let service = sqlx::query!("SELECT user_id FROM services WHERE id = $1", service_id)
-        .fetch_one(&state.pg).await.expect("service");
+        .fetch_one(&state.pg)
+        .await
+        .expect("service");
     let _ = create_alert(&state.pg, service.user_id, service_id, user_id, "audio").await;
     Json(interaction)
 }
@@ -116,15 +131,19 @@ pub async fn post_call(
     let user_id = user.id;
     let interaction = save_interaction(
         state.mongo_history.clone(),
-        user_id, 
-        service_id, 
-        "call", 
-        Some(&payload.call_info)
-    ).await.expect("save_interaction");
-    
+        user_id,
+        service_id,
+        "call",
+        Some(&payload.call_info),
+    )
+    .await
+    .expect("save_interaction");
+
     // Cr?e une alerte pour le prestataire
     let service = sqlx::query!("SELECT user_id FROM services WHERE id = $1", service_id)
-        .fetch_one(&state.pg).await.expect("service");
+        .fetch_one(&state.pg)
+        .await
+        .expect("service");
     let _ = create_alert(&state.pg, service.user_id, service_id, user_id, "call").await;
     Json(interaction)
 }
@@ -143,12 +162,9 @@ pub async fn get_service_interactions(
     Path(service_id): Path<i32>,
     State(state): State<Arc<AppState>>,
 ) -> Json<Vec<Value>> {
-    let interactions = get_interactions(
-        state.mongo_history.clone(),
-        service_id,
-        None,
-        None
-    ).await.expect("get_interactions");
+    let interactions = get_interactions(state.mongo_history.clone(), service_id, None, None)
+        .await
+        .expect("get_interactions");
     Json(interactions)
 }
 
@@ -157,11 +173,9 @@ pub async fn get_service_reviews(
     Path(service_id): Path<i32>,
     State(state): State<Arc<AppState>>,
 ) -> Json<Vec<Value>> {
-    let reviews = get_reviews(
-        state.mongo_history.clone(),
-        service_id,
-        None
-    ).await.expect("get_reviews");
+    let reviews = get_reviews(state.mongo_history.clone(), service_id, None)
+        .await
+        .expect("get_reviews");
     Json(reviews)
 }
 
@@ -171,7 +185,9 @@ pub async fn get_service_score(
     State(state): State<Arc<AppState>>,
 ) -> Json<ServiceScore> {
     let _ = compute_score(state.mongo_history.clone(), service_id).await;
-    let score = get_score(state.mongo_history.clone(), service_id).await.expect("get_score");
+    let score = get_score(state.mongo_history.clone(), service_id)
+        .await
+        .expect("get_score");
     Json(score)
 }
 
@@ -182,7 +198,7 @@ pub async fn post_review_helpful(
     Extension(user): Extension<AuthenticatedUser>,
 ) -> Json<Value> {
     let user_id = user.id;
-    
+
     // TODO: Implémenter la logique pour marquer un avis comme utile
     // Pour l'instant, on retourne une réponse de succès
     Json(json!({
@@ -198,33 +214,47 @@ pub async fn get_service_stats(
     Path(service_id): Path<i32>,
     State(state): State<Arc<AppState>>,
 ) -> Json<Value> {
-    log::info!("[InteractionController] 📊 Récupération stats pour service {}", service_id);
-    
+    log::info!(
+        "[InteractionController] 📊 Récupération stats pour service {}",
+        service_id
+    );
+
     // Récupérer toutes les interactions du service
-    let interactions = get_interactions(
-        state.mongo_history.clone(),
-        service_id,
-        None,
-        None
-    ).await.unwrap_or_default();
+    let interactions = get_interactions(state.mongo_history.clone(), service_id, None, None)
+        .await
+        .unwrap_or_default();
 
     // Récupérer tous les avis du service
-    let reviews = get_reviews(
-        state.mongo_history.clone(),
-        service_id,
-        None
-    ).await.unwrap_or_default();
+    let reviews = get_reviews(state.mongo_history.clone(), service_id, None)
+        .await
+        .unwrap_or_default();
 
     // Calculer les statistiques
-    let views = interactions.iter().filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("view")).count();
-    let contacts = interactions.iter().filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("contact")).count();
-    let messages = interactions.iter().filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("message")).count();
-    let shares = interactions.iter().filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("share")).count();
-    let likes = interactions.iter().filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("like")).count();
+    let views = interactions
+        .iter()
+        .filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("view"))
+        .count();
+    let contacts = interactions
+        .iter()
+        .filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("contact"))
+        .count();
+    let messages = interactions
+        .iter()
+        .filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("message"))
+        .count();
+    let shares = interactions
+        .iter()
+        .filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("share"))
+        .count();
+    let likes = interactions
+        .iter()
+        .filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("like"))
+        .count();
 
     // Calculer la note moyenne
     let total_reviews = reviews.len();
-    let total_rating: i32 = reviews.iter()
+    let total_rating: i32 = reviews
+        .iter()
         .filter_map(|r| r.get("rating").and_then(|v| v.as_i64()).map(|v| v as i32))
         .sum();
     let average_rating = if total_reviews > 0 {

@@ -1,9 +1,12 @@
-﻿use std::sync::Arc;
-use axum::{extract::State, response::{IntoResponse, Json}};
+use axum::{
+    extract::State,
+    response::{IntoResponse, Json},
+};
 use bcrypt::{hash, verify, DEFAULT_COST};
-use serde::Deserialize;
+use log::{error, info};
 use reqwest::Client;
-use log::{info, error};
+use serde::Deserialize;
+use std::sync::Arc;
 
 use crate::{
     core::types::{AppError, AppResult},
@@ -49,7 +52,10 @@ pub async fn login_handler(
         }
     };
     if !verify(&payload.password, &user.password_hash)? {
-        error!("[login_handler] Mot de passe incorrect pour email={}", payload.email);
+        error!(
+            "[login_handler] Mot de passe incorrect pour email={}",
+            payload.email
+        );
         return Err(AppError::Unauthorized("Mot de passe incorrect".into()));
     }
     let secret = std::env::var("JWT_SECRET")
@@ -72,7 +78,7 @@ pub async fn login_handler(
 pub struct RegisterInput {
     pub nom: Option<String>,
     pub prenom: Option<String>,
-    pub name: Option<String>,  // Support pour le champ 'name' du frontend
+    pub name: Option<String>, // Support pour le champ 'name' du frontend
     pub email: String,
     pub password: String,
     pub lang: Option<String>,
@@ -107,23 +113,26 @@ pub async fn register_user(
     let default_token_price_user = 1.0_f64;
     let default_token_price_provider = 1.0_f64;
     let default_commission_pct = 0.0_f32;
-    
+
     // Calculer le nom_complet a partir de nom, prenom ou name
     let nom_complet = match (&payload.nom, &payload.prenom, &payload.name) {
-        (Some(n), Some(p), _) if !n.trim().is_empty() && !p.trim().is_empty() => 
-            Some(format!("{} {}", n.trim(), p.trim())),
+        (Some(n), Some(p), _) if !n.trim().is_empty() && !p.trim().is_empty() => {
+            Some(format!("{} {}", n.trim(), p.trim()))
+        }
         (Some(n), _, _) if !n.trim().is_empty() => Some(n.trim().to_string()),
         (_, Some(p), _) if !p.trim().is_empty() => Some(p.trim().to_string()),
         (_, _, Some(name)) if !name.trim().is_empty() => Some(name.trim().to_string()),
         _ => None,
     };
-    
+
     // Créer l'avatar_url si on a un nom
-    let avatar_url = nom_complet.as_ref().map(|name| 
-        format!("https://ui-avatars.com/api/?name={}&background=random&color=fff&size=200", 
-                urlencoding::encode(name))
-    );
-    
+    let avatar_url = nom_complet.as_ref().map(|name| {
+        format!(
+            "https://ui-avatars.com/api/?name={}&background=random&color=fff&size=200",
+            urlencoding::encode(name)
+        )
+    });
+
     let new = sqlx::query!(
         r#"
         INSERT INTO users (
@@ -170,14 +179,18 @@ pub async fn register_user(
         new.tokens_balance,
         &secret,
     )?;
-    
+
     // Retourne explicitement 201 Created avec le token
-    return Ok((axum::http::StatusCode::CREATED, Json(serde_json::json!({
-        "id": new.id,
-        "tokens_balance": new.tokens_balance,
-        "token": jwt,
-        "message": "utiliseateur inscrit avec succès"
-    }))).into_response());
+    return Ok((
+        axum::http::StatusCode::CREATED,
+        Json(serde_json::json!({
+            "id": new.id,
+            "tokens_balance": new.tokens_balance,
+            "token": jwt,
+            "message": "utiliseateur inscrit avec succès"
+        })),
+    )
+        .into_response());
 }
 
 async fn send_verification_email(email: &str) -> AppResult<()> {
@@ -196,7 +209,10 @@ pub async fn oauth_login_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<OAuthInput>,
 ) -> AppResult<Json<serde_json::Value>> {
-    info!("Appel oauth_login_handler pour provider={}", payload.provider);
+    info!(
+        "Appel oauth_login_handler pour provider={}",
+        payload.provider
+    );
     let client = Client::new();
     let user_info_url = match payload.provider.as_str() {
         "google" => format!(
@@ -208,14 +224,16 @@ pub async fn oauth_login_handler(
             payload.token_id
         ),
         _ => {
-            error!("[oauth_login_handler] Fournisseur OAuth non supporté: {}", payload.provider);
-            return Err(AppError::BadRequest("Fournisseur OAuth non supporté".into()));
+            error!(
+                "[oauth_login_handler] Fournisseur OAuth non supporté: {}",
+                payload.provider
+            );
+            return Err(AppError::BadRequest(
+                "Fournisseur OAuth non supporté".into(),
+            ));
         }
     };
-    let user_res = client
-        .get(&user_info_url)
-        .send()
-        .await;
+    let user_res = client.get(&user_info_url).send().await;
     let user_res = match user_res {
         Ok(resp) => resp,
         Err(e) => {
@@ -231,23 +249,23 @@ pub async fn oauth_login_handler(
             return Err(e.into());
         }
     };
-    let email = user_res
-        .get("email")
-        .and_then(|v| v.as_str());
+    let email = user_res.get("email").and_then(|v| v.as_str());
     let email = match email {
         Some(e) => e,
         None => {
             error!("[oauth_login_handler] Impossible de rÃ©cupÃ©rer lÃ©email dans la rÃ©ponse: {user_res:?}");
-            return Err(AppError::Unauthorized("Impossible de rÃ©cupÃ©rer lÃ©email".into()));
+            return Err(AppError::Unauthorized(
+                "Impossible de rÃ©cupÃ©rer lÃ©email".into(),
+            ));
         }
     };
-    
+
     // ✅ NOUVEAU: Récupérer le nom depuis OAuth
     let oauth_name = user_res
         .get("name")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-    
+
     let db = &state.pg;
     let row = sqlx::query!(
         r#"
@@ -276,7 +294,12 @@ pub async fn oauth_login_handler(
             .fetch_one(db)
             .await;
             match new {
-                Ok(n) => (n.id, "user".to_string(), n.tokens_balance, oauth_name.clone()),
+                Ok(n) => (
+                    n.id,
+                    "user".to_string(),
+                    n.tokens_balance,
+                    oauth_name.clone(),
+                ),
                 Err(e) => {
                     error!("[oauth_login_handler] DB error (insert): {e:?}");
                     return Err(e.into());
@@ -303,10 +326,3 @@ pub async fn oauth_login_handler(
         "tokens_balance": balance
     })))
 }
-
-
-
-
-
-
-

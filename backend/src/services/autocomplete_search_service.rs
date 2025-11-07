@@ -1,8 +1,8 @@
 // Service de recherche de produits par vecteur autocomplete
 // Utilise autocomplete_characteristics pour trouver les VRAIS produits des prestataires
-use sqlx::{PgPool, Row};
-use serde::{Deserialize, Serialize};
 use crate::core::types::AppError;
+use serde::{Deserialize, Serialize};
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AutocompleteSearchResult {
@@ -15,14 +15,14 @@ pub struct AutocompleteSearchResult {
     pub chosen_location: Option<String>,
     pub usage_count: i32,
     pub relevance_score: f64,
-    
+
     // Données complètes du service
     pub service_data: serde_json::Value,
     pub prestataire: Option<PrestataireInfo>,
-    
+
     // Distance si GPS fourni
     pub distance_km: Option<f64>,
-    
+
     // ✅ NOUVEAU 2025-11-06 : Extractions produit (compatibilité client_service)
     pub has_variant: bool,
     pub variant_dimension: Option<String>,
@@ -50,11 +50,11 @@ pub async fn search_by_autocomplete_vector(
         combination_vector,
         limit
     );
-    
+
     if combination_vector.is_empty() {
         return Ok(vec![]);
     }
-    
+
     // Recherche dans autocomplete_characteristics avec scoring intelligent
     let rows = if let Some((lat, lng)) = user_location {
         // Recherche avec distance GPS
@@ -84,7 +84,9 @@ pub async fn search_by_autocomplete_vector(
                 -- Calcul distance GPS
                 (
                     CASE 
-                        WHEN s.gps IS NOT NULL AND s.gps != '' THEN
+                        WHEN s.gps IS NOT NULL 
+                             AND s.gps != ''
+                             AND s.gps ~ '^-?[0-9]+(\\.[0-9]+)?,-?[0-9]+(\\.[0-9]+)?$' THEN
                             ST_Distance(
                                 ST_MakePoint($2, $3)::geography,
                                 ST_MakePoint(
@@ -244,14 +246,14 @@ pub async fn search_by_autocomplete_vector(
         .await
     }
     .map_err(|e| AppError::Internal(format!("Erreur recherche autocomplete: {}", e)))?;
-    
+
     let mut results = Vec::new();
     for row in rows {
         let service_id: i32 = row.get("service_id");
         let service_data: serde_json::Value = row.get("service_data");
         let user_id: i32 = row.get("user_id");
         let user_email: String = row.get("user_email");
-        
+
         // Extraire nom prestataire du JSON ou de l'email
         let nom_prestataire = service_data
             .get("nom_prestataire")
@@ -259,7 +261,7 @@ pub async fn search_by_autocomplete_vector(
             .or_else(|| service_data.get("prestataire").and_then(|v| v.as_str()))
             .unwrap_or(&user_email)
             .to_string();
-        
+
         results.push(AutocompleteSearchResult {
             service_id,
             product_id: row.get("product_id"),
@@ -284,10 +286,11 @@ pub async fn search_by_autocomplete_vector(
             devise: row.get("devise"),
         });
     }
-    
-    log::info!("[AutocompleteSearchService] ✅ {} résultats trouvés", results.len());
-    
+
+    log::info!(
+        "[AutocompleteSearchService] ✅ {} résultats trouvés",
+        results.len()
+    );
+
     Ok(results)
 }
-
-

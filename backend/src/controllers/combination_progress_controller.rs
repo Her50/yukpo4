@@ -1,4 +1,6 @@
 // Controller pour suivre la progression de génération de combinaisons
+use crate::core::types::AppError;
+use crate::state::AppState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -6,12 +8,10 @@ use axum::{
 };
 use serde::Serialize;
 use std::sync::Arc;
-use crate::state::AppState;
-use crate::core::types::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct ProgressResponse {
-    pub status: String,  // "in_progress" | "completed" | "error" | "not_found"
+    pub status: String, // "in_progress" | "completed" | "error" | "not_found"
     pub current: Option<usize>,
     pub total: Option<usize>,
     pub percentage: Option<f64>,
@@ -25,12 +25,11 @@ pub async fn get_combination_progress(
     State(state): State<Arc<AppState>>,
     Path(session_id): Path<String>,
 ) -> Result<Json<ProgressResponse>, (StatusCode, String)> {
-    
     log::info!(
         "[ProgressController] Vérification progression session: {}",
         session_id
     );
-    
+
     // 1. Vérifier dans Redis si génération en cours
     {
         match get_progress_from_redis(&state.redis_client, &session_id).await {
@@ -51,7 +50,7 @@ pub async fn get_combination_progress(
             }
         }
     }
-    
+
     // 2. Vérifier dans la DB si terminé
     match check_completion_in_db(&state.pg, &session_id).await {
         Ok(Some(count)) => {
@@ -59,7 +58,7 @@ pub async fn get_combination_progress(
                 "[ProgressController] DB: {} combinaisons trouvées (completed)",
                 count
             );
-            
+
             Ok(Json(ProgressResponse {
                 status: "completed".to_string(),
                 current: Some(count),
@@ -71,11 +70,8 @@ pub async fn get_combination_progress(
             }))
         }
         Ok(None) => {
-            log::warn!(
-                "[ProgressController] Session {} non trouvée",
-                session_id
-            );
-            
+            log::warn!("[ProgressController] Session {} non trouvée", session_id);
+
             Ok(Json(ProgressResponse {
                 status: "not_found".to_string(),
                 current: None,
@@ -88,10 +84,10 @@ pub async fn get_combination_progress(
         }
         Err(e) => {
             log::error!("[ProgressController] Erreur DB: {}", e);
-            
+
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Erreur vérification DB: {}", e)
+                format!("Erreur vérification DB: {}", e),
             ))
         }
     }
@@ -102,27 +98,29 @@ async fn get_progress_from_redis(
     redis_client: &redis::Client,
     session_id: &str,
 ) -> Result<Option<ProgressResponse>, AppError> {
-    let mut conn = redis_client.get_multiplexed_async_connection().await
+    let mut conn = redis_client
+        .get_multiplexed_async_connection()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur connexion Redis: {}", e)))?;
-    
+
     let key = format!("combination_progress:{}", session_id);
-    
+
     let progress_str: Option<String> = redis::cmd("GET")
         .arg(&key)
         .query_async(&mut conn)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur Redis GET: {}", e)))?;
-    
+
     if let Some(progress_json) = progress_str {
         let progress: serde_json::Value = serde_json::from_str(&progress_json)
             .map_err(|e| AppError::Internal(format!("Erreur parse JSON: {}", e)))?;
-        
+
         let status = progress["status"].as_str().unwrap_or("unknown").to_string();
         let current = progress["current"].as_u64().map(|v| v as usize);
         let total = progress["total"].as_u64().map(|v| v as usize);
         let percentage = progress["percentage"].as_f64();
         let updated_at = progress["updated_at"].as_str().map(String::from);
-        
+
         // Estimer temps restant
         let estimated_remaining = if let (Some(curr), Some(tot)) = (current, total) {
             if curr < tot {
@@ -134,7 +132,7 @@ async fn get_progress_from_redis(
         } else {
             None
         };
-        
+
         Ok(Some(ProgressResponse {
             status,
             current,
@@ -154,14 +152,12 @@ async fn check_completion_in_db(
     pool: &sqlx::PgPool,
     session_id: &str,
 ) -> Result<Option<usize>, AppError> {
-    let count: Option<i64> = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM autocomplete_combinations WHERE session_id = $1"
-    )
-    .bind(session_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur query DB: {}", e)))?;
-    
+    let count: Option<i64> =
+        sqlx::query_scalar("SELECT COUNT(*) FROM autocomplete_combinations WHERE session_id = $1")
+            .bind(session_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur query DB: {}", e)))?;
+
     Ok(count.map(|c| c as usize))
 }
-

@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -56,7 +56,7 @@ impl CustomModality {
             INSERT INTO custom_modalities (product_type, field_name, modality, added_by)
             VALUES ($1, $2, $3, $4)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&request.product_type)
         .bind(&request.field_name)
@@ -78,14 +78,14 @@ impl CustomModality {
         struct ModalityRow {
             modality: String,
         }
-        
+
         let modalities = sqlx::query_as::<_, ModalityRow>(
             r#"
             SELECT modality
             FROM custom_modalities
             WHERE product_type = $1 AND field_name = $2
             ORDER BY usage_count DESC, added_at DESC
-            "#
+            "#,
         )
         .bind(product_type)
         .bind(field_name)
@@ -108,7 +108,7 @@ impl CustomModality {
             WHERE product_type = $1 
               AND field_name = $2 
               AND LOWER(TRIM(modality)) = LOWER(TRIM($3))
-            "#
+            "#,
         )
         .bind(&request.product_type)
         .bind(&request.field_name)
@@ -125,7 +125,7 @@ impl CustomModality {
         request: PopularModalitiesRequest,
     ) -> Result<Vec<CustomModality>, sqlx::Error> {
         let limit = request.limit.unwrap_or(10);
-        
+
         let modalities = sqlx::query_as::<_, CustomModality>(
             r#"
             SELECT *
@@ -133,7 +133,7 @@ impl CustomModality {
             WHERE product_type = $1 AND field_name = $2
             ORDER BY usage_count DESC, added_at DESC
             LIMIT $3
-            "#
+            "#,
         )
         .bind(&request.product_type)
         .bind(&request.field_name)
@@ -151,7 +151,7 @@ impl CustomModality {
             SELECT *
             FROM custom_modalities
             ORDER BY usage_count DESC, added_at DESC
-            "#
+            "#,
         )
         .fetch_all(pool)
         .await?;
@@ -160,15 +160,12 @@ impl CustomModality {
     }
 
     /// Supprimer une modalité personnalisée (pour la modération)
-    pub async fn delete(
-        pool: &sqlx::PgPool,
-        id: Uuid,
-    ) -> Result<(), sqlx::Error> {
+    pub async fn delete(pool: &sqlx::PgPool, id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             DELETE FROM custom_modalities
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .execute(pool)
@@ -188,7 +185,7 @@ impl CustomModality {
         struct CountRow {
             count: Option<i64>,
         }
-        
+
         let count = sqlx::query_as::<_, CountRow>(
             r#"
             SELECT COUNT(*) as count
@@ -196,7 +193,7 @@ impl CustomModality {
             WHERE product_type = $1 
               AND field_name = $2 
               AND LOWER(TRIM(modality)) = LOWER(TRIM($3))
-            "#
+            "#,
         )
         .bind(product_type)
         .bind(field_name)
@@ -217,7 +214,7 @@ impl CustomModality {
             total_usage: Option<i64>,
             avg_usage: Option<f64>,
         }
-        
+
         let stats = sqlx::query_as::<_, StatsRow>(
             r#"
             SELECT 
@@ -227,7 +224,7 @@ impl CustomModality {
                 SUM(usage_count) as total_usage,
                 AVG(usage_count) as avg_usage
             FROM custom_modalities
-            "#
+            "#,
         )
         .fetch_one(pool)
         .await?;

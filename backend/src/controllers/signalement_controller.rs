@@ -6,16 +6,16 @@ use axum::{
     response::Json,
     Extension,
 };
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
 use std::sync::Arc;
-use log::{info, error};
 
 use crate::{
+    core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     state::AppState,
-    core::types::{AppError, AppResult},
 };
 
 #[derive(Debug, Deserialize)]
@@ -51,27 +51,31 @@ pub async fn create_signalement(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(payload): Json<SignalementRequest>,
 ) -> AppResult<Json<SignalementResponse>> {
-    info!("[create_signalement] User {} signaling service {}", auth_user.id, payload.service_id);
-    
+    info!(
+        "[create_signalement] User {} signaling service {}",
+        auth_user.id, payload.service_id
+    );
+
     let pool = &state.pg;
-    
+
     // Vérifier que le service existe
-    let service_exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM services WHERE id = $1) as exists")
-        .bind(payload.service_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Internal(format!("Database error: {}", e)))?
-        .get::<bool, _>("exists");
-    
+    let service_exists =
+        sqlx::query("SELECT EXISTS(SELECT 1 FROM services WHERE id = $1) as exists")
+            .bind(payload.service_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("Database error: {}", e)))?
+            .get::<bool, _>("exists");
+
     if !service_exists {
         return Err(AppError::NotFound("Service non trouvé".to_string()));
     }
-    
+
     // Vérifier que l'utilisateur n'a pas déjà signalé ce service récemment (< 24h)
     let recent_signalement = sqlx::query(
         "SELECT EXISTS(SELECT 1 FROM signalements 
          WHERE user_id = $1 AND service_id = $2 
-         AND created_at > NOW() - INTERVAL '24 hours') as exists"
+         AND created_at > NOW() - INTERVAL '24 hours') as exists",
     )
     .bind(auth_user.id)
     .bind(payload.service_id)
@@ -79,11 +83,13 @@ pub async fn create_signalement(
     .await
     .map_err(|e| AppError::Internal(format!("Database error: {}", e)))?
     .get::<bool, _>("exists");
-    
+
     if recent_signalement {
-        return Err(AppError::BadRequest("Vous avez déjà signalé ce service récemment. Veuillez attendre 24h.".to_string()));
+        return Err(AppError::BadRequest(
+            "Vous avez déjà signalé ce service récemment. Veuillez attendre 24h.".to_string(),
+        ));
     }
-    
+
     // Créer le signalement
     let result = sqlx::query(
         r#"
@@ -113,10 +119,14 @@ pub async fn create_signalement(
         error!("[create_signalement] Error creating signalement: {:?}", e);
         AppError::Internal("Failed to create signalement".to_string())
     })?;
-    
+
     let signalement_id = result.get::<i32, _>("id");
-    let reference = format!("SIG-{}-{}", signalement_id, chrono::Utc::now().format("%Y%m%d"));
-    
+    let reference = format!(
+        "SIG-{}-{}",
+        signalement_id,
+        chrono::Utc::now().format("%Y%m%d")
+    );
+
     // Créer une notification pour les modérateurs (role = 'admin' ou 'moderateur')
     let _ = sqlx::query(
         r#"
@@ -124,13 +134,18 @@ pub async fn create_signalement(
         SELECT id, $1, $2, 'signalement', 'high', $3
         FROM users 
         WHERE role IN ('admin', 'moderateur') AND is_active = TRUE
-        "#
+        "#,
     )
     .bind("🚨 Nouveau signalement")
-    .bind(format!("Type: {}\nService ID: {}\n{}", 
-        payload.type_signalement, 
+    .bind(format!(
+        "Type: {}\nService ID: {}\n{}",
+        payload.type_signalement,
         payload.service_id,
-        payload.motif_libre.as_deref().unwrap_or("Pas de description")))
+        payload
+            .motif_libre
+            .as_deref()
+            .unwrap_or("Pas de description")
+    ))
     .bind(json!({
         "signalement_id": signalement_id,
         "service_id": payload.service_id,
@@ -139,9 +154,12 @@ pub async fn create_signalement(
     }))
     .execute(pool)
     .await;
-    
-    info!("[create_signalement] Signalement {} created successfully", signalement_id);
-    
+
+    info!(
+        "[create_signalement] Signalement {} created successfully",
+        signalement_id
+    );
+
     Ok(Json(SignalementResponse {
         id: signalement_id,
         message: "Votre signalement a été enregistré. Notre équipe va l'examiner dans les plus brefs délais.".to_string(),
@@ -155,18 +173,18 @@ pub async fn get_prestataire_risque(
     Path(user_id): Path<i32>,
 ) -> AppResult<Json<RisquePrestataire>> {
     let pool = &state.pg;
-    
+
     let result = sqlx::query("SELECT check_prestataire_risque($1) as risque")
         .bind(user_id)
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Database error: {}", e)))?;
-    
+
     let risque_json = result.get::<serde_json::Value, _>("risque");
-    
+
     let risque: RisquePrestataire = serde_json::from_value(risque_json)
         .map_err(|e| AppError::Internal(format!("JSON parse error: {}", e)))?;
-    
+
     Ok(Json(risque))
 }
 
@@ -179,7 +197,7 @@ pub async fn get_user_signalements(
     let pool = &state.pg;
     let limit = params.limit.unwrap_or(20).min(50);
     let offset = params.offset.unwrap_or(0);
-    
+
     let rows = sqlx::query(
         r#"
         SELECT 
@@ -200,7 +218,7 @@ pub async fn get_user_signalements(
         WHERE s.user_id = $1
         ORDER BY s.created_at DESC
         LIMIT $2 OFFSET $3
-        "#
+        "#,
     )
     .bind(auth_user.id)
     .bind(limit)
@@ -208,24 +226,27 @@ pub async fn get_user_signalements(
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Failed to fetch signalements: {}", e)))?;
-    
-    let signalements: Vec<serde_json::Value> = rows.iter().map(|row| {
-        json!({
-            "id": row.get::<i32, _>("id"),
-            "service_id": row.get::<i32, _>("service_id"),
-            "product_id": row.get::<Option<String>, _>("product_id"),
-            "product_name": row.get::<Option<String>, _>("product_name"),
-            "service_titre": row.get::<Option<String>, _>("service_titre"),
-            "type_signalement": row.get::<String, _>("type_signalement"),
-            "motifs_predefinis": row.get::<Option<Vec<String>>, _>("motifs_predefinis"),
-            "motif_libre": row.get::<Option<String>, _>("motif_libre"),
-            "statut": row.get::<String, _>("statut"),
-            "priorite": row.get::<String, _>("priorite"),
-            "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
-            "traite_at": row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("traite_at"),
+
+    let signalements: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            json!({
+                "id": row.get::<i32, _>("id"),
+                "service_id": row.get::<i32, _>("service_id"),
+                "product_id": row.get::<Option<String>, _>("product_id"),
+                "product_name": row.get::<Option<String>, _>("product_name"),
+                "service_titre": row.get::<Option<String>, _>("service_titre"),
+                "type_signalement": row.get::<String, _>("type_signalement"),
+                "motifs_predefinis": row.get::<Option<Vec<String>>, _>("motifs_predefinis"),
+                "motif_libre": row.get::<Option<String>, _>("motif_libre"),
+                "statut": row.get::<String, _>("statut"),
+                "priorite": row.get::<String, _>("priorite"),
+                "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+                "traite_at": row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("traite_at"),
+            })
         })
-    }).collect();
-    
+        .collect();
+
     Ok(Json(json!({
         "success": true,
         "data": signalements,
@@ -238,4 +259,3 @@ pub struct ListSignalementsQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }
-
