@@ -18,6 +18,7 @@ import {
     View
 } from 'react-native';
 import { NativeButton, NativeCard, NativeInput } from '../components/NativeDesign';
+import NavigatorToolbar from '../components/NavigatorToolbar';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
@@ -363,21 +364,13 @@ const CreatePubliciteScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
             <LinearGradient colors={modernColors.primaryGradient} style={styles.header}>
-                <View style={styles.headerContent}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <SafeIcon name="arrow-left" size={24} color="#fff" />
-                    </TouchableOpacity>
-                    <View style={styles.headerTextContainer}>
-                        <Text style={styles.headerTitle}>
-                            {mode === 'edit' ? 'Modifier une Publicité' :
-                                mode === 'relance' ? 'Relancer une Publicité' :
-                                    t('publicite.create')}
-                        </Text>
-                        <Text style={styles.headerSubtitle}>Boostez vos produits</Text>
-                    </View>
-                </View>
+                <NavigatorToolbar
+                    tone="dark"
+                    showHandle={false}
+                    title={mode === 'edit' ? 'Modifier une Publicité' : mode === 'relance' ? 'Relancer une Publicité' : t('publicite.create')}
+                    subtitle="Boostez vos produits"
+                />
             </LinearGradient>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -598,31 +591,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         borderBottomLeftRadius: 30,
         borderBottomRightRadius: 30,
-    },
-    headerContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerTextContainer: {
-        flex: 1,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#fff',
-    },
-    headerSubtitle: {
-        fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.9)',
     },
     content: {
         flex: 1,

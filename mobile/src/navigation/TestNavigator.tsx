@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Bell, Briefcase, ChartBar, House, MagnifyingGlass } from 'phosphor-react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
+import { markNavigatorSafeAreaHandled, withNavigatorSafeArea } from './withNavigatorSafeArea';
 
 // Import des écrans de test
 import HomeScreen from '../screens/HomeScreen'; // HomeScreen amélioré
@@ -9,6 +10,14 @@ import TestCreateServiceScreen from '../screens/TestCreateServiceScreen';
 import TestDashboardScreen from '../screens/TestDashboardScreen';
 import TestNotificationScreen from '../screens/TestNotificationScreen';
 import TestSearchScreen from '../screens/TestSearchScreen';
+
+markNavigatorSafeAreaHandled(HomeScreen as any);
+
+const HomeScreenWithSafeArea = withNavigatorSafeArea(HomeScreen);
+const TestDashboardScreenWithSafeArea = withNavigatorSafeArea(TestDashboardScreen);
+const TestCreateServiceScreenWithSafeArea = withNavigatorSafeArea(TestCreateServiceScreen);
+const TestSearchScreenWithSafeArea = withNavigatorSafeArea(TestSearchScreen);
+const TestNotificationScreenWithSafeArea = withNavigatorSafeArea(TestNotificationScreen);
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -66,7 +75,7 @@ const TestTabs = () => {
         >
             <Tab.Screen
                 name="Home"
-                component={HomeScreen}
+                component={HomeScreenWithSafeArea}
                 options={{
                     title: 'Accueil',
                     tabBarLabel: 'Accueil'
@@ -74,7 +83,7 @@ const TestTabs = () => {
             />
             <Tab.Screen
                 name="Dashboard"
-                component={TestDashboardScreen}
+                component={TestDashboardScreenWithSafeArea}
                 options={{
                     title: 'Dashboard Test',
                     tabBarLabel: 'Dashboard'
@@ -82,7 +91,7 @@ const TestTabs = () => {
             />
             <Tab.Screen
                 name="CreateService"
-                component={TestCreateServiceScreen}
+                component={TestCreateServiceScreenWithSafeArea}
                 options={{
                     title: 'Créer Service',
                     tabBarLabel: 'Créer'
@@ -90,7 +99,7 @@ const TestTabs = () => {
             />
             <Tab.Screen
                 name="Search"
-                component={TestSearchScreen}
+                component={TestSearchScreenWithSafeArea}
                 options={{
                     title: 'Recherche',
                     tabBarLabel: 'Recherche'
@@ -98,7 +107,7 @@ const TestTabs = () => {
             />
             <Tab.Screen
                 name="Notifications"
-                component={TestNotificationScreen}
+                component={TestNotificationScreenWithSafeArea}
                 options={{
                     title: 'Notifications',
                     tabBarLabel: 'Notifications'

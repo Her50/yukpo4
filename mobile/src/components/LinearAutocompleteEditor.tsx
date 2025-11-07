@@ -58,7 +58,92 @@ interface CombinationSuggestion {
     prix?: number;
     devise?: string;
     isAIPreferred?: boolean;
+    occurrences?: number;
 }
+
+const normalizeSearchText = (input: string): string => {
+    if (typeof input !== 'string') {
+        return '';
+    }
+
+    try {
+        return input
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9\s]/g, '')
+            .toLowerCase();
+    } catch (error) {
+        // Fallback si normalize n'est pas supporté
+        return input.toLowerCase();
+    }
+};
+
+const buildSearchTokens = (input: string): string[] => {
+    if (!input || typeof input !== 'string') {
+        return [];
+    }
+
+    return input
+        .split(/[\s,;\-|/_]+/)
+        .map(token => normalizeSearchText(token.trim()))
+        .filter(Boolean);
+};
+
+const vectorMatchesTokens = (
+    vector: string[] = [],
+    tokens: string[] = [],
+    labels: string[] = [],
+): boolean => {
+    if (tokens.length === 0) {
+        return true;
+    }
+
+    const normalizedVector = vector
+        .filter((item) => typeof item === 'string')
+        .map((item) => normalizeSearchText(item));
+    const normalizedLabels = labels
+        .filter((item) => typeof item === 'string')
+        .map((item) => normalizeSearchText(item));
+
+    return tokens.every((token) =>
+        normalizedVector.some((value) => value.includes(token)) ||
+        normalizedLabels.some((label) => label.includes(token))
+    );
+};
+
+const buildLabeledPairs = (
+    values: string[] = [],
+    labels: string[] = [],
+): Array<{ label: string; value: string }> => {
+    return values
+        .filter((value) => typeof value === 'string' && value.trim().length > 0)
+        .map((value, index) => {
+            const rawLabel = labels[index];
+            const label = rawLabel && rawLabel.trim().length > 0
+                ? rawLabel
+                : `Caractéristique ${index + 1}`;
+
+            return {
+                label,
+                value,
+            };
+        });
+};
+
+const buildCombinationKey = (values: string[] = [], labels: string[] = []): string => {
+    const pairs = buildLabeledPairs(values, labels);
+    if (pairs.length === 0) {
+        return '';
+    }
+
+    return pairs
+        .map(({ label, value }) => {
+            const normalizedLabel = normalizeSearchText(label || '');
+            const normalizedValue = normalizeSearchText(value || '');
+            return `${normalizedLabel}=${normalizedValue}`;
+        })
+        .join('|');
+};
 
 const normalizeCombinationResponse = (response: any): any[] => {
     if (!response) {
@@ -336,6 +421,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
         const parts = firstCombo.split(separateur || ',').map((part) => part.trim()).filter(Boolean);
         const seedQuery = parts[0];
+        const contextTokens = buildSearchTokens(parts.join(' '));
 
         if (!seedQuery || seedQuery.length < 2) {
             return;
@@ -353,47 +439,95 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
                 if (!cancelled && response?.success) {
                     const combos = normalizeCombinationResponse(response);
+                    const iaKeys = new Set(
+                        iaCombinaisons
+                            .map((combo) => {
+                                if (typeof combo !== 'string') {
+                                    return '';
+                                }
+                                const vectorParts = combo
+                                    .split(separateur || ',')
+                                    .map((part) => part.trim())
+                                    .filter(Boolean);
+                                return buildCombinationKey(vectorParts, []);
+                            })
+                            .filter(Boolean)
+                    );
 
-                    const iaKeys = new Set(iaCombinaisons.map((combo) => combo.toLowerCase()));
-                    const normalizedCombos: CombinationSuggestion[] = combos
-                        .map((item: any) => {
-                            const combo = item?.combination ?? item;
-                            if (!combo || !Array.isArray(combo.product_vector)) {
-                                return null;
+                    const aggregated = new Map<string, CombinationSuggestion>();
+
+                    combos.forEach((item: any) => {
+                        const combo = item?.combination ?? item;
+                        if (!combo || !Array.isArray(combo.product_vector)) {
+                            return;
+                        }
+
+                        const rawVector = combo.product_vector
+                            .filter((part: any) => typeof part === 'string')
+                            .map((part: string) => part.trim())
+                            .filter(Boolean);
+
+                        if (rawVector.length === 0) {
+                            return;
+                        }
+
+                        const labels = Array.isArray(combo.product_labels) ? combo.product_labels : [];
+                        const comboKey = buildCombinationKey(rawVector, labels);
+
+                        if (!comboKey || iaKeys.has(comboKey)) {
+                            return;
+                        }
+
+                        if (contextTokens.length > 0 && !vectorMatchesTokens(rawVector, contextTokens, labels)) {
+                            return;
+                        }
+
+                        let prix: number | undefined;
+                        if (combo.prix !== null && combo.prix !== undefined) {
+                            const parsed = typeof combo.prix === 'number'
+                                ? combo.prix
+                                : parseFloat(combo.prix.toString());
+                            prix = isNaN(parsed) ? undefined : parsed;
+                        }
+
+                        const usageCount = typeof combo.usage_count === 'number' ? combo.usage_count : 0;
+
+                        const existing = aggregated.get(comboKey);
+                        if (existing) {
+                            existing.occurrences = (existing.occurrences ?? 1) + 1;
+                            if (usageCount > (existing.usageCount ?? 0)) {
+                                existing.usageCount = usageCount;
                             }
-
-                            const rawVector = combo.product_vector.filter((part: any) => typeof part === 'string').map((part: string) => part.trim());
-                            if (rawVector.length === 0) {
-                                return null;
+                            if (prix !== undefined && existing.prix === undefined) {
+                                existing.prix = prix;
+                                existing.devise = combo.devise || existing.devise;
                             }
-
-                            const joined = rawVector.join(separateur || ',');
-                            if (!joined || iaKeys.has(joined.toLowerCase())) {
-                                return null;
+                            if (combo.is_ai_preferred) {
+                                existing.isAIPreferred = true;
                             }
+                            return;
+                        }
 
-                            let prix: number | undefined;
-                            if (combo.prix !== null && combo.prix !== undefined) {
-                                const parsed = typeof combo.prix === 'number'
-                                    ? combo.prix
-                                    : parseFloat(combo.prix.toString());
-                                prix = isNaN(parsed) ? undefined : parsed;
-                            }
+                        aggregated.set(comboKey, {
+                            id: combo.id,
+                            productVector: rawVector,
+                            productLabels: labels,
+                            usageCount,
+                            prix,
+                            devise: combo.devise || undefined,
+                            isAIPreferred: !!combo.is_ai_preferred,
+                            occurrences: 1,
+                        });
+                    });
 
-                            return {
-                                id: combo.id,
-                                productVector: rawVector,
-                                productLabels: Array.isArray(combo.product_labels) ? combo.product_labels : [],
-                                usageCount: typeof combo.usage_count === 'number' ? combo.usage_count : 0,
-                                prix,
-                                devise: combo.devise || undefined,
-                                isAIPreferred: !!combo.is_ai_preferred,
-                            } as CombinationSuggestion;
-                        })
-                        .filter((item: CombinationSuggestion | null): item is CombinationSuggestion => item !== null);
+                    const aggregatedList = Array.from(aggregated.values());
 
-                    setCombinationSuggestions(normalizedCombos);
-                    setCombinationError(null);
+                    setCombinationSuggestions(aggregatedList);
+                    setCombinationError(
+                        aggregatedList.length === 0
+                            ? 'Aucune combinaison trouvée pour ces caractéristiques.'
+                            : null
+                    );
                 }
             } catch (error) {
                 if (!cancelled) {
@@ -599,7 +733,9 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
             {/* ✅ NOUVEAU : Champ de recherche */}
             <View style={styles.searchContainer}>
-                <SafeIcon name="search" size={18} color="#9CA3AF" style={styles.searchIcon} />
+                <View style={styles.searchIconWrapper}>
+                    <SafeIcon name="search" size={18} color="#9CA3AF" />
+                </View>
                 <TextInput
                     style={styles.searchInput}
                     placeholder={generatePlaceholder()}
@@ -609,6 +745,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         setSearchQuery(text);
 
                         const trimmed = text.trim();
+                        const searchTokens = buildSearchTokens(trimmed);
+                        const contextualTokens = chips
+                            .map((chip) => chip?.value)
+                            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+                            .flatMap((value) => buildSearchTokens(value));
+                        const tokensToMatch = searchTokens.length > 0 ? searchTokens : contextualTokens;
 
                         if (trimmed.length >= 2) {
                             setLoadingSuggestions(true);
@@ -629,7 +771,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                     const normalized = normalizePopularProductsResponse(
                                         popularResult.value?.data ?? popularResult.value
                                     );
-                                    setSuggestions(normalized);
+                                    const filtered = normalized.filter((product) =>
+                                        vectorMatchesTokens(
+                                            Array.isArray(product?.product_vector) ? product.product_vector : [],
+                                            tokensToMatch,
+                                            Array.isArray(product?.product_labels) ? product.product_labels : [],
+                                        )
+                                    );
+                                    setSuggestions(filtered);
                                 } else {
                                     setSuggestions([]);
                                 }
@@ -639,48 +788,95 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         combinationsResult.value?.data ?? combinationsResult.value
                                     );
 
-                                    const iaKeys = new Set(iaCombinaisons.map((combo) => combo.toLowerCase()));
-                                    const normalizedCombos: CombinationSuggestion[] = combos
-                                        .map((item: any) => {
-                                            const combo = item?.combination ?? item;
-                                            if (!combo || !Array.isArray(combo.product_vector)) {
-                                                return null;
+                                    const iaKeys = new Set(
+                                        iaCombinaisons
+                                            .map((combo) => {
+                                                if (typeof combo !== 'string') {
+                                                    return '';
+                                                }
+                                                const vectorParts = combo
+                                                    .split(separateur || ',')
+                                                    .map((part) => part.trim())
+                                                    .filter(Boolean);
+                                                return buildCombinationKey(vectorParts, []);
+                                            })
+                                            .filter(Boolean)
+                                    );
+
+                                    const aggregated = new Map<string, CombinationSuggestion>();
+
+                                    combos.forEach((item: any) => {
+                                        const combo = item?.combination ?? item;
+                                        if (!combo || !Array.isArray(combo.product_vector)) {
+                                            return;
+                                        }
+
+                                        const rawVector = combo.product_vector
+                                            .filter((part: any) => typeof part === 'string')
+                                            .map((part: string) => part.trim())
+                                            .filter(Boolean);
+
+                                        if (rawVector.length === 0) {
+                                            return;
+                                        }
+
+                                        const labels = Array.isArray(combo.product_labels) ? combo.product_labels : [];
+                                        const comboKey = buildCombinationKey(rawVector, labels);
+
+                                        if (!comboKey || iaKeys.has(comboKey)) {
+                                            return;
+                                        }
+
+                                        if (tokensToMatch.length > 0 && !vectorMatchesTokens(rawVector, tokensToMatch, labels)) {
+                                            return;
+                                        }
+
+                                        let prix: number | undefined;
+                                        if (combo.prix !== null && combo.prix !== undefined) {
+                                            const parsed = typeof combo.prix === 'number'
+                                                ? combo.prix
+                                                : parseFloat(combo.prix.toString());
+                                            prix = isNaN(parsed) ? undefined : parsed;
+                                        }
+
+                                        const usageCount = typeof combo.usage_count === 'number' ? combo.usage_count : 0;
+
+                                        const existing = aggregated.get(comboKey);
+                                        if (existing) {
+                                            existing.occurrences = (existing.occurrences ?? 1) + 1;
+                                            if (usageCount > (existing.usageCount ?? 0)) {
+                                                existing.usageCount = usageCount;
                                             }
-
-                                            const rawVector = combo.product_vector.filter((part: any) => typeof part === 'string').map((part: string) => part.trim());
-                                            if (rawVector.length === 0) {
-                                                return null;
+                                            if (prix !== undefined && existing.prix === undefined) {
+                                                existing.prix = prix;
+                                                existing.devise = combo.devise || existing.devise;
                                             }
-
-                                            const joined = rawVector.join(separateur || ',');
-                                            if (!joined || iaKeys.has(joined.toLowerCase())) {
-                                                return null;
+                                            if (combo.is_ai_preferred) {
+                                                existing.isAIPreferred = true;
                                             }
+                                            return;
+                                        }
 
-                                            let prix: number | undefined;
-                                            if (combo.prix !== null && combo.prix !== undefined) {
-                                                const parsed = typeof combo.prix === 'number'
-                                                    ? combo.prix
-                                                    : parseFloat(combo.prix.toString());
-                                                prix = isNaN(parsed) ? undefined : parsed;
-                                            }
+                                        aggregated.set(comboKey, {
+                                            id: combo.id,
+                                            productVector: rawVector,
+                                            productLabels: labels,
+                                            usageCount,
+                                            prix,
+                                            devise: combo.devise || undefined,
+                                            isAIPreferred: !!combo.is_ai_preferred,
+                                            occurrences: 1,
+                                        });
+                                    });
 
-                                            const devise = combo.devise || undefined;
+                                    const aggregatedList = Array.from(aggregated.values());
 
-                                            return {
-                                                id: combo.id,
-                                                productVector: rawVector,
-                                                productLabels: Array.isArray(combo.product_labels) ? combo.product_labels : [],
-                                                usageCount: typeof combo.usage_count === 'number' ? combo.usage_count : 0,
-                                                prix,
-                                                devise,
-                                                isAIPreferred: !!combo.is_ai_preferred,
-                                            } as CombinationSuggestion;
-                                        })
-                                        .filter((item: CombinationSuggestion | null): item is CombinationSuggestion => item !== null);
-
-                                    setCombinationSuggestions(normalizedCombos);
-                                    setCombinationError(null);
+                                    setCombinationSuggestions(aggregatedList);
+                                    setCombinationError(
+                                        aggregatedList.length === 0
+                                            ? 'Aucune combinaison trouvée pour ces caractéristiques.'
+                                            : null
+                                    );
                                 } else {
                                     setCombinationSuggestions([]);
                                 }
@@ -729,35 +925,54 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         </View>
                     )}
 
-                    {(suggestions || []).map((product, index) => (
-                        <TouchableOpacity
-                            key={index}
-                            style={styles.suggestionItem}
-                            onPress={() => selectSuggestion(product)}
-                        >
-                            <View style={styles.suggestionContent}>
-                                <Text style={styles.suggestionVector} numberOfLines={1}>
-                                    {(product?.product_vector || []).join(' • ')}
-                                </Text>
-                                <View style={styles.suggestionMeta}>
-                                    {product.is_trending && (
-                                        <View style={styles.trendingBadge}>
-                                            <Text style={styles.trendingText}>📈 TENDANCE</Text>
+                    {(suggestions || []).map((product, index) => {
+                        const productVector = Array.isArray(product?.product_vector) ? product.product_vector : [];
+                        const productLabels = Array.isArray(product?.product_labels) ? product.product_labels : [];
+                        const rows = buildLabeledPairs(productVector, productLabels);
+
+                        return (
+                            <TouchableOpacity
+                                key={index}
+                                style={styles.suggestionCard}
+                                onPress={() => selectSuggestion(product)}
+                            >
+                                <View style={styles.suggestionCardHeader}>
+                                    <Text style={styles.suggestionCardTitle}>Produit populaire</Text>
+                                    <SafeIcon name="arrow-up-right" size={16} color={modernColors.primary} />
+                                </View>
+
+                                <View style={styles.suggestionTable}>
+                                    {rows.map((row, rowIndex) => (
+                                        <View
+                                            key={`${row.label}-${rowIndex}`}
+                                            style={[styles.suggestionRow, rowIndex === rows.length - 1 && styles.suggestionRowLast]}
+                                        >
+                                            <Text style={styles.suggestionCellLabel}>{row.label}</Text>
+                                            <Text style={styles.suggestionCellValue}>{row.value}</Text>
                                         </View>
-                                    )}
-                                    <Text style={styles.suggestionCount}>
-                                        👥 {product.usage_count} vendeur{product.usage_count > 1 ? 's' : ''}
-                                    </Text>
+                                    ))}
+                                </View>
+
+                                <View style={styles.suggestionMeta}>
+                                    <View style={styles.suggestionMetaLeft}>
+                                        {product.is_trending && (
+                                            <View style={styles.trendingBadge}>
+                                                <Text style={styles.trendingText}>📈 TENDANCE</Text>
+                                            </View>
+                                        )}
+                                        <Text style={styles.suggestionCount}>
+                                            👥 {product.usage_count} vendeur{product.usage_count > 1 ? 's' : ''}
+                                        </Text>
+                                    </View>
                                     {product.prix_moyen && (
                                         <Text style={styles.suggestionPrice}>
                                             💰 {product.prix_moyen.toFixed(0)} XAF
                                         </Text>
                                     )}
                                 </View>
-                            </View>
-                            <SafeIcon name="chevron-right" size={16} color="#9CA3AF" />
-                        </TouchableOpacity>
-                    ))}
+                            </TouchableOpacity>
+                        );
+                    })}
 
                     {loadingCombinationSuggestions && (
                         <ActivityIndicator
@@ -775,7 +990,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         <View style={styles.combinationSuggestionsContainer}>
                             <Text style={styles.combinationSuggestionsTitle}>🔥 Combinaisons des prestataires</Text>
                             {combinationSuggestions.map((combo) => {
-                                const parts = combo.productVector || [];
+                                const rows = buildLabeledPairs(
+                                    combo.productVector || [],
+                                    combo.productLabels || []
+                                );
                                 const priceDisplay = formatPriceDisplay(combo.prix, combo.devise);
 
                                 return (
@@ -794,17 +1012,30 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                                 {combo.isAIPreferred ? 'Version IA' : 'Variante populaire'}
                                             </Text>
                                         </View>
-                                        <View style={styles.combinationCardChips}>
-                                            {parts.map((part, idx) => (
-                                                <View key={`${combo.id}-${idx}`} style={styles.combinationCardChip}>
-                                                    <Text style={styles.combinationCardChipText}>{part}</Text>
+
+                                        <View style={styles.combinationTable}>
+                                            {rows.map((row, rowIndex) => (
+                                                <View
+                                                    key={`${combo.id}-${row.label}-${rowIndex}`}
+                                                    style={[styles.combinationRow, rowIndex === rows.length - 1 && styles.combinationRowLast]}
+                                                >
+                                                    <Text style={styles.combinationCellLabel}>{row.label}</Text>
+                                                    <Text style={styles.combinationCellValue}>{row.value}</Text>
                                                 </View>
                                             ))}
                                         </View>
+
                                         <View style={styles.combinationMeta}>
-                                            <Text style={styles.combinationUsage}>
-                                                👥 {combo.usageCount} prestataire{combo.usageCount > 1 ? 's' : ''}
-                                            </Text>
+                                            <View style={styles.combinationMetaLeft}>
+                                                <Text style={styles.combinationUsage}>
+                                                    👥 {combo.usageCount} prestataire{combo.usageCount > 1 ? 's' : ''}
+                                                </Text>
+                                                {combo.occurrences && combo.occurrences > 1 && (
+                                                    <Text style={styles.combinationOccurrence}>
+                                                        🔁 {combo.occurrences} occurrences
+                                                    </Text>
+                                                )}
+                                            </View>
                                             {priceDisplay && (
                                                 <Text style={styles.combinationPrice}>💰 {priceDisplay}</Text>
                                             )}
@@ -824,6 +1055,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     <Text style={styles.iaCombosTitle}>✨ Combinaisons proposées par l'IA</Text>
                     {iaCombinaisons.map((combo, index) => {
                         const parts = (combo || '').split(separateur || ',').map(part => part.trim()).filter(Boolean);
+                        const keys = Object.keys(sousCaracteristiques || {});
+                        const iaRows = buildLabeledPairs(parts, keys);
 
                         return (
                             <TouchableOpacity
@@ -839,10 +1072,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                     <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
                                     <Text style={styles.iaComboLabel}>Version {index + 1}</Text>
                                 </View>
-                                <View style={styles.iaComboChips}>
-                                    {parts.map((part, chipIdx) => (
-                                        <View key={`${part}-${chipIdx}`} style={styles.iaComboChip}>
-                                            <Text style={styles.iaComboChipText}>{part}</Text>
+                                <View style={styles.iaComboTable}>
+                                    {iaRows.map((row, rowIndex) => (
+                                        <View
+                                            key={`${combo}-ia-${row.label}-${rowIndex}`}
+                                            style={[styles.iaComboRow, rowIndex === iaRows.length - 1 && styles.iaComboRowLast]}
+                                        >
+                                            <Text style={styles.iaComboCellLabel}>{row.label}</Text>
+                                            <Text style={styles.iaComboCellValue}>{row.value}</Text>
                                         </View>
                                     ))}
                                 </View>
@@ -855,11 +1092,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
             {/* Vecteur affiché en chips */}
             {chips.length > 0 ? (
-                <View style={styles.vectorContainer}>
+                <View style={[styles.vectorContainer, styles.vectorContainerActive]}>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.chipsScroll}
+                        contentContainerStyle={[styles.chipsScroll, styles.chipsScrollActive]}
                     >
                         {(chips || []).map((chip, index) => (
                             <View key={index} style={styles.chip}>
@@ -887,11 +1124,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
                     {/* ✅ NOUVEAU : Bouton édition quand vecteur sélectionné */}
                     <TouchableOpacity
-                        style={styles.editButton}
+                        style={styles.addCharacteristicButton}
                         onPress={() => setShowAddModal(true)}
                     >
-                        <SafeIcon name="edit-3" size={16} color={modernColors.primary} />
-                        <Text style={styles.editButtonText}>Éditer</Text>
+                        <SafeIcon name="plus-circle" size={18} color={modernColors.primary} />
+                        <Text style={styles.addCharacteristicText}>Ajouter une caractéristique</Text>
                     </TouchableOpacity>
                 </View>
             ) : null}
@@ -1025,12 +1262,19 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     header: {
-        gap: 4,
+        gap: 6,
     },
     label: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1F2937',
+        alignSelf: 'flex-start',
+        fontSize: 12,
+        fontWeight: '700',
+        color: modernColors.primary,
+        backgroundColor: 'rgba(99, 102, 241, 0.12)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
     },
     required: {
         color: '#EF4444',
@@ -1042,9 +1286,25 @@ const styles = StyleSheet.create({
     vectorContainer: {
         gap: 12,
     },
+    vectorContainerActive: {
+        backgroundColor: '#F9FAFF',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E0E7FF',
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        elevation: 1,
+    },
     chipsScroll: {
         gap: 8,
         paddingVertical: 8,
+    },
+    chipsScrollActive: {
+        paddingVertical: 4,
     },
     chip: {
         flexDirection: 'row',
@@ -1089,18 +1349,23 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 8,
     },
-    addChipButton: {
+    addCharacteristicButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
+        gap: 8,
         paddingVertical: 12,
-        borderWidth: 2,
-        borderColor: modernColors.primary,
         borderRadius: 12,
-        borderStyle: 'dashed',
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        elevation: 1,
     },
-    addChipText: {
+    addCharacteristicText: {
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.primary,
@@ -1196,7 +1461,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     optionItemSelected: {
-        backgroundColor: modernColors.primaryLight || '#EEF2FF',
+        backgroundColor: 'rgba(99, 102, 241, 0.14)',
         borderWidth: 2,
         borderColor: modernColors.primary,
     },
@@ -1454,50 +1719,108 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: modernColors.text,
     },
-    iaComboChips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-    },
-    iaComboChip: {
-        backgroundColor: '#EEF2FF',
-        borderRadius: 16,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+    iaComboTable: {
         borderWidth: 1,
-        borderColor: modernColors.primary,
+        borderColor: '#E5E7EB',
+        borderRadius: 10,
+        overflow: 'hidden',
     },
-    iaComboChipText: {
+    iaComboRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+        gap: 12,
+    },
+    iaComboRowLast: {
+        borderBottomWidth: 0,
+    },
+    iaComboCellLabel: {
+        flex: 0.45,
         fontSize: 12,
         fontWeight: '600',
-        color: modernColors.primary,
+        color: '#6B7280',
+        textTransform: 'capitalize',
+    },
+    iaComboCellValue: {
+        flex: 0.55,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1F2937',
+        textAlign: 'right',
     },
     iaComboApply: {
         fontSize: 12,
         color: modernColors.textSecondary,
         fontStyle: 'italic',
     },
-    suggestionItem: {
+    suggestionCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    suggestionCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#FFF',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 8,
+    },
+    suggestionCardTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    suggestionTable: {
         borderWidth: 1,
         borderColor: '#E5E7EB',
+        borderRadius: 10,
+        overflow: 'hidden',
     },
-    suggestionContent: {
-        flex: 1,
-        gap: 6,
+    suggestionRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+        gap: 12,
     },
-    suggestionVector: {
+    suggestionRowLast: {
+        borderBottomWidth: 0,
+    },
+    suggestionCellLabel: {
+        flex: 0.45,
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+        textTransform: 'capitalize',
+    },
+    suggestionCellValue: {
+        flex: 0.55,
         fontSize: 14,
         fontWeight: '600',
         color: '#1F2937',
+        textAlign: 'right',
     },
     suggestionMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    suggestionMetaLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
@@ -1549,8 +1872,8 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         gap: 8,
     },
-    searchIcon: {
-        marginRight: 4,
+    searchIconWrapper: {
+        marginRight: 8,
     },
     searchInput: {
         flex: 1,
@@ -1576,11 +1899,11 @@ const styles = StyleSheet.create({
     },
     combinationCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 12,
+        borderRadius: 14,
+        padding: 14,
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        gap: 10,
+        gap: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
@@ -1597,23 +1920,39 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#1F2937',
     },
-    combinationCardChips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-    },
-    combinationCardChip: {
-        backgroundColor: '#EEF2FF',
-        borderRadius: 16,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+    combinationTable: {
         borderWidth: 1,
-        borderColor: modernColors.primary,
+        borderColor: '#E5E7EB',
+        borderRadius: 10,
+        overflow: 'hidden',
     },
-    combinationCardChipText: {
+    combinationRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+        gap: 12,
+    },
+    combinationRowLast: {
+        borderBottomWidth: 0,
+    },
+    combinationCellLabel: {
+        flex: 0.45,
         fontSize: 12,
         fontWeight: '600',
-        color: modernColors.primary,
+        color: '#6B7280',
+        textTransform: 'capitalize',
+    },
+    combinationCellValue: {
+        flex: 0.55,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1F2937',
+        textAlign: 'right',
     },
     combinationMeta: {
         flexDirection: 'row',
@@ -1621,9 +1960,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 8,
     },
+    combinationMetaLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
     combinationUsage: {
         fontSize: 11,
         color: '#6B7280',
+    },
+    combinationOccurrence: {
+        fontSize: 11,
+        color: modernColors.primary,
+        fontWeight: '600',
     },
     combinationPrice: {
         fontSize: 11,

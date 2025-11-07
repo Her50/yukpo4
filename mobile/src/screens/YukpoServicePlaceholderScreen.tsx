@@ -9,6 +9,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import NavigatorToolbar from '../components/NavigatorToolbar';
 import SafeIcon from '../components/SafeIcon';
 import { modernColors } from '../theme/modernTheme';
 
@@ -127,19 +128,17 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
                 colors={currentService.gradient}
                 style={styles.header}
             >
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
-                </TouchableOpacity>
+                <NavigatorToolbar
+                    tone="dark"
+                    title={currentService.title}
+                    subtitle={currentService.description}
+                    showHandle={false}
+                />
 
                 <View style={styles.headerContent}>
                     <View style={styles.iconContainer}>
                         <SafeIcon name={currentService.icon} size={48} color="#FFFFFF" />
                     </View>
-                    <Text style={styles.title}>{currentService.title}</Text>
-                    <Text style={styles.subtitle}>{currentService.description}</Text>
                 </View>
             </LinearGradient>
 
@@ -191,15 +190,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingBottom: 30,
     },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
     headerContent: {
         alignItems: 'center',
     },
@@ -211,19 +201,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        textAlign: 'center',
-        marginBottom: 8,
-    },
-    subtitle: {
-        fontSize: 16,
-        color: 'rgba(255, 255, 255, 0.9)',
-        textAlign: 'center',
-        lineHeight: 22,
     },
     content: {
         flex: 1,

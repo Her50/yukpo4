@@ -120,6 +120,8 @@ export interface NativeInputProps {
     keyboardType?: any; // ✅ Ajout pour supporter différents types de clavier
     autoCapitalize?: any; // ✅ Ajout pour contrôler la capitalisation
     autoCorrect?: boolean; // ✅ Ajout pour contrôler l'auto-correction
+    minLines?: number;
+    onContentSizeChange?: (width: number, height: number) => void;
 }
 
 export const NativeInput: React.FC<NativeInputProps> = ({
@@ -131,10 +133,23 @@ export const NativeInput: React.FC<NativeInputProps> = ({
     multiline,
     keyboardType,
     autoCapitalize,
-    autoCorrect
+    autoCorrect,
+    minLines = 1,
+    onContentSizeChange
 }) => {
-    const containerStyles = [styles.inputContainer, multiline && styles.inputContainerMultiline, style];
-    const inputStyles = [styles.input, multiline && styles.inputMultiline];
+    const [inputHeight, setInputHeight] = React.useState<number | undefined>(undefined);
+
+    const containerStyles = [
+        styles.inputContainer,
+        multiline && styles.inputContainerMultiline,
+        multiline && inputHeight ? { minHeight: inputHeight } : null,
+        style
+    ];
+    const inputStyles = [
+        styles.input,
+        multiline && styles.inputMultiline,
+        multiline && inputHeight ? { height: inputHeight - 24 } : null
+    ];
 
     return (
         <View style={containerStyles}>
@@ -152,6 +167,15 @@ export const NativeInput: React.FC<NativeInputProps> = ({
                 blurOnSubmit={multiline ? false : undefined}
                 returnKeyType={multiline ? 'default' : undefined}
                 textBreakStrategy={multiline ? 'highQuality' : undefined}
+                onContentSizeChange={(event) => {
+                    if (multiline) {
+                        const { width, height } = event.nativeEvent.contentSize;
+                        const lineHeight = 24;
+                        const minHeight = Math.max(minLines * lineHeight + 24, height + 24);
+                        setInputHeight(minHeight);
+                        onContentSizeChange?.(width, height);
+                    }
+                }}
             />
         </View>
     );

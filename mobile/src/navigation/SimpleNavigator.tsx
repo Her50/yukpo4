@@ -2,33 +2,38 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { SafeNativeView } from '../components/SafeNativeView';
+import { withNavigatorSafeArea } from './withNavigatorSafeArea';
 
 // Écrans de base seulement
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+
+const LoginScreenWithSafeArea = withNavigatorSafeArea(LoginScreen);
+const RegisterScreenWithSafeArea = withNavigatorSafeArea(RegisterScreen);
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // Écran de chargement
 const LoadingScreen = () => (
-    <View style={styles.loadingContainer}>
+    <SafeNativeView style={styles.loadingContainer} edges={['top', 'bottom']}>
         <ActivityIndicator size="large" color="#6366F1" />
         <Text style={styles.loadingText}>Chargement...</Text>
-    </View>
+    </SafeNativeView>
 );
 
 // Écran d'accueil minimal
 const SimpleHomeScreen = () => (
-    <View style={styles.container}>
+    <SafeNativeView style={styles.container} edges={['top', 'bottom']}>
         <Text style={styles.title}>🏠 Accueil Yukpo</Text>
         <Text style={styles.subtitle}>Application en cours de stabilisation</Text>
         <Text style={styles.info}>
             Les fonctionnalités seront réactivées progressivement
         </Text>
-    </View>
+    </SafeNativeView>
 );
 
 // Tab Navigator minimal
@@ -60,8 +65,8 @@ const MainTabs = () => (
 // Stack Navigator pour l'authentification
 const AuthStack = () => (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Login" component={LoginScreenWithSafeArea} />
+        <Stack.Screen name="Register" component={RegisterScreenWithSafeArea} />
     </Stack.Navigator>
 );
 

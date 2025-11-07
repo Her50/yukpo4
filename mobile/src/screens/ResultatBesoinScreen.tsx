@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import ModernGPSModal from '../components/ModernGPSModal';
 import { NativeCard } from '../components/NativeDesign';
+import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
 import { useLocation } from '../contexts/LocationContext';
@@ -682,21 +683,18 @@ const ResultatBesoinScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <SafeIcon name="arrow-left" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Recherche</Text>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowFilters(!showFilters)}
-        >
-          <SafeIcon name="sliders" size={20} color={modernColors.primary} />
-        </TouchableOpacity>
-      </View>
+      <NavigatorToolbar
+        title="Recherche intelligente"
+        subtitle={filters.category ? `Filtre: ${filters.category}` : 'Résultats personnalisés'}
+        rightSlot={(
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <SafeIcon name="sliders" size={20} color={modernColors.primary} />
+          </TouchableOpacity>
+        )}
+      />
 
       {/* ✅ NOUVEAU : Barre de recherche LINÉAIRE avec bouton à droite */}
       <View style={styles.searchSection}>
@@ -1324,31 +1322,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  backButton: {
-    padding: 12, // ✅ Plus de padding pour zone tactile
-    backgroundColor: modernColors.primary, // ✅ Fond coloré pour visibilité
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
   },
   filterButton: {
     padding: 8,

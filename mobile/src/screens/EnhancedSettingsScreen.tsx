@@ -7,10 +7,11 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
-import { TextInput } from 'react-native';
+import NavigatorToolbar from '../components/NavigatorToolbar';
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
 
@@ -248,472 +249,469 @@ const EnhancedSettingsScreen: React.FC = () => {
     );
 
     const renderProfileScreen = () => (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            {/* Header avec bouton retour */}
-            <View style={styles.screenHeader}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => setCurrentScreen('main')}
-                >
-                    <Text style={styles.backButtonText}>‹ Retour</Text>
-                </TouchableOpacity>
-                <Text style={styles.screenTitle}>Profil</Text>
-                <View style={styles.placeholder} />
-            </View>
+        <View style={styles.container}>
+            <NavigatorToolbar
+                title="Profil"
+                subtitle="Gérez vos informations personnelles"
+                showHandle={false}
+                onClose={() => setCurrentScreen('main')}
+            />
+            <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
+                <View style={styles.formContainer}>
+                    {profileLoading && (
+                        <View style={styles.loadingContainer}>
+                            <Text style={styles.loadingText}>Chargement du profil...</Text>
+                        </View>
+                    )}
 
-            <View style={styles.formContainer}>
-                {profileLoading && (
-                    <View style={styles.loadingContainer}>
-                        <Text style={styles.loadingText}>Chargement du profil...</Text>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Nom complet</Text>
+                        <TextInput
+                            style={styles.textInput}
+                            value={profileData.name}
+                            onChangeText={(text) => setProfileData({ ...profileData, name: text })}
+                            placeholder="Votre nom complet"
+                            editable={!profileLoading}
+                        />
                     </View>
-                )}
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Nom complet</Text>
-                    <TextInput
-                        style={styles.textInput}
-                        value={profileData.name}
-                        onChangeText={(text) => setProfileData({ ...profileData, name: text })}
-                        placeholder="Votre nom complet"
-                        editable={!profileLoading}
-                    />
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Email</Text>
-                    <TextInput
-                        style={styles.textInput}
-                        value={profileData.email}
-                        onChangeText={(text) => setProfileData({ ...profileData, email: text })}
-                        placeholder="votre@email.com"
-                        keyboardType="email-address"
-                    />
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Téléphone</Text>
-                    <TextInput
-                        style={styles.textInput}
-                        value={profileData.phone}
-                        onChangeText={(text) => setProfileData({ ...profileData, phone: text })}
-                        placeholder="+33 6 12 34 56 78"
-                        keyboardType="phone-pad"
-                    />
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Bio</Text>
-                    <TextInput
-                        style={[styles.textInput, styles.textArea]}
-                        value={profileData.bio}
-                        onChangeText={(text) => setProfileData({ ...profileData, bio: text })}
-                        placeholder="Décrivez-vous en quelques mots..."
-                        multiline
-                        numberOfLines={3}
-                    />
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Visibilité du profil</Text>
-                    <View style={styles.radioGroup}>
-                        {['public', 'private', 'friends'].map((option) => (
-                            <TouchableOpacity
-                                key={option}
-                                style={[
-                                    styles.radioOption,
-                                    profileData.visibility === option && styles.radioOptionActive
-                                ]}
-                                onPress={() => setProfileData({ ...profileData, visibility: option })}
-                            >
-                                <Text style={[
-                                    styles.radioOptionText,
-                                    profileData.visibility === option && styles.radioOptionTextActive
-                                ]}>
-                                    {option === 'public' ? 'Public' :
-                                        option === 'private' ? 'Privé' : 'Amis uniquement'}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Email</Text>
+                        <TextInput
+                            style={styles.textInput}
+                            value={profileData.email}
+                            onChangeText={(text) => setProfileData({ ...profileData, email: text })}
+                            placeholder="votre@email.com"
+                            keyboardType="email-address"
+                        />
                     </View>
-                </View>
 
-                <TouchableOpacity
-                    style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-                    onPress={() => handleSave('profile')}
-                    disabled={loading}
-                >
-                    <Text style={styles.saveButtonText}>
-                        {loading ? 'Sauvegarde...' : 'Sauvegarder'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Téléphone</Text>
+                        <TextInput
+                            style={styles.textInput}
+                            value={profileData.phone}
+                            onChangeText={(text) => setProfileData({ ...profileData, phone: text })}
+                            placeholder="+33 6 12 34 56 78"
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Bio</Text>
+                        <TextInput
+                            style={[styles.textInput, styles.textArea]}
+                            value={profileData.bio}
+                            onChangeText={(text) => setProfileData({ ...profileData, bio: text })}
+                            placeholder="Décrivez-vous en quelques mots..."
+                            multiline
+                            numberOfLines={3}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Visibilité du profil</Text>
+                        <View style={styles.radioGroup}>
+                            {['public', 'private', 'friends'].map((option) => (
+                                <TouchableOpacity
+                                    key={option}
+                                    style={[
+                                        styles.radioOption,
+                                        profileData.visibility === option && styles.radioOptionActive,
+                                    ]}
+                                    onPress={() => setProfileData({ ...profileData, visibility: option })}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.radioOptionText,
+                                            profileData.visibility === option && styles.radioOptionTextActive,
+                                        ]}
+                                    >
+                                        {option === 'public'
+                                            ? 'Public'
+                                            : option === 'private'
+                                                ? 'Privé'
+                                                : 'Amis uniquement'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+                        onPress={() => handleSave('profile')}
+                        disabled={loading}
+                    >
+                        <Text style={styles.saveButtonText}>
+                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
+        </View>
     );
 
     const renderNotificationsScreen = () => (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            <View style={styles.screenHeader}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => setCurrentScreen('main')}
-                >
-                    <Text style={styles.backButtonText}>‹ Retour</Text>
-                </TouchableOpacity>
-                <Text style={styles.screenTitle}>Notifications</Text>
-                <View style={styles.placeholder} />
-            </View>
+        <View style={styles.container}>
+            <NavigatorToolbar
+                title="Notifications"
+                subtitle="Personnalisez vos alertes"
+                showHandle={false}
+                onClose={() => setCurrentScreen('main')}
+            />
+            <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
+                <View style={styles.formContainer}>
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Notifications push</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, notifications.push && styles.toggleActive]}
+                            onPress={() => setNotifications({ ...notifications, push: !notifications.push })}
+                        >
+                            <View style={[styles.toggleThumb, notifications.push && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
 
-            <View style={styles.formContainer}>
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Notifications push</Text>
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Notifications email</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, notifications.email && styles.toggleActive]}
+                            onPress={() => setNotifications({ ...notifications, email: !notifications.email })}
+                        >
+                            <View style={[styles.toggleThumb, notifications.email && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Notifications SMS</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, notifications.sms && styles.toggleActive]}
+                            onPress={() => setNotifications({ ...notifications, sms: !notifications.sms })}
+                        >
+                            <View style={[styles.toggleThumb, notifications.sms && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Emails marketing</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, notifications.marketing && styles.toggleActive]}
+                            onPress={() => setNotifications({ ...notifications, marketing: !notifications.marketing })}
+                        >
+                            <View style={[styles.toggleThumb, notifications.marketing && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Traduction automatique</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, notifications.autoTranslation && styles.toggleActive]}
+                            onPress={() => setNotifications({ ...notifications, autoTranslation: !notifications.autoTranslation })}
+                        >
+                            <View
+                                style={[styles.toggleThumb, notifications.autoTranslation && styles.toggleThumbActive]}
+                            />
+                        </TouchableOpacity>
+                    </View>
+
                     <TouchableOpacity
-                        style={[styles.toggle, notifications.push && styles.toggleActive]}
-                        onPress={() => setNotifications({ ...notifications, push: !notifications.push })}
+                        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+                        onPress={() => handleSave('notifications')}
+                        disabled={loading}
                     >
-                        <View style={[styles.toggleThumb, notifications.push && styles.toggleThumbActive]} />
+                        <Text style={styles.saveButtonText}>
+                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
-
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Notifications email</Text>
-                    <TouchableOpacity
-                        style={[styles.toggle, notifications.email && styles.toggleActive]}
-                        onPress={() => setNotifications({ ...notifications, email: !notifications.email })}
-                    >
-                        <View style={[styles.toggleThumb, notifications.email && styles.toggleThumbActive]} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Notifications SMS</Text>
-                    <TouchableOpacity
-                        style={[styles.toggle, notifications.sms && styles.toggleActive]}
-                        onPress={() => setNotifications({ ...notifications, sms: !notifications.sms })}
-                    >
-                        <View style={[styles.toggleThumb, notifications.sms && styles.toggleThumbActive]} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Emails marketing</Text>
-                    <TouchableOpacity
-                        style={[styles.toggle, notifications.marketing && styles.toggleActive]}
-                        onPress={() => setNotifications({ ...notifications, marketing: !notifications.marketing })}
-                    >
-                        <View style={[styles.toggleThumb, notifications.marketing && styles.toggleThumbActive]} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Traduction automatique</Text>
-                    <TouchableOpacity
-                        style={[styles.toggle, notifications.autoTranslation && styles.toggleActive]}
-                        onPress={() => setNotifications({ ...notifications, autoTranslation: !notifications.autoTranslation })}
-                    >
-                        <View style={[styles.toggleThumb, notifications.autoTranslation && styles.toggleThumbActive]} />
-                    </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity
-                    style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-                    onPress={() => handleSave('notifications')}
-                    disabled={loading}
-                >
-                    <Text style={styles.saveButtonText}>
-                        {loading ? 'Sauvegarde...' : 'Sauvegarder'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </View>
     );
 
     const renderPrivacyScreen = () => (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            <View style={styles.screenHeader}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => setCurrentScreen('main')}
-                >
-                    <Text style={styles.backButtonText}>‹ Retour</Text>
-                </TouchableOpacity>
-                <Text style={styles.screenTitle}>Confidentialité</Text>
-                <View style={styles.placeholder} />
-            </View>
+        <View style={styles.container}>
+            <NavigatorToolbar
+                title="Confidentialité"
+                subtitle="Contrôlez vos informations partagées"
+                showHandle={false}
+                onClose={() => setCurrentScreen('main')}
+            />
+            <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
+                <View style={styles.formContainer}>
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Afficher ma localisation</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, privacy.showLocation && styles.toggleActive]}
+                            onPress={() => setPrivacy({ ...privacy, showLocation: !privacy.showLocation })}
+                        >
+                            <View style={[styles.toggleThumb, privacy.showLocation && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
 
-            <View style={styles.formContainer}>
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Afficher ma localisation</Text>
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Afficher mon statut en ligne</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, privacy.showOnlineStatus && styles.toggleActive]}
+                            onPress={() => setPrivacy({ ...privacy, showOnlineStatus: !privacy.showOnlineStatus })}
+                        >
+                            <View style={[styles.toggleThumb, privacy.showOnlineStatus && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Autoriser les messages</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, privacy.allowMessages && styles.toggleActive]}
+                            onPress={() => setPrivacy({ ...privacy, allowMessages: !privacy.allowMessages })}
+                        >
+                            <View style={[styles.toggleThumb, privacy.allowMessages && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Partage de données</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, privacy.dataSharing && styles.toggleActive]}
+                            onPress={() => setPrivacy({ ...privacy, dataSharing: !privacy.dataSharing })}
+                        >
+                            <View style={[styles.toggleThumb, privacy.dataSharing && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
+
                     <TouchableOpacity
-                        style={[styles.toggle, privacy.showLocation && styles.toggleActive]}
-                        onPress={() => setPrivacy({ ...privacy, showLocation: !privacy.showLocation })}
+                        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+                        onPress={() => handleSave('privacy')}
+                        disabled={loading}
                     >
-                        <View style={[styles.toggleThumb, privacy.showLocation && styles.toggleThumbActive]} />
+                        <Text style={styles.saveButtonText}>
+                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
-
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Afficher mon statut en ligne</Text>
-                    <TouchableOpacity
-                        style={[styles.toggle, privacy.showOnlineStatus && styles.toggleActive]}
-                        onPress={() => setPrivacy({ ...privacy, showOnlineStatus: !privacy.showOnlineStatus })}
-                    >
-                        <View style={[styles.toggleThumb, privacy.showOnlineStatus && styles.toggleThumbActive]} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Autoriser les messages</Text>
-                    <TouchableOpacity
-                        style={[styles.toggle, privacy.allowMessages && styles.toggleActive]}
-                        onPress={() => setPrivacy({ ...privacy, allowMessages: !privacy.allowMessages })}
-                    >
-                        <View style={[styles.toggleThumb, privacy.allowMessages && styles.toggleThumbActive]} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Partage de données</Text>
-                    <TouchableOpacity
-                        style={[styles.toggle, privacy.dataSharing && styles.toggleActive]}
-                        onPress={() => setPrivacy({ ...privacy, dataSharing: !privacy.dataSharing })}
-                    >
-                        <View style={[styles.toggleThumb, privacy.dataSharing && styles.toggleThumbActive]} />
-                    </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity
-                    style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-                    onPress={() => handleSave('privacy')}
-                    disabled={loading}
-                >
-                    <Text style={styles.saveButtonText}>
-                        {loading ? 'Sauvegarde...' : 'Sauvegarder'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </View>
     );
 
     const renderAppearanceScreen = () => (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            <View style={styles.screenHeader}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => setCurrentScreen('main')}
-                >
-                    <Text style={styles.backButtonText}>‹ Retour</Text>
-                </TouchableOpacity>
-                <Text style={styles.screenTitle}>Apparence</Text>
-                <View style={styles.placeholder} />
-            </View>
-
-            <View style={styles.formContainer}>
-                <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Thème</Text>
-                    <View style={styles.radioGroup}>
-                        {['light', 'dark', 'auto'].map((theme) => (
-                            <TouchableOpacity
-                                key={theme}
-                                style={[
-                                    styles.radioOption,
-                                    appearance.theme === theme && styles.radioOptionActive
-                                ]}
-                                onPress={() => setAppearance({ ...appearance, theme })}
-                            >
-                                <Text style={[
-                                    styles.radioOptionText,
-                                    appearance.theme === theme && styles.radioOptionTextActive
-                                ]}>
-                                    {theme === 'light' ? 'Clair' :
-                                        theme === 'dark' ? 'Sombre' : 'Automatique'}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+        <View style={styles.container}>
+            <NavigatorToolbar
+                title="Apparence"
+                subtitle="Personnalisez l'interface"
+                showHandle={false}
+                onClose={() => setCurrentScreen('main')}
+            />
+            <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
+                <View style={styles.formContainer}>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Thème</Text>
+                        <View style={styles.radioGroup}>
+                            {['light', 'dark', 'auto'].map((theme) => (
+                                <TouchableOpacity
+                                    key={theme}
+                                    style={[
+                                        styles.radioOption,
+                                        appearance.theme === theme && styles.radioOptionActive,
+                                    ]}
+                                    onPress={() => setAppearance({ ...appearance, theme })}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.radioOptionText,
+                                            appearance.theme === theme && styles.radioOptionTextActive,
+                                        ]}
+                                    >
+                                        {theme === 'light' ? 'Clair' : theme === 'dark' ? 'Sombre' : 'Automatique'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
-                </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Langue</Text>
-                    <View style={styles.radioGroup}>
-                        {['fr', 'en', 'es'].map((lang) => (
-                            <TouchableOpacity
-                                key={lang}
-                                style={[
-                                    styles.radioOption,
-                                    appearance.language === lang && styles.radioOptionActive
-                                ]}
-                                onPress={() => setAppearance({ ...appearance, language: lang })}
-                            >
-                                <Text style={[
-                                    styles.radioOptionText,
-                                    appearance.language === lang && styles.radioOptionTextActive
-                                ]}>
-                                    {lang === 'fr' ? 'Français' :
-                                        lang === 'en' ? 'English' : 'Español'}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Langue</Text>
+                        <View style={styles.radioGroup}>
+                            {['fr', 'en', 'es'].map((lang) => (
+                                <TouchableOpacity
+                                    key={lang}
+                                    style={[
+                                        styles.radioOption,
+                                        appearance.language === lang && styles.radioOptionActive,
+                                    ]}
+                                    onPress={() => setAppearance({ ...appearance, language: lang })}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.radioOptionText,
+                                            appearance.language === lang && styles.radioOptionTextActive,
+                                        ]}
+                                    >
+                                        {lang === 'fr' ? 'Français' : lang === 'en' ? 'English' : 'Español'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
-                </View>
 
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Animations</Text>
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Animations</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, appearance.animations && styles.toggleActive]}
+                            onPress={() => setAppearance({ ...appearance, animations: !appearance.animations })}
+                        >
+                            <View style={[styles.toggleThumb, appearance.animations && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
+
                     <TouchableOpacity
-                        style={[styles.toggle, appearance.animations && styles.toggleActive]}
-                        onPress={() => setAppearance({ ...appearance, animations: !appearance.animations })}
+                        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+                        onPress={() => handleSave('appearance')}
+                        disabled={loading}
                     >
-                        <View style={[styles.toggleThumb, appearance.animations && styles.toggleThumbActive]} />
+                        <Text style={styles.saveButtonText}>
+                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity
-                    style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-                    onPress={() => handleSave('appearance')}
-                    disabled={loading}
-                >
-                    <Text style={styles.saveButtonText}>
-                        {loading ? 'Sauvegarde...' : 'Sauvegarder'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </View>
     );
 
     const renderSecurityScreen = () => (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            <View style={styles.screenHeader}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => setCurrentScreen('main')}
-                >
-                    <Text style={styles.backButtonText}>‹ Retour</Text>
-                </TouchableOpacity>
-                <Text style={styles.screenTitle}>Sécurité</Text>
-                <View style={styles.placeholder} />
-            </View>
+        <View style={styles.container}>
+            <NavigatorToolbar
+                title="Sécurité"
+                subtitle="Renforcez la protection de votre compte"
+                showHandle={false}
+                onClose={() => setCurrentScreen('main')}
+            />
+            <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
+                <View style={styles.formContainer}>
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Authentification à deux facteurs</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, security.twoFactor && styles.toggleActive]}
+                            onPress={() => setSecurity({ ...security, twoFactor: !security.twoFactor })}
+                        >
+                            <View style={[styles.toggleThumb, security.twoFactor && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
 
-            <View style={styles.formContainer}>
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Authentification à deux facteurs</Text>
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Authentification biométrique</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, security.biometric && styles.toggleActive]}
+                            onPress={() => setSecurity({ ...security, biometric: !security.biometric })}
+                        >
+                            <View style={[styles.toggleThumb, security.biometric && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Alertes de connexion</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, security.loginAlerts && styles.toggleActive]}
+                            onPress={() => setSecurity({ ...security, loginAlerts: !security.loginAlerts })}
+                        >
+                            <View style={[styles.toggleThumb, security.loginAlerts && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Délai d'expiration de session (minutes)</Text>
+                        <TextInput
+                            style={styles.textInput}
+                            value={security.sessionTimeout.toString()}
+                            onChangeText={(text) =>
+                                setSecurity({ ...security, sessionTimeout: parseInt(text, 10) || 30 })
+                            }
+                            placeholder="30"
+                            keyboardType="numeric"
+                        />
+                    </View>
+
                     <TouchableOpacity
-                        style={[styles.toggle, security.twoFactor && styles.toggleActive]}
-                        onPress={() => setSecurity({ ...security, twoFactor: !security.twoFactor })}
+                        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+                        onPress={() => handleSave('security')}
+                        disabled={loading}
                     >
-                        <View style={[styles.toggleThumb, security.twoFactor && styles.toggleThumbActive]} />
+                        <Text style={styles.saveButtonText}>
+                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
-
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Authentification biométrique</Text>
-                    <TouchableOpacity
-                        style={[styles.toggle, security.biometric && styles.toggleActive]}
-                        onPress={() => setSecurity({ ...security, biometric: !security.biometric })}
-                    >
-                        <View style={[styles.toggleThumb, security.biometric && styles.toggleThumbActive]} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Alertes de connexion</Text>
-                    <TouchableOpacity
-                        style={[styles.toggle, security.loginAlerts && styles.toggleActive]}
-                        onPress={() => setSecurity({ ...security, loginAlerts: !security.loginAlerts })}
-                    >
-                        <View style={[styles.toggleThumb, security.loginAlerts && styles.toggleThumbActive]} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Délai d'expiration de session (minutes)</Text>
-                    <TextInput
-                        style={styles.textInput}
-                        value={security.sessionTimeout.toString()}
-                        onChangeText={(text) => setSecurity({ ...security, sessionTimeout: parseInt(text) || 30 })}
-                        placeholder="30"
-                        keyboardType="numeric"
-                    />
-                </View>
-
-                <TouchableOpacity
-                    style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-                    onPress={() => handleSave('security')}
-                    disabled={loading}
-                >
-                    <Text style={styles.saveButtonText}>
-                        {loading ? 'Sauvegarde...' : 'Sauvegarder'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </View>
     );
 
     const renderDataScreen = () => (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            <View style={styles.screenHeader}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => setCurrentScreen('main')}
-                >
-                    <Text style={styles.backButtonText}>‹ Retour</Text>
-                </TouchableOpacity>
-                <Text style={styles.screenTitle}>Données</Text>
-                <View style={styles.placeholder} />
-            </View>
-
-            <View style={styles.formContainer}>
-                <View style={styles.infoCard}>
-                    <Text style={styles.infoCardTitle}>Cache de l'application</Text>
-                    <Text style={styles.infoCardValue}>{data.cacheSize}</Text>
-                    <TouchableOpacity style={styles.actionButton}>
-                        <Text style={styles.actionButtonText}>Vider le cache</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.toggleGroup}>
-                    <Text style={styles.toggleLabel}>Sauvegarde automatique</Text>
-                    <TouchableOpacity
-                        style={[styles.toggle, data.autoBackup && styles.toggleActive]}
-                        onPress={() => setData({ ...data, autoBackup: !data.autoBackup })}
-                    >
-                        <View style={[styles.toggleThumb, data.autoBackup && styles.toggleThumbActive]} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Fréquence de synchronisation</Text>
-                    <View style={styles.radioGroup}>
-                        {['hourly', 'daily', 'weekly'].map((freq) => (
-                            <TouchableOpacity
-                                key={freq}
-                                style={[
-                                    styles.radioOption,
-                                    data.syncFrequency === freq && styles.radioOptionActive
-                                ]}
-                                onPress={() => setData({ ...data, syncFrequency: freq })}
-                            >
-                                <Text style={[
-                                    styles.radioOptionText,
-                                    data.syncFrequency === freq && styles.radioOptionTextActive
-                                ]}>
-                                    {freq === 'hourly' ? 'Horaire' :
-                                        freq === 'daily' ? 'Quotidienne' : 'Hebdomadaire'}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+        <View style={styles.container}>
+            <NavigatorToolbar
+                title="Données"
+                subtitle="Gestion du stockage et des sauvegardes"
+                showHandle={false}
+                onClose={() => setCurrentScreen('main')}
+            />
+            <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
+                <View style={styles.formContainer}>
+                    <View style={styles.infoCard}>
+                        <Text style={styles.infoCardTitle}>Cache de l'application</Text>
+                        <Text style={styles.infoCardValue}>{data.cacheSize}</Text>
+                        <TouchableOpacity style={styles.actionButton}>
+                            <Text style={styles.actionButtonText}>Vider le cache</Text>
+                        </TouchableOpacity>
                     </View>
-                </View>
 
-                <TouchableOpacity
-                    style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-                    onPress={() => handleSave('data')}
-                    disabled={loading}
-                >
-                    <Text style={styles.saveButtonText}>
-                        {loading ? 'Sauvegarde...' : 'Sauvegarder'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+                    <View style={styles.toggleGroup}>
+                        <Text style={styles.toggleLabel}>Sauvegarde automatique</Text>
+                        <TouchableOpacity
+                            style={[styles.toggle, data.autoBackup && styles.toggleActive]}
+                            onPress={() => setData({ ...data, autoBackup: !data.autoBackup })}
+                        >
+                            <View style={[styles.toggleThumb, data.autoBackup && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Fréquence de synchronisation</Text>
+                        <View style={styles.radioGroup}>
+                            {['hourly', 'daily', 'weekly'].map((freq) => (
+                                <TouchableOpacity
+                                    key={freq}
+                                    style={[
+                                        styles.radioOption,
+                                        data.syncFrequency === freq && styles.radioOptionActive,
+                                    ]}
+                                    onPress={() => setData({ ...data, syncFrequency: freq })}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.radioOptionText,
+                                            data.syncFrequency === freq && styles.radioOptionTextActive,
+                                        ]}
+                                    >
+                                        {freq === 'hourly'
+                                            ? 'Horaire'
+                                            : freq === 'daily'
+                                                ? 'Quotidienne'
+                                                : 'Hebdomadaire'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+                        onPress={() => handleSave('data')}
+                        disabled={loading}
+                    >
+                        <Text style={styles.saveButtonText}>
+                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
+        </View>
     );
 
     // Rendu conditionnel selon l'écran actuel
@@ -739,6 +737,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F8FAFC',
+    },
+    sectionScroll: {
+        flex: 1,
     },
     header: {
         padding: 24,
@@ -831,31 +832,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#1F2937',
         fontWeight: '500',
-    },
-    screenHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 16,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
-    },
-    backButton: {
-        padding: 8,
-    },
-    backButtonText: {
-        fontSize: 16,
-        color: '#3B82F6',
-        fontWeight: '500',
-    },
-    screenTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#1F2937',
-    },
-    placeholder: {
-        width: 60,
     },
     formContainer: {
         padding: 16,

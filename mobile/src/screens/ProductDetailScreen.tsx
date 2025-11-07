@@ -10,8 +10,9 @@ import {
     Text,
     View
 } from 'react-native';
-import ProductCard from '../components/ProductCard';
 import { NativeButton } from '../components/NativeDesign';
+import NavigatorToolbar from '../components/NavigatorToolbar';
+import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
@@ -112,7 +113,7 @@ const ProductDetailScreen: React.FC = () => {
         } catch (error: any) {
             console.error('❌ Erreur chargement produit:', error);
             setError(error.message || 'Impossible de charger ce produit');
-            
+
             Alert.alert(
                 'Produit introuvable',
                 'Ce produit n\'existe plus ou a été supprimé.',
@@ -155,17 +156,11 @@ const ProductDetailScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <SafeIcon 
-                    name="arrow-left" 
-                    size={24} 
-                    color={modernColors.primary}
-                    onPress={() => navigation.goBack()}
-                />
-                <Text style={styles.headerTitle}>Détail du produit</Text>
-                <View style={{ width: 24 }} />
-            </View>
+            <NavigatorToolbar
+                title="Détail du produit"
+                subtitle={product?.nom ? product.nom.slice(0, 50) : undefined}
+                showHandle={false}
+            />
 
             <ScrollView style={styles.scrollView}>
                 {/* Message d'arrivée via partage */}
@@ -219,7 +214,7 @@ const ProductDetailScreen: React.FC = () => {
                         variant="outline"
                         size="large"
                     />
-                    
+
                     <NativeButton
                         title="🏢 Voir le service complet"
                         onPress={() => {
@@ -240,22 +235,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F9FAFB',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 50,
-        paddingBottom: 16,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: modernColors.text,
     },
     loadingContainer: {
         flex: 1,

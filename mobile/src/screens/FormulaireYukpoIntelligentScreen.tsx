@@ -26,6 +26,7 @@ import ModernGPSModal from '../components/ModernGPSModal';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 // Code corrigé (remplace @ts-ignore)
 import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
+import NavigatorToolbar from '../components/NavigatorToolbar';
 // ✅ SUPPRIMÉ: ProductManagerMobile intégré directement dans le formulaire
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
 import LocationSelector from '../components/LocationSelector';
@@ -214,7 +215,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     fields: DynamicField[];
   }[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [priceVariantVisibility, setPriceVariantVisibility] = useState<Record<string, boolean>>({});
+  const [dynamicTextareaHeights, setDynamicTextareaHeights] = useState<Record<string, number>>({});
 
   const displayedBlocks = useMemo(() => {
     if (!blocks || blocks.length === 0) {
@@ -347,7 +348,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       },
       {
         id: 'products',
-        title: 'Produits',
+        title: 'Produits / Prestations',
         icon: '🛍️',
         fields: [] as DynamicField[]
       },
@@ -405,7 +406,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         field.typeDonnee === 'autocomplete'
       ) {
         blocks[3].fields.push(field);
-        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ ajouté au bloc produits: ${field.name} (typeDonnee: ${field.typeDonnee})`);
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ ajouté au bloc produits/prestations: ${field.name} (typeDonnee: ${field.typeDonnee})`);
       }
       // Bloc Médias (✅ NOUVEAU 2025-11-06: images/videos déplacées vers bloc Produits, ne garder que audios/documents)
       else if (['audios', 'documents'].includes(fieldName)) {
@@ -469,7 +470,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'nom_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: isPrestation ? 'Nom de la prestation' : 'Nom du produit',
+          label: 'Nom du produit / prestation',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
@@ -479,15 +482,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'categorie_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Catégorie du produit',
+          label: 'Catégorie du produit / prestation',
+          multiline: true,
+          minLines: 1,
           required: false,
-          placeholder: 'Ex: Smartphone, Véhicule 4x4, Chaussure de sport...'
+          placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
         },
         {
           name: 'description_produit',
           type: 'textarea',
           typeDonnee: 'string',
-          label: 'Description du produit',
+          label: 'Description du produit / prestation',
           required: false,
           placeholder: 'Décrivez les caractéristiques spécifiques du produit...'
         },
@@ -495,7 +500,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
-          label: isPrestation ? 'Caractéristiques prestation' : 'Caractéristiques produit',
+          label: 'Caractéristiques du produit / prestation',
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
@@ -558,7 +563,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'nom_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: isPrestation ? 'Nom de la prestation' : 'Nom du produit',
+          label: 'Nom du produit / prestation',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
@@ -568,15 +575,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'categorie_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Catégorie du produit',
+          label: 'Catégorie du produit / prestation',
+          multiline: true,
+          minLines: 1,
           required: false,
-          placeholder: 'Ex: Smartphone, Véhicule 4x4, Chaussure de sport...'
+          placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
         },
         {
           name: 'description_produit',
           type: 'textarea',
           typeDonnee: 'string',
-          label: 'Description du produit',
+          label: 'Description du produit / prestation',
           required: false,
           placeholder: 'Décrivez les caractéristiques spécifiques du produit...'
         },
@@ -584,7 +593,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
-          label: isPrestation ? 'Caractéristiques prestation' : 'Caractéristiques produit',
+          label: 'Caractéristiques du produit / prestation',
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
@@ -655,6 +664,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: isPrestation ? 'Nom de la prestation' : 'Nom du produit',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de mathématiques, Réparation téléphone, Consultation médicale...'
@@ -667,6 +678,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'text',
           typeDonnee: 'string',
           label: 'Catégorie du produit/prestation',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
         } as DynamicField);
@@ -693,6 +706,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
           label: isPrestation ? 'Caractéristiques prestation' : 'Caractéristiques produit',
+          multiline: true,
+          minLines: 1,
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
@@ -1428,6 +1443,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         // Mettre à jour les states
         setComposants(components);
+        setDynamicTextareaHeights({});
         setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
         setValeursFormulaire(prev => ({
           ...prev, // Garder les contacts précédents
@@ -1450,24 +1466,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   }, [suggestion]); // Se déclenche quand suggestion change
 
-  useEffect(() => {
-    const visibilityUpdates: Record<string, boolean> = {};
-    Object.entries(valeursFormulaire).forEach(([key, value]) => {
-      if (value && typeof value === 'object' && value.type_donnee === 'price_variant') {
-        const hasModalites = Array.isArray(value.modalites) && value.modalites.length > 0;
-        if (hasModalites && !priceVariantVisibility[key]) {
-          visibilityUpdates[key] = true;
-        }
-      }
-    });
-
-    if (Object.keys(visibilityUpdates).length > 0) {
-      setPriceVariantVisibility((prev) => ({
-        ...prev,
-        ...visibilityUpdates,
-      }));
-    }
-  }, [valeursFormulaire, priceVariantVisibility]);
 
   // ✅ NOUVEAU 2025-11-01: Préremplir le formulaire en mode add_product
   useEffect(() => {
@@ -1652,6 +1650,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           ...componentValues // ✅ NOUVEAU: Les valeurs des field.value
         });
         setComposants(components);
+        setDynamicTextareaHeights({});
         setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
         setActiveStep(2);
         setCurrentBlock(0);
@@ -1963,43 +1962,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     if (field.typeDonnee === 'price_variant') {
-      // ✅ NOUVEAU 2025-11-06: Afficher variabilité de prix UNIQUEMENT si pertinent
-      // Catégories où les variations de prix sont courantes
-      const categoriesAvecVariations = [
-        'vetement', 'chaussure', 'mode', 'textile', 'habillement',
-        'vehicule', 'automobile', 'moto', 'transport',
-        'meuble', 'decoration', 'mobilier',
-        'telephone', 'smartphone', 'electronique', 'informatique',
-        'restauration', 'alimentation', 'nourriture', 'repas', 'menu',
-        'coiffure', 'esthetique', 'beaute', 'soin',
-        'formation', 'cours', 'education', 'enseignement',
-        'reparation', 'maintenance', 'depannage',
-        'nettoyage', 'entretien', 'menage',
-        'impression', 'photocopie', 'reprographie',
-        'hebergement', 'hotel', 'location'
-      ];
+      const iaModalites = Array.isArray(field.modalites) ? field.modalites : [];
+      const userModalites = valeursFormulaire[field.name]?.modalites;
+      const modalitesFromUser = Array.isArray(userModalites) ? userModalites : [];
+      const modalitesToRender = modalitesFromUser.length > 0 ? modalitesFromUser : iaModalites;
 
-      const category = (valeursFormulaire.category || valeursFormulaire.categorie_produit || '').toLowerCase();
+      if (!Array.isArray(modalitesToRender) || modalitesToRender.length === 0) {
+        return null;
+      }
+
       const typeOffre = (valeursFormulaire.type_offre || 'produit').toLowerCase();
-
-      // Afficher si :
-      // 1. L'IA a déjà généré des variations (modalites non vides)
-      // 2. OU la catégorie est dans la liste des catégories pertinentes
-      // 3. OU c'est un produit physique (pas une prestation simple)
-      const hasExistingVariations = field.modalites && Array.isArray(field.modalites) && field.modalites.length > 0;
-      const hasUserVariations = valeursFormulaire[field.name]?.modalites && valeursFormulaire[field.name].modalites.length > 0;
-      const isCategoryRelevant = categoriesAvecVariations.some(cat => category.includes(cat));
       const isProduitPhysique = typeOffre === 'produit' || typeOffre === 'vente';
 
-      const isEditorVisible = priceVariantVisibility[field.name] || hasExistingVariations || hasUserVariations;
-      const shouldAutoSuggest = isCategoryRelevant || isProduitPhysique;
-
-      const renderVariantEditor = () => (
+      return (
         <View key={field.name} style={styles.fieldContainer}>
           <PriceVariantSelector
             label={field.label || (isProduitPhysique ? 'Variantes produit' : 'Variantes prestation')}
             variable={field.variable || (isProduitPhysique ? 'option' : 'formule')}
-            modalites={valeursFormulaire[field.name]?.modalites || field.modalites || []}
+            modalites={modalitesToRender}
             onChange={(modalites) => {
               handleFieldChange(field.name, {
                 type_donnee: 'price_variant',
@@ -2012,70 +1992,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             required={field.required}
             availableCurrencies={['XAF', 'EUR', 'USD']}
             defaultCurrency={valeursFormulaire.devise_produit || valeursFormulaire.devise || 'XAF'}
-            helperText="Définissez une option (ex: Taille M, Formule Premium) avec son prix propre."
-            showEmptyStateDetails={false}
+            helperText="Modifiez les options détectées par l'IA (prix, stock, image)."
+            showEmptyStateDetails={modalitesToRender.length === 0}
           />
           {fieldErrors[field.name] && (
             <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
           )}
-        </View>
-      );
-
-      if (hasExistingVariations || hasUserVariations || (isEditorVisible && priceVariantVisibility[field.name])) {
-        return renderVariantEditor();
-      }
-
-      return (
-        <View key={`${field.name}-callout`} style={styles.fieldContainer}>
-          <TouchableOpacity
-            style={[
-              styles.variantCallout,
-              shouldAutoSuggest && styles.variantCalloutHighlighted
-            ]}
-            onPress={() => {
-              setPriceVariantVisibility(prev => ({
-                ...prev,
-                [field.name]: true
-              }));
-              setTimeout(() => {
-                const blocksCopy = [...blocks];
-                const productsBlockIndex = blocksCopy.findIndex(b => b.id === 'products');
-                if (productsBlockIndex >= 0) {
-                  const priceVariantFieldIndex = blocksCopy[productsBlockIndex].fields.findIndex(f => f.name === field.name);
-                  if (priceVariantFieldIndex >= 0) {
-                    setCurrentBlock(productsBlockIndex);
-                  }
-                }
-              }, 0);
-            }}
-          >
-            <SafeIcon
-              name={shouldAutoSuggest ? 'sparkles' : 'layers'}
-              size={18}
-              color={shouldAutoSuggest ? '#FFFFFF' : modernColors.primary}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={[
-                styles.variantCalloutTitle,
-                shouldAutoSuggest && styles.variantCalloutTitleHighlighted
-              ]}>
-                {isProduitPhysique ? 'Ajouter des options tarifaires' : 'Ajouter des formules tarifaires'}
-              </Text>
-              <Text style={[
-                styles.variantCalloutText,
-                shouldAutoSuggest && styles.variantCalloutTextHighlighted
-              ]}>
-                {isProduitPhysique
-                  ? 'Ex: Taille M 5 500 XAF, Taille L 6 000 XAF'
-                  : 'Ex: Formule Basique 10 000 XAF, Formule Premium 25 000 XAF'}
-              </Text>
-            </View>
-            <SafeIcon
-              name="plus"
-              size={18}
-              color={shouldAutoSuggest ? '#FFFFFF' : modernColors.primary}
-            />
-          </TouchableOpacity>
         </View>
       );
     }
@@ -2324,7 +2246,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   });
                 }
               }}
-              style={[styles.fieldInput, hasError && styles.fieldInputError]}
+              style={[
+                styles.fieldInput,
+                hasError && styles.fieldInputError,
+                styles.autoGrowingInput,
+                field.name === 'nom_produit' && styles.autoGrowingInputName,
+                field.name === 'categorie_produit' && styles.autoGrowingInputCategory
+              ]}
             />
             {hasError && (
               <Text style={styles.fieldErrorText}>⚠️ {String(hasError)}</Text>
@@ -2333,6 +2261,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       case 'textarea':
         const isProductDescField = field.name === 'description_produit';
+        const linesMinimum = isProductDescField ? 3 : 3;
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
@@ -2343,7 +2272,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               value={valeursFormulaire[field.name] || ''}
               onChangeText={(text) => handleFieldChange(field.name, text)}
               multiline
-              style={[styles.fieldInput, styles.textareaInput]}
+              minLines={linesMinimum}
+              onContentSizeChange={(width, height) => {
+                const lineHeight = 24;
+                const computedLines = Math.max(linesMinimum, Math.ceil(height / lineHeight));
+                setDynamicTextareaHeights(prev => ({
+                  ...prev,
+                  [field.name]: computedLines * lineHeight + 32
+                }));
+              }}
+              style={[
+                styles.fieldInput,
+                styles.textareaInput,
+                dynamicTextareaHeights[field.name] ? { minHeight: dynamicTextareaHeights[field.name] } : null
+              ]}
             />
           </View>
         );
@@ -2585,13 +2527,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const ensurePrimaryMediaForFirstProduct = (
         produitsNode: any,
         media: any,
-        options: { nomFallback?: string; deviseFallback?: string } = {}
+        options: {
+          nomFallback?: string;
+          deviseFallback?: string;
+          combinationString?: string;
+          characteristicVector?: string[];
+          productLabels?: string[];
+          origineChamps?: string;
+        } = {}
       ) => {
         if (!media?.images?.length) {
           return produitsNode;
         }
 
-        const { nomFallback = '', deviseFallback = 'XAF' } = options;
+        const {
+          nomFallback = '',
+          deviseFallback = 'XAF',
+          combinationString = '',
+          characteristicVector = [],
+          productLabels = [],
+          origineChamps = 'formulaire'
+        } = options;
 
         const buildBaseProduct = () => ({
           nom: nomFallback,
@@ -2602,13 +2558,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           audio_base64: media.audios ? [...media.audios] : undefined,
           doc_base64: media.documents ? [...media.documents] : undefined,
           excel_base64: media.excel ? [...media.excel] : undefined,
-          devise: deviseFallback
+          devise: deviseFallback,
+          combinaison_brute: combinationString,
+          characteristic_vector: [...characteristicVector],
+          product_labels: [...productLabels],
+          origine_champs: origineChamps
         });
 
         if (!produitsNode) {
           return {
             type_donnee: 'listeproduit',
-            valeur: [buildBaseProduct()]
+            valeur: [buildBaseProduct()],
+            origine_champs: origineChamps,
+            characteristic_vector: [...characteristicVector],
+            product_labels: [...productLabels],
+            combinaison_brute: combinationString
           } as any;
         }
 
@@ -2660,12 +2624,32 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               firstProduct.devise = deviseFallback;
             }
 
+            if (combinationString && !firstProduct.combinaison_brute) {
+              firstProduct.combinaison_brute = combinationString;
+            }
+
+            if (characteristicVector.length && (!Array.isArray(firstProduct.characteristic_vector) || firstProduct.characteristic_vector.length === 0)) {
+              firstProduct.characteristic_vector = [...characteristicVector];
+            }
+
+            if (productLabels.length && (!Array.isArray(firstProduct.product_labels) || firstProduct.product_labels.length === 0)) {
+              firstProduct.product_labels = [...productLabels];
+            }
+
+            if (!firstProduct.origine_champs) {
+              firstProduct.origine_champs = origineChamps;
+            }
+
             produitsArray[0] = firstProduct;
           }
 
           return {
             ...produitsNode,
-            valeur: produitsArray
+            valeur: produitsArray,
+            origine_champs: produitsNode.origine_champs || origineChamps,
+            characteristic_vector: produitsNode.characteristic_vector || [...characteristicVector],
+            product_labels: produitsNode.product_labels || [...productLabels],
+            combinaison_brute: produitsNode.combinaison_brute || combinationString
           };
         }
 
@@ -3371,13 +3355,63 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   const descriptionProduit = finalServiceData.description_produit?.valeur || valeursFormulaire.description_produit || '';
                   const deviseProduit = finalServiceData.devise_produit?.valeur || valeursFormulaire.devise_produit || 'XAF';
 
+                  const combinationString = (() => {
+                    if (Array.isArray(autocompleteData?.valeur)) {
+                      const firstString = autocompleteData.valeur.find((entry: any) => typeof entry === 'string');
+                      if (typeof firstString === 'string') {
+                        return firstString;
+                      }
+                    }
+                    if (typeof autocompleteData?.valeur === 'string') {
+                      return autocompleteData.valeur;
+                    }
+                    if (Array.isArray(valeursFormulaire?.produits)) {
+                      const firstString = valeursFormulaire.produits.find((entry: any) => typeof entry === 'string');
+                      if (typeof firstString === 'string') {
+                        return firstString;
+                      }
+                    }
+                    if (typeof valeursFormulaire?.produits === 'string') {
+                      return valeursFormulaire.produits;
+                    }
+                    return '';
+                  })();
+
+                  const effectiveSeparator = ((): string => {
+                    if (typeof autocompleteData?.separateur === 'string' && autocompleteData.separateur.trim().length > 0) {
+                      return autocompleteData.separateur;
+                    }
+                    if (typeof separateur === 'string' && separateur.trim().length > 0) {
+                      return separateur;
+                    }
+                    return ',';
+                  })();
+
+                  const characteristicVector = combinationString
+                    ? combinationString.split(effectiveSeparator).map((part) => part.trim()).filter(Boolean)
+                    : [];
+
+                  const productLabelsFromAutocomplete = (() => {
+                    if (autocompleteData?.sous_caracteristiques && typeof autocompleteData.sous_caracteristiques === 'object') {
+                      return Object.keys(autocompleteData.sous_caracteristiques || {});
+                    }
+                    if (Array.isArray(valeursFormulaire?.product_labels)) {
+                      return valeursFormulaire.product_labels.filter((label: any) => typeof label === 'string');
+                    }
+                    return [];
+                  })();
+
                   // Construire l'objet produit enrichi des médias
                   const produitObj: any = {
                     nom: nomProduit,
                     prix: prixProduit,
                     categorie: categorieProduit,
                     description: descriptionProduit,
-                    devise: deviseProduit
+                    devise: deviseProduit,
+                    combinaison_brute: combinationString,
+                    characteristic_vector: characteristicVector,
+                    product_labels: productLabelsFromAutocomplete,
+                    origine_champs: autocompleteData.origine_champs || 'formulaire'
                   };
 
                   if (compressedMedia?.images?.length) {
@@ -3440,7 +3474,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   compressedMedia,
                   {
                     nomFallback: valeursFormulaire.nom_produit || finalServiceData.titre_service?.valeur || '',
-                    deviseFallback: valeursFormulaire.devise_produit || valeursFormulaire.devise || 'XAF'
+                    deviseFallback: valeursFormulaire.devise_produit || valeursFormulaire.devise || 'XAF',
+                    combinationString,
+                    characteristicVector,
+                    productLabels: productLabelsFromAutocomplete,
+                    origineChamps: autocompleteData.origine_champs || 'formulaire'
                   }
                 );
 
@@ -3650,22 +3688,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         colors={modernColors.primaryGradient}
         style={styles.header}
       >
-        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-          <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
-          <Text style={styles.backButtonText}>Retour</Text>
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>
-            {isReadonly ? 'Consultation' :
-              mode === 'edit' ? 'Modification' :
-                'Formulaire Intelligent'}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {isReadonly ? 'Mode lecture seule' :
-              mode === 'edit' ? 'Modification en cours' :
-                'Propulsé par l\'IA Yukpo'}
-          </Text>
-        </View>
+        <NavigatorToolbar
+          tone="dark"
+          showHandle={false}
+          title={isReadonly ? 'Consultation' : mode === 'edit' ? 'Modification' : 'Formulaire Intelligent'}
+          subtitle={isReadonly ? 'Mode lecture seule' : mode === 'edit' ? 'Modification en cours' : 'Propulsé par l\'IA Yukpo'}
+          onClose={handleGoBack}
+        />
       </LinearGradient>
 
       <View style={styles.scrollView}>
@@ -4034,46 +4063,8 @@ const styles = StyleSheet.create({
     backgroundColor: modernColors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  headerRight: {
-    width: 40,
+    paddingBottom: 24,
+    paddingHorizontal: 0,
   },
   scrollView: {
     flex: 1,
@@ -4727,6 +4718,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   // Styles pour le bouton de diagnostic
+  autoGrowingInput: {
+    minHeight: 52,
+  },
+  autoGrowingInputName: {
+    minHeight: 52,
+  },
+  autoGrowingInputCategory: {
+    minHeight: 52,
+  },
 });
 
 export default FormulaireYukpoIntelligentScreen;

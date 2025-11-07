@@ -13,6 +13,7 @@ import {
     View
 } from 'react-native';
 import { NativeCard } from '../components/NativeDesign';
+import NavigatorToolbar from '../components/NavigatorToolbar';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
@@ -116,23 +117,21 @@ const PubliciteDashboardScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
             <LinearGradient colors={modernColors.primaryGradient} style={styles.header}>
-                <View style={styles.headerContent}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <SafeIcon name="arrow-left" size={24} color="#fff" />
-                    </TouchableOpacity>
-                    <View style={styles.headerTextContainer}>
-                        <Text style={styles.headerTitle}>{t('publicite.dashboard')}</Text>
-                        <Text style={styles.headerSubtitle}>{t('publicite.analytics')}</Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => (navigation as any).navigate('CreatePublicite')}
-                        style={styles.addButton}
-                    >
-                        <SafeIcon name="plus" size={24} color="#fff" />
-                    </TouchableOpacity>
-                </View>
+                <NavigatorToolbar
+                    tone="dark"
+                    showHandle={false}
+                    title={t('publicite.dashboard')}
+                    subtitle={t('publicite.analytics')}
+                    rightSlot={(
+                        <TouchableOpacity
+                            onPress={() => (navigation as any).navigate('CreatePublicite')}
+                            style={styles.addButton}
+                        >
+                            <SafeIcon name="plus" size={24} color="#fff" />
+                        </TouchableOpacity>
+                    )}
+                />
             </LinearGradient>
 
             <ScrollView
@@ -327,19 +326,6 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 30,
         borderBottomRightRadius: 30,
     },
-    headerContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
     addButton: {
         width: 40,
         height: 40,
@@ -347,18 +333,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    headerTextContainer: {
-        flex: 1,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#fff',
-    },
-    headerSubtitle: {
-        fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.9)',
     },
     content: {
         flex: 1,

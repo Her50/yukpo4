@@ -27,6 +27,102 @@ interface SearchSuggestion {
     search_count?: number;
 }
 
+interface CombinationCardSuggestion {
+    id: string;
+    vector: string[];
+    labels: string[];
+    asQuery: string;
+    usageCount?: number;
+    price?: number;
+    devise?: string;
+    isPreferred?: boolean;
+    occurrences?: number;
+}
+
+const normalizeSearchText = (input: string): string => {
+    if (typeof input !== 'string') {
+        return '';
+    }
+
+    try {
+        return input
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9\s]/g, '')
+            .toLowerCase();
+    } catch (error) {
+        return input.toLowerCase();
+    }
+};
+
+const buildSearchTokens = (input: string): string[] => {
+    if (!input || typeof input !== 'string') {
+        return [];
+    }
+
+    return input
+        .split(/[\s,;\-|/_]+/)
+        .map((token) => normalizeSearchText(token.trim()))
+        .filter(Boolean);
+};
+
+const vectorMatchesTokens = (
+    vector: string[] = [],
+    tokens: string[] = [],
+    labels: string[] = [],
+): boolean => {
+    if (tokens.length === 0) {
+        return true;
+    }
+
+    const normalizedVector = vector
+        .filter((value) => typeof value === 'string')
+        .map((value) => normalizeSearchText(value));
+
+    const normalizedLabels = labels
+        .filter((value) => typeof value === 'string')
+        .map((value) => normalizeSearchText(value));
+
+    return tokens.every((token) =>
+        normalizedVector.some((value) => value.includes(token)) ||
+        normalizedLabels.some((label) => label.includes(token))
+    );
+};
+
+const buildLabeledPairs = (
+    values: string[] = [],
+    labels: string[] = [],
+): Array<{ label: string; value: string }> => {
+    return values
+        .filter((value) => typeof value === 'string' && value.trim().length > 0)
+        .map((value, index) => {
+            const rawLabel = labels[index];
+            const label = rawLabel && rawLabel.trim().length > 0
+                ? rawLabel
+                : `Caractéristique ${index + 1}`;
+
+            return {
+                label,
+                value,
+            };
+        });
+};
+
+const buildCombinationKey = (values: string[] = [], labels: string[] = []): string => {
+    const pairs = buildLabeledPairs(values, labels);
+    if (pairs.length === 0) {
+        return '';
+    }
+
+    return pairs
+        .map(({ label, value }) => {
+            const normalizedLabel = normalizeSearchText(label || '');
+            const normalizedValue = normalizeSearchText(value || '');
+            return `${normalizedLabel}=${normalizedValue}`;
+        })
+        .join('|');
+};
+
 export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     placeholder = 'Rechercher...',
     onSubmit,
@@ -43,7 +139,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     const [suggestions, setSuggestions] = useState<HistorySuggestion[]>([]);
     const [popularSearches, setPopularSearches] = useState<HistorySuggestion[]>([]);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-    const [combinationSuggestions, setCombinationSuggestions] = useState<string[]>([]);
+    const [combinationSuggestions, setCombinationSuggestions] = useState<CombinationCardSuggestion[]>([]);
     const [isLoadingCombinations, setIsLoadingCombinations] = useState(false);
     const [combinationError, setCombinationError] = useState<string | null>(null);
     const [sessionId] = useState(() => searchHistoryService.generateSessionId());
@@ -120,6 +216,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
             setCombinationError(null);
 
             try {
+                const tokens = buildSearchTokens(cleaned);
                 const response = await apiPost('/api/combinations/search', {
                     query: cleaned,
                     limit: 8,
@@ -127,38 +224,88 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
                 if (response?.success) {
                     const combos = normalizeCombinationsResponse(response);
-                    const unique = new Set<string>();
-                    const normalized = combos
-                        .map((item: any) => {
-                            const combo = item?.combination ?? item;
-                            if (!combo || !Array.isArray(combo.product_vector)) {
-                                return null;
+                    const unique = new Map<string, CombinationCardSuggestion>();
+                    combos.forEach((item: any) => {
+                        const combo = item?.combination ?? item;
+                        if (!combo || !Array.isArray(combo.product_vector)) {
+                            return;
+                        }
+
+                        const vector = combo.product_vector
+                            .filter((part: any) => typeof part === 'string')
+                            .map((part: string) => part.trim())
+                            .filter(Boolean);
+
+                        if (vector.length === 0) {
+                            return;
+                        }
+
+                        const labels = Array.isArray(combo.product_labels) ? combo.product_labels : [];
+
+                        if (!vectorMatchesTokens(vector, tokens, labels)) {
+                            return;
+                        }
+
+                        const joined = vector.join(', ');
+                        const key = buildCombinationKey(vector, labels);
+
+                        if (!joined || !key) {
+                            return;
+                        }
+
+                        let price: number | undefined;
+                        if (combo.prix !== null && combo.prix !== undefined) {
+                            const parsed = typeof combo.prix === 'number'
+                                ? combo.prix
+                                : parseFloat(`${combo.prix}`);
+                            price = Number.isNaN(parsed) ? undefined : parsed;
+                        }
+
+                        const usageCount = typeof combo.usage_count === 'number' ? combo.usage_count : undefined;
+
+                        const existing = unique.get(key);
+                        if (existing) {
+                            existing.occurrences = (existing.occurrences ?? 1) + 1;
+                            if (
+                                typeof usageCount === 'number' &&
+                                usageCount > (existing.usageCount ?? 0)
+                            ) {
+                                existing.usageCount = usageCount;
                             }
-
-                            const parts = combo.product_vector
-                                .filter((part: any) => typeof part === 'string')
-                                .map((part: string) => part.trim())
-                                .filter(Boolean);
-
-                            if (parts.length === 0) {
-                                return null;
+                            if (price !== undefined && existing.price === undefined) {
+                                existing.price = price;
+                                existing.devise = combo.devise || existing.devise;
                             }
-
-                            const joined = parts.join(', ');
-                            const key = joined.toLowerCase();
-
-                            if (!joined || unique.has(key)) {
-                                return null;
+                            if (combo.is_ai_preferred) {
+                                existing.isPreferred = true;
                             }
+                            return;
+                        }
 
-                            unique.add(key);
-                            return joined;
-                        })
-                        .filter((value: string | null): value is string => value !== null);
+                        unique.set(key, {
+                            id: `${combo.id ?? key}`,
+                            vector,
+                            labels,
+                            asQuery: joined,
+                            usageCount,
+                            price,
+                            devise: combo.devise || undefined,
+                            isPreferred: !!combo.is_ai_preferred,
+                            occurrences: 1,
+                        });
+                    });
+
+                    const normalized = Array.from(unique.values());
 
                     setCombinationSuggestions(normalized);
+                    if (normalized.length === 0) {
+                        setCombinationError('Aucune caractéristique populaire correspondant à cette recherche.');
+                    } else {
+                        setCombinationError(null);
+                    }
                 } else {
                     setCombinationSuggestions([]);
+                    setCombinationError('Aucune caractéristique populaire trouvée.');
                 }
             } catch (error) {
                 console.error('[IntelligentSearchBar] Erreur chargement combinaisons:', error);
@@ -332,26 +479,58 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                     {!isLoadingCombinations && combinationSuggestions.length > 0 && (
                         <View style={styles.combinationSuggestionsContainer}>
                             {combinationSuggestions.map((combo, index) => {
-                                const parts = combo.split(',').map((part) => part.trim()).filter(Boolean);
+                                const rows = buildLabeledPairs(combo.vector, combo.labels);
 
                                 return (
                                     <TouchableOpacity
-                                        key={`combo-${index}-${combo}`}
+                                        key={`combo-${combo.id}-${index}`}
                                         style={styles.combinationCard}
-                                        onPress={() => selectSuggestion(combo)}
+                                        onPress={() => selectSuggestion(combo.asQuery)}
                                     >
                                         <View style={styles.combinationCardHeader}>
-                                            <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                                            <SafeIcon
+                                                name={combo.isPreferred ? 'sparkles' : 'layers'}
+                                                size={16}
+                                                color={combo.isPreferred ? modernColors.primary : '#6366F1'}
+                                            />
                                             <Text style={styles.combinationCardTitle}>Suggestion {index + 1}</Text>
                                         </View>
-                                        <View style={styles.combinationCardChips}>
-                                            {parts.map((part, chipIndex) => (
-                                                <View key={`${combo}-${chipIndex}`} style={styles.combinationCardChip}>
-                                                    <Text style={styles.combinationCardChipText}>{part}</Text>
+
+                                        <View style={styles.combinationTable}>
+                                            {rows.map((row, rowIndex) => (
+                                                <View
+                                                    key={`${combo.id}-${row.label}-${rowIndex}`}
+                                                    style={[styles.combinationRow, rowIndex === rows.length - 1 && styles.combinationRowLast]}
+                                                >
+                                                    <Text style={styles.combinationCellLabel}>{row.label}</Text>
+                                                    <Text style={styles.combinationCellValue}>{row.value}</Text>
                                                 </View>
                                             ))}
                                         </View>
-                                        <Text style={styles.combinationApply}>Appuyer pour utiliser cette combinaison</Text>
+
+                                        {(typeof combo.usageCount === 'number' || typeof combo.price === 'number' || (combo.occurrences && combo.occurrences > 1)) && (
+                                            <View style={styles.combinationMeta}>
+                                                <View style={styles.combinationMetaLeft}>
+                                                    {typeof combo.usageCount === 'number' && (
+                                                        <Text style={styles.combinationUsage}>
+                                                            👥 {combo.usageCount} recherche{combo.usageCount > 1 ? 's' : ''}
+                                                        </Text>
+                                                    )}
+                                                    {combo.occurrences && combo.occurrences > 1 && (
+                                                        <Text style={styles.combinationOccurrence}>
+                                                            🔁 {combo.occurrences} occurrences
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                                {typeof combo.price === 'number' && (
+                                                    <Text style={styles.combinationPrice}>
+                                                        💰 {Math.round(combo.price).toLocaleString('fr-FR')} {combo.devise || 'XAF'}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        )}
+
+                                        <Text style={styles.combinationApply}>Appuyer pour lancer la recherche avec ces critères</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -642,40 +821,86 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     combinationCard: {
-        backgroundColor: modernColors.surfaceVariant,
-        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
         padding: 16,
         borderWidth: 1,
         borderColor: modernColors.border,
+        gap: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        elevation: 1,
     },
     combinationCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        marginBottom: 12,
+        justifyContent: 'space-between',
     },
     combinationCardTitle: {
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
     },
-    combinationCardChips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginBottom: 12,
-    },
-    combinationCardChip: {
-        backgroundColor: modernColors.surfaceVariant,
-        borderRadius: 16,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+    combinationTable: {
         borderWidth: 1,
         borderColor: modernColors.border,
+        borderRadius: 10,
+        overflow: 'hidden',
     },
-    combinationCardChipText: {
+    combinationRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+        gap: 12,
+    },
+    combinationRowLast: {
+        borderBottomWidth: 0,
+    },
+    combinationCellLabel: {
+        flex: 0.45,
         fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        textTransform: 'capitalize',
+    },
+    combinationCellValue: {
+        flex: 0.55,
+        fontSize: 14,
+        fontWeight: '600',
         color: modernColors.text,
+        textAlign: 'right',
+    },
+    combinationMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    combinationMetaLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    combinationUsage: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+    },
+    combinationOccurrence: {
+        fontSize: 12,
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    combinationPrice: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#059669',
     },
     combinationApply: {
         fontSize: 12,

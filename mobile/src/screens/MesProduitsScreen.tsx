@@ -1,11 +1,12 @@
 // @ts-nocheck
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Dimensions,
+    Modal,
     RefreshControl,
     ScrollView,
     Share,
@@ -15,7 +16,9 @@ import {
     View
 } from 'react-native';
 import { NativeButton, NativeCard } from '../components/NativeDesign';
+import NavigatorToolbar from '../components/NavigatorToolbar';
 import SafeIcon from '../components/SafeIcon';
+import ServiceTeamManager from '../components/ServiceTeamManager';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -34,16 +37,85 @@ interface Product {
     serviceTitre: string;
     images?: string[];
     [key: string]: any;
+    rawProductId?: number;
+    product_index?: number;
+    category_key?: string;
+    category_label?: string;
+    views?: number;
+    shares?: number;
+    saves?: number;
 }
+
+const normalizeCategoryKey = (product: Record<string, any>): string => {
+    const raw = product?.categorie_produit
+        ?? product?.categorie
+        ?? product?.category
+        ?? product?.type
+        ?? product?.serviceCategorie
+        ?? 'autre';
+
+    return String(raw).trim().toLowerCase();
+};
+
+const getProductTypeLabel = (type: string): string => {
+    const key = (type || '').toLowerCase();
+    const labels: Record<string, string> = {
+        'electronique': '📱 Électronique',
+        'informatique': '💻 Informatique',
+        'plombier': '🔧 Plomberie',
+        'plomberie': '🔧 Plomberie',
+        'electricite': '⚡ Électricité',
+        'automobile': '🚗 Automobile',
+        'agriculture': '🌾 Agriculture',
+        'beaute': '💄 Beauté',
+        'sante': '🩺 Santé',
+        'immobilier': '🏢 Immobilier',
+        'service': '💼 Service',
+        'prestation': '💼 Prestation',
+        'ticket_voyage': '🚌 Ticket de voyage',
+    };
+
+    if (labels[key]) {
+        return labels[key];
+    }
+
+    if (!key) {
+        return 'Autres catégories';
+    }
+
+    return key.charAt(0).toUpperCase() + key.slice(1);
+};
+
+const formatStatValue = (value?: number): string => {
+    const safe = typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+    if (safe >= 1_000_000) {
+        return `${(safe / 1_000_000).toFixed(1)}M`;
+    }
+    if (safe >= 1_000) {
+        return `${(safe / 1_000).toFixed(1)}k`;
+    }
+    return safe.toLocaleString('fr-FR');
+};
+
+const resolveNumericId = (value: any): number | null => {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    const parsed = parseInt(String(value), 10);
+    return Number.isNaN(parsed) ? null : parsed;
+};
 
 const MesProduitsScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
     const [products, setProducts] = useState<Product[]>([]);
+    const [services, setServices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState<'tous' | 'actif' | 'inactif'>('tous');
     const [categoryFilter, setCategoryFilter] = useState<string>('tous');
+    const [showTeamManager, setShowTeamManager] = useState(false);
+    const [teamManagerServiceId, setTeamManagerServiceId] = useState<string | undefined>(undefined);
 
     // Charger tous les produits de tous les services du prestataire
     const loadProducts = async (isRefresh = false) => {
@@ -58,25 +130,69 @@ const MesProduitsScreen: React.FC = () => {
             const servicesResponse = await apiGet('/api/prestataire/services');
 
             if (servicesResponse.success && servicesResponse.data) {
-                const services = servicesResponse.data;
-                console.log('[MesProduitsScreen] 📦 Services reçus:', services.length);
+                const servicesData = servicesResponse.data;
+                console.log('[MesProduitsScreen] 📦 Services reçus:', servicesData.length);
+                setServices(servicesData);
 
                 // Extraire tous les produits de tous les services
                 const allProducts: Product[] = [];
 
-                services.forEach((service: any) => {
+                servicesData.forEach((service: any) => {
                     const serviceId = service.id.toString();
                     const serviceTitre = service.data?.titre_service?.valeur || service.titre || 'Service sans titre';
                     const produits = service.data?.produits?.valeur;
 
                     if (produits && Array.isArray(produits)) {
-                        produits.forEach((product: any) => {
+                        produits.forEach((product: any, index: number) => {
+                            const productIndex = typeof product.product_index === 'number'
+                                ? product.product_index
+                                : index;
+
+                            const rawProductIdCandidate = product.lifecycle_id
+                                ?? product.product_lifecycle_id
+                                ?? product.productLifecycleId
+                                ?? product.product_id
+                                ?? product.id
+                                ?? null;
+
+                            const numericProductId = resolveNumericId(rawProductIdCandidate);
+
+                            const categoryKey = normalizeCategoryKey(product);
+                            const categoryLabel = getProductTypeLabel(categoryKey);
+
+                            const views = Number(
+                                product.views
+                                ?? product.stats?.views
+                                ?? product.analytics?.views
+                                ?? 0
+                            );
+                            const shares = Number(
+                                product.shares
+                                ?? product.stats?.shares
+                                ?? product.analytics?.shares
+                                ?? 0
+                            );
+                            const saves = Number(
+                                product.saves
+                                ?? product.stats?.favorites
+                                ?? product.analytics?.favorites
+                                ?? product.favoris
+                                ?? 0
+                            );
+
                             allProducts.push({
                                 ...product,
-                                id: product.id || `${serviceId}_${product.nom}`,
+                                id: numericProductId ? String(numericProductId) : `${serviceId}_${productIndex}`,
+                                rawProductId: numericProductId ?? undefined,
+                                product_index: productIndex,
+                                category_key: categoryKey,
+                                category_label: categoryLabel,
                                 serviceId,
                                 serviceTitre,
-                                is_active: product.is_active !== undefined ? product.is_active : true
+                                is_active: product.is_active !== undefined ? product.is_active : true,
+                                views,
+                                shares,
+                                saves,
                             });
                         });
                     }
@@ -86,11 +202,13 @@ const MesProduitsScreen: React.FC = () => {
                 setProducts(allProducts);
             } else {
                 console.error('[MesProduitsScreen] Erreur chargement services:', servicesResponse.error);
+                setServices([]);
                 setProducts([]);
             }
         } catch (error) {
             console.error('[MesProduitsScreen] Erreur:', error);
             Alert.alert('Erreur', 'Impossible de charger vos produits');
+            setServices([]);
             setProducts([]);
         } finally {
             setLoading(false);
@@ -112,6 +230,15 @@ const MesProduitsScreen: React.FC = () => {
     const handleToggleProduct = async (product: Product) => {
         try {
             const newStatus = !product.is_active;
+            const productIdForToggle = resolveNumericId(product.rawProductId ?? product.id);
+
+            if (productIdForToggle === null) {
+                Alert.alert(
+                    'Identifiant introuvable',
+                    'Impossible de déterminer l\'identifiant de ce produit. Veuillez réessayer après actualisation.'
+                );
+                return;
+            }
 
             // Si RÉACTIVATION (inactif → actif)
             if (newStatus) {
@@ -176,15 +303,18 @@ const MesProduitsScreen: React.FC = () => {
                                     }
 
                                     // Toggle le produit
-                                    const response = await apiPatch(`/api/products/${product.id}/toggle-status`, {
+                                    const response = await apiPatch(`/api/products/${productIdForToggle}/toggle-status`, {
                                         is_active: newStatus
                                     });
 
                                     if (response.success) {
                                         setProducts(prevProducts =>
-                                            prevProducts.map(p =>
-                                                p.id === product.id ? { ...p, is_active: newStatus } : p
-                                            )
+                                            prevProducts.map((p) => {
+                                                const candidateId = resolveNumericId(p.rawProductId ?? p.id);
+                                                return candidateId === productIdForToggle
+                                                    ? { ...p, is_active: newStatus }
+                                                    : p;
+                                            })
                                         );
 
                                         Alert.alert(
@@ -213,15 +343,18 @@ const MesProduitsScreen: React.FC = () => {
                             text: 'Désactiver',
                             onPress: async () => {
                                 try {
-                                    const response = await apiPatch(`/api/products/${product.id}/toggle-status`, {
+                                    const response = await apiPatch(`/api/products/${productIdForToggle}/toggle-status`, {
                                         is_active: newStatus
                                     });
 
                                     if (response.success) {
                                         setProducts(prevProducts =>
-                                            prevProducts.map(p =>
-                                                p.id === product.id ? { ...p, is_active: newStatus } : p
-                                            )
+                                            prevProducts.map((p) => {
+                                                const candidateId = resolveNumericId(p.rawProductId ?? p.id);
+                                                return candidateId === productIdForToggle
+                                                    ? { ...p, is_active: newStatus }
+                                                    : p;
+                                            })
                                         );
 
                                         Alert.alert('✅ Succès', 'Produit désactivé avec succès');
@@ -254,10 +387,23 @@ const MesProduitsScreen: React.FC = () => {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            const response = await apiDelete(`/api/products/${product.id}`);
+                            const productIdForDelete = resolveNumericId(product.rawProductId ?? product.id);
+
+                            if (productIdForDelete === null) {
+                                Alert.alert(
+                                    'Identifiant introuvable',
+                                    'Impossible de supprimer ce produit car son identifiant est manquant.'
+                                );
+                                return;
+                            }
+
+                            const response = await apiDelete(`/api/products/${productIdForDelete}`);
 
                             if (response.success) {
-                                setProducts(prevProducts => prevProducts.filter(p => p.id !== product.id));
+                                setProducts(prevProducts => prevProducts.filter((p) => {
+                                    const candidateId = resolveNumericId(p.rawProductId ?? p.id);
+                                    return candidateId !== productIdForDelete;
+                                }));
                                 Alert.alert('✅ Succès', 'Produit supprimé avec succès');
                             } else {
                                 Alert.alert('Erreur', response.error || 'Impossible de supprimer le produit');
@@ -273,46 +419,30 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Modifier un produit (naviguer vers le service parent en mode édition)
-    const handleEditProduct = async (product: Product) => {
-        try {
-            console.log('[MesProduitsScreen] 📝 Modification produit:', {
-                productId: product.id,
-                productName: product.nom,
-                serviceId: product.serviceId,
-                serviceName: product.serviceTitre
-            });
+    const handleEditProduct = (product: Product) => {
+        const productIdForUpdate = resolveNumericId(product.rawProductId ?? product.id);
 
-            // Charger les données complètes du service
-            const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
-
-            if (!serviceResponse.success || !serviceResponse.data) {
-                Alert.alert('Erreur', 'Impossible de charger les données du service');
-                return;
-            }
-
-            const serviceData = serviceResponse.data;
-
-            // Navigation vers le formulaire avec focus sur le bloc produits
-            navigation.navigate('FormulaireYukpoIntelligent' as never, {
-                mode: 'edit',
-                serviceId: product.serviceId,
-                serviceData: serviceData.data || {},
-                suggestion: {
-                    data: serviceData.data || {},
-                    intention: 'modification_service',
-                    confidence: 1.0
-                },
-                type: 'modification_service',
-                editMode: true,
-                // ✅ NOUVEAU: Focus sur le bloc produits avec le produit spécifique
-                focusBlock: 'produits',
-                focusProductId: product.id,
-                fromMesProduits: true
-            } as never);
-        } catch (error) {
-            console.error('[MesProduitsScreen] Erreur navigation édition:', error);
-            Alert.alert('Erreur', 'Impossible d\'ouvrir la modification du produit');
+        if (productIdForUpdate === null) {
+            Alert.alert('Identifiant introuvable', 'Impossible de modifier ce produit car son identifiant est manquant.');
+            return;
         }
+
+        const prefill = buildProductPrefill(product);
+        const mediaData = {
+            base64_image: Array.isArray(prefill.images) ? prefill.images : [],
+            video_base64: Array.isArray(prefill.videos) ? prefill.videos : [],
+            audio_base64: Array.isArray(prefill.audios) ? prefill.audios : [],
+            doc_base64: Array.isArray(prefill.documents) ? prefill.documents : [],
+        };
+
+        navigation.navigate('AjouterProduitSimple' as never, {
+            mode: 'edit',
+            serviceId: product.serviceId,
+            productId: productIdForUpdate,
+            productIndex: product.product_index ?? 0,
+            prefill,
+            mediaData,
+        } as never);
     };
 
     // Partager un produit
@@ -347,53 +477,24 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Dupliquer un produit
-    const handleDuplicateProduct = async (product: Product) => {
-        try {
-            console.log('[MesProduitsScreen] 📋 Duplication produit:', {
-                productId: product.id,
-                productName: product.nom,
-                serviceId: product.serviceId
-            });
+    const handleDuplicateProduct = (product: Product) => {
+        const prefill = buildProductPrefill(product);
+        const originalName = prefill.nom_produit || product.nom || 'Produit';
+        prefill.nom_produit = `${originalName} (Copie)`;
 
-            // Charger les données complètes du service
-            const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
+        const mediaData = {
+            base64_image: Array.isArray(prefill.images) ? prefill.images : [],
+            video_base64: Array.isArray(prefill.videos) ? prefill.videos : [],
+            audio_base64: Array.isArray(prefill.audios) ? prefill.audios : [],
+            doc_base64: Array.isArray(prefill.documents) ? prefill.documents : [],
+        };
 
-            if (!serviceResponse.success || !serviceResponse.data) {
-                Alert.alert('Erreur', 'Impossible de charger les données du service');
-                return;
-            }
-
-            const serviceData = serviceResponse.data;
-
-            // Créer une copie du produit pour la duplication
-            const duplicatedProduct = {
-                ...product,
-                id: undefined, // Le nouveau produit aura un nouvel ID
-                nom: `${product.nom} (Copie)`,
-                is_active: true,
-            };
-
-            // Navigation vers le formulaire avec le produit dupliqué
-            navigation.navigate('FormulaireYukpoIntelligent' as never, {
-                mode: 'edit',
-                serviceId: product.serviceId,
-                serviceData: serviceData.data || {},
-                suggestion: {
-                    data: serviceData.data || {},
-                    intention: 'modification_service',
-                    confidence: 1.0
-                },
-                type: 'modification_service',
-                editMode: true,
-                // ✅ NOUVEAU: Focus sur le bloc produits avec duplication automatique
-                focusBlock: 'produits',
-                duplicateProduct: duplicatedProduct, // Produit à dupliquer
-                fromMesProduits: true
-            } as never);
-        } catch (error) {
-            console.error('[MesProduitsScreen] Erreur duplication:', error);
-            Alert.alert('Erreur', 'Impossible de dupliquer le produit');
-        }
+        navigation.navigate('AjouterProduitSimple' as never, {
+            mode: 'duplicate',
+            serviceId: product.serviceId,
+            prefill,
+            mediaData,
+        } as never);
     };
 
     // Promouvoir un produit
@@ -438,46 +539,24 @@ const MesProduitsScreen: React.FC = () => {
                 return;
             }
 
-            const services = servicesResponse.data;
+            const servicesData = servicesResponse.data;
+            setServices(servicesData);
 
             // Si un seul service, l'ouvrir directement
-            if (services.length === 1) {
-                const service = services[0];
-                const serviceData = service.data || {};
-
-                navigation.navigate('FormulaireYukpoIntelligent' as never, {
-                    mode: 'edit',
+            if (servicesData.length === 1) {
+                const service = servicesData[0];
+                navigation.navigate('AjouterProduitSimple' as never, {
+                    mode: 'create',
                     serviceId: service.id,
-                    serviceData: serviceData,
-                    suggestion: {
-                        data: serviceData,
-                        intention: 'modification_service',
-                        confidence: 1.0
-                    },
-                    type: 'modification_service',
-                    editMode: true,
-                    focusBlock: 'products', // ✅ Ouvrir directement sur le bloc produits
-                    fromMesProduits: true
                 } as never);
             } else {
                 // Plusieurs services : proposer de choisir
-                const serviceOptions = services.map((service: any) => ({
+                const serviceOptions = servicesData.map((service: any) => ({
                     text: service.data?.titre_service?.valeur || service.titre || `Service ${service.id}`,
                     onPress: () => {
-                        const serviceData = service.data || {};
-                        navigation.navigate('FormulaireYukpoIntelligent' as never, {
-                            mode: 'edit',
+                        navigation.navigate('AjouterProduitSimple' as never, {
+                            mode: 'create',
                             serviceId: service.id,
-                            serviceData: serviceData,
-                            suggestion: {
-                                data: serviceData,
-                                intention: 'modification_service',
-                                confidence: 1.0
-                            },
-                            type: 'modification_service',
-                            editMode: true,
-                            focusBlock: 'products', // ✅ Ouvrir directement sur le bloc produits
-                            fromMesProduits: true
                         } as never);
                     }
                 }));
@@ -495,6 +574,32 @@ const MesProduitsScreen: React.FC = () => {
             console.error('[MesProduitsScreen] Erreur création produit:', error);
             Alert.alert('Erreur', 'Impossible de charger vos services');
         }
+    };
+
+    const openTeamManager = (serviceId?: string) => {
+        setTeamManagerServiceId(serviceId ? String(serviceId) : undefined);
+        setShowTeamManager(true);
+    };
+
+    const handleManageMembers = () => {
+        if (!services || services.length === 0) {
+            Alert.alert(
+                'Aucun service',
+                'Vous n\'avez pas encore de service pour gérer des membres. Créez un service pour définir les droits d\'accès.'
+            );
+            return;
+        }
+
+        if (services.length === 1) {
+            openTeamManager(String(services[0].id));
+            return;
+        }
+
+        openTeamManager(undefined);
+    };
+
+    const handleManageMembersForService = (serviceId: string) => {
+        openTeamManager(serviceId);
     };
 
     // ✅ NOUVEAU 2025-11-06: Éditer les informations générales du service
@@ -543,9 +648,23 @@ const MesProduitsScreen: React.FC = () => {
             `💬 Interactions: ${product.interactions || 0}\n` +
             `📅 Créé le: ${product.createdAt ? new Date(product.createdAt).toLocaleDateString('fr-FR') : 'N/A'}\n` +
             `✅ Statut: ${product.is_active ? 'Actif' : 'Inactif'}\n` +
-            `🏷️ Catégorie: ${getProductTypeLabel(product.type)}`;
+            `🏷️ Catégorie: ${getProductTypeLabel(product.category_key || product.type)}`;
 
         Alert.alert('📊 Statistiques', stats, [{ text: 'OK' }]);
+    };
+
+    const handleViewGlobalStats = () => {
+        const totalViews = products.reduce((sum, item) => sum + (Number(item.views) || 0), 0);
+        const totalShares = products.reduce((sum, item) => sum + (Number(item.shares) || 0), 0);
+        const totalSaves = products.reduce((sum, item) => sum + (Number(item.saves) || 0), 0);
+
+        Alert.alert(
+            '📊 Vue d’ensemble',
+            `👁️ Vues cumulées : ${totalViews.toLocaleString('fr-FR')}\n` +
+            `🔁 Partages : ${totalShares.toLocaleString('fr-FR')}\n` +
+            `⭐ Favoris : ${totalSaves.toLocaleString('fr-FR')}`,
+            [{ text: 'OK' }]
+        );
     };
 
     // Filtrer les produits
@@ -555,24 +674,254 @@ const MesProduitsScreen: React.FC = () => {
         if (filter === 'inactif' && product.is_active) return false;
 
         // Filtre par catégorie
-        if (categoryFilter !== 'tous' && product.type !== categoryFilter) return false;
+        if (categoryFilter !== 'tous' && (product.category_key || 'autre') !== categoryFilter) return false;
 
         return true;
     });
 
-    // Récupérer les catégories uniques
-    const categories = ['tous', ...new Set(products.map(p => p.type).filter(Boolean))];
+    const categories = useMemo(() => {
+        const map = new Map<string, string>();
 
-    const getProductTypeLabel = (type: string) => {
-        const labels: Record<string, string> = {
-            'ticket_voyage': '🚌 Ticket de voyage',
-            'covoiturage': '🚗 Covoiturage',
-            'immobilier_batiment': '🏢 Immobilier',
-            'automobile': '🚙 Automobile',
-            'prestation_service': '💼 Prestation',
-            // ... ajouter d'autres types selon besoin
-        };
-        return labels[type] || type;
+        products.forEach((product) => {
+            const key = product.category_key || 'autre';
+            if (!map.has(key)) {
+                map.set(key, product.category_label || getProductTypeLabel(key));
+            }
+        });
+
+        return [
+            { key: 'tous', label: 'Toutes catégories' },
+            ...Array.from(map.entries()).map(([key, label]) => ({ key, label })),
+        ];
+    }, [products]);
+
+    const totalProducts = products.length;
+    const activeProducts = products.filter((p) => p.is_active).length;
+    const inactiveProducts = Math.max(totalProducts - activeProducts, 0);
+    const totalCategories = Math.max(categories.length - 1, 0);
+
+    const buildProductPrefill = (product: Product) => {
+        const prefill: Record<string, any> = {};
+
+        prefill.nom_produit = product.nom || product.nom_produit || '';
+        prefill.categorie_produit = product.categorie_produit || product.categorie || product.category || '';
+        prefill.description_produit = product.description || product.description_produit || '';
+
+        if (product.prix_produit) {
+            prefill.prix_produit = product.prix_produit.toString();
+        } else if (product.prix !== undefined && product.prix !== null) {
+            prefill.prix_produit = typeof product.prix === 'number'
+                ? product.prix.toString()
+                : product.prix;
+        }
+
+        prefill.devise_produit = product.devise_produit || product.devise || 'XAF';
+
+        if (Array.isArray(product.produits)) {
+            prefill.produits = product.produits;
+        } else if (product.combinaison_brute) {
+            prefill.produits = [product.combinaison_brute];
+        } else if (Array.isArray(product.characteristic_vector)) {
+            prefill.produits = [product.characteristic_vector.filter(Boolean).join(', ')];
+        }
+
+        if (product.sous_caracteristiques) {
+            prefill.sous_caracteristiques = product.sous_caracteristiques;
+        } else if (Array.isArray(product.product_labels) && Array.isArray(product.characteristic_vector)) {
+            const map: Record<string, string[]> = {};
+            product.product_labels.forEach((label: string, index: number) => {
+                const value = product.characteristic_vector[index];
+                if (!label || !value) {
+                    return;
+                }
+                if (!map[label]) {
+                    map[label] = [];
+                }
+                if (!map[label].includes(value)) {
+                    map[label].push(value);
+                }
+            });
+            if (Object.keys(map).length > 0) {
+                prefill.sous_caracteristiques = map;
+            }
+        }
+
+        prefill.variabilite_prix = product.variabilite_prix || product.price_variant || null;
+        prefill.lieu_produit = product.lieu_produit || product.lieu || product.location || null;
+
+        if (Array.isArray(product.images)) {
+            prefill.images = product.images;
+        }
+        if (Array.isArray(product.videos)) {
+            prefill.videos = product.videos;
+        }
+        if (Array.isArray(product.audios)) {
+            prefill.audios = product.audios;
+        }
+        if (Array.isArray(product.documents)) {
+            prefill.documents = product.documents;
+        }
+        if (Array.isArray(product.characteristic_vector)) {
+            prefill.characteristic_vector = product.characteristic_vector;
+        }
+        if (product.combinaison_brute) {
+            prefill.combinaison_brute = product.combinaison_brute;
+        }
+
+        return prefill;
+    };
+
+    const renderProductCard = (product: Product) => {
+        const priceValue = product.prix !== undefined && product.prix !== null
+            ? (typeof product.prix === 'number'
+                ? `${product.prix.toLocaleString('fr-FR')} ${product.devise || 'FCFA'}`
+                : `${product.prix} ${product.devise || 'FCFA'}`)
+            : product.prix_produit
+                ? `${product.prix_produit} ${product.devise_produit || 'FCFA'}`
+                : null;
+
+        const productDescription = product.description
+            || product.description_produit
+            || product.resume
+            || product.details
+            || '';
+
+        const categoryLabel = product.category_label || getProductTypeLabel(product.category_key || product.type);
+        const viewsLabel = formatStatValue(product.views);
+        const sharesLabel = formatStatValue(product.shares);
+        const savesLabel = formatStatValue(product.saves);
+
+        return (
+            <NativeCard
+                key={`${product.serviceId}_${product.id}_${product.product_index}`}
+                style={styles.productCard}
+            >
+                <View style={styles.productHeader}>
+                    <View style={styles.productTitleContainer}>
+                        <Text style={styles.productName} numberOfLines={2}>
+                            {product.nom || product.nom_produit || 'Produit sans nom'}
+                        </Text>
+                        <View style={[
+                            styles.productStatusBadge,
+                            { backgroundColor: product.is_active ? '#10B981' : '#9CA3AF' }
+                        ]}>
+                            <Text style={styles.productStatusText}>
+                                {product.is_active ? 'Actif' : 'En pause'}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={styles.productInfo}>
+                    <View style={styles.productInfoRow}>
+                        <SafeIcon name="folder" size={14} color="#6B7280" />
+                        <Text style={styles.productServiceName} numberOfLines={1}>
+                            {product.serviceTitre}
+                        </Text>
+                    </View>
+
+                    <View style={styles.productInfoRow}>
+                        <SafeIcon name="tag" size={14} color="#6B7280" />
+                        <Text style={styles.productCategory} numberOfLines={1}>
+                            {categoryLabel}
+                        </Text>
+                    </View>
+
+                    {productDescription ? (
+                        <Text style={styles.productDescription} numberOfLines={2}>
+                            {productDescription}
+                        </Text>
+                    ) : null}
+
+                    {priceValue && (
+                        <View style={styles.productInfoRow}>
+                            <SafeIcon name="dollar-sign" size={14} color="#10B981" />
+                            <Text style={styles.productPrix}>{priceValue}</Text>
+                        </View>
+                    )}
+                </View>
+
+                <View style={styles.productStatsRow}>
+                    <View style={styles.statItem}>
+                        <SafeIcon name="eye" size={14} color="#6B7280" />
+                        <Text style={styles.statItemText}>{viewsLabel}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                        <SafeIcon name="share-2" size={14} color="#6B7280" />
+                        <Text style={styles.statItemText}>{sharesLabel}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                        <SafeIcon name="heart" size={14} color="#6B7280" />
+                        <Text style={styles.statItemText}>{savesLabel}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.productPrimaryActions}>
+                    <TouchableOpacity
+                        style={[styles.primaryButton, styles.editPrimaryButton]}
+                        onPress={() => handleEditProduct(product)}
+                    >
+                        <SafeIcon name="edit" size={16} color="#FFFFFF" />
+                        <Text style={styles.primaryButtonText}>Modifier</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.primaryButton,
+                            product.is_active ? styles.pausePrimaryButton : styles.activatePrimaryButton
+                        ]}
+                        onPress={() => handleToggleProduct(product)}
+                    >
+                        <SafeIcon
+                            name={product.is_active ? 'pause' : 'play'}
+                            size={18}
+                            color="#FFFFFF"
+                        />
+                        <Text style={styles.primaryButtonText}>
+                            {product.is_active ? 'Mettre en pause' : 'Activer'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.secondaryActions}>
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handleManageMembersForService(product.serviceId)}
+                    >
+                        <SafeIcon name="users" size={20} color="#6366F1" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handleShareProduct(product)}
+                    >
+                        <SafeIcon name="share-2" size={20} color="#3B82F6" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handleDuplicateProduct(product)}
+                    >
+                        <SafeIcon name="copy" size={20} color="#8B5CF6" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handleViewStats(product)}
+                    >
+                        <SafeIcon name="bar-chart-2" size={20} color="#10B981" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handlePromoteProduct(product)}
+                    >
+                        <SafeIcon name="trending-up" size={20} color="#F59E0B" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handleDeleteProduct(product)}
+                    >
+                        <SafeIcon name="trash-2" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                </View>
+            </NativeCard>
+        );
     };
 
     if (loading) {
@@ -593,67 +942,72 @@ const MesProduitsScreen: React.FC = () => {
                 end={{ x: 1, y: 1 }}
                 style={styles.header}
             >
-                <View style={styles.headerContent}>
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}
-                        activeOpacity={0.7}
-                    >
-                        <SafeIcon name="arrow-left" size={28} color="#FFFFFF" />
-                    </TouchableOpacity>
-                    <View style={styles.headerTextContainer}>
-                        <Text style={styles.headerTitle}>Mes Produits</Text>
-                        <Text style={styles.headerSubtitle}>
-                            {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''}
-                        </Text>
-                    </View>
-                    <View style={styles.headerStats}>
-                        <View style={styles.statBadge}>
-                            <Text style={styles.statNumber}>{products.filter(p => p.is_active).length}</Text>
-                            <Text style={styles.statLabel}>actifs</Text>
+                <NavigatorToolbar
+                    tone="dark"
+                    showHandle={false}
+                    title="Mes Produits"
+                    subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
+                    rightSlot={(
+                        <View style={styles.headerStats}>
+                            <View style={styles.statBadge}>
+                                <Text style={styles.statNumber}>{activeProducts}</Text>
+                                <Text style={styles.statLabel}>actifs</Text>
+                            </View>
                         </View>
+                    )}
+                />
+
+                <View style={styles.headerMetricsRow}>
+                    <View style={styles.metricCard}>
+                        <Text style={styles.metricValue}>{totalProducts}</Text>
+                        <Text style={styles.metricLabel}>Produits</Text>
+                    </View>
+                    <View style={styles.metricCard}>
+                        <Text style={styles.metricValue}>{activeProducts}</Text>
+                        <Text style={styles.metricLabel}>Actifs</Text>
+                    </View>
+                    <View style={styles.metricCard}>
+                        <Text style={styles.metricValue}>{inactiveProducts}</Text>
+                        <Text style={styles.metricLabel}>En pause</Text>
+                    </View>
+                    <View style={styles.metricCard}>
+                        <Text style={styles.metricValue}>{totalCategories}</Text>
+                        <Text style={styles.metricLabel}>Catégories</Text>
                     </View>
                 </View>
             </LinearGradient>
 
-            {/* ✅ NOUVEAU 2025-11-06: Actions rapides de gestion */}
-            <View style={styles.quickActionsContainer}>
+            <View style={styles.manageActionsRow}>
                 <TouchableOpacity
-                    style={styles.quickActionButton}
+                    style={styles.manageActionChip}
                     onPress={handleEditServiceInfo}
                 >
-                    <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                    <Text style={styles.quickActionText}>Éditer service</Text>
+                    <SafeIcon name="settings" size={18} color={modernColors.primary} />
+                    <Text style={styles.manageActionText}>Éditer service</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={styles.quickActionButton}
-                    onPress={() => {
-                        // Naviguer vers gestion des membres
-                        Alert.alert('👥 Membres', 'Gestion des droits d\'administration bientôt disponible');
-                    }}
+                    style={styles.manageActionChip}
+                    onPress={handleManageMembers}
                 >
-                    <SafeIcon name="users" size={20} color={modernColors.primary} />
-                    <Text style={styles.quickActionText}>Membres</Text>
+                    <SafeIcon name="users" size={18} color={modernColors.primary} />
+                    <Text style={styles.manageActionText}>Membres</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={styles.quickActionButton}
-                    onPress={() => {
-                        // Naviguer vers création publicité
-                        (navigation as any).navigate('CreatePublicite');
-                    }}
+                    style={styles.manageActionChip}
+                    onPress={() => (navigation as any).navigate('CreatePublicite')}
                 >
-                    <SafeIcon name="megaphone" size={20} color={modernColors.primary} />
-                    <Text style={styles.quickActionText}>Publicité</Text>
+                    <SafeIcon name="megaphone" size={18} color={modernColors.primary} />
+                    <Text style={styles.manageActionText}>Créer une publicité</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.quickActionButton, styles.quickActionButtonPrimary]}
-                    onPress={handleCreateNewProduct}
+                    style={styles.manageActionChip}
+                    onPress={handleViewGlobalStats}
                 >
-                    <SafeIcon name="plus" size={20} color="#FFFFFF" />
-                    <Text style={[styles.quickActionText, { color: '#FFFFFF' }]}>Nouveau</Text>
+                    <SafeIcon name="bar-chart-2" size={18} color={modernColors.primary} />
+                    <Text style={styles.manageActionText}>Statistiques</Text>
                 </TouchableOpacity>
             </View>
 
@@ -683,20 +1037,20 @@ const MesProduitsScreen: React.FC = () => {
 
                 {/* Filtre par catégorie */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-                    {categories.map((cat) => (
+                    {categories.map(({ key, label }) => (
                         <TouchableOpacity
-                            key={cat}
+                            key={key}
                             style={[
                                 styles.categoryChip,
-                                categoryFilter === cat && styles.categoryChipActive
+                                categoryFilter === key && styles.categoryChipActive
                             ]}
-                            onPress={() => setCategoryFilter(cat)}
+                            onPress={() => setCategoryFilter(key)}
                         >
                             <Text style={[
                                 styles.categoryChipText,
-                                categoryFilter === cat && styles.categoryChipTextActive
+                                categoryFilter === key && styles.categoryChipTextActive
                             ]}>
-                                {cat === 'tous' ? '🏷️ Toutes catégories' : getProductTypeLabel(cat)}
+                                {key === 'tous' ? `🏷️ ${label}` : label}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -728,248 +1082,35 @@ const MesProduitsScreen: React.FC = () => {
                         />
                     </View>
                 ) : categoryFilter === 'tous' ? (
-                    // ✅ NOUVEAU 2025-11-06: Affichage groupé par catégorie
                     <View style={styles.productsList}>
-                        {categories.filter(cat => cat !== 'tous').map((category) => {
-                            const categoryProducts = filteredProducts.filter(p => p.type === category);
-                            if (categoryProducts.length === 0) return null;
-                            
+                        {categories.slice(1).map(({ key, label }) => {
+                            const categoryProducts = filteredProducts.filter(
+                                (product) => (product.category_key || 'autre') === key
+                            );
+
+                            if (categoryProducts.length === 0) {
+                                return null;
+                            }
+
                             return (
-                                <View key={category} style={styles.categoryGroup}>
-                                    {/* Header de catégorie */}
+                                <View key={key} style={styles.categoryGroup}>
                                     <View style={styles.categoryHeader}>
-                                        <Text style={styles.categoryTitle}>
-                                            {getProductTypeLabel(category)}
-                                        </Text>
+                                        <Text style={styles.categoryTitle}>{label}</Text>
                                         <View style={styles.categoryCountBadge}>
                                             <Text style={styles.categoryCountText}>
                                                 {categoryProducts.length}
                                             </Text>
                                         </View>
                                     </View>
-                                    
-                                    {/* Produits de cette catégorie */}
-                                    {categoryProducts.map((product) => (
-                                        <NativeCard key={product.id} style={styles.productCard}>
-                                            {/* Header produit */}
-                                            <View style={styles.productHeader}>
-                                                <View style={styles.productTitleContainer}>
-                                                    <Text style={styles.productName} numberOfLines={2}>
-                                                        {product.nom || 'Produit sans nom'}
-                                                    </Text>
-                                                    <View style={[
-                                                        styles.productStatusBadge,
-                                                        { backgroundColor: product.is_active ? '#10B981' : '#9CA3AF' }
-                                                    ]}>
-                                                        <Text style={styles.productStatusText}>
-                                                            {product.is_active ? 'Actif' : 'Inactif'}
-                                                        </Text>
-                                                    </View>
-                                                </View>
-                                            </View>
 
-                                            {/* Infos produit */}
-                                            <View style={styles.productInfo}>
-                                                <View style={styles.productInfoRow}>
-                                                    <SafeIcon name="folder" size={14} color="#6B7280" />
-                                                    <Text style={styles.productServiceName} numberOfLines={1}>
-                                                        {product.serviceTitre}
-                                                    </Text>
-                                                </View>
-
-                                                {product.description && (
-                                                    <Text style={styles.productDescription} numberOfLines={2}>
-                                                        {product.description}
-                                                    </Text>
-                                                )}
-
-                                                {product.prix && (
-                                                    <View style={styles.productInfoRow}>
-                                                        <SafeIcon name="dollar-sign" size={14} color="#10B981" />
-                                                        <Text style={styles.productPrix}>
-                                                            {typeof product.prix === 'string' ? product.prix : product.prix.toLocaleString()} {product.devise || 'FCFA'}
-                                                        </Text>
-                                                    </View>
-                                                )}
-                                            </View>
-
-                                            {/* Actions produit */}
-                                            <View style={styles.productActions}>
-                                                <TouchableOpacity
-                                                    style={[styles.actionButton, styles.actionButtonPrimary]}
-                                                    onPress={() => handleToggleProduct(product)}
-                                                >
-                                                    <SafeIcon
-                                                        name={product.is_active ? 'pause' : 'play'}
-                                                        size={16}
-                                                        color="#FFFFFF"
-                                                    />
-                                                    <Text style={styles.actionButtonText}>
-                                                        {product.is_active ? 'Pause' : 'Activer'}
-                                                    </Text>
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    style={styles.actionButton}
-                                                    onPress={() => handleShareProduct(product)}
-                                                >
-                                                    <SafeIcon name="share-2" size={16} color={modernColors.primary} />
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    style={styles.actionButton}
-                                                    onPress={() => handleDeleteProduct(product)}
-                                                >
-                                                    <SafeIcon name="trash-2" size={16} color="#EF4444" />
-                                                </TouchableOpacity>
-                                            </View>
-                                        </NativeCard>
-                                    ))}
+                                    {categoryProducts.map(renderProductCard)}
                                 </View>
                             );
                         })}
                     </View>
                 ) : (
-                    // Affichage simple (filtre catégorie unique sélectionnée)
                     <View style={styles.productsList}>
-                        {filteredProducts.map((product) => (
-                            <NativeCard key={product.id} style={styles.productCard}>
-                                {/* Header produit */}
-                                <View style={styles.productHeader}>
-                                    <View style={styles.productTitleContainer}>
-                                        <Text style={styles.productName} numberOfLines={2}>
-                                            {product.nom || 'Produit sans nom'}
-                                        </Text>
-                                        <View style={[
-                                            styles.productStatusBadge,
-                                            { backgroundColor: product.is_active ? '#10B981' : '#9CA3AF' }
-                                        ]}>
-                                            <Text style={styles.productStatusText}>
-                                                {product.is_active ? 'Actif' : 'Inactif'}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </View>
-
-                                {/* Infos produit */}
-                                <View style={styles.productInfo}>
-                                    <View style={styles.productInfoRow}>
-                                        <SafeIcon name="folder" size={14} color="#6B7280" />
-                                        <Text style={styles.productServiceName} numberOfLines={1}>
-                                            {product.serviceTitre}
-                                        </Text>
-                                    </View>
-
-                                    {product.type && (
-                                        <View style={styles.productInfoRow}>
-                                            <SafeIcon name="tag" size={14} color="#6366F1" />
-                                            <Text style={styles.productType}>
-                                                {getProductTypeLabel(product.type)}
-                                            </Text>
-                                        </View>
-                                    )}
-
-                                    {product.prix && (
-                                        <View style={styles.productInfoRow}>
-                                            <SafeIcon name="dollar-sign" size={14} color="#10B981" />
-                                            <Text style={styles.productPrix}>
-                                                {typeof product.prix === 'string' ? product.prix : product.prix.toLocaleString()} {product.devise || 'FCFA'}
-                                            </Text>
-                                        </View>
-                                    )}
-
-                                    {product.description && (
-                                        <Text style={styles.productDescription} numberOfLines={2}>
-                                            {product.description}
-                                        </Text>
-                                    )}
-                                </View>
-
-                                {/* Actions principales */}
-                                <View style={styles.productActions}>
-                                    {/* Activer/Désactiver */}
-                                    {product.type === 'ticket_voyage' ? (
-                                        // 🚌 TICKET DE VOYAGE: Gestion automatique (grisé)
-                                        <View style={[styles.actionButton, styles.actionButtonDisabled]}>
-                                            <SafeIcon name="clock" size={18} color="#9CA3AF" />
-                                            <Text style={styles.actionButtonTextDisabled}>
-                                                Gestion auto
-                                            </Text>
-                                        </View>
-                                    ) : (
-                                        // Autres produits: Toggle normal
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.actionButton,
-                                                product.is_active ? styles.deactivateButton : styles.activateButton
-                                            ]}
-                                            onPress={() => handleToggleProduct(product)}
-                                        >
-                                            <SafeIcon
-                                                name={product.is_active ? 'pause-circle' : 'play-circle'}
-                                                size={18}
-                                                color="#FFFFFF"
-                                            />
-                                            <Text style={styles.actionButtonText}>
-                                                {product.is_active ? 'Désactiver' : 'Activer'}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    )}
-
-                                    {/* Modifier */}
-                                    <TouchableOpacity
-                                        style={[styles.actionButton, styles.editButton]}
-                                        onPress={() => handleEditProduct(product)}
-                                    >
-                                        <SafeIcon name="edit" size={18} color="#FFFFFF" />
-                                        <Text style={styles.actionButtonText}>Modifier</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                {/* Actions secondaires */}
-                                <View style={styles.secondaryActions}>
-                                    {/* Partager */}
-                                    <TouchableOpacity
-                                        style={styles.iconButton}
-                                        onPress={() => handleShareProduct(product)}
-                                    >
-                                        <SafeIcon name="share-2" size={20} color="#3B82F6" />
-                                    </TouchableOpacity>
-
-                                    {/* Dupliquer */}
-                                    <TouchableOpacity
-                                        style={styles.iconButton}
-                                        onPress={() => handleDuplicateProduct(product)}
-                                    >
-                                        <SafeIcon name="copy" size={20} color="#8B5CF6" />
-                                    </TouchableOpacity>
-
-                                    {/* Statistiques */}
-                                    <TouchableOpacity
-                                        style={styles.iconButton}
-                                        onPress={() => handleViewStats(product)}
-                                    >
-                                        <SafeIcon name="bar-chart-2" size={20} color="#10B981" />
-                                    </TouchableOpacity>
-
-                                    {/* Promouvoir */}
-                                    <TouchableOpacity
-                                        style={styles.iconButton}
-                                        onPress={() => handlePromoteProduct(product)}
-                                    >
-                                        <SafeIcon name="trending-up" size={20} color="#F59E0B" />
-                                    </TouchableOpacity>
-
-                                    {/* Supprimer */}
-                                    <TouchableOpacity
-                                        style={styles.iconButton}
-                                        onPress={() => handleDeleteProduct(product)}
-                                    >
-                                        <SafeIcon name="trash-2" size={20} color="#EF4444" />
-                                    </TouchableOpacity>
-                                </View>
-                            </NativeCard>
-                        ))}
+                        {filteredProducts.map(renderProductCard)}
                     </View>
                 )}
 
@@ -986,6 +1127,21 @@ const MesProduitsScreen: React.FC = () => {
                     </View>
                 )}
             </ScrollView>
+
+            <Modal
+                visible={showTeamManager}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowTeamManager(false)}
+            >
+                <ServiceTeamManager
+                    serviceId={teamManagerServiceId}
+                    onClose={() => {
+                        setShowTeamManager(false);
+                        loadProducts(true);
+                    }}
+                />
+            </Modal>
         </View>
     );
 };
@@ -999,42 +1155,6 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'ios' ? 50 : 20,
         paddingBottom: 20,
         paddingHorizontal: 16, // ✅ Réduire légèrement pour mieux positionner les éléments
-    },
-    headerContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 4, // ✅ Améliorer le positionnement
-    },
-    backButton: {
-        width: 48, // ✅ Augmenter la taille
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: 'rgba(255, 255, 255, 0.35)', // ✅ Plus opaque pour meilleure visibilité
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5, // ✅ Ombre Android
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)', // ✅ Bordure subtile
-    },
-    headerTextContainer: {
-        flex: 1,
-        marginLeft: 12, // ✅ Réduire l'espacement
-        marginRight: 12,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
-    headerSubtitle: {
-        fontSize: 14,
-        color: '#E0E7FF',
-        marginTop: 4,
     },
     headerStats: {
         flexDirection: 'row',
@@ -1248,7 +1368,7 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         flex: 1,
     },
-    productType: {
+    productCategory: {
         fontSize: 13,
         fontWeight: '600',
         color: '#6366F1',
@@ -1263,6 +1383,62 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
         lineHeight: 18,
         marginTop: 4,
+    },
+    productStatsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    statItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    statItemText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#4B5563',
+    },
+    productPrimaryActions: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 12,
+    },
+    primaryButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        borderRadius: 12,
+        paddingVertical: 14,
+        backgroundColor: '#6366F1',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    primaryButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    editPrimaryButton: {
+        backgroundColor: '#4F46E5',
+    },
+    pausePrimaryButton: {
+        backgroundColor: '#F97316',
+    },
+    activatePrimaryButton: {
+        backgroundColor: '#10B981',
     },
     productActions: {
         flexDirection: 'row',
@@ -1350,6 +1526,63 @@ const styles = StyleSheet.create({
     },
     createButton: {
         marginBottom: 20,
+    },
+    headerMetricsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginTop: 20,
+    },
+    metricCard: {
+        flex: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.18)',
+        borderRadius: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    metricValue: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#FFFFFF',
+    },
+    metricLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#E0E7FF',
+        marginTop: 4,
+    },
+    manageActionsRow: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    manageActionChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 16,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+        flex: 1,
+    },
+    manageActionText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
 });
 

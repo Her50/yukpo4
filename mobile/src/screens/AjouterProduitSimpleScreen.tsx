@@ -6,7 +6,7 @@
 
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     Alert,
     KeyboardAvoidingView,
@@ -21,10 +21,11 @@ import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
 import LocationSelector from '../components/LocationSelector';
 import MediaUploadManager from '../components/MediaUploadManager';
 import { NativeButton, NativeCard, NativeInput } from '../components/NativeDesign';
+import NavigatorToolbar from '../components/NavigatorToolbar';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
-import { apiGet, apiPost } from '../services/api';
+import { apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 
@@ -37,6 +38,16 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const params = (route.params as any) || {};
     const { serviceId, suggestionIA } = params;
     const mediaData = params.mediaData || {};
+    const mode = params.mode || 'create';
+    const isEditing = mode === 'edit';
+    const isDuplicate = mode === 'duplicate';
+    const productId = typeof params.productId !== 'undefined' ? parseInt(String(params.productId), 10) : null;
+    const productIndex = typeof params.productIndex === 'number'
+        ? params.productIndex
+        : params.productIndex !== undefined
+            ? parseInt(String(params.productIndex), 10)
+            : null;
+    const prefill = params.prefill || {};
 
     const [loading, setLoading] = useState(false);
 
@@ -66,7 +77,40 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         return [value];
     };
 
-    const initialProductImages = mergeImageSources(
+    const combineUnique = (...lists: any[][]): any[] => {
+        const combined: any[] = [];
+        lists.flat().forEach((item) => {
+            if (item !== null && item !== undefined && !combined.includes(item)) {
+                combined.push(item);
+            }
+        });
+        return combined;
+    };
+
+    const normalizeToStringArray = (value: any): string[] => {
+        if (!value) {
+            return [];
+        }
+
+        if (Array.isArray(value)) {
+            return value
+                .map((item) => (typeof item === 'string' ? item : String(item)))
+                .filter((item) => item && item.trim().length > 0);
+        }
+
+        if (typeof value === 'string') {
+            return [value];
+        }
+
+        return [String(value)];
+    };
+
+    const prefilledImages = normalizeMediaList(prefill.images);
+    const prefilledVideos = normalizeMediaList(prefill.videos);
+    const prefilledAudios = normalizeMediaList(prefill.audios);
+    const prefilledDocuments = normalizeMediaList(prefill.documents);
+
+    const mergedImageSources = mergeImageSources(
         MAX_PRODUCT_IMAGES,
         mediaData?.base64_image,
         mediaData?.image_base64,
@@ -75,7 +119,27 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         suggestionIA?.service_data?.base64_image
     );
 
-    const initialProductVideos = normalizeMediaList(mediaData?.video_base64);
+    const initialProductImages = prefilledImages.length > 0 ? prefilledImages : mergedImageSources;
+
+    const mergedVideos = combineUnique(
+        prefilledVideos,
+        normalizeMediaList(mediaData?.video_base64),
+        normalizeMediaList(mediaData?.videos),
+        normalizeMediaList(suggestionData?.videos)
+    );
+    const initialProductVideos = mergedVideos;
+
+    const initialProductAudios = combineUnique(
+        prefilledAudios,
+        normalizeMediaList(mediaData?.audio_base64),
+        normalizeMediaList(suggestionData?.audios)
+    );
+
+    const initialProductDocuments = combineUnique(
+        prefilledDocuments,
+        normalizeMediaList(mediaData?.doc_base64),
+        normalizeMediaList(suggestionData?.documents)
+    );
 
     const typeOffre = extractValue(suggestionData.type_offre) || 'produit';
     const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
@@ -113,6 +177,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
     // ✅ Caractéristiques autocomplete (avec sous_caracteristiques)
     const produits = extractValue(suggestionData.produits) || [];
+    const suggestionProduits = normalizeToStringArray(produits);
+    const prefillProduits = normalizeToStringArray(prefill.produits);
     const sous_caracteristiques = suggestionData.produits?.sous_caracteristiques || null;
 
     // ✅ Lieu produit
@@ -131,19 +197,25 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
     const [primaryProductImage, setPrimaryProductImage] = useState<string | null>(initialProductImages[0] || null);
 
-    const [formValues, setFormValues] = useState<any>({
-        nom_produit,
-        categorie_produit,
-        description_produit,
-        prix_produit,
-        devise_produit,
-        variabilite_prix,
-        produits,
-        sous_caracteristiques,
-        lieu_produit,
+    const initialFormValues = {
+        nom_produit: prefill.nom_produit ?? nom_produit,
+        categorie_produit: prefill.categorie_produit ?? categorie_produit,
+        description_produit: prefill.description_produit ?? description_produit,
+        prix_produit: prefill.prix_produit ?? prix_produit,
+        devise_produit: prefill.devise_produit ?? devise_produit,
+        variabilite_prix: prefill.variabilite_prix ?? prefill.price_variant ?? variabilite_prix,
+        produits: prefillProduits.length > 0 ? prefillProduits : suggestionProduits,
+        sous_caracteristiques: prefill.sous_caracteristiques ?? sous_caracteristiques,
+        lieu_produit: prefill.lieu_produit ?? lieu_produit,
         images: initialProductImages,
-        videos: initialProductVideos
-    });
+        videos: initialProductVideos,
+        audios: initialProductAudios,
+        documents: initialProductDocuments,
+        characteristic_vector: prefill.characteristic_vector ?? suggestionData?.characteristic_vector ?? null,
+        combinaison_brute: prefill.combinaison_brute ?? suggestionData?.combinaison_brute ?? null,
+    };
+
+    const [formValues, setFormValues] = useState<any>(initialFormValues);
 
     const currentModalites = Array.isArray(formValues.variabilite_prix?.modalites)
         ? formValues.variabilite_prix.modalites
@@ -151,13 +223,28 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             ? formValues.variabilite_prix
             : [];
     const hasExistingVariants = currentModalites.length > 0;
-    const [showPriceVariantEditor, setShowPriceVariantEditor] = useState(hasExistingVariants);
 
-    useEffect(() => {
-        if (hasExistingVariants && !showPriceVariantEditor) {
-            setShowPriceVariantEditor(true);
-        }
-    }, [hasExistingVariants, showPriceVariantEditor]);
+    const toolbarTitle = isEditing
+        ? 'Modifier un produit'
+        : isDuplicate
+            ? 'Dupliquer un produit'
+            : 'Ajouter un produit';
+
+    const toolbarSubtitle = isEditing
+        ? 'Actualisez les informations de votre produit ou prestation'
+        : isDuplicate
+            ? 'Toutes les données sont préremplies, ajustez-les avant duplication'
+            : (isPrestation ? 'Formulaire prestation' : 'Formulaire produit');
+
+    const heroDescription = isEditing
+        ? 'Mettez à jour chaque champ du produit, y compris les médias.'
+        : isDuplicate
+            ? 'Une copie complète a été générée. Personnalisez-la avant validation.'
+            : 'Ajoutez un nouveau produit à votre service existant.';
+
+    const submitLabel = loading
+        ? (isEditing ? '⏳ Mise à jour...' : isDuplicate ? '⏳ Duplication...' : '⏳ Ajout en cours...')
+        : (isEditing ? 'Enregistrer les modifications' : isDuplicate ? 'Dupliquer le produit' : 'Ajouter le produit');
 
     // Gérer changement de champ
     const handleFieldChange = (fieldName: string, value: any) => {
@@ -198,7 +285,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             return;
         }
 
-        if (!formValues.lieu_produit) {
+        if (!isEditing && !formValues.lieu_produit) {
             Alert.alert('Erreur', 'Le lieu de commercialisation est obligatoire');
             return;
         }
@@ -206,6 +293,20 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         setLoading(true);
 
         try {
+            if (isEditing) {
+                if (productId === null || Number.isNaN(productId)) {
+                    setLoading(false);
+                    Alert.alert('Erreur', 'Identifiant du produit introuvable.');
+                    return;
+                }
+
+                if (productIndex === null || Number.isNaN(productIndex)) {
+                    setLoading(false);
+                    Alert.alert('Erreur', 'Index du produit introuvable.');
+                    return;
+                }
+            }
+
             // ✅ ÉTAPE 1 : Construire les données COMPLÈTES du nouveau produit (IDENTIQUE AU GRAND FORMULAIRE)
             const nouveauProduit: any = {};
 
@@ -238,11 +339,75 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 }
             });
 
+            const combinationString = (() => {
+                if (Array.isArray(formValues.produits)) {
+                    const firstString = formValues.produits.find((entry: any) => typeof entry === 'string');
+                    if (typeof firstString === 'string') {
+                        return firstString;
+                    }
+                }
+                if (typeof formValues.produits === 'string') {
+                    return formValues.produits;
+                }
+                if (Array.isArray(formValues.nominalVector)) {
+                    const firstString = formValues.nominalVector.find((entry: any) => typeof entry === 'string');
+                    if (typeof firstString === 'string') {
+                        return firstString;
+                    }
+                }
+                return '';
+            })();
+
+            if (combinationString) {
+                nouveauProduit.combinaison_brute = combinationString;
+                const characteristicVector = combinationString
+                    .split(',')
+                    .map((part: string) => part.trim())
+                    .filter((part: string) => part.length > 0);
+                if (characteristicVector.length > 0) {
+                    nouveauProduit.characteristic_vector = characteristicVector;
+                }
+            }
+
+            if (!nouveauProduit.product_labels && formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object') {
+                nouveauProduit.product_labels = Object.keys(formValues.sous_caracteristiques || {});
+            }
+
+            if (!nouveauProduit.origine_champs) {
+                nouveauProduit.origine_champs = 'formulaire';
+            }
+
             console.log('[AjouterProduitSimple] 📦 Données du nouveau produit (complètes):', {
                 ...nouveauProduit,
                 images: nouveauProduit.images ? `${nouveauProduit.images.length} image(s)` : 'aucune',
                 videos: nouveauProduit.videos ? `${nouveauProduit.videos.length} vidéo(s)` : 'aucune'
             });
+
+            if (isEditing) {
+                try {
+                    const response = await apiPatch(`/api/products/${productId}/update`, {
+                        service_id: String(serviceId),
+                        product_index: productIndex ?? 0,
+                        updated_product: nouveauProduit
+                    });
+
+                    if (!response.success) {
+                        throw new Error(response.error || response.message || 'Impossible de mettre à jour le produit');
+                    }
+
+                    Alert.alert(
+                        '✅ Produit mis à jour',
+                        'Les modifications ont été enregistrées avec succès.',
+                        [{ text: 'OK', onPress: () => navigation.goBack() }]
+                    );
+                } catch (error: any) {
+                    console.error('[AjouterProduitSimple] Erreur mise à jour produit:', error);
+                    Alert.alert('Erreur', error.message || 'Impossible de mettre à jour le produit');
+                } finally {
+                    setLoading(false);
+                }
+                return;
+            }
 
             // ✅ ÉTAPE 2 : Vérifier le solde (coût fixe : 3000 FCFA pour ajout produit - IDENTIQUE AU GRAND FORMULAIRE)
             const COUT_AJOUT_PRODUIT = 3000;
@@ -276,9 +441,18 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             }
 
             // ✅ ÉTAPE 3 : Demander confirmation avec affichage du coût (IDENTIQUE AU GRAND FORMULAIRE)
+            const actionTitle = isDuplicate ? '💰 Duplication de produit' : '💰 Ajout de produit';
+            const confirmationMessage =
+                `Coût : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\n` +
+                `Votre solde : ${soldeActuel.toLocaleString()} FCFA\n` +
+                `Solde après ${isDuplicate ? 'duplication' : 'ajout'} : ${(soldeActuel - COUT_AJOUT_PRODUIT).toLocaleString()} FCFA\n\n` +
+                (isDuplicate
+                    ? 'Confirmez-vous la duplication de ce produit sur votre service ?'
+                    : 'Confirmez-vous l\'ajout de ce produit à votre service ?');
+
             Alert.alert(
-                '💰 Ajout de produit',
-                `Coût : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après ajout : ${(soldeActuel - COUT_AJOUT_PRODUIT).toLocaleString()} FCFA\n\nConfirmez-vous l'ajout de ce produit à votre service ?`,
+                actionTitle,
+                confirmationMessage,
                 [
                     {
                         text: 'Annuler',
@@ -303,9 +477,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 console.log('[AjouterProduitSimple] ✅ Produit ajouté avec succès:', response);
 
                                 // ✅ ÉTAPE 5 : Afficher le résultat (IDENTIQUE AU GRAND FORMULAIRE)
+                                const costPaid = Number(response.cost ?? COUT_AJOUT_PRODUIT);
+                                const newBalanceValue = Number(response.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT));
                                 Alert.alert(
-                                    '✅ Produit créé',
-                                    `Votre nouveau produit a été ajouté au service avec succès !\n\n💰 Coût: ${response.cost || COUT_AJOUT_PRODUIT} FCFA\n💳 Nouveau solde: ${response.new_balance?.toLocaleString() || (soldeActuel - COUT_AJOUT_PRODUIT).toLocaleString()} FCFA\n📦 Index produit: ${response.product_index}`,
+                                    isDuplicate ? '✅ Produit dupliqué' : '✅ Produit créé',
+                                    `${isDuplicate ? 'Votre produit dupliqué' : 'Votre nouveau produit'} a été ajouté au service avec succès !\n\n` +
+                                    `💰 Coût: ${costPaid.toLocaleString('fr-FR')} FCFA\n` +
+                                    `💳 Nouveau solde: ${newBalanceValue.toLocaleString('fr-FR')} FCFA\n` +
+                                    `📦 Index produit: ${response.product_index}`,
                                     [
                                         {
                                             text: 'OK',
@@ -342,17 +521,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={styles.keyboardView}
             >
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Ajouter un produit</Text>
-                    <View style={styles.headerRight} />
-                </View>
+                <NavigatorToolbar
+                    title={toolbarTitle}
+                    subtitle={toolbarSubtitle}
+                />
 
                 <ScrollView
                     style={styles.scrollView}
@@ -364,14 +536,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         <View style={styles.iconHeader}>
                             <SafeIcon name="package-plus" size={32} color={modernColors.primary} />
                             <Text style={styles.subtitle}>
-                                Ajoutez un nouveau produit à votre service existant
+                                {heroDescription}
                             </Text>
                         </View>
 
-                        {/* Nom du produit/prestation */}
+                        {/* Nom du produit / prestation */}
                         <View style={styles.fieldGroup}>
                             <Text style={styles.label}>
-                                {isPrestation ? 'Nom de la prestation' : 'Nom du produit'}
+                                Nom du produit / prestation
                             </Text>
                             <NativeInput
                                 placeholder={isPrestation
@@ -380,27 +552,34 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 }
                                 value={formValues.nom_produit}
                                 onChangeText={(value) => handleFieldChange('nom_produit', value)}
+                                multiline
+                                minLines={1}
+                                style={styles.autoGrowingInput}
                             />
                         </View>
 
                         {/* Catégorie */}
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>Catégorie du produit/prestation</Text>
+                            <Text style={styles.label}>Catégorie du produit / prestation</Text>
                             <NativeInput
                                 placeholder="Ex: Smartphone, Cours particulier, Service de réparation..."
                                 value={formValues.categorie_produit}
                                 onChangeText={(value) => handleFieldChange('categorie_produit', value)}
+                                multiline
+                                minLines={1}
+                                style={styles.autoGrowingInput}
                             />
                         </View>
 
                         {/* Description */}
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>Description du produit/prestation</Text>
+                            <Text style={styles.label}>Description du produit / prestation</Text>
                             <NativeInput
-                                placeholder="Décrivez les caractéristiques spécifiques du produit/prestation..."
+                                placeholder="Décrivez les caractéristiques spécifiques du produit / prestation..."
                                 value={formValues.description_produit}
                                 onChangeText={(value) => handleFieldChange('description_produit', value)}
                                 multiline
+                                minLines={3}
                                 style={styles.textareaInput}
                             />
                         </View>
@@ -408,7 +587,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         {/* Caractéristiques (Autocomplete) - IDENTIQUE AU GRAND FORMULAIRE */}
                         <View style={styles.fieldGroup}>
                             <LinearAutocompleteEditor
-                                label={isPrestation ? 'Caractéristiques prestation' : 'Caractéristiques produit'}
+                                label="Caractéristiques du produit / prestation"
                                 identifiantBase="produits"
                                 value={formValues.produits || []}
                                 onChange={(value) => handleFieldChange('produits', value)}
@@ -488,90 +667,26 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             />
                         </View>
 
-                        {/* Variabilité de prix - Affichage conditionnel */}
-                        {(() => {
-                            // ✅ NOUVEAU 2025-11-06: Afficher variabilité de prix UNIQUEMENT si pertinent
-                            const categoriesAvecVariations = [
-                                'vetement', 'chaussure', 'mode', 'textile', 'habillement',
-                                'vehicule', 'automobile', 'moto', 'transport',
-                                'meuble', 'decoration', 'mobilier',
-                                'telephone', 'smartphone', 'electronique', 'informatique',
-                                'restauration', 'alimentation', 'nourriture', 'repas', 'menu',
-                                'coiffure', 'esthetique', 'beaute', 'soin',
-                                'formation', 'cours', 'education', 'enseignement',
-                                'reparation', 'maintenance', 'depannage',
-                                'nettoyage', 'entretien', 'menage',
-                                'impression', 'photocopie', 'reprographie',
-                                'hebergement', 'hotel', 'location'
-                            ];
-
-                            const category = (formValues.categorie_produit || '').toLowerCase();
-                            const hasExistingVariations = hasExistingVariants;
-                            const isCategoryRelevant = categoriesAvecVariations.some(cat => category.includes(cat));
-                            const shouldAutoSuggest = isCategoryRelevant || isPrestation;
-                            const shouldRenderEditor = showPriceVariantEditor || hasExistingVariations;
-
-                            if (!shouldRenderEditor) {
-                                return (
-                                    <View style={styles.fieldGroup}>
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.variantCallout,
-                                                shouldAutoSuggest && styles.variantCalloutHighlighted
-                                            ]}
-                                            onPress={() => setShowPriceVariantEditor(true)}
-                                        >
-                                            <SafeIcon
-                                                name={shouldAutoSuggest ? 'sparkles' : 'layers'}
-                                                size={18}
-                                                color={shouldAutoSuggest ? '#FFFFFF' : modernColors.primary}
-                                            />
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={[
-                                                    styles.variantCalloutTitle,
-                                                    shouldAutoSuggest && styles.variantCalloutTitleHighlighted
-                                                ]}>
-                                                    Ajouter des variations de prix
-                                                </Text>
-                                                <Text style={[
-                                                    styles.variantCalloutText,
-                                                    shouldAutoSuggest && styles.variantCalloutTextHighlighted
-                                                ]}>
-                                                    {isPrestation
-                                                        ? 'Ex: Formule Basique 10 000 XAF, Formule Premium 25 000 XAF'
-                                                        : 'Ex: Taille M 5 500 XAF, Taille L 6 000 XAF'}
-                                                </Text>
-                                            </View>
-                                            <SafeIcon
-                                                name="plus"
-                                                size={18}
-                                                color={shouldAutoSuggest ? '#FFFFFF' : modernColors.primary}
-                                            />
-                                        </TouchableOpacity>
-                                    </View>
-                                );
-                            }
-
-                            return (
-                                <View style={styles.fieldGroup}>
-                                    <PriceVariantSelector
-                                        label={isPrestation ? 'Variantes prestation' : 'Variantes produit'}
-                                        variable={isPrestation ? 'formule' : 'option'}
-                                        modalites={currentModalites}
-                                        onChange={(modalites) => handleFieldChange('variabilite_prix', {
-                                            type_donnee: 'price_variant',
-                                            variable: isPrestation ? 'formule' : 'option',
-                                            modalites,
-                                            filtrable: true,
-                                            origine_champs: 'formulaire'
-                                        })}
-                                        defaultCurrency={formValues.devise_produit || 'XAF'}
-                                        helperText="Définissez des options (ex: Taille M, Formule VIP) avec leur prix spécifique."
-                                        showEmptyStateDetails={false}
-                                    />
-                                </View>
-                            );
-                        })()}
+                        {/* Variabilité de prix - affichée uniquement si l’IA a détecté des variantes */}
+                        {hasExistingVariants && (
+                            <View style={styles.fieldGroup}>
+                                <PriceVariantSelector
+                                    label={isPrestation ? 'Variantes prestation' : 'Variantes produit'}
+                                    variable={isPrestation ? 'formule' : 'option'}
+                                    modalites={currentModalites}
+                                    onChange={(modalites) => handleFieldChange('variabilite_prix', {
+                                        type_donnee: 'price_variant',
+                                        variable: isPrestation ? 'formule' : 'option',
+                                        modalites,
+                                        filtrable: true,
+                                        origine_champs: 'formulaire'
+                                    })}
+                                    defaultCurrency={formValues.devise_produit || 'XAF'}
+                                    helperText="Modifiez les variations détectées par l’IA (prix, stock, image)."
+                                    showEmptyStateDetails={false}
+                                />
+                            </View>
+                        )}
 
                         {/* Photos et vidéos */}
                         <View style={styles.fieldGroup}>
@@ -580,7 +695,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 images={formValues.images || []}
                                 videos={formValues.videos || []}
                                 serviceId={serviceId}
-                                productId={null}
+                                productId={isEditing && productId !== null ? productId : null}
                                 onImagesChange={handleImagesChange}
                                 onVideosChange={handleVideosChange}
                                 maxImages={MAX_PRODUCT_IMAGES}
@@ -590,7 +705,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                         {/* Bouton de soumission */}
                         <NativeButton
-                            title={loading ? 'Ajout en cours...' : 'Ajouter le produit'}
+                            title={submitLabel}
                             onPress={handleSubmit}
                             disabled={loading}
                             variant="primary"
@@ -598,12 +713,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         />
 
                         {/* Coût */}
-                        <View style={styles.costInfo}>
-                            <SafeIcon name="info" size={16} color={modernColors.textSecondary} />
-                            <Text style={styles.costText}>
-                                Coût: 3000 FCFA (Solde: {user?.credits || 0} FCFA)
-                            </Text>
-                        </View>
+                        {!isEditing && (
+                            <View style={styles.costInfo}>
+                                <SafeIcon name="info" size={16} color={modernColors.textSecondary} />
+                                <Text style={styles.costText}>
+                                    {`Coût: 3000 FCFA (Solde: ${(user?.credits || 0).toLocaleString('fr-FR')} FCFA)`}
+                                </Text>
+                            </View>
+                        )}
                     </NativeCard>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -617,27 +734,6 @@ const styles = StyleSheet.create({
     },
     keyboardView: {
         flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    backButton: {
-        padding: 8,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: modernColors.text,
-    },
-    headerRight: {
-        width: 40,
     },
     scrollView: {
         flex: 1,
@@ -715,6 +811,9 @@ const styles = StyleSheet.create({
     },
     deviseButtonTextActive: {
         color: '#FFFFFF',
+    },
+    autoGrowingInput: {
+        minHeight: 52,
     },
     textareaInput: {
         minHeight: 180,

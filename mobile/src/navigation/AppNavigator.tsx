@@ -2,8 +2,10 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
+import { SafeNativeView } from '../components/SafeNativeView';
+import { markNavigatorSafeAreaHandled, withNavigatorSafeArea } from './withNavigatorSafeArea';
 
 // ✅ Context minimal au démarrage
 import { useAuth } from '../contexts/AuthContext';
@@ -19,7 +21,6 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MesInteractionsScreen from '../screens/MesInteractionsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import ServicesScreen from '../screens/ServicesScreen';
 
 // ✅ IMPORTS DIRECTS - Écrans secondaires
 import AjouterProduitSimpleScreen from '../screens/AjouterProduitSimpleScreen';
@@ -36,15 +37,37 @@ import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
 
+markNavigatorSafeAreaHandled(HomeScreen as any);
+markNavigatorSafeAreaHandled(ContactScreen as any);
+
+const LoginScreenWithSafeArea = withNavigatorSafeArea(LoginScreen);
+const RegisterScreenWithSafeArea = withNavigatorSafeArea(RegisterScreen);
+const HomeScreenWithSafeArea = withNavigatorSafeArea(HomeScreen);
+const MesInteractionsScreenWithSafeArea = withNavigatorSafeArea(MesInteractionsScreen);
+const ProfileScreenWithSafeArea = withNavigatorSafeArea(ProfileScreen);
+const MesProduitsScreenWithSafeArea = withNavigatorSafeArea(MesProduitsScreen);
+const ContactScreenWithSafeArea = withNavigatorSafeArea(ContactScreen);
+const EnhancedSettingsScreenWithSafeArea = withNavigatorSafeArea(EnhancedSettingsScreen);
+const RechargeTokensScreenWithSafeArea = withNavigatorSafeArea(RechargeTokensScreen);
+const FormulaireYukpoIntelligentWithSafeArea = withNavigatorSafeArea(FormulaireYukpoIntelligentScreen);
+const AjouterProduitSimpleWithSafeArea = withNavigatorSafeArea(AjouterProduitSimpleScreen);
+const ProductDetailScreenWithSafeArea = withNavigatorSafeArea(ProductDetailScreen);
+const ServiceDetailSharedScreenWithSafeArea = withNavigatorSafeArea(ServiceDetailSharedScreen);
+const ResultatBesoinScreenWithSafeArea = withNavigatorSafeArea(ResultatBesoinScreen);
+const CreatePubliciteScreenWithSafeArea = withNavigatorSafeArea(CreatePubliciteScreen);
+const PubliciteDashboardScreenWithSafeArea = withNavigatorSafeArea(PubliciteDashboardScreen);
+const SoldeDetailScreenWithSafeArea = withNavigatorSafeArea(SoldeDetailScreen);
+const YukpoServicePlaceholderScreenWithSafeArea = withNavigatorSafeArea(YukpoServicePlaceholderScreen);
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // Composant de chargement
 const LoadingScreen = () => (
-  <View style={styles.loadingContainer}>
+  <SafeNativeView style={styles.loadingContainer} edges={['top', 'bottom']}>
     <ActivityIndicator size="large" color={modernColors.primary} />
     <Text style={styles.loadingText}>Chargement...</Text>
-  </View>
+  </SafeNativeView>
 );
 
 // Icône de tab simple
@@ -69,8 +92,8 @@ const AuthStack = () => {
   console.log('[AppNavigator] 📱 Rendu AuthStack');
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Login" component={LoginScreenWithSafeArea} />
+      <Stack.Screen name="Register" component={RegisterScreenWithSafeArea} />
     </Stack.Navigator>
   );
 };
@@ -104,13 +127,13 @@ const MainStack = () => {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Accueil' }} />
-      <Tab.Screen name="Services" component={MesProduitsScreen} options={{
+      <Tab.Screen name="Home" component={HomeScreenWithSafeArea} options={{ tabBarLabel: 'Accueil' }} />
+      <Tab.Screen name="Services" component={MesProduitsScreenWithSafeArea} options={{
         tabBarLabel: 'Mes Services',
         title: 'Gestion Produits'
       }} />
-      <Tab.Screen name="History" component={MesInteractionsScreen} options={{ tabBarLabel: 'Historique' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Mon Compte' }} />
+      <Tab.Screen name="History" component={MesInteractionsScreenWithSafeArea} options={{ tabBarLabel: 'Historique' }} />
+      <Tab.Screen name="Profile" component={ProfileScreenWithSafeArea} options={{ tabBarLabel: 'Mon Compte' }} />
     </Tab.Navigator>
   );
 };
@@ -128,19 +151,19 @@ const SecondaryStack = () => {
     <DeepLinkHandler>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Main" component={MainStack} />
-        <Stack.Screen name="Contact" component={ContactScreen} />
-        <Stack.Screen name="Settings" component={EnhancedSettingsScreen} />
-        <Stack.Screen name="RechargeTokens" component={RechargeTokensScreen} />
-        <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentScreen} />
-        <Stack.Screen name="AjouterProduitSimple" component={AjouterProduitSimpleScreen} />
-        <Stack.Screen name="MesProduits" component={MesProduitsScreen} />
-        <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
-        <Stack.Screen name="ServiceDetailShared" component={ServiceDetailSharedScreen} />
-        <Stack.Screen name="ResultatBesoin" component={ResultatBesoinScreen} />
-        <Stack.Screen name="CreatePublicite" component={CreatePubliciteScreen} />
-        <Stack.Screen name="PubliciteDashboard" component={PubliciteDashboardScreen} />
-        <Stack.Screen name="SoldeDetail" component={SoldeDetailScreen} />
-        <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreen} />
+        <Stack.Screen name="Contact" component={ContactScreenWithSafeArea} />
+        <Stack.Screen name="Settings" component={EnhancedSettingsScreenWithSafeArea} />
+        <Stack.Screen name="RechargeTokens" component={RechargeTokensScreenWithSafeArea} />
+        <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentWithSafeArea} />
+        <Stack.Screen name="AjouterProduitSimple" component={AjouterProduitSimpleWithSafeArea} />
+        <Stack.Screen name="MesProduits" component={MesProduitsScreenWithSafeArea} />
+        <Stack.Screen name="ProductDetail" component={ProductDetailScreenWithSafeArea} />
+        <Stack.Screen name="ServiceDetailShared" component={ServiceDetailSharedScreenWithSafeArea} />
+        <Stack.Screen name="ResultatBesoin" component={ResultatBesoinScreenWithSafeArea} />
+        <Stack.Screen name="CreatePublicite" component={CreatePubliciteScreenWithSafeArea} />
+        <Stack.Screen name="PubliciteDashboard" component={PubliciteDashboardScreenWithSafeArea} />
+        <Stack.Screen name="SoldeDetail" component={SoldeDetailScreenWithSafeArea} />
+        <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreenWithSafeArea} />
       </Stack.Navigator>
     </DeepLinkHandler>
   );

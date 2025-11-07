@@ -1484,18 +1484,113 @@ async fn save_ia_combinations_to_db(
     log::info!("[save_ia_combinations_to_db] Début sauvegarde combinaisons IA");
     
     // Extraire les combinaisons depuis produits.valeur
-    let valeurs = if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
-        valeur_array.iter()
-            .filter_map(|v| v.as_str())
-            .collect::<Vec<_>>()
-    } else {
-        log::warn!("[save_ia_combinations_to_db] Pas de valeur array");
-        return Ok(());
-    };
-    
-    let separateur = produits_field.get("separateur")
+    let separateur = produits_field
+        .get("separateur")
         .and_then(|v| v.as_str())
         .unwrap_or(",");
+
+    let separateur_owned = separateur.to_string();
+
+    let extract_combination_from_object = |obj: &serde_json::Map<String, serde_json::Value>| -> Option<String> {
+        if let Some(raw) = obj.get("combinaison_brute").and_then(|v| v.as_str()) {
+            return Some(raw.to_string());
+        }
+
+        if let Some(vector_array) = obj.get("characteristic_vector").and_then(|v| v.as_array()) {
+            let items: Vec<String> = vector_array
+                .iter()
+                .filter_map(|value| value.as_str().map(|s| s.trim().to_string()))
+                .filter(|s| !s.is_empty())
+                .collect();
+
+            if !items.is_empty() {
+                return Some(items.join(separateur_owned.as_str()));
+            }
+        }
+
+        let mut parts: Vec<String> = Vec::new();
+        let candidate_keys = [
+            "nom",
+            "categorie",
+            "marque",
+            "modele",
+            "description",
+            "taille",
+            "style",
+            "couleur",
+            "etat",
+        ];
+
+        for key in candidate_keys.iter() {
+            if let Some(value) = obj.get(*key) {
+                match value {
+                    serde_json::Value::String(s) => {
+                        let trimmed = s.trim();
+                        if !trimmed.is_empty() {
+                            parts.push(trimmed.to_string());
+                        }
+                    }
+                    serde_json::Value::Number(num) => {
+                        parts.push(num.to_string());
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if let Some(prix_val) = obj.get("prix") {
+            match prix_val {
+                serde_json::Value::String(s) => {
+                    let trimmed = s.trim();
+                    if !trimmed.is_empty() {
+                        parts.push(trimmed.to_string());
+                    }
+                }
+                serde_json::Value::Number(num) => {
+                    parts.push(num.to_string());
+                }
+                _ => {}
+            }
+        }
+
+        if let Some(devise_val) = obj.get("devise").and_then(|v| v.as_str()) {
+            let trimmed = devise_val.trim();
+            if !trimmed.is_empty() {
+                parts.push(trimmed.to_string());
+            }
+        }
+
+        if parts.is_empty() {
+            None
+        } else {
+            Some(parts.join(separateur_owned.as_str()))
+        }
+    };
+
+    let valeurs: Vec<String> = if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+        valeur_array
+            .iter()
+            .filter_map(|value| {
+                if let Some(as_str) = value.as_str() {
+                    return Some(as_str.to_string());
+                }
+
+                value
+                    .as_object()
+                    .and_then(|obj| extract_combination_from_object(obj))
+            })
+            .collect()
+    } else if let Some(valeur_str) = produits_field.get("valeur").and_then(|v| v.as_str()) {
+        vec![valeur_str.to_string()]
+    } else {
+        log::warn!("[save_ia_combinations_to_db] Pas de valeurs exploitables");
+        return Ok(());
+    };
+
+    if valeurs.is_empty() {
+        log::warn!("[save_ia_combinations_to_db] Aucune combinaison exploitable trouvée");
+        return Ok(());
+    }
     
     let ai_preferred_index = produits_field.get("ai_preferred_index")
         .and_then(|v| v.as_i64())
@@ -1582,31 +1677,163 @@ pub async fn save_autocomplete_combination(
         }
     };
     
-    // Vecteur produit depuis autocomplete
-    let product_vector: Vec<String> = if let Some(valeur_str) = produits_field.get("valeur").and_then(|v| v.as_str()) {
-        valeur_str.split(',').map(|s| s.trim().to_string()).collect()
-    } else if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
-        valeur_array.iter()
-            .filter_map(|v| v.as_str())
-            .map(|s| s.to_string())
-            .collect()
+    let type_donnee = produits_field
+        .get("type_donnee")
+        .and_then(|v| v.as_str())
+        .unwrap_or("autocomplete");
+
+    let separateur = produits_field
+        .get("separateur")
+        .and_then(|v| v.as_str())
+        .unwrap_or(",");
+
+    let mut combination_string: Option<String> = None;
+    let mut product_vector: Vec<String> = Vec::new();
+    let mut product_labels: Vec<String> = if let Some(sous_caracs) = produits_field.get("sous_caracteristiques").and_then(|v| v.as_object()) {
+        sous_caracs.keys().map(|k| k.to_string()).collect()
     } else {
-        log::warn!("[save_autocomplete_combination] Format valeur produits non reconnu");
-        return Ok(());
+        vec![]
     };
-    
+    let mut variation_prix_node: Option<serde_json::Value> = produits_field.get("variation_prix").cloned();
+    let mut embedded_product_object: Option<serde_json::Value> = None;
+
+    let extract_combination_from_object = |obj: &serde_json::Map<String, serde_json::Value>, separator: &str| -> Option<String> {
+        if let Some(raw) = obj.get("combinaison_brute").and_then(|v| v.as_str()) {
+            return Some(raw.to_string());
+        }
+
+        if let Some(vector_array) = obj.get("characteristic_vector").and_then(|v| v.as_array()) {
+            let items: Vec<String> = vector_array
+                .iter()
+                .filter_map(|value| value.as_str().map(|s| s.trim().to_string()))
+                .filter(|s| !s.is_empty())
+                .collect();
+
+            if !items.is_empty() {
+                return Some(items.join(separator));
+            }
+        }
+
+        let mut parts: Vec<String> = Vec::new();
+        let candidate_keys = [
+            "nom",
+            "categorie",
+            "marque",
+            "modele",
+            "description",
+            "taille",
+            "style",
+            "couleur",
+            "etat",
+        ];
+
+        for key in candidate_keys.iter() {
+            if let Some(value) = obj.get(*key) {
+                match value {
+                    serde_json::Value::String(s) => {
+                        let trimmed = s.trim();
+                        if !trimmed.is_empty() {
+                            parts.push(trimmed.to_string());
+                        }
+                    }
+                    serde_json::Value::Number(num) => parts.push(num.to_string()),
+                    _ => {}
+                }
+            }
+        }
+
+        if let Some(prix_val) = obj.get("prix") {
+            match prix_val {
+                serde_json::Value::String(s) => {
+                    let trimmed = s.trim();
+                    if !trimmed.is_empty() {
+                        parts.push(trimmed.to_string());
+                    }
+                }
+                serde_json::Value::Number(num) => parts.push(num.to_string()),
+                _ => {}
+            }
+        }
+
+        if let Some(devise_val) = obj.get("devise").and_then(|v| v.as_str()) {
+            let trimmed = devise_val.trim();
+            if !trimmed.is_empty() {
+                parts.push(trimmed.to_string());
+            }
+        }
+
+        if parts.is_empty() {
+            None
+        } else {
+            Some(parts.join(separator))
+        }
+    };
+
+    if type_donnee == "listeproduit" {
+        if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+            if let Some(first) = valeur_array.first() {
+                if let Some(obj) = first.as_object() {
+                    combination_string = extract_combination_from_object(obj, separateur);
+                    if product_labels.is_empty() {
+                        if let Some(labels_array) = obj.get("product_labels").and_then(|v| v.as_array()) {
+                            product_labels = labels_array
+                                .iter()
+                                .filter_map(|label| label.as_str().map(|s| s.to_string()))
+                                .collect();
+                        }
+                    }
+                    if variation_prix_node.is_none() {
+                        variation_prix_node = obj
+                            .get("variabilite_prix")
+                            .cloned()
+                            .or_else(|| obj.get("variation_prix").cloned());
+                    }
+                }
+                embedded_product_object = Some(first.clone());
+            }
+        }
+    } else {
+        if let Some(valeur_str) = produits_field.get("valeur").and_then(|v| v.as_str()) {
+            combination_string = Some(valeur_str.to_string());
+        } else if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+            combination_string = valeur_array
+                .iter()
+                .filter_map(|v| v.as_str())
+                .next()
+                .map(|s| s.to_string());
+        }
+    }
+
+    if product_vector.is_empty() {
+        if let Some(ref combo) = combination_string {
+            product_vector = combo
+                .split(separateur)
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+        }
+    }
+
     if product_vector.is_empty() {
         log::warn!("[save_autocomplete_combination] Vecteur produit vide");
         return Ok(());
     }
-    
+
     log::info!("[save_autocomplete_combination] Vecteur produit: {:?}", product_vector);
     
     // 2. Extraire lieu (plusieurs champs possibles)
-    let lieu_field = data_obj.get("lieu_produit")
+    let mut lieu_field = data_obj.get("lieu_produit")
         .or_else(|| data_obj.get("localisation"))
         .or_else(|| data_obj.get("ville"))
         .or_else(|| data_obj.get("lieu"));
+
+    if lieu_field.is_none() {
+        if let Some(obj) = embedded_product_object.as_ref().and_then(|v| v.as_object()) {
+            lieu_field = obj.get("lieu_produit")
+                .or_else(|| obj.get("localisation"))
+                .or_else(|| obj.get("lieu"));
+        }
+    }
     
     let (location_vector, chosen_location, geoname_id) = if let Some(lieu) = lieu_field {
         let lieu_str = lieu.get("valeur")
@@ -1649,17 +1876,11 @@ pub async fn save_autocomplete_combination(
     log::info!("[save_autocomplete_combination] Vecteur complet ({}): {:?}", full_vector.len(), full_vector);
     
     // 4. Extraire les labels des sous-caractéristiques (dimensions)
-    let product_labels: Vec<String> = if let Some(sous_caracs) = produits_field.get("sous_caracteristiques").and_then(|v| v.as_object()) {
-        sous_caracs.keys().map(|k| k.to_string()).collect()
-    } else {
-        vec![]
-    };
-    
     // 5. Générer product_id (format: "serviceId_productIndex")
     let product_id = format!("{}_0", service_id);  // Index 0 pour produit principal
     
     // 5. Gérer variations prix si existe
-    let variation_prix = produits_field.get("variation_prix");
+    let variation_prix = variation_prix_node.as_ref();
     
     if let Some(variation) = variation_prix {
         let variant_dimension = variation.get("variable")
@@ -1747,6 +1968,7 @@ pub async fn save_autocomplete_combination(
             .and_then(|p| p.get("valeur"))
             .or_else(|| produits_field.get("prix"))
             .and_then(|v| v.as_f64())
+            .or_else(|| embedded_product_object.as_ref().and_then(|obj| obj.get("prix")).and_then(|v| v.as_f64()))
             .unwrap_or(0.0);
         
         // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
@@ -1814,13 +2036,44 @@ pub async fn save_autocomplete_combination(
         
         // ✅ CORRECTION 2025-11-04: Ajouter le vecteur COMPLET (produit + lieu) au champ produits
         if let Some(produits_obj) = service_data.get_mut("produits").and_then(|p| p.as_object_mut()) {
-            // Ajouter TOUS les vecteurs au champ produits
-            produits_obj.insert("characteristic_vector".to_string(), serde_json::json!(product_vector));
-            produits_obj.insert("product_labels".to_string(), serde_json::json!(product_labels));
-            produits_obj.insert("location_vector".to_string(), serde_json::json!(location_vector));
-            produits_obj.insert("full_vector".to_string(), serde_json::json!(full_vector));  // ✅ Vecteur COMPLET
-            produits_obj.insert("chosen_location".to_string(), serde_json::json!(chosen_location));
-            
+            let current_type = produits_obj
+                .get("type_donnee")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            if current_type == "listeproduit" {
+                if let Some(valeur_array) = produits_obj.get_mut("valeur").and_then(|v| v.as_array_mut()) {
+                    if let Some(first_product) = valeur_array.first_mut().and_then(|v| v.as_object_mut()) {
+                        first_product.insert("characteristic_vector".to_string(), serde_json::json!(product_vector));
+                        first_product.insert("product_labels".to_string(), serde_json::json!(product_labels));
+                        if let Some(combo) = &combination_string {
+                            first_product.insert("combinaison_brute".to_string(), serde_json::json!(combo));
+                        }
+                        if let Some(chosen) = &chosen_location {
+                            first_product.insert("chosen_location".to_string(), serde_json::json!(chosen));
+                        }
+                    }
+                }
+
+                produits_obj.insert("characteristic_vector".to_string(), serde_json::json!(product_vector));
+                produits_obj.insert("product_labels".to_string(), serde_json::json!(product_labels));
+                if let Some(combo) = &combination_string {
+                    produits_obj.insert("combinaison_brute".to_string(), serde_json::json!(combo));
+                }
+                produits_obj.insert("location_vector".to_string(), serde_json::json!(location_vector));
+                produits_obj.insert("full_vector".to_string(), serde_json::json!(full_vector));
+                produits_obj.insert("chosen_location".to_string(), serde_json::json!(chosen_location));
+            } else {
+                produits_obj.insert("characteristic_vector".to_string(), serde_json::json!(product_vector));
+                produits_obj.insert("product_labels".to_string(), serde_json::json!(product_labels));
+                if let Some(combo) = &combination_string {
+                    produits_obj.insert("combinaison_brute".to_string(), serde_json::json!(combo));
+                }
+                produits_obj.insert("location_vector".to_string(), serde_json::json!(location_vector));
+                produits_obj.insert("full_vector".to_string(), serde_json::json!(full_vector));
+                produits_obj.insert("chosen_location".to_string(), serde_json::json!(chosen_location));
+            }
+
             // Mettre à jour dans la base
             let _ = sqlx::query("UPDATE services SET data = $1 WHERE id = $2")
                 .bind(&service_data)

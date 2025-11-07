@@ -51,6 +51,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     const { user } = useAuth();
     const { t } = useLanguageSafe();
     const scrollViewRef = useRef<ScrollView>(null);
+    const autoScrollTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const [content, setContent] = useState<ContentItem[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -62,30 +64,64 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     const [selectedService, setSelectedService] = useState<any>(null);
     const [selectedPrestataire, setSelectedPrestataire] = useState<any>(null);
 
+    const clearAutoScrollTimer = () => {
+        if (autoScrollTimerRef.current) {
+            clearTimeout(autoScrollTimerRef.current);
+            autoScrollTimerRef.current = null;
+        }
+    };
+
+    const clearResumeTimer = () => {
+        if (resumeTimerRef.current) {
+            clearTimeout(resumeTimerRef.current);
+            resumeTimerRef.current = null;
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            clearAutoScrollTimer();
+            clearResumeTimer();
+        };
+    }, []);
+
     // Charger le contenu mixte
     useEffect(() => {
         loadMixedContent();
     }, [userId, userBehavior]);
 
-    // ✅ Démarrer le scroll automatique dès que le contenu est chargé
+    // ✅ Réinitialiser l'index et la pause quand le contenu change
     useEffect(() => {
-        if (content.length > 1 && !isPaused) {
-            // Déclencher le premier scroll après un court délai UNIQUEMENT à l'index 0
-            if (currentIndex === 0) {
-                const initialTimer = setTimeout(() => {
-                    if (scrollViewRef.current && content.length > 1) {
-                        console.log('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial (index 0 → 1)');
-                        scrollViewRef.current.scrollTo({
-                            x: SNAP_INTERVAL, // ✅ SIMPLIFIÉ: utiliser SNAP_INTERVAL directement
-                            animated: true,
-                        });
-                        setCurrentIndex(1);
-                    }
-                }, 2000); // ✅ 2s pour laisser le temps à l'utilisateur de voir la première carte
-                return () => clearTimeout(initialTimer);
-            }
+        if (content.length === 0) {
+            setCurrentIndex(0);
+            return;
         }
-    }, [content.length, isPaused, currentIndex]); // ✅ AJOUTÉ currentIndex dans les deps
+
+        requestAnimationFrame(() => {
+            scrollViewRef.current?.scrollTo({ x: 0, animated: false });
+            setCurrentIndex(0);
+            setIsPaused(false);
+        });
+    }, [content.length]);
+
+    // ✅ Démarrer le scroll automatique après la première mise en page
+    useEffect(() => {
+        if (content.length > 1 && currentIndex === 0 && !isPaused) {
+            const initialTimer = setTimeout(() => {
+                if (scrollViewRef.current && content.length > 1) {
+                    console.log('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial (index 0 → 1)');
+                    const offset = SCREEN_PADDING + SNAP_INTERVAL;
+                    scrollViewRef.current.scrollTo({
+                        x: offset,
+                        animated: true,
+                    });
+                    setCurrentIndex(1);
+                }
+            }, 2000);
+
+            return () => clearTimeout(initialTimer);
+        }
+    }, [content.length, isPaused, currentIndex]);
 
     const loadMixedContent = async () => {
         try {
@@ -197,76 +233,54 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         // Plusieurs images ?
         const imageCount = item.data?.images?.length || 1;
         if (imageCount > 1) {
-            return imageCount * 3000; // 3s par image
+            return Math.max(imageCount * 3000, 6000); // 3s par image
         }
 
         // Image simple ou publicité
         return item.is_paid ? 7000 : 5000; // Pub: 7s, Organique: 5s
     };
 
-    // ✅ Auto-scroll intelligent - CORRIGÉ pour fonctionner correctement
+    // ✅ Auto-scroll intelligent - timer consolidé
     useEffect(() => {
-        console.log('[MixedContentCarousel] Timer check:', {
-            contentLength: content.length,
-            isPaused,
-            currentIndex,
-            hasCurrentItem: !!content[currentIndex]
-        });
+        clearAutoScrollTimer();
 
         if (content.length <= 1) {
-            console.log('[MixedContentCarousel] ⚠️ Scroll annulé: Pas assez d\'éléments (besoin de 2 minimum)');
             return;
         }
 
         if (isPaused) {
-            console.log('[MixedContentCarousel] ⏸️ Scroll en pause (scroll manuel ou interaction)');
             return;
         }
 
-        const currentItem = content[currentIndex];
+        const currentItem = content[currentIndex] ?? content[0];
         if (!currentItem) {
-            console.log('[MixedContentCarousel] ⚠️ Item courant non trouvé à l\'index', currentIndex);
             return;
         }
 
-        const delay = calculateDelay(currentItem);
-        if (delay === 0) {
-            console.log('[MixedContentCarousel] ⚠️ Délai = 0, scroll annulé');
-            return;
-        }
+        const delay = Math.max(calculateDelay(currentItem), 3000);
+        console.log('[MixedContentCarousel] ⏱️ Programmation autoscroll', { delay, currentIndex });
 
-        console.log(`[MixedContentCarousel] ⏱️ Timer démarré: ${delay}ms jusqu'au prochain scroll (${currentIndex} → ${(currentIndex + 1) % content.length})`);
-
-        const timer = setTimeout(() => {
+        autoScrollTimerRef.current = setTimeout(() => {
             if (!scrollViewRef.current) {
                 console.log('[MixedContentCarousel] ⚠️ ScrollView ref null, scroll annulé');
                 return;
             }
 
             const nextIndex = (currentIndex + 1) % content.length;
+            const scrollPosition = SCREEN_PADDING + nextIndex * SNAP_INTERVAL;
 
-            // ✅ CORRIGÉ: Calculer la position exacte en utilisant SNAP_INTERVAL
-            const scrollPosition = nextIndex * SNAP_INTERVAL;
+            console.log('[MixedContentCarousel] 🎬 Auto scroll', { currentIndex, nextIndex, scrollPosition });
 
-            console.log(`[MixedContentCarousel] 🎬 Scroll automatique: index ${currentIndex} → ${nextIndex} (position ${scrollPosition}px)`);
-
-            // Scroll vers la position suivante
             scrollViewRef.current.scrollTo({
                 x: scrollPosition,
                 animated: true,
             });
 
-            // Mettre à jour l'index immédiatement pour déclencher le prochain timer
             setCurrentIndex(nextIndex);
-
-            // Tracker la visibilité de l'élément précédent après un court délai
-            setTimeout(() => {
-                trackVisibility(currentItem, currentIndex);
-            }, 100);
         }, delay);
 
-        return () => clearTimeout(timer);
-    }, [currentIndex, content, isPaused]);
+        return clearAutoScrollTimer;
+    }, [content, currentIndex, isPaused]);
 
     // ✅ Tracker la visibilité
     const trackVisibility = async (item: ContentItem, position: number) => {
@@ -288,27 +302,31 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     // ✅ Gérer le scroll manuel (quand l'utilisateur arrête de scroller)
     const handleScroll = (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
-        // ✅ CORRIGÉ: Calcul simplifié sans ajustement de padding
-        const index = Math.round(offsetX / SNAP_INTERVAL);
+        const adjustedOffset = Math.max(0, offsetX - SCREEN_PADDING);
+        const index = Math.round(adjustedOffset / SNAP_INTERVAL);
 
         if (index !== currentIndex && index >= 0 && index < content.length) {
             console.log('[MixedContentCarousel] 👆 Scroll manuel détecté: index', index);
-            setIsPaused(true);
             setCurrentIndex(index);
+            setIsPaused(true);
 
-            // Reprendre auto-scroll après 5s d'inactivité
-            setTimeout(() => {
+            clearResumeTimer();
+            resumeTimerRef.current = setTimeout(() => {
                 console.log('[MixedContentCarousel] ▶️ Reprise auto-scroll après pause manuelle');
                 setIsPaused(false);
-            }, 5000);
+            }, 4000);
+        }
+
+        const currentItem = content[index];
+        if (currentItem) {
+            trackVisibility(currentItem, index).catch(() => undefined);
         }
     };
 
-    // ✅ Gérer le scroll en cours (pour mise à jour continue de l'index pendant le scroll)
     const handleScrollEvent = (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
-        // ✅ CORRIGÉ: Calcul simplifié
-        const index = Math.round(offsetX / SNAP_INTERVAL);
+        const adjustedOffset = Math.max(0, offsetX - SCREEN_PADDING);
+        const index = Math.round(adjustedOffset / SNAP_INTERVAL);
 
         if (index >= 0 && index < content.length && index !== currentIndex) {
             setCurrentIndex(index);
@@ -388,7 +406,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 ref={scrollViewRef}
                 horizontal
                 pagingEnabled={false}
-                snapToInterval={SNAP_INTERVAL} // ✅ CORRIGÉ: Utiliser constante
+                snapToInterval={SNAP_INTERVAL}
                 snapToAlignment="start"
                 decelerationRate="fast"
                 showsHorizontalScrollIndicator={false}
@@ -397,8 +415,12 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 scrollEventThrottle={16}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
-                // ✅ NOUVEAU: contentInset pour iOS (gère le padding initial proprement)
-                contentInset={{ left: 0, right: 0 }}
+                nestedScrollEnabled
+                contentInset={{
+                    left: SCREEN_PADDING,
+                    right: SCREEN_PADDING,
+                }}
+                contentOffset={{ x: SCREEN_PADDING, y: 0 }}
             >
                 {content.map((item, index) => (
                     <TouchableOpacity

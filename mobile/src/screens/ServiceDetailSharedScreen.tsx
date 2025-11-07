@@ -13,10 +13,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View
 } from 'react-native';
 import { NativeButton } from '../components/NativeDesign';
+import NavigatorToolbar from '../components/NavigatorToolbar';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
@@ -127,17 +127,13 @@ const ServiceDetailSharedScreen: React.FC = () => {
         colors={[modernColors.primary, modernColors.primaryDark]}
         style={styles.header}
       >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => (navigation as any).navigate('Home')}
-        >
-          <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle} numberOfLines={1}>Service Partagé</Text>
-          <Text style={styles.headerSubtitle} numberOfLines={1}>Via Yukpo</Text>
-        </View>
-        <View style={styles.headerRight} />
+        <NavigatorToolbar
+          tone="dark"
+          showHandle={false}
+          title="Service partagé"
+          subtitle="Via Yukpo"
+          onClose={() => (navigation as any).navigate('Home')}
+        />
       </LinearGradient>
 
       {/* Contenu */}
@@ -230,32 +226,9 @@ const styles = StyleSheet.create({
     minWidth: 200,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingVertical: 16,
     paddingTop: 48,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    opacity: 0.8,
-    marginTop: 2,
-  },
-  headerRight: {
-    width: 40,
   },
   content: {
     flex: 1,

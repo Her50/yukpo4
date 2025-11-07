@@ -177,7 +177,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
 
     const resolvedLabel = label?.trim() || 'Variantes';
     const resolvedVariable = variable?.trim();
-    const resolvedHelperText = helperText || 'Ajoutez des variantes (ex: Taille, Formule, Option) avec un prix spécifique.';
+    const resolvedHelperText = helperText || 'Modifiez chaque modalité détectée (prix, devise, stock, image) ou ajoutez-en de nouvelles.';
 
     return (
         <View style={styles.container}>
@@ -189,7 +189,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                 </Text>
                 <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
                     <SafeIcon name="plus" size={18} color="#FFFFFF" />
-                    <Text style={styles.addButtonText}>Ajouter</Text>
+                    <Text style={styles.addButtonText}>Ajouter une modalité</Text>
                 </TouchableOpacity>
             </View>
 

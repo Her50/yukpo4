@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Card, RadioButton, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import NavigatorToolbar from '../components/NavigatorToolbar';
 import ReceiptModal from '../components/ReceiptModal';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
@@ -422,25 +423,27 @@ const RechargeTokensScreen: React.FC = () => {
     </View>
   );
 
+  const creditNumber = Number(user?.credits ?? 0);
+  const formattedCredits = Number.isFinite(creditNumber) ? creditNumber.toLocaleString() : '0';
+  const balanceLabel = `Solde actuel: ${formattedCredits} XAF`;
+
   return (
     <SafeAreaView style={styles.container}>
+      <NavigatorToolbar
+        title="Recharger mes tokens"
+        subtitle={balanceLabel}
+        showHandle={false}
+        onClose={() => navigation.goBack()}
+        rightSlot={(
+          <TouchableOpacity
+            style={styles.historyButton}
+            onPress={() => (navigation as any).navigate('SoldeDetail')}
+          >
+            <Text style={styles.historyButtonText}>📊 Historique</Text>
+          </TouchableOpacity>
+        )}
+      />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Title style={styles.title}>💳 Recharger mes tokens</Title>
-          <View style={styles.balanceContainer}>
-            <Text style={styles.subtitle}>
-              Solde actuel: {user?.credits?.toLocaleString() || '0'} XAF
-            </Text>
-            <TouchableOpacity
-              style={styles.historyButton}
-              onPress={() => (navigation as any).navigate('SoldeDetail')}
-            >
-              <Text style={styles.historyButtonText}>📊 Voir l'historique</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Étapes */}
         <View style={styles.stepsIndicator}>
           <View style={[styles.step, currentStep === 'amount' && styles.stepActive]}>
@@ -484,25 +487,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 120,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-  },
-  balanceContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
   },
   historyButton: {
     backgroundColor: theme.colors.primary,
