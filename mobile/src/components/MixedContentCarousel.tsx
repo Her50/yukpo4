@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Dimensions,
     ScrollView,
     StyleSheet,
@@ -14,6 +15,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
@@ -53,6 +55,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     const scrollViewRef = useRef<ScrollView>(null);
     const autoScrollTimerRef = useRef<NodeJS.Timeout | null>(null);
     const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const isAutoScrollDisabled = CRASH_PREVENTION_CONFIG.DISABLE_MIXED_CONTENT_AUTOSCROLL;
 
     const [content, setContent] = useState<ContentItem[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -106,6 +109,11 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
     // ✅ Démarrer le scroll automatique après la première mise en page
     useEffect(() => {
+        if (isAutoScrollDisabled) {
+            clearAutoScrollTimer();
+            return;
+        }
+
         if (content.length > 1 && currentIndex === 0 && !isPaused) {
             const initialTimer = setTimeout(() => {
                 if (scrollViewRef.current && content.length > 1) {
@@ -121,7 +129,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
             return () => clearTimeout(initialTimer);
         }
-    }, [content.length, isPaused, currentIndex]);
+    }, [content.length, isPaused, currentIndex, isAutoScrollDisabled]);
 
     const loadMixedContent = async () => {
         try {
@@ -244,7 +252,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     useEffect(() => {
         clearAutoScrollTimer();
 
-        if (content.length <= 1) {
+        if (content.length <= 1 || isAutoScrollDisabled) {
             return;
         }
 
@@ -280,7 +288,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         }, delay);
 
         return clearAutoScrollTimer;
-    }, [content, currentIndex, isPaused]);
+    }, [content, currentIndex, isPaused, isAutoScrollDisabled]);
 
     // ✅ Tracker la visibilité
     const trackVisibility = async (item: ContentItem, position: number) => {
@@ -308,13 +316,16 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         if (index !== currentIndex && index >= 0 && index < content.length) {
             console.log('[MixedContentCarousel] 👆 Scroll manuel détecté: index', index);
             setCurrentIndex(index);
-            setIsPaused(true);
 
-            clearResumeTimer();
-            resumeTimerRef.current = setTimeout(() => {
-                console.log('[MixedContentCarousel] ▶️ Reprise auto-scroll après pause manuelle');
-                setIsPaused(false);
-            }, 4000);
+            if (!isAutoScrollDisabled) {
+                setIsPaused(true);
+
+                clearResumeTimer();
+                resumeTimerRef.current = setTimeout(() => {
+                    console.log('[MixedContentCarousel] ▶️ Reprise auto-scroll après pause manuelle');
+                    setIsPaused(false);
+                }, 4000);
+            }
         }
 
         const currentItem = content[index];
@@ -349,17 +360,22 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             console.error('[MixedContentCarousel] Erreur tracking clic:', error);
         }
 
-        // Navigation selon le type
-        if (item.is_paid) {
-            // Publicité : ouvrir détails de la publicité
-            console.log('[MixedContentCarousel] Clic publicité:', item.data.titre);
-            // TODO: Naviguer vers écran détails publicité
-        } else {
-            // Produit organique : ouvrir détails du produit/service
-            if (item.data.service_id) {
-                (navigation as any).navigate('ServiceDetail', { serviceId: item.data.service_id });
-            }
+        const serviceId = item?.data?.service_id
+            ?? item?.data?.serviceId
+            ?? item?.data?.service?.id
+            ?? item?.data?.id;
+
+        if (!serviceId) {
+            console.warn('[MixedContentCarousel] ⚠️ Impossible d’identifier le service pour cette carte', item);
+            Alert.alert('Contenu indisponible', 'Nous ne parvenons pas à ouvrir cette annonce pour le moment.');
+            return;
         }
+
+        (navigation as any).navigate('ServiceDetail', {
+            serviceId: String(serviceId),
+            fromCarousel: true,
+            isPaid: item.is_paid,
+        });
     };
 
     // Loading state
@@ -489,7 +505,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             )}
 
             {/* ✅ Contrôles manuels */}
-            {!isPaused && (
+            {!isAutoScrollDisabled && !isPaused && (
                 <TouchableOpacity
                     style={styles.pauseButton}
                     onPress={() => setIsPaused(true)}
@@ -497,7 +513,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                     <SafeIcon name="pause" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
             )}
-            {isPaused && (
+            {!isAutoScrollDisabled && isPaused && (
                 <TouchableOpacity
                     style={styles.playButton}
                     onPress={() => setIsPaused(false)}

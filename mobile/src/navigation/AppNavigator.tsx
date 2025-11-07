@@ -3,8 +3,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
-import { modernColors } from '../theme/modernTheme';
 import { SafeNativeView } from '../components/SafeNativeView';
+import { modernColors } from '../theme/modernTheme';
 import { markNavigatorSafeAreaHandled, withNavigatorSafeArea } from './withNavigatorSafeArea';
 
 // ✅ Context minimal au démarrage
@@ -158,6 +158,7 @@ const SecondaryStack = () => {
         <Stack.Screen name="AjouterProduitSimple" component={AjouterProduitSimpleWithSafeArea} />
         <Stack.Screen name="MesProduits" component={MesProduitsScreenWithSafeArea} />
         <Stack.Screen name="ProductDetail" component={ProductDetailScreenWithSafeArea} />
+        <Stack.Screen name="ServiceDetail" component={ServiceDetailSharedScreenWithSafeArea} />
         <Stack.Screen name="ServiceDetailShared" component={ServiceDetailSharedScreenWithSafeArea} />
         <Stack.Screen name="ResultatBesoin" component={ResultatBesoinScreenWithSafeArea} />
         <Stack.Screen name="CreatePublicite" component={CreatePubliciteScreenWithSafeArea} />

@@ -17,16 +17,19 @@ interface NotificationItem {
   category: 'service' | 'system' | 'payment' | 'security';
   actionUrl?: string;
   actionText?: string;
+  productName?: string;
 }
 
 interface NotificationHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onChange?: () => void;
 }
 
 const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   isOpen,
-  onClose
+  onClose,
+  onChange,
 }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -72,6 +75,16 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
           // ✅ CORRECTION: Le backend retourne notification_type (snake_case), pas type
           const backendType = notif.notification_type || notif.type || 'system_alert';
 
+          const rawProductName = notif.data?.product_name
+            || notif.data?.productName
+            || notif.data?.nom_produit
+            || notif.data?.product;
+          const productName = typeof rawProductName === 'string'
+            ? rawProductName
+            : typeof rawProductName === 'object'
+              ? rawProductName?.valeur ?? rawProductName?.name
+              : undefined;
+
           console.log(`[NotificationHistoryModal] 📝 Notif ${index}:`, {
             id: notif.id,
             notification_type: notif.notification_type,
@@ -91,7 +104,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             isRead: notif.is_read || notif.isRead || false,
             category: mapNotificationCategory(backendType),
             actionUrl: notif.data?.actionUrl,
-            actionText: notif.data?.actionText
+            actionText: notif.data?.actionText,
+            productName,
           };
         });
 
@@ -201,6 +215,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             : notif
         )
       );
+
+      onChange?.();
     } catch (error) {
       console.error('Erreur marquage notification comme lue:', error);
       Alert.alert('Erreur', 'Impossible de marquer la notification comme lue');
@@ -222,6 +238,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         prev.map(notif => ({ ...notif, isRead: true }))
       );
       Alert.alert('Succès', 'Toutes les notifications ont été marquées comme lues');
+
+      onChange?.();
     } catch (error) {
       console.error('Erreur marquage toutes notifications:', error);
       Alert.alert('Erreur', 'Impossible de marquer toutes les notifications comme lues');
@@ -236,6 +254,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       // Mettre à jour le state local
       setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
       Alert.alert('Supprimé', 'Notification supprimée');
+
+      onChange?.();
     } catch (error) {
       console.error('Erreur suppression notification:', error);
       Alert.alert('Erreur', 'Impossible de supprimer la notification');
@@ -412,10 +432,14 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
                       <View style={styles.notificationInfo}>
                         <View style={styles.notificationTitleRow}>
-                          <Text style={[
-                            styles.notificationTitle,
-                            !notification.isRead && styles.unreadText
-                          ]}>
+                          <Text
+                            style={[
+                              styles.notificationTitle,
+                              !notification.isRead && styles.unreadText
+                            ]}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
                             {notification.title}
                           </Text>
 
@@ -425,6 +449,16 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                             </View>
                           </View>
                         </View>
+
+                        {notification.productName && (
+                          <Text
+                            style={styles.productNameLabel}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            Produit : {notification.productName}
+                          </Text>
+                        )}
 
                         <Text style={styles.notificationMessage}>
                           {notification.message}
@@ -686,6 +720,11 @@ const styles = StyleSheet.create({
   badgesContainer: {
     flexDirection: 'row',
     gap: 4,
+  },
+  productNameLabel: {
+    fontSize: 13,
+    color: theme.colors.primary,
+    marginBottom: 6,
   },
   typeBadge: {
     paddingHorizontal: 6,

@@ -102,14 +102,19 @@ pub async fn delete_product(
 
     log::info!("🗑️ Suppression produit {}", product_id);
 
+    let product_id_i32 = product_id.parse::<i32>().map_err(|_| {
+        log::warn!("⚠️ Identifiant produit invalide: {}", product_id);
+        StatusCode::BAD_REQUEST
+    })?;
+
     // Supprimer le produit de products_lifecycle
     let result = sqlx::query!(
         r#"
         DELETE FROM products_lifecycle
         WHERE id = $1
-        RETURNING id
+        RETURNING id, service_id, product_index
         "#,
-        product_id.parse::<i32>().unwrap_or(0)
+        product_id_i32
     )
     .fetch_optional(pool)
     .await
@@ -118,13 +123,175 @@ pub async fn delete_product(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    if result.is_none() {
+    let deleted_row = match result {
+        Some(row) => row,
+        None => {
         log::warn!("⚠️ Produit {} non trouvé", product_id);
         return Ok(Json(ApiResponse {
             success: false,
             message: "Produit non trouvé".to_string(),
             data: None,
         }));
+        }
+    };
+
+    let service_id = deleted_row.service_id;
+    let removed_index = deleted_row.product_index;
+
+    // Supprimer les médias associés au produit supprimé
+    if let Err(media_error) = sqlx::query!(
+        r#"
+        DELETE FROM media
+        WHERE service_id = $1 AND product_index = $2
+        "#,
+        service_id,
+        removed_index
+    )
+    .execute(pool)
+    .await
+    {
+        log::warn!(
+            "⚠️ Impossible de supprimer les médias du produit {}: {:?}",
+            product_id_i32,
+            media_error
+        );
+    }
+
+    // Re-indexer les médias restants
+    if let Err(media_shift_error) = sqlx::query!(
+        r#"
+        UPDATE media
+        SET product_index = product_index - 1
+        WHERE service_id = $1
+          AND product_index IS NOT NULL
+          AND product_index > $2
+        "#,
+        service_id,
+        removed_index
+    )
+    .execute(pool)
+    .await
+    {
+        log::warn!(
+            "⚠️ Impossible de ré-indexer les médias du service {} après suppression: {:?}",
+            service_id,
+            media_shift_error
+        );
+    }
+
+    // Mettre à jour les produits dans le JSON du service
+    if let Ok(service_row) = sqlx::query!(
+        r#"
+        SELECT data
+        FROM services
+        WHERE id = $1
+        "#,
+        service_id
+    )
+    .fetch_optional(pool)
+    .await
+    {
+        if let Some(row) = service_row {
+            let mut service_data: serde_json::Value = row.data;
+            let mut updated = false;
+
+            if let Some(produits) = service_data.get_mut("produits") {
+                if let Some(valeur) = produits.get_mut("valeur") {
+                    if let Some(arr) = valeur.as_array_mut() {
+                        let mut removal_index: Option<usize> = arr
+                            .iter()
+                            .position(|item| {
+                                let lifecycle_id = item
+                                    .get("product_lifecycle_id")
+                                    .and_then(|v| v.as_i64())
+                                    .map(|v| v as i32);
+                                let legacy_id = item
+                                    .get("lifecycle_id")
+                                    .and_then(|v| v.as_i64())
+                                    .map(|v| v as i32);
+                                let product_id_field = item
+                                    .get("product_id")
+                                    .and_then(|v| v.as_i64())
+                                    .map(|v| v as i32);
+
+                                lifecycle_id == Some(product_id_i32)
+                                    || legacy_id == Some(product_id_i32)
+                                    || product_id_field == Some(product_id_i32)
+                            });
+
+                        if removal_index.is_none()
+                            && removed_index >= 0
+                            && (removed_index as usize) < arr.len()
+                        {
+                            removal_index = Some(removed_index as usize);
+                        }
+
+                        if let Some(idx) = removal_index {
+                            arr.remove(idx);
+                            updated = true;
+
+                            for (index, product_value) in arr.iter_mut().enumerate() {
+                                if let Some(obj) = product_value.as_object_mut() {
+                                    obj.insert(
+                                        "product_index".to_string(),
+                                        serde_json::json!(index),
+                                    );
+                                    obj.insert(
+                                        "lifecycle_index".to_string(),
+                                        serde_json::json!(index),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if updated {
+                if let Err(update_error) = sqlx::query!(
+                    r#"
+                    UPDATE services
+                    SET data = $1,
+                        updated_at = NOW()
+                    WHERE id = $2
+                    "#,
+                    service_data,
+                    service_id
+                )
+                .execute(pool)
+                .await
+                {
+                    log::error!(
+                        "❌ Erreur mise à jour JSON service {} après suppression produit {}: {:?}",
+                        service_id,
+                        product_id_i32,
+                        update_error
+                    );
+                }
+            }
+        }
+    }
+
+    // Ré-indexer les produits restants dans products_lifecycle
+    if let Err(reindex_error) = sqlx::query!(
+        r#"
+        UPDATE products_lifecycle
+        SET product_index = product_index - 1,
+            updated_at = NOW()
+        WHERE service_id = $1
+          AND product_index > $2
+        "#,
+        service_id,
+        removed_index
+    )
+    .execute(pool)
+    .await
+    {
+        log::error!(
+            "❌ Erreur ré-indexation products_lifecycle pour service {}: {:?}",
+            service_id,
+            reindex_error
+        );
     }
 
     log::info!("✅ Produit {} supprimé", product_id);

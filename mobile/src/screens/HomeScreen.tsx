@@ -75,57 +75,48 @@ const HomeScreen: React.FC = () => {
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
     const [userBehaviorCategories, setUserBehaviorCategories] = useState<string[]>([]);
 
-    // Charger le nombre de notifications non lues
-    React.useEffect(() => {
-        const loadUnreadNotificationsCount = async () => {
-            if (user?.id) {
-                try {
-                    const response = await apiGet<{ count: number }>(`/api/notifications/user/${user.id}/unread-count`);
-                    if (response.data && typeof response.data.count === 'number') {
-                        setUnreadNotificationsCount(response.data.count);
-
-                        // ✅ DÉBOGAGE: Si count > 0, vérifier qu'il y a vraiment des notifications
-                        if (__DEV__ && response.data.count > 0) {
-                            console.log('[HomeScreen] 🔔 Notifications non lues détectées:', response.data.count);
-                            // Vérification asynchrone en arrière-plan
-                            debugNotifications(String(user.id)).then(info => {
-                                if (info.mismatch) {
-                                    console.warn('[HomeScreen] ⚠️ INCOHÉRENCE détectée dans les notifications !');
-                                    console.warn('[HomeScreen] Count:', info.unreadCount, 'Réelles:', info.actualNotifications.filter((n: any) => !n.isRead && !n.is_read).length);
-                                }
-                            }).catch(err => {
-                                console.error('[HomeScreen] Erreur débogage notifications:', err);
-                            });
-                        }
-                    }
-                } catch (error) {
-                    console.error('[HomeScreen] Erreur chargement nombre de notifications:', error);
-                    setUnreadNotificationsCount(0);
-                }
-            }
-        };
-
-        // Charger immédiatement
-        loadUnreadNotificationsCount();
-
-        // Recharger quand le modal de notifications se ferme
-        if (!showNotificationModal) {
-            loadUnreadNotificationsCount();
+    const loadUnreadNotificationsCount = React.useCallback(async () => {
+        if (!user?.id) {
+            setUnreadNotificationsCount(0);
+            return;
         }
 
-        // Rafraîchissement automatique toutes les 30 secondes
-        const interval = setInterval(() => {
-            if (user?.id) {
-                console.log('[HomeScreen] 🔄 Rafraîchissement automatique des notifications');
-                loadUnreadNotificationsCount();
-            }
-        }, 30000); // 30 secondes
+        try {
+            const response = await apiGet<{ count: number }>(`/api/notifications/user/${user.id}/unread-count`);
+            if (response.data && typeof response.data.count === 'number') {
+                setUnreadNotificationsCount(response.data.count);
 
-        // Nettoyer l'intervalle quand le composant se démonte
+                if (__DEV__ && response.data.count > 0) {
+                    console.log('[HomeScreen] 🔔 Notifications non lues détectées:', response.data.count);
+                    debugNotifications(String(user.id)).then(info => {
+                        if (info.mismatch) {
+                            console.warn('[HomeScreen] ⚠️ INCOHÉRENCE détectée dans les notifications !');
+                            console.warn('[HomeScreen] Count:', info.unreadCount, 'Réelles:', info.actualNotifications.filter((n: any) => !n.isRead && !n.is_read).length);
+                        }
+                    }).catch(err => {
+                        console.error('[HomeScreen] Erreur débogage notifications:', err);
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('[HomeScreen] Erreur chargement nombre de notifications:', error);
+            setUnreadNotificationsCount(0);
+        }
+    }, [user?.id]);
+
+    // Charger le nombre de notifications non lues
+    React.useEffect(() => {
+        loadUnreadNotificationsCount();
+
+        const interval = setInterval(() => {
+            console.log('[HomeScreen] 🔄 Rafraîchissement automatique des notifications');
+            loadUnreadNotificationsCount();
+        }, 30000);
+
         return () => {
             clearInterval(interval);
         };
-    }, [user?.id, showNotificationModal]);
+    }, [loadUnreadNotificationsCount]);
 
     // ✅ NOUVEAU: Fonction pour déboguer et nettoyer les notifications fantômes
     const handleDebugNotifications = async () => {
@@ -180,6 +171,11 @@ const HomeScreen: React.FC = () => {
 
     // ✅ NOUVEAU: Scroll automatique vers le carousel au démarrage de l'app
     React.useEffect(() => {
+        if (CRASH_PREVENTION_CONFIG.DISABLE_HOME_AUTOSCROLL) {
+            console.log('[HomeScreen] ⏸️ Scroll automatique désactivé (configuration)');
+            return;
+        }
+
         // Attendre que le layout soit stabilisé, puis scroller vers le carousel
         const timer = setTimeout(() => {
             scrollViewRef.current?.scrollTo({
@@ -462,7 +458,7 @@ const HomeScreen: React.FC = () => {
             console.log('[HomeScreen] Vérification si utilisateur a déjà un service...');
             let hasExistingService = false;
             let firstServiceId: number | null = null;
-            
+
             try {
                 const servicesResponse = await apiGet('/api/services/my-services');
                 if (servicesResponse.success && Array.isArray(servicesResponse.data) && servicesResponse.data.length > 0) {
@@ -748,6 +744,7 @@ const HomeScreen: React.FC = () => {
                 <NotificationHistoryModal
                     isOpen={showNotificationModal}
                     onClose={() => setShowNotificationModal(false)}
+                    onChange={loadUnreadNotificationsCount}
                 />
 
                 {/* Modal Chat/Conversations */}

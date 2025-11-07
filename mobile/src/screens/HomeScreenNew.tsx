@@ -19,7 +19,6 @@ import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeIcon } from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
-import { useWeather } from '../hooks/useWeather';
 import { genererSuggestionsService } from '../lib/yukpoaclient';
 import { apiGet, servicesApi } from '../services/api';
 import { modernStyles } from '../theme/modernTheme';
@@ -35,49 +34,27 @@ const HomeScreenNew: React.FC = () => {
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
-    // Météo - utiliser la position GPS si disponible, sinon Paris par défaut
-    const { weather } = useWeather(
-        selectedLocation?.lat || 48.8566,
-        selectedLocation?.lng || 2.3522
-    );
+    const loadUnreadNotificationsCount = React.useCallback(async () => {
+        if (!user?.id) {
+            setUnreadNotificationsCount(0);
+            return;
+        }
 
-    // Vérifier que l'utilisateur est bien connecté
-    useEffect(() => {
         try {
-            if (!user) {
-                console.warn('[HomeScreenNew] Aucun utilisateur connecté, redirection vers login');
-                // navigation.navigate('Login' as never);
-            } else {
-                console.log('[HomeScreenNew] Utilisateur connecté:', user.email);
+            const response = await apiGet<{ count: number }>(`/api/notifications/user/${user.id}/unread-count`);
+            if (response.data && typeof response.data.count === 'number') {
+                setUnreadNotificationsCount(response.data.count);
             }
         } catch (error) {
-            console.error('[HomeScreenNew] Erreur dans useEffect user:', error);
+            console.error('[HomeScreenNew] Erreur chargement nombre de notifications:', error);
+            setUnreadNotificationsCount(0);
         }
-    }, [user]);
+    }, [user?.id]);
 
     // Charger le nombre de notifications non lues
     useEffect(() => {
-        const loadUnreadNotificationsCount = async () => {
-            if (user?.id) {
-                try {
-                    const response = await apiGet<{ count: number }>(`/api/notifications/user/${user.id}/unread-count`);
-                    if (response.data && typeof response.data.count === 'number') {
-                        setUnreadNotificationsCount(response.data.count);
-                    }
-                } catch (error) {
-                    console.error('[HomeScreenNew] Erreur chargement nombre de notifications:', error);
-                    setUnreadNotificationsCount(0);
-                }
-            }
-        };
-
         loadUnreadNotificationsCount();
-
-        // Recharger quand le modal de notifications se ferme
-        if (!showNotifications) {
-            loadUnreadNotificationsCount();
-        }
-    }, [user?.id, showNotifications]);
+    }, [loadUnreadNotificationsCount]);
 
     // Détection GPS automatique au chargement (si activé dans les paramètres)
     useEffect(() => {
@@ -354,6 +331,7 @@ const HomeScreenNew: React.FC = () => {
             <NotificationHistoryModal
                 isOpen={showNotifications}
                 onClose={() => setShowNotifications(false)}
+                onChange={loadUnreadNotificationsCount}
             />
         </SafeNativeView>
     );

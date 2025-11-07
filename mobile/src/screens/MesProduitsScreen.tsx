@@ -1,12 +1,12 @@
 // @ts-nocheck
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Dimensions,
     Modal,
+    Platform,
     RefreshControl,
     ScrollView,
     Share,
@@ -24,6 +24,7 @@ import { apiDelete, apiGet, apiPatch } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
+const SUMMARY_CARD_MIN_WIDTH = Math.max((width - 16 * 2 - 12) / 2, 140);
 
 interface Product {
     id: string;
@@ -105,6 +106,98 @@ const resolveNumericId = (value: any): number | null => {
     return Number.isNaN(parsed) ? null : parsed;
 };
 
+const parseDateToTimestamp = (value: any): number => {
+    if (!value) {
+        return 0;
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+
+        if (!trimmed) {
+            return 0;
+        }
+
+        // Essayer de parser un entier (timestamp déjà numérique)
+        const numericCandidate = Number(trimmed);
+        if (!Number.isNaN(numericCandidate) && Number.isFinite(numericCandidate)) {
+            if (numericCandidate > 10_000_000_000) {
+                // Probablement un timestamp en millisecondes
+                return numericCandidate;
+            }
+
+            if (numericCandidate > 10_000_000) {
+                // Probablement un timestamp en secondes
+                return numericCandidate * 1000;
+            }
+        }
+
+        const parsedDate = Date.parse(trimmed.replace(/\.\d{3}Z$/, 'Z'));
+
+        if (!Number.isNaN(parsedDate)) {
+            return parsedDate;
+        }
+    }
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value.getTime();
+    }
+
+    return 0;
+};
+
+const resolveProductTimestamp = (product: Record<string, any>, fallback?: number): number => {
+    if (!product || typeof product !== 'object') {
+        return fallback || 0;
+    }
+
+    const candidates: any[] = [
+        product.created_at_ts,
+        product.created_at,
+        product.createdAt,
+        product.created_at_api,
+        product.created_at_iso,
+        product.created_at_app,
+        product.createdAtISO,
+        product.createdAtMs,
+        product.created_at_ms,
+        product.lifecycle_created_at,
+        product.lifecycleCreatedAt,
+        product.updated_at,
+        product.updatedAt,
+        product.date_creation,
+        product.dateCreation,
+        product.metadata?.created_at,
+        product.metadata?.createdAt,
+        product.stats?.created_at,
+        product.stats?.createdAt,
+    ];
+
+    for (const candidate of candidates) {
+        const timestamp = parseDateToTimestamp(candidate);
+        if (timestamp) {
+            return timestamp;
+        }
+    }
+
+    if (typeof fallback === 'number' && fallback > 0) {
+        return fallback;
+    }
+
+    if (product.rawProductId) {
+        const numericId = Number(product.rawProductId);
+        if (!Number.isNaN(numericId) && Number.isFinite(numericId)) {
+            return numericId;
+        }
+    }
+
+    return 0;
+};
+
 const MesProduitsScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
@@ -141,6 +234,9 @@ const MesProduitsScreen: React.FC = () => {
                     const serviceId = service.id.toString();
                     const serviceTitre = service.data?.titre_service?.valeur || service.titre || 'Service sans titre';
                     const produits = service.data?.produits?.valeur;
+                    const serviceCreatedAtTs = parseDateToTimestamp(
+                        service.created_at || service.createdAt || service.data?.created_at
+                    );
 
                     if (produits && Array.isArray(produits)) {
                         produits.forEach((product: any, index: number) => {
@@ -159,6 +255,10 @@ const MesProduitsScreen: React.FC = () => {
 
                             const categoryKey = normalizeCategoryKey(product);
                             const categoryLabel = getProductTypeLabel(categoryKey);
+
+                            const fallbackTimestamp =
+                                serviceCreatedAtTs || (numericProductId ? numericProductId * 1000 : 0);
+                            const productTimestamp = resolveProductTimestamp(product, fallbackTimestamp);
 
                             const views = Number(
                                 product.views
@@ -190,12 +290,31 @@ const MesProduitsScreen: React.FC = () => {
                                 serviceId,
                                 serviceTitre,
                                 is_active: product.is_active !== undefined ? product.is_active : true,
+                                created_at_ts: productTimestamp,
                                 views,
                                 shares,
                                 saves,
                             });
                         });
                     }
+                });
+
+                allProducts.sort((a, b) => {
+                    const tsA = a.created_at_ts || 0;
+                    const tsB = b.created_at_ts || 0;
+
+                    if (tsA !== tsB) {
+                        return tsB - tsA;
+                    }
+
+                    const rawA = Number(a.rawProductId || 0);
+                    const rawB = Number(b.rawProductId || 0);
+
+                    if (rawA !== rawB) {
+                        return rawB - rawA;
+                    }
+
+                    return (b.product_index ?? 0) - (a.product_index ?? 0);
                 });
 
                 console.log('[MesProduitsScreen] 📦 Total produits extraits:', allProducts.length);
@@ -404,6 +523,7 @@ const MesProduitsScreen: React.FC = () => {
                                     const candidateId = resolveNumericId(p.rawProductId ?? p.id);
                                     return candidateId !== productIdForDelete;
                                 }));
+                                await loadProducts(true);
                                 Alert.alert('✅ Succès', 'Produit supprimé avec succès');
                             } else {
                                 Alert.alert('Erreur', response.error || 'Impossible de supprimer le produit');
@@ -702,10 +822,10 @@ const MesProduitsScreen: React.FC = () => {
 
     const headerSummary = useMemo(() => (
         [
-            { label: 'Produits', value: totalProducts },
-            { label: 'Actifs', value: activeProducts },
-            { label: 'En pause', value: inactiveProducts },
-            { label: 'Catégories', value: totalCategories },
+            { label: 'Produits', value: totalProducts, icon: 'box', accentColor: '#4F46E5' },
+            { label: 'Actifs', value: activeProducts, icon: 'check-circle', accentColor: '#10B981' },
+            { label: 'En pause', value: inactiveProducts, icon: 'pause-circle', accentColor: '#F97316' },
+            { label: 'Catégories', value: totalCategories, icon: 'layers', accentColor: '#6366F1' },
         ]
     ), [totalProducts, activeProducts, inactiveProducts, totalCategories]);
 
@@ -933,6 +1053,29 @@ const MesProduitsScreen: React.FC = () => {
         );
     };
 
+    const quickActions = [
+        {
+            label: 'Éditer service',
+            icon: 'settings',
+            onPress: handleEditServiceInfo,
+        },
+        {
+            label: 'Membres',
+            icon: 'users',
+            onPress: handleManageMembers,
+        },
+        {
+            label: 'Créer une publicité',
+            icon: 'megaphone',
+            onPress: () => (navigation as any).navigate('CreatePublicite'),
+        },
+        {
+            label: 'Statistiques',
+            icon: 'bar-chart-2',
+            onPress: handleViewGlobalStats,
+        },
+    ];
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -944,82 +1087,58 @@ const MesProduitsScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            {/* Header avec gradient */}
-            <LinearGradient
-                colors={[modernColors.primary, '#8B5CF6']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
+            {/* Header épuré */}
+            <View style={styles.headerContainer}>
                 <NavigatorToolbar
-                    tone="dark"
+                    tone="light"
                     showHandle={false}
-                    density="compact"
+                    density="comfortable"
                     backIcon="back"
                     title="Mes Produits"
                     subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
                     rightSlot={(
-                        <View style={styles.headerStats}>
-                            <View style={styles.statBadge}>
-                                <Text style={styles.statNumber}>{activeProducts}</Text>
-                                <Text style={styles.statLabel}>actifs</Text>
-                            </View>
-                        </View>
+                        <NativeButton
+                            title="Nouveau"
+                            size="small"
+                            variant="primary"
+                            onPress={handleCreateNewProduct}
+                        />
                     )}
                 />
 
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.metricsContent}
-                >
+                <View style={styles.summaryGrid}>
                     {headerSummary.map((item) => (
-                        <View key={item.label} style={styles.metricCard}>
-                            <Text style={styles.metricValue}>{item.value}</Text>
-                            <Text style={styles.metricLabel}>{item.label}</Text>
+                        <View key={item.label} style={styles.summaryCard}>
+                            <View
+                                style={[
+                                    styles.summaryIconContainer,
+                                    {
+                                        backgroundColor: `${item.accentColor}1A`,
+                                        borderColor: `${item.accentColor}33`,
+                                    },
+                                ]}
+                            >
+                                <SafeIcon name={item.icon} size={16} color={item.accentColor} />
+                            </View>
+                            <Text style={styles.summaryValue}>{item.value}</Text>
+                            <Text style={styles.summaryLabel}>{item.label}</Text>
                         </View>
                     ))}
-                </ScrollView>
-            </LinearGradient>
+                </View>
 
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.manageActionsScroll}
-                contentContainerStyle={styles.manageActionsContent}
-            >
-                <TouchableOpacity
-                    style={styles.manageActionChip}
-                    onPress={handleEditServiceInfo}
-                >
-                    <SafeIcon name="settings" size={18} color={modernColors.primary} />
-                    <Text style={styles.manageActionText} numberOfLines={1}>Éditer service</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.manageActionChip}
-                    onPress={handleManageMembers}
-                >
-                    <SafeIcon name="users" size={18} color={modernColors.primary} />
-                    <Text style={styles.manageActionText} numberOfLines={1}>Membres</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.manageActionChip}
-                    onPress={() => (navigation as any).navigate('CreatePublicite')}
-                >
-                    <SafeIcon name="megaphone" size={18} color={modernColors.primary} />
-                    <Text style={styles.manageActionText} numberOfLines={1}>Créer une publicité</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.manageActionChip}
-                    onPress={handleViewGlobalStats}
-                >
-                    <SafeIcon name="bar-chart-2" size={18} color={modernColors.primary} />
-                    <Text style={styles.manageActionText} numberOfLines={1}>Statistiques</Text>
-                </TouchableOpacity>
-            </ScrollView>
+                <View style={styles.quickActionsRow}>
+                    {quickActions.map((action) => (
+                        <TouchableOpacity
+                            key={action.label}
+                            style={styles.quickActionButton}
+                            onPress={action.onPress}
+                        >
+                            <SafeIcon name={action.icon} size={16} color={modernColors.primary} />
+                            <Text style={styles.quickActionText}>{action.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </View>
 
             {/* Filtres */}
             <View style={styles.filtersContainer}>
@@ -1161,47 +1280,51 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F9FAFB',
     },
-    header: {
-        paddingTop: Platform.OS === 'ios' ? 50 : 20,
-        paddingBottom: 20,
-        paddingHorizontal: 16, // ✅ Réduire légèrement pour mieux positionner les éléments
+    headerContainer: {
+        paddingTop: Platform.OS === 'ios' ? 36 : 16,
+        paddingBottom: 16,
+        paddingHorizontal: 16,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        gap: 16,
     },
-    headerStats: {
+    summaryGrid: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 12,
-        alignItems: 'center',
     },
-    statBadge: {
-        backgroundColor: 'rgba(255, 255, 255, 0.4)', // ✅ Plus opaque pour meilleure visibilité
-        paddingHorizontal: 14, // ✅ Plus de padding
-        paddingVertical: 8,
+    summaryCard: {
+        flexGrow: 1,
+        minWidth: SUMMARY_CARD_MIN_WIDTH,
         borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 14,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    summaryIconContainer: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         alignItems: 'center',
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5, // ✅ Ombre Android
-        borderWidth: 1.5,
-        borderColor: 'rgba(255, 255, 255, 0.5)', // ✅ Bordure plus visible
-        minWidth: 60, // ✅ Largeur minimale pour éviter la compression
+        justifyContent: 'center',
+        borderWidth: 1,
+        marginBottom: 12,
     },
-    statNumber: {
-        fontSize: 20, // ✅ Taille augmentée
-        fontWeight: '800', // ✅ Plus gras
-        color: '#FFFFFF',
-        textShadowColor: 'rgba(0, 0, 0, 0.3)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2,
+    summaryValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
     },
-    statLabel: {
-        fontSize: 11,
-        fontWeight: '600', // ✅ Plus gras
-        color: '#FFFFFF',
-        textShadowColor: 'rgba(0, 0, 0, 0.2)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 1,
-        marginTop: 1,
+    summaryLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        marginTop: 2,
+        textTransform: 'uppercase',
+        letterSpacing: 0.6,
     },
     loadingContainer: {
         flex: 1,
@@ -1214,38 +1337,27 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: modernColors.textSecondary,
     },
-    // ✅ NOUVEAU 2025-11-06: Actions rapides de gestion
-    quickActionsContainer: {
+    quickActionsRow: {
         flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        flexWrap: 'wrap',
         gap: 10,
     },
     quickActionButton: {
-        flex: 1,
-        flexDirection: 'column',
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 8,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
+        justifyContent: 'flex-start',
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
-        gap: 6,
-    },
-    quickActionButtonPrimary: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
+        borderColor: '#E0E7FF',
+        gap: 8,
     },
     quickActionText: {
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: '600',
-        color: modernColors.text,
-        textAlign: 'center',
+        color: modernColors.primary,
     },
     filtersContainer: {
         backgroundColor: '#FFFFFF',

@@ -6,7 +6,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { apiPost } from '../services/api';
-import searchHistoryService, { SearchSuggestion as HistorySuggestion } from '../services/searchHistoryService';
+import { SearchSuggestion as HistorySuggestion, searchHistoryService } from '../services/searchHistoryService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -157,27 +157,6 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
         }
     }, [enableHistory, category]);
 
-    // Charger les suggestions quand l'utilisateur tape
-    useEffect(() => {
-        const trimmed = query.trim();
-
-        if (trimmed.length >= 2) {
-            const debounceTimer = setTimeout(() => {
-                if (enableSuggestions) {
-                    loadSuggestions(trimmed);
-                }
-                loadCombinationSuggestions(trimmed);
-            }, 300); // Debounce de 300ms
-
-            return () => clearTimeout(debounceTimer);
-        }
-
-        setSuggestions([]);
-        setShowSuggestions(false);
-        setCombinationSuggestions([]);
-        setCombinationError(null);
-    }, [query, enableSuggestions, loadSuggestions, loadCombinationSuggestions]);
-
     // Charger les recherches populaires
     const loadPopularSearches = useCallback(async () => {
         try {
@@ -320,6 +299,27 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
     const cleanedQuery = query.trim();
 
+    // Charger les suggestions quand l'utilisateur tape
+    useEffect(() => {
+        const trimmed = query.trim();
+
+        if (trimmed.length >= 2) {
+            const debounceTimer = setTimeout(() => {
+                if (enableSuggestions) {
+                    loadSuggestions(trimmed);
+                }
+                loadCombinationSuggestions(trimmed);
+            }, 300);
+
+            return () => clearTimeout(debounceTimer);
+        }
+
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setCombinationSuggestions([]);
+        setCombinationError(null);
+    }, [query, enableSuggestions, loadSuggestions, loadCombinationSuggestions]);
+
     // Soumettre la recherche
     const handleSubmit = useCallback(async () => {
         if (!cleanedQuery) {
@@ -377,11 +377,16 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                 <TouchableOpacity
                     style={styles.suggestionItem}
                     onPress={() => selectSuggestion(item.query_text)}
+                    activeOpacity={0.85}
                 >
-                    <SafeIcon name="clock" size={16} color={modernColors.textTertiary} />
-                    <Text style={styles.suggestionText}>{item.query_text}</Text>
+                    <SafeIcon name="clock" size={14} color={modernColors.textTertiary} />
+                    <Text style={styles.suggestionText} numberOfLines={1}>
+                        {item.query_text}
+                    </Text>
                     {item.search_count && item.search_count > 1 && (
-                        <Text style={styles.suggestionCount}>{item.search_count}</Text>
+                        <View style={styles.suggestionBadge}>
+                            <Text style={styles.suggestionBadgeText}>{item.search_count}</Text>
+                        </View>
                     )}
                 </TouchableOpacity>
             );
@@ -409,7 +414,9 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.searchInputContainer}>
-                <SafeIcon name="search" size={20} color={modernColors.textSecondary} style={styles.searchIcon} />
+                <View style={styles.searchIconWrapper}>
+                    <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
+                </View>
                 <TextInput
                     ref={inputRef}
                     style={styles.searchInput}
@@ -477,60 +484,70 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                     )}
 
                     {!isLoadingCombinations && combinationSuggestions.length > 0 && (
-                        <View style={styles.combinationSuggestionsContainer}>
+                        <View style={styles.compactCombinationList}>
                             {combinationSuggestions.map((combo, index) => {
                                 const rows = buildLabeledPairs(combo.vector, combo.labels);
+                                const previewText = (combo.asQuery || rows.map(({ value }) => value).join(' ')).trim();
+                                const tagValues = rows
+                                    .filter((row) => row.value)
+                                    .slice(0, 4);
 
                                 return (
                                     <TouchableOpacity
                                         key={`combo-${combo.id}-${index}`}
-                                        style={styles.combinationCard}
+                                        style={styles.compactCombinationItem}
                                         onPress={() => selectSuggestion(combo.asQuery)}
+                                        activeOpacity={0.85}
                                     >
-                                        <View style={styles.combinationCardHeader}>
+                                        <View style={styles.compactCombinationHeader}>
                                             <SafeIcon
-                                                name={combo.isPreferred ? 'sparkles' : 'layers'}
+                                                name={combo.isPreferred ? 'sparkles' : 'search'}
                                                 size={16}
                                                 color={combo.isPreferred ? modernColors.primary : '#6366F1'}
                                             />
-                                            <Text style={styles.combinationCardTitle}>Suggestion {index + 1}</Text>
+                                            <Text style={styles.compactCombinationTitle} numberOfLines={2}>
+                                                {previewText}
+                                            </Text>
                                         </View>
 
-                                        <View style={styles.combinationTable}>
-                                            {rows.map((row, rowIndex) => (
-                                                <View
-                                                    key={`${combo.id}-${row.label}-${rowIndex}`}
-                                                    style={[styles.combinationRow, rowIndex === rows.length - 1 && styles.combinationRowLast]}
-                                                >
-                                                    <Text style={styles.combinationCellLabel}>{row.label}</Text>
-                                                    <Text style={styles.combinationCellValue}>{row.value}</Text>
-                                                </View>
-                                            ))}
-                                        </View>
+                                        {tagValues.length > 0 && (
+                                            <View style={styles.compactCombinationTags}>
+                                                {tagValues.map(({ label, value }, tagIndex) => (
+                                                    <View key={`${combo.id}-tag-${tagIndex}`} style={styles.compactTag}>
+                                                        <Text style={styles.compactTagLabel} numberOfLines={1}>
+                                                            {label}:
+                                                        </Text>
+                                                        <Text style={styles.compactTagValue} numberOfLines={1}>
+                                                            {value}
+                                                        </Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        )}
 
                                         {(typeof combo.usageCount === 'number' || typeof combo.price === 'number' || (combo.occurrences && combo.occurrences > 1)) && (
-                                            <View style={styles.combinationMeta}>
-                                                <View style={styles.combinationMetaLeft}>
+                                            <View style={styles.compactCombinationMeta}>
+                                                <View style={styles.compactMetaLeft}>
                                                     {typeof combo.usageCount === 'number' && (
-                                                        <Text style={styles.combinationUsage}>
-                                                            👥 {combo.usageCount} recherche{combo.usageCount > 1 ? 's' : ''}
-                                                        </Text>
+                                                        <View style={styles.compactBadge}>
+                                                            <SafeIcon name="users" size={12} color={modernColors.textSecondary} />
+                                                            <Text style={styles.compactBadgeText}>{combo.usageCount}</Text>
+                                                        </View>
                                                     )}
                                                     {combo.occurrences && combo.occurrences > 1 && (
-                                                        <Text style={styles.combinationOccurrence}>
-                                                            🔁 {combo.occurrences} occurrences
-                                                        </Text>
+                                                        <View style={styles.compactBadge}>
+                                                            <SafeIcon name="repeat" size={12} color={modernColors.textSecondary} />
+                                                            <Text style={styles.compactBadgeText}>{combo.occurrences}</Text>
+                                                        </View>
                                                     )}
                                                 </View>
                                                 {typeof combo.price === 'number' && (
-                                                    <Text style={styles.combinationPrice}>
-                                                        💰 {Math.round(combo.price).toLocaleString('fr-FR')} {combo.devise || 'XAF'}
+                                                    <Text style={styles.compactCombinationPrice}>
+                                                        {Math.round(combo.price).toLocaleString('fr-FR')} {combo.devise || 'XAF'}
                                                     </Text>
                                                 )}
                                             </View>
                                         )}
-
-                                        <Text style={styles.combinationApply}>Appuyer pour lancer la recherche avec ces critères</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -609,7 +626,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: modernColors.border,
     },
-    searchIcon: {
+    searchIconWrapper: {
         marginRight: 8,
     },
     searchInput: {
@@ -659,24 +676,29 @@ const styles = StyleSheet.create({
     suggestionItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
         borderBottomWidth: 1,
         borderBottomColor: modernColors.borderLight,
-        gap: 12,
+        gap: 10,
     },
     suggestionText: {
         flex: 1,
         fontSize: 14,
         color: modernColors.text,
     },
-    suggestionCount: {
-        fontSize: 12,
-        color: modernColors.textTertiary,
+    suggestionBadge: {
         backgroundColor: modernColors.surfaceVariant,
+        borderRadius: 10,
         paddingHorizontal: 6,
         paddingVertical: 2,
-        borderRadius: 4,
+        minWidth: 24,
+        alignItems: 'center',
+    },
+    suggestionBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
     },
     sendButton: {
         position: 'absolute',
@@ -816,102 +838,83 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         paddingHorizontal: 16,
     },
-    combinationSuggestionsContainer: {
+    compactCombinationList: {
         paddingHorizontal: 16,
         gap: 12,
     },
-    combinationCard: {
+    compactCombinationItem: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 16,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: modernColors.border,
-        gap: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    combinationCardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        justifyContent: 'space-between',
-    },
-    combinationCardTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    combinationTable: {
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        borderRadius: 10,
-        overflow: 'hidden',
-    },
-    combinationRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
-        gap: 12,
-    },
-    combinationRowLast: {
-        borderBottomWidth: 0,
-    },
-    combinationCellLabel: {
-        flex: 0.45,
-        fontSize: 12,
-        fontWeight: '600',
-        color: modernColors.textSecondary,
-        textTransform: 'capitalize',
-    },
-    combinationCellValue: {
-        flex: 0.55,
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-        textAlign: 'right',
-    },
-    combinationMeta: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    combinationMetaLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        borderColor: modernColors.borderLight,
         gap: 10,
     },
-    combinationUsage: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
+    compactCombinationHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
     },
-    combinationOccurrence: {
-        fontSize: 12,
-        color: modernColors.primary,
+    compactCombinationTitle: {
+        flex: 1,
+        fontSize: 14,
         fontWeight: '600',
+        color: modernColors.text,
+        lineHeight: 18,
     },
-    combinationPrice: {
+    compactCombinationTags: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    compactTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#EEF2FF',
+        borderRadius: 14,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        gap: 4,
+    },
+    compactTagLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#4C51BF',
+    },
+    compactTagValue: {
+        fontSize: 11,
+        color: modernColors.text,
+        fontWeight: '500',
+    },
+    compactCombinationMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    compactMetaLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    compactCombinationPrice: {
         fontSize: 12,
         fontWeight: '600',
         color: '#059669',
     },
-    combinationApply: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        textAlign: 'center',
+    compactBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: modernColors.surfaceVariant,
+        borderRadius: 10,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
     },
-    combinationError: {
-        color: modernColors.error,
-        fontSize: 12,
-        textAlign: 'center',
-        marginBottom: 16,
+    compactBadgeText: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        fontWeight: '600',
     },
 });
 

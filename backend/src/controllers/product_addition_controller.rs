@@ -308,20 +308,56 @@ pub async fn add_product_to_service(
                 log_info(&format!("[add_product_to_service] ✅ Produit indexé dans autocomplete_characteristics + autocomplete_combinations"));
             }
 
-            // ✅ Créer notification
+            let extract_string = |value: &serde_json::Value| -> Option<String> {
+                value
+                    .as_str()
+                    .map(|s| s.to_string())
+                    .or_else(|| value.get("valeur").and_then(|v| v.as_str().map(|s| s.to_string())))
+            };
+
+            let product_name = request
+                .product_data
+                .get("nom_produit")
+                .and_then(extract_string)
+                .unwrap_or_else(|| "Produit".to_string());
+
+            let product_category = request
+                .product_data
+                .get("categorie_produit")
+                .and_then(extract_string)
+                .unwrap_or_else(|| "Sans catégorie".to_string());
+
+            let product_price = request
+                .product_data
+                .get("prix_produit")
+                .and_then(|v| v.as_f64().or_else(|| extract_string(v).and_then(|s| s.parse::<f64>().ok())));
+
+            let title = format!("✨ Produit ajouté: {}", product_name);
+
+            let mut details = format!(
+                "{} ajouté (catégorie: {}, index: {})",
+                product_name,
+                product_category,
+                product_index
+            );
+
+            if let Some(price) = product_price {
+                details.push_str(&format!(", prix: {} FCFA", price as i64));
+            }
+
             let _ = crate::services::notification_service::create_notification(
                 &state.pg,
                 user.id,
                 crate::services::notification_service::NotificationType::ProductAdded,
-                "✨ Produit ajouté à votre service".to_string(),
-                format!(
-                    "Un nouveau produit a été ajouté à votre service (index: {})",
-                    product_index
-                ),
+                title,
+                details,
                 Some(json!({
                     "service_id": service_id,
                     "product_index": product_index,
-                    "cost": cout_ajout
+                    "cost": cout_ajout,
+                    "product_name": product_name,
+                    "product_category": product_category,
+                    "product_price": product_price
                 })),
             )
             .await;

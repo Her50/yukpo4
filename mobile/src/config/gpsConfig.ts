@@ -22,6 +22,8 @@ export const CRASH_PREVENTION_CONFIG = {
     DISABLE_AUTO_GPS: true,        // GPS automatique au démarrage
     DISABLE_WEBSOCKET_AUTO_CONNECT: false, // WebSocket automatique
     DISABLE_IMAGE_PICKER_AUTO_PERMISSIONS: false, // Permissions images automatiques
+    DISABLE_HOME_AUTOSCROLL: true, // Scroll automatique HomeScreen
+    DISABLE_MIXED_CONTENT_AUTOSCROLL: true, // Scroll horizontal automatique du carousel mixte
 
     // Timeouts globaux
     API_TIMEOUT: 15000,            // 15 secondes pour les API

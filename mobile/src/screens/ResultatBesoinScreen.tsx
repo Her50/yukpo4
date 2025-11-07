@@ -94,6 +94,37 @@ const buildSuggestionExample = (suggestion?: CombinationSuggestion | null): stri
 type SortOption = 'pertinence' | 'proximite' | 'prix_asc' | 'prix_desc';
 type FilterCategory = 'all' | 'with_stock' | 'with_variants' | 'nearby';
 
+const extractSearchResults = (response: any): Product[] => {
+  if (!response) {
+    return [];
+  }
+
+  const data = response?.data ?? response;
+
+  if (!data) {
+    return [];
+  }
+
+  if (Array.isArray(data)) {
+    return data as Product[];
+  }
+
+  const nestedCandidates = [
+    data?.resultats?.resultats,
+    data?.resultats,
+    data?.data,
+    data?.items,
+  ];
+
+  for (const candidate of nestedCandidates) {
+    if (Array.isArray(candidate)) {
+      return candidate as Product[];
+    }
+  }
+
+  return [];
+};
+
 const ResultatBesoinScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
@@ -615,18 +646,21 @@ const ResultatBesoinScreen: React.FC = () => {
       console.log('[ResultatBesoinScreen] 📤 Envoi requête API:', payload);
 
       // ✅ Utiliser la recherche globale (même que HomeScreen)
-      const response = await apiPost('/api/search/direct', payload);
+      const apiResponse = await apiPost('/api/search/direct', payload);
 
-      console.log('[ResultatBesoinScreen] 📥 Réponse API reçue:', response);
+      console.log('[ResultatBesoinScreen] 📥 Réponse API reçue:', apiResponse);
 
-      if ((response as any).resultats?.resultats) {
-        const results = (response as any).resultats.resultats as Product[];
-        console.log('[ResultatBesoinScreen] ✅ Résultats trouvés:', results.length);
-        setResults(results);
-      } else if (response.data) {
-        const results = response.data as Product[];
-        console.log('[ResultatBesoinScreen] ✅ Résultats trouvés (data):', results.length);
-        setResults(results);
+      if (apiResponse?.success === false) {
+        console.warn('[ResultatBesoinScreen] ⚠️ Recherche échouée:', apiResponse?.error);
+        setResults([]);
+        return;
+      }
+
+      const extractedResults = extractSearchResults(apiResponse);
+
+      if (extractedResults.length > 0) {
+        console.log('[ResultatBesoinScreen] ✅ Résultats trouvés:', extractedResults.length);
+        setResults(extractedResults);
       } else {
         console.log('[ResultatBesoinScreen] ⚠️ Aucun résultat trouvé');
         setResults([]);
@@ -663,14 +697,14 @@ const ResultatBesoinScreen: React.FC = () => {
           }
         }
 
-        const response = await apiPost('/api/search/direct', payload);
+        const apiResponse = await apiPost('/api/search/direct', payload);
 
-        if ((response as any).resultats?.resultats) {
-          setResults((response as any).resultats.resultats as Product[]);
-        } else if (response.data) {
-          setResults(response.data as Product[]);
-        } else {
+        if (apiResponse?.success === false) {
+          console.warn('[ResultatBesoinScreen] ⚠️ Refresh recherche échoué:', apiResponse?.error);
           setResults([]);
+        } else {
+          const refreshedResults = extractSearchResults(apiResponse);
+          setResults(refreshedResults);
         }
       }
     } catch (error) {

@@ -2804,9 +2804,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', response);
 
+                  const responseData: any = response.data ?? {};
+                  const costPaid = Number(responseData.cost ?? response.cost ?? COUT_AJOUT_PRODUIT);
+                  const newBalanceValue = Number(
+                    responseData.new_balance ?? response.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT)
+                  );
+                  const productIndexResult =
+                    responseData.product_index ??
+                    response.product_index ??
+                    (typeof responseData === 'object' && responseData.data
+                      ? responseData.data.product_index
+                      : undefined);
+
                   Alert.alert(
                     '✅ Produit créé',
-                    `Votre nouveau produit a été ajouté au service avec succès !\n\n💰 Coût: ${response.cost || COUT_AJOUT_PRODUIT} FCFA\n💳 Nouveau solde: ${response.new_balance?.toLocaleString() || (soldeActuel - COUT_AJOUT_PRODUIT).toLocaleString()} FCFA\n📦 Index produit: ${response.product_index}`,
+                    `Votre nouveau produit a été ajouté au service avec succès !\n\n` +
+                    `💰 Coût: ${costPaid.toLocaleString('fr-FR')} FCFA\n` +
+                    `💳 Nouveau solde: ${newBalanceValue.toLocaleString('fr-FR')} FCFA\n` +
+                    `📦 Index produit: ${productIndexResult ?? 'non communiqué'}`,
                     [
                       {
                         text: 'OK',

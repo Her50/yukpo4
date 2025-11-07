@@ -477,14 +477,18 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 console.log('[AjouterProduitSimple] ✅ Produit ajouté avec succès:', response);
 
                                 // ✅ ÉTAPE 5 : Afficher le résultat (IDENTIQUE AU GRAND FORMULAIRE)
-                                const costPaid = Number(response.cost ?? COUT_AJOUT_PRODUIT);
-                                const newBalanceValue = Number(response.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT));
+                                const responseData: any = response.data ?? {};
+                                const costPaid = Number(responseData.cost ?? COUT_AJOUT_PRODUIT);
+                                const newBalanceValue = Number(responseData.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT));
+                                const productIndexResult =
+                                    responseData.product_index ??
+                                    (typeof responseData === 'object' && responseData.data ? responseData.data.product_index : undefined);
                                 Alert.alert(
                                     isDuplicate ? '✅ Produit dupliqué' : '✅ Produit créé',
                                     `${isDuplicate ? 'Votre produit dupliqué' : 'Votre nouveau produit'} a été ajouté au service avec succès !\n\n` +
                                     `💰 Coût: ${costPaid.toLocaleString('fr-FR')} FCFA\n` +
                                     `💳 Nouveau solde: ${newBalanceValue.toLocaleString('fr-FR')} FCFA\n` +
-                                    `📦 Index produit: ${response.product_index}`,
+                                    `📦 Index produit: ${productIndexResult ?? 'non communiqué'}`,
                                     [
                                         {
                                             text: 'OK',
@@ -593,7 +597,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 label="Caractéristiques du produit / prestation"
                                 identifiantBase="produits"
                                 value={formValues.produits || []}
-                                onChange={(value) => handleFieldChange('produits', value)}
+                                onChange={(values, updatedSousCaracs) => {
+                                    handleFieldChange('produits', values);
+                                    if (updatedSousCaracs) {
+                                        handleFieldChange('sous_caracteristiques', updatedSousCaracs);
+                                    }
+                                }}
                                 sousCaracteristiques={formValues.sous_caracteristiques || {
                                     // Caractéristiques essentielles
                                     marque: [],
