@@ -30,6 +30,8 @@ const SimpleErrorScreen: React.FC<SimpleErrorScreenProps> = ({
         title="Fonctionnalité indisponible"
         subtitle={message}
         showHandle={false}
+        density="compact"
+        backIcon="back"
         onClose={handleGoBack}
       />
       <View style={styles.errorCard}>

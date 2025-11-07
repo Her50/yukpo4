@@ -133,6 +133,8 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
                     title={currentService.title}
                     subtitle={currentService.description}
                     showHandle={false}
+                    density="compact"
+                    backIcon="back"
                 />
 
                 <View style={styles.headerContent}>

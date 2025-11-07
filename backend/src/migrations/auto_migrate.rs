@@ -1007,6 +1007,41 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
         
         info!("✅ Fonction upsert_autocomplete_combination mise à jour");
         
+        // Vérifier contraintes unécessaires pour les ON CONFLICT récents
+        let has_full_vector_constraint: bool = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid = 'autocomplete_combinations'::regclass AND conname = 'unique_full_vector')"
+        )
+        .fetch_one(pool)
+        .await?
+        ;
+
+        if !has_full_vector_constraint {
+            info!("✅ Ajout contrainte unique_full_vector sur autocomplete_combinations(full_vector)");
+            if let Err(e) = sqlx::query("ALTER TABLE autocomplete_combinations ADD CONSTRAINT unique_full_vector UNIQUE (full_vector)")
+                .execute(pool)
+                .await
+            {
+                warn!("⚠️ Impossible d'ajouter la contrainte unique_full_vector: {}", e);
+            }
+        }
+
+        let has_product_vector_constraint: bool = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid = 'autocomplete_combinations'::regclass AND conname = 'unique_product_vector')"
+        )
+        .fetch_one(pool)
+        .await?
+        ;
+
+        if !has_product_vector_constraint {
+            info!("✅ Ajout contrainte unique_product_vector sur autocomplete_combinations(product_vector)");
+            if let Err(e) = sqlx::query("ALTER TABLE autocomplete_combinations ADD CONSTRAINT unique_product_vector UNIQUE (product_vector)")
+                .execute(pool)
+                .await
+            {
+                warn!("⚠️ Impossible d'ajouter la contrainte unique_product_vector: {}", e);
+            }
+        }
+        
         return Ok(());
     }
     
@@ -1265,6 +1300,89 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
     .await?;
     
     info!("✅ Table autocomplete_combinations créée avec succès !");
+    
+    // 🧹 Dédoublonnage des vecteurs avant d'ajouter les contraintes
+    info!("🧹 Nettoyage des doublons dans autocomplete_combinations (full_vector)");
+    sqlx::query(
+        r#"
+        WITH ranked AS (
+            SELECT 
+                id,
+                full_vector,
+                usage_count,
+                ROW_NUMBER() OVER(PARTITION BY full_vector ORDER BY usage_count DESC, id) AS rn,
+                SUM(usage_count) OVER(PARTITION BY full_vector) AS total_usage
+            FROM autocomplete_combinations
+        )
+        UPDATE autocomplete_combinations ac
+        SET usage_count = ranked.total_usage
+        FROM ranked
+        WHERE ac.id = ranked.id
+          AND ranked.rn = 1
+          AND ranked.total_usage IS NOT NULL
+          AND ranked.total_usage <> ac.usage_count
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    let deleted_full = sqlx::query(
+        r#"
+        WITH ranked AS (
+            SELECT id,
+                   ROW_NUMBER() OVER(PARTITION BY full_vector ORDER BY usage_count DESC, id) AS rn
+            FROM autocomplete_combinations
+        )
+        DELETE FROM autocomplete_combinations ac
+        USING ranked
+        WHERE ac.id = ranked.id
+          AND ranked.rn > 1
+        "#
+    )
+    .execute(pool)
+    .await?;
+    info!("✅ {} doublons full_vector supprimés", deleted_full.rows_affected());
+
+    info!("🧹 Nettoyage des doublons dans autocomplete_combinations (product_vector)");
+    sqlx::query(
+        r#"
+        WITH ranked AS (
+            SELECT 
+                id,
+                product_vector,
+                usage_count,
+                ROW_NUMBER() OVER(PARTITION BY product_vector ORDER BY usage_count DESC, id) AS rn,
+                SUM(usage_count) OVER(PARTITION BY product_vector) AS total_usage
+            FROM autocomplete_combinations
+        )
+        UPDATE autocomplete_combinations ac
+        SET usage_count = ranked.total_usage
+        FROM ranked
+        WHERE ac.id = ranked.id
+          AND ranked.rn = 1
+          AND ranked.total_usage IS NOT NULL
+          AND ranked.total_usage <> ac.usage_count
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    let deleted_product = sqlx::query(
+        r#"
+        WITH ranked AS (
+            SELECT id,
+                   ROW_NUMBER() OVER(PARTITION BY product_vector ORDER BY usage_count DESC, id) AS rn
+            FROM autocomplete_combinations
+        )
+        DELETE FROM autocomplete_combinations ac
+        USING ranked
+        WHERE ac.id = ranked.id
+          AND ranked.rn > 1
+        "#
+    )
+    .execute(pool)
+    .await?;
+    info!("✅ {} doublons product_vector supprimés", deleted_product.rows_affected());
     
     Ok(())
 }

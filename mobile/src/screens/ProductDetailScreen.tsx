@@ -160,6 +160,8 @@ const ProductDetailScreen: React.FC = () => {
                 title="Détail du produit"
                 subtitle={product?.nom ? product.nom.slice(0, 50) : undefined}
                 showHandle={false}
+                density="compact"
+                backIcon="back"
             />
 
             <ScrollView style={styles.scrollView}>

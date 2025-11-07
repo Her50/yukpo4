@@ -114,12 +114,13 @@ const vectorMatchesTokens = (
 const buildLabeledPairs = (
     values: string[] = [],
     labels: string[] = [],
+    fallbackLabels: string[] = [],
 ): Array<{ label: string; value: string }> => {
     return values
         .filter((value) => typeof value === 'string' && value.trim().length > 0)
         .map((value, index) => {
-            const rawLabel = labels[index];
-            const label = rawLabel && rawLabel.trim().length > 0
+            const rawLabel = labels[index] ?? fallbackLabels[index];
+            const label = rawLabel && rawLabel.toString().trim().length > 0
                 ? rawLabel
                 : `Caractéristique ${index + 1}`;
 
@@ -208,6 +209,45 @@ const normalizePopularProductsResponse = (response: any): PopularProduct[] => {
 
     console.warn('[LinearAutocompleteEditor] ⚠️ Impossible de normaliser la réponse popular products:', response);
     return [];
+};
+
+const determineLabelOrder = (
+    values: string[] = [],
+    sousCaracs: Record<string, any> = {}
+): string[] => {
+    if (!Array.isArray(values) || values.length === 0) {
+        return Object.keys(sousCaracs || {});
+    }
+
+    const normalizedEntries = Object.entries(sousCaracs || {}).map(([label, options]) => ({
+        label,
+        options: Array.isArray(options) ? options.map((opt) => normalizeSearchText(opt || '')) : [],
+    }));
+
+    const usedLabels = new Set<string>();
+    const fallbackKeys = Object.keys(sousCaracs || {});
+
+    return values.map((rawValue, index) => {
+        const normalizedValue = normalizeSearchText(rawValue || '');
+
+        let matchedLabel = normalizedEntries.find(({ label, options }) => {
+            if (usedLabels.has(label)) {
+                return false;
+            }
+            return options.some((option) => option === normalizedValue);
+        })?.label;
+
+        if (!matchedLabel) {
+            matchedLabel = fallbackKeys.find((key) => !usedLabels.has(key));
+        }
+
+        if (!matchedLabel) {
+            matchedLabel = `Caractéristique ${index + 1}`;
+        }
+
+        usedLabels.add(matchedLabel);
+        return matchedLabel;
+    });
 };
 
 export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> = ({
@@ -312,7 +352,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     }, [value]);
 
     // Décomposer le vecteur en chips
-    const parseVectorToChips = (vectorStr: string): ChipData[] => {
+    const parseVectorToChips = (vectorStr: string, labelHints: string[] = []): ChipData[] => {
         // ✅ PROTECTION ULTIME: Vérifier que vectorStr est une STRING et separateur est défini
         if (!vectorStr || typeof vectorStr !== 'string') {
             console.warn('[LinearAutocompleteEditor] ⚠️ vectorStr n\'est pas une string:', typeof vectorStr);
@@ -327,14 +367,53 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         const parts = vectorStr.split(separateur).map(p => p.trim()).filter(p => p);
         const subCharKeys = Object.keys(sousCaracteristiques || {});
 
-        return parts.map((value, index) => ({
-            key: subCharKeys[index] || `dimension_${index}`,
-            value: value,
-            index: index,
-        }));
+        return parts.map((value, index) => {
+            const labelFromHints = labelHints[index];
+            const fallbackLabel = subCharKeys[index];
+            return {
+                key: labelFromHints || fallbackLabel || `Caractéristique ${index + 1}`,
+                value,
+                index,
+            };
+        });
     };
 
-    const chips = displayValue ? parseVectorToChips(displayValue) : [];
+    const vectorParts = useMemo(() => {
+        if (!displayValue || typeof displayValue !== 'string' || !separateur || typeof separateur !== 'string') {
+            return [] as string[];
+        }
+        return displayValue
+            .split(separateur)
+            .map((part) => part.trim())
+            .filter(Boolean);
+    }, [displayValue, separateur]);
+
+    const labelOrder = useMemo(() => determineLabelOrder(vectorParts, sousCaracteristiques), [vectorParts, sousCaracteristiques]);
+
+    const chips = displayValue ? parseVectorToChips(displayValue, labelOrder) : [];
+
+    const suggestedLabel = useMemo(() => {
+        const usedKeys = new Set((chips || []).map((chip) => (chip.key || '').toLowerCase()));
+        const orderedSuggestion = labelOrder.find((label) => label && !usedKeys.has(label.toLowerCase()));
+        if (orderedSuggestion) {
+            return orderedSuggestion;
+        }
+
+        const fallbackSuggestion = Object.keys(sousCaracteristiques || {}).find(
+            (label) => label && !usedKeys.has(label.toLowerCase())
+        );
+
+        return fallbackSuggestion || `Caractéristique ${chips.length + 1}`;
+    }, [chips, labelOrder, sousCaracteristiques]);
+
+    useEffect(() => {
+        if (showAddModal) {
+            setNewCharKey((prev) => prev || suggestedLabel || '');
+        } else {
+            setNewCharKey('');
+            setNewCharValue('');
+        }
+    }, [showAddModal, suggestedLabel]);
 
     // ✅ CORRECTION FINALE 2025-11-06 : Recherche progressive SANS useEffect
     // Le useEffect avec searchSuggestions cause des problèmes de closure
@@ -928,7 +1007,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     {(suggestions || []).map((product, index) => {
                         const productVector = Array.isArray(product?.product_vector) ? product.product_vector : [];
                         const productLabels = Array.isArray(product?.product_labels) ? product.product_labels : [];
-                        const rows = buildLabeledPairs(productVector, productLabels);
+                        const rows = buildLabeledPairs(productVector, productLabels, labelOrder);
 
                         return (
                             <TouchableOpacity
@@ -992,7 +1071,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             {combinationSuggestions.map((combo) => {
                                 const rows = buildLabeledPairs(
                                     combo.productVector || [],
-                                    combo.productLabels || []
+                                    combo.productLabels || [],
+                                    labelOrder
                                 );
                                 const priceDisplay = formatPriceDisplay(combo.prix, combo.devise);
 
@@ -1056,7 +1136,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     {iaCombinaisons.map((combo, index) => {
                         const parts = (combo || '').split(separateur || ',').map(part => part.trim()).filter(Boolean);
                         const keys = Object.keys(sousCaracteristiques || {});
-                        const iaRows = buildLabeledPairs(parts, keys);
+                        const iaRows = buildLabeledPairs(parts, labelOrder, labelOrder);
 
                         return (
                             <TouchableOpacity

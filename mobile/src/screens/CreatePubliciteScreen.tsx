@@ -368,6 +368,8 @@ const CreatePubliciteScreen: React.FC = () => {
                 <NavigatorToolbar
                     tone="dark"
                     showHandle={false}
+                    density="compact"
+                    backIcon="back"
                     title={mode === 'edit' ? 'Modifier une Publicité' : mode === 'relance' ? 'Relancer une Publicité' : t('publicite.create')}
                     subtitle="Boostez vos produits"
                 />

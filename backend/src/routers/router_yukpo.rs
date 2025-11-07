@@ -22,7 +22,7 @@ use crate::{
         product_lifecycle_controller::{deactivate_product, reactivate_product}, // ✅ NOUVEAU 2025-11-01
         places_controller, // ✅ NOUVEAU 2025-11-02
     },
-    routes::products_management::update_product,
+    routes::products_management::{update_product, delete_product},
     routes::{
         weather_routes::weather_routes,
         nearby_services_routes::nearby_services_routes,
@@ -142,6 +142,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ NOUVEAU 2025-11-01: Routes pour cycle de vie produits (désactivation/réactivation)
         .route("/api/services/{service_id}/products/{product_index}/deactivate", post(deactivate_product))
         .route("/api/services/{service_id}/products/{product_index}/reactivate", post(reactivate_product))
+        .route("/api/products/{product_id}", delete(delete_product))
         // Route pour r?cup?rer un service par ID (public)
         .route("/api/services/{service_id}", get(get_service_by_id))
         // Route pour récupérer les médias d'un service

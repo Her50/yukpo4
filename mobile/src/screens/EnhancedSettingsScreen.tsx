@@ -254,6 +254,8 @@ const EnhancedSettingsScreen: React.FC = () => {
                 title="Profil"
                 subtitle="Gérez vos informations personnelles"
                 showHandle={false}
+                density="compact"
+                backIcon="back"
                 onClose={() => setCurrentScreen('main')}
             />
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
@@ -358,6 +360,8 @@ const EnhancedSettingsScreen: React.FC = () => {
                 title="Notifications"
                 subtitle="Personnalisez vos alertes"
                 showHandle={false}
+                density="compact"
+                backIcon="back"
                 onClose={() => setCurrentScreen('main')}
             />
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
@@ -434,6 +438,8 @@ const EnhancedSettingsScreen: React.FC = () => {
                 title="Confidentialité"
                 subtitle="Contrôlez vos informations partagées"
                 showHandle={false}
+                density="compact"
+                backIcon="back"
                 onClose={() => setCurrentScreen('main')}
             />
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
@@ -498,6 +504,8 @@ const EnhancedSettingsScreen: React.FC = () => {
                 title="Apparence"
                 subtitle="Personnalisez l'interface"
                 showHandle={false}
+                density="compact"
+                backIcon="back"
                 onClose={() => setCurrentScreen('main')}
             />
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
@@ -582,6 +590,8 @@ const EnhancedSettingsScreen: React.FC = () => {
                 title="Sécurité"
                 subtitle="Renforcez la protection de votre compte"
                 showHandle={false}
+                density="compact"
+                backIcon="back"
                 onClose={() => setCurrentScreen('main')}
             />
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
@@ -649,6 +659,8 @@ const EnhancedSettingsScreen: React.FC = () => {
                 title="Données"
                 subtitle="Gestion du stockage et des sauvegardes"
                 showHandle={false}
+                density="compact"
+                backIcon="back"
                 onClose={() => setCurrentScreen('main')}
             />
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>

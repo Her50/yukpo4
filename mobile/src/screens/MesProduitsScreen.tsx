@@ -700,6 +700,15 @@ const MesProduitsScreen: React.FC = () => {
     const inactiveProducts = Math.max(totalProducts - activeProducts, 0);
     const totalCategories = Math.max(categories.length - 1, 0);
 
+    const headerSummary = useMemo(() => (
+        [
+            { label: 'Produits', value: totalProducts },
+            { label: 'Actifs', value: activeProducts },
+            { label: 'En pause', value: inactiveProducts },
+            { label: 'Catégories', value: totalCategories },
+        ]
+    ), [totalProducts, activeProducts, inactiveProducts, totalCategories]);
+
     const buildProductPrefill = (product: Product) => {
         const prefill: Record<string, any> = {};
 
@@ -945,6 +954,8 @@ const MesProduitsScreen: React.FC = () => {
                 <NavigatorToolbar
                     tone="dark"
                     showHandle={false}
+                    density="compact"
+                    backIcon="back"
                     title="Mes Produits"
                     subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
                     rightSlot={(
@@ -957,33 +968,32 @@ const MesProduitsScreen: React.FC = () => {
                     )}
                 />
 
-                <View style={styles.headerMetricsRow}>
-                    <View style={styles.metricCard}>
-                        <Text style={styles.metricValue}>{totalProducts}</Text>
-                        <Text style={styles.metricLabel}>Produits</Text>
-                    </View>
-                    <View style={styles.metricCard}>
-                        <Text style={styles.metricValue}>{activeProducts}</Text>
-                        <Text style={styles.metricLabel}>Actifs</Text>
-                    </View>
-                    <View style={styles.metricCard}>
-                        <Text style={styles.metricValue}>{inactiveProducts}</Text>
-                        <Text style={styles.metricLabel}>En pause</Text>
-                    </View>
-                    <View style={styles.metricCard}>
-                        <Text style={styles.metricValue}>{totalCategories}</Text>
-                        <Text style={styles.metricLabel}>Catégories</Text>
-                    </View>
-                </View>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.metricsContent}
+                >
+                    {headerSummary.map((item) => (
+                        <View key={item.label} style={styles.metricCard}>
+                            <Text style={styles.metricValue}>{item.value}</Text>
+                            <Text style={styles.metricLabel}>{item.label}</Text>
+                        </View>
+                    ))}
+                </ScrollView>
             </LinearGradient>
 
-            <View style={styles.manageActionsRow}>
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.manageActionsScroll}
+                contentContainerStyle={styles.manageActionsContent}
+            >
                 <TouchableOpacity
                     style={styles.manageActionChip}
                     onPress={handleEditServiceInfo}
                 >
                     <SafeIcon name="settings" size={18} color={modernColors.primary} />
-                    <Text style={styles.manageActionText}>Éditer service</Text>
+                    <Text style={styles.manageActionText} numberOfLines={1}>Éditer service</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -991,7 +1001,7 @@ const MesProduitsScreen: React.FC = () => {
                     onPress={handleManageMembers}
                 >
                     <SafeIcon name="users" size={18} color={modernColors.primary} />
-                    <Text style={styles.manageActionText}>Membres</Text>
+                    <Text style={styles.manageActionText} numberOfLines={1}>Membres</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -999,7 +1009,7 @@ const MesProduitsScreen: React.FC = () => {
                     onPress={() => (navigation as any).navigate('CreatePublicite')}
                 >
                     <SafeIcon name="megaphone" size={18} color={modernColors.primary} />
-                    <Text style={styles.manageActionText}>Créer une publicité</Text>
+                    <Text style={styles.manageActionText} numberOfLines={1}>Créer une publicité</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1007,9 +1017,9 @@ const MesProduitsScreen: React.FC = () => {
                     onPress={handleViewGlobalStats}
                 >
                     <SafeIcon name="bar-chart-2" size={18} color={modernColors.primary} />
-                    <Text style={styles.manageActionText}>Statistiques</Text>
+                    <Text style={styles.manageActionText} numberOfLines={1}>Statistiques</Text>
                 </TouchableOpacity>
-            </View>
+            </ScrollView>
 
             {/* Filtres */}
             <View style={styles.filtersContainer}>
@@ -1527,20 +1537,19 @@ const styles = StyleSheet.create({
     createButton: {
         marginBottom: 20,
     },
-    headerMetricsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    metricsContent: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
         gap: 12,
-        marginTop: 20,
     },
     metricCard: {
-        flex: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.18)',
+        minWidth: 120,
+        backgroundColor: 'rgba(255, 255, 255, 0.14)',
         borderRadius: 16,
-        paddingVertical: 14,
-        paddingHorizontal: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.12,
@@ -1548,21 +1557,20 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     metricValue: {
-        fontSize: 18,
-        fontWeight: '800',
+        fontSize: 17,
+        fontWeight: '700',
         color: '#FFFFFF',
     },
     metricLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#E0E7FF',
-        marginTop: 4,
+        fontSize: 11,
+        fontWeight: '500',
+        color: 'rgba(255,255,255,0.78)',
+        marginTop: 2,
     },
-    manageActionsRow: {
-        flexDirection: 'row',
-        gap: 12,
+    manageActionsContent: {
         paddingHorizontal: 16,
         paddingVertical: 16,
+        gap: 12,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
@@ -1573,16 +1581,20 @@ const styles = StyleSheet.create({
         gap: 8,
         backgroundColor: '#EEF2FF',
         borderRadius: 16,
-        paddingHorizontal: 14,
+        paddingHorizontal: 16,
         paddingVertical: 10,
         borderWidth: 1,
         borderColor: '#C7D2FE',
-        flex: 1,
+        minWidth: 160,
     },
     manageActionText: {
         fontSize: 13,
         fontWeight: '600',
         color: modernColors.primary,
+        flexShrink: 1,
+    },
+    manageActionsScroll: {
+        backgroundColor: '#FFFFFF',
     },
 });
 

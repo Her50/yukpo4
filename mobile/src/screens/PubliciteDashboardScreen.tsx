@@ -121,6 +121,8 @@ const PubliciteDashboardScreen: React.FC = () => {
                 <NavigatorToolbar
                     tone="dark"
                     showHandle={false}
+                    density="compact"
+                    backIcon="back"
                     title={t('publicite.dashboard')}
                     subtitle={t('publicite.analytics')}
                     rightSlot={(

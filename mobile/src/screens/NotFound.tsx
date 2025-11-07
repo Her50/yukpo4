@@ -21,6 +21,8 @@ const NotFound: React.FC = () => {
         title="Page introuvable"
         subtitle="Erreur 404"
         showHandle={false}
+        density="compact"
+        backIcon="back"
         onClose={handleClose}
       />
 

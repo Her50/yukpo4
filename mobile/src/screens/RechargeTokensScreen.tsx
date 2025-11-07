@@ -433,6 +433,8 @@ const RechargeTokensScreen: React.FC = () => {
         title="Recharger mes tokens"
         subtitle={balanceLabel}
         showHandle={false}
+        density="compact"
+        backIcon="back"
         onClose={() => navigation.goBack()}
         rightSlot={(
           <TouchableOpacity

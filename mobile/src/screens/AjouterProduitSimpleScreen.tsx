@@ -524,6 +524,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 <NavigatorToolbar
                     title={toolbarTitle}
                     subtitle={toolbarSubtitle}
+                    showHandle={false}
+                    density="compact"
+                    backIcon="back"
                 />
 
                 <ScrollView

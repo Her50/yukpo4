@@ -694,6 +694,9 @@ const ResultatBesoinScreen: React.FC = () => {
             <SafeIcon name="sliders" size={20} color={modernColors.primary} />
           </TouchableOpacity>
         )}
+        showHandle={false}
+        density="compact"
+        backIcon="back"
       />
 
       {/* ✅ NOUVEAU : Barre de recherche LINÉAIRE avec bouton à droite */}

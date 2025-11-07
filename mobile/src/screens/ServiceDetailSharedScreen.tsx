@@ -130,6 +130,8 @@ const ServiceDetailSharedScreen: React.FC = () => {
         <NavigatorToolbar
           tone="dark"
           showHandle={false}
+          density="compact"
+          backIcon="back"
           title="Service partagé"
           subtitle="Via Yukpo"
           onClose={() => (navigation as any).navigate('Home')}

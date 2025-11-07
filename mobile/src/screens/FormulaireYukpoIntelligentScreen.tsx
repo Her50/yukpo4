@@ -3691,6 +3691,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         <NavigatorToolbar
           tone="dark"
           showHandle={false}
+          density="compact"
+          backIcon="back"
           title={isReadonly ? 'Consultation' : mode === 'edit' ? 'Modification' : 'Formulaire Intelligent'}
           subtitle={isReadonly ? 'Mode lecture seule' : mode === 'edit' ? 'Modification en cours' : 'Propulsé par l\'IA Yukpo'}
           onClose={handleGoBack}

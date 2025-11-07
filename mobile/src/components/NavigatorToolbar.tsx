@@ -14,6 +14,8 @@ interface NavigatorToolbarProps {
     rightSlot?: React.ReactNode;
     tone?: NavigatorToolbarTone;
     showHandle?: boolean;
+    density?: 'default' | 'compact';
+    backIcon?: 'close' | 'back';
     backgroundColor?: string;
 }
 
@@ -23,7 +25,9 @@ export const NavigatorToolbar: React.FC<NavigatorToolbarProps> = ({
     onClose,
     rightSlot,
     tone = 'light',
-    showHandle = true,
+    showHandle = false,
+    density = showHandle ? 'default' : 'compact',
+    backIcon = 'close',
     backgroundColor = 'transparent',
 }) => {
     const navigation = useNavigation();
@@ -31,6 +35,10 @@ export const NavigatorToolbar: React.FC<NavigatorToolbarProps> = ({
     const isDark = tone === 'dark';
     const textColor = isDark ? '#FFFFFF' : modernColors.text;
     const subTextColor = isDark ? 'rgba(255,255,255,0.7)' : modernColors.textSecondary;
+
+    const paddingVertical = density === 'compact' ? modernStyles.spacing.xs : modernStyles.spacing.sm;
+    const actionSize = density === 'compact' ? 32 : 36;
+    const iconName = backIcon === 'back' ? 'arrow-left' : 'x';
 
     const handleClose = () => {
         if (onClose) {
@@ -47,9 +55,18 @@ export const NavigatorToolbar: React.FC<NavigatorToolbarProps> = ({
         <SafeNativeView
             edges={['top']}
             backgroundColor={backgroundColor}
-            style={[styles.safeContainer, backgroundColor !== 'transparent' && { backgroundColor }]}
+            style={[
+                styles.safeContainer,
+                { paddingBottom: paddingVertical },
+                backgroundColor !== 'transparent' && { backgroundColor }
+            ]}
         >
-            <View style={styles.container}>
+            <View
+                style={[
+                    styles.container,
+                    { gap: density === 'compact' ? modernStyles.spacing.xs : modernStyles.spacing.sm }
+                ]}
+            >
                 {showHandle && (
                     <View
                         style={[
@@ -59,28 +76,45 @@ export const NavigatorToolbar: React.FC<NavigatorToolbarProps> = ({
                     />
                 )}
 
-                <View style={styles.toolbarRow}>
+                <View style={[styles.toolbarRow, { marginTop: showHandle ? paddingVertical : 0 }]}>
                     <TouchableOpacity
                         onPress={handleClose}
                         style={[
                             styles.actionButton,
                             {
+                                width: actionSize,
+                                height: actionSize,
+                                borderRadius: actionSize / 2,
                                 backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(15,23,42,0.06)',
                             },
                         ]}
                         activeOpacity={0.8}
                     >
-                        <SafeIcon name="x" size={18} color={textColor} />
+                        <SafeIcon name={iconName} size={18} color={textColor} />
                     </TouchableOpacity>
 
                     <View style={styles.titleContainer}>
                         {title ? (
-                            <Text style={[styles.title, { color: textColor }]} numberOfLines={1}>
+                            <Text
+                                style={[
+                                    styles.title,
+                                    density === 'compact' && styles.titleCompact,
+                                    { color: textColor }
+                                ]}
+                                numberOfLines={1}
+                            >
                                 {title}
                             </Text>
                         ) : null}
                         {subtitle ? (
-                            <Text style={[styles.subtitle, { color: subTextColor }]} numberOfLines={1}>
+                            <Text
+                                style={[
+                                    styles.subtitle,
+                                    density === 'compact' && styles.subtitleCompact,
+                                    { color: subTextColor }
+                                ]}
+                                numberOfLines={1}
+                            >
                                 {subtitle}
                             </Text>
                         ) : null}
@@ -127,10 +161,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
+    titleCompact: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
     subtitle: {
         fontSize: 12,
         fontWeight: '500',
         marginTop: 2,
+    },
+    subtitleCompact: {
+        fontSize: 11,
     },
     rightSlot: {
         minWidth: 36,
