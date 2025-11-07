@@ -168,7 +168,7 @@ pub async fn upsert_combination(
         }
         Err(e) => {
             if let Some(db_err) = e.as_database_error() {
-                if db_err.code() == Some("23505") {
+                if db_err.code().as_deref() == Some("23505") {
                     // Contrainte unique sur product_vector: mettre à jour l'entrée existante
                     let fallback_row = sqlx::query(
                         r#"
