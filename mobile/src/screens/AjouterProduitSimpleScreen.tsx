@@ -401,6 +401,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 value={formValues.description_produit}
                                 onChangeText={(value) => handleFieldChange('description_produit', value)}
                                 multiline
+                                style={styles.textareaInput}
                             />
                         </View>
 
@@ -714,6 +715,9 @@ const styles = StyleSheet.create({
     },
     deviseButtonTextActive: {
         color: '#FFFFFF',
+    },
+    textareaInput: {
+        minHeight: 180,
     },
     variantCallout: {
         flexDirection: 'row',

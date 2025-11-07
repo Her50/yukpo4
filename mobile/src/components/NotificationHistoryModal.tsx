@@ -57,16 +57,18 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       // ✅ Utilise la configuration centralisée
       const response = await apiGet(API_ENDPOINTS.NOTIFICATIONS.USER_NOTIFICATIONS(user?.id || ''));
 
+      const rawNotifications = normalizeNotificationsResponse(response);
+
       console.log('[NotificationHistoryModal] 📦 Réponse API complète:', JSON.stringify(response, null, 2));
       console.log('[NotificationHistoryModal] 🔍 Type de response.data:', typeof response.data);
       console.log('[NotificationHistoryModal] 🔍 Array?:', Array.isArray(response.data));
-      console.log('[NotificationHistoryModal] 🔍 Longueur:', response.data?.length);
+      console.log('[NotificationHistoryModal] 🔍 Longueur normalisée:', rawNotifications.length);
 
-      if (response.data && Array.isArray(response.data)) {
+      if (rawNotifications.length > 0) {
         console.log('[NotificationHistoryModal] ✅ Données valides, mapping en cours...');
 
         // ✅ Mapper les données du backend vers le format attendu par le frontend
-        const mappedNotifications = response.data.map((notif: any, index: number) => {
+        const mappedNotifications = rawNotifications.map((notif: any, index: number) => {
           // ✅ CORRECTION: Le backend retourne notification_type (snake_case), pas type
           const backendType = notif.notification_type || notif.type || 'system_alert';
 
@@ -121,6 +123,36 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const normalizeNotificationsResponse = (response: any): any[] => {
+    if (!response) {
+      return [];
+    }
+
+    const payload = response.data ?? response;
+
+    if (Array.isArray(payload)) {
+      return payload;
+    }
+
+    if (Array.isArray(payload?.data)) {
+      return payload.data;
+    }
+
+    if (Array.isArray(payload?.notifications)) {
+      return payload.notifications;
+    }
+
+    if (Array.isArray(payload?.items)) {
+      return payload.items;
+    }
+
+    if (Array.isArray(payload?.data?.data)) {
+      return payload.data.data;
+    }
+
+    return [];
   };
 
   // ✅ Fonction pour mapper les types de notifications backend vers frontend

@@ -136,6 +136,36 @@ const ResultatBesoinScreen: React.FC = () => {
   const [searchGPSData, setSearchGPSData] = useState<{ lat: number; lng: number; address?: string } | null>(null);
   const [searchGPSString, setSearchGPSString] = useState<string>('');
 
+  const normalizeAutocompleteResponse = (response: any): CombinationSuggestion[] => {
+    if (!response) {
+      return [];
+    }
+
+    const payload = response.data ?? response;
+
+    if (Array.isArray(payload)) {
+      return payload as CombinationSuggestion[];
+    }
+
+    if (Array.isArray(payload?.data)) {
+      return payload.data as CombinationSuggestion[];
+    }
+
+    if (Array.isArray(payload?.results)) {
+      return payload.results as CombinationSuggestion[];
+    }
+
+    if (Array.isArray(payload?.items)) {
+      return payload.items as CombinationSuggestion[];
+    }
+
+    if (Array.isArray(payload?.data?.data)) {
+      return payload.data.data as CombinationSuggestion[];
+    }
+
+    return [];
+  };
+
   const requestImagePermissions = async (): Promise<boolean> => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -297,11 +327,12 @@ const ResultatBesoinScreen: React.FC = () => {
 
         const response = await apiPost('/api/autocomplete/search-products', payload);
 
-        if (response.success && Array.isArray(response.data)) {
-          setSuggestions(response.data as CombinationSuggestion[]);
+        if (response.success) {
+          const normalized = normalizeAutocompleteResponse(response);
+          setSuggestions(normalized);
 
-          if (response.data.length > 0) {
-            const example = buildSuggestionExample(response.data[0] as CombinationSuggestion);
+          if (normalized.length > 0) {
+            const example = buildSuggestionExample(normalized[0]);
             setDynamicPlaceholder(example ? `ex: ${example}` : null);
           } else {
             setDynamicPlaceholder(null);

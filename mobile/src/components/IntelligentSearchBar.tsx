@@ -125,11 +125,12 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                     limit: 8,
                 });
 
-                if (response?.success && Array.isArray(response.data)) {
+                if (response?.success) {
+                    const combos = normalizeCombinationsResponse(response);
                     const unique = new Set<string>();
-                    const normalized = response.data
+                    const normalized = combos
                         .map((item: any) => {
-                            const combo = item?.combination;
+                            const combo = item?.combination ?? item;
                             if (!combo || !Array.isArray(combo.product_vector)) {
                                 return null;
                             }
@@ -375,6 +376,36 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
             )}
         </View>
     );
+};
+
+const normalizeCombinationsResponse = (response: any): any[] => {
+    if (!response) {
+        return [];
+    }
+
+    const payload = response.data ?? response;
+
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (Array.isArray(payload?.data)) {
+        return payload.data;
+    }
+
+    if (Array.isArray(payload?.results)) {
+        return payload.results;
+    }
+
+    if (Array.isArray(payload?.items)) {
+        return payload.items;
+    }
+
+    if (Array.isArray(payload?.data?.data)) {
+        return payload.data.data;
+    }
+
+    return [];
 };
 
 const styles = StyleSheet.create({

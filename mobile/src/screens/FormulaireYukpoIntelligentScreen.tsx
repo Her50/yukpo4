@@ -2672,104 +2672,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return produitsNode;
       };
 
-      const mergeMediaArrays = (existing: any, incoming: any): any[] => {
-        const base = Array.isArray(incoming) ? incoming : [];
-        const current = Array.isArray(existing) ? existing : [];
-        const merged = [...base, ...current];
-        const unique = merged.filter(Boolean).filter((value, index, self) => self.indexOf(value) === index);
-        return unique;
-      };
-
-      const ensurePrimaryMediaForFirstProduct = (
-        produitsNode: any,
-        media: any,
-        options: { nomFallback?: string; deviseFallback?: string } = {}
-      ) => {
-        if (!media?.images?.length) {
-          return produitsNode;
-        }
-
-        const { nomFallback = '', deviseFallback = 'XAF' } = options;
-
-        const buildBaseProduct = () => ({
-          nom: nomFallback,
-          images: [...media.images],
-          base64_image: [...media.images],
-          videos: media.videos ? [...media.videos] : undefined,
-          video_base64: media.videos ? [...media.videos] : undefined,
-          audio_base64: media.audios ? [...media.audios] : undefined,
-          doc_base64: media.documents ? [...media.documents] : undefined,
-          excel_base64: media.excel ? [...media.excel] : undefined,
-          devise: deviseFallback
-        });
-
-        if (!produitsNode) {
-          return {
-            type_donnee: 'listeproduit',
-            valeur: [buildBaseProduct()]
-          } as any;
-        }
-
-        if (produitsNode.type_donnee === 'listeproduit') {
-          const produitsArray = Array.isArray(produitsNode.valeur) ? [...produitsNode.valeur] : [];
-          if (produitsArray.length === 0) {
-            produitsArray.push(buildBaseProduct());
-          } else {
-            const firstProduct: any = { ...produitsArray[0] };
-            const mergedImages = mergeMediaArrays(firstProduct.images, media.images);
-            if (mergedImages.length > 0) {
-              firstProduct.images = mergedImages;
-              firstProduct.base64_image = mergedImages;
-            }
-
-            if (media.videos?.length) {
-              const mergedVideos = mergeMediaArrays(firstProduct.videos, media.videos);
-              if (mergedVideos.length > 0) {
-                firstProduct.videos = mergedVideos;
-                firstProduct.video_base64 = mergedVideos;
-              }
-            }
-
-            if (media.audios?.length) {
-              const mergedAudios = mergeMediaArrays(firstProduct.audio_base64, media.audios);
-              if (mergedAudios.length > 0) {
-                firstProduct.audio_base64 = mergedAudios;
-              }
-            }
-
-            if (media.documents?.length) {
-              const mergedDocs = mergeMediaArrays(firstProduct.doc_base64, media.documents);
-              if (mergedDocs.length > 0) {
-                firstProduct.doc_base64 = mergedDocs;
-              }
-            }
-
-            if (media.excel?.length) {
-              const mergedExcel = mergeMediaArrays(firstProduct.excel_base64, media.excel);
-              if (mergedExcel.length > 0) {
-                firstProduct.excel_base64 = mergedExcel;
-              }
-            }
-
-            if (!firstProduct.nom) {
-              firstProduct.nom = nomFallback;
-            }
-            if (!firstProduct.devise) {
-              firstProduct.devise = deviseFallback;
-            }
-
-            produitsArray[0] = firstProduct;
-          }
-
-          return {
-            ...produitsNode,
-            valeur: produitsArray
-          };
-        }
-
-        return produitsNode;
-      };
-
       // ✅ SI MODE DUPLICATION PRODUIT (ancienne fonctionnalité)
       if (isAddingProduct && serviceId) {
         console.log('[FormulaireYukpoIntelligentScreen] 🛍️ MODE DUPLICATION - Ajout produit au service', serviceId);
@@ -3535,7 +3437,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                 finalServiceData.produits = ensurePrimaryMediaForFirstProduct(
                   finalServiceData.produits,
-                  await getCompressedMedia(),
+                  compressedMedia,
                   {
                     nomFallback: valeursFormulaire.nom_produit || finalServiceData.titre_service?.valeur || '',
                     deviseFallback: valeursFormulaire.devise_produit || valeursFormulaire.devise || 'XAF'
@@ -4001,6 +3903,39 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                               .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
                               .map((field, index) => renderField(field))}
                           </NativeCard>
+
+                          {!isReadonly && block.id === 'payment' && (
+                            <View style={styles.finalActionContainer}>
+                              <Text style={styles.finalActionTitle}>Finaliser le service</Text>
+                              <Text style={styles.finalActionSubtitle}>
+                                Vérifiez vos informations puis validez la création du service.
+                              </Text>
+
+                              <TouchableOpacity
+                                style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
+                                onPress={soumettreFormulaire}
+                                disabled={loading || isSubmitting}
+                              >
+                                <LinearGradient
+                                  colors={modernColors.primaryGradient}
+                                  style={styles.finalActionButtonGradient}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 1, y: 0 }}
+                                >
+                                  <Text style={styles.finalActionButtonText}>
+                                    {(loading || isSubmitting)
+                                      ? (isAddingProductToExistingService ? 'Création du produit...' :
+                                        isEditingServiceInfo ? 'Mise à jour...' :
+                                          mode === 'edit' ? 'Modification...' : 'Création...')
+                                      : (isAddingProductToExistingService ? 'Créer le produit' :
+                                        isEditingServiceInfo ? 'Modifier les données du service' :
+                                          mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
+                                  </Text>
+                                  <SafeIcon name="check" size={20} color="#FFFFFF" />
+                                </LinearGradient>
+                              </TouchableOpacity>
+                            </View>
+                          )}
                         </View>
                       </ScrollView>
                     </View>
@@ -4029,29 +3964,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         <Text style={styles.navButtonTextPrimary}>Suivant</Text>
                         <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
                       </TouchableOpacity>
-                    ) : !isReadonly ? (
-                      <TouchableOpacity
-                        style={[
-                          styles.navButton,
-                          styles.navButtonSuccess,
-                          (loading || isSubmitting) && styles.navButtonDisabled // ✅ Désactiver visuellement pendant soumission
-                        ]}
-                        onPress={soumettreFormulaire}
-                        disabled={loading || isSubmitting} // ✅ Désactiver pendant loading OU soumission
-                      >
-                        <Text style={styles.navButtonTextSuccess}>
-                          {(loading || isSubmitting)
-                            ? (isAddingProductToExistingService ? 'Création du produit...' :
-                              isEditingServiceInfo ? 'Mise à jour...' :
-                                mode === 'edit' ? 'Modification...' : 'Création...')
-                            : (isAddingProductToExistingService ? 'Créer le produit' :
-                              isEditingServiceInfo ? 'Modifier les données du service' :
-                                mode === 'edit' ? 'Modifier le service' : 'Créer le service')
-                          }
-                        </Text>
-                        <SafeIcon name="check" size={20} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    ) : null}
+                    ) : (
+                      <View style={styles.navButtonPlaceholder} />
+                    )}
                   </View>
                 </ScrollView>
               </>
@@ -4448,8 +4363,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   textareaInput: {
-    minHeight: 100,
-    textAlignVertical: 'top',
+    minHeight: 180,
     paddingTop: 14,
   },
   navigationButtons: {
@@ -4457,6 +4371,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 20,
     gap: 12,
+  },
+  navButtonPlaceholder: {
+    flex: 1,
   },
   navButton: {
     flex: 1,
@@ -4499,6 +4416,48 @@ const styles = StyleSheet.create({
   },
   navButtonTextSuccess: {
     fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  finalActionContainer: {
+    marginTop: 28,
+    padding: 20,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    gap: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  finalActionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: modernColors.text,
+  },
+  finalActionSubtitle: {
+    fontSize: 14,
+    color: modernColors.textSecondary,
+    lineHeight: 20,
+  },
+  finalActionButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  finalActionButtonDisabled: {
+    opacity: 0.7,
+  },
+  finalActionButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    borderRadius: 16,
+    gap: 10,
+  },
+  finalActionButtonText: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
   },

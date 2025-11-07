@@ -133,10 +133,13 @@ export const NativeInput: React.FC<NativeInputProps> = ({
     autoCapitalize,
     autoCorrect
 }) => {
+    const containerStyles = [styles.inputContainer, multiline && styles.inputContainerMultiline, style];
+    const inputStyles = [styles.input, multiline && styles.inputMultiline];
+
     return (
-        <View style={[styles.inputContainer, style]}>
+        <View style={containerStyles}>
             <TextInput
-                style={styles.input}
+                style={inputStyles}
                 placeholder={placeholder}
                 value={value}
                 onChangeText={onChangeText}
@@ -146,6 +149,9 @@ export const NativeInput: React.FC<NativeInputProps> = ({
                 autoCapitalize={autoCapitalize}
                 autoCorrect={autoCorrect}
                 placeholderTextColor={modernColors.textSecondary}
+                blurOnSubmit={multiline ? false : undefined}
+                returnKeyType={multiline ? 'default' : undefined}
+                textBreakStrategy={multiline ? 'highQuality' : undefined}
             />
         </View>
     );
@@ -276,11 +282,21 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.surface,
         paddingHorizontal: 12,
         paddingVertical: 12,
+        width: '100%',
     },
     input: {
         fontSize: 16,
         color: modernColors.text,
         minHeight: 20,
+        flex: 1,
+    },
+    inputContainerMultiline: {
+        minHeight: 160,
+        paddingVertical: 16,
+    },
+    inputMultiline: {
+        minHeight: 120,
+        textAlignVertical: 'top',
     },
 
     // Badge

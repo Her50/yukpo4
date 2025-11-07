@@ -72,6 +72,56 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
     const [dynamicPlaceholder, setDynamicPlaceholder] = useState<string | null>(null);
 
+    const normalizeAutocompleteResponse = (response: any): any[] => {
+        if (!response) {
+            return [];
+        }
+
+        const payload = response.data ?? response;
+
+        if (Array.isArray(payload)) {
+            return payload;
+        }
+
+        if (Array.isArray(payload?.data)) {
+            return payload.data;
+        }
+
+        if (Array.isArray(payload?.results)) {
+            return payload.results;
+        }
+
+        if (Array.isArray(payload?.items)) {
+            return payload.items;
+        }
+
+        if (Array.isArray(payload?.data?.data)) {
+            return payload.data.data;
+        }
+
+        return [];
+    };
+
+    const resolveLatLng = (source: any): { lat: number; lng: number } | null => {
+        if (!source) {
+            return null;
+        }
+
+        if (typeof source.lat === 'number' && typeof source.lng === 'number') {
+            return { lat: source.lat, lng: source.lng };
+        }
+
+        if (typeof source.latitude === 'number' && typeof source.longitude === 'number') {
+            return { lat: source.latitude, lng: source.longitude };
+        }
+
+        if (source.coords && typeof source.coords.latitude === 'number' && typeof source.coords.longitude === 'number') {
+            return { lat: source.coords.latitude, lng: source.coords.longitude };
+        }
+
+        return null;
+    };
+
     const getSuggestionVector = (suggestion: any): string[] => {
         if (Array.isArray(suggestion?.full_vector) && suggestion.full_vector.length > 0) {
             return suggestion.full_vector;
@@ -105,10 +155,10 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                     };
 
                     // ✅ Ajouter GPS si disponible (ordre de priorité : GPS manuel > GPS contexte)
-                    const currentGPS = gpsData || location;
+                    const currentGPS = resolveLatLng(gpsData) ?? resolveLatLng(location);
                     if (currentGPS) {
-                        payload.user_lat = currentGPS.latitude || currentGPS.lat;
-                        payload.user_lng = currentGPS.longitude || currentGPS.lng;
+                        payload.user_lat = currentGPS.lat;
+                        payload.user_lng = currentGPS.lng;
                         console.log('[ChatInputMobile] 📍 GPS inclus dans autocomplete:', {
                             lat: payload.user_lat,
                             lng: payload.user_lng,
@@ -120,19 +170,20 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 
                     const response = await apiPost('/api/autocomplete/search-products', payload);
 
-                    if (response.success && Array.isArray(response.data)) {
-                        setSuggestions(response.data);
-                        setShowSuggestions(response.data.length > 0);
+                    if (response.success) {
+                        const normalized = normalizeAutocompleteResponse(response);
+                        setSuggestions(normalized);
+                        setShowSuggestions(normalized.length > 0);
 
-                        if (response.data.length > 0) {
-                            const example = formatSuggestionExample(response.data[0]);
+                        if (normalized.length > 0) {
+                            const example = formatSuggestionExample(normalized[0]);
                             setDynamicPlaceholder(example ? `ex: ${example}` : null);
                         } else {
                             setDynamicPlaceholder(null);
                         }
 
                         console.log('[ChatInputMobile] 🔍 Suggestions autocomplete:', {
-                            count: response.data.length,
+                            count: normalized.length,
                             withGPS: !!gpsData,
                             query: text.trim()
                         });

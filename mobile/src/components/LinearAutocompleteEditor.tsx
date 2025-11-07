@@ -60,6 +60,36 @@ interface CombinationSuggestion {
     isAIPreferred?: boolean;
 }
 
+const normalizeCombinationResponse = (response: any): any[] => {
+    if (!response) {
+        return [];
+    }
+
+    const payload = response.data ?? response;
+
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (Array.isArray(payload?.data)) {
+        return payload.data;
+    }
+
+    if (Array.isArray(payload?.results)) {
+        return payload.results;
+    }
+
+    if (Array.isArray(payload?.items)) {
+        return payload.items;
+    }
+
+    if (Array.isArray(payload?.data?.data)) {
+        return payload.data.data;
+    }
+
+    return [];
+};
+
 // ✅ 2025-11-06: Normaliser la réponse backend pour éviter les crashes (.map sur undefined)
 const normalizePopularProductsResponse = (response: any): PopularProduct[] => {
     if (!response) {
@@ -322,12 +352,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 });
 
                 if (!cancelled && response?.success) {
-                    const combos = Array.isArray(response.data) ? response.data : [];
+                    const combos = normalizeCombinationResponse(response);
 
                     const iaKeys = new Set(iaCombinaisons.map((combo) => combo.toLowerCase()));
                     const normalizedCombos: CombinationSuggestion[] = combos
                         .map((item: any) => {
-                            const combo = item?.combination;
+                            const combo = item?.combination ?? item;
                             if (!combo || !Array.isArray(combo.product_vector)) {
                                 return null;
                             }
@@ -605,14 +635,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                 }
 
                                 if (combinationsResult.status === 'fulfilled' && combinationsResult.value?.success) {
-                                    const combos = Array.isArray(combinationsResult.value.data)
-                                        ? combinationsResult.value.data
-                                        : [];
+                                    const combos = normalizeCombinationResponse(
+                                        combinationsResult.value?.data ?? combinationsResult.value
+                                    );
 
                                     const iaKeys = new Set(iaCombinaisons.map((combo) => combo.toLowerCase()));
                                     const normalizedCombos: CombinationSuggestion[] = combos
                                         .map((item: any) => {
-                                            const combo = item?.combination;
+                                            const combo = item?.combination ?? item;
                                             if (!combo || !Array.isArray(combo.product_vector)) {
                                                 return null;
                                             }
