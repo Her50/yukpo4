@@ -51,7 +51,7 @@ pub async fn get_popular_products_similar_to(
             ac.product_vector,
             ac.product_labels,
             ac.usage_count,
-            ac.prix,
+            ac.prix::FLOAT8 AS prix_float,
             ac.has_variant,
             ac.variant_dimension,
             ac.variant_value,
@@ -69,7 +69,7 @@ pub async fn get_popular_products_similar_to(
         ORDER BY 
             rt.is_trending DESC,  -- Tendances EN PREMIER
             ac.usage_count DESC,  -- Puis popularité
-            ac.prix ASC           -- Puis prix
+            ac.prix::FLOAT8 ASC           -- Puis prix
         LIMIT $2
         "#
     )
@@ -83,7 +83,7 @@ pub async fn get_popular_products_similar_to(
         product_vector: row.get("product_vector"),
         product_labels: row.get("product_labels"),
         usage_count: row.get("usage_count"),
-        prix_moyen: row.get("prix"),
+        prix_moyen: row.get("prix_float"),
         has_variant: row.get("has_variant"),
         variant_dimension: row.get("variant_dimension"),
         variant_value: row.get("variant_value"),
@@ -124,7 +124,7 @@ pub async fn get_top_popular_products(
                 ac.product_vector,
                 ac.product_labels,
                 ac.usage_count,
-                ac.prix,
+                ac.prix::FLOAT8 AS prix_float,
                 ac.has_variant,
                 ac.variant_dimension,
                 ac.variant_value,
@@ -136,7 +136,7 @@ pub async fn get_top_popular_products(
                 SELECT 1 FROM unnest(ac.product_vector) AS val
                 WHERE val ILIKE '%' || $1 || '%'
             )
-            ORDER BY rt.is_trending DESC, ac.usage_count DESC, ac.prix ASC
+            ORDER BY rt.is_trending DESC, ac.usage_count DESC, ac.prix::FLOAT8 ASC
             LIMIT $2
             "#
         )
@@ -161,7 +161,7 @@ pub async fn get_top_popular_products(
                 ac.product_vector,
                 ac.product_labels,
                 ac.usage_count,
-                ac.prix,
+                ac.prix::FLOAT8 AS prix_float,
                 ac.has_variant,
                 ac.variant_dimension,
                 ac.variant_value,
@@ -169,7 +169,7 @@ pub async fn get_top_popular_products(
             FROM autocomplete_combinations ac
             INNER JOIN recent_trend rt ON rt.id = ac.id
             WHERE ac.usage_count >= 2
-            ORDER BY rt.is_trending DESC, ac.usage_count DESC, ac.prix ASC
+            ORDER BY rt.is_trending DESC, ac.usage_count DESC, ac.prix::FLOAT8 ASC
             LIMIT $1
             "#
         )
@@ -183,7 +183,7 @@ pub async fn get_top_popular_products(
         product_vector: row.get("product_vector"),
         product_labels: row.get("product_labels"),
         usage_count: row.get("usage_count"),
-        prix_moyen: row.get("prix"),
+        prix_moyen: row.get("prix_float"),
         has_variant: row.get("has_variant"),
         variant_dimension: row.get("variant_dimension"),
         variant_value: row.get("variant_value"),

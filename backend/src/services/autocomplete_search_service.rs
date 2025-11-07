@@ -73,7 +73,11 @@ pub async fn search_by_autocomplete_vector(
                 u.id as user_id,
                 u.email as user_email,
                 -- ✅ Extractions produit (compatibilité client_service)
-                (s.data->'produits'->>'prix')::FLOAT as prix,
+                CASE
+                    WHEN (s.data->'produits'->>'prix') ~ '^[0-9]+(\.[0-9]+)?$'
+                    THEN (s.data->'produits'->>'prix')::FLOAT
+                    ELSE NULL
+                END as prix,
                 s.data->'produits'->>'devise' as devise,
                 COALESCE((s.data->'produits'->>'has_variant')::BOOLEAN, FALSE) as has_variant,
                 s.data->'produits'->>'variant_dimension' as variant_dimension,
@@ -172,7 +176,11 @@ pub async fn search_by_autocomplete_vector(
                 u.id as user_id,
                 u.email as user_email,
                 -- ✅ Extractions produit (compatibilité client_service)
-                (s.data->'produits'->>'prix')::FLOAT as prix,
+                CASE
+                    WHEN (s.data->'produits'->>'prix') ~ '^[0-9]+(\.[0-9]+)?$'
+                    THEN (s.data->'produits'->>'prix')::FLOAT
+                    ELSE NULL
+                END as prix,
                 s.data->'produits'->>'devise' as devise,
                 COALESCE((s.data->'produits'->>'has_variant')::BOOLEAN, FALSE) as has_variant,
                 s.data->'produits'->>'variant_dimension' as variant_dimension,

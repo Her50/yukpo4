@@ -1782,7 +1782,7 @@ pub async fn save_autocomplete_combination(
                (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
                 has_variant, prix, usage_count)
                VALUES ($1, $2, $3, '{}', '{}', $2, false, $4, 1)
-               ON CONFLICT (full_vector)
+               ON CONFLICT (product_vector)
                DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
         )
         .bind(service_id)
