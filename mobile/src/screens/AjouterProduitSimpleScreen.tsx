@@ -588,6 +588,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 multiline
                                 minLines={3}
                                 style={styles.textareaInput}
+                                inputStyle={styles.descriptionInputText}
                             />
                         </View>
 
@@ -828,7 +829,11 @@ const styles = StyleSheet.create({
         minHeight: 52,
     },
     textareaInput: {
-        minHeight: 180,
+        minHeight: 0,
+        paddingVertical: 12,
+    },
+    descriptionInputText: {
+        lineHeight: 22,
     },
     variantCallout: {
         flexDirection: 'row',

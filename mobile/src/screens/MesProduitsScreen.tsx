@@ -4,6 +4,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Animated,
     Modal,
     Platform,
     RefreshControl,
@@ -194,6 +195,8 @@ const resolveProductTimestamp = (product: Record<string, any>, fallback?: number
     return 0;
 };
 
+const HEADER_HEIGHT = Platform.OS === 'ios' ? 88 : 72;
+
 const MesProduitsScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
@@ -203,8 +206,27 @@ const MesProduitsScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState<'tous' | 'actif' | 'inactif'>('tous');
     const [categoryFilter, setCategoryFilter] = useState<string>('tous');
+    const [filtersVisible, setFiltersVisible] = useState(false);
     const [showTeamManager, setShowTeamManager] = useState(false);
-    const [teamManagerServiceId, setTeamManagerServiceId] = useState<string | undefined>(undefined);
+    const [teamManagerServiceId, setTeamManagerServiceId] = useState<string>('');
+    const scrollY = useRef(new Animated.Value(0)).current;
+    const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
+
+    const headerTranslate = useMemo(() => {
+        const collapseDistance = Math.max(headerHeight - 48, 0);
+        return scrollY.interpolate({
+            inputRange: [0, collapseDistance],
+            outputRange: [0, -collapseDistance],
+            extrapolate: 'clamp',
+        });
+    }, [headerHeight, scrollY]);
+
+    const handleHeaderLayout = useCallback(({ nativeEvent }: any) => {
+        const { height } = nativeEvent.layout;
+        if (height && Math.abs(height - headerHeight) > 4) {
+            setHeaderHeight(height);
+        }
+    }, [headerHeight]);
 
     // Charger tous les produits de tous les services du prestataire
     const loadProducts = async (isRefresh = false) => {
@@ -1083,115 +1105,118 @@ const MesProduitsScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            {/* Header fixe compact */}
-            <View style={styles.headerContainer}>
-                <NavigatorToolbar
-                    tone="light"
-                    showHandle={false}
-                    density="comfortable"
-                    backIcon="back"
-                    title="Mes Produits"
-                    subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
-                    rightSlot={(
-                        <TouchableOpacity
-                            style={styles.editServiceButton}
-                            onPress={handleEditServiceInfo}
-                        >
-                            <SafeIcon name="settings" size={18} color={modernColors.primary} />
-                        </TouchableOpacity>
-                    )}
-                />
-            </View>
+            <Animated.View style={[styles.animatedHeader, { transform: [{ translateY: headerTranslate }] }]}
+            >
+                <View onLayout={handleHeaderLayout}>
+                    <View style={styles.headerContainer}>
+                        <NavigatorToolbar
+                            tone="light"
+                            showHandle={false}
+                            density="comfortable"
+                            backIcon="back"
+                            title="Mes Produits"
+                            subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
+                            rightSlot={(
+                                <TouchableOpacity
+                                    style={styles.editServiceButton}
+                                    onPress={handleEditServiceInfo}
+                                >
+                                    <SafeIcon name="settings" size={18} color={modernColors.primary} />
+                                </TouchableOpacity>
+                            )}
+                        />
+                    </View>
 
-            {/* Liste des produits avec header scrollable */}
-            <ScrollView
-                style={styles.scrollView}
+                    <View style={styles.statsRowContainer}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.statsRowContent}
+                        >
+                            {headerSummary.map((item) => (
+                                <View key={item.label} style={styles.miniStatCard}>
+                                    <Text
+                                        style={[
+                                            styles.miniStatValue,
+                                            { color: item.accentColor }
+                                        ]}
+                                    >
+                                        {item.value}
+                                    </Text>
+                                    <Text style={styles.miniStatLabel} numberOfLines={1}>{item.label}</Text>
+                                </View>
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    <View style={styles.quickActionsRow}>
+                        {quickActions.slice(1).map((action) => (
+                            <TouchableOpacity
+                                key={action.label}
+                                style={styles.quickActionButton}
+                                onPress={action.onPress}
+                            >
+                                <SafeIcon name={action.icon} size={16} color={modernColors.primary} />
+                                <Text style={styles.quickActionText} numberOfLines={1}>{action.label}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <View style={styles.filtersContainer}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+                            {['tous', 'actif', 'inactif'].map((filterOption) => (
+                                <TouchableOpacity
+                                    key={filterOption}
+                                    style={[
+                                        styles.filterChip,
+                                        filter === filterOption && styles.filterChipActive
+                                    ]}
+                                    onPress={() => setFilter(filterOption as any)}
+                                >
+                                    <Text style={[
+                                        styles.filterChipText,
+                                        filter === filterOption && styles.filterChipTextActive
+                                    ]}>
+                                        {filterOption === 'tous' ? '📦 Tous' :
+                                            filterOption === 'actif' ? '✅ Actifs' : '⏸️ Inactifs'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+                            {categories.map(({ key, label }) => (
+                                <TouchableOpacity
+                                    key={key}
+                                    style={[
+                                        styles.categoryChip,
+                                        categoryFilter === key && styles.categoryChipActive
+                                    ]}
+                                    onPress={() => setCategoryFilter(key)}
+                                >
+                                    <Text style={[
+                                        styles.categoryChipText,
+                                        categoryFilter === key && styles.categoryChipTextActive
+                                    ]}>
+                                        {key === 'tous' ? `🏷️ ${label}` : label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Animated.View>
+
+            <Animated.ScrollView
+                contentContainerStyle={[styles.scrollContent, { paddingTop: headerHeight + 16 }]}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
+                onScroll={Animated.event([
+                    { nativeEvent: { contentOffset: { y: scrollY } } },
+                ], { useNativeDriver: true })}
+                scrollEventThrottle={16}
             >
-                {/* Statistiques miniaturisées sur une ligne */}
-                <View style={styles.statsRowContainer}>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.statsRowContent}
-                    >
-                        {headerSummary.map((item) => (
-                            <View key={item.label} style={styles.miniStatCard}>
-                                <Text
-                                    style={[
-                                        styles.miniStatValue,
-                                        { color: item.accentColor }
-                                    ]}
-                                >
-                                    {item.value}
-                                </Text>
-                                <Text style={styles.miniStatLabel} numberOfLines={1}>{item.label}</Text>
-                            </View>
-                        ))}
-                    </ScrollView>
-                </View>
-
-                {/* Boutons d'action sur une ligne */}
-                <View style={styles.quickActionsRow}>
-                    {quickActions.slice(1).map((action) => (
-                        <TouchableOpacity
-                            key={action.label}
-                            style={styles.quickActionButton}
-                            onPress={action.onPress}
-                        >
-                            <SafeIcon name={action.icon} size={16} color={modernColors.primary} />
-                            <Text style={styles.quickActionText} numberOfLines={1}>{action.label}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-                {/* Filtres */}
-                <View style={styles.filtersContainer}>
-                    {/* Filtre par statut */}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-                        {['tous', 'actif', 'inactif'].map((filterOption) => (
-                            <TouchableOpacity
-                                key={filterOption}
-                                style={[
-                                    styles.filterChip,
-                                    filter === filterOption && styles.filterChipActive
-                                ]}
-                                onPress={() => setFilter(filterOption as any)}
-                            >
-                                <Text style={[
-                                    styles.filterChipText,
-                                    filter === filterOption && styles.filterChipTextActive
-                                ]}>
-                                    {filterOption === 'tous' ? '📦 Tous' :
-                                        filterOption === 'actif' ? '✅ Actifs' : '⏸️ Inactifs'}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-
-                    {/* Filtre par catégorie */}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-                        {categories.map(({ key, label }) => (
-                            <TouchableOpacity
-                                key={key}
-                                style={[
-                                    styles.categoryChip,
-                                    categoryFilter === key && styles.categoryChipActive
-                                ]}
-                                onPress={() => setCategoryFilter(key)}
-                            >
-                                <Text style={[
-                                    styles.categoryChipText,
-                                    categoryFilter === key && styles.categoryChipTextActive
-                                ]}>
-                                    {key === 'tous' ? `🏷️ ${label}` : label}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
                 {filteredProducts.length === 0 ? (
                     <View style={styles.emptyState}>
                         <SafeIcon name="package" size={64} color="#D1D5DB" />
@@ -1234,7 +1259,7 @@ const MesProduitsScreen: React.FC = () => {
                         {filteredProducts.map(renderProductCard)}
                     </View>
                 )}
-            </ScrollView>
+            </Animated.ScrollView>
 
             <Modal
                 visible={showTeamManager}
@@ -1258,6 +1283,14 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F9FAFB',
+    },
+    animatedHeader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 30,
+        elevation: 12,
     },
     headerContainer: {
         paddingTop: Platform.OS === 'ios' ? 24 : 12,
@@ -1401,8 +1434,8 @@ const styles = StyleSheet.create({
     categoryChipTextActive: {
         color: '#FFFFFF',
     },
-    scrollView: {
-        flex: 1,
+    scrollContent: {
+        paddingBottom: 120,
     },
     productsList: {
         padding: 16,

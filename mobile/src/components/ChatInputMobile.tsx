@@ -1,6 +1,7 @@
 // Remplacement des Ionicons par des emojis pour éviter les crashes
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -52,6 +53,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     const [text, setText] = useState('');
     const [images, setImages] = useState<string[]>([]);
     const [audioUri, setAudioUri] = useState<string | null>(null);
+    const [audioBase64, setAudioBase64] = useState<string | null>(null);
     const [videos, setVideos] = useState<string[]>([]);
     const [documents, setDocuments] = useState<string[]>([]); // PDFs et autres docs en base64
     const [excelFiles, setExcelFiles] = useState<string[]>([]); // Fichiers Excel en base64
@@ -569,6 +571,8 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             setRecording(newRecording);
             setIsRecording(true);
             setRecordingDuration(0);
+            setAudioUri(null);
+            setAudioBase64(null);
             console.log('[ChatInput] ✅ Enregistrement démarré avec succès');
         } catch (error) {
             console.error('[ChatInput] ❌ Erreur complète enregistrement:', error);
@@ -610,9 +614,21 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 
             if (uri) {
                 setAudioUri(uri);
+                try {
+                    const base64Audio = await FileSystem.readAsStringAsync(uri, {
+                        encoding: FileSystem.EncodingType.Base64,
+                    });
+                    setAudioBase64(base64Audio);
+                    console.log('[ChatInput] ✅ Audio converti en base64 (taille):', base64Audio.length);
+                } catch (fsError) {
+                    console.error('[ChatInput] ❌ Erreur conversion audio en base64:', fsError);
+                    Alert.alert('Erreur', 'Impossible de traiter l\'audio enregistré.');
+                    setAudioBase64(null);
+                }
                 console.log('✅ Audio enregistré avec succès:', uri);
             } else {
                 console.warn('⚠️ Pas d\'URI audio généré');
+                setAudioBase64(null);
             }
 
             setRecording(null);
@@ -639,7 +655,10 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 
     const removeAudio = () => {
         setAudioUri(null);
+        setAudioBase64(null);
+        setRecordingDuration(0);
         setIsRecording(false);
+        setRecordingDuration(0);
     };
 
     const removeGPS = () => {
@@ -681,7 +700,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             texte: finalText,
             text: finalText,
             base64_image: mapBase64(images),
-            audio_base64: audioUri ? [extractBase64Value(audioUri)] : [],
+            audio_base64: audioBase64 ? [audioBase64] : [],
             video_base64: mapBase64(videos),
             doc_base64: mapBase64(documents),
             excel_base64: mapBase64(excelFiles),
@@ -706,6 +725,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         setLogo([]);
         setBanner([]);
         setAudioUri(null);
+        setAudioBase64(null);
         setGpsData(null);
         setGpsString('');
         setSuggestions([]);
@@ -717,7 +737,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     const handleSubmit = (overrideText?: string) => {
         const finalText = (overrideText ?? text).trim();
         const hasContent = finalText || images.length > 0 || documents.length > 0 ||
-            videos.length > 0 || excelFiles.length > 0 || audioUri;
+            videos.length > 0 || excelFiles.length > 0 || audioBase64;
 
         if (!hasContent) {
             Alert.alert('Erreur', 'Veuillez saisir du texte ou ajouter des médias');

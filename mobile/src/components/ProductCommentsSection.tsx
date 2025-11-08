@@ -835,7 +835,7 @@ const styles = StyleSheet.create({
     },
     previewCard: {
         padding: 0,
-        overflow: 'hidden',
+        overflow: 'visible',
         borderWidth: 1,
         borderColor: '#E2E8F0',
         borderRadius: 18,
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
     },
     viewAllButton: {
         backgroundColor: modernColors.primary,
-        paddingHorizontal: 16,
+        paddingHorizontal: 18,
         paddingVertical: 10,
         borderRadius: 999,
         flexDirection: 'row',
@@ -871,6 +871,8 @@ const styles = StyleSheet.create({
         gap: 8,
         marginLeft: 12,
         flexShrink: 0,
+        minWidth: 130,
+        justifyContent: 'center',
     },
     viewAllText: {
         color: '#FFFFFF',

@@ -68,6 +68,34 @@ const formatCompactNumber = (value: number | undefined | null): string => {
   return `${value}`;
 };
 
+const splitWithFallback = (input: any, primary?: string): string[] => {
+  if (!input || typeof input !== 'string') {
+    return [];
+  }
+
+  const cleaned = input.trim();
+  if (!cleaned) {
+    return [];
+  }
+
+  const separators = [primary, ',', ';', '>', '|', ' / ']
+    .filter((sep): sep is string => !!sep && typeof sep === 'string')
+    .filter((sep, index, list) => list.indexOf(sep) === index);
+
+  for (const separator of separators) {
+    const parts = cleaned
+      .split(separator)
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+
+    if (parts.length > 1) {
+      return parts;
+    }
+  }
+
+  return [cleaned];
+};
+
 // Mapper codes pays → drapeaux emoji
 const getCountryFlag = (country?: string): string => {
   const countryMap: Record<string, string> = {
@@ -131,12 +159,28 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
 
   // Données produit
-  const productVector = product.product_vector || product.characteristic_vector || [];
-  const locationVector = product.location_vector || [];
+  const productVector = Array.isArray(product.product_vector)
+    ? product.product_vector
+    : Array.isArray(product.characteristic_vector)
+      ? product.characteristic_vector
+      : typeof product.product_vector === 'string'
+        ? splitWithFallback(product.product_vector, ',')
+        : [];
+
+  const rawLocationVector = product.location_vector || product.locationVector || product.location?.vector;
+  const locationVector = Array.isArray(rawLocationVector)
+    ? rawLocationVector.filter(Boolean)
+    : typeof rawLocationVector === 'string'
+      ? splitWithFallback(rawLocationVector, ',')
+      : [];
 
   // ✅ AMÉLIORATION: Afficher quartier en priorité, puis ville, puis région
   const chosenLocation = product.chosen_location ||
     locationVector[0] || // Premier élément = lieu exact choisi par prestataire
+    product.adresse ||
+    product.address ||
+    service?.data?.adresse?.valeur ||
+    service?.data?.adresse_service?.valeur ||
     '';
 
   const hasVariant = product.has_variant || false;
@@ -151,6 +195,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
         service?.data?.contact_nom?.valeur ||
         service?.data?.nom_prestataire ||
         service?.data?.prestataire_nom ||
+        product?.prestataire_nom ||
+        product?.prestataire_name ||
+        product?.owner_name ||
+        product?.vendor_name ||
         'Prestataire',
       user_id: service?.user_id,
       avatar_url: service?.data?.photo_prestataire?.valeur,
@@ -161,9 +209,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
     rawPrestataire?.nom_complet ||
     rawPrestataire?.name ||
     rawPrestataire?.username ||
+    rawPrestataire?.display_name ||
     product.prestataire_nom ||
+    product.prestataire_name ||
     product.prestataire?.nom ||
     product.prestataire?.nom_complet ||
+    product.prestataire?.name ||
     service?.data?.nom_prestataire?.valeur ||
     service?.data?.prestataire_nom?.valeur ||
     service?.data?.contact_nom?.valeur ||
@@ -176,6 +227,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
     rawPrestataire?.photo_profil ||
     rawPrestataire?.photo ||
     product.prestataire_avatar ||
+    product.prestataire?.avatar_url ||
+    product.prestataire?.avatar ||
     service?.data?.photo_prestataire?.valeur ||
     service?.data?.photo_profil?.valeur;
 
@@ -229,7 +282,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const devise = product.devise || variants[0]?.devise || 'XAF';
 
   // Distance
-  const distanceKm = product.distance_km;
+  const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance ?? product.distance_client;
+  const distanceKm = typeof rawDistance === 'string'
+    ? parseFloat(rawDistance)
+    : typeof rawDistance === 'number'
+      ? rawDistance
+      : undefined;
+  const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm);
 
   // Pays (pour drapeau)
   const pays = locationVector[locationVector.length - 1] ||
@@ -457,347 +516,356 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <>
-      <NativeCard
-        padding={0}
-        style={[styles.cardContainer, !hasMedia && styles.cardContainerCompact]}
+      <LinearGradient
+        colors={['rgba(79, 70, 229, 0.14)', 'rgba(14, 165, 233, 0.08)', 'rgba(255, 255, 255, 0.6)']}
+        style={styles.cardGradient}
       >
-        <TouchableOpacity
-          style={styles.touchableContainer}
-          activeOpacity={0.9}
-          onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
+        <NativeCard
+          padding={0}
+          style={[styles.cardContainer, !hasMedia && styles.cardContainerCompact]}
         >
-          {/* Carousel d'images/vidéos avec support variation */}
-          {hasMedia && (
-            <View style={styles.imageContainer}>
-              <ProductMediaCarousel
-                images={images}
-                videos={videos}
-                variantImage={variantImage}
-                onImagePress={() => {
-                  // ✅ NOUVEAU : Ouvrir galerie complète du prestataire
-                  setShowGallery(true);
-                }}
-              />
+          <TouchableOpacity
+            style={styles.touchableContainer}
+            activeOpacity={0.9}
+            onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
+          >
+            {/* Carousel d'images/vidéos avec support variation */}
+            {hasMedia && (
+              <View style={styles.imageContainer}>
+                <ProductMediaCarousel
+                  images={images}
+                  videos={videos}
+                  variantImage={variantImage}
+                  onImagePress={() => {
+                    // ✅ NOUVEAU : Ouvrir galerie complète du prestataire
+                    setShowGallery(true);
+                  }}
+                />
 
-              {/* Badge pays (coin supérieur droit) */}
-              {countryFlag && (
-                <View style={styles.countryBadge}>
-                  <Text style={styles.countryFlag}>{countryFlag}</Text>
-                </View>
-              )}
-
-              {/* Badge distance (coin supérieur gauche) */}
-              {distanceKm !== undefined && distanceKm !== null && (
-                <View style={styles.distanceBadge}>
-                  <SafeIcon name="navigation" size={12} color="#FFF" />
-                  <Text style={styles.distanceText}>
-                    {distanceKm < 1
-                      ? `${Math.round(distanceKm * 1000)}m`
-                      : `${distanceKm.toFixed(1)}km`}
-                  </Text>
-                </View>
-              )}
-
-              {/* ✅ NOUVEAU : Badge popularité (coin inférieur gauche) */}
-              {isTrending && (
-                <View style={styles.trendingBadge}>
-                  <Text style={styles.trendingEmoji}>🔥🔥</Text>
-                  <Text style={styles.trendingText}>Tendance</Text>
-                  <Text style={styles.trendingCount}>{usageCount}×</Text>
-                </View>
-              )}
-              {!isTrending && isPopular && (
-                <View style={styles.popularBadge}>
-                  <Text style={styles.popularEmoji}>🔥</Text>
-                  <Text style={styles.popularText}>Populaire</Text>
-                  <Text style={styles.popularCount}>{usageCount}×</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          <View style={[styles.content, !hasMedia && styles.contentCompact]}>
-            {topStatsData.length > 0 && (
-              <View style={styles.topStatsRow}>
-                {topStatsData.map((stat) => (
-                  <View
-                    key={stat.key}
-                    style={[
-                      styles.topStatPill,
-                      { backgroundColor: `${stat.tint}12` },
-                    ]}
-                  >
-                    <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
-                    <Text style={[styles.topStatValue, { color: stat.tint }]}>
-                      {formatCompactNumber(stat.value)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Nom produit */}
-            <Text style={styles.productName} numberOfLines={2}>
-              {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
-            </Text>
-
-            {/* Prestataire cliquable */}
-            {prestataire.nom && (
-              <TouchableOpacity
-                style={styles.prestataireRow}
-                onPress={() => {
-                  if (prestataire.user_id) {
-                    navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
-                  }
-                }}
-              >
-                {prestataire.avatar_url ? (
-                  <Image
-                    source={{ uri: prestataire.avatar_url }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <SafeIcon name="user" size={14} color="#FFF" />
+                {/* Badge pays (coin supérieur droit) */}
+                {countryFlag && (
+                  <View style={styles.countryBadge}>
+                    <Text style={styles.countryFlag}>{countryFlag}</Text>
                   </View>
                 )}
-                <Text style={styles.prestataireName} numberOfLines={1}>
-                  {prestataire.nom}
-                </Text>
-                <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
 
-            {/* ✅ AMÉLIORATION: Localisation hiérarchique détaillée */}
-            {chosenLocation && (
-              <View style={styles.locationSection}>
-                <View style={styles.locationRow}>
-                  <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                  <Text style={styles.locationTextPrimary} numberOfLines={1}>
-                    {chosenLocation}
-                  </Text>
-                  {countryFlag && (
-                    <Text style={styles.locationFlag}>{countryFlag}</Text>
-                  )}
-                </View>
-                {/* Hiérarchie complète (ville > région > pays) */}
-                {locationVector.length > 1 && (
-                  <View style={styles.locationHierarchy}>
-                    <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
-                    <Text style={styles.locationTextSecondary} numberOfLines={1}>
-                      {locationVector.slice(1).join(' › ')}
+                {/* Badge distance (coin supérieur gauche) */}
+                {distanceKm !== undefined && distanceKm !== null && (
+                  <View style={styles.distanceBadge}>
+                    <SafeIcon name="navigation" size={12} color="#FFF" />
+                    <Text style={styles.distanceText}>
+                      {distanceKm < 1
+                        ? `${Math.round(distanceKm * 1000)}m`
+                        : `${distanceKm.toFixed(1)}km`}
                     </Text>
+                  </View>
+                )}
+
+                {/* ✅ NOUVEAU : Badge popularité (coin inférieur gauche) */}
+                {isTrending && (
+                  <View style={styles.trendingBadge}>
+                    <Text style={styles.trendingEmoji}>🔥🔥</Text>
+                    <Text style={styles.trendingText}>Tendance</Text>
+                    <Text style={styles.trendingCount}>{usageCount}×</Text>
+                  </View>
+                )}
+                {!isTrending && isPopular && (
+                  <View style={styles.popularBadge}>
+                    <Text style={styles.popularEmoji}>🔥</Text>
+                    <Text style={styles.popularText}>Populaire</Text>
+                    <Text style={styles.popularCount}>{usageCount}×</Text>
                   </View>
                 )}
               </View>
             )}
 
-            {(totalReactions > 0 || usageCount > 0) && (
-              <LinearGradient
-                colors={['#EEF2FF', '#FFFFFF']}
-                style={styles.metricsCard}
-              >
-                <View style={styles.compactStatsRow}>
-                  {totalReactions > 0 && (
-                    <View style={styles.compactStatPillMuted}>
-                      <Text style={styles.compactStatEmoji}>🎭</Text>
-                      <Text style={styles.compactStatValue}>{totalReactions}</Text>
-                      <Text style={styles.compactStatLabel}>réactions</Text>
-                    </View>
-                  )}
-
-                  {usageCount > 0 && (
-                    <View style={styles.compactStatPillMuted}>
-                      <Text style={styles.compactStatEmoji}>🔥</Text>
-                      <Text style={styles.compactStatValue}>{usageCount}</Text>
-                      <Text style={styles.compactStatLabel}>recherches</Text>
-                    </View>
-                  )}
-                </View>
-              </LinearGradient>
-            )}
-
-            {/* Caractéristiques (vecteur produit) en chips */}
-            {productVector.length > 0 && (
-              <View style={styles.characteristicsSection}>
-                <View style={styles.sectionHeader}>
-                  <SafeIcon name="tag" size={14} color="#6B7280" />
-                  <Text style={styles.sectionTitle}>Caractéristiques</Text>
-                </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.chipsScroll}
-                >
-                  {productVector.map((carac: string, i: number) => (
-                    <View key={i} style={styles.chip}>
-                      <Text style={styles.chipText}>{carac}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Prix avec variations */}
-            {hasVariant && variants.length > 0 ? (
-              <View style={styles.priceVariations}>
-                <View style={styles.sectionHeader}>
-                  <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
-                  <Text style={styles.sectionTitle}>
-                    Prix selon {product.variant_dimension || 'variante'}
-                  </Text>
-                </View>
-
-                <View style={styles.priceTable}>
-                  <View style={styles.priceTableHeader}>
-                    <Text style={styles.tableHeaderText}>Variante</Text>
-                    <Text style={styles.tableHeaderText}>Prix</Text>
-                    <Text style={styles.tableHeaderText}>Stock</Text>
-                  </View>
-
-                  {variants.slice(0, 5).map((variant: any, i: number) => (
-                    <TouchableOpacity
-                      key={i}
+            <View style={[styles.content, !hasMedia && styles.contentCompact]}>
+              {topStatsData.length > 0 && (
+                <View style={styles.topStatsRow}>
+                  {topStatsData.map((stat) => (
+                    <View
+                      key={stat.key}
                       style={[
-                        styles.priceRow,
-                        selectedVariantIndex === i && styles.priceRowSelected
+                        styles.topStatPill,
+                        { backgroundColor: `${stat.tint}12` },
                       ]}
-                      onPress={() => {
-                        // Sélectionner la variation pour afficher son image
-                        setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
-                      }}
                     >
-                      <View style={styles.cellVariant}>
-                        {/* Image de la variation si existe */}
-                        {variant.image && (
-                          <Image
-                            source={{ uri: variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}` }}
-                            style={styles.variantImageThumb}
-                            resizeMode="cover"
-                          />
-                        )}
-                        <Text style={styles.variantValue}>{variant.value || variant.valeur}</Text>
-                      </View>
-                      <View style={styles.cellPrice}>
-                        <Text style={styles.variantPrice}>
-                          {variant.prix?.toLocaleString()}
-                        </Text>
-                        <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
-                      </View>
-                      <View style={styles.cellStock}>
-                        <View style={[
-                          styles.stockBadge,
-                          (variant.stock || 0) > 5 ? styles.stockOK :
-                            (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
-                        ]}>
-                          <Text style={styles.stockText}>
-                            {(variant.stock || 0) > 0 ? `${variant.stock}` : '0'}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
+                      <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+                      <Text style={[styles.topStatValue, { color: stat.tint }]}>
+                        {formatCompactNumber(stat.value)}
+                      </Text>
+                    </View>
                   ))}
-
-                  {variants.length > 5 && (
-                    <Text style={styles.moreVariantsText}>
-                      +{variants.length - 5} autres variantes
-                    </Text>
-                  )}
                 </View>
+              )}
 
-                <View style={styles.priceFromContainer}>
-                  <Text style={styles.priceFromLabel}>À partir de</Text>
-                  <Text style={styles.priceFromValue}>
-                    {displayPrice.toLocaleString()} {devise}
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.priceUniqueContainer}>
-                <Text style={styles.priceLabel}>Prix</Text>
-                <View style={styles.priceRow}>
-                  <Text style={styles.price}>
-                    {displayPrice.toLocaleString()}
-                  </Text>
-                  <Text style={styles.priceDevise}>{devise}</Text>
-                </View>
-              </View>
-            )}
+              {/* Nom produit */}
+              <Text style={styles.productName} numberOfLines={2}>
+                {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
+              </Text>
 
-            {/* Actions */}
-            <View style={styles.actions}>
-              <NativeButton
-                title="💬 Chat"
-                variant="primary"
-                onPress={handleChatPress}
-                style={styles.actionButton}
-              />
-              <NativeButton
-                title="👁️ Voir"
-                variant="secondary"
-                onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
-                style={styles.actionButton}
-              />
-            </View>
-
-            {/* ✅ NOUVEAU : Actions secondaires (Galerie, Partage) */}
-            <View style={styles.secondaryActions}>
-              {hasMedia && (
+              {/* Prestataire cliquable */}
+              {prestataire.nom && (
                 <TouchableOpacity
-                  style={styles.secondaryActionButton}
-                  onPress={() => setShowGallery(true)}
+                  style={styles.prestataireRow}
+                  onPress={() => {
+                    if (prestataire.user_id) {
+                      navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
+                    }
+                  }}
                 >
-                  <SafeIcon name="image" size={18} color={modernColors.primary} />
-                  <Text style={styles.secondaryActionText}>Galerie</Text>
+                  {prestataire.avatar_url ? (
+                    <Image
+                      source={{ uri: prestataire.avatar_url }}
+                      style={styles.avatar}
+                    />
+                  ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <SafeIcon name="user" size={14} color="#FFF" />
+                    </View>
+                  )}
+                  <Text style={styles.prestataireName} numberOfLines={1}>
+                    {prestataire.nom}
+                  </Text>
+                  <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
                 </TouchableOpacity>
               )}
-              <TouchableOpacity
-                style={styles.secondaryActionButton}
-                onPress={handleShare}
-              >
-                <SafeIcon name="share" size={18} color={modernColors.primary} />
-                <Text style={styles.secondaryActionText}>Partager</Text>
-              </TouchableOpacity>
-            </View>
 
-            {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
-              <ProductCommentsSection
-                serviceId={commentServiceId}
-                serviceTitle={serviceTitleForComments}
-                onOpenChat={handleContactUser}
-              />
-            )}
+              {/* ✅ AMÉLIORATION: Localisation hiérarchique détaillée */}
+              {chosenLocation && (
+                <View style={styles.locationSection}>
+                  <View style={styles.locationRow}>
+                    <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                    <Text style={styles.locationTextPrimary} numberOfLines={1}>
+                      {chosenLocation}
+                    </Text>
+                    {countryFlag && (
+                      <Text style={styles.locationFlag}>{countryFlag}</Text>
+                    )}
+                  </View>
+                  {/* Hiérarchie complète (ville > région > pays) */}
+                  {locationVector.length > 1 && (
+                    <View style={styles.locationHierarchy}>
+                      <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
+                      <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                        {locationVector.slice(1).join(' › ')}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
 
-            {/* Footer info */}
-            <View style={styles.footer}>
-              {distanceKm !== undefined && distanceKm !== null && (
-                <View style={styles.footerItem}>
-                  <SafeIcon name="map-pin" size={12} color="#9CA3AF" />
-                  <Text style={styles.footerText}>
-                    {distanceKm < 1 ? 'Très proche' : distanceKm < 5 ? 'À proximité' : `${distanceKm.toFixed(0)}km`}
-                  </Text>
+              {(totalReactions > 0 || usageCount > 0) && (
+                <LinearGradient
+                  colors={['#EEF2FF', '#FFFFFF']}
+                  style={styles.metricsCard}
+                >
+                  <View style={styles.compactStatsRow}>
+                    {totalReactions > 0 && (
+                      <View style={styles.compactStatPillMuted}>
+                        <Text style={styles.compactStatEmoji}>🎭</Text>
+                        <Text style={styles.compactStatValue}>{totalReactions}</Text>
+                        <Text style={styles.compactStatLabel}>réactions</Text>
+                      </View>
+                    )}
+
+                    {usageCount > 0 && (
+                      <View style={styles.compactStatPillMuted}>
+                        <Text style={styles.compactStatEmoji}>🔥</Text>
+                        <Text style={styles.compactStatValue}>{usageCount}</Text>
+                        <Text style={styles.compactStatLabel}>recherches</Text>
+                      </View>
+                    )}
+                  </View>
+                </LinearGradient>
+              )}
+
+              {/* Caractéristiques (vecteur produit) en chips */}
+              {productVector.length > 0 && (
+                <View style={styles.characteristicsSection}>
+                  <View style={styles.sectionHeader}>
+                    <SafeIcon name="tag" size={14} color="#6B7280" />
+                    <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipsScroll}
+                  >
+                    {productVector.map((carac: string, i: number) => (
+                      <View key={i} style={styles.chip}>
+                        <Text style={styles.chipText}>{carac}</Text>
+                      </View>
+                    ))}
+                  </ScrollView>
                 </View>
               )}
-              {product.usage_count && (
-                <View style={styles.footerItem}>
-                  <SafeIcon name="eye" size={12} color="#9CA3AF" />
-                  <Text style={styles.footerText}>
-                    {product.usage_count} vues
-                  </Text>
+
+              {/* Prix avec variations */}
+              {hasVariant && variants.length > 0 ? (
+                <View style={styles.priceVariations}>
+                  <View style={styles.sectionHeader}>
+                    <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
+                    <Text style={styles.sectionTitle}>
+                      Prix selon {product.variant_dimension || 'variante'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.priceTable}>
+                    <View style={styles.priceTableHeader}>
+                      <Text style={styles.tableHeaderText}>Variante</Text>
+                      <Text style={styles.tableHeaderText}>Prix</Text>
+                      <Text style={styles.tableHeaderText}>Stock</Text>
+                    </View>
+
+                    {variants.slice(0, 5).map((variant: any, i: number) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={[
+                          styles.priceRow,
+                          selectedVariantIndex === i && styles.priceRowSelected
+                        ]}
+                        onPress={() => {
+                          // Sélectionner la variation pour afficher son image
+                          setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
+                        }}
+                      >
+                        <View style={styles.cellVariant}>
+                          {/* Image de la variation si existe */}
+                          {variant.image && (
+                            <Image
+                              source={{ uri: variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}` }}
+                              style={styles.variantImageThumb}
+                              resizeMode="cover"
+                            />
+                          )}
+                          <Text style={styles.variantValue}>{variant.value || variant.valeur}</Text>
+                        </View>
+                        <View style={styles.cellPrice}>
+                          <Text style={styles.variantPrice}>
+                            {variant.prix?.toLocaleString()}
+                          </Text>
+                          <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
+                        </View>
+                        <View style={styles.cellStock}>
+                          <View style={[
+                            styles.stockBadge,
+                            (variant.stock || 0) > 5 ? styles.stockOK :
+                              (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
+                          ]}>
+                            <Text style={styles.stockText}>
+                              {(variant.stock || 0) > 0 ? `${variant.stock}` : '0'}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+
+                    {variants.length > 5 && (
+                      <Text style={styles.moreVariantsText}>
+                        +{variants.length - 5} autres variantes
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.priceFromContainer}>
+                    <Text style={styles.priceFromLabel}>À partir de</Text>
+                    <Text style={styles.priceFromValue}>
+                      {displayPrice.toLocaleString()} {devise}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.priceUniqueContainer}>
+                  <Text style={styles.priceLabel}>Prix</Text>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.price}>
+                      {displayPrice.toLocaleString()}
+                    </Text>
+                    <Text style={styles.priceDevise}>{devise}</Text>
+                  </View>
                 </View>
               )}
-              {product.created_at && (
-                <View style={styles.footerItem}>
-                  <SafeIcon name="clock" size={12} color="#9CA3AF" />
-                  <Text style={styles.footerText}>
-                    {formatDate(product.created_at)}
-                  </Text>
-                </View>
+
+              {/* Actions */}
+              <View style={styles.actions}>
+                <NativeButton
+                  title="💬 Chat"
+                  variant="primary"
+                  onPress={handleChatPress}
+                  style={styles.actionButton}
+                />
+                <NativeButton
+                  title="👁️ Voir"
+                  variant="secondary"
+                  onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
+                  style={styles.actionButton}
+                />
+              </View>
+
+              {/* ✅ NOUVEAU : Actions secondaires (Galerie, Partage) */}
+              <View style={styles.secondaryActions}>
+                {hasMedia && (
+                  <TouchableOpacity
+                    style={styles.secondaryActionButton}
+                    onPress={() => setShowGallery(true)}
+                  >
+                    <SafeIcon name="image" size={18} color={modernColors.primary} />
+                    <Text style={styles.secondaryActionText}>Galerie</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.secondaryActionButton}
+                  onPress={handleShare}
+                >
+                  <SafeIcon name="share" size={18} color={modernColors.primary} />
+                  <Text style={styles.secondaryActionText}>Partager</Text>
+                </TouchableOpacity>
+              </View>
+
+              {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
+                <ProductCommentsSection
+                  serviceId={commentServiceId}
+                  serviceTitle={serviceTitleForComments}
+                  onOpenChat={handleContactUser}
+                />
               )}
+
+              {/* Footer info */}
+              <View style={styles.footer}>
+                {hasDistance && (
+                  <View style={styles.footerItem}>
+                    <SafeIcon name="map-pin" size={12} color="#9CA3AF" />
+                    <Text style={styles.footerText}>
+                      {distanceKm < 1
+                        ? 'Très proche'
+                        : distanceKm < 5
+                          ? 'À proximité'
+                          : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`}
+                    </Text>
+                  </View>
+                )}
+                {product.usage_count && (
+                  <View style={styles.footerItem}>
+                    <SafeIcon name="eye" size={12} color="#9CA3AF" />
+                    <Text style={styles.footerText}>
+                      {product.usage_count} vues
+                    </Text>
+                  </View>
+                )}
+                {product.created_at && (
+                  <View style={styles.footerItem}>
+                    <SafeIcon name="clock" size={12} color="#9CA3AF" />
+                    <Text style={styles.footerText}>
+                      {formatDate(product.created_at)}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
-      </NativeCard>
+          </TouchableOpacity>
+        </NativeCard>
+      </LinearGradient>
 
       {/* ✅ CORRIGÉ: Modal Chat avec props correctes */}
       {showChatModal && !onChatPress && activeChatPeer?.user_id && (
@@ -854,16 +922,15 @@ const formatDate = (dateStr: string): string => {
 const styles = StyleSheet.create({
   cardContainer: {
     overflow: 'hidden',
-    borderRadius: 24,
-    backgroundColor: '#F8FAFF',
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
     borderWidth: 1,
-    borderColor: '#D9E2FF',
+    borderColor: 'rgba(148, 163, 184, 0.35)',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 6,
-    marginBottom: 18,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 8,
   },
   cardContainerCompact: {
     borderRadius: 24,
@@ -1359,6 +1426,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: modernColors.primary,
+  },
+  cardGradient: {
+    borderRadius: 28,
+    padding: 1,
+    marginBottom: 20,
   },
 });
 

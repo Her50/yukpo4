@@ -2542,122 +2542,199 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           return produitsNode;
         }
 
-        const safeOptions = options ?? {};
+        try {
+          const safeOptions =
+            options && typeof options === 'object' && !Array.isArray(options)
+              ? options
+              : {};
 
-        const {
-          nomFallback = '',
-          deviseFallback = 'XAF',
-          combinationString = '',
-          characteristicVector = [],
-          productLabels = [],
-          origineChamps = 'formulaire'
-        } = safeOptions;
+          const nomFallback =
+            typeof safeOptions.nomFallback === 'string'
+              ? safeOptions.nomFallback
+              : '';
 
-        const buildBaseProduct = () => ({
-          nom: nomFallback,
-          images: [...media.images],
-          base64_image: [...media.images],
-          videos: media.videos ? [...media.videos] : undefined,
-          video_base64: media.videos ? [...media.videos] : undefined,
-          audio_base64: media.audios ? [...media.audios] : undefined,
-          doc_base64: media.documents ? [...media.documents] : undefined,
-          excel_base64: media.excel ? [...media.excel] : undefined,
-          devise: deviseFallback,
-          combinaison_brute: combinationString,
-          characteristic_vector: [...characteristicVector],
-          product_labels: [...productLabels],
-          origine_champs: origineChamps
-        });
+          const deviseFallbackCandidate =
+            typeof safeOptions.deviseFallback === 'string'
+              ? safeOptions.deviseFallback.trim()
+              : '';
+          const deviseFallback =
+            deviseFallbackCandidate.length > 0 ? deviseFallbackCandidate : 'XAF';
 
-        if (!produitsNode) {
-          return {
-            type_donnee: 'listeproduit',
-            valeur: [buildBaseProduct()],
-            origine_champs: origineChamps,
+          const combinationString =
+            typeof safeOptions.combinationString === 'string'
+              ? safeOptions.combinationString
+              : '';
+
+          const characteristicVector: string[] = Array.isArray(
+            safeOptions.characteristicVector
+          )
+            ? safeOptions.characteristicVector
+              .map((entry: any) =>
+                typeof entry === 'string' ? entry.trim() : ''
+              )
+              .filter((entry: string) => entry.length > 0)
+            : [];
+
+          const productLabels: string[] = Array.isArray(
+            safeOptions.productLabels
+          )
+            ? safeOptions.productLabels
+              .map((entry: any) =>
+                typeof entry === 'string' ? entry.trim() : ''
+              )
+              .filter((entry: string) => entry.length > 0)
+            : [];
+
+          const origineChamps =
+            typeof safeOptions.origineChamps === 'string' &&
+              safeOptions.origineChamps.trim().length > 0
+              ? safeOptions.origineChamps.trim()
+              : 'formulaire';
+
+          const buildBaseProduct = () => ({
+            nom: nomFallback,
+            images: [...media.images],
+            base64_image: [...media.images],
+            videos: media.videos ? [...media.videos] : undefined,
+            video_base64: media.videos ? [...media.videos] : undefined,
+            audio_base64: media.audios ? [...media.audios] : undefined,
+            doc_base64: media.documents ? [...media.documents] : undefined,
+            excel_base64: media.excel ? [...media.excel] : undefined,
+            devise: deviseFallback,
+            combinaison_brute: combinationString,
             characteristic_vector: [...characteristicVector],
             product_labels: [...productLabels],
-            combinaison_brute: combinationString
-          } as any;
-        }
+            origine_champs: origineChamps,
+          });
 
-        if (produitsNode.type_donnee === 'listeproduit') {
-          const produitsArray = Array.isArray(produitsNode.valeur) ? [...produitsNode.valeur] : [];
-          if (produitsArray.length === 0) {
-            produitsArray.push(buildBaseProduct());
-          } else {
-            const firstProduct: any = { ...produitsArray[0] };
-            const mergedImages = mergeMediaArrays(firstProduct.images, media.images);
-            if (mergedImages.length > 0) {
-              firstProduct.images = mergedImages;
-              firstProduct.base64_image = mergedImages;
-            }
-
-            if (media.videos?.length) {
-              const mergedVideos = mergeMediaArrays(firstProduct.videos, media.videos);
-              if (mergedVideos.length > 0) {
-                firstProduct.videos = mergedVideos;
-                firstProduct.video_base64 = mergedVideos;
-              }
-            }
-
-            if (media.audios?.length) {
-              const mergedAudios = mergeMediaArrays(firstProduct.audio_base64, media.audios);
-              if (mergedAudios.length > 0) {
-                firstProduct.audio_base64 = mergedAudios;
-              }
-            }
-
-            if (media.documents?.length) {
-              const mergedDocs = mergeMediaArrays(firstProduct.doc_base64, media.documents);
-              if (mergedDocs.length > 0) {
-                firstProduct.doc_base64 = mergedDocs;
-              }
-            }
-
-            if (media.excel?.length) {
-              const mergedExcel = mergeMediaArrays(firstProduct.excel_base64, media.excel);
-              if (mergedExcel.length > 0) {
-                firstProduct.excel_base64 = mergedExcel;
-              }
-            }
-
-            if (!firstProduct.nom) {
-              firstProduct.nom = nomFallback;
-            }
-            if (!firstProduct.devise) {
-              firstProduct.devise = deviseFallback;
-            }
-
-            if (combinationString && !firstProduct.combinaison_brute) {
-              firstProduct.combinaison_brute = combinationString;
-            }
-
-            if (characteristicVector.length && (!Array.isArray(firstProduct.characteristic_vector) || firstProduct.characteristic_vector.length === 0)) {
-              firstProduct.characteristic_vector = [...characteristicVector];
-            }
-
-            if (productLabels.length && (!Array.isArray(firstProduct.product_labels) || firstProduct.product_labels.length === 0)) {
-              firstProduct.product_labels = [...productLabels];
-            }
-
-            if (!firstProduct.origine_champs) {
-              firstProduct.origine_champs = origineChamps;
-            }
-
-            produitsArray[0] = firstProduct;
+          if (!produitsNode) {
+            return {
+              type_donnee: 'listeproduit',
+              valeur: [buildBaseProduct()],
+              origine_champs: origineChamps,
+              characteristic_vector: [...characteristicVector],
+              product_labels: [...productLabels],
+              combinaison_brute: combinationString,
+            } as any;
           }
 
-          return {
-            ...produitsNode,
-            valeur: produitsArray,
-            origine_champs: produitsNode.origine_champs || origineChamps,
-            characteristic_vector: produitsNode.characteristic_vector || [...characteristicVector],
-            product_labels: produitsNode.product_labels || [...productLabels],
-            combinaison_brute: produitsNode.combinaison_brute || combinationString
-          };
-        }
+          if (produitsNode.type_donnee === 'listeproduit') {
+            const produitsArray = Array.isArray(produitsNode.valeur)
+              ? [...produitsNode.valeur]
+              : [];
+            if (produitsArray.length === 0) {
+              produitsArray.push(buildBaseProduct());
+            } else {
+              const firstProduct: any = { ...produitsArray[0] };
+              const mergedImages = mergeMediaArrays(
+                firstProduct.images,
+                media.images
+              );
+              if (mergedImages.length > 0) {
+                firstProduct.images = mergedImages;
+                firstProduct.base64_image = mergedImages;
+              }
 
-        return produitsNode;
+              if (media.videos?.length) {
+                const mergedVideos = mergeMediaArrays(
+                  firstProduct.videos,
+                  media.videos
+                );
+                if (mergedVideos.length > 0) {
+                  firstProduct.videos = mergedVideos;
+                  firstProduct.video_base64 = mergedVideos;
+                }
+              }
+
+              if (media.audios?.length) {
+                const mergedAudios = mergeMediaArrays(
+                  firstProduct.audio_base64,
+                  media.audios
+                );
+                if (mergedAudios.length > 0) {
+                  firstProduct.audio_base64 = mergedAudios;
+                }
+              }
+
+              if (media.documents?.length) {
+                const mergedDocs = mergeMediaArrays(
+                  firstProduct.doc_base64,
+                  media.documents
+                );
+                if (mergedDocs.length > 0) {
+                  firstProduct.doc_base64 = mergedDocs;
+                }
+              }
+
+              if (media.excel?.length) {
+                const mergedExcel = mergeMediaArrays(
+                  firstProduct.excel_base64,
+                  media.excel
+                );
+                if (mergedExcel.length > 0) {
+                  firstProduct.excel_base64 = mergedExcel;
+                }
+              }
+
+              if (!firstProduct.nom) {
+                firstProduct.nom = nomFallback;
+              }
+              if (!firstProduct.devise) {
+                firstProduct.devise = deviseFallback;
+              }
+
+              if (combinationString && !firstProduct.combinaison_brute) {
+                firstProduct.combinaison_brute = combinationString;
+              }
+
+              if (
+                characteristicVector.length &&
+                (!Array.isArray(firstProduct.characteristic_vector) ||
+                  firstProduct.characteristic_vector.length === 0)
+              ) {
+                firstProduct.characteristic_vector = [...characteristicVector];
+              }
+
+              if (
+                productLabels.length &&
+                (!Array.isArray(firstProduct.product_labels) ||
+                  firstProduct.product_labels.length === 0)
+              ) {
+                firstProduct.product_labels = [...productLabels];
+              }
+
+              if (!firstProduct.origine_champs) {
+                firstProduct.origine_champs = origineChamps;
+              }
+
+              produitsArray[0] = firstProduct;
+            }
+
+            return {
+              ...produitsNode,
+              valeur: produitsArray,
+              origine_champs: produitsNode.origine_champs || origineChamps,
+              characteristic_vector:
+                produitsNode.characteristic_vector || [...characteristicVector],
+              product_labels:
+                produitsNode.product_labels || [...productLabels],
+              combinaison_brute:
+                produitsNode.combinaison_brute || combinationString,
+            };
+          }
+
+          return produitsNode;
+        } catch (error) {
+          console.error(
+            '[FormulaireYukpoIntelligentScreen] ⚠️ ensurePrimaryMediaForFirstProduct a échoué',
+            {
+              error,
+              hasMediaImages: !!media?.images?.length,
+              optionsType: typeof options,
+            }
+          );
+          return produitsNode;
+        }
       };
 
       // ✅ SI MODE DUPLICATION PRODUIT (ancienne fonctionnalité)

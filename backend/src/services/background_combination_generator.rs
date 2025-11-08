@@ -3,7 +3,7 @@ use super::exhaustive_combination_generator::ExhaustiveCombinationGenerator;
 use crate::core::types::AppError;
 use crate::state::AppState;
 use sqlx::PgPool;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 // use super::autocomplete_combinations_service;
@@ -133,29 +133,44 @@ async fn save_combinations_batch(
           ai_confidence, created_at, updated_at) ",
     );
 
-    let mut unique_combinations: Vec<Vec<String>> = Vec::new();
-    let mut seen: HashSet<Vec<String>> = HashSet::new();
+    let mut unique_map: HashMap<Vec<String>, (Vec<String>, i32)> = HashMap::new();
 
     for combo in combinations {
-        if seen.insert(combo.clone()) {
-            unique_combinations.push(combo.clone());
-        }
+        let product_key = if combo.len() > 1 {
+            combo[..combo.len() - 1].to_vec()
+        } else {
+            Vec::new()
+        };
+
+        unique_map
+            .entry(product_key)
+            .and_modify(|(stored_combo, count)| {
+                *count += 1;
+                let stored_location = stored_combo.last().map(|s| s.trim()).unwrap_or_default();
+                let candidate_location = combo.last().map(|s| s.trim()).unwrap_or_default();
+
+                // Remplacer si la combinaison stockée est vide ou n'a pas de localisation utile
+                if stored_combo.is_empty()
+                    || (stored_location.is_empty() && !candidate_location.is_empty())
+                {
+                    *stored_combo = combo.clone();
+                }
+            })
+            .or_insert_with(|| (combo.clone(), 1));
     }
 
-    if unique_combinations.is_empty() {
+    if unique_map.is_empty() {
         return Ok(());
     }
 
-    query_builder.push_values(unique_combinations.iter(), |mut b, combo| {
-        // Séparer product_vector et location_vector
-        let product_vector = if combo.len() > 1 {
-            combo[..combo.len() - 1].to_vec()
-        } else {
-            vec![]
-        };
-
-        let location_vector = if !combo.is_empty() {
-            vec![combo.last().unwrap().clone()]
+    query_builder.push_values(unique_map.into_iter(), |mut b, (product_vector, (full_vector, duplicates))| {
+        let location_vector = if !full_vector.is_empty() {
+            let candidate = full_vector.last().cloned().unwrap_or_default();
+            if candidate.trim().is_empty() {
+                Vec::new()
+            } else {
+                vec![candidate]
+            }
         } else {
             Vec::new()
         };
@@ -163,10 +178,10 @@ async fn save_combinations_batch(
         b.push_bind(session_id)
             .push_bind(product_vector) // Pas de &, on donne ownership
             .push_bind(location_vector) // Pas de &, on donne ownership
-            .push_bind(combo)
+            .push_bind(full_vector)
             .push_bind(product_labels)
             .push_bind(location_labels)
-            .push_bind(0_i32) // usage_count
+            .push_bind(duplicates) // usage_count initial = occurrences dans le batch
             .push_bind(false) // is_ai_preferred
             .push_bind(0.0_f32) // ai_confidence
             .push_bind(chrono::Utc::now())

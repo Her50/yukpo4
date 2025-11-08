@@ -141,6 +141,26 @@ export const NativeInput: React.FC<NativeInputProps> = ({
 }) => {
     const [inputHeight, setInputHeight] = React.useState<number | undefined>(undefined);
 
+    React.useEffect(() => {
+        if (!multiline) {
+            return;
+        }
+
+        const textValue = typeof value === 'string' ? value : '';
+        const baseLineHeight = 24;
+        const linesFromBreaks = textValue.split(/\r?\n/).length;
+        const approxLines = textValue.length > 0 ? Math.ceil(textValue.length / 60) : 0;
+        const estimatedLines = Math.max(minLines, linesFromBreaks, approxLines, 1);
+        const estimatedHeight = estimatedLines * baseLineHeight + 24;
+
+        setInputHeight((prev) => {
+            if (!prev || Math.abs(prev - estimatedHeight) > 8) {
+                return estimatedHeight;
+            }
+            return prev;
+        });
+    }, [multiline, value, minLines]);
+
     const containerStyles = [
         styles.inputContainer,
         multiline && styles.inputContainerMultiline,
@@ -317,6 +337,7 @@ const styles = StyleSheet.create({
         color: modernColors.text,
         minHeight: 20,
         flex: 1,
+        width: '100%',
     },
     inputContainerMultiline: {
         minHeight: 160,

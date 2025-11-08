@@ -7,10 +7,11 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   Image,
   RefreshControl,
@@ -22,7 +23,6 @@ import {
   View,
 } from 'react-native';
 import ModernGPSModal from '../components/ModernGPSModal';
-import { NativeCard } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
@@ -125,6 +125,8 @@ const normalizeText = (value: string | null | undefined): string => {
 type SortOption = 'pertinence' | 'proximite' | 'prix_asc' | 'prix_desc';
 type FilterCategory = 'all' | 'with_stock' | 'with_variants' | 'nearby';
 
+const HEADER_HEIGHT = 72;
+
 const extractSearchResults = (response: any): Product[] => {
   if (!response) {
     return [];
@@ -160,6 +162,13 @@ const ResultatBesoinScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { location } = useLocation();
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerTranslate = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT],
+    outputRange: [0, -HEADER_HEIGHT],
+    extrapolate: 'clamp',
+  });
 
   // États recherche
   const [searchQuery, setSearchQuery] = useState('');
@@ -778,52 +787,184 @@ const ResultatBesoinScreen: React.FC = () => {
     }
   }, [filters, location]);
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <NavigatorToolbar
-        title="Recherche intelligente"
-        subtitle={filters.category ? `Filtre: ${filters.category}` : 'Résultats personnalisés'}
-        rightSlot={(
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setShowFilters(!showFilters)}
-          >
-            <SafeIcon name="sliders" size={20} color={modernColors.primary} />
-          </TouchableOpacity>
-        )}
-        showHandle={false}
-        density="compact"
-        backIcon="back"
-      />
+  const renderSuggestions = useCallback(() => {
+    if (!showSuggestions) {
+      return null;
+    }
 
-      {/* ✅ NOUVEAU : Barre de recherche LINÉAIRE avec bouton à droite */}
-      <View style={styles.searchSection}>
-        <View style={styles.searchBarContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder={dynamicPlaceholder || 'Rechercher un produit...'}
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-            onSubmitEditing={() => {
-              try {
-                console.log('[ResultatBesoinScreen] 🔍 Recherche déclenchée (Enter), query:', searchQuery, 'filters:', filters);
-                if (searchQuery.trim()) {
+    if (suggestions.length > 0) {
+      return (
+        <View style={styles.suggestionsContainer}>
+          <View style={styles.suggestionsHeader}>
+            <View style={styles.suggestionsHeaderLeft}>
+              <SafeIcon name="sparkles" size={18} color={modernColors.primary} />
+              <Text style={styles.suggestionsTitle}>Caractéristiques recommandées</Text>
+              <Text style={styles.suggestionsCount}>({suggestions.length})</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.manualSearchButton}
+              onPress={() => {
+                try {
                   setShowSuggestions(false);
-                  searchFinal(searchQuery);
+                  searchFinal(searchQuery || filters);
+                } catch (error) {
+                  console.error('[ResultatBesoinScreen] ❌ Crash recherche manuelle:', error);
                 }
-              } catch (error) {
-                console.error('[ResultatBesoinScreen] ❌ Crash onSubmitEditing:', error);
-              }
+              }}
+            >
+              <SafeIcon name="search" size={16} color={modernColors.primary} />
+              <Text style={styles.manualSearchText}>Rechercher sans suggestion</Text>
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={suggestions}
+            keyExtractor={(_, index) => `suggestion-${index}`}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.suggestionsList}
+            contentContainerStyle={styles.suggestionsContent}
+            renderItem={({ item, index }) => {
+              const chips = getSuggestionVector(item).slice(0, 6);
+              const priceText = typeof item?.prix === 'number'
+                ? `${Math.round(item.prix).toLocaleString()} ${item?.devise || 'XAF'}`
+                : null;
+
+              return (
+                <TouchableOpacity
+                  key={`suggestion-card-${index}`}
+                  style={styles.suggestionCard}
+                  onPress={() => selectSuggestion(item)}
+                >
+                  <View style={styles.suggestionCardHeader}>
+                    <View style={styles.suggestionCardHeaderLeft}>
+                      <SafeIcon name="layers" size={16} color={modernColors.primary} />
+                      <Text style={styles.suggestionCardTitle}>Proposition {index + 1}</Text>
+                    </View>
+                    {item?.usage_count ? (
+                      <View style={styles.suggestionUsagePill}>
+                        <SafeIcon name="flame" size={14} color="#EA580C" />
+                        <Text style={styles.suggestionUsageText}>
+                          {item.usage_count}× recherché
+                        </Text>
+                      </View>
+                    ) : priceText ? (
+                      <Text style={styles.priceText}>{priceText}</Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.vectorChips}>
+                    {chips.map((chip, chipIndex) => (
+                      <View key={`${chip}-${chipIndex}`} style={styles.productChip}>
+                        <Text style={styles.productChipText} numberOfLines={1}>
+                          {chip}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={styles.statsRow}>
+                    {item.chosen_location && (
+                      <View style={styles.locationRow}>
+                        <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                        <Text style={styles.locationText}>{item.chosen_location}</Text>
+                      </View>
+                    )}
+                    {item.has_variant && item.variant_dimension ? (
+                      <Text style={styles.statsText}>⚙️ {item.variant_dimension}</Text>
+                    ) : item.usage_count ? (
+                      <Text style={styles.statsText}>👥 {item.usage_count} recherche(s)</Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.selectButton}>
+                    <SafeIcon name="check-circle" size={16} color={modernColors.primary} />
+                    <Text style={styles.selectButtonText}>Utiliser cette suggestion</Text>
+                  </View>
+                </TouchableOpacity>
+              );
             }}
           />
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.noSuggestionsContainer}>
+        <Text style={styles.noSuggestionsText}>Aucune suggestion</Text>
+        <TouchableOpacity
+          style={styles.manualSearchButton}
+          onPress={() => {
+            try {
+              setShowSuggestions(false);
+              searchFinal(searchQuery || filters);
+            } catch (error) {
+              console.error('[ResultatBesoinScreen] ❌ Crash recherche quand même:', error);
+            }
+          }}
+        >
+          <SafeIcon name="search" size={16} color={modernColors.primary} />
+          <Text style={styles.manualSearchText}>Rechercher quand même</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }, [filters, searchFinal, searchQuery, selectSuggestion, setShowSuggestions, showSuggestions, suggestions]);
+
+  const renderListHeader = useCallback(() => (
+    <View style={styles.listHeaderContainer}>
+      <View style={styles.searchSection}>
+        <View style={styles.searchBarContainer}>
+          <View style={styles.searchInputWrapper}>
+            <SafeIcon name="search" size={18} color="#94A3B8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={dynamicPlaceholder || 'Rechercher un produit...'}
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+              onSubmitEditing={() => {
+                try {
+                  if (searchQuery.trim()) {
+                    setShowSuggestions(false);
+                    searchFinal(searchQuery);
+                  }
+                } catch (error) {
+                  console.error('[ResultatBesoinScreen] ❌ Crash onSubmitEditing:', error);
+                }
+              }}
+            />
+            <View style={styles.searchUtilities}>
+              <TouchableOpacity
+                style={styles.searchUtilityButton}
+                onPress={() => setShowGPSModal(true)}
+              >
+                <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.searchUtilityButton}
+                onPress={takeSearchPhoto}
+              >
+                <SafeIcon name="camera" size={18} color={modernColors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.searchUtilityButton}
+                onPress={chooseSearchImages}
+              >
+                <SafeIcon name="image" size={18} color={modernColors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.searchUtilityButton}
+                onPress={pickSearchDocument}
+              >
+                <SafeIcon name="file" size={18} color={modernColors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
           <TouchableOpacity
             style={styles.searchButton}
             onPress={() => {
               try {
-                console.log('[ResultatBesoinScreen] 🔍 Recherche déclenchée (Bouton), query:', searchQuery, 'filters:', filters);
                 if (searchQuery.trim()) {
                   setShowSuggestions(false);
                   searchFinal(searchQuery);
@@ -839,40 +980,6 @@ const ResultatBesoinScreen: React.FC = () => {
             ) : (
               <SafeIcon name="send" size={20} color="#FFF" />
             )}
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.searchActionsRow}>
-          <TouchableOpacity
-            style={styles.searchActionButton}
-            onPress={() => setShowGPSModal(true)}
-          >
-            <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
-            <Text style={styles.searchActionLabel}>GPS</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.searchActionButton}
-            onPress={takeSearchPhoto}
-          >
-            <SafeIcon name="camera" size={18} color={modernColors.primary} />
-            <Text style={styles.searchActionLabel}>Photo</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.searchActionButton}
-            onPress={chooseSearchImages}
-          >
-            <SafeIcon name="image" size={18} color={modernColors.primary} />
-            <Text style={styles.searchActionLabel}>Images</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.searchActionButton}
-            onPress={pickSearchDocument}
-          >
-            <SafeIcon name="file" size={18} color={modernColors.primary} />
-            <Text style={styles.searchActionLabel}>Fichier</Text>
           </TouchableOpacity>
         </View>
 
@@ -931,170 +1038,80 @@ const ResultatBesoinScreen: React.FC = () => {
             )}
           </View>
         )}
-
-        {/* Raccourcis de tri visibles en permanence */}
-        <View style={styles.quickSortRow}>
-          <TouchableOpacity
-            style={[styles.quickSortPill, sortBy === 'pertinence' && styles.quickSortPillActive]}
-            onPress={() => setSortBy('pertinence')}
-          >
-            <SafeIcon
-              name="zap"
-              size={16}
-              color={sortBy === 'pertinence' ? '#FFFFFF' : modernColors.primary}
-            />
-            <Text
-              style={[styles.quickSortText, sortBy === 'pertinence' && styles.quickSortTextActive]}
-            >
-              Pertinence
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.quickSortPill, sortBy === 'proximite' && styles.quickSortPillActive]}
-            onPress={() => setSortBy('proximite')}
-          >
-            <SafeIcon
-              name="map-pin"
-              size={16}
-              color={sortBy === 'proximite' ? '#FFFFFF' : modernColors.primary}
-            />
-            <Text
-              style={[styles.quickSortText, sortBy === 'proximite' && styles.quickSortTextActive]}
-            >
-              Proximité
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.quickSortPill, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.quickSortPillActive]}
-            onPress={() => {
-              if (sortBy === 'prix_asc') {
-                setSortBy('prix_desc');
-              } else if (sortBy === 'prix_desc') {
-                setSortBy('pertinence');
-              } else {
-                setSortBy('prix_asc');
-              }
-            }}
-          >
-            <SafeIcon
-              name={sortBy === 'prix_desc' ? 'arrow-down' : 'arrow-up'}
-              size={16}
-              color={(sortBy === 'prix_asc' || sortBy === 'prix_desc') ? '#FFFFFF' : modernColors.primary}
-            />
-            <Text
-              style={[styles.quickSortText, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.quickSortTextActive]}
-            >
-              Prix {sortBy === 'prix_desc' ? '↓' : sortBy === 'prix_asc' ? '↑' : ''}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Filtres actifs */}
-        {filters.length > 0 && !showSuggestions && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersScroll}
-          >
-            <Text style={styles.filtersLabel}>Filtres :</Text>
-            {filters.map((filter, index) => (
-              <View key={index} style={styles.filterChip}>
-                <Text style={styles.filterText}>{filter}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        )}
       </View>
 
-      {/* ✅ SUPPRIMÉ TEMPORAIREMENT : ResultsHeader pour identifier le crash
-      {!showSuggestions && filteredResults.length > 0 && (
-        <ResultsHeader
-          title="Produits correspondants"
-          resultsCount={filteredResults.length}
-          onGeolocationPress={() => {
-            // Trier par proximité
-            setSortBy('proximite');
-          }}
-          onPriceFilterPress={() => {
-            // Toggle filtre prix
-            setShowFilters(!showFilters);
-          }}
-          onSortPress={() => {
-            // Toggle panel de tri
-            setShowFilters(!showFilters);
-          }}
-          sortBy={
-            sortBy === 'pertinence' ? 'pertinence' :
-            sortBy === 'proximite' ? 'proximité' :
-            sortBy === 'prix_asc' ? 'prix croissant' :
-            sortBy === 'prix_desc' ? 'prix décroissant' :
-            'pertinence'
-          }
-        />
-      )}
-      */}
+      <View style={styles.quickSortRow}>
+        <TouchableOpacity
+          style={[styles.quickSortPill, sortBy === 'pertinence' && styles.quickSortPillActive]}
+          onPress={() => setSortBy('pertinence')}
+        >
+          <SafeIcon
+            name="zap"
+            size={16}
+            color={sortBy === 'pertinence' ? '#FFFFFF' : modernColors.primary}
+          />
+          <Text style={[styles.quickSortText, sortBy === 'pertinence' && styles.quickSortTextActive]}>
+            Pertinence
+          </Text>
+        </TouchableOpacity>
 
-      {/* Panneau Filtres & Tri */}
+        <TouchableOpacity
+          style={[styles.quickSortPill, sortBy === 'proximite' && styles.quickSortPillActive]}
+          onPress={() => setSortBy('proximite')}
+        >
+          <SafeIcon
+            name="map-pin"
+            size={16}
+            color={sortBy === 'proximite' ? '#FFFFFF' : modernColors.primary}
+          />
+          <Text style={[styles.quickSortText, sortBy === 'proximite' && styles.quickSortTextActive]}>
+            Proximité
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.quickSortPill, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.quickSortPillActive]}
+          onPress={() => {
+            if (sortBy === 'prix_asc') {
+              setSortBy('prix_desc');
+            } else if (sortBy === 'prix_desc') {
+              setSortBy('pertinence');
+            } else {
+              setSortBy('prix_asc');
+            }
+          }}
+        >
+          <SafeIcon
+            name={sortBy === 'prix_desc' ? 'arrow-down' : 'arrow-up'}
+            size={16}
+            color={(sortBy === 'prix_asc' || sortBy === 'prix_desc') ? '#FFFFFF' : modernColors.primary}
+          />
+          <Text style={[styles.quickSortText, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.quickSortTextActive]}>
+            Prix {sortBy === 'prix_desc' ? '↓' : sortBy === 'prix_asc' ? '↑' : ''}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {showFilters && (
         <View style={styles.filtersPanel}>
-          {/* ✅ NOUVEAU : Tri optimisé (prix en toggle) */}
           <View style={styles.filterGroup}>
-            <Text style={styles.filterGroupTitle}>📊 Trier par :</Text>
+            <Text style={styles.filterGroupTitle}>📊 Trier par</Text>
             <View style={styles.filterOptions}>
               <TouchableOpacity
-                style={[
-                  styles.filterOption,
-                  sortBy === 'pertinence' && styles.filterOptionActive,
-                ]}
+                style={[styles.filterOption, sortBy === 'pertinence' && styles.filterOptionActive]}
                 onPress={() => setSortBy('pertinence')}
               >
-                <SafeIcon
-                  name="zap"
-                  size={16}
-                  color={sortBy === 'pertinence' ? '#FFF' : modernColors.primary}
-                />
-                <Text
-                  style={[
-                    styles.filterOptionText,
-                    sortBy === 'pertinence' && styles.filterOptionTextActive,
-                  ]}
-                >
-                  🎯 Pertinence
-                </Text>
+                <Text style={[styles.filterOptionText, sortBy === 'pertinence' && styles.filterOptionTextActive]}>Pertinence</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={[
-                  styles.filterOption,
-                  sortBy === 'proximite' && styles.filterOptionActive,
-                ]}
+                style={[styles.filterOption, sortBy === 'proximite' && styles.filterOptionActive]}
                 onPress={() => setSortBy('proximite')}
               >
-                <SafeIcon
-                  name="map-pin"
-                  size={16}
-                  color={sortBy === 'proximite' ? '#FFF' : modernColors.primary}
-                />
-                <Text
-                  style={[
-                    styles.filterOptionText,
-                    sortBy === 'proximite' && styles.filterOptionTextActive,
-                  ]}
-                >
-                  📍 Proximité
-                </Text>
+                <Text style={[styles.filterOptionText, sortBy === 'proximite' && styles.filterOptionTextActive]}>Proximité</Text>
               </TouchableOpacity>
-
-              {/* ✅ Prix avec toggle croissant/décroissant */}
               <TouchableOpacity
-                style={[
-                  styles.filterOption,
-                  (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.filterOptionActive,
-                ]}
+                style={[styles.filterOption, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.filterOptionActive]}
                 onPress={() => {
-                  // Toggle entre croissant et décroissant
                   if (sortBy === 'prix_asc') {
                     setSortBy('prix_desc');
                   } else if (sortBy === 'prix_desc') {
@@ -1104,393 +1121,280 @@ const ResultatBesoinScreen: React.FC = () => {
                   }
                 }}
               >
-                <SafeIcon
-                  name={sortBy === 'prix_desc' ? 'arrow-down' : 'arrow-up'}
-                  size={16}
-                  color={(sortBy === 'prix_asc' || sortBy === 'prix_desc') ? '#FFF' : modernColors.primary}
-                />
-                <Text
-                  style={[
-                    styles.filterOptionText,
-                    (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.filterOptionTextActive,
-                  ]}
-                >
-                  💰 Prix {sortBy === 'prix_desc' ? '↓' : '↑'}
+                <Text style={[styles.filterOptionText, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.filterOptionTextActive]}>
+                  Prix
                 </Text>
               </TouchableOpacity>
             </View>
+            <Text style={styles.filterHint}>Sélectionnez un ordre de tri pour affiner votre recherche.</Text>
           </View>
 
-          {/* ✅ NOUVEAU : Filtre par prix (de mobile2) */}
           <View style={styles.filterGroup}>
-            <TouchableOpacity
-              style={styles.filterGroupHeader}
-              onPress={() => setShowPriceFilter(!showPriceFilter)}
-            >
-              <Text style={styles.filterGroupTitle}>💰 Filtrer par prix</Text>
-              <SafeIcon
-                name={showPriceFilter ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color={modernColors.primary}
-              />
-            </TouchableOpacity>
-
-            {showPriceFilter && (
-              <View style={styles.priceFilterContainer}>
-                <View style={styles.priceFilterRow}>
-                  <View style={styles.priceInputContainer}>
-                    <Text style={styles.priceLabel}>Prix min</Text>
-                    <TextInput
-                      style={styles.priceInput}
-                      value={priceFilter.min?.toString() || ''}
-                      onChangeText={(text) => setPriceFilter(prev => ({
-                        ...prev,
-                        min: text ? parseFloat(text) : null
-                      }))}
-                      placeholder="0"
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={styles.priceInputContainer}>
-                    <Text style={styles.priceLabel}>Prix max</Text>
-                    <TextInput
-                      style={styles.priceInput}
-                      value={priceFilter.max?.toString() || ''}
-                      onChangeText={(text) => setPriceFilter(prev => ({
-                        ...prev,
-                        max: text ? parseFloat(text) : null
-                      }))}
-                      placeholder="100000"
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
-                <View style={styles.priceFilterActions}>
-                  <TouchableOpacity
-                    style={styles.priceFilterReset}
-                    onPress={() => setPriceFilter({ min: null, max: null, currency: 'XAF' })}
-                  >
-                    <Text style={styles.priceFilterResetText}>Réinitialiser</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.priceFilterApply}
-                    onPress={() => setShowPriceFilter(false)}
-                  >
-                    <Text style={styles.priceFilterApplyText}>Appliquer</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.priceFilterInfo}>
-                  {filteredResults.length} résultat{filteredResults.length > 1 ? 's' : ''} trouvé{filteredResults.length > 1 ? 's' : ''}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Filtres catégories */}
-          <View style={styles.filterGroup}>
-            <Text style={styles.filterGroupTitle}>🔍 Filtrer :</Text>
+            <Text style={styles.filterGroupTitle}>🎯 Catégories rapides</Text>
             <View style={styles.filterOptions}>
-              {[
-                { key: 'all', label: 'Tous' },
-                { key: 'with_stock', label: 'En stock' },
-                { key: 'with_variants', label: 'Avec variations' },
-                { key: 'nearby', label: 'À proximité (<5km)' },
-              ].map((option) => (
-                <TouchableOpacity
-                  key={option.key}
-                  style={[
-                    styles.filterOption,
-                    filterCategory === option.key && styles.filterOptionActive,
-                  ]}
-                  onPress={() => setFilterCategory(option.key as FilterCategory)}
-                >
-                  <Text
-                    style={[
-                      styles.filterOptionText,
-                      filterCategory === option.key && styles.filterOptionTextActive,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* ✅ NOUVEAU : Filtres intelligents dynamiques basés sur product_labels */}
-          {dynamicFilters && Object.keys(dynamicFilters).length > 0 && (
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterGroupTitle}>🎯 Filtres intelligents :</Text>
-              <Text style={styles.filterHint}>
-                Basés sur les produits trouvés
-              </Text>
-
-              {Object.entries(dynamicFilters || {}).map(([label, valuesSet]) => {
-                const values = valuesSet ? Array.from(valuesSet) : [];
+              {([
+                { key: 'all' as FilterCategory, label: 'Tous' },
+                { key: 'with_stock' as FilterCategory, label: 'En stock' },
+                { key: 'with_variants' as FilterCategory, label: 'Variantes' },
+                { key: 'nearby' as FilterCategory, label: 'Proche' },
+              ]).map((category) => {
+                const isActive = filterCategory === category.key;
                 return (
-                  <View key={label} style={styles.dynamicFilterSection}>
-                    <Text style={styles.dynamicFilterLabel}>
-                      {label.charAt(0).toUpperCase() + label.slice(1)} :
-                    </Text>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.dynamicFilterOptions}
-                    >
-                      {/* Option "Tous" pour désélectionner */}
-                      <TouchableOpacity
-                        style={[
-                          styles.dynamicFilterChip,
-                          !selectedFilters[label] && styles.dynamicFilterChipActive,
-                        ]}
-                        onPress={() => {
-                          setSelectedFilters(prev => {
-                            const updated = { ...prev };
-                            delete updated[label];
-                            return updated;
-                          });
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.dynamicFilterChipText,
-                            !selectedFilters[label] && styles.dynamicFilterChipTextActive,
-                          ]}
-                        >
-                          Tous
-                        </Text>
-                      </TouchableOpacity>
-
-                      {values.map((value) => (
-                        <TouchableOpacity
-                          key={value}
-                          style={[
-                            styles.dynamicFilterChip,
-                            selectedFilters[label] === value && styles.dynamicFilterChipActive,
-                          ]}
-                          onPress={() => {
-                            setSelectedFilters(prev => ({
-                              ...prev,
-                              [label]: prev[label] === value ? '' : value,
-                            }));
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.dynamicFilterChipText,
-                              selectedFilters[label] === value && styles.dynamicFilterChipTextActive,
-                            ]}
-                          >
-                            {value}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
+                  <TouchableOpacity
+                    key={category.key}
+                    style={[styles.filterOption, isActive && styles.filterOptionActive]}
+                    onPress={() => setFilterCategory(category.key)}
+                  >
+                    <Text style={[styles.filterOptionText, isActive && styles.filterOptionTextActive]}>{category.label}</Text>
+                  </TouchableOpacity>
                 );
               })}
             </View>
-          )}
-        </View>
-      )}
+          </View>
 
-      {/* Suggestions vecteurs */}
-      {showSuggestions && (
-        <View style={styles.suggestionsContainer}>
-          {loadingSuggestions ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={modernColors.primary} />
-              <Text style={styles.loadingText}>Recherche...</Text>
+          <View style={styles.priceFilterContainer}>
+            <Text style={styles.filterGroupTitle}>💵 Filtre de prix</Text>
+            <View style={styles.priceFilterRow}>
+              <TextInput
+                style={styles.priceFilterInput}
+                placeholder="Min"
+                keyboardType="numeric"
+                value={priceFilter.min !== null ? String(priceFilter.min) : ''}
+                onChangeText={(text) => {
+                  const sanitized = text.replace(/[^0-9]/g, '');
+                  setPriceFilter((prev) => ({
+                    ...prev,
+                    min: sanitized ? parseInt(sanitized, 10) : null,
+                  }));
+                }}
+              />
+              <Text style={styles.priceFilterSeparator}>—</Text>
+              <TextInput
+                style={styles.priceFilterInput}
+                placeholder="Max"
+                keyboardType="numeric"
+                value={priceFilter.max !== null ? String(priceFilter.max) : ''}
+                onChangeText={(text) => {
+                  const sanitized = text.replace(/[^0-9]/g, '');
+                  setPriceFilter((prev) => ({
+                    ...prev,
+                    max: sanitized ? parseInt(sanitized, 10) : null,
+                  }));
+                }}
+              />
             </View>
-          ) : suggestions.length > 0 ? (
-            <>
-              <View style={styles.suggestionsHeader}>
-                <View style={styles.suggestionsHeaderLeft}>
-                  <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                  <Text style={styles.suggestionsTitle}>Caractéristiques recommandées</Text>
-                  <Text style={styles.suggestionsCount}>({suggestions.length})</Text>
-                </View>
-                <TouchableOpacity onPress={() => setShowSuggestions(false)}>
-                  <Text style={styles.closeSuggestions}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                style={styles.suggestionsList}
-                contentContainerStyle={styles.suggestionsContent}
-                nestedScrollEnabled
+            <View style={styles.priceFilterActions}>
+              <TouchableOpacity
+                style={styles.priceFilterReset}
+                onPress={() => setPriceFilter({ min: null, max: null, currency: priceFilter.currency })}
               >
-                {(suggestions || []).map((suggestion, index) => {
-                  const chips = getSuggestionVector(suggestion).slice(0, 6);
-                  const priceText = typeof suggestion?.prix === 'number'
-                    ? `${Math.round(suggestion.prix).toLocaleString()} ${suggestion?.devise || 'XAF'}`
-                    : null;
-                  const accentColor = modernColors?.accent ?? '#F97316';
+                <Text style={styles.priceFilterResetText}>Réinitialiser</Text>
+              </TouchableOpacity>
+              <Text style={styles.priceFilterInfo}>Devise: {priceFilter.currency}</Text>
+            </View>
+          </View>
 
+          {Object.entries(dynamicFilters).map(([label, values]) => (
+            <View key={label} style={styles.dynamicFilterSection}>
+              <View style={styles.filterGroupHeader}>
+                <Text style={styles.dynamicFilterLabel}>{label}</Text>
+                {selectedFilters[label] && (
+                  <TouchableOpacity
+                    onPress={() => setSelectedFilters((prev) => {
+                      const next = { ...prev };
+                      delete next[label];
+                      return next;
+                    })}
+                  >
+                    <Text style={styles.filterHint}>Effacer</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <View style={styles.dynamicFilterOptions}>
+                {Array.from(values).map((value) => {
+                  const isActive = selectedFilters[label] === value;
                   return (
                     <TouchableOpacity
-                      key={index}
-                      style={styles.suggestionCard}
-                      onPress={() => selectSuggestion(suggestion)}
+                      key={value}
+                      style={[styles.dynamicFilterChip, isActive && styles.dynamicFilterChipActive]}
+                      onPress={() => setSelectedFilters((prev) => {
+                        const next = { ...prev };
+                        if (isActive) {
+                          delete next[label];
+                        } else {
+                          next[label] = value;
+                        }
+                        return next;
+                      })}
                     >
-                      <NativeCard>
-                        <View style={styles.suggestionCardHeader}>
-                          <View style={styles.suggestionCardHeaderLeft}>
-                            <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                            <Text style={styles.suggestionCardTitle}>Proposition {index + 1}</Text>
-                          </View>
-
-                          {suggestion?.usage_count ? (
-                            <View style={styles.suggestionUsagePill}>
-                              <SafeIcon name="users" size={12} color={accentColor} />
-                              <Text style={styles.suggestionUsageText}>
-                                {suggestion.usage_count}× recherché
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
-
-                        <View style={styles.vectorChips}>
-                          {chips.map((chip, idx) => (
-                            <View key={`${chip}-${idx}`} style={styles.productChip}>
-                              <Text style={styles.productChipText}>{chip}</Text>
-                            </View>
-                          ))}
-                        </View>
-
-                        {suggestion.chosen_location && (
-                          <View style={styles.locationRow}>
-                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                            <Text style={styles.locationText}>{suggestion.chosen_location}</Text>
-                          </View>
-                        )}
-
-                        <View style={styles.statsRow}>
-                          {suggestion.has_variant && suggestion.variant_dimension ? (
-                            <Text style={styles.statsText}>⚙️ {suggestion.variant_dimension}</Text>
-                          ) : null}
-                          {priceText ? (
-                            <Text style={styles.priceText}>{priceText}</Text>
-                          ) : null}
-                        </View>
-
-                        <View style={styles.selectButton}>
-                          <SafeIcon name="check-circle" size={16} color="#FFF" />
-                          <Text style={styles.selectButtonText}>Utiliser cette suggestion</Text>
-                        </View>
-                      </NativeCard>
+                      <Text style={[styles.dynamicFilterChipText, isActive && styles.dynamicFilterChipTextActive]}>
+                        {value}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
-              </ScrollView>
-
-              <TouchableOpacity
-                style={styles.manualSearchButton}
-                onPress={() => {
-                  try {
-                    console.log('[ResultatBesoinScreen] 🔍 Recherche manuelle sans suggestion, filters:', filters);
-                    setShowSuggestions(false);
-                    searchFinal(filters);
-                  } catch (error) {
-                    console.error('[ResultatBesoinScreen] ❌ Crash recherche manuelle:', error);
-                  }
-                }}
-              >
-                <SafeIcon name="search" size={16} color={modernColors.primary} />
-                <Text style={styles.manualSearchText}>
-                  Rechercher sans suggestion
-                </Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <View style={styles.noSuggestionsContainer}>
-              <Text style={styles.noSuggestionsText}>Aucune suggestion</Text>
-              <TouchableOpacity
-                style={styles.manualSearchButton}
-                onPress={() => {
-                  try {
-                    console.log('[ResultatBesoinScreen] 🔍 Recherche quand même, filters:', filters);
-                    setShowSuggestions(false);
-                    searchFinal(filters);
-                  } catch (error) {
-                    console.error('[ResultatBesoinScreen] ❌ Crash recherche quand même:', error);
-                  }
-                }}
-              >
-                <SafeIcon name="search" size={16} color={modernColors.primary} />
-                <Text style={styles.manualSearchText}>Rechercher quand même</Text>
-              </TouchableOpacity>
+              </View>
             </View>
-          )}
+          ))}
         </View>
       )}
 
-      {/* Résultats */}
-      {!showSuggestions && (
-        <View style={styles.resultsContainer}>
-          {/* Header résultats */}
-          {filteredResults.length > 0 && (
-            <View style={styles.resultsHeader}>
-              <Text style={styles.resultsCount}>
-                {filteredResults.length} résultat{filteredResults.length > 1 ? 's' : ''}
-              </Text>
-              {sortBy !== 'pertinence' && (
-                <Text style={styles.sortInfo}>
-                  Trié par : {
-                    sortBy === 'proximite' ? '📍 Proximité' :
-                      sortBy === 'prix_asc' ? '💰 Prix ↑' :
-                        '💎 Prix ↓'
-                  }
-                </Text>
-              )}
+      {filters.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersScroll}
+        >
+          <Text style={styles.filtersLabel}>Filtres :</Text>
+          {filters.map((filter, index) => (
+            <View key={index} style={styles.filterChip}>
+              <Text style={styles.filterText}>{filter}</Text>
             </View>
-          )}
+          ))}
+        </ScrollView>
+      )}
 
-          {loadingResults ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={modernColors.primary} />
-              <Text style={styles.loadingText}>Recherche en cours...</Text>
-            </View>
-          ) : filteredResults.length > 0 ? (
-            <FlatList
-              data={filteredResults}
-              keyExtractor={(item) => `${item.service_id}`}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={[modernColors.primary]}
-                  tintColor={modernColors.primary}
-                />
+      {!showSuggestions && filteredResults.length > 0 && (
+        <View style={styles.resultsHeader}>
+          <Text style={styles.resultsCount}>
+            {filteredResults.length} résultat{filteredResults.length > 1 ? 's' : ''}
+          </Text>
+          {sortBy !== 'pertinence' && (
+            <Text style={styles.sortInfo}>
+              Trié par : {
+                sortBy === 'proximite' ? '📍 Proximité' :
+                  sortBy === 'prix_asc' ? '💰 Prix ↑' :
+                    '💎 Prix ↓'
               }
-              renderItem={({ item }) => (
-                <ProductCard
-                  product={item}
-                  service={item as any}
-                />
-              )}
-              contentContainerStyle={styles.resultsList}
-              ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-            />
-          ) : searchQuery.length > 0 ? (
-            <View style={styles.emptyState}>
-              <SafeIcon name="package-x" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>Aucun résultat</Text>
-              <Text style={styles.emptyText}>
-                Essayez avec d'autres mots-clés ou ajustez les filtres
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <SafeIcon name="search" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>Recherchez un produit</Text>
-              <Text style={styles.emptyText}>
-                Décrivez ce que vous cherchez en langage naturel
-              </Text>
-            </View>
+            </Text>
           )}
         </View>
       )}
+
+      {showSuggestions && renderSuggestions()}
+    </View>
+  ), [
+    chooseSearchImages,
+    clearSearchGPS,
+    dynamicFilters,
+    dynamicPlaceholder,
+    filterCategory,
+    filteredResults.length,
+    filters,
+    loadingResults,
+    loadingSuggestions,
+    pickSearchDocument,
+    priceFilter,
+    removeSearchDocument,
+    removeSearchImage,
+    renderSuggestions,
+    searchDocuments,
+    searchGPSData,
+    searchGPSString,
+    searchImages,
+    searchQuery,
+    searchFinal,
+    selectedFilters,
+    setFilterCategory,
+    setSelectedFilters,
+    setShowSuggestions,
+    setPriceFilter,
+    showFilters,
+    showSuggestions,
+    sortBy,
+    takeSearchPhoto,
+  ]);
+
+  const renderListFooter = useCallback(() => {
+    if (loadingResults) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={modernColors.primary} />
+          <Text style={styles.loadingText}>Recherche en cours...</Text>
+        </View>
+      );
+    }
+    return <View style={{ height: 16 }} />;
+  }, [loadingResults]);
+
+  const renderEmptyComponent = useCallback(() => {
+    if (showSuggestions || loadingResults) {
+      return null;
+    }
+
+    if (searchQuery.length > 0) {
+      return (
+        <View style={styles.emptyState}>
+          <SafeIcon name="package-x" size={64} color="#D1D5DB" />
+          <Text style={styles.emptyTitle}>Aucun résultat</Text>
+          <Text style={styles.emptyText}>
+            Essayez avec d'autres mots-clés ou ajustez les filtres
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyState}>
+        <SafeIcon name="search" size={64} color="#D1D5DB" />
+        <Text style={styles.emptyTitle}>Recherchez un produit</Text>
+        <Text style={styles.emptyText}>
+          Décrivez ce que vous cherchez en langage naturel
+        </Text>
+      </View>
+    );
+  }, [loadingResults, searchQuery.length, showSuggestions]);
+
+  const listData = showSuggestions ? [] : filteredResults;
+
+  return (
+    <View style={styles.container}>
+      <Animated.View style={[styles.collapsibleHeader, { transform: [{ translateY: headerTranslate }] }]}>
+        <NavigatorToolbar
+          title="Recherche intelligente"
+          subtitle={filters.length > 0 ? `Filtres actifs (${filters.length})` : 'Résultats personnalisés'}
+          rightSlot={(
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setShowFilters(!showFilters)}
+            >
+              <SafeIcon name="sliders" size={20} color={modernColors.primary} />
+            </TouchableOpacity>
+          )}
+          showHandle={false}
+          density="compact"
+          backIcon="back"
+        />
+      </Animated.View>
+
+      <Animated.FlatList
+        data={listData}
+        keyExtractor={(item) => `${item.service_id}`}
+        renderItem={({ item }) => (
+          <ProductCard
+            product={item}
+            service={item as any}
+          />
+        )}
+        ListHeaderComponent={renderListHeader}
+        ListFooterComponent={renderListFooter}
+        ListEmptyComponent={renderEmptyComponent}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[modernColors.primary]}
+            tintColor={modernColors.primary}
+          />
+        }
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+      />
 
       <ModernGPSModal
         visible={showGPSModal}
@@ -1509,94 +1413,71 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  collapsibleHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    elevation: 10,
+  },
   filterButton: {
     padding: 8,
   },
   searchSection: {
     backgroundColor: '#FFF',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingVertical: 16,
+    gap: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
   },
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  quickSortRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    gap: 8,
-  },
-  quickSortPill: {
+  searchInputWrapper: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 14,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#CBD5F5',
-  },
-  quickSortPillActive: {
-    backgroundColor: modernColors.primary,
-    borderColor: modernColors.primary,
-  },
-  quickSortText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: modernColors.primary,
-  },
-  quickSortTextActive: {
-    color: '#FFFFFF',
-  },
-  searchActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  searchActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1,
-    borderColor: '#E0E7FF',
-    gap: 6,
-  },
-  searchActionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: modernColors.primary,
+    borderColor: '#E2E8F0',
+    gap: 10,
   },
   searchInput: {
     flex: 1,
-    height: 48,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 24,
-    paddingHorizontal: 16,
     fontSize: 15,
-    color: '#1F2937',
+    color: '#111827',
+  },
+  searchUtilities: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  searchUtilityButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
   },
   searchButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     backgroundColor: modernColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2002,34 +1883,34 @@ const styles = StyleSheet.create({
   },
   priceFilterContainer: {
     marginTop: 12,
-    gap: 12,
   },
   priceFilterRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
+    marginTop: 8,
   },
-  priceInputContainer: {
+  priceFilterInput: {
     flex: 1,
-  },
-  priceLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  priceInput: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingVertical: 10,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
     paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     fontSize: 14,
-    color: '#1F2937',
-    backgroundColor: '#FFFFFF',
+    color: '#0F172A',
+  },
+  priceFilterSeparator: {
+    fontSize: 18,
+    color: '#64748B',
+    fontWeight: '600',
   },
   priceFilterActions: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
   },
   priceFilterReset: {
     flex: 1,
@@ -2068,15 +1949,11 @@ const styles = StyleSheet.create({
   // ✅ NOUVEAU : Styles pour les raccourcis de tri
   quickSortRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
     alignItems: 'center',
-    marginTop: 12,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 8,
   },
   quickSortPill: {
     flexDirection: 'row',
@@ -2099,6 +1976,16 @@ const styles = StyleSheet.create({
   },
   quickSortTextActive: {
     color: '#FFFFFF',
+  },
+  listHeaderContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  listContent: {
+    paddingTop: HEADER_HEIGHT + 16,
+    paddingHorizontal: 16,
+    paddingBottom: 80,
   },
 });
 

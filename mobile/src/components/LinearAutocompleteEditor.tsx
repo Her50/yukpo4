@@ -211,6 +211,34 @@ const normalizePopularProductsResponse = (response: any): PopularProduct[] => {
     return [];
 };
 
+const smartSplit = (input: string, primarySeparator?: string): string[] => {
+    if (!input || typeof input !== 'string') {
+        return [];
+    }
+
+    const cleaned = input.trim();
+    if (!cleaned) {
+        return [];
+    }
+
+    const fallbackSeparators = [primarySeparator, ',', ';', '|', '•', ' - ', ' / ']
+        .filter((sep): sep is string => !!sep && typeof sep === 'string')
+        .filter((sep, index, array) => array.indexOf(sep) === index);
+
+    for (const separator of fallbackSeparators) {
+        const parts = cleaned
+            .split(separator)
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0);
+
+        if (parts.length > 1) {
+            return parts;
+        }
+    }
+
+    return [cleaned];
+};
+
 const determineLabelOrder = (
     values: string[] = [],
     sousCaracs: Record<string, any> = {}
@@ -362,10 +390,9 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
         if (!separateur || typeof separateur !== 'string') {
             console.warn('[LinearAutocompleteEditor] ⚠️ separateur n\'est pas une string:', typeof separateur);
-            return [];
         }
 
-        const parts = vectorStr.split(separateur).map(p => p.trim()).filter(p => p);
+        const parts = smartSplit(vectorStr, separateur);
         const subCharKeys = Object.keys(sousCaracteristiques || {});
 
         return parts.map((value, index) => {
@@ -380,13 +407,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     };
 
     const vectorParts = useMemo(() => {
-        if (!displayValue || typeof displayValue !== 'string' || !separateur || typeof separateur !== 'string') {
+        if (!displayValue || typeof displayValue !== 'string') {
             return [] as string[];
         }
-        return displayValue
-            .split(separateur)
-            .map((part) => part.trim())
-            .filter(Boolean);
+        return smartSplit(displayValue, separateur);
     }, [displayValue, separateur]);
 
     const labelOrder = useMemo(() => determineLabelOrder(vectorParts, sousCaracteristiques), [vectorParts, sousCaracteristiques]);
@@ -499,7 +523,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             return;
         }
 
-        const parts = firstCombo.split(separateur || ',').map((part) => part.trim()).filter(Boolean);
+        const parts = smartSplit(firstCombo, separateur || ',').map(part => part.trim()).filter(Boolean);
         const seedQuery = parts[0];
         const contextTokens = buildSearchTokens(parts.join(' '));
 
@@ -525,10 +549,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                 if (typeof combo !== 'string') {
                                     return '';
                                 }
-                                const vectorParts = combo
-                                    .split(separateur || ',')
-                                    .map((part) => part.trim())
-                                    .filter(Boolean);
+                                const vectorParts = smartSplit(combo, separateur || ',');
                                 return buildCombinationKey(vectorParts, []);
                             })
                             .filter(Boolean)
@@ -659,7 +680,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             return;
         }
 
-        const parts = displayValue.split(separateur).map(p => p.trim());
+        const parts = smartSplit(displayValue, separateur);
         parts[editingChipIndex] = newValue.trim();
 
         const newVector = parts.join(separateur);
@@ -691,7 +712,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             return;
                         }
 
-                        const parts = displayValue.split(separateur).map(p => p.trim());
+                        const parts = smartSplit(displayValue, separateur);
                         parts.splice(chipIndex, 1);
 
                         const newVector = parts.join(separateur);
@@ -712,7 +733,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         // ✅ PROTECTION ULTIME: Vérifier que separateur et displayValue sont des strings
         const safeSeparateur = (separateur && typeof separateur === 'string') ? separateur : ',';
         const parts = (displayValue && typeof displayValue === 'string')
-            ? displayValue.split(safeSeparateur).map(p => p.trim())
+            ? smartSplit(displayValue, safeSeparateur)
             : [];
         parts.push(newCharValue.trim());
 
@@ -758,7 +779,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         if (value && value.length > 0 && value[0] && separateur) {
             const firstValue = value[0];
             if (typeof firstValue === 'string' && typeof separateur === 'string') {
-                const allValues = firstValue.split(separateur).map(v => v.trim()).filter(v => v);
+                const allValues = smartSplit(firstValue, separateur);
                 if (allValues.length > 6) {
                     return `🤖 Ex: ${allValues.slice(0, 5).join(' • ')}... (+${allValues.length - 5})`;
                 } else if (allValues.length > 0) {
@@ -772,7 +793,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         if ((!displayValue || displayValue.length === 0) && iaCombinaisons.length > 0) {
             const combo = iaCombinaisons[0];
             if (typeof combo === 'string') {
-                const parts = combo.split(separateur || ',').map(v => v.trim()).filter(Boolean);
+                const parts = smartSplit(combo, separateur || ',').map(v => v.trim()).filter(Boolean);
                 if (parts.length > 0) {
                     return `✨ ${parts.slice(0, 6).join(' • ')}`;
                 }
@@ -877,10 +898,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                                 if (typeof combo !== 'string') {
                                                     return '';
                                                 }
-                                                const vectorParts = combo
-                                                    .split(separateur || ',')
-                                                    .map((part) => part.trim())
-                                                    .filter(Boolean);
+                                                const vectorParts = smartSplit(combo, separateur || ',');
                                                 return buildCombinationKey(vectorParts, []);
                                             })
                                             .filter(Boolean)
@@ -1161,7 +1179,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 <View style={styles.iaCombosContainer}>
                     <Text style={styles.iaCombosTitle}>✨ Combinaisons proposées par l'IA</Text>
                     {iaCombinaisons.map((combo, index) => {
-                        const parts = (combo || '').split(separateur || ',').map(part => part.trim()).filter(Boolean);
+                        const parts = smartSplit(combo || '', separateur || ',').map(part => part.trim()).filter(Boolean);
                         const keys = Object.keys(sousCaracteristiques || {});
                         const iaRows = buildLabeledPairs(parts, labelOrder, labelOrder);
 
