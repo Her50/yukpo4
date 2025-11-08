@@ -87,7 +87,12 @@ const MediaManager: React.FC<MediaManagerProps> = ({ mediaFiles, onMediaChange, 
                 <Text style={styles.title}>Gestion des médias</Text>
 
                 {/* Tabs */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsContainer}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.tabsContainer}
+                    nestedScrollEnabled
+                >
                     {tabs.map(tab => (
                         <TouchableOpacity
                             key={tab.key}

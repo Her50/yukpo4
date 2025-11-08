@@ -1923,6 +1923,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             sousCaracteristiques={currentSousCaracs || {}} // ✅ PROTECTION: Garantir objet valide
             separateur={safeSeparateur} // ✅ PROTECTION ULTIME: Garantit string valide
             value={currentValues || []} // ✅ PROTECTION: Garantir array de strings valides
+            contextValues={[
+              valeursFormulaire.categorie_produit,
+              valeursFormulaire.category,
+              valeursFormulaire.description_produit,
+              valeursFormulaire.description,
+              valeursFormulaire.nom_produit,
+              valeursFormulaire.titre_service,
+            ]}
+            categoryValue={valeursFormulaire.categorie_produit || valeursFormulaire.category || ''}
             onChange={(values, updatedSousCaracs) => {
               // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
               if (updatedSousCaracs) {
@@ -3462,6 +3471,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   attachMediaField('banner', compressedMedia.banner, { typeDonnee: 'image', takeFirst: true });
                 }
 
+                let combinationString = '';
+                let characteristicVector: string[] = [];
+                let productLabelsFromAutocomplete: string[] = [];
+                let origineChampsForMedia: string | undefined =
+                  typeof finalServiceData.produits?.origine_champs === 'string'
+                    ? finalServiceData.produits.origine_champs
+                    : undefined;
+
                 // ✅ CRITIQUE 2025-11-02: Transformer autocomplete → listeproduit AVANT envoi
                 if (finalServiceData.produits && finalServiceData.produits.type_donnee === 'autocomplete') {
                   console.log('[FormulaireYukpoIntelligentScreen] 🔄 Transformation autocomplete → listeproduit...');
@@ -3475,7 +3492,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   const descriptionProduit = finalServiceData.description_produit?.valeur || valeursFormulaire.description_produit || '';
                   const deviseProduit = finalServiceData.devise_produit?.valeur || valeursFormulaire.devise_produit || 'XAF';
 
-                  const combinationString = (() => {
+                  combinationString = (() => {
                     if (Array.isArray(autocompleteData?.valeur)) {
                       const firstString = autocompleteData.valeur.find((entry: any) => typeof entry === 'string');
                       if (typeof firstString === 'string') {
@@ -3507,11 +3524,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     return ',';
                   })();
 
-                  const characteristicVector = combinationString
+                  characteristicVector = combinationString
                     ? combinationString.split(effectiveSeparator).map((part) => part.trim()).filter(Boolean)
                     : [];
 
-                  const productLabelsFromAutocomplete = (() => {
+                  productLabelsFromAutocomplete = (() => {
                     if (autocompleteData?.sous_caracteristiques && typeof autocompleteData.sous_caracteristiques === 'object') {
                       return Object.keys(autocompleteData.sous_caracteristiques || {});
                     }
@@ -3520,6 +3537,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     }
                     return [];
                   })();
+
+                  origineChampsForMedia = autocompleteData.origine_champs || 'formulaire';
 
                   // Construire l'objet produit enrichi des médias
                   const produitObj: any = {
@@ -3587,6 +3606,54 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   delete finalServiceData.devise_produit;
 
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Transformation réussie:', finalServiceData.produits);
+                }
+
+                if (finalServiceData.produits && finalServiceData.produits.type_donnee === 'listeproduit') {
+                  const produitsNode = finalServiceData.produits;
+                  const firstProduct =
+                    Array.isArray(produitsNode.valeur) && produitsNode.valeur.length > 0
+                      ? produitsNode.valeur[0]
+                      : undefined;
+
+                  if (!combinationString) {
+                    if (typeof produitsNode.combinaison_brute === 'string') {
+                      combinationString = produitsNode.combinaison_brute;
+                    } else if (typeof firstProduct?.combinaison_brute === 'string') {
+                      combinationString = firstProduct.combinaison_brute;
+                    }
+                  }
+
+                  if (!characteristicVector.length) {
+                    if (Array.isArray(produitsNode.characteristic_vector)) {
+                      characteristicVector = produitsNode.characteristic_vector.filter(
+                        (entry: any) => typeof entry === 'string' && entry.trim().length > 0
+                      );
+                    } else if (Array.isArray(firstProduct?.characteristic_vector)) {
+                      characteristicVector = firstProduct.characteristic_vector.filter(
+                        (entry: any) => typeof entry === 'string' && entry.trim().length > 0
+                      );
+                    }
+                  }
+
+                  if (!productLabelsFromAutocomplete.length) {
+                    if (Array.isArray(produitsNode.product_labels)) {
+                      productLabelsFromAutocomplete = produitsNode.product_labels.filter(
+                        (entry: any) => typeof entry === 'string' && entry.trim().length > 0
+                      );
+                    } else if (Array.isArray(firstProduct?.product_labels)) {
+                      productLabelsFromAutocomplete = firstProduct.product_labels.filter(
+                        (entry: any) => typeof entry === 'string' && entry.trim().length > 0
+                      );
+                    }
+                  }
+
+                  if (!origineChampsForMedia) {
+                    if (typeof produitsNode.origine_champs === 'string' && produitsNode.origine_champs.trim().length > 0) {
+                      origineChampsForMedia = produitsNode.origine_champs.trim();
+                    } else if (typeof firstProduct?.origine_champs === 'string' && firstProduct.origine_champs.trim().length > 0) {
+                      origineChampsForMedia = firstProduct.origine_champs.trim();
+                    }
+                  }
                 }
 
                 finalServiceData.produits = ensurePrimaryMediaForFirstProduct(

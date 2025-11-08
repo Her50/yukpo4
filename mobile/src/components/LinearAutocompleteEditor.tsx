@@ -32,6 +32,8 @@ interface LinearAutocompleteEditorProps {
     placeholder?: string; // ✅ AJOUT: Support pour placeholder personnalisé
     allowCustomModality?: boolean; // ✅ AJOUT: Support pour modalités personnalisées
     filtrable?: boolean; // ✅ AJOUT: Support pour champs filtrables
+    contextValues?: string[]; // ✅ NOUVEAU 2025-11-08 : Textes contextuels (description, titre, etc.)
+    categoryValue?: string; // ✅ NOUVEAU 2025-11-08 : Catégorie principale saisie par le prestataire
 }
 
 interface ChipData {
@@ -111,11 +113,125 @@ const vectorMatchesTokens = (
     );
 };
 
+const computeSuggestionScore = (
+    vector: string[] = [],
+    labels: string[] = [],
+    usageCount: number = 0,
+    isTrending: boolean = false,
+    tokens: string[] = [],
+    categoryTokens: string[] = [],
+): number => {
+    const normalizedVector = vector
+        .filter((item) => typeof item === 'string')
+        .map((item) => normalizeSearchText(item));
+    const normalizedLabels = labels
+        .filter((item) => typeof item === 'string')
+        .map((item) => normalizeSearchText(item));
+
+    let score = usageCount * 2;
+    if (isTrending) {
+        score += 15;
+    }
+
+    const uniqueTokens = Array.from(new Set(tokens));
+    uniqueTokens.forEach((token) => {
+        if (token.length === 0) {
+            return;
+        }
+        if (normalizedVector.some((value) => value.includes(token))) {
+            score += 6;
+        } else if (normalizedLabels.some((value) => value.includes(token))) {
+            score += 4;
+        }
+    });
+
+    const normalizedCategoryTokens = Array.from(new Set(categoryTokens));
+    normalizedCategoryTokens.forEach((token) => {
+        if (token.length === 0) {
+            return;
+        }
+        if (normalizedVector.some((value) => value.includes(token))) {
+            score += 12;
+        } else if (normalizedLabels.some((value) => value.includes(token))) {
+            score += 8;
+        }
+    });
+
+    return score;
+};
+
+interface BuildPairsOptions {
+    maxValuesPerLabel?: number;
+    contextTokens?: string[];
+    categoryTokens?: string[];
+}
+
+const selectTopValues = (
+    rawValue: string,
+    maxValues: number,
+    contextTokens: string[],
+    categoryTokens: string[],
+): string[] => {
+    if (typeof rawValue !== 'string') {
+        return [];
+    }
+
+    const segments = smartSplit(rawValue, ',');
+    if (segments.length <= 1) {
+        return [rawValue.trim()].filter(Boolean);
+    }
+
+    const uniqueSegments = Array.from(
+        new Set(
+            segments
+                .map((segment) => segment.trim())
+                .filter((segment) => segment.length > 0)
+        )
+    );
+
+    const scoredSegments = uniqueSegments.map((segment) => {
+        const normalized = normalizeSearchText(segment);
+        let score = 1;
+
+        if (normalized.length >= 40) {
+            score -= 2; // pénaliser les valeurs trop longues
+        }
+
+        if (categoryTokens.some((token) => token && normalized.includes(token))) {
+            score += 12;
+        }
+
+        if (contextTokens.some((token) => token && normalized.includes(token))) {
+            score += 6;
+        }
+
+        // Bonus si segment est court (plus lisible)
+        if (segment.length <= 25) {
+            score += 3;
+        }
+
+        return { segment, score };
+    });
+
+    scoredSegments.sort((a, b) => b.score - a.score);
+
+    return scoredSegments
+        .slice(0, Math.max(1, Math.min(maxValues, 2)))
+        .map((item) => item.segment);
+};
+
 const buildLabeledPairs = (
     values: string[] = [],
     labels: string[] = [],
     fallbackLabels: string[] = [],
+    options: BuildPairsOptions = {},
 ): Array<{ label: string; value: string }> => {
+    const {
+        maxValuesPerLabel = 1,
+        contextTokens = [],
+        categoryTokens = [],
+    } = options;
+
     return values
         .filter((value) => typeof value === 'string' && value.trim().length > 0)
         .map((value, index) => {
@@ -124,12 +240,18 @@ const buildLabeledPairs = (
                 ? rawLabel
                 : `Caractéristique ${index + 1}`;
 
+            const selectedValues = selectTopValues(value, maxValuesPerLabel, contextTokens, categoryTokens);
+            const formattedValue = selectedValues.join(' • ') || value.trim();
+
             return {
                 label,
-                value,
+                value: formattedValue,
             };
         });
 };
+
+const sanitizeKey = (value: string): string =>
+    normalizeSearchText(value || '').replace(/[^a-z0-9]+/g, '-');
 
 const buildCombinationKey = (values: string[] = [], labels: string[] = []): string => {
     const pairs = buildLabeledPairs(values, labels);
@@ -290,6 +412,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     placeholder,
     allowCustomModality = true,
     filtrable = true,
+    contextValues = [],
+    categoryValue,
 }) => {
     // ✅ PROTECTION CRITIQUE 2025-11-06: Valider TOUTES les props critiques au début
     try {
@@ -352,6 +476,26 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         return '';
     })();
 
+    const contextValuesArray = useMemo(
+        () => (Array.isArray(contextValues) ? contextValues.filter((item) => typeof item === 'string' && item.trim().length > 0) : []),
+        [contextValues]
+    );
+
+    const contextTokens = useMemo(() => {
+        const tokens = new Set<string>();
+        contextValuesArray.forEach((value) => {
+            buildSearchTokens(value).forEach((token) => tokens.add(token));
+        });
+        return Array.from(tokens);
+    }, [contextValuesArray]);
+
+    const categoryTokens = useMemo(() => {
+        if (typeof categoryValue !== 'string' || categoryValue.trim().length === 0) {
+            return [];
+        }
+        return buildSearchTokens(categoryValue);
+    }, [categoryValue]);
+
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingChipIndex, setEditingChipIndex] = useState<number | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -367,6 +511,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const [loadingCombinationSuggestions, setLoadingCombinationSuggestions] = useState(false);
     const [combinationError, setCombinationError] = useState<string | null>(null);
     const [dynamicPlaceholder, setDynamicPlaceholder] = useState<string>('');
+    const limitedPopularSuggestions = useMemo(
+        () => suggestions.slice(0, 1),
+        [suggestions]
+    );
+    const limitedCombinationSuggestions = useMemo(
+        () => combinationSuggestions.slice(0, 1),
+        [combinationSuggestions]
+    );
 
     const iaCombinaisons = useMemo(() => {
         if (!value || !Array.isArray(value)) {
@@ -379,6 +531,186 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
         return Array.from(new Set(combos));
     }, [value]);
+    const limitedIaCombinaisons = useMemo(() => {
+        const alreadyProvided = limitedPopularSuggestions.length + limitedCombinationSuggestions.length;
+        if (alreadyProvided >= 2) {
+            return [];
+        }
+        const remaining = 2 - alreadyProvided;
+        return iaCombinaisons.slice(0, remaining);
+    }, [iaCombinaisons, limitedPopularSuggestions.length, limitedCombinationSuggestions.length]);
+    const [suggestionDrafts, setSuggestionDrafts] = useState<Record<string, Array<{ label: string; value: string }>>>({});
+    const [suggestionEditor, setSuggestionEditor] = useState<{ key: string; index: number; label: string; value: string } | null>(null);
+    const [suggestionEditorLabel, setSuggestionEditorLabel] = useState('');
+    const [suggestionEditorValue, setSuggestionEditorValue] = useState('');
+    const [suggestionAddTarget, setSuggestionAddTarget] = useState<string | null>(null);
+    const [suggestionAddLabel, setSuggestionAddLabel] = useState('');
+    const [suggestionAddValue, setSuggestionAddValue] = useState('');
+    const getPopularSuggestionKey = useCallback(
+        (product: PopularProduct, index: number) =>
+            `popular-${index}-${sanitizeKey((product?.product_vector || []).join('-') || `p-${index}`)}`,
+        []
+    );
+    const getCombinationSuggestionKey = useCallback(
+        (combo: CombinationSuggestion, index: number) =>
+            `combo-${combo?.id ?? index}-${sanitizeKey((combo?.productVector || []).join('-') || `c-${index}`)}`,
+        []
+    );
+    const getIaSuggestionKey = useCallback(
+        (combo: string, index: number) =>
+            `ia-${index}-${sanitizeKey(combo || `ia-${index}`)}`,
+        []
+    );
+    const createVectorFromRows = useCallback(
+        (rows: Array<{ label: string; value: string }>) => {
+            const cleaned = rows
+                .map((row) => ({
+                    label: (row.label ?? '').trim() || 'Caractéristique',
+                    value: (row.value ?? '').trim(),
+                }))
+                .filter((row) => row.value.length > 0);
+
+            if (cleaned.length === 0) {
+                return null;
+            }
+
+            const vector = cleaned.map((row) => row.value).join(separateur || ',');
+            const sousCaracs: Record<string, string[]> = {};
+
+            cleaned.forEach((row) => {
+                if (!sousCaracs[row.label]) {
+                    sousCaracs[row.label] = [];
+                }
+                if (!sousCaracs[row.label].includes(row.value)) {
+                    sousCaracs[row.label].push(row.value);
+                }
+            });
+
+            return { vector, sousCaracs };
+        },
+        [separateur]
+    );
+    const updateSuggestionDraft = useCallback(
+        (key: string, updater: (rows: Array<{ label: string; value: string }>) => Array<{ label: string; value: string }>) => {
+            setSuggestionDrafts((prev) => {
+                const current = prev[key] || [];
+                const updated = updater(current);
+                return {
+                    ...prev,
+                    [key]: updated,
+                };
+            });
+        },
+        []
+    );
+
+    const openSuggestionEditorForRow = useCallback(
+        (key: string, rowIndex: number) => {
+            const rows = suggestionDrafts[key];
+            if (!rows || !rows[rowIndex]) {
+                return;
+            }
+            const target = rows[rowIndex];
+            setSuggestionEditor({ key, index: rowIndex, label: target.label, value: target.value });
+            setSuggestionEditorLabel(target.label);
+            setSuggestionEditorValue(target.value);
+        },
+        [suggestionDrafts]
+    );
+
+    const handleSaveSuggestionEditor = useCallback(() => {
+        if (!suggestionEditor) {
+            return;
+        }
+
+        const label = suggestionEditorLabel.trim() || `Caractéristique ${suggestionEditor.index + 1}`;
+        const value = suggestionEditorValue.trim();
+
+        if (value.length === 0) {
+            Alert.alert('Valeur manquante', 'Veuillez saisir une valeur pour cette modalité.');
+            return;
+        }
+
+        updateSuggestionDraft(suggestionEditor.key, (rows) => {
+            const next = [...rows];
+            next[suggestionEditor.index] = { label, value };
+            return next;
+        });
+
+        setSuggestionEditor(null);
+        setSuggestionEditorLabel('');
+        setSuggestionEditorValue('');
+    }, [suggestionEditor, suggestionEditorLabel, suggestionEditorValue, updateSuggestionDraft]);
+
+    const handleCancelSuggestionEditor = useCallback(() => {
+        setSuggestionEditor(null);
+        setSuggestionEditorLabel('');
+        setSuggestionEditorValue('');
+    }, []);
+
+    const handleSuggestionRowDelete = useCallback(
+        (key: string, rowIndex: number) => {
+            updateSuggestionDraft(key, (rows) => rows.filter((_, index) => index !== rowIndex));
+        },
+        [updateSuggestionDraft]
+    );
+
+    const openSuggestionAddModal = useCallback((key: string) => {
+        setSuggestionAddTarget(key);
+        setSuggestionAddLabel('');
+        setSuggestionAddValue('');
+    }, []);
+
+    const handleSaveSuggestionAdd = useCallback(() => {
+        if (!suggestionAddTarget) {
+            return;
+        }
+
+        const value = suggestionAddValue.trim();
+        if (value.length === 0) {
+            Alert.alert('Valeur manquante', 'Veuillez saisir une modalité à ajouter.');
+            return;
+        }
+
+        const label = suggestionAddLabel.trim()
+            || `Caractéristique ${(suggestionDrafts[suggestionAddTarget]?.length || 0) + 1}`;
+
+        updateSuggestionDraft(suggestionAddTarget, (rows) => [
+            ...rows,
+            { label, value },
+        ]);
+
+        setSuggestionAddTarget(null);
+        setSuggestionAddLabel('');
+        setSuggestionAddValue('');
+    }, [suggestionAddTarget, suggestionAddLabel, suggestionAddValue, suggestionDrafts, updateSuggestionDraft]);
+
+    const handleCancelSuggestionAdd = useCallback(() => {
+        setSuggestionAddTarget(null);
+        setSuggestionAddLabel('');
+        setSuggestionAddValue('');
+    }, []);
+
+    const applySuggestionDraft = useCallback(
+        (key: string, fallbackRows: Array<{ label: string; value: string }>) => {
+            const rows = suggestionDrafts[key] && suggestionDrafts[key].length > 0
+                ? suggestionDrafts[key]
+                : fallbackRows;
+            const result = createVectorFromRows(rows);
+
+            if (!result) {
+                Alert.alert('Suggestion vide', 'Ajoutez au moins une modalité avant de valider.');
+                return;
+            }
+
+            onChange([result.vector], result.sousCaracs);
+            setSearchQuery('');
+            setShowSuggestions(false);
+            setSuggestions([]);
+            setCombinationSuggestions([]);
+        },
+        [createVectorFromRows, onChange, suggestionDrafts]
+    );
 
     // Décomposer le vecteur en chips
     const parseVectorToChips = (vectorStr: string, labelHints: string[] = []): ChipData[] => {
@@ -530,60 +862,151 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         }
     }, [showAddModal, suggestedLabel]);
 
+    useEffect(() => {
+        const updates: Record<string, Array<{ label: string; value: string }>> = {};
+
+        limitedPopularSuggestions.forEach((product, index) => {
+            const key = getPopularSuggestionKey(product, index);
+            const rows = buildLabeledPairs(
+                Array.isArray(product?.product_vector) ? product.product_vector : [],
+                Array.isArray(product?.product_labels) ? product.product_labels : [],
+                labelOrder,
+                {
+                    maxValuesPerLabel: 2,
+                    contextTokens,
+                    categoryTokens,
+                }
+            );
+            updates[key] = rows;
+        });
+
+        limitedCombinationSuggestions.forEach((combo, index) => {
+            const key = getCombinationSuggestionKey(combo, index);
+            const rows = buildLabeledPairs(
+                combo.productVector || [],
+                combo.productLabels || [],
+                labelOrder,
+                {
+                    maxValuesPerLabel: 2,
+                    contextTokens,
+                    categoryTokens,
+                }
+            );
+            updates[key] = rows;
+        });
+
+        limitedIaCombinaisons.forEach((combo, index) => {
+            const key = getIaSuggestionKey(combo, index);
+            const parts = smartSplit(combo || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
+            const rows = buildLabeledPairs(parts, labelOrder, labelOrder, {
+                maxValuesPerLabel: 2,
+                contextTokens,
+                categoryTokens,
+            });
+            updates[key] = rows;
+        });
+
+        setSuggestionDrafts((prev) => {
+            let changed = false;
+            const next: Record<string, Array<{ label: string; value: string }>> = { ...prev };
+
+            Object.keys(next).forEach((key) => {
+                if (!(key in updates)) {
+                    delete next[key];
+                    changed = true;
+                }
+            });
+
+            Object.entries(updates).forEach(([key, rows]) => {
+                const existing = next[key];
+                const rowsCopy = rows.map((row) => ({ ...row }));
+
+                if (!existing) {
+                    next[key] = rowsCopy;
+                    changed = true;
+                    return;
+                }
+
+                const lengthsDiffer = existing.length !== rowsCopy.length;
+                const contentDiffer = lengthsDiffer
+                    || existing.some((row, rowIndex) => {
+                        const target = rowsCopy[rowIndex];
+                        return !target || row.label !== target.label || row.value !== target.value;
+                    });
+
+                if (contentDiffer) {
+                    next[key] = rowsCopy;
+                    changed = true;
+                }
+            });
+
+            return changed ? next : prev;
+        });
+    }, [
+        limitedPopularSuggestions,
+        limitedCombinationSuggestions,
+        limitedIaCombinaisons,
+        getPopularSuggestionKey,
+        getCombinationSuggestionKey,
+        getIaSuggestionKey,
+        contextTokens,
+        categoryTokens,
+        labelOrder,
+        separateur,
+    ]);
+
     // ✅ CORRECTION FINALE 2025-11-06 : Recherche progressive SANS useEffect
     // Le useEffect avec searchSuggestions cause des problèmes de closure
     // On va gérer la recherche directement dans onChangeText du TextInput
 
-    // Sélectionner une suggestion
-    const selectSuggestion = (product: PopularProduct) => {
-        // ✅ PROTECTION: Vérifier que le produit a les données nécessaires
+    const applyPopularSuggestion = (product: PopularProduct, draftKey: string) => {
         if (!product?.product_vector || !Array.isArray(product.product_vector)) {
             console.warn('[LinearAutocompleteEditor] ⚠️ Produit sans product_vector valide');
             return;
         }
 
-        const newVector = product.product_vector.join(separateur || ',');
-
-        // Mettre à jour sousCaracteristiques avec les labels du produit sélectionné
-        const updatedSousCaracs: Record<string, string[]> = {};
-        const labels = product.product_labels || [];
-        labels.forEach((label, index) => {
-            if (!updatedSousCaracs[label]) {
-                updatedSousCaracs[label] = [];
+        const fallbackRows = buildLabeledPairs(
+            product.product_vector,
+            product.product_labels || [],
+            labelOrder,
+            {
+                maxValuesPerLabel: 2,
+                contextTokens,
+                categoryTokens,
             }
-            updatedSousCaracs[label].push(product.product_vector[index]);
-        });
+        );
 
-        onChange([newVector], updatedSousCaracs);
-        setSearchQuery('');
-        setShowSuggestions(false);
+        applySuggestionDraft(draftKey, fallbackRows);
     };
 
-    const applyCombinationSuggestion = (suggestion: CombinationSuggestion) => {
+    const applyCombinationSuggestion = (suggestion: CombinationSuggestion, draftKey: string) => {
         const vector = suggestion.productVector || [];
         if (vector.length === 0) {
             return;
         }
 
-        const joined = vector.join(separateur || ',');
-        const updatedSousCaracs: Record<string, string[]> = { ...(sousCaracteristiques || {}) };
+        const fallbackRows = buildLabeledPairs(
+            vector,
+            suggestion.productLabels || [],
+            labelOrder,
+            {
+                maxValuesPerLabel: 2,
+                contextTokens,
+                categoryTokens,
+            }
+        );
 
-        (suggestion.productLabels || []).forEach((label, index) => {
-            const value = vector[index];
-            if (!label || !value) {
-                return;
-            }
-            if (!updatedSousCaracs[label]) {
-                updatedSousCaracs[label] = [];
-            }
-            if (!updatedSousCaracs[label].includes(value)) {
-                updatedSousCaracs[label].push(value);
-            }
+        applySuggestionDraft(draftKey, fallbackRows);
+    };
+
+    const applyIaCombination = (combo: string, draftKey: string) => {
+        const parts = smartSplit(combo || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
+        const fallbackRows = buildLabeledPairs(parts, labelOrder, labelOrder, {
+            maxValuesPerLabel: 2,
+            contextTokens,
+            categoryTokens,
         });
-
-        onChange([joined], updatedSousCaracs);
-        setSearchQuery('');
-        setShowSuggestions(false);
+        applySuggestionDraft(draftKey, fallbackRows);
     };
 
     const formatPriceDisplay = (price?: number, devise?: string) => {
@@ -940,11 +1363,15 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
                         const trimmed = text.trim();
                         const searchTokens = buildSearchTokens(trimmed);
-                        const contextualTokens = chips
-                            .map((chip) => chip?.value)
-                            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-                            .flatMap((value) => buildSearchTokens(value));
-                        const tokensToMatch = searchTokens.length > 0 ? searchTokens : contextualTokens;
+                        const contextualTokens = [
+                            ...chips
+                                .map((chip) => chip?.value)
+                                .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+                                .flatMap((value) => buildSearchTokens(value)),
+                            ...contextTokens,
+                        ];
+                        const tokensToMatchBase = searchTokens.length > 0 ? searchTokens : contextualTokens;
+                        const tokensToMatch = Array.from(new Set(tokensToMatchBase));
 
                         if (trimmed.length >= 2) {
                             setLoadingSuggestions(true);
@@ -972,7 +1399,21 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                             Array.isArray(product?.product_labels) ? product.product_labels : [],
                                         )
                                     );
-                                    setSuggestions(filtered);
+                                    const ranked = filtered
+                                        .map((product) => ({
+                                            product,
+                                            score: computeSuggestionScore(
+                                                Array.isArray(product?.product_vector) ? product.product_vector : [],
+                                                Array.isArray(product?.product_labels) ? product.product_labels : [],
+                                                product?.usage_count ?? 0,
+                                                !!product?.is_trending,
+                                                tokensToMatch,
+                                                categoryTokens
+                                            ),
+                                        }))
+                                        .sort((a, b) => b.score - a.score)
+                                        .map((entry) => entry.product);
+                                    setSuggestions(ranked.slice(0, 1));
                                 } else {
                                     setSuggestions([]);
                                 }
@@ -1070,7 +1511,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         return bScore - aScore;
                                     });
 
-                                    setCombinationSuggestions(aggregatedList);
+                                    setCombinationSuggestions(aggregatedList.slice(0, 1));
+                                    setCombinationSuggestions(aggregatedList.slice(0, 1));
                                     setCombinationError(
                                         aggregatedList.length === 0
                                             ? 'Aucune combinaison trouvée pour ces caractéristiques.'
@@ -1124,33 +1566,66 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         </View>
                     )}
 
-                    {(suggestions || []).map((product, index) => {
-                        const productVector = Array.isArray(product?.product_vector) ? product.product_vector : [];
-                        const productLabels = Array.isArray(product?.product_labels) ? product.product_labels : [];
-                        const rows = buildLabeledPairs(productVector, productLabels, labelOrder);
+                    {limitedPopularSuggestions.map((product, index) => {
+                        const draftKey = getPopularSuggestionKey(product, index);
+                        const fallbackRows = buildLabeledPairs(
+                            Array.isArray(product?.product_vector) ? product.product_vector : [],
+                            Array.isArray(product?.product_labels) ? product.product_labels : [],
+                            labelOrder,
+                            {
+                                maxValuesPerLabel: 2,
+                                contextTokens,
+                                categoryTokens,
+                            }
+                        );
+                        const rows = suggestionDrafts[draftKey] || fallbackRows;
                         const sellerCount = Math.max(product?.usage_count ?? 0, 0);
 
                         return (
-                            <TouchableOpacity
-                                key={index}
-                                style={styles.suggestionCard}
-                                onPress={() => selectSuggestion(product)}
-                            >
+                            <View key={draftKey} style={styles.suggestionCard}>
                                 <View style={styles.suggestionCardHeader}>
                                     <Text style={styles.suggestionCardTitle}>Produit populaire</Text>
                                     <SafeIcon name="arrow-up-right" size={16} color={modernColors.primary} />
                                 </View>
 
                                 <View style={styles.suggestionTable}>
-                                    {rows.map((row, rowIndex) => (
-                                        <View
-                                            key={`${row.label}-${rowIndex}`}
-                                            style={[styles.suggestionRow, rowIndex === rows.length - 1 && styles.suggestionRowLast]}
-                                        >
-                                            <Text style={styles.suggestionCellLabel}>{row.label}</Text>
-                                            <Text style={styles.suggestionCellValue}>{row.value}</Text>
-                                        </View>
-                                    ))}
+                                    {rows.length === 0 ? (
+                                        <Text style={styles.suggestionEmptyRow}>Aucune modalité. Ajoutez-en pour personnaliser.</Text>
+                                    ) : (
+                                        rows.map((row, rowIndex) => (
+                                            <View
+                                                key={`${draftKey}-${row.label}-${rowIndex}`}
+                                                style={[
+                                                    styles.suggestionRow,
+                                                    rowIndex === rows.length - 1 && styles.suggestionRowLast
+                                                ]}
+                                            >
+                                                <View style={styles.suggestionRowContent}>
+                                                    <Text style={styles.suggestionCellLabel}>{row.label}</Text>
+                                                    <TouchableOpacity
+                                                        onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
+                                                        style={styles.suggestionValueTouchable}
+                                                    >
+                                                        <Text style={styles.suggestionCellValue}>{row.value}</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                                <View style={styles.suggestionRowActions}>
+                                                    <TouchableOpacity
+                                                        style={styles.suggestionActionButton}
+                                                        onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
+                                                    >
+                                                        <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        style={styles.suggestionActionButton}
+                                                        onPress={() => handleSuggestionRowDelete(draftKey, rowIndex)}
+                                                    >
+                                                        <SafeIcon name="trash-2" size={14} color="#EF4444" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        ))
+                                    )}
                                 </View>
 
                                 <View style={styles.suggestionMeta}>
@@ -1170,7 +1645,24 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         </Text>
                                     )}
                                 </View>
-                            </TouchableOpacity>
+
+                                <View style={styles.suggestionFooter}>
+                                    <TouchableOpacity
+                                        style={styles.suggestionAddButton}
+                                        onPress={() => openSuggestionAddModal(draftKey)}
+                                    >
+                                        <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
+                                        <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.suggestionApplyButton}
+                                        onPress={() => applyPopularSuggestion(product, draftKey)}
+                                    >
+                                        <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
+                                        <Text style={styles.suggestionApplyText}>Utiliser cette proposition</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         );
                     })}
 
@@ -1186,24 +1678,30 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         <Text style={styles.combinationError}>{combinationError}</Text>
                     )}
 
-                    {!loadingCombinationSuggestions && combinationSuggestions.length > 0 && (
+                    {!loadingCombinationSuggestions && limitedCombinationSuggestions.length > 0 && (
                         <View style={styles.combinationSuggestionsContainer}>
                             <Text style={styles.combinationSuggestionsTitle}>🔥 Combinaisons des prestataires</Text>
-                            {combinationSuggestions.map((combo, index) => {
-                                const rows = buildLabeledPairs(
+                            {limitedCombinationSuggestions.map((combo, index) => {
+                                const draftKey = getCombinationSuggestionKey(combo, index);
+                                const fallbackRows = buildLabeledPairs(
                                     combo.productVector || [],
                                     combo.productLabels || [],
-                                    labelOrder
+                                    labelOrder,
+                                    {
+                                        maxValuesPerLabel: 2,
+                                        contextTokens,
+                                        categoryTokens,
+                                    }
                                 );
+                                const rows = suggestionDrafts[draftKey] || fallbackRows;
                                 const priceDisplay = formatPriceDisplay(combo.prix, combo.devise);
                                 const usageDisplay = Math.max(combo.usageCount ?? 0, 0);
                                 const occurrenceDisplay = Math.max(combo.occurrences ?? usageDisplay, 0);
 
                                 return (
-                                    <TouchableOpacity
-                                        key={`combo-${combo.id}`}
+                                    <View
+                                        key={`combo-${combo.id ?? index}`}
                                         style={styles.combinationCard}
-                                        onPress={() => applyCombinationSuggestion(combo)}
                                     >
                                         <View style={styles.combinationCardHeader}>
                                             <View style={styles.combinationCardHeaderLeft}>
@@ -1229,15 +1727,43 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         </View>
 
                                         <View style={styles.combinationTable}>
-                                            {rows.map((row, rowIndex) => (
-                                                <View
-                                                    key={`${combo.id}-${row.label}-${rowIndex}`}
-                                                    style={[styles.combinationRow, rowIndex === rows.length - 1 && styles.combinationRowLast]}
-                                                >
-                                                    <Text style={styles.combinationCellLabel}>{row.label}</Text>
-                                                    <Text style={styles.combinationCellValue}>{row.value}</Text>
-                                                </View>
-                                            ))}
+                                            {rows.length === 0 ? (
+                                                <Text style={styles.suggestionEmptyRow}>Aucune modalité. Ajoutez-en pour personnaliser.</Text>
+                                            ) : (
+                                                rows.map((row, rowIndex) => (
+                                                    <View
+                                                        key={`${draftKey}-${row.label}-${rowIndex}`}
+                                                        style={[
+                                                            styles.combinationRow,
+                                                            rowIndex === rows.length - 1 && styles.combinationRowLast
+                                                        ]}
+                                                    >
+                                                        <View style={styles.suggestionRowContent}>
+                                                            <Text style={styles.combinationCellLabel}>{row.label}</Text>
+                                                            <TouchableOpacity
+                                                                onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
+                                                                style={styles.suggestionValueTouchable}
+                                                            >
+                                                                <Text style={styles.combinationCellValue}>{row.value}</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                        <View style={styles.suggestionRowActions}>
+                                                            <TouchableOpacity
+                                                                style={styles.suggestionActionButton}
+                                                                onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
+                                                            >
+                                                                <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
+                                                            </TouchableOpacity>
+                                                            <TouchableOpacity
+                                                                style={styles.suggestionActionButton}
+                                                                onPress={() => handleSuggestionRowDelete(draftKey, rowIndex)}
+                                                            >
+                                                                <SafeIcon name="trash-2" size={14} color="#EF4444" />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    </View>
+                                                ))
+                                            )}
                                         </View>
 
                                         <View style={styles.combinationMeta}>
@@ -1255,8 +1781,23 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                                 <Text style={styles.combinationPrice}>💰 {priceDisplay}</Text>
                                             )}
                                         </View>
-                                        <Text style={styles.combinationApply}>Appuyer pour utiliser cette combinaison</Text>
-                                    </TouchableOpacity>
+                                        <View style={styles.suggestionFooter}>
+                                            <TouchableOpacity
+                                                style={styles.suggestionAddButton}
+                                                onPress={() => openSuggestionAddModal(draftKey)}
+                                            >
+                                                <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
+                                                <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.suggestionApplyButton}
+                                                onPress={() => applyCombinationSuggestion(combo, draftKey)}
+                                            >
+                                                <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
+                                                <Text style={styles.suggestionApplyText}>Utiliser cette proposition</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
                                 );
                             })}
                         </View>
@@ -1268,38 +1809,78 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             {iaCombinaisons.length > 0 && (
                 <View style={styles.iaCombosContainer}>
                     <Text style={styles.iaCombosTitle}>✨ Combinaisons proposées par l'IA</Text>
-                    {iaCombinaisons.map((combo, index) => {
+                    {limitedIaCombinaisons.map((combo, index) => {
+                        const draftKey = getIaSuggestionKey(combo, index);
                         const parts = smartSplit(combo || '', separateur || ',').map(part => part.trim()).filter(Boolean);
-                        const keys = Object.keys(sousCaracteristiques || {});
-                        const iaRows = buildLabeledPairs(parts, labelOrder, labelOrder);
+                        const iaRowsDefault = buildLabeledPairs(parts, labelOrder, labelOrder, {
+                            maxValuesPerLabel: 2,
+                            contextTokens,
+                            categoryTokens,
+                        });
+                        const iaRows = suggestionDrafts[draftKey] || iaRowsDefault;
 
                         return (
-                            <TouchableOpacity
+                            <View
                                 key={`${combo}-${index}`}
                                 style={styles.iaComboCard}
-                                onPress={() => {
-                                    onChange([combo], sousCaracteristiques);
-                                    setSearchQuery('');
-                                    setShowSuggestions(false);
-                                }}
                             >
                                 <View style={styles.iaComboHeader}>
                                     <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
                                     <Text style={styles.iaComboLabel}>Version {index + 1}</Text>
                                 </View>
                                 <View style={styles.iaComboTable}>
-                                    {iaRows.map((row, rowIndex) => (
-                                        <View
-                                            key={`${combo}-ia-${row.label}-${rowIndex}`}
-                                            style={[styles.iaComboRow, rowIndex === iaRows.length - 1 && styles.iaComboRowLast]}
-                                        >
-                                            <Text style={styles.iaComboCellLabel}>{row.label}</Text>
-                                            <Text style={styles.iaComboCellValue}>{row.value}</Text>
-                                        </View>
-                                    ))}
+                                    {iaRows.length === 0 ? (
+                                        <Text style={styles.suggestionEmptyRow}>Aucune modalité. Ajoutez-en pour personnaliser.</Text>
+                                    ) : (
+                                        iaRows.map((row, rowIndex) => (
+                                            <View
+                                                key={`${draftKey}-ia-${row.label}-${rowIndex}`}
+                                                style={[styles.iaComboRow, rowIndex === iaRows.length - 1 && styles.iaComboRowLast]}
+                                            >
+                                                <View style={styles.suggestionRowContent}>
+                                                    <Text style={styles.iaComboCellLabel}>{row.label}</Text>
+                                                    <TouchableOpacity
+                                                        onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
+                                                        style={styles.suggestionValueTouchable}
+                                                    >
+                                                        <Text style={styles.iaComboCellValue}>{row.value}</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                                <View style={styles.suggestionRowActions}>
+                                                    <TouchableOpacity
+                                                        style={styles.suggestionActionButton}
+                                                        onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
+                                                    >
+                                                        <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        style={styles.suggestionActionButton}
+                                                        onPress={() => handleSuggestionRowDelete(draftKey, rowIndex)}
+                                                    >
+                                                        <SafeIcon name="trash-2" size={14} color="#EF4444" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        ))
+                                    )}
                                 </View>
-                                <Text style={styles.iaComboApply}>Appuyer pour utiliser cette combinaison</Text>
-                            </TouchableOpacity>
+                                <View style={styles.suggestionFooter}>
+                                    <TouchableOpacity
+                                        style={styles.suggestionAddButton}
+                                        onPress={() => openSuggestionAddModal(draftKey)}
+                                    >
+                                        <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
+                                        <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.suggestionApplyButton}
+                                        onPress={() => applyIaCombination(combo, draftKey)}
+                                    >
+                                        <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
+                                        <Text style={styles.suggestionApplyText}>Utiliser cette proposition</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         );
                     })}
                 </View>
@@ -1312,6 +1893,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={[styles.chipsScroll, styles.chipsScrollActive]}
+                        nestedScrollEnabled
+                        keyboardShouldPersistTaps="handled"
                     >
                         {(chips || []).map((chip, index) => (
                             <View key={index} style={styles.chip}>
@@ -1376,7 +1959,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                 {sousCaracteristiques[chips[editingChipIndex]?.key] && (
                                     <View style={styles.optionsSection}>
                                         <Text style={styles.optionsTitle}>Options suggérées :</Text>
-                                        <ScrollView style={styles.optionsList}>
+                                        <ScrollView
+                                            style={styles.optionsList}
+                                            nestedScrollEnabled
+                                            keyboardShouldPersistTaps="handled"
+                                        >
                                             {(Array.isArray(sousCaracteristiques[chips[editingChipIndex]?.key])
                                                 ? sousCaracteristiques[chips[editingChipIndex]?.key]
                                                 : []
@@ -1461,6 +2048,90 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                     onPress={handleAddCharacteristic}
                                 >
                                     <SafeIcon name="plus" size={16} color="#FFF" />
+                                    <Text style={styles.saveButtonText}>Ajouter</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal
+                visible={!!suggestionEditor}
+                animationType="fade"
+                transparent
+                onRequestClose={handleCancelSuggestionEditor}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Modifier la modalité</Text>
+                            <TouchableOpacity onPress={handleCancelSuggestionEditor}>
+                                <SafeIcon name="x" size={24} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.modalBody}>
+                            <Text style={styles.modalLabel}>Intitulé</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Ex: Couleur"
+                                value={suggestionEditorLabel}
+                                onChangeText={setSuggestionEditorLabel}
+                            />
+                            <Text style={styles.modalLabel}>Valeur</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Ex: Noir"
+                                value={suggestionEditorValue}
+                                onChangeText={setSuggestionEditorValue}
+                            />
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelSuggestionEditor}>
+                                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.saveButton} onPress={handleSaveSuggestionEditor}>
+                                    <Text style={styles.saveButtonText}>Enregistrer</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal
+                visible={suggestionAddTarget !== null}
+                animationType="fade"
+                transparent
+                onRequestClose={handleCancelSuggestionAdd}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Ajouter une modalité</Text>
+                            <TouchableOpacity onPress={handleCancelSuggestionAdd}>
+                                <SafeIcon name="x" size={24} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.modalBody}>
+                            <Text style={styles.modalLabel}>Intitulé</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Ex: Variante"
+                                value={suggestionAddLabel}
+                                onChangeText={setSuggestionAddLabel}
+                            />
+                            <Text style={styles.modalLabel}>Valeur</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Ex: Transmission automatique"
+                                value={suggestionAddValue}
+                                onChangeText={setSuggestionAddValue}
+                            />
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelSuggestionAdd}>
+                                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.saveButton} onPress={handleSaveSuggestionAdd}>
                                     <Text style={styles.saveButtonText}>Ajouter</Text>
                                 </TouchableOpacity>
                             </View>
@@ -2016,6 +2687,13 @@ const styles = StyleSheet.create({
     suggestionRowLast: {
         borderBottomWidth: 0,
     },
+    suggestionRowContent: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+    },
     suggestionCellLabel: {
         flex: 0.45,
         fontSize: 12,
@@ -2029,6 +2707,25 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#1F2937',
         textAlign: 'right',
+    },
+    suggestionValueTouchable: {
+        flex: 1,
+        alignItems: 'flex-end',
+    },
+    suggestionRowActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    suggestionActionButton: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#F9FAFB',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
     suggestionMeta: {
         flexDirection: 'row',
@@ -2059,6 +2756,50 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '600',
         color: '#059669',
+    },
+    suggestionFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 8,
+        gap: 12,
+    },
+    suggestionAddButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#F8FAFC',
+        flexShrink: 1,
+    },
+    suggestionAddButtonText: {
+        fontSize: 12,
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    suggestionApplyButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: modernColors.primary,
+    },
+    suggestionApplyText: {
+        fontSize: 13,
+        color: '#FFFFFF',
+        fontWeight: '600',
+    },
+    suggestionEmptyRow: {
+        padding: 12,
+        fontSize: 12,
+        color: '#9CA3AF',
+        textAlign: 'center',
     },
     noSuggestionsContainer: {
         alignItems: 'center',

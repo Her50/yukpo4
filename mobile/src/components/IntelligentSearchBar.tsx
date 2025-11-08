@@ -123,6 +123,48 @@ const buildCombinationKey = (values: string[] = [], labels: string[] = []): stri
         .join('|');
 };
 
+const computeCombinationRanking = (
+    suggestion: CombinationCardSuggestion,
+    tokens: string[],
+    categoryTokens: string[],
+): { popularityScore: number; relevanceScore: number; totalScore: number } => {
+    const normalizedVector = suggestion.vector
+        .filter((value) => typeof value === 'string')
+        .map((value) => normalizeSearchText(value));
+    const normalizedLabels = suggestion.labels
+        .filter((value) => typeof value === 'string')
+        .map((value) => normalizeSearchText(value));
+
+    let relevanceScore = 0;
+    const uniqueTokens = Array.from(new Set(tokens));
+    uniqueTokens.forEach((token) => {
+        if (!token) return;
+        if (normalizedVector.some((value) => value.includes(token))) {
+            relevanceScore += 6;
+        } else if (normalizedLabels.some((value) => value.includes(token))) {
+            relevanceScore += 4;
+        }
+    });
+
+    const uniqueCategoryTokens = Array.from(new Set(categoryTokens));
+    uniqueCategoryTokens.forEach((token) => {
+        if (!token) return;
+        if (normalizedVector.some((value) => value.includes(token))) {
+            relevanceScore += 10;
+        } else if (normalizedLabels.some((value) => value.includes(token))) {
+            relevanceScore += 6;
+        }
+    });
+
+    const popularityScore =
+        (suggestion.usageCount ?? 0) * 2 +
+        (suggestion.occurrences ?? 0);
+
+    const totalScore = popularityScore * 2 + relevanceScore;
+
+    return { popularityScore, relevanceScore, totalScore };
+};
+
 export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     placeholder = 'Rechercher...',
     onSubmit,
@@ -149,6 +191,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     const [searchGoal, setSearchGoal] = useState<string | undefined>(undefined);
     const [searchEnergy, setSearchEnergy] = useState(50);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const categoryTokensBase = useMemo(() => buildSearchTokens(category || ''), [category]);
 
     // Charger les recherches populaires au montage
     useEffect(() => {
@@ -196,6 +239,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
             try {
                 const tokens = buildSearchTokens(cleaned);
+                const categoryTokens = categoryTokensBase;
                 const response = await apiPost('/api/combinations/search', {
                     query: cleaned,
                     limit: 8,
@@ -317,10 +361,43 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                         }
                     }
 
-                    setCombinationSuggestions(normalized);
                     if (normalized.length === 0) {
                         setCombinationError('Aucune caractéristique populaire correspondant à cette recherche.');
                     } else {
+                        const scored = normalized.map((suggestion) => {
+                            const { popularityScore, relevanceScore, totalScore } = computeCombinationRanking(
+                                suggestion,
+                                tokens,
+                                categoryTokens,
+                            );
+                            return { suggestion, popularityScore, totalScore };
+                        });
+
+                        const popularSorted = [...scored].sort((a, b) => b.popularityScore - a.popularityScore);
+                        const topPopular = popularSorted[0];
+
+                        const remainingForRelevance = scored.filter(
+                            (entry) => entry.suggestion.id !== topPopular?.suggestion.id
+                        );
+                        const relevanceSorted = [...remainingForRelevance].sort((a, b) => b.totalScore - a.totalScore);
+                        const topRelevant = relevanceSorted[0];
+
+                        const finalSuggestions: CombinationCardSuggestion[] = [];
+
+                        if (topPopular) {
+                            finalSuggestions.push(topPopular.suggestion);
+                        }
+                        if (topRelevant) {
+                            finalSuggestions.push(topRelevant.suggestion);
+                        } else if (!topPopular && popularSorted.length > 0) {
+                            finalSuggestions.push(popularSorted[0].suggestion);
+                        }
+
+                        if (finalSuggestions.length === 0 && normalized.length > 0) {
+                            finalSuggestions.push(normalized[0]);
+                        }
+
+                        setCombinationSuggestions(finalSuggestions.slice(0, 2));
                         setCombinationError(null);
                     }
                 } else {
@@ -335,7 +412,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                 setIsLoadingCombinations(false);
             }
         },
-        []
+        [categoryTokensBase]
     );
 
     const cleanedQuery = query.trim();

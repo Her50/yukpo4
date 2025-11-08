@@ -14,6 +14,8 @@ import {
   Animated,
   FlatList,
   Image,
+  Modal,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -183,6 +185,7 @@ const ResultatBesoinScreen: React.FC = () => {
   const [loadingResults, setLoadingResults] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [refreshing, setRefreshing] = useState(false); // ✅ NOUVEAU : Pull-to-refresh
+  const [showSearchActions, setShowSearchActions] = useState(false);
 
   // États filtrage et tri
   const [sortBy, setSortBy] = useState<SortOption>('pertinence');
@@ -207,6 +210,12 @@ const ResultatBesoinScreen: React.FC = () => {
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [searchGPSData, setSearchGPSData] = useState<{ lat: number; lng: number; address?: string } | null>(null);
   const [searchGPSString, setSearchGPSString] = useState<string>('');
+  const handleSearchAction = useCallback((action: () => void) => {
+    setShowSearchActions(false);
+    requestAnimationFrame(() => {
+      action();
+    });
+  }, []);
 
   const normalizeAutocompleteResponse = (response: any): CombinationSuggestion[] => {
     if (!response) {
@@ -934,39 +943,15 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
               }}
             />
-            <View style={styles.searchUtilities}>
-              {[
-                {
-                  key: 'gps',
-                  icon: '📍',
-                  onPress: () => setShowGPSModal(true),
-                },
-                {
-                  key: 'camera',
-                  icon: '📷',
-                  onPress: takeSearchPhoto,
-                },
-                {
-                  key: 'gallery',
-                  icon: '🖼️',
-                  onPress: chooseSearchImages,
-                },
-                {
-                  key: 'file',
-                  icon: '📄',
-                  onPress: pickSearchDocument,
-                },
-              ].map((action) => (
-                <TouchableOpacity
-                  key={action.key}
-                  style={styles.searchUtilityButton}
-                  onPress={action.onPress}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={styles.searchUtilityIcon}>{action.icon}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <TouchableOpacity
+              style={styles.searchActionsButton}
+              onPress={() => setShowSearchActions(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Afficher les outils de recherche avancée"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <SafeIcon name="more-horizontal" size={18} color={modernColors.primary} />
+            </TouchableOpacity>
           </View>
           <TouchableOpacity
             style={styles.searchButton}
@@ -1404,6 +1389,87 @@ const ResultatBesoinScreen: React.FC = () => {
         scrollEventThrottle={16}
       />
 
+      <Modal
+        visible={showSearchActions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSearchActions(false)}
+      >
+        <View style={styles.searchActionsModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowSearchActions(false)}
+          />
+          <View style={styles.searchActionsModalCard}>
+            <View style={styles.searchActionsModalHeader}>
+              <Text style={styles.searchActionsModalTitle}>Outils de recherche</Text>
+              <TouchableOpacity
+                style={styles.searchActionsModalClose}
+                onPress={() => setShowSearchActions(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Fermer les outils de recherche"
+              >
+                <SafeIcon name="x" size={18} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchActionsList}>
+              <TouchableOpacity
+                style={styles.searchActionsItem}
+                onPress={() => handleSearchAction(() => setShowGPSModal(true))}
+              >
+                <View style={styles.searchActionsItemIcon}>
+                  <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.searchActionsItemLabel}>Ajouter une localisation</Text>
+                  <Text style={styles.searchActionsItemDescription}>Sélectionnez une zone ou votre position actuelle</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.searchActionsItem}
+                onPress={() => handleSearchAction(takeSearchPhoto)}
+              >
+                <View style={styles.searchActionsItemIcon}>
+                  <SafeIcon name="camera" size={18} color={modernColors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.searchActionsItemLabel}>Prendre une photo</Text>
+                  <Text style={styles.searchActionsItemDescription}>Décrivez votre besoin avec une image</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.searchActionsItem}
+                onPress={() => handleSearchAction(chooseSearchImages)}
+              >
+                <View style={styles.searchActionsItemIcon}>
+                  <SafeIcon name="image" size={18} color={modernColors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.searchActionsItemLabel}>Choisir depuis la galerie</Text>
+                  <Text style={styles.searchActionsItemDescription}>Importez des photos existantes de votre appareil</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.searchActionsItem}
+                onPress={() => handleSearchAction(pickSearchDocument)}
+              >
+                <View style={styles.searchActionsItemIcon}>
+                  <SafeIcon name="file-text" size={18} color={modernColors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.searchActionsItemLabel}>Ajouter un document</Text>
+                  <Text style={styles.searchActionsItemDescription}>Ajoutez un cahier des charges ou un devis</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ModernGPSModal
         visible={showGPSModal}
         onClose={() => setShowGPSModal(false)}
@@ -1468,15 +1534,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#111827',
   },
-  searchUtilities: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  searchUtilityButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+  searchActionsButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
@@ -1565,6 +1626,65 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#0F172A',
     maxWidth: 200,
+  },
+  searchActionsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  searchActionsModalCard: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 32,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    gap: 18,
+  },
+  searchActionsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  searchActionsModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  searchActionsModalClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+  },
+  searchActionsList: {
+    gap: 12,
+  },
+  searchActionsItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+  },
+  searchActionsItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EEF2FF',
+  },
+  searchActionsItemLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  searchActionsItemDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   filtersScroll: {
     flexDirection: 'row',
@@ -1995,10 +2115,6 @@ const styles = StyleSheet.create({
     paddingTop: HEADER_HEIGHT + 16,
     paddingHorizontal: 16,
     paddingBottom: 80,
-  },
-  searchUtilityIcon: {
-    fontSize: 16,
-    color: modernColors.primary,
   },
 });
 

@@ -598,6 +598,13 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 label="Caractéristiques produits / prestations"
                                 identifiantBase="produits"
                                 value={formValues.produits || []}
+                                contextValues={[
+                                    formValues.categorie_produit,
+                                    formValues.description_produit,
+                                    formValues.nom_produit,
+                                    formValues.description,
+                                ]}
+                                categoryValue={formValues.categorie_produit || ''}
                                 onChange={(values, updatedSousCaracs) => {
                                     handleFieldChange('produits', values);
                                     if (updatedSousCaracs) {
