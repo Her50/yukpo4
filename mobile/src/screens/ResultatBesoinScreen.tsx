@@ -935,30 +935,37 @@ const ResultatBesoinScreen: React.FC = () => {
               }}
             />
             <View style={styles.searchUtilities}>
-              <TouchableOpacity
-                style={styles.searchUtilityButton}
-                onPress={() => setShowGPSModal(true)}
-              >
-                <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.searchUtilityButton}
-                onPress={takeSearchPhoto}
-              >
-                <SafeIcon name="camera" size={18} color={modernColors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.searchUtilityButton}
-                onPress={chooseSearchImages}
-              >
-                <SafeIcon name="image" size={18} color={modernColors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.searchUtilityButton}
-                onPress={pickSearchDocument}
-              >
-                <SafeIcon name="file" size={18} color={modernColors.primary} />
-              </TouchableOpacity>
+              {[
+                {
+                  key: 'gps',
+                  icon: '📍',
+                  onPress: () => setShowGPSModal(true),
+                },
+                {
+                  key: 'camera',
+                  icon: '📷',
+                  onPress: takeSearchPhoto,
+                },
+                {
+                  key: 'gallery',
+                  icon: '🖼️',
+                  onPress: chooseSearchImages,
+                },
+                {
+                  key: 'file',
+                  icon: '📄',
+                  onPress: pickSearchDocument,
+                },
+              ].map((action) => (
+                <TouchableOpacity
+                  key={action.key}
+                  style={styles.searchUtilityButton}
+                  onPress={action.onPress}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.searchUtilityIcon}>{action.icon}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
           <TouchableOpacity
@@ -1381,6 +1388,7 @@ const ResultatBesoinScreen: React.FC = () => {
         ListEmptyComponent={renderEmptyComponent}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1452,22 +1460,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 10,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
+    minWidth: 0,
     fontSize: 15,
     color: '#111827',
   },
   searchUtilities: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   searchUtilityButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
@@ -1986,6 +1995,10 @@ const styles = StyleSheet.create({
     paddingTop: HEADER_HEIGHT + 16,
     paddingHorizontal: 16,
     paddingBottom: 80,
+  },
+  searchUtilityIcon: {
+    fontSize: 16,
+    color: modernColors.primary,
   },
 });
 

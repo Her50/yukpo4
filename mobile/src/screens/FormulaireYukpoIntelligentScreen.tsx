@@ -2548,27 +2548,48 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               ? options
               : {};
 
+          const readOption = (key: string) => {
+            if (!safeOptions || typeof safeOptions !== 'object') {
+              return undefined;
+            }
+
+            try {
+              if (Object.prototype.hasOwnProperty.call(safeOptions, key)) {
+                return (safeOptions as any)[key];
+              }
+
+              if (typeof (safeOptions as any).get === 'function') {
+                return (safeOptions as any).get(key);
+              }
+
+              return (safeOptions as any)[key];
+            } catch (error) {
+              console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Lecture option impossible:', key, error);
+              return undefined;
+            }
+          };
+
           const nomFallback =
-            typeof safeOptions.nomFallback === 'string'
-              ? safeOptions.nomFallback
+            typeof readOption('nomFallback') === 'string'
+              ? (readOption('nomFallback') as string)
               : '';
 
           const deviseFallbackCandidate =
-            typeof safeOptions.deviseFallback === 'string'
-              ? safeOptions.deviseFallback.trim()
+            typeof readOption('deviseFallback') === 'string'
+              ? (readOption('deviseFallback') as string).trim()
               : '';
           const deviseFallback =
             deviseFallbackCandidate.length > 0 ? deviseFallbackCandidate : 'XAF';
 
           const combinationString =
-            typeof safeOptions.combinationString === 'string'
-              ? safeOptions.combinationString
+            typeof readOption('combinationString') === 'string'
+              ? (readOption('combinationString') as string)
               : '';
 
           const characteristicVector: string[] = Array.isArray(
-            safeOptions.characteristicVector
+            readOption('characteristicVector')
           )
-            ? safeOptions.characteristicVector
+            ? (readOption('characteristicVector') as any[])
               .map((entry: any) =>
                 typeof entry === 'string' ? entry.trim() : ''
               )
@@ -2576,9 +2597,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             : [];
 
           const productLabels: string[] = Array.isArray(
-            safeOptions.productLabels
+            readOption('productLabels')
           )
-            ? safeOptions.productLabels
+            ? (readOption('productLabels') as any[])
               .map((entry: any) =>
                 typeof entry === 'string' ? entry.trim() : ''
               )
@@ -2586,9 +2607,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             : [];
 
           const origineChamps =
-            typeof safeOptions.origineChamps === 'string' &&
-              safeOptions.origineChamps.trim().length > 0
-              ? safeOptions.origineChamps.trim()
+            typeof readOption('origineChamps') === 'string' &&
+              (readOption('origineChamps') as string).trim().length > 0
+              ? (readOption('origineChamps') as string).trim()
               : 'formulaire';
 
           const buildBaseProduct = () => ({

@@ -395,15 +395,105 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         const parts = smartSplit(vectorStr, separateur);
         const subCharKeys = Object.keys(sousCaracteristiques || {});
 
-        return parts.map((value, index) => {
-            const labelFromHints = labelHints[index];
-            const fallbackLabel = subCharKeys[index];
-            return {
-                key: labelFromHints || fallbackLabel || `Caractéristique ${index + 1}`,
-                value,
-                index,
-            };
+        if (parts.length === 0) {
+            return [];
+        }
+
+        const normalizedOptionsMap: Record<string, string[]> = {};
+        const normalizedLabelToOriginal: Record<string, string> = {};
+        Object.entries(sousCaracteristiques || {}).forEach(([rawLabel, options]) => {
+            const normalizedLabel = normalizeSearchText(rawLabel || '');
+            normalizedLabelToOriginal[normalizedLabel] = rawLabel;
+            normalizedOptionsMap[normalizedLabel] = Array.isArray(options)
+                ? options
+                    .map((option) => normalizeSearchText(option || ''))
+                    .filter(Boolean)
+                : [];
         });
+
+        const normalizedParts = parts.map((raw) => normalizeSearchText(raw || ''));
+        const assignedLabels: Array<string | null> = Array(parts.length).fill(null);
+        const usedLabelKeys = new Set<string>();
+
+        const tryAssignLabel = (label: string | undefined | null, partIndex: number): boolean => {
+            if (!label || partIndex < 0 || partIndex >= parts.length) {
+                return false;
+            }
+
+            const normalizedLabel = normalizeSearchText(label);
+            if (usedLabelKeys.has(normalizedLabel)) {
+                return false;
+            }
+
+            assignedLabels[partIndex] = label;
+            usedLabelKeys.add(normalizedLabel);
+            return true;
+        };
+
+        const findMatchingPartForLabel = (label: string | undefined | null): number => {
+            if (!label) {
+                return -1;
+            }
+
+            const normalizedLabel = normalizeSearchText(label);
+            const options = normalizedOptionsMap[normalizedLabel] || [];
+
+            const isPriceLabel = /prix|tarif|montant|cout|coût|budget|price|amount/.test(normalizedLabel);
+
+            for (let i = 0; i < normalizedParts.length; i += 1) {
+                if (assignedLabels[i]) {
+                    continue;
+                }
+
+                const normalizedValue = normalizedParts[i];
+                if (!normalizedValue) {
+                    continue;
+                }
+
+                const exactMatch = options.some((option) => option && normalizedValue === option);
+                const fuzzyMatch = options.some((option) => option && (normalizedValue.includes(option) || option.includes(normalizedValue)));
+                const labelInValue = normalizedValue.includes(normalizedLabel);
+                const numericMatch = isPriceLabel && /\d/.test(normalizedValue);
+
+                if (exactMatch || fuzzyMatch || labelInValue || numericMatch) {
+                    return i;
+                }
+            }
+
+            return -1;
+        };
+
+        labelHints.forEach((hint) => {
+            const matchIndex = findMatchingPartForLabel(hint);
+            if (matchIndex !== -1) {
+                tryAssignLabel(hint, matchIndex);
+            }
+        });
+
+        parts.forEach((_, index) => {
+            if (assignedLabels[index]) {
+                return;
+            }
+
+            const hint = labelHints[index];
+            if (tryAssignLabel(hint, index)) {
+                return;
+            }
+
+            const fallbackKey = subCharKeys.find((key) => !usedLabelKeys.has(normalizeSearchText(key)));
+            if (fallbackKey) {
+                tryAssignLabel(fallbackKey, index);
+                return;
+            }
+
+            assignedLabels[index] = `Caractéristique ${index + 1}`;
+        });
+
+        return parts.map((value, index) => ({
+            key: assignedLabels[index] || `Caractéristique ${index + 1}`,
+            value,
+            index,
+        }));
     };
 
     const vectorParts = useMemo(() => {

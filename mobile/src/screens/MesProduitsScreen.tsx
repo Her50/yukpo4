@@ -209,7 +209,7 @@ const MesProduitsScreen: React.FC = () => {
     const [filtersVisible, setFiltersVisible] = useState(false);
     const [showTeamManager, setShowTeamManager] = useState(false);
     const [teamManagerServiceId, setTeamManagerServiceId] = useState<string>('');
-    const scrollY = useRef(new Animated.Value(0)).current;
+    const scrollY = useMemo(() => new Animated.Value(0), []);
     const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
 
     const headerTranslate = useMemo(() => {
