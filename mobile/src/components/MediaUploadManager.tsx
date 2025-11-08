@@ -21,6 +21,8 @@ interface MediaUploadManagerProps {
   readonly?: boolean;
   maxImages?: number;
   maxVideos?: number;
+  onHorizontalScrollStart?: () => void;
+  onHorizontalScrollEnd?: () => void;
 }
 
 const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
@@ -30,7 +32,9 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
   onVideosChange,
   readonly = false,
   maxImages = 10,
-  maxVideos = 2
+  maxVideos = 2,
+  onHorizontalScrollStart,
+  onHorizontalScrollEnd
 }) => {
   // ✅ Protection contre undefined - toujours utiliser des tableaux
   const images = imagesProp || [];
@@ -212,7 +216,18 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
 
         {/* Grille d'images */}
         {images.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaScroll}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.mediaScroll}
+            nestedScrollEnabled
+            onScrollBeginDrag={() => onHorizontalScrollStart?.()}
+            onMomentumScrollBegin={() => onHorizontalScrollStart?.()}
+            onTouchStart={() => onHorizontalScrollStart?.()}
+            onScrollEndDrag={() => onHorizontalScrollEnd?.()}
+            onMomentumScrollEnd={() => onHorizontalScrollEnd?.()}
+            onTouchEnd={() => onHorizontalScrollEnd?.()}
+          >
             {images.map((image, index) => (
               <View key={index} style={styles.imageContainer}>
                 <TouchableOpacity

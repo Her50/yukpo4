@@ -133,7 +133,13 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         return 'Non spécifié';
     };
 
-    const nomPrestataire = prestataireInfo?.nom_complet || prestataireInfo?.nom || `Prestataire #${service?.user_id}`;
+    const nomPrestataire =
+        prestataireInfo?.nom_complet ||
+        prestataireInfo?.nom ||
+        prestataireInfo?.name ||
+        prestataireInfo?.display_name ||
+        prestataireInfo?.full_name ||
+        `Prestataire #${service?.user_id}`;
     const titreService = getServiceFieldValue(service?.data?.titre_service);
     const categorieService = getServiceFieldValue(service?.data?.category);
 

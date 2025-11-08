@@ -192,6 +192,14 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     const [searchEnergy, setSearchEnergy] = useState(50);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const categoryTokensBase = useMemo(() => buildSearchTokens(category || ''), [category]);
+    const topCombinationSuggestion = useMemo(
+        () => (combinationSuggestions.length > 0 ? combinationSuggestions[0] : null),
+        [combinationSuggestions]
+    );
+    const topCombinationRows = useMemo(
+        () => (topCombinationSuggestion ? buildLabeledPairs(topCombinationSuggestion.vector, topCombinationSuggestion.labels) : []),
+        [topCombinationSuggestion]
+    );
 
     // Charger les recherches populaires au montage
     useEffect(() => {
@@ -633,73 +641,77 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                         <Text style={styles.emptyCombinationsText}>Aucune caractéristique populaire trouvée pour cette recherche.</Text>
                     )}
 
-                    {!isLoadingCombinations && combinationSuggestions.length > 0 && (
-                        <View style={styles.compactCombinationList}>
-                            {combinationSuggestions.map((combo, index) => {
-                                const accentColor = modernColors?.accent ?? '#F97316';
+                    {!isLoadingCombinations && !combinationError && topCombinationSuggestion && (
+                        <View style={styles.topCombinationCard}>
+                            <View style={styles.topCombinationHeader}>
+                                <View style={styles.topCombinationHeaderLeft}>
+                                    <SafeIcon
+                                        name={topCombinationSuggestion.isPreferred ? 'sparkles' : 'users'}
+                                        size={16}
+                                        color={topCombinationSuggestion.isPreferred ? modernColors.primary : '#F97316'}
+                                    />
+                                    <Text style={styles.topCombinationTitle}>
+                                        {topCombinationSuggestion.isPreferred ? 'Suggestion IA' : 'Caractéristique populaire'}
+                                    </Text>
+                                </View>
+                                {typeof topCombinationSuggestion.usageCount === 'number' && topCombinationSuggestion.usageCount > 0 && (
+                                    <View style={styles.topCombinationBadge}>
+                                        <SafeIcon name="users" size={12} color={modernColors.primary} />
+                                        <Text style={styles.topCombinationBadgeText}>
+                                            {topCombinationSuggestion.usageCount}× recherché
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
 
-                                return (
-                                    <TouchableOpacity
-                                        key={`combo-${combo.id}-${index}`}
-                                        style={styles.compactCombinationItem}
-                                        onPress={() => selectSuggestion(combo.asQuery)}
-                                        activeOpacity={0.85}
-                                    >
-                                        <View style={styles.compactCombinationHeader}>
-                                            <View style={styles.compactCombinationHeaderLeft}>
-                                                <SafeIcon
-                                                    name={combo.isPreferred ? 'sparkles' : 'sparkles'}
-                                                    size={16}
-                                                    color={modernColors.primary}
-                                                />
-                                                <Text style={styles.compactCombinationTitle} numberOfLines={2}>
-                                                    Proposition {index + 1}
-                                                </Text>
-                                            </View>
-
-                                            {typeof combo.usageCount === 'number' && combo.usageCount > 0 && (
-                                                <View style={styles.compactUsagePill}>
-                                                    <SafeIcon name="users" size={12} color={accentColor} />
-                                                    <Text style={styles.compactUsageText}>
-                                                        {combo.usageCount}× recherché
-                                                    </Text>
-                                                </View>
-                                            )}
+                            <View style={styles.topCombinationTable}>
+                                {topCombinationRows.length === 0 ? (
+                                    <Text style={styles.topCombinationEmptyRow}>Aucune modalité disponible.</Text>
+                                ) : (
+                                    topCombinationRows.slice(0, 6).map((row, index) => (
+                                        <View
+                                            key={`${topCombinationSuggestion.id}-row-${index}`}
+                                            style={[
+                                                styles.topCombinationRow,
+                                                index === Math.min(topCombinationRows.length, 6) - 1 && styles.topCombinationRowLast,
+                                            ]}
+                                        >
+                                            <Text style={styles.topCombinationCellLabel}>{row.label}</Text>
+                                            <Text style={styles.topCombinationCellValue}>{row.value}</Text>
                                         </View>
+                                    ))
+                                )}
+                            </View>
 
-                                        <View style={styles.compactCombinationChips}>
-                                            {combo.vector.slice(0, 6).map((chip: string, chipIndex: number) => (
-                                                <View key={`${combo.id}-chip-${chipIndex}`} style={styles.compactCombinationChip}>
-                                                    <Text style={styles.compactCombinationChipText}>{chip}</Text>
-                                                </View>
-                                            ))}
-                                        </View>
-
-                                        {(typeof combo.price === 'number' || (combo.occurrences && combo.occurrences > 1)) && (
-                                            <View style={styles.compactCombinationMeta}>
-                                                <View style={styles.compactMetaLeft}>
-                                                    {combo.occurrences && combo.occurrences > 1 && (
-                                                        <View style={styles.compactBadge}>
-                                                            <SafeIcon name="repeat" size={12} color={modernColors.textSecondary} />
-                                                            <Text style={styles.compactBadgeText}>{combo.occurrences}</Text>
-                                                        </View>
-                                                    )}
-                                                </View>
-                                                {typeof combo.price === 'number' && (
-                                                    <Text style={styles.compactCombinationPrice}>
-                                                        {Math.round(combo.price).toLocaleString('fr-FR')} {combo.devise || 'XAF'}
+                            {(typeof topCombinationSuggestion.price === 'number' ||
+                                (topCombinationSuggestion.occurrences ?? 0) > 0) && (
+                                    <View style={styles.topCombinationMeta}>
+                                        <View style={styles.topCombinationMetaLeft}>
+                                            {typeof topCombinationSuggestion.occurrences === 'number' &&
+                                                topCombinationSuggestion.occurrences > 0 && (
+                                                    <Text style={styles.topCombinationMetaText}>
+                                                        🔁 {topCombinationSuggestion.occurrences} occurrence
+                                                        {topCombinationSuggestion.occurrences > 1 ? 's' : ''}
                                                     </Text>
                                                 )}
-                                            </View>
-                                        )}
-
-                                        <View style={styles.compactCombinationApply}>
-                                            <SafeIcon name="arrow-right" size={14} color="#FFFFFF" />
-                                            <Text style={styles.compactCombinationApplyText}>Utiliser cette suggestion</Text>
                                         </View>
-                                    </TouchableOpacity>
-                                );
-                            })}
+                                        {typeof topCombinationSuggestion.price === 'number' && (
+                                            <Text style={styles.topCombinationMetaText}>
+                                                💰 {Math.round(topCombinationSuggestion.price).toLocaleString('fr-FR')}{' '}
+                                                {topCombinationSuggestion.devise || 'XAF'}
+                                            </Text>
+                                        )}
+                                    </View>
+                                )}
+
+                            <TouchableOpacity
+                                style={styles.topCombinationApply}
+                                onPress={() => selectSuggestion(topCombinationSuggestion.asQuery)}
+                                activeOpacity={0.9}
+                            >
+                                <SafeIcon name="arrow-right" size={16} color="#FFFFFF" />
+                                <Text style={styles.topCombinationApplyText}>Utiliser cette suggestion</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
                 </View>
@@ -1002,136 +1014,116 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: modernColors.primary,
     },
-    compactCombinationList: {
-        paddingHorizontal: 16,
-        gap: 12,
-    },
-    compactCombinationItem: {
+    topCombinationCard: {
+        marginHorizontal: 16,
+        marginTop: 4,
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
         borderWidth: 1,
         borderColor: modernColors.borderLight,
-        gap: 10,
+        padding: 14,
+        gap: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
     },
-    compactCombinationHeader: {
+    topCombinationHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
     },
-    compactCombinationHeaderLeft: {
+    topCombinationHeaderLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        flexShrink: 1,
     },
-    compactCombinationTitle: {
+    topCombinationTitle: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#1F2937',
-    },
-    compactUsagePill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: '#FFF1E6',
-        borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-    compactUsageText: {
-        fontSize: 12,
-        color: modernColors.accent,
-        fontWeight: '600',
-    },
-    compactCombinationChips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-        marginBottom: 12,
-    },
-    compactCombinationChip: {
-        backgroundColor: '#EEF2FF',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-    },
-    compactCombinationChipText: {
-        fontSize: 13,
-        color: modernColors.primary,
-        fontWeight: '500',
-    },
-    compactCombinationTags: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    compactTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#EEF2FF',
-        borderRadius: 14,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        gap: 4,
-    },
-    compactTagLabel: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#4C51BF',
-    },
-    compactTagValue: {
-        fontSize: 11,
         color: modernColors.text,
-        fontWeight: '500',
     },
-    compactCombinationMeta: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    compactMetaLeft: {
+    topCombinationBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 999,
     },
-    compactCombinationPrice: {
+    topCombinationBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    topCombinationTable: {
+        borderWidth: 1,
+        borderColor: modernColors.borderLight,
+        borderRadius: 10,
+        overflow: 'hidden',
+    },
+    topCombinationEmptyRow: {
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        fontSize: 12,
+        color: modernColors.textSecondary,
+    },
+    topCombinationRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.borderLight,
+        gap: 12,
+    },
+    topCombinationRowLast: {
+        borderBottomWidth: 0,
+    },
+    topCombinationCellLabel: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#059669',
+        color: modernColors.textSecondary,
+        flex: 0.6,
     },
-    compactBadge: {
+    topCombinationCellValue: {
+        fontSize: 12,
+        color: modernColors.text,
+        flex: 1,
+        textAlign: 'right',
+    },
+    topCombinationMeta: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    topCombinationMetaLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        backgroundColor: modernColors.surfaceVariant,
-        borderRadius: 10,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+        gap: 8,
+        flexShrink: 1,
     },
-    compactBadgeText: {
-        fontSize: 11,
+    topCombinationMetaText: {
+        fontSize: 12,
         color: modernColors.textSecondary,
-        fontWeight: '600',
     },
-    compactCombinationApply: {
-        marginTop: 12,
+    topCombinationApply: {
         backgroundColor: modernColors.primary,
         borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
         flexDirection: 'row',
+        justifyContent: 'center',
         alignItems: 'center',
-        alignSelf: 'flex-start',
         gap: 8,
     },
-    compactCombinationApplyText: {
-        marginLeft: 0,
+    topCombinationApplyText: {
         color: '#FFFFFF',
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '600',
     },
 });

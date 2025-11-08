@@ -447,7 +447,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         resetComposer();
     }, [resetComposer]);
 
-    const previewComments = useMemo(() => comments.slice(0, 2), [comments]);
+    const previewComments = useMemo(() => comments.slice(0, 1), [comments]);
 
     const renderCommentItem = useCallback(
         ({ item, depth }: { item: ProductComment; depth: number }) => (
@@ -838,18 +838,20 @@ const styles = StyleSheet.create({
         overflow: 'visible',
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        borderRadius: 18,
+        borderRadius: 16,
         shadowColor: '#1E293B',
-        shadowOpacity: 0.05,
-        shadowOffset: { width: 0, height: 6 },
-        shadowRadius: 12,
+        shadowOpacity: 0.04,
+        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 10,
     },
     previewHeader: {
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 18,
+        paddingVertical: 14,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        rowGap: 10,
     },
     sectionTitle: {
         fontSize: 18,
@@ -863,16 +865,16 @@ const styles = StyleSheet.create({
     },
     viewAllButton: {
         backgroundColor: modernColors.primary,
-        paddingHorizontal: 18,
-        paddingVertical: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
         borderRadius: 999,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         marginLeft: 12,
-        flexShrink: 0,
-        minWidth: 130,
+        flexShrink: 1,
         justifyContent: 'center',
+        alignSelf: 'flex-start',
     },
     viewAllText: {
         color: '#FFFFFF',
@@ -885,8 +887,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     previewComment: {
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 18,
+        paddingVertical: 14,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderColor: modernColors.border,
     },

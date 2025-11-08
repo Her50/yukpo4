@@ -101,6 +101,8 @@ const getCountryFlag = (country?: string): string => {
   const countryMap: Record<string, string> = {
     'Cameroun': '🇨🇲',
     'Cameroon': '🇨🇲',
+    'CM': '🇨🇲',
+    'CMR': '🇨🇲',
     'Gabon': '🇬🇦',
     'Congo': '🇨🇬',
     'RDC': '🇨🇩',
@@ -128,6 +130,49 @@ const getCountryFlag = (country?: string): string => {
   }
 
   return '🌍';
+};
+
+const firstNonEmptyString = (...values: any[]): string | undefined => {
+  for (const candidate of values) {
+    if (typeof candidate === 'string') {
+      const trimmed = candidate.trim();
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
+    }
+  }
+  return undefined;
+};
+
+const parseDistanceToKm = (value: any): number | undefined => {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase().replace(',', '.');
+    const match = normalized.match(/([\d.]+)/);
+    if (!match) {
+      return undefined;
+    }
+
+    const numeric = parseFloat(match[1]);
+    if (!Number.isFinite(numeric)) {
+      return undefined;
+    }
+
+    if (normalized.includes('m') && !normalized.includes('km')) {
+      return numeric / 1000;
+    }
+
+    return numeric;
+  }
+
+  return undefined;
 };
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -175,13 +220,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
       : [];
 
   // ✅ AMÉLIORATION: Afficher quartier en priorité, puis ville, puis région
-  const chosenLocation = product.chosen_location ||
-    locationVector[0] || // Premier élément = lieu exact choisi par prestataire
-    product.adresse ||
-    product.address ||
-    service?.data?.adresse?.valeur ||
-    service?.data?.adresse_service?.valeur ||
-    '';
+  const chosenLocation = firstNonEmptyString(
+    product.chosen_location,
+    product.location?.primary,
+    product.location?.address,
+    product.location?.formatted_address,
+    product.location?.full_address,
+    locationVector[0], // Premier élément = lieu exact choisi par prestataire
+    product.adresse_complete,
+    product.adresse,
+    product.address,
+    product.localisation,
+    product.site,
+    service?.data?.adresse_complete?.valeur,
+    service?.data?.adresse?.valeur,
+    service?.data?.adresse_service?.valeur,
+    service?.data?.adresse_prestataire?.valeur,
+  ) || '';
 
   const hasVariant = product.has_variant || false;
   const variants = product.variants || [];
@@ -205,32 +260,50 @@ const ProductCard: React.FC<ProductCardProps> = ({
     };
 
   const prestataireName =
-    rawPrestataire?.nom ||
-    rawPrestataire?.nom_complet ||
-    rawPrestataire?.name ||
-    rawPrestataire?.username ||
-    rawPrestataire?.display_name ||
-    product.prestataire_nom ||
-    product.prestataire_name ||
-    product.prestataire?.nom ||
-    product.prestataire?.nom_complet ||
-    product.prestataire?.name ||
-    service?.data?.nom_prestataire?.valeur ||
-    service?.data?.prestataire_nom?.valeur ||
-    service?.data?.contact_nom?.valeur ||
-    service?.data?.nom?.valeur ||
-    service?.data?.nom_entreprise?.valeur ||
-    'Prestataire';
+    firstNonEmptyString(
+      rawPrestataire?.nom,
+      rawPrestataire?.nom_complet,
+      rawPrestataire?.name,
+      rawPrestataire?.username,
+      rawPrestataire?.display_name,
+      rawPrestataire?.full_name,
+      rawPrestataire?.raison_sociale,
+      product.prestataire_nom,
+      product.prestataire_nom_complet,
+      product.prestataire_name,
+      product.prestataire_fullname,
+      product.prestataire?.nom,
+      product.prestataire?.nom_complet,
+      product.prestataire?.name,
+      product.owner?.nom,
+      product.owner?.nom_complet,
+      product.owner?.name,
+      product.vendor?.nom,
+      product.vendor?.name,
+      service?.prestataire?.nom,
+      service?.prestataire?.nom_complet,
+      service?.data?.nom_prestataire?.valeur,
+      service?.data?.prestataire_nom?.valeur,
+      service?.data?.contact_nom?.valeur,
+      service?.data?.nom?.valeur,
+      service?.data?.nom_entreprise?.valeur,
+    ) || 'Prestataire';
 
-  const prestataireAvatar =
-    rawPrestataire?.avatar_url ||
-    rawPrestataire?.photo_profil ||
-    rawPrestataire?.photo ||
-    product.prestataire_avatar ||
-    product.prestataire?.avatar_url ||
-    product.prestataire?.avatar ||
-    service?.data?.photo_prestataire?.valeur ||
-    service?.data?.photo_profil?.valeur;
+  const prestataireAvatar = firstNonEmptyString(
+    rawPrestataire?.avatar_url,
+    rawPrestataire?.photo_profil,
+    rawPrestataire?.photo,
+    rawPrestataire?.avatar,
+    rawPrestataire?.image_url,
+    product.prestataire_avatar,
+    product.prestataire?.avatar_url,
+    product.prestataire?.avatar,
+    product.owner?.avatar,
+    product.vendor?.avatar_url,
+    service?.prestataire?.avatar_url,
+    service?.data?.photo_prestataire?.valeur,
+    service?.data?.photo_profil?.valeur,
+  );
 
   const prestataireUserId =
     rawPrestataire?.user_id ||
@@ -282,18 +355,31 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const devise = product.devise || variants[0]?.devise || 'XAF';
 
   // Distance
-  const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance ?? product.distance_client;
-  const distanceKm = typeof rawDistance === 'string'
-    ? parseFloat(rawDistance)
-    : typeof rawDistance === 'number'
-      ? rawDistance
-      : undefined;
+  const rawDistance = product.distance_km
+    ?? product.distanceKm
+    ?? product.distance
+    ?? product.distance_client
+    ?? product.distance_user
+    ?? product.distance_user_km
+    ?? product.distanceFromUser
+    ?? product.distance_text;
+  const distanceKm = parseDistanceToKm(rawDistance);
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm);
+  const formattedDistance = hasDistance
+    ? distanceKm! < 1
+      ? `${Math.round(distanceKm! * 1000)}m`
+      : `${distanceKm!.toFixed(distanceKm! < 10 ? 1 : 0)}km`
+    : null;
 
   // Pays (pour drapeau)
-  const pays = locationVector[locationVector.length - 1] ||
-    product.pays ||
-    service?.data?.pays?.valeur;
+  const pays = firstNonEmptyString(
+    locationVector[locationVector.length - 1],
+    product.pays,
+    product.country,
+    product.location?.country,
+    service?.data?.pays?.valeur,
+    service?.data?.pays_origine?.valeur,
+  );
 
   const countryFlag = getCountryFlag(pays);
 
@@ -550,14 +636,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 )}
 
                 {/* Badge distance (coin supérieur gauche) */}
-                {distanceKm !== undefined && distanceKm !== null && (
+                {formattedDistance && (
                   <View style={styles.distanceBadge}>
                     <SafeIcon name="navigation" size={12} color="#FFF" />
-                    <Text style={styles.distanceText}>
-                      {distanceKm < 1
-                        ? `${Math.round(distanceKm * 1000)}m`
-                        : `${distanceKm.toFixed(1)}km`}
-                    </Text>
+                    <Text style={styles.distanceText}>{formattedDistance}</Text>
                   </View>
                 )}
 
@@ -639,7 +721,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     <Text style={styles.locationTextPrimary} numberOfLines={1}>
                       {chosenLocation}
                     </Text>
-                    {countryFlag && (
+                    {countryFlag && countryFlag !== '🌍' && (
                       <Text style={styles.locationFlag}>{countryFlag}</Text>
                     )}
                   </View>
@@ -650,6 +732,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       <Text style={styles.locationTextSecondary} numberOfLines={1}>
                         {locationVector.slice(1).join(' › ')}
                       </Text>
+                    </View>
+                  )}
+                  {formattedDistance && (
+                    <View style={styles.locationDistanceChip}>
+                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                      <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
                     </View>
                   )}
                 </View>
@@ -943,7 +1031,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 220,
+    height: 185,
     overflow: 'hidden',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -1059,14 +1147,15 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   content: {
-    padding: 20,
-    gap: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    gap: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
   contentCompact: {
-    paddingTop: 24,
+    paddingTop: 18,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
@@ -1074,14 +1163,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 4,
+    gap: 6,
+    marginBottom: 2,
   },
   topStatPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E0E7FF',
@@ -1092,17 +1181,17 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   productName: {
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
-    lineHeight: 26,
+    lineHeight: 24,
   },
   prestataireRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
     borderWidth: 1,
@@ -1179,9 +1268,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   priceVariations: {
-    gap: 12,
+    gap: 10,
     backgroundColor: '#F9FAFB',
-    padding: 12,
+    padding: 10,
     borderRadius: 10,
   },
   priceTable: {
@@ -1203,7 +1292,7 @@ const styles = StyleSheet.create({
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
@@ -1295,25 +1384,25 @@ const styles = StyleSheet.create({
     color: modernColors.primary,
   },
   priceUniqueContainer: {
-    gap: 6,
+    gap: 4,
   },
   priceLabel: {
     fontSize: 13,
     color: '#6B7280',
   },
   price: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: modernColors.primary,
   },
   priceDevise: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#6B7280',
   },
   actions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   actionButton: {
     flex: 1,
@@ -1322,7 +1411,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingTop: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -1337,25 +1426,25 @@ const styles = StyleSheet.create({
   },
   // ✅ NOUVEAU : Styles pour avis/ratings et actions secondaires
   metricsCard: {
-    marginTop: 12,
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    marginTop: 8,
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   compactStatsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 12,
-    marginBottom: 12,
+    marginTop: 10,
+    marginBottom: 10,
   },
   compactStatPillMuted: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F4F4F5',
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
     borderWidth: 1,
     borderColor: '#E4E4E7',
     gap: 6,
@@ -1373,12 +1462,12 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   locationSection: {
-    gap: 6,
-    backgroundColor: '#F9FAFB',
-    padding: 10,
-    borderRadius: 8,
+    gap: 4,
+    backgroundColor: '#F8FAFC',
+    padding: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
   },
   locationTextPrimary: {
     fontSize: 15,
@@ -1392,8 +1481,8 @@ const styles = StyleSheet.create({
   locationHierarchy: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingLeft: 20,
+    gap: 4,
+    paddingLeft: 18,
   },
   locationTextSecondary: {
     fontSize: 12,
@@ -1401,11 +1490,29 @@ const styles = StyleSheet.create({
     flex: 1,
     fontStyle: 'italic',
   },
+  locationDistanceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+    marginTop: 4,
+  },
+  locationDistanceText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
   secondaryActions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-    paddingTop: 12,
+    gap: 10,
+    marginTop: 6,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -1415,8 +1522,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
     borderWidth: 1,
@@ -1428,9 +1535,9 @@ const styles = StyleSheet.create({
     color: modernColors.primary,
   },
   cardGradient: {
-    borderRadius: 28,
+    borderRadius: 26,
     padding: 1,
-    marginBottom: 20,
+    marginBottom: 16,
   },
 });
 

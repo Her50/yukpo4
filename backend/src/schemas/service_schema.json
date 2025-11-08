@@ -1048,6 +1048,57 @@
             }
           },
           "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": [
+            "type_donnee",
+            "valeur",
+            "origine_champs"
+          ],
+          "properties": {
+            "type_donnee": {
+              "type": "string",
+              "enum": [
+                "media",
+                "image",
+                "video",
+                "audio",
+                "document",
+                "file",
+                "excel"
+              ]
+            },
+            "valeur": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "origine_champs": {
+              "type": [
+                "string",
+                "array"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "metadonnees": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": true
         }
       ]
     }
