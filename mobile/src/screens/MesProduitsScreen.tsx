@@ -818,10 +818,10 @@ const MesProduitsScreen: React.FC = () => {
 
     const headerSummary = useMemo(() => (
         [
-            { label: 'Produits', value: totalProducts, icon: 'box', accentColor: '#4F46E5' },
-            { label: 'Actifs', value: activeProducts, icon: 'check-circle', accentColor: '#10B981' },
-            { label: 'En pause', value: inactiveProducts, icon: 'pause-circle', accentColor: '#F97316' },
-            { label: 'Catégories', value: totalCategories, icon: 'layers', accentColor: '#6366F1' },
+            { label: 'Produits', value: totalProducts, accentColor: '#4F46E5' },
+            { label: 'Actifs', value: activeProducts, accentColor: '#10B981' },
+            { label: 'En pause', value: inactiveProducts, accentColor: '#F97316' },
+            { label: 'Catégories', value: totalCategories, accentColor: '#6366F1' },
         ]
     ), [totalProducts, activeProducts, inactiveProducts, totalCategories]);
 
@@ -1119,17 +1119,14 @@ const MesProduitsScreen: React.FC = () => {
                     >
                         {headerSummary.map((item) => (
                             <View key={item.label} style={styles.miniStatCard}>
-                                <View
+                                <Text
                                     style={[
-                                        styles.miniStatIconContainer,
-                                        {
-                                            backgroundColor: `${item.accentColor}1A`,
-                                        },
+                                        styles.miniStatValue,
+                                        { color: item.accentColor }
                                     ]}
                                 >
-                                    <SafeIcon name={item.icon} size={14} color={item.accentColor} />
-                                </View>
-                                <Text style={styles.miniStatValue}>{item.value}</Text>
+                                    {item.value}
+                                </Text>
                                 <Text style={styles.miniStatLabel} numberOfLines={1}>{item.label}</Text>
                             </View>
                         ))}
@@ -1263,8 +1260,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#F9FAFB',
     },
     headerContainer: {
-        paddingTop: Platform.OS === 'ios' ? 36 : 16,
-        paddingBottom: 12,
+        paddingTop: Platform.OS === 'ios' ? 24 : 12,
+        paddingBottom: 8,
         paddingHorizontal: 16,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
@@ -1282,45 +1279,36 @@ const styles = StyleSheet.create({
     },
     statsRowContainer: {
         backgroundColor: '#FFFFFF',
-        paddingVertical: 12,
+        paddingVertical: 8,
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
     },
     statsRowContent: {
         paddingHorizontal: 16,
-        gap: 10,
+        gap: 8,
     },
     miniStatCard: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
         backgroundColor: '#F9FAFB',
-        borderRadius: 12,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        minWidth: 70,
-        gap: 4,
-    },
-    miniStatIconContainer: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
+        minWidth: 64,
+        gap: 2,
     },
     miniStatValue: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
-        color: modernColors.text,
     },
     miniStatLabel: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: '600',
         color: modernColors.textSecondary,
         textAlign: 'center',
-        textTransform: 'uppercase',
-        letterSpacing: 0.4,
+        letterSpacing: 0.1,
     },
     loadingContainer: {
         flex: 1,
@@ -1338,7 +1326,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 8,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
@@ -1349,14 +1337,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 10,
+        paddingVertical: 8,
         paddingHorizontal: 8,
         backgroundColor: '#EEF2FF',
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#E0E7FF',
         gap: 6,
-        minHeight: 40,
+        minHeight: 36,
     },
     quickActionText: {
         fontSize: 12,

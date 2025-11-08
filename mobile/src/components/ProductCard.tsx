@@ -116,6 +116,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
   // ✅ NOUVEAU : États pour contact privé
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
+  const [chatContext, setChatContext] = useState<{
+    type: 'service' | 'private';
+    targetUserId?: number;
+    targetUserName?: string;
+    targetAvatar?: string | null;
+  } | null>(null);
   // ✅ NOUVEAU : États pour avis/ratings et galerie
   const [showGallery, setShowGallery] = useState(false);
   // ✅ NOUVEAU : États pour réactions
@@ -242,6 +248,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
     service?.data?.nom ||
     'Produit';
 
+  const isPrivateChat = chatContext?.type === 'private';
+  const activeChatPeer = isPrivateChat && chatContext?.targetUserId
+    ? {
+      nom: chatContext.targetUserName || 'Utilisateur',
+      nom_complet: chatContext.targetUserName || 'Utilisateur',
+      user_id: chatContext.targetUserId,
+      avatar_url: chatContext.targetAvatar || null,
+    }
+    : prestataire;
+
   const viewsCount =
     product.views ??
     product.vues ??
@@ -282,19 +298,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // ✅ AMÉLIORATION: Utiliser onChatPress si fourni, sinon modal local
   const handleChatPress = () => {
     if (onChatPress) {
-      onChatPress(); // Utiliser le handler externe (depuis MixedContentCarousel)
+      onChatPress();
       return;
     }
 
-    if (!prestataire.user_id) {
-      Alert.alert(
-        'Information manquante',
-        'Impossible de contacter ce prestataire pour le moment. Veuillez réessayer plus tard.'
-      );
-      return;
-    }
-
-    setShowChatModal(true); // Sinon, modal local
+    setChatContext({
+      type: 'service',
+      targetUserId: prestataire.user_id ? Number(prestataire.user_id) : undefined,
+      targetUserName: prestataire.nom,
+      targetAvatar: prestataire.avatar_url || null,
+    });
+    setPrivateConversationId(null);
+    setShowChatModal(true);
   };
 
   // ✅ NOUVEAU : Handler partage produit
@@ -383,7 +398,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   // ✅ NOUVEAU : Handler pour contacter un utilisateur en privé
-  const handleContactUser = async (userId: number, userName: string) => {
+  const handleContactUser = async (userId: number, userName: string, userAvatar?: string | null) => {
     try {
       // Vérifier si une conversation existe déjà
       const checkResponse = await apiGet(`/api/conversations/private/${userId}`);
@@ -399,29 +414,40 @@ const ProductCard: React.FC<ProductCardProps> = ({
         // Créer une nouvelle conversation privée
         const createResponse = await apiPost('/api/conversations/create-private', {
           target_user_id: userId,
-          context: 'product_review'
+          context: 'product_review',
         });
 
         if (createResponse.success && createResponse.data) {
           const data = createResponse.data as { conversation_id?: string };
           conversationId = data.conversation_id || null;
+        } else if (!createResponse.success) {
+          throw new Error(createResponse.error || "Impossible de créer la conversation privée");
         }
       }
 
       if (conversationId) {
+        setChatContext({
+          type: 'private',
+          targetUserId: userId,
+          targetUserName: userName,
+          targetAvatar: userAvatar ?? null,
+        });
         setPrivateConversationId(conversationId);
         setShowChatModal(true);
-        Alert.alert(
-          'Conversation privée',
-          `Vous pouvez maintenant discuter en privé avec ${userName}`,
-          [{ text: 'OK' }]
-        );
       } else {
-        Alert.alert('Erreur', 'Impossible de créer la conversation privée');
+        Alert.alert('Information', "Impossible de créer une conversation privée pour le moment");
       }
     } catch (error) {
       console.error('[ProductCard] Erreur création conversation privée:', error);
-      Alert.alert('Erreur', 'Impossible de contacter cet utilisateur');
+      Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de contacter cet utilisateur');
+    }
+  };
+
+  const handleCloseChatModal = () => {
+    setShowChatModal(false);
+    if (chatContext?.type === 'private') {
+      setChatContext(null);
+      setPrivateConversationId(null);
     }
   };
 
@@ -774,16 +800,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
       </NativeCard>
 
       {/* ✅ CORRIGÉ: Modal Chat avec props correctes */}
-      {showChatModal && !onChatPress && prestataire.user_id && (
+      {showChatModal && !onChatPress && activeChatPeer?.user_id && (
         <ChatModalMobile
           visible={showChatModal}
-          onClose={() => setShowChatModal(false)}
+          onClose={handleCloseChatModal}
           service={service || {
             id: product.service_id,
             data: { titre_service: { valeur: product.nom } }
           }}
-          prestataireInfo={prestataire}
+          prestataireInfo={activeChatPeer}
           user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
+          conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
+          isPrivateConversation={isPrivateChat}
         />
       )}
 
@@ -826,13 +854,24 @@ const formatDate = (dateStr: string): string => {
 const styles = StyleSheet.create({
   cardContainer: {
     overflow: 'hidden',
+    borderRadius: 24,
+    backgroundColor: '#F8FAFF',
+    borderWidth: 1,
+    borderColor: '#D9E2FF',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 6,
+    marginBottom: 18,
   },
   cardContainerCompact: {
-    borderRadius: 20,
+    borderRadius: 24,
   },
   touchableContainer: {
     flex: 1,
     overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.72)',
   },
   imageContainer: {
     position: 'relative',
@@ -953,11 +992,16 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   content: {
-    padding: 16,
-    gap: 14,
+    padding: 20,
+    gap: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   contentCompact: {
-    paddingTop: 20,
+    paddingTop: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   topStatsRow: {
     flexDirection: 'row',

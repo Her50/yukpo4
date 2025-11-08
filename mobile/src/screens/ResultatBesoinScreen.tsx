@@ -932,6 +932,65 @@ const ResultatBesoinScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Raccourcis de tri visibles en permanence */}
+        <View style={styles.quickSortRow}>
+          <TouchableOpacity
+            style={[styles.quickSortPill, sortBy === 'pertinence' && styles.quickSortPillActive]}
+            onPress={() => setSortBy('pertinence')}
+          >
+            <SafeIcon
+              name="zap"
+              size={16}
+              color={sortBy === 'pertinence' ? '#FFFFFF' : modernColors.primary}
+            />
+            <Text
+              style={[styles.quickSortText, sortBy === 'pertinence' && styles.quickSortTextActive]}
+            >
+              Pertinence
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickSortPill, sortBy === 'proximite' && styles.quickSortPillActive]}
+            onPress={() => setSortBy('proximite')}
+          >
+            <SafeIcon
+              name="map-pin"
+              size={16}
+              color={sortBy === 'proximite' ? '#FFFFFF' : modernColors.primary}
+            />
+            <Text
+              style={[styles.quickSortText, sortBy === 'proximite' && styles.quickSortTextActive]}
+            >
+              Proximité
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickSortPill, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.quickSortPillActive]}
+            onPress={() => {
+              if (sortBy === 'prix_asc') {
+                setSortBy('prix_desc');
+              } else if (sortBy === 'prix_desc') {
+                setSortBy('pertinence');
+              } else {
+                setSortBy('prix_asc');
+              }
+            }}
+          >
+            <SafeIcon
+              name={sortBy === 'prix_desc' ? 'arrow-down' : 'arrow-up'}
+              size={16}
+              color={(sortBy === 'prix_asc' || sortBy === 'prix_desc') ? '#FFFFFF' : modernColors.primary}
+            />
+            <Text
+              style={[styles.quickSortText, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.quickSortTextActive]}
+            >
+              Prix {sortBy === 'prix_desc' ? '↓' : sortBy === 'prix_asc' ? '↑' : ''}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Filtres actifs */}
         {filters.length > 0 && !showSuggestions && (
           <ScrollView
@@ -1466,6 +1525,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  quickSortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  quickSortPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+  },
+  quickSortPillActive: {
+    backgroundColor: modernColors.primary,
+    borderColor: modernColors.primary,
+  },
+  quickSortText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
+  quickSortTextActive: {
+    color: '#FFFFFF',
+  },
   searchActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1972,6 +2064,41 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  // ✅ NOUVEAU : Styles pour les raccourcis de tri
+  quickSortRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  quickSortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  quickSortPillActive: {
+    backgroundColor: modernColors.primary,
+    borderColor: modernColors.primary,
+  },
+  quickSortText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  quickSortTextActive: {
+    color: '#FFFFFF',
   },
 });
 

@@ -3,6 +3,7 @@ use super::exhaustive_combination_generator::ExhaustiveCombinationGenerator;
 use crate::core::types::AppError;
 use crate::state::AppState;
 use sqlx::PgPool;
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 // use super::autocomplete_combinations_service;
@@ -132,7 +133,20 @@ async fn save_combinations_batch(
           ai_confidence, created_at, updated_at) ",
     );
 
-    query_builder.push_values(combinations, |mut b, combo| {
+    let mut unique_combinations: Vec<Vec<String>> = Vec::new();
+    let mut seen: HashSet<Vec<String>> = HashSet::new();
+
+    for combo in combinations {
+        if seen.insert(combo.clone()) {
+            unique_combinations.push(combo.clone());
+        }
+    }
+
+    if unique_combinations.is_empty() {
+        return Ok(());
+    }
+
+    query_builder.push_values(unique_combinations.iter(), |mut b, combo| {
         // Séparer product_vector et location_vector
         let product_vector = if combo.len() > 1 {
             combo[..combo.len() - 1].to_vec()

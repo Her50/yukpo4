@@ -66,7 +66,7 @@ interface CommentStats {
 interface ProductCommentsSectionProps {
     serviceId: number;
     serviceTitle?: string;
-    onOpenChat?: (userId: number, userName: string) => void;
+    onOpenChat?: (userId: number, userName: string, userAvatar?: string | null) => void;
     mode?: 'inline' | 'full';
 }
 
@@ -456,7 +456,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     <TouchableOpacity
                         activeOpacity={0.8}
                         style={styles.commentAuthor}
-                        onPress={() => onOpenChat?.(item.user_id, item.user_name)}
+                        onPress={() => onOpenChat?.(item.user_id, item.user_name, item.user_avatar)}
                     >
                         <View style={styles.avatarBubble}>
                             <Text style={styles.avatarInitials}>
@@ -546,7 +546,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.footerAction}
-                            onPress={() => onOpenChat?.(item.user_id, item.user_name)}
+                            onPress={() => onOpenChat?.(item.user_id, item.user_name, item.user_avatar)}
                             disabled={!onOpenChat}
                         >
                             <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
@@ -836,6 +836,13 @@ const styles = StyleSheet.create({
     previewCard: {
         padding: 0,
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 18,
+        shadowColor: '#1E293B',
+        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 6 },
+        shadowRadius: 12,
     },
     previewHeader: {
         paddingHorizontal: 20,
@@ -856,12 +863,14 @@ const styles = StyleSheet.create({
     },
     viewAllButton: {
         backgroundColor: modernColors.primary,
-        paddingHorizontal: 14,
-        paddingVertical: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
         borderRadius: 999,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+        marginLeft: 12,
+        flexShrink: 0,
     },
     viewAllText: {
         color: '#FFFFFF',

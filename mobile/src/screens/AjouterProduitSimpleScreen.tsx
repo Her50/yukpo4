@@ -594,7 +594,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         {/* Caractéristiques (Autocomplete) - IDENTIQUE AU GRAND FORMULAIRE */}
                         <View style={styles.fieldGroup}>
                             <LinearAutocompleteEditor
-                                label="Caractéristiques du produit / prestation"
+                                label="Caractéristiques produits / prestations"
                                 identifiantBase="produits"
                                 value={formValues.produits || []}
                                 onChange={(values, updatedSousCaracs) => {

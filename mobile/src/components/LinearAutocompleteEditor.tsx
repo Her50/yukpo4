@@ -4,7 +4,7 @@
  * ✅ NOUVEAU : Suggestions populaires depuis autocomplete_combinations
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -338,6 +338,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const [combinationSuggestions, setCombinationSuggestions] = useState<CombinationSuggestion[]>([]);
     const [loadingCombinationSuggestions, setLoadingCombinationSuggestions] = useState(false);
     const [combinationError, setCombinationError] = useState<string | null>(null);
+    const [dynamicPlaceholder, setDynamicPlaceholder] = useState<string>('');
 
     const iaCombinaisons = useMemo(() => {
         if (!value || !Array.isArray(value)) {
@@ -572,8 +573,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         const usageCount = typeof combo.usage_count === 'number' ? combo.usage_count : 0;
 
                         const existing = aggregated.get(comboKey);
+                        const incomingOccurrences = typeof combo.occurrences === 'number' && combo.occurrences > 0
+                            ? combo.occurrences
+                            : Math.max(usageCount || 0, 1);
                         if (existing) {
-                            existing.occurrences = (existing.occurrences ?? 1) + 1;
+                            existing.occurrences = (existing.occurrences ?? 0) + incomingOccurrences;
                             if (usageCount > (existing.usageCount ?? 0)) {
                                 existing.usageCount = usageCount;
                             }
@@ -595,11 +599,15 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             prix,
                             devise: combo.devise || undefined,
                             isAIPreferred: !!combo.is_ai_preferred,
-                            occurrences: 1,
+                            occurrences: incomingOccurrences,
                         });
                     });
 
-                    const aggregatedList = Array.from(aggregated.values());
+                    const aggregatedList = Array.from(aggregated.values()).sort((a, b) => {
+                        const aScore = (a.occurrences ?? a.usageCount ?? 0);
+                        const bScore = (b.occurrences ?? b.usageCount ?? 0);
+                        return bScore - aScore;
+                    });
 
                     setCombinationSuggestions(aggregatedList);
                     setCombinationError(
@@ -746,19 +754,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         );
     }
 
-    // ✅ NOUVEAU 2025-11-06: Placeholder dynamique COMPLET depuis la valeur IA (value[0])
-    const generatePlaceholder = (): string => {
-        // ✅ PRIORITÉ 1: Afficher la PREMIÈRE combinaison générée par l'IA (value[0])
+    const generatePlaceholder = useCallback((): string => {
         if (value && value.length > 0 && value[0] && separateur) {
             const firstValue = value[0];
             if (typeof firstValue === 'string' && typeof separateur === 'string') {
-                // Afficher TOUTES les valeurs de la première combinaison (pas juste 4)
                 const allValues = firstValue.split(separateur).map(v => v.trim()).filter(v => v);
                 if (allValues.length > 6) {
-                    // Si plus de 6 valeurs, afficher 5 + "..." 
                     return `🤖 Ex: ${allValues.slice(0, 5).join(' • ')}... (+${allValues.length - 5})`;
                 } else if (allValues.length > 0) {
-                    // Sinon afficher toutes
                     return `🤖 Ex: ${allValues.join(' • ')}`;
                 }
             } else {
@@ -766,7 +769,6 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
         }
 
-        // ✅ PRIORITÉ 2: Utiliser les autres combinaisons IA disponibles
         if ((!displayValue || displayValue.length === 0) && iaCombinaisons.length > 0) {
             const combo = iaCombinaisons[0];
             if (typeof combo === 'string') {
@@ -777,7 +779,6 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
         }
 
-        // ✅ PRIORITÉ 3: Exemple générique basé sur les sous-caractéristiques IA (première valeur de chaque dimension)
         if (sousCaracteristiques && Object.keys(sousCaracteristiques).length > 0) {
             const exampleParts: string[] = [];
 
@@ -793,9 +794,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
         }
 
-        // ✅ PRIORITÉ 4: Fallback générique
         return '🔍 Tapez pour rechercher ou voir suggestions IA...';
-    };
+    }, [value, separateur, displayValue, iaCombinaisons, sousCaracteristiques]);
+
+    useEffect(() => {
+        setDynamicPlaceholder(generatePlaceholder());
+    }, [generatePlaceholder]);
 
     return (
         <View style={styles.container}>
@@ -817,7 +821,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
                 <TextInput
                     style={styles.searchInput}
-                    placeholder={generatePlaceholder()}
+                    placeholder={placeholder || dynamicPlaceholder}
                     placeholderTextColor="#9CA3AF"
                     value={searchQuery}
                     onChangeText={async (text) => {
@@ -921,8 +925,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         const usageCount = typeof combo.usage_count === 'number' ? combo.usage_count : 0;
 
                                         const existing = aggregated.get(comboKey);
+                                        const incomingOccurrences = typeof combo.occurrences === 'number' && combo.occurrences > 0
+                                            ? combo.occurrences
+                                            : Math.max(usageCount || 0, 1);
+
                                         if (existing) {
-                                            existing.occurrences = (existing.occurrences ?? 1) + 1;
+                                            existing.occurrences = (existing.occurrences ?? 0) + incomingOccurrences;
                                             if (usageCount > (existing.usageCount ?? 0)) {
                                                 existing.usageCount = usageCount;
                                             }
@@ -944,11 +952,15 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                             prix,
                                             devise: combo.devise || undefined,
                                             isAIPreferred: !!combo.is_ai_preferred,
-                                            occurrences: 1,
+                                            occurrences: incomingOccurrences,
                                         });
                                     });
 
-                                    const aggregatedList = Array.from(aggregated.values());
+                                    const aggregatedList = Array.from(aggregated.values()).sort((a, b) => {
+                                        const aScore = (a.occurrences ?? a.usageCount ?? 0);
+                                        const bScore = (b.occurrences ?? b.usageCount ?? 0);
+                                        return bScore - aScore;
+                                    });
 
                                     setCombinationSuggestions(aggregatedList);
                                     setCombinationError(
@@ -1008,6 +1020,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         const productVector = Array.isArray(product?.product_vector) ? product.product_vector : [];
                         const productLabels = Array.isArray(product?.product_labels) ? product.product_labels : [];
                         const rows = buildLabeledPairs(productVector, productLabels, labelOrder);
+                        const sellerCount = Math.max(product?.usage_count ?? 0, 0);
 
                         return (
                             <TouchableOpacity
@@ -1040,7 +1053,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                             </View>
                                         )}
                                         <Text style={styles.suggestionCount}>
-                                            👥 {product.usage_count} vendeur{product.usage_count > 1 ? 's' : ''}
+                                            👥 {sellerCount} prestataire{sellerCount > 1 ? 's' : ''}
                                         </Text>
                                     </View>
                                     {product.prix_moyen && (
@@ -1068,13 +1081,15 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     {!loadingCombinationSuggestions && combinationSuggestions.length > 0 && (
                         <View style={styles.combinationSuggestionsContainer}>
                             <Text style={styles.combinationSuggestionsTitle}>🔥 Combinaisons des prestataires</Text>
-                            {combinationSuggestions.map((combo) => {
+                            {combinationSuggestions.map((combo, index) => {
                                 const rows = buildLabeledPairs(
                                     combo.productVector || [],
                                     combo.productLabels || [],
                                     labelOrder
                                 );
                                 const priceDisplay = formatPriceDisplay(combo.prix, combo.devise);
+                                const usageDisplay = Math.max(combo.usageCount ?? 0, 0);
+                                const occurrenceDisplay = Math.max(combo.occurrences ?? usageDisplay, 0);
 
                                 return (
                                     <TouchableOpacity
@@ -1083,14 +1098,26 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         onPress={() => applyCombinationSuggestion(combo)}
                                     >
                                         <View style={styles.combinationCardHeader}>
-                                            <SafeIcon
-                                                name={combo.isAIPreferred ? 'sparkles' : 'flame'}
-                                                size={16}
-                                                color={combo.isAIPreferred ? modernColors.primary : '#F97316'}
-                                            />
-                                            <Text style={styles.combinationCardTitle}>
-                                                {combo.isAIPreferred ? 'Version IA' : 'Variante populaire'}
-                                            </Text>
+                                            <View style={styles.combinationCardHeaderLeft}>
+                                                <SafeIcon
+                                                    name={combo.isAIPreferred ? 'sparkles' : 'flame'}
+                                                    size={16}
+                                                    color={combo.isAIPreferred ? modernColors.primary : '#F97316'}
+                                                />
+                                                <Text style={styles.combinationCardTitle}>
+                                                    {combo.isAIPreferred
+                                                        ? 'Version IA'
+                                                        : `Variante caractéristiques ${index + 1}`}
+                                                </Text>
+                                            </View>
+                                            {!combo.isAIPreferred && (
+                                                <View style={styles.combinationBadge}>
+                                                    <SafeIcon name="bar-chart-2" size={12} color={modernColors.primary} />
+                                                    <Text style={styles.combinationBadgeText}>
+                                                        {occurrenceDisplay} occur.
+                                                    </Text>
+                                                </View>
+                                            )}
                                         </View>
 
                                         <View style={styles.combinationTable}>
@@ -1108,11 +1135,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         <View style={styles.combinationMeta}>
                                             <View style={styles.combinationMetaLeft}>
                                                 <Text style={styles.combinationUsage}>
-                                                    👥 {combo.usageCount} prestataire{combo.usageCount > 1 ? 's' : ''}
+                                                    👥 {usageDisplay} prestataire{usageDisplay > 1 ? 's' : ''}
                                                 </Text>
-                                                {combo.occurrences && combo.occurrences > 1 && (
+                                                {occurrenceDisplay > 0 && (
                                                     <Text style={styles.combinationOccurrence}>
-                                                        🔁 {combo.occurrences} occurrences
+                                                        🔁 {occurrenceDisplay} occurrence{occurrenceDisplay > 1 ? 's' : ''}
                                                     </Text>
                                                 )}
                                             </View>
@@ -1993,12 +2020,33 @@ const styles = StyleSheet.create({
     combinationCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+    },
+    combinationCardHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 6,
+        flexShrink: 1,
     },
     combinationCardTitle: {
         fontSize: 13,
         fontWeight: '600',
         color: '#1F2937',
+    },
+    combinationBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 999,
+        backgroundColor: modernColors.primary + '1A',
+    },
+    combinationBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
     combinationTable: {
         borderWidth: 1,

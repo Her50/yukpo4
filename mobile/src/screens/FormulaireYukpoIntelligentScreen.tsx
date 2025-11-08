@@ -500,7 +500,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
-          label: 'Caractéristiques du produit / prestation',
+          label: 'Caractéristiques produits / prestations',
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
@@ -593,7 +593,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
-          label: 'Caractéristiques du produit / prestation',
+          label: 'Caractéristiques produits / prestations',
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
@@ -705,7 +705,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
-          label: isPrestation ? 'Caractéristiques prestation' : 'Caractéristiques produit',
+          label: isPrestation ? 'Caractéristiques prestations' : 'Caractéristiques produits',
           multiline: true,
           minLines: 1,
           required: false,
@@ -2261,7 +2261,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       case 'textarea':
         const isProductDescField = field.name === 'description_produit';
-        const linesMinimum = isProductDescField ? 3 : 3;
+        const linesMinimum = isProductDescField ? 6 : 3;
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
@@ -2273,6 +2273,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               onChangeText={(text) => handleFieldChange(field.name, text)}
               multiline
               minLines={linesMinimum}
+              inputStyle={isProductDescField ? styles.productDescriptionText : undefined}
               onContentSizeChange={(width, height) => {
                 const lineHeight = 24;
                 const computedLines = Math.max(linesMinimum, Math.ceil(height / lineHeight));
@@ -2284,6 +2285,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               style={[
                 styles.fieldInput,
                 styles.textareaInput,
+                isProductDescField && styles.productDescriptionInput,
                 dynamicTextareaHeights[field.name] ? { minHeight: dynamicTextareaHeights[field.name] } : null
               ]}
             />
@@ -4373,8 +4375,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   textareaInput: {
-    minHeight: 180,
+    minHeight: 200,
     paddingTop: 14,
+  },
+  productDescriptionInput: {
+    minHeight: 240,
+    lineHeight: 22,
+  },
+  productDescriptionText: {
+    lineHeight: 22,
   },
   navigationButtons: {
     flexDirection: 'row',

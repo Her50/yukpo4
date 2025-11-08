@@ -92,9 +92,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // ✅ NOUVEAU : Utiliser conversationId si conversation privée, sinon service.id
-    const effectiveServiceId = isPrivateConversation && privateConversationId
-        ? parseInt(privateConversationId, 10)
+    const parsedConversationId = privateConversationId ? Number(privateConversationId) : NaN;
+    const effectiveServiceId = isPrivateConversation && !Number.isNaN(parsedConversationId)
+        ? parsedConversationId
         : (service?.id || 0);
+
+    const prestataireUserId = Number(
+        prestataireInfo?.user_id ?? prestataireInfo?.userId ?? 0,
+    );
 
     // Utiliser le hook WebSocket
     const {
@@ -107,7 +112,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         markAsRead
     } = useWebSocketChat(
         effectiveServiceId,
-        prestataireInfo?.userId || 0,
+        prestataireUserId,
         user?.id || 0
     );
 

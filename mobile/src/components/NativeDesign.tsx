@@ -116,6 +116,7 @@ export interface NativeInputProps {
     onChangeText?: (text: string) => void;
     secureTextEntry?: boolean;
     style?: any;
+    inputStyle?: any;
     multiline?: boolean;
     keyboardType?: any; // ✅ Ajout pour supporter différents types de clavier
     autoCapitalize?: any; // ✅ Ajout pour contrôler la capitalisation
@@ -130,6 +131,7 @@ export const NativeInput: React.FC<NativeInputProps> = ({
     onChangeText,
     secureTextEntry,
     style,
+    inputStyle,
     multiline,
     keyboardType,
     autoCapitalize,
@@ -148,7 +150,8 @@ export const NativeInput: React.FC<NativeInputProps> = ({
     const inputStyles = [
         styles.input,
         multiline && styles.inputMultiline,
-        multiline && inputHeight ? { height: inputHeight - 24 } : null
+        multiline && inputHeight ? { height: inputHeight - 24 } : null,
+        inputStyle
     ];
 
     return (
@@ -164,6 +167,7 @@ export const NativeInput: React.FC<NativeInputProps> = ({
                 autoCapitalize={autoCapitalize}
                 autoCorrect={autoCorrect}
                 placeholderTextColor={modernColors.textSecondary}
+                scrollEnabled={multiline ? false : undefined}
                 blurOnSubmit={multiline ? false : undefined}
                 returnKeyType={multiline ? 'default' : undefined}
                 textBreakStrategy={multiline ? 'highQuality' : undefined}

@@ -20,7 +20,6 @@ import { apiPost } from '../services/api'; // ✅ NOUVEAU: Pour autocomplete
 import { uploadMultipleToCloud } from '../services/cloudUpload';
 import { modernColors } from '../theme/modernTheme';
 import ModernGPSModal from './ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
-import { NativeCard } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 
 const primaryColor = modernColors?.primary ?? '#6366F1';
@@ -1033,28 +1032,25 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                                     : null;
 
                                 return (
-                                    <NativeCard
+                                    <TouchableOpacity
                                         key={`suggestion-${index}`}
                                         onPress={() => handleSuggestionSelect(suggestion)}
-                                        style={styles.suggestionCard}
+                                        activeOpacity={0.85}
+                                        style={styles.suggestionItem}
                                     >
-                                        <View style={styles.suggestionCardHeader}>
-                                            <View style={styles.suggestionCardHeaderLeft}>
-                                                <SafeIcon name="sparkles" size={16} color={primaryColor} />
-                                                <Text style={styles.suggestionCardTitle}>Proposition {index + 1}</Text>
-                                            </View>
-
+                                        <View style={styles.suggestionHeaderRow}>
+                                            <Text style={styles.suggestionTitle}>Proposition {index + 1}</Text>
                                             {suggestion?.usage_count ? (
-                                                <View style={styles.suggestionUsagePill}>
-                                                    <SafeIcon name="users" size={12} color={accentColor} />
-                                                    <Text style={styles.suggestionUsageText}>
+                                                <View style={styles.suggestionBadge}>
+                                                    <SafeIcon name="users" size={11} color={accentColor} />
+                                                    <Text style={styles.suggestionBadgeText}>
                                                         {suggestion.usage_count}× recherché
                                                     </Text>
                                                 </View>
                                             ) : null}
                                         </View>
 
-                                        <View style={styles.suggestionChips}>
+                                        <View style={styles.suggestionChipsWrap}>
                                             {chips.map((chip: string, i: number) => (
                                                 <View key={`${chip}-${i}`} style={styles.suggestionChip}>
                                                     <Text style={styles.suggestionChipText}>{chip}</Text>
@@ -1062,27 +1058,28 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                                             ))}
                                         </View>
 
-                                        <View style={styles.suggestionMetaRow}>
+                                        <View style={styles.suggestionMetaWrap}>
                                             {suggestion?.chosen_location ? (
-                                                <View style={styles.suggestionMetaItem}>
-                                                    <SafeIcon name="map-pin" size={14} color={primaryColor} />
+                                                <View style={styles.suggestionMetaPill}>
+                                                    <SafeIcon name="map-pin" size={12} color={primaryColor} />
                                                     <Text style={styles.suggestionMetaText}>{suggestion.chosen_location}</Text>
                                                 </View>
                                             ) : null}
 
                                             {priceText ? (
-                                                <View style={styles.suggestionMetaItem}>
-                                                    <SafeIcon name="tag" size={14} color={successColor} />
+                                                <View style={styles.suggestionMetaPill}>
+                                                    <SafeIcon name="tag" size={12} color={successColor} />
                                                     <Text style={styles.suggestionMetaText}>{priceText}</Text>
                                                 </View>
                                             ) : null}
                                         </View>
 
-                                        <View style={styles.suggestionApply}>
-                                            <SafeIcon name="arrow-right" size={14} color="#FFFFFF" />
-                                            <Text style={styles.suggestionApplyText}>Utiliser cette suggestion</Text>
-                                        </View>
-                                    </NativeCard>
+                                        {fullText.length > 0 && (
+                                            <Text style={styles.suggestionFooterText} numberOfLines={2}>
+                                                {fullText}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
                                 );
                             })}
                         </ScrollView>
@@ -1574,11 +1571,48 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '500',
     },
-    suggestionChips: {
+    suggestionItem: {
+        marginBottom: 10,
+        padding: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 1,
+    },
+    suggestionHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    suggestionTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    suggestionBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#FEF3C7',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 999,
+    },
+    suggestionBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#92400E',
+    },
+    suggestionChipsWrap: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 6,
-        marginBottom: 12,
     },
     suggestionChip: {
         backgroundColor: '#EEF2FF',
@@ -1593,71 +1627,32 @@ const styles = StyleSheet.create({
         color: '#6366F1',
         fontWeight: '600',
     },
-    suggestionCard: {
-        marginBottom: 12,
-    },
-    suggestionCardHeader: {
+    suggestionMetaWrap: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-    },
-    suggestionCardHeaderLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    suggestionCardTitle: {
-        marginLeft: 8,
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#1F2937',
-    },
-    suggestionUsagePill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFF1E6',
-        borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-    suggestionUsageText: {
-        marginLeft: 4,
-        fontSize: 12,
-        color: accentColor,
-        fontWeight: '600',
-    },
-    suggestionMetaRow: {
-        flexDirection: 'row',
         flexWrap: 'wrap',
-        marginTop: 8,
+        gap: 6,
+        marginTop: 10,
     },
-    suggestionMetaItem: {
+    suggestionMetaPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginRight: 12,
-        marginBottom: 8,
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 999,
     },
     suggestionMetaText: {
-        marginLeft: 6,
-        fontSize: 12,
-        color: '#4B5563',
-        fontWeight: '500',
-    },
-    suggestionApply: {
-        marginTop: 12,
-        backgroundColor: '#6366F1',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        alignSelf: 'flex-start',
-    },
-    suggestionApplyText: {
-        marginLeft: 8,
-        color: '#FFFFFF',
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
+        color: '#4B5563',
+    },
+    suggestionFooterText: {
+        marginTop: 8,
+        fontSize: 12,
+        color: '#6B7280',
+        lineHeight: 16,
     },
     emptySuggestions: {
         flexDirection: 'row',
