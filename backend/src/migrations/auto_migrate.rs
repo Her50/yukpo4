@@ -1606,7 +1606,11 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
     } else {
         info!("✅ Table product_comments déjà présente, vérification des colonnes...");
 
-        let ensure_column = |column: &str, ddl: &str| async move {
+        async fn ensure_column(
+            pool: &PgPool,
+            column: &'static str,
+            ddl: &'static str,
+        ) -> Result<(), sqlx::Error> {
             let has_column = sqlx::query_scalar::<_, bool>(
                 "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'product_comments' AND column_name = $1)",
             )
@@ -1620,22 +1624,25 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
                 info!("✅ Colonne '{}' ajoutée", column);
             }
 
-            Ok::<(), sqlx::Error>(())
-        };
+            Ok(())
+        }
 
         ensure_column(
+            pool,
             "parent_comment_id",
             "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS parent_comment_id INTEGER REFERENCES product_comments(id) ON DELETE CASCADE",
         )
         .await?;
 
         ensure_column(
+            pool,
             "rating",
             "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating BETWEEN 0 AND 5)",
         )
         .await?;
 
         ensure_column(
+            pool,
             "mentions",
             "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS mentions INTEGER[] DEFAULT '{}'",
         )
@@ -1648,6 +1655,7 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
         .await?;
 
         ensure_column(
+            pool,
             "reaction_counts",
             "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS reaction_counts JSONB DEFAULT '{}'::jsonb",
         )
@@ -1660,12 +1668,14 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
         .await?;
 
         ensure_column(
+            pool,
             "edited_at",
             "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ",
         )
         .await?;
 
         ensure_column(
+            pool,
             "is_deleted",
             "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE",
         )
