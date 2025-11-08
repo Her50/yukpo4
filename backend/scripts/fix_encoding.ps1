@@ -22,82 +22,82 @@ $files = @(
     "src/services/alert_service.rs",
     "src/services/service_lifecycle_manager.rs",
     "src/routers/router_yukpo.rs",
-    "src/tasks/matching_echange_cron.rs",
     "src/tasks/reactivate_service.rs",
     "src/tasks/service_deactivation.rs"
 )
 
-# Mappings de correction
-$replacements = @{
-    "d\?" = "dé"
-    "r\?" = "ré"
-    "v\?" = "vé"
-    "c\?" = "cé"
-    "n\?" = "né"
-    "p\?" = "pé"
-    "s\?" = "sé"
-    "t\?" = "té"
-    "l\?" = "lé"
-    "m\?" = "mé"
-    "h\?" = "hé"
-    "b\?" = "bé"
-    "g\?" = "gé"
-    "f\?" = "fé"
-    "j\?" = "jé"
-    "k\?" = "ké"
-    "q\?" = "qué"
-    "w\?" = "wé"
-    "x\?" = "xé"
-    "y\?" = "yé"
-    "z\?" = "zé"
-    "a\?" = "à"
-    "e\?" = "è"
-    "i\?" = "ì"
-    "o\?" = "ò"
-    "u\?" = "ù"
-    "A\?" = "À"
-    "E\?" = "È"
-    "I\?" = "Ì"
-    "O\?" = "Ò"
-    "U\?" = "Ù"
-    "c\?" = "ç"
-    "C\?" = "Ç"
-    "n\?" = "ñ"
-    "N\?" = "Ñ"
-    "a\?" = "â"
-    "e\?" = "ê"
-    "i\?" = "î"
-    "o\?" = "ô"
-    "u\?" = "û"
-    "A\?" = "Â"
-    "E\?" = "Ê"
-    "I\?" = "Î"
-    "O\?" = "Ô"
-    "U\?" = "Û"
-    "a\?" = "ä"
-    "e\?" = "ë"
-    "i\?" = "ï"
-    "o\?" = "ö"
-    "u\?" = "ü"
-    "A\?" = "Ä"
-    "E\?" = "Ë"
-    "I\?" = "Ï"
-    "O\?" = "Ö"
-    "U\?" = "Ü"
-}
+# Mappings de correction (liste de paires pour éviter les clés dupliquées)
+$replacements = @(
+    @{ Pattern = "d\?"; Replacement = "dé" }
+    @{ Pattern = "r\?"; Replacement = "ré" }
+    @{ Pattern = "v\?"; Replacement = "vé" }
+    @{ Pattern = "c\?"; Replacement = "cé" }
+    @{ Pattern = "n\?"; Replacement = "né" }
+    @{ Pattern = "p\?"; Replacement = "pé" }
+    @{ Pattern = "s\?"; Replacement = "sé" }
+    @{ Pattern = "t\?"; Replacement = "té" }
+    @{ Pattern = "l\?"; Replacement = "lé" }
+    @{ Pattern = "m\?"; Replacement = "mé" }
+    @{ Pattern = "h\?"; Replacement = "hé" }
+    @{ Pattern = "b\?"; Replacement = "bé" }
+    @{ Pattern = "g\?"; Replacement = "gé" }
+    @{ Pattern = "f\?"; Replacement = "fé" }
+    @{ Pattern = "j\?"; Replacement = "jé" }
+    @{ Pattern = "k\?"; Replacement = "ké" }
+    @{ Pattern = "q\?"; Replacement = "qué" }
+    @{ Pattern = "w\?"; Replacement = "wé" }
+    @{ Pattern = "x\?"; Replacement = "xé" }
+    @{ Pattern = "y\?"; Replacement = "yé" }
+    @{ Pattern = "z\?"; Replacement = "zé" }
+    @{ Pattern = "a\?"; Replacement = "à" }
+    @{ Pattern = "e\?"; Replacement = "è" }
+    @{ Pattern = "i\?"; Replacement = "ì" }
+    @{ Pattern = "o\?"; Replacement = "ò" }
+    @{ Pattern = "u\?"; Replacement = "ù" }
+    @{ Pattern = "A\?"; Replacement = "À" }
+    @{ Pattern = "E\?"; Replacement = "È" }
+    @{ Pattern = "I\?"; Replacement = "Ì" }
+    @{ Pattern = "O\?"; Replacement = "Ò" }
+    @{ Pattern = "U\?"; Replacement = "Ù" }
+    @{ Pattern = "c\?"; Replacement = "ç" }
+    @{ Pattern = "C\?"; Replacement = "Ç" }
+    @{ Pattern = "n\?"; Replacement = "ñ" }
+    @{ Pattern = "N\?"; Replacement = "Ñ" }
+    @{ Pattern = "a\?"; Replacement = "â" }
+    @{ Pattern = "e\?"; Replacement = "ê" }
+    @{ Pattern = "i\?"; Replacement = "î" }
+    @{ Pattern = "o\?"; Replacement = "ô" }
+    @{ Pattern = "u\?"; Replacement = "û" }
+    @{ Pattern = "A\?"; Replacement = "Â" }
+    @{ Pattern = "E\?"; Replacement = "Ê" }
+    @{ Pattern = "I\?"; Replacement = "Î" }
+    @{ Pattern = "O\?"; Replacement = "Ô" }
+    @{ Pattern = "U\?"; Replacement = "Û" }
+    @{ Pattern = "a\?"; Replacement = "ä" }
+    @{ Pattern = "e\?"; Replacement = "ë" }
+    @{ Pattern = "i\?"; Replacement = "ï" }
+    @{ Pattern = "o\?"; Replacement = "ö" }
+    @{ Pattern = "u\?"; Replacement = "ü" }
+    @{ Pattern = "A\?"; Replacement = "Ä" }
+    @{ Pattern = "E\?"; Replacement = "Ë" }
+    @{ Pattern = "I\?"; Replacement = "Ï" }
+    @{ Pattern = "O\?"; Replacement = "Ö" }
+    @{ Pattern = "U\?"; Replacement = "Ü" }
+)
 
 foreach ($file in $files) {
     if (Test-Path $file) {
         Write-Host "Correction de $file..."
         $content = Get-Content $file -Raw -Encoding UTF8
         
-        foreach ($replacement in $replacements.GetEnumerator()) {
-            $content = $content -replace $replacement.Key, $replacement.Value
+        foreach ($replacement in $replacements) {
+            $content = $content -replace $replacement.Pattern, $replacement.Replacement
         }
         
         Set-Content $file -Value $content -Encoding UTF8
         Write-Host "  ✓ $file corrigé"
-    } else {
+    }
+    else {
         Write-Host "  ⚠ $file non trouvé"
     }
 }

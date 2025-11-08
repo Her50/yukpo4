@@ -208,12 +208,18 @@ DECLARE
     score FLOAT := 0.0;
     search_lower TEXT;
     i INTEGER;
+    vec_length INTEGER;
 BEGIN
     IF search_location IS NULL OR location_vector IS NULL THEN
         RETURN 0.0;
     END IF;
     
     search_lower := LOWER(search_location);
+    vec_length := array_length(location_vector, 1);
+
+    IF vec_length IS NULL OR vec_length < 1 THEN
+        RETURN 0.0;
+    END IF;
     
     -- Correspondance exacte avec chosen_location (score max)
     IF chosen_location IS NOT NULL AND LOWER(chosen_location) = search_lower THEN
@@ -221,7 +227,7 @@ BEGIN
     END IF;
     
     -- Recherche dans le vecteur de localisation
-    FOR i IN 1..array_length(location_vector, 1) LOOP
+    FOR i IN 1..vec_length LOOP
         IF LOWER(location_vector[i]) = search_lower THEN
             -- Score dépend de la position dans la hiérarchie
             -- Position 1 (ville) = 1.0, Position 2 (quartier) = 0.9, etc.

@@ -2540,6 +2540,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           return produitsNode;
         }
 
+        const safeOptions = options ?? {};
+
         const {
           nomFallback = '',
           deviseFallback = 'XAF',
@@ -2547,7 +2549,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           characteristicVector = [],
           productLabels = [],
           origineChamps = 'formulaire'
-        } = options;
+        } = safeOptions;
 
         const buildBaseProduct = () => ({
           nom: nomFallback,

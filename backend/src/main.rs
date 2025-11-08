@@ -82,13 +82,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("? {}", massive_load_handler.get_stats().await);
     log::info!("?? {}", gpu_optimizer.get_stats());
 
-    // Lancer la relance automatique du matching des ?changes (t?che asynchrone)
-    let state_clone = app_state.clone();
-    tokio::spawn(async move {
-        yukpomnang_backend::tasks::matching_echange_cron::relance_matching_echanges(state_clone)
-            .await;
-    });
-
     // ✅ Lancer la désactivation automatique des produits (tous les jours à minuit)
     let state_clone_products = app_state.clone();
     tokio::spawn(async move {

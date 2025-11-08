@@ -5,12 +5,12 @@
  */
 
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
   Image,
-  Modal,
   ScrollView,
   Share,
   StyleSheet,
@@ -22,10 +22,10 @@ import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
 import { NativeButton, NativeCard } from './NativeDesign';
+import ProductCommentsSection from './ProductCommentsSection';
 import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
 import ServiceGalleryModal from './ServiceGalleryModal';
-import { ServiceRating } from './ServiceRating';
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +47,26 @@ const REACTIONS = [
   { type: 'thinking', emoji: '🤔', label: 'À réfléchir' },
   { type: 'disappointed', emoji: '😕', label: 'Déçu' },
 ];
+
+const formatCompactNumber = (value: number | undefined | null): string => {
+  if (value === undefined || value === null) {
+    return '0';
+  }
+
+  const abs = Math.abs(value);
+
+  if (abs >= 1_000_000) {
+    const formatted = (abs / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1);
+    return `${value < 0 ? '-' : ''}${formatted}M`;
+  }
+
+  if (abs >= 1_000) {
+    const formatted = (abs / 1_000).toFixed(abs >= 10_000 ? 0 : 1);
+    return `${value < 0 ? '-' : ''}${formatted}k`;
+  }
+
+  return `${value}`;
+};
 
 // Mapper codes pays → drapeaux emoji
 const getCountryFlag = (country?: string): string => {
@@ -93,16 +113,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const navigation = useNavigation();
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
-  const [showReviewsModal, setShowReviewsModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
   // ✅ NOUVEAU : États pour contact privé
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
   // ✅ NOUVEAU : États pour avis/ratings et galerie
   const [showGallery, setShowGallery] = useState(false);
-  const [serviceReviews, setServiceReviews] = useState<any[]>([]);
-  const [serviceRating, setServiceRating] = useState<{ avg: number; count: number } | null>(null);
   // ✅ NOUVEAU : États pour réactions
   const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
+  const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
+  const [loadingReactions, setLoadingReactions] = useState(false);
+  const [pendingReaction, setPendingReaction] = useState<string | null>(null);
 
   // Données produit
   const productVector = product.product_vector || product.characteristic_vector || [];
@@ -115,9 +135,56 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   const hasVariant = product.has_variant || false;
   const variants = product.variants || [];
-  const prestataire = prestataireFromProps || product.prestataire || service?.prestataire || {
-    nom: service?.data?.nom_prestataire || 'Prestataire',
-    user_id: service?.user_id,
+  const rawPrestataire =
+    prestataireFromProps ||
+    product.prestataire ||
+    service?.prestataire ||
+    {
+      nom: service?.data?.nom_prestataire?.valeur ||
+        service?.data?.prestataire_nom?.valeur ||
+        service?.data?.contact_nom?.valeur ||
+        service?.data?.nom_prestataire ||
+        service?.data?.prestataire_nom ||
+        'Prestataire',
+      user_id: service?.user_id,
+      avatar_url: service?.data?.photo_prestataire?.valeur,
+    };
+
+  const prestataireName =
+    rawPrestataire?.nom ||
+    rawPrestataire?.nom_complet ||
+    rawPrestataire?.name ||
+    rawPrestataire?.username ||
+    product.prestataire_nom ||
+    product.prestataire?.nom ||
+    product.prestataire?.nom_complet ||
+    service?.data?.nom_prestataire?.valeur ||
+    service?.data?.prestataire_nom?.valeur ||
+    service?.data?.contact_nom?.valeur ||
+    service?.data?.nom?.valeur ||
+    service?.data?.nom_entreprise?.valeur ||
+    'Prestataire';
+
+  const prestataireAvatar =
+    rawPrestataire?.avatar_url ||
+    rawPrestataire?.photo_profil ||
+    rawPrestataire?.photo ||
+    product.prestataire_avatar ||
+    service?.data?.photo_prestataire?.valeur ||
+    service?.data?.photo_profil?.valeur;
+
+  const prestataireUserId =
+    rawPrestataire?.user_id ||
+    product.prestataire?.user_id ||
+    service?.user_id ||
+    service?.data?.user_id;
+
+  const prestataire = {
+    ...rawPrestataire,
+    nom: prestataireName,
+    nom_complet: prestataireName,
+    avatar_url: prestataireAvatar,
+    user_id: prestataireUserId,
   };
 
   // ✅ NOUVEAU : Popularité (usage_count de autocomplete_characteristics)
@@ -134,6 +201,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
     ? variants[selectedVariantIndex]
     : null;
   const variantImage = selectedVariant?.image || selectedVariant?.images?.[0];
+  const hasMedia = (images?.length || 0) + (videos?.length || 0) > 0 || !!variantImage;
+
+  const serviceId = product.service_id || service?.id;
+  const productIndex =
+    typeof product.product_index === 'number'
+      ? product.product_index
+      : typeof product.index === 'number'
+        ? product.index
+        : 0;
+  const resolvedProductId =
+    product.product_id ||
+    product.id ||
+    (serviceId ? `${serviceId}_${productIndex}` : null);
 
   // Prix
   const displayPrice = hasVariant && variants.length > 0
@@ -152,13 +232,69 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   const countryFlag = getCountryFlag(pays);
 
+  const commentServiceId = Number(product._serviceId || product.service_id || service?.id || 0);
+  const serviceTitleForComments =
+    product.nom ||
+    product.name ||
+    product.titre ||
+    product.title ||
+    service?.data?.titre_service?.valeur ||
+    service?.data?.nom ||
+    'Produit';
+
+  const viewsCount =
+    product.views ??
+    product.vues ??
+    product.consultations ??
+    service?.views ??
+    usageCount ??
+    0;
+
+  const sharesCount =
+    product.shares ??
+    product.partages ??
+    product.share_count ??
+    service?.shares ??
+    0;
+
+  const reviewsCount =
+    product.reviews ??
+    product.reviews_count ??
+    product.nb_avis ??
+    service?.reviews_count ??
+    0;
+
+  const favoritesCount =
+    product.favoris ??
+    product.likes ??
+    product.favorites ??
+    product.saves ??
+    product.bookmarks ??
+    0;
+
+  const topStatsData = [
+    { key: 'views', icon: 'eye', value: viewsCount, tint: '#4f46e5' },
+    { key: 'shares', icon: 'share-2', value: sharesCount, tint: '#a855f7' },
+    { key: 'reviews', icon: 'message-circle', value: reviewsCount, tint: '#f59e0b' },
+    { key: 'favorites', icon: 'heart', value: favoritesCount, tint: '#ef4444' },
+  ];
+
   // ✅ AMÉLIORATION: Utiliser onChatPress si fourni, sinon modal local
   const handleChatPress = () => {
     if (onChatPress) {
       onChatPress(); // Utiliser le handler externe (depuis MixedContentCarousel)
-    } else {
-      setShowChatModal(true); // Sinon, modal local
+      return;
     }
+
+    if (!prestataire.user_id) {
+      Alert.alert(
+        'Information manquante',
+        'Impossible de contacter ce prestataire pour le moment. Veuillez réessayer plus tard.'
+      );
+      return;
+    }
+
+    setShowChatModal(true); // Sinon, modal local
   };
 
   // ✅ NOUVEAU : Handler partage produit
@@ -189,88 +325,60 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
-  // ✅ NOUVEAU : Charger avis/ratings du service
-  useEffect(() => {
-    const loadReviews = async () => {
-      const serviceId = product.service_id || service?.id;
-      if (!serviceId) return;
-
-      try {
-        const response = await apiGet(`/api/services/${serviceId}/reviews`);
-        if (response.success && response.data) {
-          const data = response.data as any;
-          setServiceReviews(data.reviews || []);
-          setServiceRating({
-            avg: data.average_rating || 0,
-            count: data.total_reviews || 0,
-          });
-        }
-      } catch (error) {
-        console.error('[ProductCard] Erreur chargement avis:', error);
-      }
-    };
-
-    loadReviews();
-  }, [product.service_id, service?.id]);
-
   // ✅ NOUVEAU : Charger réactions du produit
-  useEffect(() => {
-    const loadReactions = async () => {
-      const serviceId = product.service_id || service?.id;
-      if (!serviceId) return;
+  const loadReactions = useCallback(async () => {
+    if (!serviceId || !resolvedProductId) return;
 
-      const productId = `${serviceId}_${product.product_index || 0}`;
-
-      try {
-        const response = await apiGet(`/api/products/${serviceId}/${productId}/reactions`);
-        if (response.success && response.data) {
-          const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
-          const reactionsArray = response.data as any[];
-          reactionsArray.forEach((r: any) => {
-            reactionsMap[r.reaction_type] = {
-              count: r.count,
-              hasReacted: r.has_reacted
-            };
-          });
-          setReactions(reactionsMap);
-        }
-      } catch (error) {
-        console.error('[ProductCard] Erreur chargement réactions:', error);
+    try {
+      setLoadingReactions(true);
+      const response = await apiGet(`/api/products/${serviceId}/${resolvedProductId}/reactions`);
+      if (response.success && response.data) {
+        const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
+        const reactionsArray = response.data as any[];
+        reactionsArray.forEach((r: any) => {
+          reactionsMap[r.reaction_type] = {
+            count: r.count,
+            hasReacted: r.has_reacted
+          };
+        });
+        setReactions(reactionsMap);
       }
-    };
+    } catch (error) {
+      console.error('[ProductCard] Erreur chargement réactions:', error);
+    } finally {
+      setLoadingReactions(false);
+    }
+  }, [resolvedProductId, serviceId]);
 
+  useEffect(() => {
     loadReactions();
-  }, [product.service_id, product.product_index, service?.id]);
+  }, [loadReactions]);
 
   // ✅ NOUVEAU : Handler pour réagir
   const handleReaction = async (reactionType: string) => {
-    const serviceId = product.service_id || service?.id;
-    if (!serviceId) return;
+    if (!serviceId || !resolvedProductId) {
+      Alert.alert(
+        'Information manquante',
+        'Impossible de réagir à ce produit pour le moment.'
+      );
+      return;
+    }
 
-    const productId = `${serviceId}_${product.product_index || 0}`;
+    setPendingReaction(reactionType);
 
     try {
-      const response = await apiPost(`/api/products/${serviceId}/${productId}/react`, {
+      const response = await apiPost(`/api/products/${serviceId}/${resolvedProductId}/react`, {
         reaction_type: reactionType
       });
 
       if (response.success) {
-        setReactions(prev => {
-          const current = prev[reactionType] || { count: 0, hasReacted: false };
-          const data = response.data as { action: string };
-          const action = data.action;
-
-          return {
-            ...prev,
-            [reactionType]: {
-              count: action === 'added' ? current.count + 1 : Math.max(0, current.count - 1),
-              hasReacted: action === 'added'
-            }
-          };
-        });
+        await loadReactions();
       }
     } catch (error) {
       console.error('[ProductCard] Erreur réaction:', error);
+      Alert.alert('Erreur', 'Impossible d’enregistrer votre réaction pour le moment.');
+    } finally {
+      setPendingReaction(null);
     }
   };
 
@@ -323,60 +431,85 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <>
-      <NativeCard>
+      <NativeCard
+        padding={0}
+        style={[styles.cardContainer, !hasMedia && styles.cardContainerCompact]}
+      >
         <TouchableOpacity
+          style={styles.touchableContainer}
           activeOpacity={0.9}
           onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
         >
           {/* Carousel d'images/vidéos avec support variation */}
-          <View style={styles.imageContainer}>
-            <ProductMediaCarousel
-              images={images}
-              videos={videos}
-              variantImage={variantImage}
-              onImagePress={(index) => {
-                // ✅ NOUVEAU : Ouvrir galerie complète du prestataire
-                setShowGallery(true);
-              }}
-            />
+          {hasMedia && (
+            <View style={styles.imageContainer}>
+              <ProductMediaCarousel
+                images={images}
+                videos={videos}
+                variantImage={variantImage}
+                onImagePress={() => {
+                  // ✅ NOUVEAU : Ouvrir galerie complète du prestataire
+                  setShowGallery(true);
+                }}
+              />
 
-            {/* Badge pays (coin supérieur droit) */}
-            {countryFlag && (
-              <View style={styles.countryBadge}>
-                <Text style={styles.countryFlag}>{countryFlag}</Text>
+              {/* Badge pays (coin supérieur droit) */}
+              {countryFlag && (
+                <View style={styles.countryBadge}>
+                  <Text style={styles.countryFlag}>{countryFlag}</Text>
+                </View>
+              )}
+
+              {/* Badge distance (coin supérieur gauche) */}
+              {distanceKm !== undefined && distanceKm !== null && (
+                <View style={styles.distanceBadge}>
+                  <SafeIcon name="navigation" size={12} color="#FFF" />
+                  <Text style={styles.distanceText}>
+                    {distanceKm < 1
+                      ? `${Math.round(distanceKm * 1000)}m`
+                      : `${distanceKm.toFixed(1)}km`}
+                  </Text>
+                </View>
+              )}
+
+              {/* ✅ NOUVEAU : Badge popularité (coin inférieur gauche) */}
+              {isTrending && (
+                <View style={styles.trendingBadge}>
+                  <Text style={styles.trendingEmoji}>🔥🔥</Text>
+                  <Text style={styles.trendingText}>Tendance</Text>
+                  <Text style={styles.trendingCount}>{usageCount}×</Text>
+                </View>
+              )}
+              {!isTrending && isPopular && (
+                <View style={styles.popularBadge}>
+                  <Text style={styles.popularEmoji}>🔥</Text>
+                  <Text style={styles.popularText}>Populaire</Text>
+                  <Text style={styles.popularCount}>{usageCount}×</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          <View style={[styles.content, !hasMedia && styles.contentCompact]}>
+            {topStatsData.length > 0 && (
+              <View style={styles.topStatsRow}>
+                {topStatsData.map((stat) => (
+                  <View
+                    key={stat.key}
+                    style={[
+                      styles.topStatPill,
+                      { backgroundColor: `${stat.tint}12` },
+                    ]}
+                  >
+                    <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+                    <Text style={[styles.topStatValue, { color: stat.tint }]}>
+                      {formatCompactNumber(stat.value)}
+                    </Text>
+                  </View>
+                ))}
               </View>
             )}
 
-            {/* Badge distance (coin supérieur gauche) */}
-            {distanceKm !== undefined && distanceKm !== null && (
-              <View style={styles.distanceBadge}>
-                <SafeIcon name="navigation" size={12} color="#FFF" />
-                <Text style={styles.distanceText}>
-                  {distanceKm < 1
-                    ? `${Math.round(distanceKm * 1000)}m`
-                    : `${distanceKm.toFixed(1)}km`}
-                </Text>
-              </View>
-            )}
-
-            {/* ✅ NOUVEAU : Badge popularité (coin inférieur gauche) */}
-            {isTrending && (
-              <View style={styles.trendingBadge}>
-                <Text style={styles.trendingEmoji}>🔥🔥</Text>
-                <Text style={styles.trendingText}>Tendance</Text>
-                <Text style={styles.trendingCount}>{usageCount}×</Text>
-              </View>
-            )}
-            {!isTrending && isPopular && (
-              <View style={styles.popularBadge}>
-                <Text style={styles.popularEmoji}>🔥</Text>
-                <Text style={styles.popularText}>Populaire</Text>
-                <Text style={styles.popularCount}>{usageCount}×</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.content}>
             {/* Nom produit */}
             <Text style={styles.productName} numberOfLines={2}>
               {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
@@ -433,55 +566,29 @@ const ProductCard: React.FC<ProductCardProps> = ({
               </View>
             )}
 
-            {/* ✅ NOUVEAU : Notation moyenne du produit (visible pour tous) */}
-            {serviceRating && serviceRating.count > 0 && (
-              <View style={styles.productRatingBadge}>
-                <View style={styles.ratingStars}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <SafeIcon
-                      key={star}
-                      name={star <= Math.round(serviceRating.avg) ? 'star' : 'star-outline'}
-                      size={16}
-                      color="#FFD700"
-                    />
-                  ))}
+            {(totalReactions > 0 || usageCount > 0) && (
+              <LinearGradient
+                colors={['#EEF2FF', '#FFFFFF']}
+                style={styles.metricsCard}
+              >
+                <View style={styles.compactStatsRow}>
+                  {totalReactions > 0 && (
+                    <View style={styles.compactStatPillMuted}>
+                      <Text style={styles.compactStatEmoji}>🎭</Text>
+                      <Text style={styles.compactStatValue}>{totalReactions}</Text>
+                      <Text style={styles.compactStatLabel}>réactions</Text>
+                    </View>
+                  )}
+
+                  {usageCount > 0 && (
+                    <View style={styles.compactStatPillMuted}>
+                      <Text style={styles.compactStatEmoji}>🔥</Text>
+                      <Text style={styles.compactStatValue}>{usageCount}</Text>
+                      <Text style={styles.compactStatLabel}>recherches</Text>
+                    </View>
+                  )}
                 </View>
-                <Text style={styles.ratingValue}>
-                  {serviceRating.avg.toFixed(1)} ({serviceRating.count} avis)
-                </Text>
-              </View>
-            )}
-
-            {(serviceRating || totalReactions > 0 || usageCount > 0) && (
-              <View style={styles.compactStatsRow}>
-                {serviceRating && (
-                  <TouchableOpacity
-                    style={styles.compactStatPill}
-                    onPress={() => setShowReviewsModal(true)}
-                    activeOpacity={0.85}
-                  >
-                    <SafeIcon name="star" size={14} color="#FBBF24" />
-                    <Text style={styles.compactStatValue}>{serviceRating.avg.toFixed(1)}</Text>
-                    <Text style={styles.compactStatLabel}>({serviceRating.count})</Text>
-                  </TouchableOpacity>
-                )}
-
-                {totalReactions > 0 && (
-                  <View style={styles.compactStatPillMuted}>
-                    <Text style={styles.compactStatEmoji}>🎭</Text>
-                    <Text style={styles.compactStatValue}>{totalReactions}</Text>
-                    <Text style={styles.compactStatLabel}>réactions</Text>
-                  </View>
-                )}
-
-                {usageCount > 0 && (
-                  <View style={styles.compactStatPillMuted}>
-                    <Text style={styles.compactStatEmoji}>🔥</Text>
-                    <Text style={styles.compactStatValue}>{usageCount}</Text>
-                    <Text style={styles.compactStatLabel}>recherches</Text>
-                  </View>
-                )}
-              </View>
+              </LinearGradient>
             )}
 
             {/* Caractéristiques (vecteur produit) en chips */}
@@ -609,13 +716,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
             {/* ✅ NOUVEAU : Actions secondaires (Galerie, Partage) */}
             <View style={styles.secondaryActions}>
-              <TouchableOpacity
-                style={styles.secondaryActionButton}
-                onPress={() => setShowGallery(true)}
-              >
-                <SafeIcon name="image" size={18} color={modernColors.primary} />
-                <Text style={styles.secondaryActionText}>Galerie</Text>
-              </TouchableOpacity>
+              {hasMedia && (
+                <TouchableOpacity
+                  style={styles.secondaryActionButton}
+                  onPress={() => setShowGallery(true)}
+                >
+                  <SafeIcon name="image" size={18} color={modernColors.primary} />
+                  <Text style={styles.secondaryActionText}>Galerie</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.secondaryActionButton}
                 onPress={handleShare}
@@ -624,6 +733,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 <Text style={styles.secondaryActionText}>Partager</Text>
               </TouchableOpacity>
             </View>
+
+            {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
+              <ProductCommentsSection
+                serviceId={commentServiceId}
+                serviceTitle={serviceTitleForComments}
+                onOpenChat={handleContactUser}
+              />
+            )}
 
             {/* Footer info */}
             <View style={styles.footer}>
@@ -684,108 +801,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
           onClose={() => setShowGallery(false)}
         />
       )}
-
-      <Modal
-        visible={showReviewsModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowReviewsModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Avis et commentaires</Text>
-              <TouchableOpacity onPress={() => setShowReviewsModal(false)} style={styles.modalCloseButton}>
-                <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <ServiceRating
-                service={{
-                  id: String(product.service_id || service?.id),
-                  data: service?.data || {},
-                  reviews: serviceReviews,
-                  user_rating: serviceRating?.avg || 0,
-                }}
-                onContactUser={handleContactUser}
-                onRatingSubmit={async (rating, comment) => {
-                  try {
-                    const response = await fetch(`/api/services/${product.service_id || service?.id}/reviews`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({ rating, comment }),
-                    });
-                    if (response.ok) {
-                      Alert.alert('Succès', 'Votre avis a été publié avec succès !');
-                      const reviewsResp = await apiGet(`/api/services/${product.service_id || service?.id}/reviews`);
-                      if (reviewsResp.success && reviewsResp.data) {
-                        const data = reviewsResp.data as any;
-                        setServiceReviews(data.reviews || []);
-                        setServiceRating({
-                          avg: data.average_rating || 0,
-                          count: data.total_reviews || 0,
-                        });
-                      }
-                    } else {
-                      Alert.alert('Erreur', 'Impossible de publier votre avis');
-                    }
-                  } catch (error) {
-                    console.error('[ProductCard] Erreur envoi avis:', error);
-                    Alert.alert('Erreur', 'Une erreur est survenue lors de la publication');
-                  }
-                }}
-                onReviewHelpful={async (reviewId) => {
-                  try {
-                    await fetch(`/api/reviews/${reviewId}/helpful`, {
-                      method: 'POST',
-                    });
-                  } catch (error) {
-                    console.error('[ProductCard] Erreur marquer utile:', error);
-                  }
-                }}
-                showReviewForm
-              />
-
-              <View style={styles.modalReactionsSection}>
-                <Text style={styles.modalReactionsTitle}>Réactions rapides</Text>
-                <View style={styles.modalReactionsBar}>
-                  {REACTIONS.map((reaction) => {
-                    const count = reactions[reaction.type]?.count || 0;
-                    const hasReacted = reactions[reaction.type]?.hasReacted || false;
-
-                    return (
-                      <TouchableOpacity
-                        key={reaction.type}
-                        style={[
-                          styles.modalReactionButton,
-                          hasReacted && styles.modalReactionButtonActive,
-                        ]}
-                        onPress={() => handleReaction(reaction.type)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.modalReactionEmoji}>{reaction.emoji}</Text>
-                        {count > 0 && (
-                          <Text
-                            style={[
-                              styles.modalReactionCount,
-                              hasReacted && styles.modalReactionCountActive,
-                            ]}
-                          >
-                            {count}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 };
@@ -809,10 +824,23 @@ const formatDate = (dateStr: string): string => {
 };
 
 const styles = StyleSheet.create({
+  cardContainer: {
+    overflow: 'hidden',
+  },
+  cardContainerCompact: {
+    borderRadius: 20,
+  },
+  touchableContainer: {
+    flex: 1,
+    overflow: 'hidden',
+  },
   imageContainer: {
     position: 'relative',
     width: '100%',
     height: 220,
+    overflow: 'hidden',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   countryBadge: {
     position: 'absolute',
@@ -927,6 +955,30 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 14,
+  },
+  contentCompact: {
+    paddingTop: 20,
+  },
+  topStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
+  },
+  topStatPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  topStatValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 6,
   },
   productName: {
     fontSize: 19,
@@ -1173,25 +1225,11 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   // ✅ NOUVEAU : Styles pour avis/ratings et actions secondaires
-  productRatingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#FFFBEB',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  ratingStars: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  ratingValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#92400E',
+  metricsCard: {
+    marginTop: 12,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
   compactStatsRow: {
     flexDirection: 'row',
@@ -1199,17 +1237,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
     marginBottom: 12,
-  },
-  compactStatPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#FCD34D',
-    gap: 6,
   },
   compactStatPillMuted: {
     flexDirection: 'row',
@@ -1287,79 +1314,6 @@ const styles = StyleSheet.create({
   secondaryActionText: {
     fontSize: 13,
     fontWeight: '600',
-    color: modernColors.primary,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    maxHeight: '85%',
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  modalCloseButton: {
-    padding: 8,
-  },
-  modalReactionsSection: {
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  modalReactionsTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  modalReactionsBar: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  modalReactionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-    gap: 4,
-  },
-  modalReactionButtonActive: {
-    borderColor: modernColors.primary,
-    backgroundColor: modernColors.primary + '12',
-  },
-  modalReactionEmoji: {
-    fontSize: 18,
-  },
-  modalReactionCount: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    minWidth: 20,
-    textAlign: 'center',
-  },
-  modalReactionCountActive: {
     color: modernColors.primary,
   },
 });

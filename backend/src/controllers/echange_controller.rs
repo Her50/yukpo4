@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use crate::models::echange::CreerEchangeRequest;
 use crate::state::AppState;
-use crate::tasks::matching_echange_cron::relancer_matching_echanges_once;
 use serde_json::json;
 
 /// POST /echanges ? cr?e un nouvel ?change (production)
@@ -225,11 +224,4 @@ pub async fn get_echange_status(
         Ok(None) => Json(json!({"error": "Echange introuvable"})),
         Err(e) => Json(json!({"error": format!("Erreur DB: {}", e)})),
     }
-}
-
-/// POST /echanges/relancer-matching ? relance le matching automatique imm?diatement (pour tests)
-pub async fn relancer_matching(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    let _pool: &PgPool = &state.pg;
-    relancer_matching_echanges_once(_pool).await;
-    Json(json!({"status": "matching d?clench?"}))
 }

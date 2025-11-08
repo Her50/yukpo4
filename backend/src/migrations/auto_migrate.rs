@@ -1275,18 +1275,24 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
             score FLOAT := 0.0;
             search_lower TEXT;
             i INTEGER;
+            vec_length INTEGER;
         BEGIN
             IF search_location IS NULL OR location_vector IS NULL THEN
                 RETURN 0.0;
             END IF;
             
             search_lower := LOWER(search_location);
+            vec_length := array_length(location_vector, 1);
+
+            IF vec_length IS NULL OR vec_length < 1 THEN
+                RETURN 0.0;
+            END IF;
             
             IF chosen_location IS NOT NULL AND LOWER(chosen_location) = search_lower THEN
                 RETURN 1.0;
             END IF;
             
-            FOR i IN 1..array_length(location_vector, 1) LOOP
+            FOR i IN 1..vec_length LOOP
                 IF LOWER(location_vector[i]) = search_lower THEN
                     score := 1.0 - (i - 1) * 0.1;
                     EXIT;
@@ -1314,16 +1320,23 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
         RETURNS TEXT AS $$
         DECLARE
             i INTEGER;
+            vector_length INTEGER;
         BEGIN
             IF p_vector IS NULL OR p_labels IS NULL OR p_search_label IS NULL THEN
                 RETURN NULL;
             END IF;
             
-            IF array_length(p_vector, 1) != array_length(p_labels, 1) THEN
+            vector_length := array_length(p_vector, 1);
+
+            IF vector_length IS NULL OR vector_length < 1 THEN
+                RETURN NULL;
+            END IF;
+
+            IF vector_length != array_length(p_labels, 1) THEN
                 RETURN NULL;
             END IF;
             
-            FOR i IN 1..array_length(p_labels, 1) LOOP
+            FOR i IN 1..vector_length LOOP
                 IF LOWER(p_labels[i]) = LOWER(p_search_label) THEN
                     RETURN p_vector[i];
                 END IF;
@@ -1348,16 +1361,23 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
         DECLARE
             result JSONB := '{}'::JSONB;
             i INTEGER;
+            vector_length INTEGER;
         BEGIN
             IF p_vector IS NULL OR p_labels IS NULL THEN
                 RETURN result;
             END IF;
             
-            IF array_length(p_vector, 1) != array_length(p_labels, 1) THEN
+            vector_length := array_length(p_vector, 1);
+
+            IF vector_length IS NULL OR vector_length < 1 THEN
                 RETURN result;
             END IF;
             
-            FOR i IN 1..array_length(p_labels, 1) LOOP
+            IF vector_length != array_length(p_labels, 1) THEN
+                RETURN result;
+            END IF;
+            
+            FOR i IN 1..vector_length LOOP
                 result := result || jsonb_build_object(p_labels[i], p_vector[i]);
             END LOOP;
             
@@ -1548,6 +1568,238 @@ pub async fn ensure_service_reviews_table(pool: &PgPool) -> Result<(), sqlx::Err
 
     info!("✅ Table service_reviews vérifiée/créée avec succès !");
 
+    Ok(())
+}
+
+/// Vérifie et crée le système product_comments / product_comment_reactions (fil Facebook)
+pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table product_comments...");
+
+    let comments_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'product_comments')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !comments_exists {
+        warn!("⚠️ Table product_comments manquante, création en cours...");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS product_comments (
+                id SERIAL PRIMARY KEY,
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                parent_comment_id INTEGER REFERENCES product_comments(id) ON DELETE CASCADE,
+                rating INTEGER CHECK (rating BETWEEN 0 AND 5),
+                content TEXT NOT NULL,
+                mentions INTEGER[] NOT NULL DEFAULT '{}',
+                reaction_counts JSONB NOT NULL DEFAULT '{}'::jsonb,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                edited_at TIMESTAMPTZ,
+                is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+            )
+            "#,
+        )
+        .execute(pool)
+        .await?;
+    } else {
+        info!("✅ Table product_comments déjà présente, vérification des colonnes...");
+
+        let ensure_column = |column: &str, ddl: &str| async move {
+            let has_column = sqlx::query_scalar::<_, bool>(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'product_comments' AND column_name = $1)",
+            )
+            .bind(column)
+            .fetch_one(pool)
+            .await?;
+
+            if !has_column {
+                warn!("⚠️ Colonne '{}' manquante sur product_comments, ajout en cours...", column);
+                sqlx::query(ddl).execute(pool).await?;
+                info!("✅ Colonne '{}' ajoutée", column);
+            }
+
+            Ok::<(), sqlx::Error>(())
+        };
+
+        ensure_column(
+            "parent_comment_id",
+            "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS parent_comment_id INTEGER REFERENCES product_comments(id) ON DELETE CASCADE",
+        )
+        .await?;
+
+        ensure_column(
+            "rating",
+            "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating BETWEEN 0 AND 5)",
+        )
+        .await?;
+
+        ensure_column(
+            "mentions",
+            "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS mentions INTEGER[] DEFAULT '{}'",
+        )
+        .await?;
+
+        sqlx::query(
+            "ALTER TABLE product_comments ALTER COLUMN mentions SET DEFAULT '{}', ALTER COLUMN mentions SET NOT NULL",
+        )
+        .execute(pool)
+        .await?;
+
+        ensure_column(
+            "reaction_counts",
+            "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS reaction_counts JSONB DEFAULT '{}'::jsonb",
+        )
+        .await?;
+
+        sqlx::query(
+            "ALTER TABLE product_comments ALTER COLUMN reaction_counts SET DEFAULT '{}'::jsonb",
+        )
+        .execute(pool)
+        .await?;
+
+        ensure_column(
+            "edited_at",
+            "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ",
+        )
+        .await?;
+
+        ensure_column(
+            "is_deleted",
+            "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE",
+        )
+        .await?;
+    }
+
+    // Normaliser les valeurs NULL éventuelles
+    sqlx::query("UPDATE product_comments SET mentions = '{}' WHERE mentions IS NULL")
+        .execute(pool)
+        .await?;
+    sqlx::query("UPDATE product_comments SET reaction_counts = '{}'::jsonb WHERE reaction_counts IS NULL")
+        .execute(pool)
+        .await?;
+
+    // Index
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_product_comments_service ON product_comments(service_id)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_product_comments_parent ON product_comments(parent_comment_id)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_product_comments_user ON product_comments(user_id)")
+        .execute(pool)
+        .await?;
+
+    // Fonction + trigger updated_at
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION set_product_comments_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("DROP TRIGGER IF EXISTS trigger_product_comments_updated_at ON product_comments")
+        .execute(pool)
+        .await?;
+    sqlx::query(
+        "CREATE TRIGGER trigger_product_comments_updated_at BEFORE UPDATE ON product_comments FOR EACH ROW EXECUTE FUNCTION set_product_comments_updated_at()",
+    )
+    .execute(pool)
+    .await?;
+
+    // Réactions
+    info!("🔍 Vérification de la table product_comment_reactions...");
+    let reactions_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'product_comment_reactions')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !reactions_exists {
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS product_comment_reactions (
+                id SERIAL PRIMARY KEY,
+                comment_id INTEGER NOT NULL REFERENCES product_comments(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                reaction_type VARCHAR(20) NOT NULL CHECK (reaction_type IN (
+                    'like',
+                    'love',
+                    'insightful',
+                    'support',
+                    'funny',
+                    'angry'
+                )),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE(comment_id, user_id, reaction_type)
+            )
+            "#,
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_comment_reactions_comment ON product_comment_reactions(comment_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_comment_reactions_user ON product_comment_reactions(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    // Vue agrégée
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE VIEW product_comments_view AS
+        SELECT
+            pc.id,
+            pc.service_id,
+            pc.user_id,
+            pc.parent_comment_id,
+            pc.rating,
+            pc.content,
+            pc.mentions,
+            pc.reaction_counts,
+            pc.created_at,
+            pc.updated_at,
+            pc.edited_at,
+            pc.is_deleted,
+            u.nom_complet AS user_name,
+            u.avatar_url AS user_avatar,
+            (
+                SELECT jsonb_object_agg(reaction_type, reaction_count)
+                FROM (
+                    SELECT reaction_type, COUNT(*)::INT AS reaction_count
+                    FROM product_comment_reactions
+                    WHERE comment_id = pc.id
+                    GROUP BY reaction_type
+                ) sub
+            ) AS aggregated_reactions,
+            (
+                SELECT COUNT(*)::INT
+                FROM product_comments replies
+                WHERE replies.parent_comment_id = pc.id
+                  AND replies.is_deleted = FALSE
+            ) AS reply_count
+        FROM product_comments pc
+        JOIN users u ON u.id = pc.user_id;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Tables product_comments et product_comment_reactions vérifiées/créées avec succès !");
     Ok(())
 }
 
@@ -2155,62 +2407,68 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto service_reviews: {}", e),
     }
 
-    // Migration 9: Table product_reactions (✅ NOUVEAU 2025-11-04)
+    // Migration 9: Table product_comments (✅ NOUVEAU 2025-11-08)
+    match ensure_product_comments_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: product_comments table OK"),
+        Err(e) => error!("❌ Erreur migration auto product_comments: {}", e),
+    }
+
+    // Migration 10: Table product_reactions (✅ NOUVEAU 2025-11-04)
     match ensure_product_reactions_table(pool).await {
         Ok(_) => info!("✅ Migration auto: product_reactions table OK"),
         Err(e) => error!("❌ Erreur migration auto product_reactions: {}", e),
     }
 
-    // Migration 10: Chat mentions et participants (✅ NOUVEAU 2025-11-05)
+    // Migration 11: Chat mentions et participants (✅ NOUVEAU 2025-11-05)
     match ensure_chat_mentions_and_participants(pool).await {
         Ok(_) => info!("✅ Migration auto: chat mentions OK"),
         Err(e) => error!("❌ Erreur migration auto chat mentions: {}", e),
     }
 
-    // Migration 11: Search history (✅ NOUVEAU 2025-11-05)
+    // Migration 12: Search history (✅ NOUVEAU 2025-11-05)
     match ensure_search_history_table(pool).await {
         Ok(_) => info!("✅ Migration auto: search_history OK"),
         Err(e) => error!("❌ Erreur migration auto search_history: {}", e),
     }
 
-    // Migration 12: Alerts (✅ NOUVEAU 2025-11-05)
+    // Migration 13: Alerts (✅ NOUVEAU 2025-11-05)
     match ensure_alerts_table(pool).await {
         Ok(_) => info!("✅ Migration auto: alerts OK"),
         Err(e) => error!("❌ Erreur migration auto alerts: {}", e),
     }
 
-    // Migration 13: Signalements (✅ NOUVEAU 2025-11-05)
+    // Migration 14: Signalements (✅ NOUVEAU 2025-11-05)
     match ensure_signalements_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: signalements OK"),
         Err(e) => error!("❌ Erreur migration auto signalements: {}", e),
     }
 
-    // Migration 14: Private conversations (✅ NOUVEAU 2025-11-05)
+    // Migration 15: Private conversations (✅ NOUVEAU 2025-11-05)
     match ensure_private_conversations_table(pool).await {
         Ok(_) => info!("✅ Migration auto: private_conversations OK"),
         Err(e) => error!("❌ Erreur migration auto private_conversations: {}", e),
     }
 
-    // Migration 15: Bus reservations (✅ NOUVEAU 2025-11-05)
+    // Migration 16: Bus reservations (✅ NOUVEAU 2025-11-05)
     match ensure_bus_reservations_table(pool).await {
         Ok(_) => info!("✅ Migration auto: bus_reservations OK"),
         Err(e) => error!("❌ Erreur migration auto bus_reservations: {}", e),
     }
 
-    // Migration 16: Réindexation services existants (✅ NOUVEAU 2025-11-06)
+    // Migration 17: Réindexation services existants (✅ NOUVEAU 2025-11-06)
     // S'exécute UNE SEULE FOIS pour indexer les produits créés avant le système autocomplete
     match reindex_existing_services_once(pool).await {
         Ok(_) => info!("✅ Migration auto: réindexation services existants OK"),
         Err(e) => error!("❌ Erreur migration auto réindexation: {}", e),
     }
 
-    // Migration 17: Fonctions de visibilité pour carousel mixte (✅ NOUVEAU 2025-11-06)
+    // Migration 18: Fonctions de visibilité pour carousel mixte (✅ NOUVEAU 2025-11-06)
     match ensure_visibility_functions(pool).await {
         Ok(_) => info!("✅ Migration auto: fonctions visibilité OK"),
         Err(e) => error!("❌ Erreur migration auto fonctions visibilité: {}", e),
     }
 
-    // Migration 18: Nettoyage combinaisons invalides (✅ NOUVEAU 2025-11-06)
+    // Migration 19: Nettoyage combinaisons invalides (✅ NOUVEAU 2025-11-06)
     match clean_invalid_combinations_migration(pool).await {
         Ok(_) => info!("✅ Migration auto: nettoyage combinaisons invalides OK"),
         Err(e) => error!("❌ Erreur migration auto nettoyage combinaisons: {}", e),
@@ -2221,19 +2479,37 @@ pub async fn run_auto_migrations(pool: &PgPool) {
 
 /// Réindexe les services existants UNIQUEMENT si autocomplete_characteristics est vide
 async fn reindex_existing_services_once(pool: &PgPool) -> Result<(), sqlx::Error> {
-    // Vérifier si des produits réels existent déjà
-    let count = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM autocomplete_characteristics WHERE is_real_product = TRUE AND origine_champs = 'formulaire'"
+    // Compter les services actifs ayant au moins un produit défini
+    let service_count = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM services WHERE is_active = TRUE AND data->'produits' IS NOT NULL"
     )
     .fetch_one(pool)
     .await?;
 
-    if count > 0 {
-        info!("✅ {} produits déjà indexés, skip réindexation", count);
+    if service_count == 0 {
+        info!("ℹ️ Aucun service actif à indexer, réindexation non nécessaire");
         return Ok(());
     }
 
-    info!("🔄 Aucun produit indexé, lancement réindexation des services existants...");
+    // Compter les services déjà indexés dans autocomplete_characteristics
+    let indexed_service_count = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(DISTINCT service_id) FROM autocomplete_characteristics WHERE is_real_product = TRUE"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if indexed_service_count >= service_count {
+        info!(
+            "✅ {} services déjà indexés sur {}, réindexation non nécessaire",
+            indexed_service_count, service_count
+        );
+        return Ok(());
+    }
+
+    info!(
+        "🔄 Réindexation nécessaire ({} services actifs, {} indexés) ...",
+        service_count, indexed_service_count
+    );
 
     use crate::migrations::reindex_existing_services::reindex_all_services;
     match reindex_all_services(pool).await {

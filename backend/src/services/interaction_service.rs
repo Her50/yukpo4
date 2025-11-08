@@ -75,10 +75,12 @@ pub async fn save_review(
     service_id: i32,
     rating: i32,
     comment: Option<&str>,
+    mentions: Option<&[i32]>,
 ) -> Result<Value, String> {
     let data = json!({
         "rating": rating,
         "comment": comment,
+        "mentions": mentions.unwrap_or(&[]),
     });
     let metadata = None;
     mongo_history
@@ -96,6 +98,7 @@ pub async fn save_review(
         "service_id": service_id,
         "rating": rating,
         "comment": comment,
+        "mentions": mentions.unwrap_or(&[]),
         "created_at": Utc::now(),
     }))
 }

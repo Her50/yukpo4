@@ -30,6 +30,7 @@ pub mod popular_products_controller; // ✅ NOUVEAU 2025-11-04: Contrôleur pour
 pub mod product_addition_controller; // ✅ NOUVEAU 2025-11-01: Contrôleur pour ajout incrémental de produits
 pub mod product_lifecycle_controller; // ✅ Contrôleur de gestion du cycle de vie des produits
 pub mod product_reactions_controller; // ✅ NOUVEAU 2025-11-04: Contrôleur pour réactions/émotions sur les produits
+pub mod product_comments_controller; // ✅ NOUVEAU 2025-11-08: Contrôleur pour fil de commentaires produits
 pub mod publicite_controller; // ✅ NOUVEAU: Contrôleur pour système de publicité payante
 pub mod push_controller; // ✅ Contrôleur de push notifications
 pub mod recommendation_controller; // ✅ NOUVEAU: Contrôleur pour recommandations et tracking visibilité

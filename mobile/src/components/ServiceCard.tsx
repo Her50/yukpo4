@@ -567,7 +567,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 <View style={styles.ratingSection}>
                     <ServiceRating
                         service={service}
-                        onRatingSubmit={async (rating, comment) => {
+                        onRatingSubmit={async (rating, comment, mentions) => {
                             try {
                                 const response = await fetch(`/api/services/${service.id}/reviews`, {
                                     method: 'POST',
@@ -575,7 +575,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                         'Content-Type': 'application/json',
                                         'Authorization': `Bearer ${user?.token || ''}`
                                     },
-                                    body: JSON.stringify({ rating, comment })
+                                    body: JSON.stringify({ rating, comment, mentions })
                                 });
 
                                 if (!response.ok) {

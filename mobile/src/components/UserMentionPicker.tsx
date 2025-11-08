@@ -336,11 +336,11 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                                 {/* Onglet Recherche */}
                                 {activeTab === 'search' && (
                                     <View style={styles.tabContent}>
-                                        {searchQuery.trim().length < 2 ? (
+                                        {searchQuery.trim().length < 1 ? (
                                             <View style={styles.hintContainer}>
                                                 <SafeIcon name="info" size={24} color={modernColors.primary} />
                                                 <Text style={styles.hintText}>
-                                                    Tapez au moins 2 caractères pour rechercher
+                                                    Tapez au moins 1 caractère pour rechercher
                                                 </Text>
                                             </View>
                                         ) : searchResults.length > 0 ? (

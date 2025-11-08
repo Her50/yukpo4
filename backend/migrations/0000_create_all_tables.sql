@@ -386,6 +386,95 @@ BEGIN
     END IF;
 END $$;
 
+-- ✅ Table product_comments (fil de discussion moderne - 2025-11-08)
+CREATE TABLE IF NOT EXISTS product_comments (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    parent_comment_id INTEGER REFERENCES product_comments(id) ON DELETE CASCADE,
+    rating INTEGER CHECK (rating BETWEEN 0 AND 5),
+    content TEXT NOT NULL,
+    mentions INTEGER[] NOT NULL DEFAULT '{}',
+    reaction_counts JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    edited_at TIMESTAMPTZ,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_comments_service ON product_comments(service_id);
+CREATE INDEX IF NOT EXISTS idx_product_comments_parent ON product_comments(parent_comment_id);
+CREATE INDEX IF NOT EXISTS idx_product_comments_user ON product_comments(user_id);
+
+CREATE OR REPLACE FUNCTION set_product_comments_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_product_comments_updated_at ON product_comments;
+CREATE TRIGGER trigger_product_comments_updated_at
+    BEFORE UPDATE ON product_comments
+    FOR EACH ROW
+    EXECUTE FUNCTION set_product_comments_updated_at();
+
+CREATE TABLE IF NOT EXISTS product_comment_reactions (
+    id SERIAL PRIMARY KEY,
+    comment_id INTEGER NOT NULL REFERENCES product_comments(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reaction_type VARCHAR(20) NOT NULL CHECK (reaction_type IN (
+        'like',
+        'love',
+        'insightful',
+        'support',
+        'funny',
+        'angry'
+    )),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(comment_id, user_id, reaction_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_comment_reactions_comment ON product_comment_reactions(comment_id);
+CREATE INDEX IF NOT EXISTS idx_product_comment_reactions_user ON product_comment_reactions(user_id);
+
+CREATE OR REPLACE VIEW product_comments_view AS
+SELECT
+    pc.id,
+    pc.service_id,
+    pc.user_id,
+    pc.parent_comment_id,
+    pc.rating,
+    pc.content,
+    pc.mentions,
+    pc.reaction_counts,
+    pc.created_at,
+    pc.updated_at,
+    pc.edited_at,
+    pc.is_deleted,
+    u.nom_complet AS user_name,
+    u.avatar_url AS user_avatar,
+    (
+        SELECT jsonb_object_agg(reaction_type, reaction_count)
+        FROM (
+            SELECT reaction_type, COUNT(*)::INT AS reaction_count
+            FROM product_comment_reactions
+            WHERE comment_id = pc.id
+            GROUP BY reaction_type
+        ) sub
+    ) AS aggregated_reactions,
+    (
+        SELECT COUNT(*)::INT
+        FROM product_comments replies
+        WHERE replies.parent_comment_id = pc.id
+          AND replies.is_deleted = FALSE
+    ) AS reply_count
+FROM product_comments pc
+JOIN users u ON u.id = pc.user_id;
+
+COMMENT ON VIEW product_comments_view IS 'Commentaires produits enrichis avec auteur, réactions agrégées et nombre de réponses';
+
 -- ✅ Table private_conversations (conversations privées 1-to-1 - 2025-11-04)
 CREATE TABLE IF NOT EXISTS private_conversations (
     id SERIAL PRIMARY KEY,
@@ -773,18 +862,24 @@ DECLARE
     score FLOAT := 0.0;
     search_lower TEXT;
     i INTEGER;
+    vec_length INTEGER;
 BEGIN
     IF search_location IS NULL OR location_vector IS NULL THEN
         RETURN 0.0;
     END IF;
     
     search_lower := LOWER(search_location);
+    vec_length := array_length(location_vector, 1);
+
+    IF vec_length IS NULL OR vec_length < 1 THEN
+        RETURN 0.0;
+    END IF;
     
     IF chosen_location IS NOT NULL AND LOWER(chosen_location) = search_lower THEN
         RETURN 1.0;
     END IF;
     
-    FOR i IN 1..array_length(location_vector, 1) LOOP
+    FOR i IN 1..vec_length LOOP
         IF LOWER(location_vector[i]) = search_lower THEN
             score := 1.0 - (i - 1) * 0.1;
             EXIT;
@@ -807,16 +902,23 @@ CREATE OR REPLACE FUNCTION get_vector_value_by_label(
 RETURNS TEXT AS $$
 DECLARE
     i INTEGER;
+    vector_length INTEGER;
 BEGIN
     IF p_vector IS NULL OR p_labels IS NULL OR p_search_label IS NULL THEN
         RETURN NULL;
     END IF;
     
-    IF array_length(p_vector, 1) != array_length(p_labels, 1) THEN
+    vector_length := array_length(p_vector, 1);
+
+    IF vector_length IS NULL OR vector_length < 1 THEN
+        RETURN NULL;
+    END IF;
+
+    IF vector_length != array_length(p_labels, 1) THEN
         RETURN NULL;
     END IF;
     
-    FOR i IN 1..array_length(p_labels, 1) LOOP
+    FOR i IN 1..vector_length LOOP
         IF LOWER(p_labels[i]) = LOWER(p_search_label) THEN
             RETURN p_vector[i];
         END IF;
@@ -837,16 +939,23 @@ RETURNS JSONB AS $$
 DECLARE
     result JSONB := '{}'::JSONB;
     i INTEGER;
+    vector_length INTEGER;
 BEGIN
     IF p_vector IS NULL OR p_labels IS NULL THEN
         RETURN result;
     END IF;
     
-    IF array_length(p_vector, 1) != array_length(p_labels, 1) THEN
+    vector_length := array_length(p_vector, 1);
+
+    IF vector_length IS NULL OR vector_length < 1 THEN
         RETURN result;
     END IF;
     
-    FOR i IN 1..array_length(p_labels, 1) LOOP
+    IF vector_length != array_length(p_labels, 1) THEN
+        RETURN result;
+    END IF;
+    
+    FOR i IN 1..vector_length LOOP
         result := result || jsonb_build_object(p_labels[i], p_vector[i]);
     END LOOP;
     

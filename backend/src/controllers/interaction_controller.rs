@@ -16,6 +16,7 @@ use crate::services::sharing_service::generate_share_link;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
+use sqlx::Row;
 
 #[derive(Deserialize)]
 pub struct MessagePayload {
@@ -26,6 +27,7 @@ pub struct MessagePayload {
 pub struct ReviewPayload {
     pub rating: i32,
     pub comment: Option<String>,
+    pub mentions: Option<Vec<i32>>,
 }
 
 #[derive(Deserialize)]
@@ -85,9 +87,57 @@ pub async fn post_review(
         service_id,
         payload.rating,
         payload.comment.as_deref(),
+        payload.mentions.as_deref(),
     )
     .await
     .expect("save_review");
+
+    if let Some(mentions) = payload.mentions.as_ref() {
+        if !mentions.is_empty() {
+            let reviewer_name = sqlx::query(
+                "SELECT COALESCE(nom_complet, email) AS display_name FROM users WHERE id = $1",
+            )
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten()
+            .and_then(|row| row.try_get::<String, _>("display_name").ok())
+            .unwrap_or_else(|| "Un utilisateur Yukpo".to_string());
+
+            let service_title = sqlx::query(
+                "SELECT COALESCE(data->>'titre_service', data->>'nom_produit', data->>'nom_service', data->>'nom') AS titre
+                 FROM services WHERE id = $1",
+            )
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten()
+            .and_then(|row| row.try_get::<String, _>("titre").ok())
+            .unwrap_or_else(|| format!("service #{}", service_id));
+
+            for mentioned_id in mentions.iter().copied().filter(|id| *id != user_id) {
+                let _ = sqlx::query(
+                    r#"
+                    INSERT INTO notifications (user_id, title, message, type, priority, metadata)
+                    VALUES ($1, $2, $3, 'review_mention', 'medium', $4)
+                    "#,
+                )
+                .bind(mentioned_id)
+                .bind(format!("💬 {reviewer_name} vous a mentionné"))
+                .bind(format!("Dans un avis sur « {service_title} »"))
+                .bind(json!({
+                    "service_id": service_id,
+                    "author_id": user_id,
+                    "mentions": mentions,
+                    "comment": payload.comment,
+                }))
+                .execute(&state.pg)
+                .await;
+            }
+        }
+    }
 
     // Recalcule le score du service
     let _ = compute_score(state.mongo_history.clone(), service_id).await;

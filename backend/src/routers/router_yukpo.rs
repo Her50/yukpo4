@@ -24,6 +24,10 @@ use crate::{
             get_service_interactions, get_service_reviews, get_service_score, get_service_stats,
             post_audio, post_call, post_message, post_review, post_review_helpful, post_share,
         },
+        product_comments_controller::{
+            create_product_comment, delete_product_comment, get_product_comments,
+            toggle_product_comment_reaction, update_product_comment,
+        },
         places_controller, // ✅ NOUVEAU 2025-11-02
         product_addition_controller::add_product_to_service, // ✅ NOUVEAU 2025-11-01
         product_lifecycle_controller::{deactivate_product, reactivate_product}, // ✅ NOUVEAU 2025-11-01
@@ -34,8 +38,9 @@ use crate::{
     },
     core::types::{AppError, AppResult},
     middlewares::{
-        audit_log, check_tokens::check_tokens, hide_headers, jwt::jwt_auth, monitoring, rate_limit,
-        request_size_limit, service_interaction::track_service_interaction,
+        audit_log, check_tokens::check_tokens, hide_headers,
+        jwt::{jwt_auth, optional_jwt_auth},
+        monitoring, rate_limit, request_size_limit, service_interaction::track_service_interaction,
     },
     routers::router_modalities,
     routes::products_management::{delete_product, update_product},
@@ -143,6 +148,23 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(get_service_interactions),
         )
         .route("/api/services/{id}/reviews", get(get_service_reviews))
+        .route(
+            "/api/services/{id}/comments",
+            get(get_product_comments)
+                .post(create_product_comment)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        .route(
+            "/api/comments/{id}",
+            patch(update_product_comment)
+                .delete(delete_product_comment)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        .route(
+            "/api/comments/{id}/reactions",
+            post(toggle_product_comment_reaction)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
         .route("/api/services/{id}/score", get(get_service_score))
         .route("/api/services/{id}/stats", get(get_service_stats))
         .route(

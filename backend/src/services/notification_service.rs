@@ -14,6 +14,8 @@ pub enum NotificationType {
     ProductAdded, // ✅ NOUVEAU 2025-11-01
     NewMessage,
     NewReview,
+    CommentReply,
+    CommentMention,
     SystemAlert,
     PaymentReceived,
 }
@@ -29,6 +31,8 @@ impl NotificationType {
             NotificationType::ProductAdded => "product_added", // ✅ NOUVEAU 2025-11-01
             NotificationType::NewMessage => "new_message",
             NotificationType::NewReview => "new_review",
+            NotificationType::CommentReply => "comment_reply",
+            NotificationType::CommentMention => "comment_mention",
             NotificationType::SystemAlert => "system_alert",
             NotificationType::PaymentReceived => "payment_received",
         }

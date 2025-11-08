@@ -563,6 +563,33 @@ export const notificationsApi = {
   },
 };
 
+// Gestion des commentaires produits (fil moderne)
+export const commentsApi = {
+  getProductComments: async (serviceId: number) => {
+    return apiGet(`/api/services/${serviceId}/comments`);
+  },
+  createProductComment: async (
+    serviceId: number,
+    payload: { content: string; rating?: number | null; mentions?: number[]; parent_comment_id?: number | null }
+  ) => {
+    return apiPost(`/api/services/${serviceId}/comments`, payload);
+  },
+  updateProductComment: async (
+    commentId: number,
+    payload: { content?: string; rating?: number | null; mentions?: number[] }
+  ) => {
+    return apiPatch(`/api/comments/${commentId}`, payload);
+  },
+  deleteProductComment: async (commentId: number) => {
+    return apiDelete(`/api/comments/${commentId}`);
+  },
+  toggleCommentReaction: async (commentId: number, reactionType: string) => {
+    return apiPost(`/api/comments/${commentId}/reactions`, {
+      reaction_type: reactionType,
+    });
+  },
+};
+
 // Export pour compatibilité avec les anciens imports
 export const aiService = {
   chat: async (message: string) => {
@@ -664,6 +691,7 @@ export default {
   userApi,
   locationApi,
   notificationsApi,
+  commentsApi,
   aiService,
   serviceService,
   networkDiagnostics,

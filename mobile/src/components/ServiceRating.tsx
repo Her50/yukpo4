@@ -1,5 +1,5 @@
 import { ChatCircle, Heart, Star } from 'phosphor-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { Card, TextInput } from 'react-native-paper';
 import { theme } from '../theme/theme';
@@ -27,7 +27,7 @@ interface Review {
 
 interface ServiceRatingProps {
   service: Service;
-  onRatingSubmit?: (rating: number, comment: string) => Promise<void>;
+  onRatingSubmit?: (rating: number, comment: string, mentions?: number[]) => Promise<void>;
   onReviewHelpful?: (reviewId: number) => Promise<void>;
   showReviewForm?: boolean;
   customStyle?: any;
@@ -56,6 +56,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
   // ✅ NOUVEAU : États pour @mention
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionedUsers, setMentionedUsers] = useState<User[]>([]);
 
   const stats = service.data?.stats;
   const reviews = service.reviews || [];
@@ -66,8 +67,13 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
     setIsSubmitting(true);
     try {
       if (onRatingSubmit) {
-        await onRatingSubmit(rating, comment);
+        const activeMentionIds = mentionedUsers
+          .filter((user) => comment.includes(`@${user.nom_complet}`))
+          .map((user) => user.id);
+
+        await onRatingSubmit(rating, comment, activeMentionIds);
         setComment('');
+        setMentionedUsers([]);
         setShowReviewFormLocal(false);
         Alert.alert('Succès', 'Votre avis a été envoyé avec succès !');
       }
@@ -146,6 +152,12 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
     }
   };
 
+  useEffect(() => {
+    setMentionedUsers((prev) =>
+      prev.filter((user) => comment.includes(`@${user.nom_complet}`))
+    );
+  }, [comment]);
+
   // ✅ NOUVEAU : Insérer la mention
   const insertMention = (user: User) => {
     const lastAtIndex = comment.lastIndexOf('@');
@@ -155,6 +167,12 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
     const afterMention = spaceIndex >= 0 ? afterAt.substring(spaceIndex) : '';
 
     setComment(`${beforeAt}@${user.nom_complet} ${afterMention}`);
+    setMentionedUsers((prev) => {
+      if (prev.some(existing => existing.id === user.id)) {
+        return prev;
+      }
+      return [...prev, user];
+    });
     setShowMentionPicker(false);
   };
 
