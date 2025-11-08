@@ -2647,10 +2647,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               produitsArray.push(buildBaseProduct());
             } else {
               const firstProduct: any = { ...produitsArray[0] };
-              const mergedImages = mergeMediaArrays(
-                firstProduct.images,
-                media.images
-              );
+              const existingImages = Array.isArray(firstProduct.images)
+                ? firstProduct.images.filter(Boolean)
+                : [];
+              const newImages = Array.isArray(media.images)
+                ? media.images.filter(Boolean)
+                : [];
+              const mergedImages = [...newImages, ...existingImages].filter((value, index, self) => self.indexOf(value) === index);
               if (mergedImages.length > 0) {
                 firstProduct.images = mergedImages;
                 firstProduct.base64_image = mergedImages;
