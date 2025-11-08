@@ -4,7 +4,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Dimensions,
     Modal,
     Platform,
     RefreshControl,
@@ -15,16 +14,13 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard } from '../components/NativeDesign';
+import { NativeCard } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import SafeIcon from '../components/SafeIcon';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-
-const { width } = Dimensions.get('window');
-const SUMMARY_CARD_MIN_WIDTH = Math.max((width - 16 * 2 - 12) / 2, 140);
 
 interface Product {
     id: string;
@@ -1087,7 +1083,7 @@ const MesProduitsScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            {/* Header épuré */}
+            {/* Header fixe compact */}
             <View style={styles.headerContainer}>
                 <NavigatorToolbar
                     tone="light"
@@ -1097,102 +1093,108 @@ const MesProduitsScreen: React.FC = () => {
                     title="Mes Produits"
                     subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
                     rightSlot={(
-                        <NativeButton
-                            title="Nouveau"
-                            size="small"
-                            variant="primary"
-                            onPress={handleCreateNewProduct}
-                        />
+                        <TouchableOpacity
+                            style={styles.editServiceButton}
+                            onPress={handleEditServiceInfo}
+                        >
+                            <SafeIcon name="settings" size={18} color={modernColors.primary} />
+                        </TouchableOpacity>
                     )}
                 />
-
-                <View style={styles.summaryGrid}>
-                    {headerSummary.map((item) => (
-                        <View key={item.label} style={styles.summaryCard}>
-                            <View
-                                style={[
-                                    styles.summaryIconContainer,
-                                    {
-                                        backgroundColor: `${item.accentColor}1A`,
-                                        borderColor: `${item.accentColor}33`,
-                                    },
-                                ]}
-                            >
-                                <SafeIcon name={item.icon} size={16} color={item.accentColor} />
-                            </View>
-                            <Text style={styles.summaryValue}>{item.value}</Text>
-                            <Text style={styles.summaryLabel}>{item.label}</Text>
-                        </View>
-                    ))}
-                </View>
-
-                <View style={styles.quickActionsRow}>
-                    {quickActions.map((action) => (
-                        <TouchableOpacity
-                            key={action.label}
-                            style={styles.quickActionButton}
-                            onPress={action.onPress}
-                        >
-                            <SafeIcon name={action.icon} size={16} color={modernColors.primary} />
-                            <Text style={styles.quickActionText}>{action.label}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
             </View>
 
-            {/* Filtres */}
-            <View style={styles.filtersContainer}>
-                {/* Filtre par statut */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-                    {['tous', 'actif', 'inactif'].map((filterOption) => (
-                        <TouchableOpacity
-                            key={filterOption}
-                            style={[
-                                styles.filterChip,
-                                filter === filterOption && styles.filterChipActive
-                            ]}
-                            onPress={() => setFilter(filterOption as any)}
-                        >
-                            <Text style={[
-                                styles.filterChipText,
-                                filter === filterOption && styles.filterChipTextActive
-                            ]}>
-                                {filterOption === 'tous' ? '📦 Tous' :
-                                    filterOption === 'actif' ? '✅ Actifs' : '⏸️ Inactifs'}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-
-                {/* Filtre par catégorie */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-                    {categories.map(({ key, label }) => (
-                        <TouchableOpacity
-                            key={key}
-                            style={[
-                                styles.categoryChip,
-                                categoryFilter === key && styles.categoryChipActive
-                            ]}
-                            onPress={() => setCategoryFilter(key)}
-                        >
-                            <Text style={[
-                                styles.categoryChipText,
-                                categoryFilter === key && styles.categoryChipTextActive
-                            ]}>
-                                {key === 'tous' ? `🏷️ ${label}` : label}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View>
-
-            {/* Liste des produits */}
+            {/* Liste des produits avec header scrollable */}
             <ScrollView
                 style={styles.scrollView}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
+                {/* Statistiques miniaturisées sur une ligne */}
+                <View style={styles.statsRowContainer}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.statsRowContent}
+                    >
+                        {headerSummary.map((item) => (
+                            <View key={item.label} style={styles.miniStatCard}>
+                                <View
+                                    style={[
+                                        styles.miniStatIconContainer,
+                                        {
+                                            backgroundColor: `${item.accentColor}1A`,
+                                        },
+                                    ]}
+                                >
+                                    <SafeIcon name={item.icon} size={14} color={item.accentColor} />
+                                </View>
+                                <Text style={styles.miniStatValue}>{item.value}</Text>
+                                <Text style={styles.miniStatLabel} numberOfLines={1}>{item.label}</Text>
+                            </View>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                {/* Boutons d'action sur une ligne */}
+                <View style={styles.quickActionsRow}>
+                    {quickActions.slice(1).map((action) => (
+                        <TouchableOpacity
+                            key={action.label}
+                            style={styles.quickActionButton}
+                            onPress={action.onPress}
+                        >
+                            <SafeIcon name={action.icon} size={16} color={modernColors.primary} />
+                            <Text style={styles.quickActionText} numberOfLines={1}>{action.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* Filtres */}
+                <View style={styles.filtersContainer}>
+                    {/* Filtre par statut */}
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+                        {['tous', 'actif', 'inactif'].map((filterOption) => (
+                            <TouchableOpacity
+                                key={filterOption}
+                                style={[
+                                    styles.filterChip,
+                                    filter === filterOption && styles.filterChipActive
+                                ]}
+                                onPress={() => setFilter(filterOption as any)}
+                            >
+                                <Text style={[
+                                    styles.filterChipText,
+                                    filter === filterOption && styles.filterChipTextActive
+                                ]}>
+                                    {filterOption === 'tous' ? '📦 Tous' :
+                                        filterOption === 'actif' ? '✅ Actifs' : '⏸️ Inactifs'}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+
+                    {/* Filtre par catégorie */}
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+                        {categories.map(({ key, label }) => (
+                            <TouchableOpacity
+                                key={key}
+                                style={[
+                                    styles.categoryChip,
+                                    categoryFilter === key && styles.categoryChipActive
+                                ]}
+                                onPress={() => setCategoryFilter(key)}
+                            >
+                                <Text style={[
+                                    styles.categoryChipText,
+                                    categoryFilter === key && styles.categoryChipTextActive
+                                ]}>
+                                    {key === 'tous' ? `🏷️ ${label}` : label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
                 {filteredProducts.length === 0 ? (
                     <View style={styles.emptyState}>
                         <SafeIcon name="package" size={64} color="#D1D5DB" />
@@ -1202,13 +1204,6 @@ const MesProduitsScreen: React.FC = () => {
                                 ? `Aucun produit ${filter}`
                                 : 'Ajoutez des produits à vos services'}
                         </Text>
-                        <NativeButton
-                            title="➕ Créer un nouveau produit"
-                            onPress={handleCreateNewProduct}
-                            variant="primary"
-                            size="medium"
-                            style={{ marginTop: 20 }}
-                        />
                     </View>
                 ) : categoryFilter === 'tous' ? (
                     <View style={styles.productsList}>
@@ -1242,19 +1237,6 @@ const MesProduitsScreen: React.FC = () => {
                         {filteredProducts.map(renderProductCard)}
                     </View>
                 )}
-
-                {/* Bouton créer nouveau produit */}
-                {filteredProducts.length > 0 && (
-                    <View style={styles.footerContainer}>
-                        <NativeButton
-                            title="➕ Créer un nouveau produit"
-                            onPress={handleCreateNewProduct}
-                            variant="outline"
-                            size="large"
-                            style={styles.createButton}
-                        />
-                    </View>
-                )}
             </ScrollView>
 
             <Modal
@@ -1282,49 +1264,63 @@ const styles = StyleSheet.create({
     },
     headerContainer: {
         paddingTop: Platform.OS === 'ios' ? 36 : 16,
-        paddingBottom: 16,
+        paddingBottom: 12,
         paddingHorizontal: 16,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
-        gap: 16,
     },
-    summaryGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
-    summaryCard: {
-        flexGrow: 1,
-        minWidth: SUMMARY_CARD_MIN_WIDTH,
-        borderRadius: 16,
-        paddingVertical: 16,
-        paddingHorizontal: 14,
-        backgroundColor: '#F9FAFB',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    summaryIconContainer: {
+    editServiceButton: {
         width: 36,
         height: 36,
         borderRadius: 18,
+        backgroundColor: '#EEF2FF',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        marginBottom: 12,
+        borderColor: '#E0E7FF',
     },
-    summaryValue: {
-        fontSize: 20,
+    statsRowContainer: {
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    statsRowContent: {
+        paddingHorizontal: 16,
+        gap: 10,
+    },
+    miniStatCard: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        minWidth: 70,
+        gap: 4,
+    },
+    miniStatIconContainer: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    miniStatValue: {
+        fontSize: 16,
         fontWeight: '700',
         color: modernColors.text,
     },
-    summaryLabel: {
-        fontSize: 12,
+    miniStatLabel: {
+        fontSize: 10,
         fontWeight: '600',
         color: modernColors.textSecondary,
-        marginTop: 2,
+        textAlign: 'center',
         textTransform: 'uppercase',
-        letterSpacing: 0.6,
+        letterSpacing: 0.4,
     },
     loadingContainer: {
         flex: 1,
@@ -1339,25 +1335,34 @@ const styles = StyleSheet.create({
     },
     quickActionsRow: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
-    },
-    quickActionButton: {
-        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        justifyContent: 'flex-start',
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        backgroundColor: '#EEF2FF',
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#E0E7FF',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
         gap: 8,
     },
+    quickActionButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E0E7FF',
+        gap: 6,
+        minHeight: 40,
+    },
     quickActionText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '600',
         color: modernColors.primary,
+        flexShrink: 1,
     },
     filtersContainer: {
         backgroundColor: '#FFFFFF',
@@ -1642,12 +1647,6 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         marginTop: 8,
         textAlign: 'center',
-    },
-    footerContainer: {
-        padding: 16,
-    },
-    createButton: {
-        marginBottom: 20,
     },
     metricsContent: {
         paddingHorizontal: 16,

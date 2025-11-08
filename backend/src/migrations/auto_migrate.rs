@@ -564,7 +564,6 @@ pub async fn ensure_notifications_table(pool: &PgPool) -> Result<(), sqlx::Error
 pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table autocomplete_characteristics...");
 
-    // Vérifier si la table existe
     let exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'autocomplete_characteristics')"
     )
@@ -574,7 +573,6 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
     if exists {
         info!("✅ Table autocomplete_characteristics déjà présente");
 
-        // ✅ NOUVEAU 2025-11-05: Vérifier les colonnes vectorielles (mode 2025-11-04)
         let has_char_vector = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'characteristic_vector')"
         )
@@ -595,7 +593,6 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
             info!("✅ Colonnes vectorielles ajoutées");
         }
 
-        // Vérifier product_id
         let has_product_id = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'product_id')"
         )
@@ -604,15 +601,12 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
 
         if !has_product_id {
             warn!("⚠️ Colonne 'product_id' manquante, ajout en cours...");
-            sqlx::query(
-                "ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS product_id TEXT",
-            )
-            .execute(pool)
-            .await?;
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS product_id TEXT")
+                .execute(pool)
+                .await?;
             info!("✅ Colonne 'product_id' ajoutée");
         }
 
-        // Vérifier chosen_location_geoname_id
         let has_geoname = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'chosen_location_geoname_id')"
         )
@@ -627,7 +621,6 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
             info!("✅ Colonne 'chosen_location_geoname_id' ajoutée");
         }
 
-        // ✅ NOUVEAU 2025-11-06: Vérifier chosen_location (CRITIQUE pour autocomplete_client_service)
         let has_chosen_location = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'chosen_location')"
         )
@@ -642,7 +635,6 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
             info!("✅ Colonne 'chosen_location' ajoutée");
         }
 
-        // Vérifier is_real_product
         let has_is_real = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'is_real_product')"
         )
@@ -657,7 +649,6 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
             info!("✅ Colonne 'is_real_product' ajoutée");
         }
 
-        // ✅ NOUVEAU 2025-11-05: Vérifier product_labels dans autocomplete_characteristics
         let has_product_labels = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'product_labels')"
         )
@@ -671,44 +662,73 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
                 .await?;
             info!("✅ Colonne 'product_labels' ajoutée à autocomplete_characteristics");
         }
+    } else {
+        warn!("⚠️ Table autocomplete_characteristics manquante, création en cours...");
 
-        return Ok(());
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS autocomplete_characteristics (
+                id SERIAL PRIMARY KEY,
+                identifiant_base VARCHAR(255) NOT NULL,
+                
+                -- MODE VECTORIEL (nouveaux champs 2025-11-04)
+                characteristic_vector TEXT[] DEFAULT '{}',
+                location_vector TEXT[] DEFAULT '{}',
+                full_vector TEXT[] DEFAULT '{}',
+                product_id TEXT,
+                chosen_location TEXT,
+                chosen_location_geoname_id BIGINT,
+                is_real_product BOOLEAN DEFAULT TRUE,
+                
+                -- MODE INDIVIDUEL (ancien, conservé pour compatibilité)
+                sous_caracteristique VARCHAR(255),
+                valeur VARCHAR(500),
+                
+                -- Métadonnées
+                origine_champs VARCHAR(50) NOT NULL DEFAULT 'ia',
+                user_id INTEGER,
+                service_id INTEGER,
+                usage_count INTEGER DEFAULT 1,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+        "#,
+        )
+        .execute(pool)
+        .await?;
     }
 
-    warn!("⚠️ Table autocomplete_characteristics manquante, création en cours...");
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_identifiant_base ON autocomplete_characteristics(identifiant_base)")
+        .execute(pool)
+        .await?;
 
-    // Créer la table autocomplete_characteristics (mode vectoriel 2025-11-04)
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS autocomplete_characteristics (
-            id SERIAL PRIMARY KEY,
-            identifiant_base VARCHAR(255) NOT NULL,
-            
-            -- MODE VECTORIEL (nouveaux champs 2025-11-04)
-            characteristic_vector TEXT[] DEFAULT '{}',
-            location_vector TEXT[] DEFAULT '{}',
-            full_vector TEXT[] DEFAULT '{}',
-            product_id TEXT,
-            chosen_location TEXT,
-            chosen_location_geoname_id BIGINT,
-            is_real_product BOOLEAN DEFAULT TRUE,
-            
-            -- MODE INDIVIDUEL (ancien, conservé pour compatibilité)
-            sous_caracteristique VARCHAR(255),
-            valeur VARCHAR(500),
-            
-            -- Métadonnées
-            origine_champs VARCHAR(50) NOT NULL DEFAULT 'ia',
-            user_id INTEGER,
-            service_id INTEGER,
-            usage_count INTEGER DEFAULT 1,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        )
-    "#,
-    )
-    .execute(pool)
-    .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_sous_caracteristique ON autocomplete_characteristics(sous_caracteristique)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_base_sous ON autocomplete_characteristics(identifiant_base, sous_caracteristique)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_valeur_lower ON autocomplete_characteristics(LOWER(valeur))")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_origine ON autocomplete_characteristics(origine_champs)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_user_id ON autocomplete_characteristics(user_id) WHERE user_id IS NOT NULL")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_service_id ON autocomplete_characteristics(service_id) WHERE service_id IS NOT NULL")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_usage_count ON autocomplete_characteristics(identifiant_base, sous_caracteristique, usage_count DESC)")
+        .execute(pool)
+        .await?;
 
     // Créer les index
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_identifiant_base ON autocomplete_characteristics(identifiant_base)")
@@ -1080,14 +1100,11 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
                 warn!("⚠️ Impossible d'ajouter la contrainte unique_product_vector: {}", e);
             }
         }
+    } else {
+        warn!("⚠️ Table autocomplete_combinations manquante, création en cours...");
 
-        return Ok(());
-    }
-
-    warn!("⚠️ Table autocomplete_combinations manquante, création en cours...");
-
-    // Créer la table autocomplete_combinations
-    sqlx::query(r#"
+        // Créer la table autocomplete_combinations
+        sqlx::query(r#"
         CREATE TABLE IF NOT EXISTS autocomplete_combinations (
             id SERIAL PRIMARY KEY,
             service_id INTEGER,
@@ -1114,6 +1131,8 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
     "#)
     .execute(pool)
     .await?;
+}
+
 
     // Créer les index
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_service_id ON autocomplete_combinations(service_id) WHERE service_id IS NOT NULL")
@@ -1489,30 +1508,28 @@ pub async fn ensure_service_reviews_table(pool: &PgPool) -> Result<(), sqlx::Err
             .await?;
             info!("✅ Colonne 'is_helpful_count' ajoutée");
         }
+    } else {
+        warn!("⚠️ Table service_reviews manquante, création en cours...");
 
-        return Ok(());
-    }
-
-    warn!("⚠️ Table service_reviews manquante, création en cours...");
-
-    // Créer la table si elle n'existe pas
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS service_reviews (
-            id SERIAL PRIMARY KEY,
-            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            rating INTEGER CHECK (rating >= 0 AND rating <= 5) NOT NULL,
-            comment TEXT,
-            reply_to_review_id INTEGER REFERENCES service_reviews(id) ON DELETE CASCADE,
-            is_helpful_count INTEGER DEFAULT 0,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        // Créer la table si elle n'existe pas
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS service_reviews (
+                id SERIAL PRIMARY KEY,
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                rating INTEGER CHECK (rating >= 0 AND rating <= 5) NOT NULL,
+                comment TEXT,
+                reply_to_review_id INTEGER REFERENCES service_reviews(id) ON DELETE CASCADE,
+                is_helpful_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+        "#,
         )
-    "#,
-    )
-    .execute(pool)
-    .await?;
+        .execute(pool)
+        .await?;
+    }
 
     // Créer les index de manière conditionnelle (SQLx offline compatible)
     sqlx::query(
@@ -1577,50 +1594,48 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
                 .await?;
             info!("✅ Colonne 'product_id' ajoutée");
         }
+    } else {
+        warn!("⚠️ Table product_reactions manquante, création en cours...");
 
-        return Ok(());
-    }
-
-    warn!("⚠️ Table product_reactions manquante, création en cours...");
-
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS product_reactions (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
-            product_id TEXT NOT NULL,
-            reaction_type VARCHAR(20) NOT NULL CHECK (reaction_type IN (
-                'love',
-                'like',
-                'wow',
-                'interested',
-                'thinking',
-                'disappointed'
-            )),
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            UNIQUE(user_id, service_id, product_id, reaction_type)
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS product_reactions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                product_id TEXT NOT NULL,
+                reaction_type VARCHAR(20) NOT NULL CHECK (reaction_type IN (
+                    'love',
+                    'like',
+                    'wow',
+                    'interested',
+                    'thinking',
+                    'disappointed'
+                )),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                UNIQUE(user_id, service_id, product_id, reaction_type)
+            )
+        "#,
         )
-    "#,
-    )
-    .execute(pool)
-    .await?;
-
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_product_reactions_product ON product_reactions(service_id, product_id)")
         .execute(pool)
         .await?;
 
-    sqlx::query(
-        "CREATE INDEX IF NOT EXISTS idx_product_reactions_user ON product_reactions(user_id)",
-    )
-    .execute(pool)
-    .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_product_reactions_product ON product_reactions(service_id, product_id)")
+            .execute(pool)
+            .await?;
 
-    sqlx::query(
-        "CREATE INDEX IF NOT EXISTS idx_product_reactions_type ON product_reactions(reaction_type)",
-    )
-    .execute(pool)
-    .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_product_reactions_user ON product_reactions(user_id)",
+        )
+        .execute(pool)
+        .await?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_product_reactions_type ON product_reactions(reaction_type)",
+        )
+        .execute(pool)
+        .await?;
+    }
 
     sqlx::query(r#"
         CREATE OR REPLACE FUNCTION get_product_reactions_count(

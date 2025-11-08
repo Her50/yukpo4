@@ -10,6 +10,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Modal,
   ScrollView,
   Share,
   StyleSheet,
@@ -92,6 +93,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const navigation = useNavigation();
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
   // ✅ NOUVEAU : États pour contact privé
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
@@ -315,6 +317,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
+  const totalReactions = Object.values(reactions).reduce((sum, reaction) => {
+    return sum + (reaction?.count || 0);
+  }, 0);
+
   return (
     <>
       <NativeCard>
@@ -446,105 +452,37 @@ const ProductCard: React.FC<ProductCardProps> = ({
               </View>
             )}
 
-            {/* ✅ NOUVEAU : Section avis/ratings/commentaires (TOUS les utilisateurs) */}
-            <View style={styles.ratingSection}>
-              <View style={styles.ratingHeader}>
-                <SafeIcon name="message-circle" size={18} color={modernColors.primary} />
-                <Text style={styles.ratingSectionTitle}>
-                  Avis et Commentaires
-                </Text>
-                {serviceRating && serviceRating.count > 0 && (
-                  <Text style={styles.ratingCount}>
-                    {serviceRating.count}
-                  </Text>
+            {(serviceRating || totalReactions > 0 || usageCount > 0) && (
+              <View style={styles.compactStatsRow}>
+                {serviceRating && (
+                  <TouchableOpacity
+                    style={styles.compactStatPill}
+                    onPress={() => setShowReviewsModal(true)}
+                    activeOpacity={0.85}
+                  >
+                    <SafeIcon name="star" size={14} color="#FBBF24" />
+                    <Text style={styles.compactStatValue}>{serviceRating.avg.toFixed(1)}</Text>
+                    <Text style={styles.compactStatLabel}>({serviceRating.count})</Text>
+                  </TouchableOpacity>
+                )}
+
+                {totalReactions > 0 && (
+                  <View style={styles.compactStatPillMuted}>
+                    <Text style={styles.compactStatEmoji}>🎭</Text>
+                    <Text style={styles.compactStatValue}>{totalReactions}</Text>
+                    <Text style={styles.compactStatLabel}>réactions</Text>
+                  </View>
+                )}
+
+                {usageCount > 0 && (
+                  <View style={styles.compactStatPillMuted}>
+                    <Text style={styles.compactStatEmoji}>🔥</Text>
+                    <Text style={styles.compactStatValue}>{usageCount}</Text>
+                    <Text style={styles.compactStatLabel}>recherches</Text>
+                  </View>
                 )}
               </View>
-
-              <ServiceRating
-                service={{
-                  id: String(product.service_id || service?.id),
-                  data: service?.data || {},
-                  reviews: serviceReviews,
-                  user_rating: serviceRating?.avg || 0,
-                }}
-                onContactUser={handleContactUser}  // ✅ NOUVEAU : Contact privé
-                onRatingSubmit={async (rating, comment) => {
-                  try {
-                    const response = await fetch(`/api/services/${product.service_id || service?.id}/reviews`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({ rating, comment }),
-                    });
-                    if (response.ok) {
-                      Alert.alert('Succès', 'Votre avis a été publié avec succès !');
-                      // Recharger les avis
-                      const reviewsResp = await apiGet(`/api/services/${product.service_id || service?.id}/reviews`);
-                      if (reviewsResp.success && reviewsResp.data) {
-                        const data = reviewsResp.data as any;
-                        setServiceReviews(data.reviews || []);
-                        setServiceRating({
-                          avg: data.average_rating || 0,
-                          count: data.total_reviews || 0,
-                        });
-                      }
-                    } else {
-                      Alert.alert('Erreur', 'Impossible de publier votre avis');
-                    }
-                  } catch (error) {
-                    console.error('[ProductCard] Erreur envoi avis:', error);
-                    Alert.alert('Erreur', 'Une erreur est survenue lors de la publication');
-                  }
-                }}
-                onReviewHelpful={async (reviewId) => {
-                  try {
-                    await fetch(`/api/reviews/${reviewId}/helpful`, {
-                      method: 'POST',
-                    });
-                  } catch (error) {
-                    console.error('[ProductCard] Erreur marquer utile:', error);
-                  }
-                }}
-                showReviewForm={true}
-              />
-
-              {/* ✅ NOUVEAU : Section Réactions rapides */}
-              <View style={styles.reactionsSubsection}>
-                <View style={styles.reactionsSectionHeader}>
-                  <Text style={styles.reactionsSectionTitle}>🎭 Réactions</Text>
-                </View>
-
-                <View style={styles.reactionsBar}>
-                  {REACTIONS.map((reaction) => {
-                    const count = reactions[reaction.type]?.count || 0;
-                    const hasReacted = reactions[reaction.type]?.hasReacted || false;
-
-                    return (
-                      <TouchableOpacity
-                        key={reaction.type}
-                        style={[
-                          styles.reactionButton,
-                          hasReacted && styles.reactionButtonActive
-                        ]}
-                        onPress={() => handleReaction(reaction.type)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
-                        {count > 0 && (
-                          <Text style={[
-                            styles.reactionCount,
-                            hasReacted && styles.reactionCountActive
-                          ]}>
-                            {count}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            </View>
+            )}
 
             {/* Caractéristiques (vecteur produit) en chips */}
             {productVector.length > 0 && (
@@ -746,6 +684,108 @@ const ProductCard: React.FC<ProductCardProps> = ({
           onClose={() => setShowGallery(false)}
         />
       )}
+
+      <Modal
+        visible={showReviewsModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowReviewsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Avis et commentaires</Text>
+              <TouchableOpacity onPress={() => setShowReviewsModal(false)} style={styles.modalCloseButton}>
+                <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <ServiceRating
+                service={{
+                  id: String(product.service_id || service?.id),
+                  data: service?.data || {},
+                  reviews: serviceReviews,
+                  user_rating: serviceRating?.avg || 0,
+                }}
+                onContactUser={handleContactUser}
+                onRatingSubmit={async (rating, comment) => {
+                  try {
+                    const response = await fetch(`/api/services/${product.service_id || service?.id}/reviews`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({ rating, comment }),
+                    });
+                    if (response.ok) {
+                      Alert.alert('Succès', 'Votre avis a été publié avec succès !');
+                      const reviewsResp = await apiGet(`/api/services/${product.service_id || service?.id}/reviews`);
+                      if (reviewsResp.success && reviewsResp.data) {
+                        const data = reviewsResp.data as any;
+                        setServiceReviews(data.reviews || []);
+                        setServiceRating({
+                          avg: data.average_rating || 0,
+                          count: data.total_reviews || 0,
+                        });
+                      }
+                    } else {
+                      Alert.alert('Erreur', 'Impossible de publier votre avis');
+                    }
+                  } catch (error) {
+                    console.error('[ProductCard] Erreur envoi avis:', error);
+                    Alert.alert('Erreur', 'Une erreur est survenue lors de la publication');
+                  }
+                }}
+                onReviewHelpful={async (reviewId) => {
+                  try {
+                    await fetch(`/api/reviews/${reviewId}/helpful`, {
+                      method: 'POST',
+                    });
+                  } catch (error) {
+                    console.error('[ProductCard] Erreur marquer utile:', error);
+                  }
+                }}
+                showReviewForm
+              />
+
+              <View style={styles.modalReactionsSection}>
+                <Text style={styles.modalReactionsTitle}>Réactions rapides</Text>
+                <View style={styles.modalReactionsBar}>
+                  {REACTIONS.map((reaction) => {
+                    const count = reactions[reaction.type]?.count || 0;
+                    const hasReacted = reactions[reaction.type]?.hasReacted || false;
+
+                    return (
+                      <TouchableOpacity
+                        key={reaction.type}
+                        style={[
+                          styles.modalReactionButton,
+                          hasReacted && styles.modalReactionButtonActive,
+                        ]}
+                        onPress={() => handleReaction(reaction.type)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.modalReactionEmoji}>{reaction.emoji}</Text>
+                        {count > 0 && (
+                          <Text
+                            style={[
+                              styles.modalReactionCount,
+                              hasReacted && styles.modalReactionCountActive,
+                            ]}
+                          >
+                            {count}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 };
@@ -1153,35 +1193,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#92400E',
   },
-  ratingSection: {
-    marginTop: 12,
-    paddingTop: 16,
-    borderTopWidth: 2,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FAFAFA',
-    padding: 12,
-    borderRadius: 10,
-  },
-  ratingHeader: {
+  compactStatsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
+    marginTop: 12,
     marginBottom: 12,
   },
-  ratingSectionTitle: {
-    fontSize: 17,
+  compactStatPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    gap: 6,
+  },
+  compactStatPillMuted: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4F4F5',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    gap: 6,
+  },
+  compactStatEmoji: {
+    fontSize: 14,
+  },
+  compactStatValue: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
-    flex: 1,
   },
-  ratingCount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: modernColors.primary,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  compactStatLabel: {
+    fontSize: 12,
+    color: '#6B7280',
   },
   locationSection: {
     gap: 6,
@@ -1238,30 +1289,52 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: modernColors.primary,
   },
-  // ✅ NOUVEAU : Styles pour réactions
-  reactionsSubsection: {
-    marginTop: 16,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    maxHeight: '85%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalCloseButton: {
+    padding: 8,
+  },
+  modalReactionsSection: {
+    marginTop: 24,
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
-  reactionsSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  reactionsSectionTitle: {
+  modalReactionsTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1F2937',
+    marginBottom: 12,
   },
-  reactionsBar: {
+  modalReactionsBar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  reactionButton: {
+  modalReactionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
@@ -1272,22 +1345,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     gap: 4,
   },
-  reactionButtonActive: {
+  modalReactionButtonActive: {
     borderColor: modernColors.primary,
-    backgroundColor: modernColors.primary + '10',
-    borderWidth: 2,
+    backgroundColor: modernColors.primary + '12',
   },
-  reactionEmoji: {
+  modalReactionEmoji: {
     fontSize: 18,
   },
-  reactionCount: {
-    fontSize: 14,
-    fontWeight: '700',
+  modalReactionCount: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#6B7280',
     minWidth: 20,
     textAlign: 'center',
   },
-  reactionCountActive: {
+  modalReactionCountActive: {
     color: modernColors.primary,
   },
 });

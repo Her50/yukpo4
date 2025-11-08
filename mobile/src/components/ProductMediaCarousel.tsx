@@ -90,8 +90,10 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
     if (allMedia.length === 0) {
         return (
             <View style={styles.placeholder}>
-                <SafeIcon name="image" size={48} color="#D1D5DB" />
-                <Text style={styles.placeholderText}>Aucune image disponible</Text>
+                <View style={styles.placeholderIcon}>
+                    <SafeIcon name="image" size={36} color="#6366F1" />
+                </View>
+                <Text style={styles.placeholderText}>Aucun média disponible</Text>
             </View>
         );
     }
@@ -318,16 +320,27 @@ const styles = StyleSheet.create({
     placeholder: {
         width: '100%',
         height: 220,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#EEF2FF',
         alignItems: 'center',
         justifyContent: 'center',
         borderTopLeftRadius: 12,
         borderTopRightRadius: 12,
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+        gap: 12,
+    },
+    placeholderIcon: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#E0E7FF',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     placeholderText: {
         fontSize: 14,
-        color: '#9CA3AF',
-        marginTop: 8,
+        color: '#4C51BF',
+        fontWeight: '600',
     },
     fullscreenContainer: {
         flex: 1,

@@ -3490,10 +3490,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   {
                     nomFallback: valeursFormulaire.nom_produit || finalServiceData.titre_service?.valeur || '',
                     deviseFallback: valeursFormulaire.devise_produit || valeursFormulaire.devise || 'XAF',
-                    combinationString,
-                    characteristicVector,
+                    combinationString: combinationString,
+                    characteristicVector: characteristicVector,
                     productLabels: productLabelsFromAutocomplete,
-                    origineChamps: autocompleteData.origine_champs || 'formulaire'
+                    origineChamps: origineChampsForMedia || 'formulaire'
                   }
                 );
 

@@ -347,8 +347,6 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/media/set-main/{media_id}",
             post(media_product_controller::set_main_image),
         );
-    // ✅ Note: Route /api/content/mixed est définie dans recommendation_routes.rs
-
     // Routes pour product_modalities (modalités réutilisables)
     let modality_routes = router_modalities::modality_routes(state.clone());
 
@@ -369,6 +367,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(service_team_routes_merged)
         .merge(image_search_routes_merged)
         .merge(publicite_routes_inline)
+        .merge(recommendation_routes())
         .merge(token_stats_routes_merged)
         .merge(modality_routes)
         .merge(media_fallback_route) // ⚠️ Route wildcard en dernier

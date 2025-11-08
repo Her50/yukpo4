@@ -140,6 +140,34 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         return vector.filter(Boolean).slice(0, 5).join(' • ');
     };
 
+    const normalizeText = (value: string | null | undefined): string => {
+        if (!value) {
+            return '';
+        }
+        try {
+            return value
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+        } catch (error) {
+            return value.toLowerCase();
+        }
+    };
+
+    const extractBase64Value = (dataUrl: string): string => {
+        if (typeof dataUrl !== 'string') {
+            return '';
+        }
+        if (!dataUrl.startsWith('data:')) {
+            return dataUrl;
+        }
+        const base64Index = dataUrl.indexOf('base64,');
+        if (base64Index !== -1) {
+            return dataUrl.substring(base64Index + 7);
+        }
+        return dataUrl;
+    };
+
     // ✅ NOUVEAU: Autocomplete intelligente en mode recherche
     useEffect(() => {
         if (!showAutocomplete || !isSearchMode) return;
@@ -172,18 +200,45 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 
                     if (response.success) {
                         const normalized = normalizeAutocompleteResponse(response);
-                        setSuggestions(normalized);
-                        setShowSuggestions(normalized.length > 0);
+                        const queryText = normalizeText(text.trim());
 
-                        if (normalized.length > 0) {
-                            const example = formatSuggestionExample(normalized[0]);
+                        let filtered = normalized;
+                        if (queryText.length > 0) {
+                            filtered = normalized.filter((item: any) => {
+                                const vectorText = normalizeText(getSuggestionVector(item).join(' '));
+                                const labelsText = normalizeText(
+                                    Array.isArray(item?.product_labels)
+                                        ? item.product_labels.join(' ')
+                                        : item?.product_labels
+                                );
+                                const titleText = normalizeText((item?.title || item?.nom || item?.name || '') as string);
+                                const aliasText = normalizeText(item?.combinaison_brute || item?.full_text);
+
+                                return (
+                                    vectorText.includes(queryText) ||
+                                    labelsText.includes(queryText) ||
+                                    titleText.includes(queryText) ||
+                                    aliasText.includes(queryText)
+                                );
+                            });
+
+                            if (filtered.length === 0) {
+                                filtered = normalized;
+                            }
+                        }
+
+                        setSuggestions(filtered);
+                        setShowSuggestions(filtered.length > 0);
+
+                        if (filtered.length > 0) {
+                            const example = formatSuggestionExample(filtered[0]);
                             setDynamicPlaceholder(example ? `ex: ${example}` : null);
                         } else {
                             setDynamicPlaceholder(null);
                         }
 
                         console.log('[ChatInputMobile] 🔍 Suggestions autocomplete:', {
-                            count: normalized.length,
+                            count: filtered.length,
                             withGPS: !!gpsData,
                             query: text.trim()
                         });
@@ -593,16 +648,8 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         setGpsString('');
     };
 
-    // Soumettre
-    const handleSubmit = () => {
-        // Vérifier qu'il y a au moins un élément
-        const hasContent = text.trim() || images.length > 0 || documents.length > 0 ||
-            videos.length > 0 || excelFiles.length > 0 || audioUri;
-
-        if (!hasContent) {
-            Alert.alert('Erreur', 'Veuillez saisir du texte ou ajouter des médias');
-            return;
-        }
+    const buildInputPayload = (overrideText?: string) => {
+        const finalText = (overrideText ?? text).trim();
 
         // Construire les données GPS selon le format (point ou zone)
         let gpsFixe = gpsString;
@@ -626,32 +673,59 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             }
         }
 
-        // Fonction pour extraire le base64 pur (sans préfixe data:)
-        const extractBase64 = (dataUrl: string): string => {
-            if (!dataUrl.startsWith('data:')) return dataUrl;
-            const base64Index = dataUrl.indexOf('base64,');
-            if (base64Index !== -1) {
-                return dataUrl.substring(base64Index + 7);
-            }
-            return dataUrl;
-        };
+        const mapBase64 = (values: string[]): string[] =>
+            values
+                .filter((value) => typeof value === 'string' && value.length > 0)
+                .map((value) => extractBase64Value(value));
 
-        const input = {
-            texte: text.trim(),  // IMPORTANT: "texte" pas "text" (comme le frontend)
-            text: text.trim(),   // Garder les deux pour compatibilité
-            base64_image: images.map(extractBase64),
-            audio_base64: audioUri ? [extractBase64(audioUri)] : [],
-            video_base64: videos.map(extractBase64),
-            doc_base64: documents.map(extractBase64),
-            excel_base64: excelFiles.map(extractBase64),
-            pdf_base64: documents.filter(d => d.includes('pdf')).map(extractBase64), // PDFs séparés
-            logo: logo.map(extractBase64),
-            banner: banner.map(extractBase64),
+        return {
+            texte: finalText,
+            text: finalText,
+            base64_image: mapBase64(images),
+            audio_base64: audioUri ? [extractBase64Value(audioUri)] : [],
+            video_base64: mapBase64(videos),
+            doc_base64: mapBase64(documents),
+            excel_base64: mapBase64(excelFiles),
+            pdf_base64: documents
+                .filter((value) => typeof value === 'string' && value.includes('pdf'))
+                .map((value) => extractBase64Value(value)),
+            logo: mapBase64(logo),
+            banner: mapBase64(banner),
             gps_mobile: gpsData ? `${gpsData.lat},${gpsData.lng}` : undefined,
             gps_zone: gpsZone,
             gps_fixe: gpsFixe || undefined,
             gps_fixe_coords: gpsFixeCoords,
         };
+    };
+
+    const resetForm = () => {
+        setText('');
+        setImages([]);
+        setVideos([]);
+        setDocuments([]);
+        setExcelFiles([]);
+        setLogo([]);
+        setBanner([]);
+        setAudioUri(null);
+        setGpsData(null);
+        setGpsString('');
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setDynamicPlaceholder(null);
+    };
+
+    // Soumettre
+    const handleSubmit = (overrideText?: string) => {
+        const finalText = (overrideText ?? text).trim();
+        const hasContent = finalText || images.length > 0 || documents.length > 0 ||
+            videos.length > 0 || excelFiles.length > 0 || audioUri;
+
+        if (!hasContent) {
+            Alert.alert('Erreur', 'Veuillez saisir du texte ou ajouter des médias');
+            return;
+        }
+
+        const input = buildInputPayload(overrideText);
 
         console.log('[ChatInputMobile] Soumission complète:', {
             texte: input.texte,
@@ -666,18 +740,18 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         });
 
         onSubmit(input);
+        resetForm();
+    };
 
-        // Réinitialiser tous les champs après soumission
-        setText('');
-        setImages([]);
-        setVideos([]);
-        setDocuments([]);
-        setExcelFiles([]);
-        setLogo([]);
-        setBanner([]);
-        setAudioUri(null);
-        setGpsData(null);
-        setGpsString('');
+    const handleSuggestionSelect = (suggestion: any) => {
+        const fullText = getSuggestionVector(suggestion).join(' ').trim();
+        if (!fullText) {
+            return;
+        }
+        console.log('[ChatInputMobile] ✅ Suggestion sélectionnée:', fullText);
+        setShowSuggestions(false);
+        setSuggestions([]);
+        handleSubmit(fullText);
     };
 
     return (
@@ -940,17 +1014,17 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                             <Text style={styles.closeSuggestions}>✕</Text>
                         </TouchableOpacity>
                     </View>
-                    <Text style={styles.suggestionsCaption}>
-                        Suggestions issues de l'autocomplete caractéristique
-                    </Text>
-
                     {loadingSuggestions ? (
                         <View style={styles.loadingSuggestionsRow}>
                             <ActivityIndicator size="small" color={primaryColor} />
                             <Text style={styles.loadingSuggestionsText}>Analyse en cours...</Text>
                         </View>
                     ) : suggestions.length > 0 ? (
-                        <ScrollView style={styles.suggestionsList} nestedScrollEnabled={true}>
+                        <ScrollView
+                            style={styles.suggestionsList}
+                            contentContainerStyle={styles.suggestionsContent}
+                            nestedScrollEnabled
+                        >
                             {suggestions.map((suggestion, index) => {
                                 const chips = getSuggestionVector(suggestion).slice(0, 6);
                                 const fullText = getSuggestionVector(suggestion).join(' ');
@@ -961,16 +1035,23 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                                 return (
                                     <NativeCard
                                         key={`suggestion-${index}`}
-                                        onPress={() => {
-                                            setText(fullText);
-                                            setShowSuggestions(false);
-                                            console.log('[ChatInputMobile] ✅ Suggestion sélectionnée:', fullText);
-                                        }}
+                                        onPress={() => handleSuggestionSelect(suggestion)}
                                         style={styles.suggestionCard}
                                     >
                                         <View style={styles.suggestionCardHeader}>
-                                            <SafeIcon name="sparkles" size={16} color={primaryColor} />
-                                            <Text style={styles.suggestionCardTitle}>Proposition {index + 1}</Text>
+                                            <View style={styles.suggestionCardHeaderLeft}>
+                                                <SafeIcon name="sparkles" size={16} color={primaryColor} />
+                                                <Text style={styles.suggestionCardTitle}>Proposition {index + 1}</Text>
+                                            </View>
+
+                                            {suggestion?.usage_count ? (
+                                                <View style={styles.suggestionUsagePill}>
+                                                    <SafeIcon name="users" size={12} color={accentColor} />
+                                                    <Text style={styles.suggestionUsageText}>
+                                                        {suggestion.usage_count}× recherché
+                                                    </Text>
+                                                </View>
+                                            ) : null}
                                         </View>
 
                                         <View style={styles.suggestionChips}>
@@ -986,15 +1067,6 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                                                 <View style={styles.suggestionMetaItem}>
                                                     <SafeIcon name="map-pin" size={14} color={primaryColor} />
                                                     <Text style={styles.suggestionMetaText}>{suggestion.chosen_location}</Text>
-                                                </View>
-                                            ) : null}
-
-                                            {suggestion?.usage_count ? (
-                                                <View style={styles.suggestionMetaItem}>
-                                                    <SafeIcon name="users" size={14} color={accentColor} />
-                                                    <Text style={styles.suggestionMetaText}>
-                                                        {suggestion.usage_count}× recherché
-                                                    </Text>
                                                 </View>
                                             ) : null}
 
@@ -1028,7 +1100,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                 <View style={styles.sendButtonContainerExternal}>
                     <TouchableOpacity
                         style={[styles.submitButtonBottom, loading && styles.sendButtonDisabled]}
-                        onPress={handleSubmit}
+                        onPress={() => handleSubmit()}
                         disabled={loading || (!text.trim() && images.length === 0 && videos.length === 0 && audioUri === null && documents.length === 0 && excelFiles.length === 0)}
                     >
                         <Text style={styles.sendIcon}>🚀</Text>
@@ -1478,12 +1550,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#1F2937',
     },
-    suggestionsCaption: {
-        fontSize: 12,
-        color: '#6B7280',
-        paddingHorizontal: 16,
-        paddingBottom: 8,
-    },
     closeSuggestions: {
         fontSize: 20,
         color: '#6B7280',
@@ -1491,6 +1557,8 @@ const styles = StyleSheet.create({
     },
     suggestionsList: {
         maxHeight: 250,
+    },
+    suggestionsContent: {
         paddingHorizontal: 12,
         paddingBottom: 12,
     },
@@ -1526,12 +1594,17 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     suggestionCard: {
-        marginVertical: 6,
+        marginBottom: 12,
     },
     suggestionCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         marginBottom: 8,
+    },
+    suggestionCardHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     suggestionCardTitle: {
         marginLeft: 8,
@@ -1539,10 +1612,24 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#1F2937',
     },
+    suggestionUsagePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF1E6',
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    suggestionUsageText: {
+        marginLeft: 4,
+        fontSize: 12,
+        color: accentColor,
+        fontWeight: '600',
+    },
     suggestionMetaRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginTop: 12,
+        marginTop: 8,
     },
     suggestionMetaItem: {
         flexDirection: 'row',

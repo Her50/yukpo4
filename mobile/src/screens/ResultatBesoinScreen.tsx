@@ -91,6 +91,37 @@ const buildSuggestionExample = (suggestion?: CombinationSuggestion | null): stri
   return vector.filter(Boolean).slice(0, 5).join(' • ');
 };
 
+const getSuggestionVector = (suggestion: CombinationSuggestion | null | undefined): string[] => {
+  if (!suggestion) {
+    return [];
+  }
+
+  if (Array.isArray(suggestion.full_vector) && suggestion.full_vector.length > 0) {
+    return suggestion.full_vector.filter((item) => typeof item === 'string');
+  }
+
+  if (Array.isArray(suggestion.product_vector) && suggestion.product_vector.length > 0) {
+    return suggestion.product_vector.filter((item) => typeof item === 'string');
+  }
+
+  return [];
+};
+
+const normalizeText = (value: string | null | undefined): string => {
+  if (!value) {
+    return '';
+  }
+
+  try {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  } catch (error) {
+    return value.toLowerCase();
+  }
+};
+
 type SortOption = 'pertinence' | 'proximite' | 'prix_asc' | 'prix_desc';
 type FilterCategory = 'all' | 'with_stock' | 'with_variants' | 'nearby';
 
@@ -361,10 +392,37 @@ const ResultatBesoinScreen: React.FC = () => {
 
         if (response.success) {
           const normalized = normalizeAutocompleteResponse(response);
-          setSuggestions(normalized);
+          const queryText = normalizeText(query.trim());
 
-          if (normalized.length > 0) {
-            const example = buildSuggestionExample(normalized[0]);
+          let filtered = normalized;
+          if (queryText.length > 0) {
+            filtered = normalized.filter((item) => {
+              const vectorText = normalizeText(getSuggestionVector(item).join(' '));
+              const labelsText = normalizeText(
+                Array.isArray((item as any)?.product_labels)
+                  ? (item as any).product_labels.join(' ')
+                  : ((item as any)?.product_labels as string)
+              );
+              const titleText = normalizeText(((item as any)?.title || (item as any)?.nom || (item as any)?.name) as string);
+              const aliasText = normalizeText(((item as any)?.combinaison_brute || (item as any)?.full_text) as string);
+
+              return (
+                vectorText.includes(queryText) ||
+                labelsText.includes(queryText) ||
+                titleText.includes(queryText) ||
+                aliasText.includes(queryText)
+              );
+            });
+
+            if (filtered.length === 0) {
+              filtered = normalized;
+            }
+          }
+
+          setSuggestions(filtered);
+
+          if (filtered.length > 0) {
+            const example = buildSuggestionExample(filtered[0]);
             setDynamicPlaceholder(example ? `ex: ${example}` : null);
           } else {
             setDynamicPlaceholder(null);
@@ -573,30 +631,36 @@ const ResultatBesoinScreen: React.FC = () => {
     try {
       console.log('[ResultatBesoinScreen] 🎯 Suggestion sélectionnée:', suggestion);
 
-      // ✅ PROTECTION: Vérifier que suggestion.full_vector existe
-      if (!suggestion || !Array.isArray(suggestion.full_vector)) {
-        console.error('[ResultatBesoinScreen] ❌ Suggestion invalide ou full_vector manquant');
+      const vector = getSuggestionVector(suggestion);
+      if (!vector || vector.length === 0) {
+        console.error('[ResultatBesoinScreen] ❌ Suggestion invalide ou vecteur manquant');
         return;
       }
 
-      setSearchQuery(suggestion.full_vector.join(', '));
-      setFilters(suggestion.full_vector);
+      const vectorText = vector.join(' ').trim();
+      setSearchQuery(vectorText);
+      setFilters(vector);
       setShowSuggestions(false);
-      await searchFinal(suggestion.full_vector);
+      await searchFinal(vector);
     } catch (error) {
       console.error('[ResultatBesoinScreen] ❌ Crash selectSuggestion:', error);
     }
   };
 
   // ✅ CORRECTION 2025-11-04 : Utiliser /api/search/direct (recherche globale)
-  const searchFinal = async (finalFilters: string[]) => {
+  const searchFinal = async (input: string | string[]) => {
+    const finalFilters = Array.isArray(input)
+      ? input.filter((token) => typeof token === 'string').map((token) => token.trim()).filter(Boolean)
+      : input.trim().split(/\s+/).filter(Boolean);
+
     console.log('[ResultatBesoinScreen] 🔍 searchFinal appelé avec:', finalFilters);
 
-    if (!finalFilters || !Array.isArray(finalFilters) || finalFilters.length === 0) {
+    if (!finalFilters || finalFilters.length === 0) {
       console.warn('[ResultatBesoinScreen] ⚠️ Filtres vides ou invalides, abandon de la recherche');
       return;
     }
 
+    setFilters(finalFilters);
     setLoadingResults(true);
 
     try {
@@ -748,7 +812,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 console.log('[ResultatBesoinScreen] 🔍 Recherche déclenchée (Enter), query:', searchQuery, 'filters:', filters);
                 if (searchQuery.trim()) {
                   setShowSuggestions(false);
-                  searchFinal(filters);
+                  searchFinal(searchQuery);
                 }
               } catch (error) {
                 console.error('[ResultatBesoinScreen] ❌ Crash onSubmitEditing:', error);
@@ -762,7 +826,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 console.log('[ResultatBesoinScreen] 🔍 Recherche déclenchée (Bouton), query:', searchQuery, 'filters:', filters);
                 if (searchQuery.trim()) {
                   setShowSuggestions(false);
-                  searchFinal(filters);
+                  searchFinal(searchQuery);
                 }
               } catch (error) {
                 console.error('[ResultatBesoinScreen] ❌ Crash onPress:', error);
@@ -1181,58 +1245,84 @@ const ResultatBesoinScreen: React.FC = () => {
             </View>
           ) : suggestions.length > 0 ? (
             <>
-              <Text style={styles.suggestionsTitle}>🔥 Caractéristiques recommandées ({suggestions.length})</Text>
-              <Text style={styles.suggestionsSubtitle}>Suggestions issues de l'autocomplete caractéristique</Text>
-              <ScrollView style={styles.suggestionsList}>
-                {(suggestions || []).map((suggestion, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.suggestionCard}
-                    onPress={() => selectSuggestion(suggestion)}
-                  >
-                    <NativeCard>
-                      {/* Vecteur produit */}
-                      <View style={styles.vectorChips}>
-                        {(suggestion?.product_vector || []).map((char, idx) => (
-                          <View key={idx} style={styles.productChip}>
-                            <Text style={styles.productChipText}>{char}</Text>
+              <View style={styles.suggestionsHeader}>
+                <View style={styles.suggestionsHeaderLeft}>
+                  <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                  <Text style={styles.suggestionsTitle}>Caractéristiques recommandées</Text>
+                  <Text style={styles.suggestionsCount}>({suggestions.length})</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowSuggestions(false)}>
+                  <Text style={styles.closeSuggestions}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                style={styles.suggestionsList}
+                contentContainerStyle={styles.suggestionsContent}
+                nestedScrollEnabled
+              >
+                {(suggestions || []).map((suggestion, index) => {
+                  const chips = getSuggestionVector(suggestion).slice(0, 6);
+                  const priceText = typeof suggestion?.prix === 'number'
+                    ? `${Math.round(suggestion.prix).toLocaleString()} ${suggestion?.devise || 'XAF'}`
+                    : null;
+                  const accentColor = modernColors?.accent ?? '#F97316';
+
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.suggestionCard}
+                      onPress={() => selectSuggestion(suggestion)}
+                    >
+                      <NativeCard>
+                        <View style={styles.suggestionCardHeader}>
+                          <View style={styles.suggestionCardHeaderLeft}>
+                            <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                            <Text style={styles.suggestionCardTitle}>Proposition {index + 1}</Text>
                           </View>
-                        ))}
-                      </View>
 
-                      {/* Localisation */}
-                      {suggestion.chosen_location && (
-                        <View style={styles.locationRow}>
-                          <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                          <Text style={styles.locationText}>{suggestion.chosen_location}</Text>
+                          {suggestion?.usage_count ? (
+                            <View style={styles.suggestionUsagePill}>
+                              <SafeIcon name="users" size={12} color={accentColor} />
+                              <Text style={styles.suggestionUsageText}>
+                                {suggestion.usage_count}× recherché
+                              </Text>
+                            </View>
+                          ) : null}
                         </View>
-                      )}
 
-                      {/* Stats */}
-                      <View style={styles.statsRow}>
-                        <Text style={styles.statsText}>
-                          📊 {suggestion.usage_count}× utilisé
-                        </Text>
-                        {suggestion.has_variant && suggestion.variant_dimension && (
-                          <Text style={styles.statsText}>
-                            • {suggestion.variant_dimension}
-                          </Text>
-                        )}
-                        {suggestion.prix && (
-                          <Text style={styles.priceText}>
-                            {suggestion.prix.toLocaleString()} {suggestion.devise || 'XAF'}
-                          </Text>
-                        )}
-                      </View>
+                        <View style={styles.vectorChips}>
+                          {chips.map((chip, idx) => (
+                            <View key={`${chip}-${idx}`} style={styles.productChip}>
+                              <Text style={styles.productChipText}>{chip}</Text>
+                            </View>
+                          ))}
+                        </View>
 
-                      {/* Bouton */}
-                      <View style={styles.selectButton}>
-                        <SafeIcon name="check-circle" size={16} color="#FFF" />
-                        <Text style={styles.selectButtonText}>Sélectionner</Text>
-                      </View>
-                    </NativeCard>
-                  </TouchableOpacity>
-                ))}
+                        {suggestion.chosen_location && (
+                          <View style={styles.locationRow}>
+                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                            <Text style={styles.locationText}>{suggestion.chosen_location}</Text>
+                          </View>
+                        )}
+
+                        <View style={styles.statsRow}>
+                          {suggestion.has_variant && suggestion.variant_dimension ? (
+                            <Text style={styles.statsText}>⚙️ {suggestion.variant_dimension}</Text>
+                          ) : null}
+                          {priceText ? (
+                            <Text style={styles.priceText}>{priceText}</Text>
+                          ) : null}
+                        </View>
+
+                        <View style={styles.selectButton}>
+                          <SafeIcon name="check-circle" size={16} color="#FFF" />
+                          <Text style={styles.selectButtonText}>Utiliser cette suggestion</Text>
+                        </View>
+                      </NativeCard>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
 
               <TouchableOpacity
@@ -1598,26 +1688,83 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   suggestionsContainer: {
-    flex: 1,
     backgroundColor: '#FFF',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  suggestionsTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  suggestionsSubtitle: {
-    fontSize: 12,
-    color: '#6B7280',
+  suggestionsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
+  suggestionsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  suggestionsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  suggestionsCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: modernColors.primary,
+  },
+  closeSuggestions: {
+    fontSize: 20,
+    color: '#6B7280',
+  },
   suggestionsList: {
-    flex: 1,
+    maxHeight: 280,
+  },
+  suggestionsContent: {
+    paddingBottom: 12,
   },
   suggestionCard: {
     marginBottom: 12,
+  },
+  suggestionCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  suggestionCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  suggestionCardTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  suggestionUsagePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF1E6',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  suggestionUsageText: {
+    fontSize: 12,
+    color: modernColors.accent,
+    fontWeight: '600',
   },
   vectorChips: {
     flexDirection: 'row',
@@ -1651,18 +1798,17 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
   statsText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
   priceText: {
     fontSize: 14,
     fontWeight: '700',
     color: modernColors.primary,
-    marginLeft: 'auto',
   },
   selectButton: {
     flexDirection: 'row',

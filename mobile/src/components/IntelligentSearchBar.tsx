@@ -203,7 +203,9 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
                 if (response?.success) {
                     const combos = normalizeCombinationsResponse(response);
+                    const queryText = normalizeSearchText(cleaned);
                     const unique = new Map<string, CombinationCardSuggestion>();
+
                     combos.forEach((item: any) => {
                         const combo = item?.combination ?? item;
                         if (!combo || !Array.isArray(combo.product_vector)) {
@@ -221,7 +223,20 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
                         const labels = Array.isArray(combo.product_labels) ? combo.product_labels : [];
 
-                        if (!vectorMatchesTokens(vector, tokens, labels)) {
+                        // ✅ AMÉLIORATION : Filtrage amélioré avec normalisation
+                        if (queryText.length > 0) {
+                            const vectorText = normalizeSearchText(vector.join(' '));
+                            const labelsText = normalizeSearchText(
+                                labels.length > 0
+                                    ? labels.join(' ')
+                                    : ''
+                            );
+                            const fullText = `${vectorText} ${labelsText}`.trim();
+
+                            if (!fullText.includes(queryText) && !vectorMatchesTokens(vector, tokens, labels)) {
+                                return;
+                            }
+                        } else if (!vectorMatchesTokens(vector, tokens, labels)) {
                             return;
                         }
 
@@ -274,7 +289,33 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                         });
                     });
 
-                    const normalized = Array.from(unique.values());
+                    let normalized = Array.from(unique.values());
+
+                    // ✅ FALLBACK : Si aucun match après filtrage strict, prendre les premières suggestions
+                    if (normalized.length === 0 && combos.length > 0) {
+                        const firstCombo = combos[0]?.combination ?? combos[0];
+                        if (firstCombo && Array.isArray(firstCombo.product_vector)) {
+                            const vector = firstCombo.product_vector
+                                .filter((part: any) => typeof part === 'string')
+                                .map((part: string) => part.trim())
+                                .filter(Boolean);
+
+                            if (vector.length > 0) {
+                                const labels = Array.isArray(firstCombo.product_labels) ? firstCombo.product_labels : [];
+                                normalized = [{
+                                    id: `${firstCombo.id ?? 'fallback'}`,
+                                    vector,
+                                    labels,
+                                    asQuery: vector.join(', '),
+                                    usageCount: typeof firstCombo.usage_count === 'number' ? firstCombo.usage_count : undefined,
+                                    price: typeof firstCombo.prix === 'number' ? firstCombo.prix : undefined,
+                                    devise: firstCombo.devise || undefined,
+                                    isPreferred: !!firstCombo.is_ai_preferred,
+                                    occurrences: 1,
+                                }];
+                            }
+                        }
+                    }
 
                     setCombinationSuggestions(normalized);
                     if (normalized.length === 0) {
@@ -358,16 +399,40 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     // Sélectionner une suggestion
     const selectSuggestion = useCallback(
         (suggestion: string) => {
-            setQuery(suggestion);
-            setShowSuggestions(false);
-            Keyboard.dismiss();
-            // Déclencher automatiquement la recherche
             const trimmedSuggestion = suggestion.trim();
-            if (trimmedSuggestion) {
-                onSubmit(trimmedSuggestion);
+            if (!trimmedSuggestion) {
+                return;
             }
+
+            setQuery(trimmedSuggestion);
+            setShowSuggestions(false);
+            setCombinationSuggestions([]);
+            setCombinationError(null);
+            Keyboard.dismiss();
+
+            // Enregistrer la recherche dans l'historique si activé
+            if (enableHistory) {
+                searchHistoryService.recordSearch(
+                    trimmedSuggestion,
+                    'text',
+                    {
+                        category,
+                        session_id: sessionId,
+                        device_type: 'mobile',
+                    }
+                ).then((searchId) => {
+                    if (searchId && onSearchRecorded) {
+                        onSearchRecorded(searchId);
+                    }
+                }).catch((error) => {
+                    console.error('[IntelligentSearchBar] Erreur enregistrement recherche:', error);
+                });
+            }
+
+            // Déclencher automatiquement la recherche
+            onSubmit(trimmedSuggestion);
         },
-        [onSubmit]
+        [onSubmit, enableHistory, category, sessionId, onSearchRecorded]
     );
 
     // Rendre une suggestion
@@ -466,7 +531,15 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
             {query.trim().length >= 2 && (
                 <View style={styles.combinationSection}>
-                    <Text style={styles.combinationSuggestionsTitle}>Caractéristiques populaires</Text>
+                    <View style={styles.combinationSuggestionsHeader}>
+                        <View style={styles.combinationSuggestionsHeaderLeft}>
+                            <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                            <Text style={styles.combinationSuggestionsTitle}>Caractéristiques recommandées</Text>
+                            {combinationSuggestions.length > 0 && (
+                                <Text style={styles.combinationSuggestionsCount}>({combinationSuggestions.length})</Text>
+                            )}
+                        </View>
+                    </View>
 
                     {isLoadingCombinations && (
                         <View style={styles.loadingCombinationsContainer}>
@@ -486,11 +559,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                     {!isLoadingCombinations && combinationSuggestions.length > 0 && (
                         <View style={styles.compactCombinationList}>
                             {combinationSuggestions.map((combo, index) => {
-                                const rows = buildLabeledPairs(combo.vector, combo.labels);
-                                const previewText = (combo.asQuery || rows.map(({ value }) => value).join(' ')).trim();
-                                const tagValues = rows
-                                    .filter((row) => row.value)
-                                    .slice(0, 4);
+                                const accentColor = modernColors?.accent ?? '#F97316';
 
                                 return (
                                     <TouchableOpacity
@@ -500,40 +569,38 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                                         activeOpacity={0.85}
                                     >
                                         <View style={styles.compactCombinationHeader}>
-                                            <SafeIcon
-                                                name={combo.isPreferred ? 'sparkles' : 'search'}
-                                                size={16}
-                                                color={combo.isPreferred ? modernColors.primary : '#6366F1'}
-                                            />
-                                            <Text style={styles.compactCombinationTitle} numberOfLines={2}>
-                                                {previewText}
-                                            </Text>
+                                            <View style={styles.compactCombinationHeaderLeft}>
+                                                <SafeIcon
+                                                    name={combo.isPreferred ? 'sparkles' : 'sparkles'}
+                                                    size={16}
+                                                    color={modernColors.primary}
+                                                />
+                                                <Text style={styles.compactCombinationTitle} numberOfLines={2}>
+                                                    Proposition {index + 1}
+                                                </Text>
+                                            </View>
+
+                                            {typeof combo.usageCount === 'number' && combo.usageCount > 0 && (
+                                                <View style={styles.compactUsagePill}>
+                                                    <SafeIcon name="users" size={12} color={accentColor} />
+                                                    <Text style={styles.compactUsageText}>
+                                                        {combo.usageCount}× recherché
+                                                    </Text>
+                                                </View>
+                                            )}
                                         </View>
 
-                                        {tagValues.length > 0 && (
-                                            <View style={styles.compactCombinationTags}>
-                                                {tagValues.map(({ label, value }, tagIndex) => (
-                                                    <View key={`${combo.id}-tag-${tagIndex}`} style={styles.compactTag}>
-                                                        <Text style={styles.compactTagLabel} numberOfLines={1}>
-                                                            {label}:
-                                                        </Text>
-                                                        <Text style={styles.compactTagValue} numberOfLines={1}>
-                                                            {value}
-                                                        </Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        )}
+                                        <View style={styles.compactCombinationChips}>
+                                            {combo.vector.slice(0, 6).map((chip: string, chipIndex: number) => (
+                                                <View key={`${combo.id}-chip-${chipIndex}`} style={styles.compactCombinationChip}>
+                                                    <Text style={styles.compactCombinationChipText}>{chip}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
 
-                                        {(typeof combo.usageCount === 'number' || typeof combo.price === 'number' || (combo.occurrences && combo.occurrences > 1)) && (
+                                        {(typeof combo.price === 'number' || (combo.occurrences && combo.occurrences > 1)) && (
                                             <View style={styles.compactCombinationMeta}>
                                                 <View style={styles.compactMetaLeft}>
-                                                    {typeof combo.usageCount === 'number' && (
-                                                        <View style={styles.compactBadge}>
-                                                            <SafeIcon name="users" size={12} color={modernColors.textSecondary} />
-                                                            <Text style={styles.compactBadgeText}>{combo.usageCount}</Text>
-                                                        </View>
-                                                    )}
                                                     {combo.occurrences && combo.occurrences > 1 && (
                                                         <View style={styles.compactBadge}>
                                                             <SafeIcon name="repeat" size={12} color={modernColors.textSecondary} />
@@ -548,6 +615,11 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                                                 )}
                                             </View>
                                         )}
+
+                                        <View style={styles.compactCombinationApply}>
+                                            <SafeIcon name="arrow-right" size={14} color="#FFFFFF" />
+                                            <Text style={styles.compactCombinationApplyText}>Utiliser cette suggestion</Text>
+                                        </View>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -831,12 +903,27 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         lineHeight: 18,
     },
+    combinationSuggestionsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+        paddingHorizontal: 16,
+    },
+    combinationSuggestionsHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
     combinationSuggestionsTitle: {
         fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 8,
-        paddingHorizontal: 16,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
+    combinationSuggestionsCount: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: modernColors.primary,
     },
     compactCombinationList: {
         paddingHorizontal: 16,
@@ -853,15 +940,52 @@ const styles = StyleSheet.create({
     },
     compactCombinationHeader: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 10,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    compactCombinationHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     compactCombinationTitle: {
-        flex: 1,
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '600',
-        color: modernColors.text,
-        lineHeight: 18,
+        color: '#1F2937',
+    },
+    compactUsagePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#FFF1E6',
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    compactUsageText: {
+        fontSize: 12,
+        color: modernColors.accent,
+        fontWeight: '600',
+    },
+    compactCombinationChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginBottom: 12,
+    },
+    compactCombinationChip: {
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    compactCombinationChipText: {
+        fontSize: 13,
+        color: modernColors.primary,
+        fontWeight: '500',
     },
     compactCombinationTags: {
         flexDirection: 'row',
@@ -914,6 +1038,23 @@ const styles = StyleSheet.create({
     compactBadgeText: {
         fontSize: 11,
         color: modernColors.textSecondary,
+        fontWeight: '600',
+    },
+    compactCombinationApply: {
+        marginTop: 12,
+        backgroundColor: modernColors.primary,
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 8,
+    },
+    compactCombinationApplyText: {
+        marginLeft: 0,
+        color: '#FFFFFF',
+        fontSize: 12,
         fontWeight: '600',
     },
 });
