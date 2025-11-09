@@ -599,9 +599,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 identifiantBase="produits"
                                 value={formValues.produits || []}
                                 contextValues={[
-                                    formValues.categorie_produit,
                                     formValues.description_produit,
-                                    formValues.nom_produit,
                                     formValues.description,
                                 ]}
                                 categoryValue={formValues.categorie_produit || ''}

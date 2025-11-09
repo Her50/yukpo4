@@ -3,7 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 // Code corrigé (remplace @ts-ignore)
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -60,6 +60,29 @@ interface MediaFiles {
   logo: any[];
   banner: any[];
 }
+
+const PRODUCT_BLOCK_FIELD_NAMES = [
+  'nom_produit',
+  'categorie_produit',
+  'description_produit',
+  'produits',
+  'product_labels',
+  'prix',
+  'prix_produit',
+  'devise',
+  'devise_produit',
+  'price_variant',
+  'variabilite_prix',
+  'variation_prix',
+  'lieu_produit',
+  'lieu_commercial',
+  'lieu_commercialisation',
+  '_product_media_manager',
+  'images',
+  'videos',
+  'audios',
+  'documents'
+];
 
 const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -216,6 +239,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   }[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [dynamicTextareaHeights, setDynamicTextareaHeights] = useState<Record<string, number>>({});
+  const [blockHorizontalScrollEnabled, setBlockHorizontalScrollEnabled] = useState(true);
+
+  const formatMultilineValue = React.useCallback((rawValue: any): string => {
+    if (typeof rawValue !== 'string') {
+      return '';
+    }
+    return rawValue
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\\n/g, '\n');
+  }, []);
+  const handleMediaHorizontalScrollStart = useCallback(() => {
+    setBlockHorizontalScrollEnabled(false);
+  }, []);
+
+  const handleMediaHorizontalScrollEnd = useCallback(() => {
+    setBlockHorizontalScrollEnabled(true);
+  }, []);
 
   const displayedBlocks = useMemo(() => {
     if (!blocks || blocks.length === 0) {
@@ -1021,6 +1062,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const nextVisible = currentVisibleIndex !== -1 ? displayedBlocks[currentVisibleIndex + 1] : null;
 
     if (nextVisible) {
+      setBlockHorizontalScrollEnabled(true);
       setCurrentBlock(nextVisible.index);
       const targetDisplayIndex = currentVisibleIndex + 1;
       if (targetDisplayIndex >= 0) {
@@ -1038,6 +1080,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const previousVisible = currentVisibleIndex > 0 ? displayedBlocks[currentVisibleIndex - 1] : null;
 
     if (previousVisible) {
+      setBlockHorizontalScrollEnabled(true);
       setCurrentBlock(previousVisible.index);
       const targetDisplayIndex = currentVisibleIndex - 1;
       if (targetDisplayIndex >= 0) {
@@ -1074,6 +1117,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     setCurrentBlock(blockIndex);
+    setBlockHorizontalScrollEnabled(true);
 
     blockContentRef.current?.scrollTo({
       x: targetDisplayIndex * width,
@@ -1820,6 +1864,317 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     return examples[categorieNormalized] || 'Marque,Modèle,Couleur,Localisation,Année,État';
   };
 
+  const renderProductsBlock = () => {
+    const extractStringValue = (fieldName: string): string => {
+      const raw = valeursFormulaire[fieldName];
+      if (raw && typeof raw === 'object' && raw !== null && 'valeur' in raw) {
+        const inner = raw.valeur;
+        if (inner === null || inner === undefined) {
+          return '';
+        }
+        if (typeof inner === 'string') {
+          return inner;
+        }
+        if (typeof inner === 'number' || typeof inner === 'boolean') {
+          return String(inner);
+        }
+        return '';
+      }
+      if (raw === null || raw === undefined) {
+        return '';
+      }
+      if (typeof raw === 'string') {
+        return raw;
+      }
+      if (typeof raw === 'number' || typeof raw === 'boolean') {
+        return String(raw);
+      }
+      return '';
+    };
+
+    const typeOffreRaw = extractStringValue('type_offre') || extractStringValue('nature_offre') || 'produit';
+    const typeOffreNormalized = typeOffreRaw.toLowerCase();
+    const isPrestation = ['prestation', 'service', 'services'].includes(typeOffreNormalized);
+
+    const nomProduit = extractStringValue('nom_produit');
+    const categorieProduit = extractStringValue('categorie_produit');
+    const descriptionProduit = extractStringValue('description_produit');
+    const descriptionService = extractStringValue('description');
+    const titreService = extractStringValue('titre_service');
+
+    const prixProduitValue = extractStringValue('prix_produit') || extractStringValue('prix');
+    const deviseProduitValue = extractStringValue('devise_produit') || extractStringValue('devise') || 'XAF';
+
+    const produitsField = valeursFormulaire.produits;
+    let produitsValues: string[] = [];
+    let sousCaracteristiques =
+      (produitsField && typeof produitsField === 'object' && produitsField !== null && produitsField.sous_caracteristiques)
+        ? produitsField.sous_caracteristiques
+        : (valeursFormulaire.sous_caracteristiques && typeof valeursFormulaire.sous_caracteristiques === 'object'
+          ? valeursFormulaire.sous_caracteristiques
+          : null);
+    let safeSeparateur = ',';
+
+    if (produitsField && typeof produitsField === 'object' && produitsField !== null && 'valeur' in produitsField) {
+      const rawValues = Array.isArray(produitsField.valeur) ? produitsField.valeur : [produitsField.valeur];
+      produitsValues = rawValues
+        .filter((item) => item !== null && item !== undefined)
+        .map((item) => (typeof item === 'string' ? item : JSON.stringify(item)));
+      if (typeof produitsField.separateur === 'string' && produitsField.separateur.trim().length > 0) {
+        safeSeparateur = produitsField.separateur;
+      }
+    } else if (Array.isArray(produitsField)) {
+      produitsValues = produitsField
+        .filter((item) => item !== null && item !== undefined)
+        .map((item) => (typeof item === 'string' ? item : String(item)));
+    } else if (typeof produitsField === 'string') {
+      produitsValues = [produitsField];
+    }
+
+    if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object') {
+      sousCaracteristiques = {
+        marque: [],
+        modele: [],
+        couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
+        annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
+        etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
+        version: [],
+        competences: [],
+        experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
+        niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
+      };
+    }
+
+    const variantsSource = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant;
+    let currentModalites: any[] = [];
+    if (variantsSource) {
+      if (Array.isArray(variantsSource?.modalites)) {
+        currentModalites = variantsSource.modalites;
+      } else if (Array.isArray(variantsSource)) {
+        currentModalites = variantsSource;
+      }
+    }
+    const hasExistingVariants = currentModalites.length > 0;
+
+    const locationField = valeursFormulaire.lieu_produit;
+    const locationValue = locationField && typeof locationField === 'object' && locationField !== null && 'valeur' in locationField
+      ? locationField.valeur
+      : locationField || null;
+
+    const contextValues = [
+      descriptionProduit,
+      descriptionService
+    ].filter((item) => item && item.length > 0);
+
+    return (
+      <View style={styles.productBlockContent}>
+        <View style={styles.productIntroRow}>
+          <View style={styles.productIntroIcon}>
+            <SafeIcon name={isPrestation ? 'briefcase' : 'package-plus'} size={24} color="#FFFFFF" />
+          </View>
+          <View style={styles.productIntroTextWrapper}>
+            <Text style={styles.productIntroTitle}>
+              {isPrestation ? 'Informations prestation' : 'Informations produit'}
+            </Text>
+            <Text style={styles.productIntroSubtitle}>
+              {isPrestation
+                ? 'Décrivez votre prestation avec précision pour convaincre vos futurs clients.'
+                : 'Présentez clairement les atouts de votre produit pour maximiser vos ventes.'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.productFieldGroup}>
+          <Text style={styles.fieldLabel}>
+            {isPrestation ? 'Nom de la prestation' : 'Nom du produit / prestation'}
+          </Text>
+          <NativeInput
+            placeholder={isPrestation
+              ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
+              : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...'
+            }
+            value={nomProduit}
+            onChangeText={(text) => handleFieldChange('nom_produit', text)}
+            multiline
+            minLines={1}
+            style={[styles.fieldInput, styles.autoGrowingInput]}
+          />
+          {fieldErrors['nom_produit'] && (
+            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['nom_produit'])}</Text>
+          )}
+        </View>
+
+        <View style={styles.productFieldGroup}>
+          <Text style={styles.fieldLabel}>Catégorie du produit / prestation</Text>
+          <NativeInput
+            placeholder="Ex: Smartphone, Cours particulier, Service de réparation..."
+            value={categorieProduit}
+            onChangeText={(text) => handleFieldChange('categorie_produit', text)}
+            multiline
+            minLines={1}
+            style={[styles.fieldInput, styles.autoGrowingInput]}
+          />
+          {fieldErrors['categorie_produit'] && (
+            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['categorie_produit'])}</Text>
+          )}
+        </View>
+
+        <View style={styles.productFieldGroup}>
+          <Text style={styles.fieldLabel}>Description du produit / prestation</Text>
+          <NativeInput
+            placeholder="Décrivez les caractéristiques spécifiques du produit / prestation..."
+            value={descriptionProduit}
+            onChangeText={(text) => handleFieldChange('description_produit', text)}
+            multiline
+            minLines={3}
+            style={[styles.fieldInput, styles.productDescriptionInput]}
+            inputStyle={styles.productDescriptionText}
+          />
+          {fieldErrors['description_produit'] && (
+            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['description_produit'])}</Text>
+          )}
+        </View>
+
+        <View style={styles.productFieldGroup}>
+          <LinearAutocompleteEditor
+            label={isPrestation ? 'Caractéristiques prestations' : 'Caractéristiques produits / prestations'}
+            identifiantBase="produits"
+            value={produitsValues}
+            contextValues={contextValues}
+            categoryValue={categorieProduit}
+            onChange={(values, updatedSousCaracs) => {
+              const nextSousCaracs = updatedSousCaracs || sousCaracteristiques || {};
+              handleFieldChange('produits', {
+                type_donnee: 'autocomplete',
+                valeur: values,
+                separateur: safeSeparateur,
+                sous_caracteristiques: nextSousCaracs,
+                identifiant_base: 'produits',
+                filtrable: true,
+                origine_champs: 'formulaire'
+              });
+              if (updatedSousCaracs) {
+                handleFieldChange('sous_caracteristiques', updatedSousCaracs);
+              }
+            }}
+            sousCaracteristiques={sousCaracteristiques || {}}
+            separateur={safeSeparateur}
+            allowCustomModality
+            filtrable
+            placeholder="Tapez pour voir les suggestions..."
+          />
+          {fieldErrors['produits'] && (
+            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['produits'])}</Text>
+          )}
+        </View>
+
+        {!hasExistingVariants && (
+          <View style={styles.productFieldGroup}>
+            <Text style={styles.fieldLabel}>Prix du produit / prestation</Text>
+            <NativeInput
+              placeholder="Ex: 150000"
+              value={prixProduitValue}
+              onChangeText={(value) => {
+                handleFieldChange('prix_produit', value);
+                handleFieldChange('prix', value);
+              }}
+              keyboardType="numeric"
+              style={styles.fieldInput}
+            />
+            <View style={styles.productCurrencyButtons}>
+              {['XAF', 'EUR', 'USD', 'GBP', 'CAD', 'CHF'].map((devise) => (
+                <TouchableOpacity
+                  key={devise}
+                  style={[
+                    styles.productCurrencyButton,
+                    deviseProduitValue === devise && styles.productCurrencyButtonActive
+                  ]}
+                  onPress={() => {
+                    handleFieldChange('devise_produit', devise);
+                    handleFieldChange('devise', devise);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.productCurrencyButtonText,
+                      deviseProduitValue === devise && styles.productCurrencyButtonTextActive
+                    ]}
+                  >
+                    {devise}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {fieldErrors['prix_produit'] && (
+              <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['prix_produit'])}</Text>
+            )}
+          </View>
+        )}
+
+        {hasExistingVariants && (
+          <View style={styles.productFieldGroup}>
+            <PriceVariantSelector
+              label={isPrestation ? 'Variantes prestation' : 'Variantes produit'}
+              variable={isPrestation ? 'formule' : 'option'}
+              modalites={currentModalites}
+              onChange={(modalites) => {
+                handleFieldChange('variabilite_prix', {
+                  type_donnee: 'price_variant',
+                  variable: isPrestation ? 'formule' : 'option',
+                  modalites,
+                  filtrable: true,
+                  origine_champs: 'formulaire'
+                });
+              }}
+              defaultCurrency={deviseProduitValue}
+              helperText="Modifiez les variations détectées par l’IA (prix, stock, image)."
+              showEmptyStateDetails={false}
+            />
+          </View>
+        )}
+
+        <View style={styles.productFieldGroup}>
+          <LocationSelector
+            label="Lieu de commercialisation"
+            value={locationValue}
+            onSelect={(value) => {
+              handleFieldChange('lieu_produit', {
+                type_donnee: 'location',
+                valeur: value,
+                composants: { lieu: value },
+                filtrable: true,
+                origine_champs: 'formulaire'
+              });
+            }}
+            placeholder="Ville, quartier, pays..."
+            enrichWithBackend
+            required
+          />
+          {fieldErrors['lieu_produit'] && (
+            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['lieu_produit'])}</Text>
+          )}
+        </View>
+
+        <View style={styles.productFieldGroup}>
+          <Text style={styles.fieldLabel}>Photos et vidéos</Text>
+          <MediaUploadManager
+            images={mediaFiles.images}
+            videos={mediaFiles.videos}
+            onImagesChange={updateProductImages}
+            onVideosChange={updateProductVideos}
+            maxImages={MAX_PRODUCT_IMAGES}
+            maxVideos={3}
+            onHorizontalScrollStart={handleMediaHorizontalScrollStart}
+            onHorizontalScrollEnd={handleMediaHorizontalScrollEnd}
+          />
+          <Text style={styles.productHint}>
+            Ajoutez des visuels de haute qualité pour inspirer confiance et mettre votre offre en valeur.
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
   // Rendu d'un champ (aligné sur le frontend avec tous les types)
   const renderField = (field: DynamicField) => {
     // ✅ Log de debug pour chaque champ rendu
@@ -1917,20 +2272,31 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             </View>
           )}
 
+          {/*
+           * ✅ Ajustement 2025-11-09 :
+           * - Pour les caractéristiques produits/prestations, on ne rapproche plus que via la description.
+           */}
           <LinearAutocompleteEditor
             label={field.label}
             identifiantBase={field.identifiantBase || field.name || 'produit'}
             sousCaracteristiques={currentSousCaracs || {}} // ✅ PROTECTION: Garantir objet valide
             separateur={safeSeparateur} // ✅ PROTECTION ULTIME: Garantit string valide
             value={currentValues || []} // ✅ PROTECTION: Garantir array de strings valides
-            contextValues={[
-              valeursFormulaire.categorie_produit,
-              valeursFormulaire.category,
-              valeursFormulaire.description_produit,
-              valeursFormulaire.description,
-              valeursFormulaire.nom_produit,
-              valeursFormulaire.titre_service,
-            ]}
+            contextValues={
+              (field.identifiantBase || field.name) === 'produits'
+                ? [
+                  valeursFormulaire.description_produit,
+                  valeursFormulaire.description,
+                ]
+                : [
+                  valeursFormulaire.categorie_produit,
+                  valeursFormulaire.category,
+                  valeursFormulaire.description_produit,
+                  valeursFormulaire.description,
+                  valeursFormulaire.nom_produit,
+                  valeursFormulaire.titre_service,
+                ]
+            }
             categoryValue={valeursFormulaire.categorie_produit || valeursFormulaire.category || ''}
             onChange={(values, updatedSousCaracs) => {
               // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
@@ -2148,6 +2514,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             readonly={isReadonly}
             maxImages={MAX_PRODUCT_IMAGES}
             maxVideos={3}
+            onHorizontalScrollStart={handleMediaHorizontalScrollStart}
+            onHorizontalScrollEnd={handleMediaHorizontalScrollEnd}
           />
         </View>
       );
@@ -2270,7 +2638,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       case 'textarea':
         const isProductDescField = field.name === 'description_produit';
-        const linesMinimum = isProductDescField ? 6 : 3;
+        const linesMinimum = isProductDescField ? 8 : 3;
+        const normalizedValue = formatMultilineValue(valeursFormulaire[field.name] || '');
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
@@ -2278,8 +2647,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             </Text>
             <NativeInput
               placeholder={field.placeholder}
-              value={valeursFormulaire[field.name] || ''}
-              onChangeText={(text) => handleFieldChange(field.name, text)}
+              value={normalizedValue}
+              onChangeText={(text) => handleFieldChange(field.name, text.replace(/\r/g, ''))}
               multiline
               minLines={linesMinimum}
               inputStyle={isProductDescField ? styles.productDescriptionText : undefined}
@@ -4077,7 +4446,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   ref={blockContentRef}
                   horizontal
                   pagingEnabled
-                  scrollEnabled={true}
+                  scrollEnabled={blockHorizontalScrollEnabled}
                   showsHorizontalScrollIndicator={false}
                   style={styles.contentScrollViewHorizontal}
                   contentContainerStyle={styles.contentContainerHorizontal}
@@ -4117,9 +4486,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                           </LinearGradient>
 
                           <NativeCard style={styles.sectionContent}>
-                            {(block.fields || [])
-                              .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
-                              .map((field, index) => renderField(field))}
+                            {block.id === 'products' ? (
+                              <>
+                                {renderProductsBlock()}
+                                {(block.fields || [])
+                                  .filter((field) => !PRODUCT_BLOCK_FIELD_NAMES.includes(field.name))
+                                  .map((field) => renderField(field))}
+                              </>
+                            ) : (
+                              (block.fields || [])
+                                .filter(field => field.name !== 'devise')
+                                .map((field) => renderField(field))
+                            )}
                           </NativeCard>
 
                           {!isReadonly && block.id === 'payment' && (
@@ -4489,6 +4867,74 @@ const styles = StyleSheet.create({
   variantCalloutTextHighlighted: {
     color: '#E0E7FF',
   },
+  productBlockContent: {
+    gap: 24,
+  },
+  productIntroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+  },
+  productIntroIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: modernColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  productIntroTextWrapper: {
+    flex: 1,
+  },
+  productIntroTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: modernColors.text,
+  },
+  productIntroSubtitle: {
+    fontSize: 12,
+    color: modernColors.textSecondary,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  productFieldGroup: {
+    marginBottom: 20,
+  },
+  productCurrencyButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  productCurrencyButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F3F4F6',
+  },
+  productCurrencyButtonActive: {
+    backgroundColor: modernColors.primary,
+    borderColor: modernColors.primary,
+  },
+  productCurrencyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: modernColors.text,
+  },
+  productCurrencyButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  productHint: {
+    fontSize: 12,
+    color: modernColors.textSecondary,
+    marginTop: 8,
+  },
   productFieldContainer: {
     marginBottom: 12,
   },
@@ -4543,15 +4989,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   textareaInput: {
-    minHeight: 200,
-    paddingTop: 14,
+    minHeight: 220,
+    paddingTop: 16,
   },
   productDescriptionInput: {
-    minHeight: 240,
-    lineHeight: 22,
+    minHeight: 300,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    borderRadius: 14,
   },
   productDescriptionText: {
-    lineHeight: 22,
+    lineHeight: 24,
+    fontSize: 15,
   },
   navigationButtons: {
     flexDirection: 'row',

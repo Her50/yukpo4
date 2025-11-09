@@ -211,6 +211,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
       : typeof product.product_vector === 'string'
         ? splitWithFallback(product.product_vector, ',')
         : [];
+  const maxDisplayedCaracs = 6;
+  const limitedProductVector = productVector.slice(0, maxDisplayedCaracs);
+  const hasMoreCaracs = productVector.length > maxDisplayedCaracs;
 
   const rawLocationVector = product.location_vector || product.locationVector || product.location?.vector;
   const locationVector = Array.isArray(rawLocationVector)
@@ -227,6 +230,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
     product.location?.formatted_address,
     product.location?.full_address,
     locationVector[0], // Premier élément = lieu exact choisi par prestataire
+    product.location_name,
+    product.location_label,
+    product.location_text,
+    product.location,
+    product.lieu,
+    product.quartier,
+    product.city,
+    product.ville,
+    product.commune,
+    product.region,
+    product.departement,
     product.adresse_complete,
     product.adresse,
     product.address,
@@ -236,6 +250,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
     service?.data?.adresse?.valeur,
     service?.data?.adresse_service?.valeur,
     service?.data?.adresse_prestataire?.valeur,
+    service?.data?.localisation?.valeur,
+    service?.data?.lieu?.valeur,
+    service?.data?.ville?.valeur,
+    service?.data?.quartier?.valeur,
+    service?.data?.region?.valeur,
   ) || '';
 
   const hasVariant = product.has_variant || false;
@@ -269,6 +288,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
       rawPrestataire?.full_name,
       rawPrestataire?.raison_sociale,
       product.prestataire_nom,
+      product.prestataire_nom_affiche,
+      product.prestataire_nom_commercial,
       product.prestataire_nom_complet,
       product.prestataire_name,
       product.prestataire_fullname,
@@ -278,8 +299,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
       product.owner?.nom,
       product.owner?.nom_complet,
       product.owner?.name,
+      product.owner?.full_name,
       product.vendor?.nom,
       product.vendor?.name,
+      product.user_name,
+      product.contact_nom,
+      product.contact_name,
+      product.responsable_nom,
+      product.gerant_nom,
       service?.prestataire?.nom,
       service?.prestataire?.nom_complet,
       service?.data?.nom_prestataire?.valeur,
@@ -287,6 +314,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
       service?.data?.contact_nom?.valeur,
       service?.data?.nom?.valeur,
       service?.data?.nom_entreprise?.valeur,
+      service?.data?.responsable_nom?.valeur,
+      service?.data?.representant_nom?.valeur,
     ) || 'Prestataire';
 
   const prestataireAvatar = firstNonEmptyString(
@@ -376,12 +405,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
     locationVector[locationVector.length - 1],
     product.pays,
     product.country,
+    product.country_name,
+    product.country_code,
+    product.countryCode,
+    product.country_label,
     product.location?.country,
     service?.data?.pays?.valeur,
     service?.data?.pays_origine?.valeur,
+    service?.data?.country?.valeur,
   );
 
   const countryFlag = getCountryFlag(pays);
+  const showCountryBadge = countryFlag && countryFlag !== '🌍';
 
   const commentServiceId = Number(product._serviceId || product.service_id || service?.id || 0);
   const serviceTitleForComments =
@@ -439,6 +474,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     { key: 'reviews', icon: 'message-circle', value: reviewsCount, tint: '#f59e0b' },
     { key: 'favorites', icon: 'heart', value: favoritesCount, tint: '#ef4444' },
   ];
+  const compactTopStats = topStatsData.filter((stat) => (stat.value ?? 0) > 0).slice(0, 3);
 
   // ✅ AMÉLIORATION: Utiliser onChatPress si fourni, sinon modal local
   const handleChatPress = () => {
@@ -603,7 +639,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <>
       <LinearGradient
-        colors={['rgba(79, 70, 229, 0.14)', 'rgba(14, 165, 233, 0.08)', 'rgba(255, 255, 255, 0.6)']}
+        colors={['rgba(79, 70, 229, 0.12)', 'rgba(14, 165, 233, 0.05)', 'rgba(255, 255, 255, 0.45)']}
         style={styles.cardGradient}
       >
         <NativeCard
@@ -629,7 +665,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 />
 
                 {/* Badge pays (coin supérieur droit) */}
-                {countryFlag && (
+                {showCountryBadge && (
                   <View style={styles.countryBadge}>
                     <Text style={styles.countryFlag}>{countryFlag}</Text>
                   </View>
@@ -662,9 +698,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
             )}
 
             <View style={[styles.content, !hasMedia && styles.contentCompact]}>
-              {topStatsData.length > 0 && (
+              {compactTopStats.length > 0 && (
                 <View style={styles.topStatsRow}>
-                  {topStatsData.map((stat) => (
+                  {compactTopStats.map((stat) => (
                     <View
                       key={stat.key}
                       style={[
@@ -780,11 +816,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.chipsScroll}
                   >
-                    {productVector.map((carac: string, i: number) => (
+                    {limitedProductVector.map((carac: string, i: number) => (
                       <View key={i} style={styles.chip}>
                         <Text style={styles.chipText}>{carac}</Text>
                       </View>
                     ))}
+                    {hasMoreCaracs && (
+                      <View style={styles.chipMore}>
+                        <Text style={styles.chipMoreText}>+{productVector.length - maxDisplayedCaracs}</Text>
+                      </View>
+                    )}
                   </ScrollView>
                 </View>
               )}
@@ -1010,31 +1051,31 @@ const formatDate = (dateStr: string): string => {
 const styles = StyleSheet.create({
   cardContainer: {
     overflow: 'hidden',
-    borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.35)',
+    borderColor: 'rgba(148, 163, 184, 0.25)',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   cardContainerCompact: {
-    borderRadius: 24,
+    borderRadius: 20,
   },
   touchableContainer: {
     flex: 1,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: 'rgba(255,255,255,0.78)',
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 185,
+    height: 160,
     overflow: 'hidden',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
   },
   countryBadge: {
     position: 'absolute',
@@ -1147,17 +1188,17 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   content: {
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    gap: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   contentCompact: {
-    paddingTop: 18,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    paddingTop: 14,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   topStatsRow: {
     flexDirection: 'row',
@@ -1169,51 +1210,51 @@ const styles = StyleSheet.create({
   topStatPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E0E7FF',
   },
   topStatValue: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    marginLeft: 6,
+    marginLeft: 4,
   },
   productName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
-    lineHeight: 24,
+    lineHeight: 22,
   },
   prestataireRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    backgroundColor: '#F9FAFB',
+    gap: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    backgroundColor: '#F8FAFC',
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E5E7EB',
   },
   avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
     borderColor: '#FFF',
   },
   avatarPlaceholder: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: modernColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   prestataireName: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#374151',
     fontWeight: '600',
     flex: 1,
@@ -1267,8 +1308,21 @@ const styles = StyleSheet.create({
     color: modernColors.primary,
     fontWeight: '600',
   },
+  chipMore: {
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+  },
+  chipMoreText: {
+    fontSize: 12,
+    color: '#4B5563',
+    fontWeight: '600',
+  },
   priceVariations: {
-    gap: 10,
+    gap: 8,
     backgroundColor: '#F9FAFB',
     padding: 10,
     borderRadius: 10,
@@ -1391,18 +1445,19 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   price: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: modernColors.primary,
   },
   priceDevise: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#6B7280',
   },
   actions: {
     flexDirection: 'row',
     gap: 10,
+    marginTop: 2,
   },
   actionButton: {
     flex: 1,
@@ -1426,10 +1481,10 @@ const styles = StyleSheet.create({
   },
   // ✅ NOUVEAU : Styles pour avis/ratings et actions secondaires
   metricsCard: {
-    marginTop: 8,
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    marginTop: 6,
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
   },
   compactStatsRow: {
     flexDirection: 'row',
@@ -1464,13 +1519,13 @@ const styles = StyleSheet.create({
   locationSection: {
     gap: 4,
     backgroundColor: '#F8FAFC',
-    padding: 8,
-    borderRadius: 10,
+    padding: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   locationTextPrimary: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
     flex: 1,
@@ -1482,10 +1537,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingLeft: 18,
+    paddingLeft: 16,
   },
   locationTextSecondary: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6B7280',
     flex: 1,
     fontStyle: 'italic',
@@ -1511,10 +1566,7 @@ const styles = StyleSheet.create({
   secondaryActions: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 6,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    marginTop: 4,
   },
   secondaryActionButton: {
     flex: 1,
@@ -1522,7 +1574,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 9,
+    paddingVertical: 8,
     paddingHorizontal: 10,
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
@@ -1530,14 +1582,14 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   secondaryActionText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: modernColors.primary,
   },
   cardGradient: {
-    borderRadius: 26,
+    borderRadius: 22,
     padding: 1,
-    marginBottom: 16,
+    marginBottom: 12,
   },
 });
 

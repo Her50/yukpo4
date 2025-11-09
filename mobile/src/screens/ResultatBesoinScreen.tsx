@@ -7,7 +7,7 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -160,6 +160,31 @@ const extractSearchResults = (response: any): Product[] => {
   return [];
 };
 
+const convertFileToBase64 = async (uri: string): Promise<string> => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+const extractBase64 = (dataUrl: string): string => {
+  if (!dataUrl || typeof dataUrl !== 'string') {
+    return '';
+  }
+  if (!dataUrl.startsWith('data:')) {
+    return dataUrl;
+  }
+  const index = dataUrl.indexOf('base64,');
+  if (index === -1) {
+    return dataUrl;
+  }
+  return dataUrl.substring(index + 'base64,'.length);
+};
+
 const ResultatBesoinScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
@@ -247,16 +272,16 @@ const ResultatBesoinScreen: React.FC = () => {
     return [];
   };
 
-  const requestImagePermissions = async (): Promise<boolean> => {
+  const requestImagePermissions = useCallback(async (): Promise<boolean> => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission requise', 'Nous avons besoin de l’autorisation pour accéder à vos images.');
       return false;
     }
     return true;
-  };
+  }, []);
 
-  const takeSearchPhoto = async () => {
+  const takeSearchPhoto = useCallback(async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission requise', 'La caméra est nécessaire pour prendre une photo.');
@@ -279,9 +304,9 @@ const ResultatBesoinScreen: React.FC = () => {
       console.error('[ResultatBesoinScreen] Erreur prise de photo:', error);
       Alert.alert('Erreur', 'Impossible de prendre la photo.');
     }
-  };
+  }, []);
 
-  const chooseSearchImages = async () => {
+  const chooseSearchImages = useCallback(async () => {
     const hasPermission = await requestImagePermissions();
     if (!hasPermission) {
       return;
@@ -308,20 +333,9 @@ const ResultatBesoinScreen: React.FC = () => {
       console.error('[ResultatBesoinScreen] Erreur sélection images:', error);
       Alert.alert('Erreur', 'Impossible de sélectionner des images.');
     }
-  };
+  }, [requestImagePermissions]);
 
-  const convertFileToBase64 = async (uri: string): Promise<string> => {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
-
-  const pickSearchDocument = async () => {
+  const pickSearchDocument = useCallback(async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         copyToCacheDirectory: true,
@@ -338,17 +352,17 @@ const ResultatBesoinScreen: React.FC = () => {
       console.error('[ResultatBesoinScreen] Erreur sélection document:', error);
       Alert.alert('Erreur', 'Impossible de sélectionner le document.');
     }
-  };
+  }, []);
 
-  const removeSearchImage = (index: number) => {
+  const removeSearchImage = useCallback((index: number) => {
     setSearchImages((prev) => prev.filter((_, i) => i !== index));
-  };
+  }, []);
 
-  const removeSearchDocument = (index: number) => {
+  const removeSearchDocument = useCallback((index: number) => {
     setSearchDocuments((prev) => prev.filter((_, i) => i !== index));
-  };
+  }, []);
 
-  const handleGPSSelect = (coordinatesString: string) => {
+  const handleGPSSelect = useCallback((coordinatesString: string) => {
     if (!coordinatesString) {
       setSearchGPSData(null);
       setSearchGPSString('');
@@ -365,12 +379,12 @@ const ResultatBesoinScreen: React.FC = () => {
 
     setSearchGPSString(coordinatesString);
     setShowGPSModal(false);
-  };
+  }, []);
 
-  const clearSearchGPS = () => {
+  const clearSearchGPS = useCallback(() => {
     setSearchGPSData(null);
     setSearchGPSString('');
-  };
+  }, []);
 
   // ✅ CORRECTION 2025-11-06 : Fonction de recherche stable avec GPS proximité
   const fetchSuggestions = useCallback(async (query: string) => {
@@ -636,37 +650,8 @@ const ResultatBesoinScreen: React.FC = () => {
     return product.prix || 0;
   };
 
-  const extractBase64 = (dataUrl: string): string => {
-    if (!dataUrl) return dataUrl;
-    if (!dataUrl.startsWith('data:')) return dataUrl;
-    const index = dataUrl.indexOf('base64,');
-    if (index === -1) return dataUrl;
-    return dataUrl.substring(index + 7);
-  };
-
-  // Sélectionner suggestion
-  const selectSuggestion = async (suggestion: CombinationSuggestion) => {
-    try {
-      console.log('[ResultatBesoinScreen] 🎯 Suggestion sélectionnée:', suggestion);
-
-      const vector = getSuggestionVector(suggestion);
-      if (!vector || vector.length === 0) {
-        console.error('[ResultatBesoinScreen] ❌ Suggestion invalide ou vecteur manquant');
-        return;
-      }
-
-      const vectorText = vector.join(' ').trim();
-      setSearchQuery(vectorText);
-      setFilters(vector);
-      setShowSuggestions(false);
-      await searchFinal(vector);
-    } catch (error) {
-      console.error('[ResultatBesoinScreen] ❌ Crash selectSuggestion:', error);
-    }
-  };
-
   // ✅ CORRECTION 2025-11-04 : Utiliser /api/search/direct (recherche globale)
-  const searchFinal = async (input: string | string[]) => {
+  const searchFinal = useCallback(async (input: string | string[]) => {
     const finalFilters = Array.isArray(input)
       ? input.filter((token) => typeof token === 'string').map((token) => token.trim()).filter(Boolean)
       : input.trim().split(/\s+/).filter(Boolean);
@@ -754,7 +739,28 @@ const ResultatBesoinScreen: React.FC = () => {
     } finally {
       setLoadingResults(false);
     }
-  };
+  }, [location, searchDocuments, searchGPSString, searchImages]);
+
+  // Sélectionner suggestion
+  const selectSuggestion = useCallback(async (suggestion: CombinationSuggestion) => {
+    try {
+      console.log('[ResultatBesoinScreen] 🎯 Suggestion sélectionnée:', suggestion);
+
+      const vector = getSuggestionVector(suggestion);
+      if (!vector || vector.length === 0) {
+        console.error('[ResultatBesoinScreen] ❌ Suggestion invalide ou vecteur manquant');
+        return;
+      }
+
+      const vectorText = vector.join(' ').trim();
+      setSearchQuery(vectorText);
+      setFilters(vector);
+      setShowSuggestions(false);
+      await searchFinal(vector);
+    } catch (error) {
+      console.error('[ResultatBesoinScreen] ❌ Crash selectSuggestion:', error);
+    }
+  }, [searchFinal]);
 
   // Handler ChatInput (identique HomeScreen)
   const handleChatSubmit = async (input: any) => {
@@ -919,7 +925,7 @@ const ResultatBesoinScreen: React.FC = () => {
     );
   }, [filters, searchFinal, searchQuery, selectSuggestion, setShowSuggestions, showSuggestions, suggestions]);
 
-  const renderListHeader = useCallback(() => (
+  const listHeaderComponent = useMemo(() => (
     <View style={styles.listHeaderContainer}>
       <View style={styles.searchSection}>
         <View style={styles.searchBarContainer}>
@@ -954,7 +960,7 @@ const ResultatBesoinScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            style={styles.searchButton}
+            style={[styles.searchButton, loadingResults && styles.searchButtonDisabled]}
             onPress={() => {
               try {
                 if (searchQuery.trim()) {
@@ -965,9 +971,9 @@ const ResultatBesoinScreen: React.FC = () => {
                 console.error('[ResultatBesoinScreen] ❌ Crash onPress:', error);
               }
             }}
-            disabled={loadingSuggestions || loadingResults}
+            disabled={loadingResults}
           >
-            {loadingSuggestions || loadingResults ? (
+            {loadingResults ? (
               <ActivityIndicator size="small" color="#FFF" />
             ) : (
               <SafeIcon name="send" size={20} color="#FFF" />
@@ -1368,7 +1374,7 @@ const ResultatBesoinScreen: React.FC = () => {
             service={item as any}
           />
         )}
-        ListHeaderComponent={renderListHeader}
+        ListHeaderComponent={listHeaderComponent}
         ListFooterComponent={renderListFooter}
         ListEmptyComponent={renderEmptyComponent}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
@@ -1400,70 +1406,35 @@ const ResultatBesoinScreen: React.FC = () => {
             style={StyleSheet.absoluteFill}
             onPress={() => setShowSearchActions(false)}
           />
-          <View style={styles.searchActionsModalCard}>
-            <View style={styles.searchActionsModalHeader}>
-              <Text style={styles.searchActionsModalTitle}>Outils de recherche</Text>
+          <View style={styles.searchActionsPopoverWrapper}>
+            <View style={styles.searchActionsPopover}>
               <TouchableOpacity
-                style={styles.searchActionsModalClose}
-                onPress={() => setShowSearchActions(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Fermer les outils de recherche"
-              >
-                <SafeIcon name="x" size={18} color="#0F172A" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchActionsList}>
-              <TouchableOpacity
-                style={styles.searchActionsItem}
+                style={styles.searchActionsChip}
                 onPress={() => handleSearchAction(() => setShowGPSModal(true))}
               >
-                <View style={styles.searchActionsItemIcon}>
-                  <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.searchActionsItemLabel}>Ajouter une localisation</Text>
-                  <Text style={styles.searchActionsItemDescription}>Sélectionnez une zone ou votre position actuelle</Text>
-                </View>
+                <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
+                <Text style={styles.searchActionsChipLabel}>Localisation</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={styles.searchActionsItem}
+                style={styles.searchActionsChip}
                 onPress={() => handleSearchAction(takeSearchPhoto)}
               >
-                <View style={styles.searchActionsItemIcon}>
-                  <SafeIcon name="camera" size={18} color={modernColors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.searchActionsItemLabel}>Prendre une photo</Text>
-                  <Text style={styles.searchActionsItemDescription}>Décrivez votre besoin avec une image</Text>
-                </View>
+                <SafeIcon name="camera" size={18} color={modernColors.primary} />
+                <Text style={styles.searchActionsChipLabel}>Photo</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={styles.searchActionsItem}
+                style={styles.searchActionsChip}
                 onPress={() => handleSearchAction(chooseSearchImages)}
               >
-                <View style={styles.searchActionsItemIcon}>
-                  <SafeIcon name="image" size={18} color={modernColors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.searchActionsItemLabel}>Choisir depuis la galerie</Text>
-                  <Text style={styles.searchActionsItemDescription}>Importez des photos existantes de votre appareil</Text>
-                </View>
+                <SafeIcon name="image" size={18} color={modernColors.primary} />
+                <Text style={styles.searchActionsChipLabel}>Galerie</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={styles.searchActionsItem}
+                style={styles.searchActionsChip}
                 onPress={() => handleSearchAction(pickSearchDocument)}
               >
-                <View style={styles.searchActionsItemIcon}>
-                  <SafeIcon name="file-text" size={18} color={modernColors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.searchActionsItemLabel}>Ajouter un document</Text>
-                  <Text style={styles.searchActionsItemDescription}>Ajoutez un cahier des charges ou un devis</Text>
-                </View>
+                <SafeIcon name="file-text" size={18} color={modernColors.primary} />
+                <Text style={styles.searchActionsChipLabel}>Document</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1557,6 +1528,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  searchButtonDisabled: {
+    opacity: 0.7,
+  },
   searchAttachmentsContainer: {
     marginTop: 12,
     gap: 12,
@@ -1629,62 +1603,49 @@ const styles = StyleSheet.create({
   },
   searchActionsModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 100,
+    paddingHorizontal: 24,
+  },
+  searchActionsPopoverWrapper: {
+    maxWidth: 320,
+    width: '100%',
+    alignItems: 'flex-end',
+  },
+  searchActionsPopover: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'flex-end',
-  },
-  searchActionsModalCard: {
+    gap: 10,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 32,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    gap: 18,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  searchActionsModalHeader: {
+  searchActionsChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  searchActionsModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  searchActionsModalClose: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
-  },
-  searchActionsList: {
-    gap: 12,
-  },
-  searchActionsItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-  },
-  searchActionsItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EEF2FF',
-  },
-  searchActionsItemLabel: {
-    fontSize: 14,
+  searchActionsChipLabel: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#1F2937',
-  },
-  searchActionsItemDescription: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
   },
   filtersScroll: {
     flexDirection: 'row',

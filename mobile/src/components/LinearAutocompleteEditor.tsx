@@ -4,7 +4,7 @@
  * ✅ NOUVEAU : Suggestions populaires depuis autocomplete_combinations
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -61,6 +61,25 @@ interface CombinationSuggestion {
     devise?: string;
     isAIPreferred?: boolean;
     occurrences?: number;
+}
+
+type SuggestionSource = 'popular' | 'combination' | 'ia';
+
+interface SuggestionCandidate {
+    key: string;
+    source: SuggestionSource;
+    rows: Array<{ label: string; value: string }>;
+    score: number;
+    title: string;
+    subtitle?: string;
+    sellerCount?: number;
+    priceDisplay?: string | null;
+    occurrences?: number;
+    isTrending?: boolean;
+    isPreferred?: boolean;
+    product?: PopularProduct;
+    combination?: CombinationSuggestion;
+    iaValue?: string;
 }
 
 const normalizeSearchText = (input: string): string => {
@@ -154,6 +173,88 @@ const computeSuggestionScore = (
             score += 12;
         } else if (normalizedLabels.some((value) => value.includes(token))) {
             score += 8;
+        }
+    });
+
+    return score;
+};
+
+const computeCombinationSuggestionScore = (
+    combo: CombinationSuggestion,
+    tokens: string[] = [],
+    categoryTokens: string[] = [],
+): number => {
+    const vector = Array.isArray(combo?.productVector) ? combo.productVector : [];
+    const labels = Array.isArray(combo?.productLabels) ? combo.productLabels : [];
+
+    const normalizedVector = vector
+        .filter((value) => typeof value === 'string')
+        .map((value) => normalizeSearchText(value));
+    const normalizedLabels = labels
+        .filter((value) => typeof value === 'string')
+        .map((value) => normalizeSearchText(value));
+
+    let score = (combo?.occurrences ?? combo?.usageCount ?? 0) * 4;
+    score += (combo?.usageCount ?? 0) * 2;
+    if (combo?.isAIPreferred) {
+        score += 18;
+    }
+
+    const uniqueTokens = Array.from(new Set(tokens));
+    uniqueTokens.forEach((token) => {
+        if (!token) {
+            return;
+        }
+        if (normalizedVector.some((value) => value.includes(token))) {
+            score += 6;
+        } else if (normalizedLabels.some((value) => value.includes(token))) {
+            score += 4;
+        }
+    });
+
+    const uniqueCategoryTokens = Array.from(new Set(categoryTokens));
+    uniqueCategoryTokens.forEach((token) => {
+        if (!token) {
+            return;
+        }
+        if (normalizedVector.some((value) => value.includes(token))) {
+            score += 12;
+        } else if (normalizedLabels.some((value) => value.includes(token))) {
+            score += 8;
+        }
+    });
+
+    return score;
+};
+
+const computeIaSuggestionScore = (
+    parts: string[] = [],
+    tokens: string[] = [],
+    categoryTokens: string[] = [],
+): number => {
+    const normalizedParts = parts
+        .filter((value) => typeof value === 'string')
+        .map((value) => normalizeSearchText(value));
+
+    let score = 10;
+
+    const uniqueTokens = Array.from(new Set(tokens));
+    uniqueTokens.forEach((token) => {
+        if (!token) {
+            return;
+        }
+        if (normalizedParts.some((value) => value.includes(token))) {
+            score += 5;
+        }
+    });
+
+    const uniqueCategoryTokens = Array.from(new Set(categoryTokens));
+    uniqueCategoryTokens.forEach((token) => {
+        if (!token) {
+            return;
+        }
+        if (normalizedParts.some((value) => value.includes(token))) {
+            score += 9;
         }
     });
 
@@ -496,6 +597,15 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         return buildSearchTokens(categoryValue);
     }, [categoryValue]);
 
+    const contextQueryText = useMemo(() => {
+        if (contextValuesArray.length === 0) {
+            return '';
+        }
+
+        const merged = contextValuesArray.join(' ').replace(/\s+/g, ' ').trim();
+        return merged.length > 220 ? merged.slice(0, 220) : merged;
+    }, [contextValuesArray]);
+
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingChipIndex, setEditingChipIndex] = useState<number | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -506,11 +616,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const [searchQuery, setSearchQuery] = useState('');
     const [suggestions, setSuggestions] = useState<PopularProduct[]>([]);
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-    const [showSuggestions, setShowSuggestions] = useState(false);
     const [combinationSuggestions, setCombinationSuggestions] = useState<CombinationSuggestion[]>([]);
     const [loadingCombinationSuggestions, setLoadingCombinationSuggestions] = useState(false);
     const [combinationError, setCombinationError] = useState<string | null>(null);
-    const [dynamicPlaceholder, setDynamicPlaceholder] = useState<string>('');
+    const [activeTokens, setActiveTokens] = useState<string[]>([]);
     const limitedPopularSuggestions = useMemo(
         () => suggestions.slice(0, 1),
         [suggestions]
@@ -546,6 +655,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const [suggestionAddTarget, setSuggestionAddTarget] = useState<string | null>(null);
     const [suggestionAddLabel, setSuggestionAddLabel] = useState('');
     const [suggestionAddValue, setSuggestionAddValue] = useState('');
+    const lastContextSignatureRef = useRef<string>('');
+    const fetchRequestSeqRef = useRef(0);
     const getPopularSuggestionKey = useCallback(
         (product: PopularProduct, index: number) =>
             `popular-${index}-${sanitizeKey((product?.product_vector || []).join('-') || `p-${index}`)}`,
@@ -705,9 +816,6 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
             onChange([result.vector], result.sousCaracs);
             setSearchQuery('');
-            setShowSuggestions(false);
-            setSuggestions([]);
-            setCombinationSuggestions([]);
         },
         [createVectorFromRows, onChange, suggestionDrafts]
     );
@@ -838,6 +946,242 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const labelOrder = useMemo(() => determineLabelOrder(vectorParts, sousCaracteristiques), [vectorParts, sousCaracteristiques]);
 
     const chips = displayValue ? parseVectorToChips(displayValue, labelOrder) : [];
+
+    const fetchSuggestionsForQuery = useCallback(
+        async (
+            input: string,
+            options: { reason?: 'search' | 'context'; force?: boolean } = {},
+        ) => {
+            const raw = typeof input === 'string' ? input : '';
+            const trimmed = raw.trim();
+            const searchTokens = buildSearchTokens(trimmed);
+            const chipTokens = (chips || [])
+                .map((chip) => chip?.value)
+                .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+                .flatMap((value) => buildSearchTokens(value));
+
+            const tokensToMatchBase = searchTokens.length > 0
+                ? searchTokens
+                : [...chipTokens, ...contextTokens];
+            const tokensToMatch = Array.from(new Set(tokensToMatchBase));
+            setActiveTokens(tokensToMatch);
+
+            const shouldForce = options.force === true;
+            const hasMinimumQuery = trimmed.length >= 2;
+            const effectiveQuery = hasMinimumQuery
+                ? trimmed
+                : tokensToMatch.slice(0, 6).join(' ');
+
+            if (!shouldForce && !hasMinimumQuery) {
+                return;
+            }
+
+            if (!effectiveQuery || effectiveQuery.trim().length === 0) {
+                return;
+            }
+
+            const requestId = ++fetchRequestSeqRef.current;
+
+            setLoadingSuggestions(true);
+            setLoadingCombinationSuggestions(true);
+            setCombinationError(null);
+
+            try {
+                const [popularResult, combinationsResult] = await Promise.allSettled([
+                    apiGet(`/api/products/popular?search=${encodeURIComponent(effectiveQuery)}&limit=8`),
+                    apiPost('/api/combinations/search', {
+                        query: effectiveQuery,
+                        limit: 8,
+                    }),
+                ]);
+
+                if (fetchRequestSeqRef.current !== requestId) {
+                    return;
+                }
+
+                if (popularResult.status === 'fulfilled' && popularResult.value?.success) {
+                    const normalized = normalizePopularProductsResponse(
+                        popularResult.value?.data ?? popularResult.value
+                    );
+                    const filtered = normalized.filter((product) =>
+                        vectorMatchesTokens(
+                            Array.isArray(product?.product_vector) ? product.product_vector : [],
+                            tokensToMatch,
+                            Array.isArray(product?.product_labels) ? product.product_labels : [],
+                        )
+                    );
+                    const ranked = filtered
+                        .map((product) => ({
+                            product,
+                            score: computeSuggestionScore(
+                                Array.isArray(product?.product_vector) ? product.product_vector : [],
+                                Array.isArray(product?.product_labels) ? product.product_labels : [],
+                                product?.usage_count ?? 0,
+                                !!product?.is_trending,
+                                tokensToMatch,
+                                categoryTokens
+                            ),
+                        }))
+                        .sort((a, b) => b.score - a.score)
+                        .map((entry) => entry.product);
+                    setSuggestions(ranked.slice(0, 4));
+                } else {
+                    setSuggestions([]);
+                }
+
+                if (combinationsResult.status === 'fulfilled' && combinationsResult.value?.success) {
+                    const combos = normalizeCombinationResponse(
+                        combinationsResult.value?.data ?? combinationsResult.value
+                    );
+
+                    const iaKeys = new Set(
+                        iaCombinaisons
+                            .map((combo) => {
+                                if (typeof combo !== 'string') {
+                                    return '';
+                                }
+                                const vectorParts = smartSplit(combo, separateur || ',');
+                                return buildCombinationKey(vectorParts, []);
+                            })
+                            .filter(Boolean)
+                    );
+
+                    const aggregated = new Map<string, CombinationSuggestion>();
+
+                    combos.forEach((item: any) => {
+                        const combo = item?.combination ?? item;
+                        if (!combo || !Array.isArray(combo.product_vector)) {
+                            return;
+                        }
+
+                        const rawVector = combo.product_vector
+                            .filter((part: any) => typeof part === 'string')
+                            .map((part: string) => part.trim())
+                            .filter(Boolean);
+
+                        if (rawVector.length === 0) {
+                            return;
+                        }
+
+                        const labels = Array.isArray(combo.product_labels) ? combo.product_labels : [];
+                        const comboKey = buildCombinationKey(rawVector, labels);
+
+                        if (!comboKey || iaKeys.has(comboKey)) {
+                            return;
+                        }
+
+                        if (tokensToMatch.length > 0 && !vectorMatchesTokens(rawVector, tokensToMatch, labels)) {
+                            return;
+                        }
+
+                        let prix: number | undefined;
+                        if (combo.prix !== null && combo.prix !== undefined) {
+                            const parsed = typeof combo.prix === 'number'
+                                ? combo.prix
+                                : parseFloat(combo.prix.toString());
+                            prix = Number.isNaN(parsed) ? undefined : parsed;
+                        }
+
+                        const usageCount = typeof combo.usage_count === 'number' ? combo.usage_count : 0;
+
+                        const existing = aggregated.get(comboKey);
+                        const incomingOccurrences = typeof combo.occurrences === 'number' && combo.occurrences > 0
+                            ? combo.occurrences
+                            : Math.max(usageCount || 0, 1);
+
+                        if (existing) {
+                            existing.occurrences = (existing.occurrences ?? 0) + incomingOccurrences;
+                            if (usageCount > (existing.usageCount ?? 0)) {
+                                existing.usageCount = usageCount;
+                            }
+                            if (prix !== undefined && existing.prix === undefined) {
+                                existing.prix = prix;
+                                existing.devise = combo.devise || existing.devise;
+                            }
+                            if (combo.is_ai_preferred) {
+                                existing.isAIPreferred = true;
+                            }
+                            return;
+                        }
+
+                        aggregated.set(comboKey, {
+                            id: combo.id,
+                            productVector: rawVector,
+                            productLabels: labels,
+                            usageCount,
+                            prix,
+                            devise: combo.devise || undefined,
+                            isAIPreferred: !!combo.is_ai_preferred,
+                            occurrences: incomingOccurrences,
+                        });
+                    });
+
+                    const aggregatedList = Array.from(aggregated.values()).sort((a, b) => {
+                        const aScore = (a.occurrences ?? a.usageCount ?? 0);
+                        const bScore = (b.occurrences ?? b.usageCount ?? 0);
+                        return bScore - aScore;
+                    });
+
+                    setCombinationSuggestions(aggregatedList);
+                    setCombinationError(
+                        aggregatedList.length === 0
+                            ? 'Aucune caractéristique pertinente trouvée.'
+                            : null
+                    );
+                } else {
+                    setCombinationSuggestions([]);
+                }
+            } catch (error) {
+                if (fetchRequestSeqRef.current !== requestId) {
+                    return;
+                }
+                console.error('[LinearAutocompleteEditor] ❌ Erreur recherche:', error);
+                setSuggestions([]);
+                setCombinationSuggestions([]);
+                setCombinationError('Impossible de récupérer les caractéristiques recommandées.');
+            } finally {
+                if (fetchRequestSeqRef.current === requestId) {
+                    setLoadingSuggestions(false);
+                    setLoadingCombinationSuggestions(false);
+                }
+            }
+        },
+        [
+            apiGet,
+            apiPost,
+            categoryTokens,
+            chips,
+            contextTokens,
+            iaCombinaisons,
+            separateur,
+            setActiveTokens,
+        ]
+    );
+
+    useEffect(() => {
+        const signature = `${contextQueryText}::${categoryTokens.join('|')}`;
+
+        if (!contextQueryText) {
+            lastContextSignatureRef.current = signature;
+            setActiveTokens(contextTokens);
+            setSuggestions([]);
+            setCombinationSuggestions([]);
+            setCombinationError(null);
+            return;
+        }
+
+        if (lastContextSignatureRef.current === signature) {
+            return;
+        }
+
+        lastContextSignatureRef.current = signature;
+        fetchSuggestionsForQuery(contextQueryText, { reason: 'context', force: true });
+    }, [
+        categoryTokens,
+        contextQueryText,
+        contextTokens,
+        fetchSuggestionsForQuery,
+    ]);
 
     const suggestedLabel = useMemo(() => {
         const usedKeys = new Set((chips || []).map((chip) => (chip.key || '').toLowerCase()));
@@ -1009,14 +1353,155 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         applySuggestionDraft(draftKey, fallbackRows);
     };
 
-    const formatPriceDisplay = (price?: number, devise?: string) => {
+    const formatPriceDisplay = useCallback((price?: number, devise?: string) => {
         if (price === undefined) {
             return null;
         }
 
         const formatter = new Intl.NumberFormat('fr-FR');
         return `${formatter.format(Math.round(price))} ${devise || 'XAF'}`;
-    };
+    }, []);
+
+    const suggestionCandidates = useMemo(() => {
+        const items: SuggestionCandidate[] = [];
+
+        limitedPopularSuggestions.forEach((product, index) => {
+            const draftKey = getPopularSuggestionKey(product, index);
+            const fallbackRows = buildLabeledPairs(
+                Array.isArray(product?.product_vector) ? product.product_vector : [],
+                Array.isArray(product?.product_labels) ? product.product_labels : [],
+                labelOrder,
+                {
+                    maxValuesPerLabel: 2,
+                    contextTokens,
+                    categoryTokens,
+                }
+            );
+            const rows = suggestionDrafts[draftKey] && suggestionDrafts[draftKey].length > 0
+                ? suggestionDrafts[draftKey]
+                : fallbackRows;
+            const sellerCount = Math.max(product?.usage_count ?? 0, 0);
+            const score = computeSuggestionScore(
+                Array.isArray(product?.product_vector) ? product.product_vector : [],
+                Array.isArray(product?.product_labels) ? product.product_labels : [],
+                product?.usage_count ?? 0,
+                !!product?.is_trending,
+                activeTokens,
+                categoryTokens,
+            ) + 12;
+
+            items.push({
+                key: draftKey,
+                source: 'popular',
+                rows,
+                score,
+                title: 'Produit populaire',
+                sellerCount,
+                priceDisplay: product?.prix_moyen ? `${product.prix_moyen.toFixed(0)} XAF` : null,
+                isTrending: !!product?.is_trending,
+                product,
+            });
+        });
+
+        limitedCombinationSuggestions.forEach((combo, index) => {
+            const draftKey = getCombinationSuggestionKey(combo, index);
+            const fallbackRows = buildLabeledPairs(
+                combo.productVector || [],
+                combo.productLabels || [],
+                labelOrder,
+                {
+                    maxValuesPerLabel: 2,
+                    contextTokens,
+                    categoryTokens,
+                }
+            );
+            const rows = suggestionDrafts[draftKey] && suggestionDrafts[draftKey].length > 0
+                ? suggestionDrafts[draftKey]
+                : fallbackRows;
+            const score = computeCombinationSuggestionScore(combo, activeTokens, categoryTokens) + 8;
+
+            items.push({
+                key: draftKey,
+                source: 'combination',
+                rows,
+                score,
+                title: combo.isAIPreferred ? 'Version IA des prestataires' : 'Combinaison des prestataires',
+                sellerCount: combo.usageCount,
+                occurrences: combo.occurrences,
+                priceDisplay: formatPriceDisplay(combo.prix, combo.devise),
+                isPreferred: combo.isAIPreferred,
+                combination: combo,
+            });
+        });
+
+        limitedIaCombinaisons.forEach((value, index) => {
+            if (typeof value !== 'string' || value.trim().length === 0) {
+                return;
+            }
+
+            const draftKey = getIaSuggestionKey(value, index);
+            const parts = smartSplit(value || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
+            const fallbackRows = buildLabeledPairs(parts, labelOrder, labelOrder, {
+                maxValuesPerLabel: 2,
+                contextTokens,
+                categoryTokens,
+            });
+            const rows = suggestionDrafts[draftKey] && suggestionDrafts[draftKey].length > 0
+                ? suggestionDrafts[draftKey]
+                : fallbackRows;
+            const score = computeIaSuggestionScore(parts, activeTokens, categoryTokens) + 4;
+
+            items.push({
+                key: draftKey,
+                source: 'ia',
+                rows,
+                score,
+                title: `Suggestion IA ${index + 1}`,
+                iaValue: value,
+            });
+        });
+
+        return items.sort((a, b) => b.score - a.score);
+    }, [
+        activeTokens,
+        categoryTokens,
+        contextTokens,
+        getCombinationSuggestionKey,
+        getIaSuggestionKey,
+        getPopularSuggestionKey,
+        labelOrder,
+        limitedCombinationSuggestions,
+        limitedIaCombinaisons,
+        limitedPopularSuggestions,
+        separateur,
+        suggestionDrafts,
+        formatPriceDisplay,
+    ]);
+
+    const bestSuggestionCandidate = suggestionCandidates.length > 0 ? suggestionCandidates[0] : null;
+
+    const handleApplySuggestion = useCallback(
+        (candidate: SuggestionCandidate | null) => {
+            if (!candidate) {
+                return;
+            }
+
+            if (candidate.source === 'popular' && candidate.product) {
+                applyPopularSuggestion(candidate.product, candidate.key);
+                return;
+            }
+
+            if (candidate.source === 'combination' && candidate.combination) {
+                applyCombinationSuggestion(candidate.combination, candidate.key);
+                return;
+            }
+
+            if (candidate.source === 'ia' && candidate.iaValue) {
+                applyIaCombination(candidate.iaValue, candidate.key);
+            }
+        },
+        [applyCombinationSuggestion, applyIaCombination, applyPopularSuggestion]
+    );
 
     useEffect(() => {
         if (searchQuery.trim().length > 0) {
@@ -1146,7 +1631,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     setCombinationSuggestions(aggregatedList);
                     setCombinationError(
                         aggregatedList.length === 0
-                            ? 'Aucune combinaison trouvée pour ces caractéristiques.'
+                            ? 'Aucune caractéristique pertinente trouvée.'
                             : null
                     );
                 }
@@ -1206,8 +1691,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // Supprimer une caractéristique
     const handleDeleteChip = (chipIndex: number) => {
         Alert.alert(
-            'Supprimer caractéristique',
-            `Êtes-vous sûr de vouloir supprimer "${chips[chipIndex].value}" ?`,
+            'Confirmation de suppression',
+            `Confirmez-vous la suppression de "${chips[chipIndex].value}" ?`,
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -1331,9 +1816,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         return '🔍 Tapez pour rechercher ou voir suggestions IA...';
     }, [value, separateur, displayValue, iaCombinaisons, sousCaracteristiques]);
 
-    useEffect(() => {
-        setDynamicPlaceholder(generatePlaceholder());
-    }, [generatePlaceholder]);
+    const searchPlaceholder = useMemo(() => generatePlaceholder(), [generatePlaceholder]);
 
     return (
         <View style={styles.container}>
@@ -1348,541 +1831,182 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </Text>
             </View>
 
-            {/* ✅ NOUVEAU : Champ de recherche */}
+            {/* ✅ Champ de recherche (toujours affiché, mais suggestions préchargées via description) */}
             <View style={styles.searchContainer}>
                 <View style={styles.searchIconWrapper}>
                     <SafeIcon name="search" size={18} color="#9CA3AF" />
                 </View>
                 <TextInput
                     style={styles.searchInput}
-                    placeholder={placeholder || dynamicPlaceholder}
+                    placeholder={placeholder || searchPlaceholder}
                     placeholderTextColor="#9CA3AF"
                     value={searchQuery}
-                    onChangeText={async (text) => {
+                    onChangeText={(text) => {
                         setSearchQuery(text);
-
-                        const trimmed = text.trim();
-                        const searchTokens = buildSearchTokens(trimmed);
-                        const contextualTokens = [
-                            ...chips
-                                .map((chip) => chip?.value)
-                                .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-                                .flatMap((value) => buildSearchTokens(value)),
-                            ...contextTokens,
-                        ];
-                        const tokensToMatchBase = searchTokens.length > 0 ? searchTokens : contextualTokens;
-                        const tokensToMatch = Array.from(new Set(tokensToMatchBase));
-
-                        if (trimmed.length >= 2) {
-                            setLoadingSuggestions(true);
-                            setLoadingCombinationSuggestions(true);
-                            setCombinationError(null);
-                            setShowSuggestions(true);
-
-                            try {
-                                const [popularResult, combinationsResult] = await Promise.allSettled([
-                                    apiGet(`/api/products/popular?search=${encodeURIComponent(trimmed)}&limit=8`),
-                                    apiPost('/api/combinations/search', {
-                                        query: trimmed,
-                                        limit: 8,
-                                    })
-                                ]);
-
-                                if (popularResult.status === 'fulfilled' && popularResult.value?.success) {
-                                    const normalized = normalizePopularProductsResponse(
-                                        popularResult.value?.data ?? popularResult.value
-                                    );
-                                    const filtered = normalized.filter((product) =>
-                                        vectorMatchesTokens(
-                                            Array.isArray(product?.product_vector) ? product.product_vector : [],
-                                            tokensToMatch,
-                                            Array.isArray(product?.product_labels) ? product.product_labels : [],
-                                        )
-                                    );
-                                    const ranked = filtered
-                                        .map((product) => ({
-                                            product,
-                                            score: computeSuggestionScore(
-                                                Array.isArray(product?.product_vector) ? product.product_vector : [],
-                                                Array.isArray(product?.product_labels) ? product.product_labels : [],
-                                                product?.usage_count ?? 0,
-                                                !!product?.is_trending,
-                                                tokensToMatch,
-                                                categoryTokens
-                                            ),
-                                        }))
-                                        .sort((a, b) => b.score - a.score)
-                                        .map((entry) => entry.product);
-                                    setSuggestions(ranked.slice(0, 1));
-                                } else {
-                                    setSuggestions([]);
-                                }
-
-                                if (combinationsResult.status === 'fulfilled' && combinationsResult.value?.success) {
-                                    const combos = normalizeCombinationResponse(
-                                        combinationsResult.value?.data ?? combinationsResult.value
-                                    );
-
-                                    const iaKeys = new Set(
-                                        iaCombinaisons
-                                            .map((combo) => {
-                                                if (typeof combo !== 'string') {
-                                                    return '';
-                                                }
-                                                const vectorParts = smartSplit(combo, separateur || ',');
-                                                return buildCombinationKey(vectorParts, []);
-                                            })
-                                            .filter(Boolean)
-                                    );
-
-                                    const aggregated = new Map<string, CombinationSuggestion>();
-
-                                    combos.forEach((item: any) => {
-                                        const combo = item?.combination ?? item;
-                                        if (!combo || !Array.isArray(combo.product_vector)) {
-                                            return;
-                                        }
-
-                                        const rawVector = combo.product_vector
-                                            .filter((part: any) => typeof part === 'string')
-                                            .map((part: string) => part.trim())
-                                            .filter(Boolean);
-
-                                        if (rawVector.length === 0) {
-                                            return;
-                                        }
-
-                                        const labels = Array.isArray(combo.product_labels) ? combo.product_labels : [];
-                                        const comboKey = buildCombinationKey(rawVector, labels);
-
-                                        if (!comboKey || iaKeys.has(comboKey)) {
-                                            return;
-                                        }
-
-                                        if (tokensToMatch.length > 0 && !vectorMatchesTokens(rawVector, tokensToMatch, labels)) {
-                                            return;
-                                        }
-
-                                        let prix: number | undefined;
-                                        if (combo.prix !== null && combo.prix !== undefined) {
-                                            const parsed = typeof combo.prix === 'number'
-                                                ? combo.prix
-                                                : parseFloat(combo.prix.toString());
-                                            prix = isNaN(parsed) ? undefined : parsed;
-                                        }
-
-                                        const usageCount = typeof combo.usage_count === 'number' ? combo.usage_count : 0;
-
-                                        const existing = aggregated.get(comboKey);
-                                        const incomingOccurrences = typeof combo.occurrences === 'number' && combo.occurrences > 0
-                                            ? combo.occurrences
-                                            : Math.max(usageCount || 0, 1);
-
-                                        if (existing) {
-                                            existing.occurrences = (existing.occurrences ?? 0) + incomingOccurrences;
-                                            if (usageCount > (existing.usageCount ?? 0)) {
-                                                existing.usageCount = usageCount;
-                                            }
-                                            if (prix !== undefined && existing.prix === undefined) {
-                                                existing.prix = prix;
-                                                existing.devise = combo.devise || existing.devise;
-                                            }
-                                            if (combo.is_ai_preferred) {
-                                                existing.isAIPreferred = true;
-                                            }
-                                            return;
-                                        }
-
-                                        aggregated.set(comboKey, {
-                                            id: combo.id,
-                                            productVector: rawVector,
-                                            productLabels: labels,
-                                            usageCount,
-                                            prix,
-                                            devise: combo.devise || undefined,
-                                            isAIPreferred: !!combo.is_ai_preferred,
-                                            occurrences: incomingOccurrences,
-                                        });
-                                    });
-
-                                    const aggregatedList = Array.from(aggregated.values()).sort((a, b) => {
-                                        const aScore = (a.occurrences ?? a.usageCount ?? 0);
-                                        const bScore = (b.occurrences ?? b.usageCount ?? 0);
-                                        return bScore - aScore;
-                                    });
-
-                                    setCombinationSuggestions(aggregatedList.slice(0, 1));
-                                    setCombinationSuggestions(aggregatedList.slice(0, 1));
-                                    setCombinationError(
-                                        aggregatedList.length === 0
-                                            ? 'Aucune combinaison trouvée pour ces caractéristiques.'
-                                            : null
-                                    );
-                                } else {
-                                    setCombinationSuggestions([]);
-                                }
-                            } catch (error) {
-                                console.error('[LinearAutocompleteEditor] ❌ Erreur recherche:', error);
-                                setSuggestions([]);
-                                setCombinationSuggestions([]);
-                                setCombinationError('Impossible de récupérer les combinaisons des prestataires.');
-                            } finally {
-                                setLoadingSuggestions(false);
-                                setLoadingCombinationSuggestions(false);
-                            }
-                        } else {
-                            setSuggestions([]);
-                            setCombinationSuggestions([]);
-                            setCombinationError(null);
-                            setLoadingSuggestions(false);
-                            setLoadingCombinationSuggestions(false);
-                            setShowSuggestions(false);
-                        }
+                        fetchSuggestionsForQuery(text, { reason: 'search' });
                     }}
-                    onFocus={() => setShowSuggestions(searchQuery.trim().length >= 2)}
                 />
                 {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => { setSearchQuery(''); setShowSuggestions(false); setSuggestions([]); }}>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setSearchQuery('');
+                            if (contextQueryText) {
+                                fetchSuggestionsForQuery(contextQueryText, { reason: 'context', force: true });
+                            } else {
+                                setSuggestions([]);
+                                setCombinationSuggestions([]);
+                                setCombinationError(null);
+                            }
+                        }}
+                    >
                         <SafeIcon name="x" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                 )}
             </View>
 
-            {/* ✅ Suggestions progressives */}
-            {showSuggestions && (
+            {(loadingSuggestions || loadingCombinationSuggestions || bestSuggestionCandidate || combinationError) && (
                 <View style={styles.suggestionsContainer}>
-                    <Text style={styles.suggestionsTitle}>📦 Suggestions populaires</Text>
-                    {loadingSuggestions && <ActivityIndicator size="small" color={modernColors.primary} style={{ marginVertical: 12 }} />}
+                    <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
 
-                    {!loadingSuggestions && suggestions.length === 0 && searchQuery.trim().length >= 2 && (
-                        <View style={styles.noSuggestionsContainer}>
-                            <SafeIcon name="info" size={20} color="#9CA3AF" />
-                            <Text style={styles.noSuggestionsText}>
-                                Aucun produit populaire trouvé pour "{searchQuery}"
-                            </Text>
-                            <Text style={styles.noSuggestionsHint}>
-                                💡 Essayez avec d'autres mots-clés ou créez votre propre combinaison
-                            </Text>
+                    {(loadingSuggestions || loadingCombinationSuggestions) && (
+                        <ActivityIndicator size="small" color={modernColors.primary} style={{ marginVertical: 12 }} />
+                    )}
+
+                    {!loadingSuggestions && !loadingCombinationSuggestions && bestSuggestionCandidate && (
+                        <View key={bestSuggestionCandidate.key} style={styles.suggestionCard}>
+                            <View style={styles.suggestionCardHeader}>
+                                <View style={styles.suggestionCardHeaderLeft}>
+                                    <SafeIcon
+                                        name={
+                                            bestSuggestionCandidate.source === 'popular'
+                                                ? 'gift'
+                                                : bestSuggestionCandidate.source === 'combination'
+                                                    ? 'users'
+                                                    : 'sparkles'
+                                        }
+                                        size={16}
+                                        color={
+                                            bestSuggestionCandidate.source === 'popular'
+                                                ? modernColors.primary
+                                                : bestSuggestionCandidate.source === 'combination'
+                                                    ? '#F97316'
+                                                    : modernColors.primary
+                                        }
+                                    />
+                                    <Text style={styles.suggestionCardTitle}>{bestSuggestionCandidate.title}</Text>
+                                </View>
+                                {bestSuggestionCandidate.isTrending && (
+                                    <View style={styles.trendingBadge}>
+                                        <Text style={styles.trendingText}>📈 TENDANCE</Text>
+                                    </View>
+                                )}
+                                {bestSuggestionCandidate.isPreferred && (
+                                    <View style={styles.combinationBadge}>
+                                        <SafeIcon name="sparkles" size={12} color={modernColors.primary} />
+                                        <Text style={styles.combinationBadgeText}>IA</Text>
+                                    </View>
+                                )}
+                            </View>
+
+                            <View style={styles.suggestionTable}>
+                                {bestSuggestionCandidate.rows.length === 0 ? (
+                                    <Text style={styles.suggestionEmptyRow}>
+                                        Aucune modalité. Ajoutez-en pour personnaliser.
+                                    </Text>
+                                ) : (
+                                    bestSuggestionCandidate.rows.map((row, rowIndex) => (
+                                        <View
+                                            key={`${bestSuggestionCandidate.key}-${row.label}-${rowIndex}`}
+                                            style={[
+                                                styles.suggestionRow,
+                                                rowIndex === bestSuggestionCandidate.rows.length - 1 && styles.suggestionRowLast,
+                                            ]}
+                                        >
+                                            <View style={styles.suggestionRowContent}>
+                                                <Text style={styles.suggestionCellLabel}>{row.label}</Text>
+                                                <TouchableOpacity
+                                                    onPress={() => openSuggestionEditorForRow(bestSuggestionCandidate.key, rowIndex)}
+                                                    style={styles.suggestionValueTouchable}
+                                                >
+                                                    <Text style={styles.suggestionCellValue}>{row.value}</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            <View style={styles.suggestionRowActions}>
+                                                <TouchableOpacity
+                                                    style={styles.suggestionActionButton}
+                                                    onPress={() => openSuggestionEditorForRow(bestSuggestionCandidate.key, rowIndex)}
+                                                >
+                                                    <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.suggestionActionButton}
+                                                    onPress={() => handleSuggestionRowDelete(bestSuggestionCandidate.key, rowIndex)}
+                                                >
+                                                    <SafeIcon name="trash-2" size={14} color="#EF4444" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    ))
+                                )}
+                            </View>
+
+                            {(bestSuggestionCandidate.sellerCount ||
+                                bestSuggestionCandidate.occurrences ||
+                                bestSuggestionCandidate.priceDisplay) && (
+                                    <View style={styles.suggestionMeta}>
+                                        <View style={styles.suggestionMetaLeft}>
+                                            {typeof bestSuggestionCandidate.sellerCount === 'number' && bestSuggestionCandidate.sellerCount > 0 && (
+                                                <Text style={styles.suggestionCount}>
+                                                    👥 {bestSuggestionCandidate.sellerCount} prestataire
+                                                    {bestSuggestionCandidate.sellerCount > 1 ? 's' : ''}
+                                                </Text>
+                                            )}
+                                            {typeof bestSuggestionCandidate.occurrences === 'number' && bestSuggestionCandidate.occurrences > 0 && (
+                                                <Text style={styles.combinationOccurrence}>
+                                                    🔁 {bestSuggestionCandidate.occurrences} occurrence
+                                                    {bestSuggestionCandidate.occurrences > 1 ? 's' : ''}
+                                                </Text>
+                                            )}
+                                        </View>
+                                        {bestSuggestionCandidate.priceDisplay && (
+                                            <Text style={styles.suggestionPrice}>
+                                                💰 {bestSuggestionCandidate.priceDisplay}
+                                            </Text>
+                                        )}
+                                    </View>
+                                )}
+
+                            <View style={styles.suggestionFooter}>
+                                <TouchableOpacity
+                                    style={styles.suggestionAddButton}
+                                    onPress={() => openSuggestionAddModal(bestSuggestionCandidate.key)}
+                                >
+                                    <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
+                                    <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.suggestionApplyButton}
+                                    onPress={() => handleApplySuggestion(bestSuggestionCandidate)}
+                                >
+                                    <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
+                                    <Text style={styles.suggestionApplyText}>Valider</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     )}
 
-                    {limitedPopularSuggestions.map((product, index) => {
-                        const draftKey = getPopularSuggestionKey(product, index);
-                        const fallbackRows = buildLabeledPairs(
-                            Array.isArray(product?.product_vector) ? product.product_vector : [],
-                            Array.isArray(product?.product_labels) ? product.product_labels : [],
-                            labelOrder,
-                            {
-                                maxValuesPerLabel: 2,
-                                contextTokens,
-                                categoryTokens,
-                            }
-                        );
-                        const rows = suggestionDrafts[draftKey] || fallbackRows;
-                        const sellerCount = Math.max(product?.usage_count ?? 0, 0);
-
-                        return (
-                            <View key={draftKey} style={styles.suggestionCard}>
-                                <View style={styles.suggestionCardHeader}>
-                                    <Text style={styles.suggestionCardTitle}>Produit populaire</Text>
-                                    <SafeIcon name="arrow-up-right" size={16} color={modernColors.primary} />
-                                </View>
-
-                                <View style={styles.suggestionTable}>
-                                    {rows.length === 0 ? (
-                                        <Text style={styles.suggestionEmptyRow}>Aucune modalité. Ajoutez-en pour personnaliser.</Text>
-                                    ) : (
-                                        rows.map((row, rowIndex) => (
-                                            <View
-                                                key={`${draftKey}-${row.label}-${rowIndex}`}
-                                                style={[
-                                                    styles.suggestionRow,
-                                                    rowIndex === rows.length - 1 && styles.suggestionRowLast
-                                                ]}
-                                            >
-                                                <View style={styles.suggestionRowContent}>
-                                                    <Text style={styles.suggestionCellLabel}>{row.label}</Text>
-                                                    <TouchableOpacity
-                                                        onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
-                                                        style={styles.suggestionValueTouchable}
-                                                    >
-                                                        <Text style={styles.suggestionCellValue}>{row.value}</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                                <View style={styles.suggestionRowActions}>
-                                                    <TouchableOpacity
-                                                        style={styles.suggestionActionButton}
-                                                        onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
-                                                    >
-                                                        <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={styles.suggestionActionButton}
-                                                        onPress={() => handleSuggestionRowDelete(draftKey, rowIndex)}
-                                                    >
-                                                        <SafeIcon name="trash-2" size={14} color="#EF4444" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            </View>
-                                        ))
-                                    )}
-                                </View>
-
-                                <View style={styles.suggestionMeta}>
-                                    <View style={styles.suggestionMetaLeft}>
-                                        {product.is_trending && (
-                                            <View style={styles.trendingBadge}>
-                                                <Text style={styles.trendingText}>📈 TENDANCE</Text>
-                                            </View>
-                                        )}
-                                        <Text style={styles.suggestionCount}>
-                                            👥 {sellerCount} prestataire{sellerCount > 1 ? 's' : ''}
-                                        </Text>
-                                    </View>
-                                    {product.prix_moyen && (
-                                        <Text style={styles.suggestionPrice}>
-                                            💰 {product.prix_moyen.toFixed(0)} XAF
-                                        </Text>
-                                    )}
-                                </View>
-
-                                <View style={styles.suggestionFooter}>
-                                    <TouchableOpacity
-                                        style={styles.suggestionAddButton}
-                                        onPress={() => openSuggestionAddModal(draftKey)}
-                                    >
-                                        <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
-                                        <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.suggestionApplyButton}
-                                        onPress={() => applyPopularSuggestion(product, draftKey)}
-                                    >
-                                        <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
-                                        <Text style={styles.suggestionApplyText}>Utiliser cette proposition</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        );
-                    })}
-
-                    {loadingCombinationSuggestions && (
-                        <ActivityIndicator
-                            size="small"
-                            color={modernColors.primary}
-                            style={{ marginVertical: 12 }}
-                        />
-                    )}
+                    {!loadingSuggestions &&
+                        !loadingCombinationSuggestions &&
+                        !bestSuggestionCandidate &&
+                        !combinationError && (
+                            <Text style={styles.noSuggestionsText}>
+                                Aucune caractéristique pertinente trouvée.
+                            </Text>
+                        )}
 
                     {combinationError && (
                         <Text style={styles.combinationError}>{combinationError}</Text>
                     )}
-
-                    {!loadingCombinationSuggestions && limitedCombinationSuggestions.length > 0 && (
-                        <View style={styles.combinationSuggestionsContainer}>
-                            <Text style={styles.combinationSuggestionsTitle}>🔥 Combinaisons des prestataires</Text>
-                            {limitedCombinationSuggestions.map((combo, index) => {
-                                const draftKey = getCombinationSuggestionKey(combo, index);
-                                const fallbackRows = buildLabeledPairs(
-                                    combo.productVector || [],
-                                    combo.productLabels || [],
-                                    labelOrder,
-                                    {
-                                        maxValuesPerLabel: 2,
-                                        contextTokens,
-                                        categoryTokens,
-                                    }
-                                );
-                                const rows = suggestionDrafts[draftKey] || fallbackRows;
-                                const priceDisplay = formatPriceDisplay(combo.prix, combo.devise);
-                                const usageDisplay = Math.max(combo.usageCount ?? 0, 0);
-                                const occurrenceDisplay = Math.max(combo.occurrences ?? usageDisplay, 0);
-
-                                return (
-                                    <View
-                                        key={`combo-${combo.id ?? index}`}
-                                        style={styles.combinationCard}
-                                    >
-                                        <View style={styles.combinationCardHeader}>
-                                            <View style={styles.combinationCardHeaderLeft}>
-                                                <SafeIcon
-                                                    name={combo.isAIPreferred ? 'sparkles' : 'flame'}
-                                                    size={16}
-                                                    color={combo.isAIPreferred ? modernColors.primary : '#F97316'}
-                                                />
-                                                <Text style={styles.combinationCardTitle}>
-                                                    {combo.isAIPreferred
-                                                        ? 'Version IA'
-                                                        : `Variante caractéristiques ${index + 1}`}
-                                                </Text>
-                                            </View>
-                                            {!combo.isAIPreferred && (
-                                                <View style={styles.combinationBadge}>
-                                                    <SafeIcon name="bar-chart-2" size={12} color={modernColors.primary} />
-                                                    <Text style={styles.combinationBadgeText}>
-                                                        {occurrenceDisplay} occur.
-                                                    </Text>
-                                                </View>
-                                            )}
-                                        </View>
-
-                                        <View style={styles.combinationTable}>
-                                            {rows.length === 0 ? (
-                                                <Text style={styles.suggestionEmptyRow}>Aucune modalité. Ajoutez-en pour personnaliser.</Text>
-                                            ) : (
-                                                rows.map((row, rowIndex) => (
-                                                    <View
-                                                        key={`${draftKey}-${row.label}-${rowIndex}`}
-                                                        style={[
-                                                            styles.combinationRow,
-                                                            rowIndex === rows.length - 1 && styles.combinationRowLast
-                                                        ]}
-                                                    >
-                                                        <View style={styles.suggestionRowContent}>
-                                                            <Text style={styles.combinationCellLabel}>{row.label}</Text>
-                                                            <TouchableOpacity
-                                                                onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
-                                                                style={styles.suggestionValueTouchable}
-                                                            >
-                                                                <Text style={styles.combinationCellValue}>{row.value}</Text>
-                                                            </TouchableOpacity>
-                                                        </View>
-                                                        <View style={styles.suggestionRowActions}>
-                                                            <TouchableOpacity
-                                                                style={styles.suggestionActionButton}
-                                                                onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
-                                                            >
-                                                                <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
-                                                            </TouchableOpacity>
-                                                            <TouchableOpacity
-                                                                style={styles.suggestionActionButton}
-                                                                onPress={() => handleSuggestionRowDelete(draftKey, rowIndex)}
-                                                            >
-                                                                <SafeIcon name="trash-2" size={14} color="#EF4444" />
-                                                            </TouchableOpacity>
-                                                        </View>
-                                                    </View>
-                                                ))
-                                            )}
-                                        </View>
-
-                                        <View style={styles.combinationMeta}>
-                                            <View style={styles.combinationMetaLeft}>
-                                                <Text style={styles.combinationUsage}>
-                                                    👥 {usageDisplay} prestataire{usageDisplay > 1 ? 's' : ''}
-                                                </Text>
-                                                {occurrenceDisplay > 0 && (
-                                                    <Text style={styles.combinationOccurrence}>
-                                                        🔁 {occurrenceDisplay} occurrence{occurrenceDisplay > 1 ? 's' : ''}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                            {priceDisplay && (
-                                                <Text style={styles.combinationPrice}>💰 {priceDisplay}</Text>
-                                            )}
-                                        </View>
-                                        <View style={styles.suggestionFooter}>
-                                            <TouchableOpacity
-                                                style={styles.suggestionAddButton}
-                                                onPress={() => openSuggestionAddModal(draftKey)}
-                                            >
-                                                <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
-                                                <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={styles.suggestionApplyButton}
-                                                onPress={() => applyCombinationSuggestion(combo, draftKey)}
-                                            >
-                                                <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
-                                                <Text style={styles.suggestionApplyText}>Utiliser cette proposition</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                );
-                            })}
-                        </View>
-                    )}
-                </View>
-            )}
-
-            {/* ✅ Combinaisons IA initiales */}
-            {iaCombinaisons.length > 0 && (
-                <View style={styles.iaCombosContainer}>
-                    <Text style={styles.iaCombosTitle}>✨ Combinaisons proposées par l'IA</Text>
-                    {limitedIaCombinaisons.map((combo, index) => {
-                        const draftKey = getIaSuggestionKey(combo, index);
-                        const parts = smartSplit(combo || '', separateur || ',').map(part => part.trim()).filter(Boolean);
-                        const iaRowsDefault = buildLabeledPairs(parts, labelOrder, labelOrder, {
-                            maxValuesPerLabel: 2,
-                            contextTokens,
-                            categoryTokens,
-                        });
-                        const iaRows = suggestionDrafts[draftKey] || iaRowsDefault;
-
-                        return (
-                            <View
-                                key={`${combo}-${index}`}
-                                style={styles.iaComboCard}
-                            >
-                                <View style={styles.iaComboHeader}>
-                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                                    <Text style={styles.iaComboLabel}>Version {index + 1}</Text>
-                                </View>
-                                <View style={styles.iaComboTable}>
-                                    {iaRows.length === 0 ? (
-                                        <Text style={styles.suggestionEmptyRow}>Aucune modalité. Ajoutez-en pour personnaliser.</Text>
-                                    ) : (
-                                        iaRows.map((row, rowIndex) => (
-                                            <View
-                                                key={`${draftKey}-ia-${row.label}-${rowIndex}`}
-                                                style={[styles.iaComboRow, rowIndex === iaRows.length - 1 && styles.iaComboRowLast]}
-                                            >
-                                                <View style={styles.suggestionRowContent}>
-                                                    <Text style={styles.iaComboCellLabel}>{row.label}</Text>
-                                                    <TouchableOpacity
-                                                        onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
-                                                        style={styles.suggestionValueTouchable}
-                                                    >
-                                                        <Text style={styles.iaComboCellValue}>{row.value}</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                                <View style={styles.suggestionRowActions}>
-                                                    <TouchableOpacity
-                                                        style={styles.suggestionActionButton}
-                                                        onPress={() => openSuggestionEditorForRow(draftKey, rowIndex)}
-                                                    >
-                                                        <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={styles.suggestionActionButton}
-                                                        onPress={() => handleSuggestionRowDelete(draftKey, rowIndex)}
-                                                    >
-                                                        <SafeIcon name="trash-2" size={14} color="#EF4444" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            </View>
-                                        ))
-                                    )}
-                                </View>
-                                <View style={styles.suggestionFooter}>
-                                    <TouchableOpacity
-                                        style={styles.suggestionAddButton}
-                                        onPress={() => openSuggestionAddModal(draftKey)}
-                                    >
-                                        <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
-                                        <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.suggestionApplyButton}
-                                        onPress={() => applyIaCombination(combo, draftKey)}
-                                    >
-                                        <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
-                                        <Text style={styles.suggestionApplyText}>Utiliser cette proposition</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        );
-                    })}
                 </View>
             )}
 
@@ -1896,38 +2020,44 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         nestedScrollEnabled
                         keyboardShouldPersistTaps="handled"
                     >
-                        {(chips || []).map((chip, index) => (
-                            <View key={index} style={styles.chip}>
-                                <View style={styles.chipContent}>
-                                    <Text style={styles.chipKey}>{chip.key}</Text>
-                                    <Text style={styles.chipValue}>{chip.value}</Text>
-                                </View>
-                                <View style={styles.chipActions}>
-                                    <TouchableOpacity
-                                        style={styles.chipButton}
-                                        onPress={() => handleModifyChip(index)}
-                                    >
-                                        <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.chipButton}
-                                        onPress={() => handleDeleteChip(index)}
-                                    >
-                                        <SafeIcon name="trash-2" size={14} color="#EF4444" />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        ))}
-                    </ScrollView>
+                        <TouchableOpacity
+                            style={styles.addCharacteristicButton}
+                            onPress={() => setShowAddModal(true)}
+                        >
+                            <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
+                            <Text style={styles.addCharacteristicText}>Ajouter une caractéristique</Text>
+                        </TouchableOpacity>
 
-                    {/* ✅ NOUVEAU : Bouton édition quand vecteur sélectionné */}
-                    <TouchableOpacity
-                        style={styles.addCharacteristicButton}
-                        onPress={() => setShowAddModal(true)}
-                    >
-                        <SafeIcon name="plus-circle" size={18} color={modernColors.primary} />
-                        <Text style={styles.addCharacteristicText}>Ajouter une caractéristique</Text>
-                    </TouchableOpacity>
+                        {(chips || []).map((chip, index) => {
+                            const rawKey = typeof chip.key === 'string' ? chip.key.trim() : '';
+                            const shouldHideKey = rawKey.length > 0 && /^caract[eé]ristique\s+\d+$/i.test(rawKey);
+
+                            return (
+                                <View key={index} style={styles.chip}>
+                                    <View style={styles.chipContent}>
+                                        {!shouldHideKey && rawKey.length > 0 ? (
+                                            <Text style={styles.chipKey}>{rawKey}</Text>
+                                        ) : null}
+                                        <Text style={styles.chipValue}>{chip.value}</Text>
+                                    </View>
+                                    <View style={styles.chipActions}>
+                                        <TouchableOpacity
+                                            style={styles.chipButton}
+                                            onPress={() => handleModifyChip(index)}
+                                        >
+                                            <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={styles.chipButton}
+                                            onPress={() => handleDeleteChip(index)}
+                                        >
+                                            <SafeIcon name="trash-2" size={14} color="#EF4444" />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            );
+                        })}
+                    </ScrollView>
                 </View>
             ) : null}
 
@@ -2186,6 +2316,8 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     chipsScroll: {
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 8,
         paddingVertical: 8,
     },
@@ -2238,21 +2370,16 @@ const styles = StyleSheet.create({
     addCharacteristicButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingVertical: 12,
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: modernColors.primary,
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 2,
-        elevation: 1,
+        borderColor: '#C7D2FE',
+        backgroundColor: '#EEF2FF',
     },
     addCharacteristicText: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '600',
         color: modernColors.primary,
     },
@@ -2662,6 +2789,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
+    suggestionCardHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        flexShrink: 1,
+    },
     suggestionCardTitle: {
         fontSize: 13,
         fontWeight: '600',
@@ -2758,23 +2891,22 @@ const styles = StyleSheet.create({
         color: '#059669',
     },
     suggestionFooter: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 8,
-        gap: 12,
+        marginTop: 12,
+        gap: 10,
+        alignItems: 'stretch',
     },
     suggestionAddButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        paddingHorizontal: 10,
-        paddingVertical: 8,
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 12,
         borderRadius: 10,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         backgroundColor: '#F8FAFC',
-        flexShrink: 1,
+        alignSelf: 'stretch',
     },
     suggestionAddButtonText: {
         fontSize: 12,
@@ -2785,10 +2917,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        justifyContent: 'center',
         paddingHorizontal: 14,
-        paddingVertical: 10,
+        paddingVertical: 12,
         borderRadius: 12,
         backgroundColor: modernColors.primary,
+        alignSelf: 'stretch',
     },
     suggestionApplyText: {
         fontSize: 13,

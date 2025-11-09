@@ -866,7 +866,7 @@
   },
   "patternProperties": {
     ".*": {
-      "oneOf": [
+      "anyOf": [
         {
           "type": "object",
           "required": [
@@ -1099,6 +1099,40 @@
             }
           },
           "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": [
+            "type_donnee",
+            "valeur",
+            "origine_champs"
+          ],
+          "properties": {
+            "type_donnee": {
+              "type": "string"
+            },
+            "valeur": {},
+            "origine_champs": {
+              "type": [
+                "string",
+                "array"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": [
+            "string",
+            "number",
+            "integer",
+            "boolean",
+            "array",
+            "null"
+          ]
         }
       ]
     }

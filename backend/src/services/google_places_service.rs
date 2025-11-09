@@ -25,6 +25,8 @@ pub struct Coordinates {
 struct GooglePlacesResponse {
     results: Vec<GooglePlace>,
     status: String,
+    #[serde(default)]
+    error_message: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -122,10 +124,25 @@ impl GooglePlacesService {
                     place_name
                 )));
             } else {
-                error!("❌ Google Places API erreur: {}", google_response.status);
+                if let Some(ref message) = google_response.error_message {
+                    error!(
+                        "❌ Google Places API erreur: {} ({}) pour requête '{}'",
+                        google_response.status, message, query
+                    );
+                } else {
+                    error!(
+                        "❌ Google Places API erreur: {} (aucun message) pour requête '{}'",
+                        google_response.status, query
+                    );
+                }
                 return Err(AppError::Internal(format!(
-                    "Google Places API: {}",
-                    google_response.status
+                    "Google Places API: {}{}",
+                    google_response.status,
+                    google_response
+                        .error_message
+                        .as_ref()
+                        .map(|msg| format!(" ({})", msg))
+                        .unwrap_or_default()
                 )));
             }
         }

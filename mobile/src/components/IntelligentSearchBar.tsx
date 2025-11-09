@@ -8,6 +8,7 @@ import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TextInput, Tou
 import { apiPost } from '../services/api';
 import { SearchSuggestion as HistorySuggestion, searchHistoryService } from '../services/searchHistoryService';
 import { modernColors } from '../theme/modernTheme';
+import LocationSelector, { LocationObject } from './LocationSelector';
 import SafeIcon from './SafeIcon';
 
 interface IntelligentSearchBarProps {
@@ -191,6 +192,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     const [searchGoal, setSearchGoal] = useState<string | undefined>(undefined);
     const [searchEnergy, setSearchEnergy] = useState(50);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [searchLocation, setSearchLocation] = useState<LocationObject | null>(null);
     const categoryTokensBase = useMemo(() => buildSearchTokens(category || ''), [category]);
     const topCombinationSuggestion = useMemo(
         () => (combinationSuggestions.length > 0 ? combinationSuggestions[0] : null),
@@ -246,16 +248,36 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
             setCombinationError(null);
 
             try {
-                const tokens = buildSearchTokens(cleaned);
+                const locationFragment = (searchLocation?.raw || searchLocation?.place_name || '').trim();
+                const combinedQuery = [cleaned, locationFragment].filter(Boolean).join(' ');
+
+                const queryTokens = buildSearchTokens(cleaned);
+                const locationTokens = buildSearchTokens(locationFragment);
+                const tokens = Array.from(new Set([...queryTokens, ...locationTokens]));
                 const categoryTokens = categoryTokensBase;
-                const response = await apiPost('/api/combinations/search', {
-                    query: cleaned,
+                const payload: Record<string, unknown> = {
+                    query: combinedQuery || cleaned,
                     limit: 8,
-                });
+                };
+
+                if (category && category.trim().length > 0) {
+                    payload.category = category.trim();
+                }
+
+                if (searchLocation?.coordinates?.lat && searchLocation?.coordinates?.lng) {
+                    payload.user_lat = searchLocation.coordinates.lat;
+                    payload.user_lng = searchLocation.coordinates.lng;
+                }
+
+                if (locationFragment.length > 0) {
+                    payload.location_hint = locationFragment;
+                }
+
+                const response = await apiPost('/api/autocomplete/search-products', payload);
 
                 if (response?.success) {
-                    const combos = normalizeCombinationsResponse(response);
-                    const queryText = normalizeSearchText(cleaned);
+                    const combos = normalizeAutocompleteResponse(response);
+                    const queryText = normalizeSearchText(combinedQuery || cleaned);
                     const unique = new Map<string, CombinationCardSuggestion>();
 
                     combos.forEach((item: any) => {
@@ -381,31 +403,31 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                             return { suggestion, popularityScore, totalScore };
                         });
 
-                        const popularSorted = [...scored].sort((a, b) => b.popularityScore - a.popularityScore);
-                        const topPopular = popularSorted[0];
+                        const scoredWithBoost = scored.map((entry) => {
+                            if (locationTokens.length === 0) {
+                                return entry;
+                            }
 
-                        const remainingForRelevance = scored.filter(
-                            (entry) => entry.suggestion.id !== topPopular?.suggestion.id
-                        );
-                        const relevanceSorted = [...remainingForRelevance].sort((a, b) => b.totalScore - a.totalScore);
-                        const topRelevant = relevanceSorted[0];
+                            const vectorTokens = buildSearchTokens(entry.suggestion.vector.join(' '));
+                            const labelsTokens = buildSearchTokens(entry.suggestion.labels.join(' '));
+                            const hasLocationMatch = locationTokens.some((token) =>
+                                vectorTokens.includes(token) || labelsTokens.includes(token)
+                            );
 
-                        const finalSuggestions: CombinationCardSuggestion[] = [];
+                            return hasLocationMatch
+                                ? { ...entry, totalScore: entry.totalScore + 8 }
+                                : entry;
+                        });
 
-                        if (topPopular) {
-                            finalSuggestions.push(topPopular.suggestion);
-                        }
-                        if (topRelevant) {
-                            finalSuggestions.push(topRelevant.suggestion);
-                        } else if (!topPopular && popularSorted.length > 0) {
-                            finalSuggestions.push(popularSorted[0].suggestion);
-                        }
+                        const sortedSuggestions = [...scoredWithBoost]
+                            .sort((a, b) => b.totalScore - a.totalScore)
+                            .map((entry) => entry.suggestion);
 
-                        if (finalSuggestions.length === 0 && normalized.length > 0) {
-                            finalSuggestions.push(normalized[0]);
-                        }
+                        const finalSuggestions = sortedSuggestions.length > 0
+                            ? sortedSuggestions
+                            : normalized.slice(0, 1);
 
-                        setCombinationSuggestions(finalSuggestions.slice(0, 2));
+                        setCombinationSuggestions(finalSuggestions.slice(0, 1));
                         setCombinationError(null);
                     }
                 } else {
@@ -420,7 +442,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                 setIsLoadingCombinations(false);
             }
         },
-        [categoryTokensBase]
+        [category, categoryTokensBase, searchLocation]
     );
 
     const cleanedQuery = query.trim();
@@ -448,7 +470,10 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
     // Soumettre la recherche
     const handleSubmit = useCallback(async () => {
-        if (!cleanedQuery) {
+        const locationFragment = (searchLocation?.raw || searchLocation?.place_name || '').trim();
+        const combinedQuery = [cleanedQuery, locationFragment].filter(Boolean).join(' ').trim();
+
+        if (!combinedQuery) {
             return;
         }
 
@@ -460,7 +485,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
         if (enableHistory) {
             try {
                 const searchId = await searchHistoryService.recordSearch(
-                    cleanedQuery,
+                    combinedQuery,
                     'text',
                     {
                         category,
@@ -478,14 +503,17 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
         }
 
         // Appeler le callback parent
-        onSubmit(cleanedQuery);
-    }, [cleanedQuery, enableHistory, category, sessionId, onSubmit, onSearchRecorded]);
+        onSubmit(combinedQuery);
+    }, [cleanedQuery, enableHistory, category, sessionId, onSubmit, onSearchRecorded, searchLocation]);
 
     // Sélectionner une suggestion
     const selectSuggestion = useCallback(
         (suggestion: string) => {
             const trimmedSuggestion = suggestion.trim();
-            if (!trimmedSuggestion) {
+            const locationFragment = (searchLocation?.raw || searchLocation?.place_name || '').trim();
+            const combinedQuery = [trimmedSuggestion, locationFragment].filter(Boolean).join(' ').trim();
+
+            if (!combinedQuery) {
                 return;
             }
 
@@ -498,7 +526,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
             // Enregistrer la recherche dans l'historique si activé
             if (enableHistory) {
                 searchHistoryService.recordSearch(
-                    trimmedSuggestion,
+                    combinedQuery,
                     'text',
                     {
                         category,
@@ -515,9 +543,9 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
             }
 
             // Déclencher automatiquement la recherche
-            onSubmit(trimmedSuggestion);
+            onSubmit(combinedQuery);
         },
-        [onSubmit, enableHistory, category, sessionId, onSearchRecorded]
+        [onSubmit, enableHistory, category, sessionId, onSearchRecorded, searchLocation]
     );
 
     // Rendre une suggestion
@@ -650,9 +678,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                                         size={16}
                                         color={topCombinationSuggestion.isPreferred ? modernColors.primary : '#F97316'}
                                     />
-                                    <Text style={styles.topCombinationTitle}>
-                                        {topCombinationSuggestion.isPreferred ? 'Suggestion IA' : 'Caractéristique populaire'}
-                                    </Text>
+                                    <Text style={styles.topCombinationTitle}>Caractéristiques pertinentes détectées</Text>
                                 </View>
                                 {typeof topCombinationSuggestion.usageCount === 'number' && topCombinationSuggestion.usageCount > 0 && (
                                     <View style={styles.topCombinationBadge}>
@@ -704,14 +730,22 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                                     </View>
                                 )}
 
-                            <TouchableOpacity
-                                style={styles.topCombinationApply}
-                                onPress={() => selectSuggestion(topCombinationSuggestion.asQuery)}
-                                activeOpacity={0.9}
-                            >
-                                <SafeIcon name="arrow-right" size={16} color="#FFFFFF" />
-                                <Text style={styles.topCombinationApplyText}>Utiliser cette suggestion</Text>
-                            </TouchableOpacity>
+                            <View style={styles.topCombinationLocation}>
+                                <LocationSelector
+                                    label="Lieu de recherche"
+                                    value={searchLocation || ''}
+                                    onSelect={(loc) => {
+                                        if (!loc || !loc.raw) {
+                                            setSearchLocation(null);
+                                            return;
+                                        }
+                                        setSearchLocation(loc);
+                                    }}
+                                    placeholder="Ex: Douala, Cameroun"
+                                    scope="all"
+                                    enrichWithBackend
+                                />
+                            </View>
                         </View>
                     )}
                 </View>
@@ -735,7 +769,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     );
 };
 
-const normalizeCombinationsResponse = (response: any): any[] => {
+const normalizeAutocompleteResponse = (response: any): any[] => {
     if (!response) {
         return [];
     }
@@ -1111,20 +1145,8 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.textSecondary,
     },
-    topCombinationApply: {
-        backgroundColor: modernColors.primary,
-        borderRadius: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 8,
-    },
-    topCombinationApplyText: {
-        color: '#FFFFFF',
-        fontSize: 13,
-        fontWeight: '600',
+    topCombinationLocation: {
+        marginTop: 4,
     },
 });
 
