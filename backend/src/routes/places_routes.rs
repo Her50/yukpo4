@@ -1,5 +1,5 @@
 use axum::{
-    body::Full,
+    body::Body,
     extract::{Query, State},
     http::{HeaderValue, StatusCode},
     response::{IntoResponse, Response},
@@ -261,7 +261,7 @@ pub async fn fetch_place_photo(Query(params): Query<PlacePhotoQuery>) -> impl In
                         HeaderValue::from_str(&content_type)
                             .unwrap_or_else(|_| HeaderValue::from_static("image/jpeg")),
                     )
-                    .body(Full::from(bytes))
+                    .body(Body::from(bytes))
                     .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
                     .into_response(),
                 Err(err) => {

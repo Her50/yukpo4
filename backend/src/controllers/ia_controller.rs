@@ -10,10 +10,11 @@ use std::sync::Arc;
 
 use crate::{
     core::types::AppResult,
+    ia::behavior_engine::{compute_behavior_score, is_suspicious},
     middlewares::jwt::AuthenticatedUser,
     services::app_ia::{
         DistributionRequest, DistributionSuggestion, MediaAnalysisRequest, MediaAnalysisResult,
-        VideoBriefRequest, VideoStyleRequest,
+        VideoBriefRequest, VideoStyleRequest, VideoStyleSuggestion,
     },
     services::audio_library_service::{attach_loop_to_service, list_curated_audio_loops},
     services::video_analytics_service::{record_engagement, update_distribution_status},
@@ -222,6 +223,34 @@ pub struct GenerateSubtitlesInput {
 pub struct GenerateSubtitlesOutput {
     pub success: bool,
     pub srt: Option<String>,
+}
+
+pub async fn generate_video_subtitles(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<GenerateSubtitlesInput>,
+) -> AppResult<Json<GenerateSubtitlesOutput>> {
+    let lang = payload.lang.unwrap_or_else(|| "fr".to_string());
+    let outline: Vec<String> = payload
+        .outline
+        .into_iter()
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty())
+        .collect();
+
+    if outline.is_empty() {
+        return Ok(Json(GenerateSubtitlesOutput {
+            success: true,
+            srt: None,
+        }));
+    }
+
+    let duration = payload.duration_seconds.max(5).min(900);
+    let srt = state
+        .ia
+        .generate_subtitles_srt(&payload.product_name, &outline, &lang, duration)
+        .await?;
+
+    Ok(Json(GenerateSubtitlesOutput { success: true, srt }))
 }
 
 #[derive(Debug, Deserialize)]

@@ -191,7 +191,7 @@ pub async fn generate_product_video(
         ));
     }
 
-    let mut service_data: Value = svc.data.unwrap_or(Value::Null);
+    let mut service_data: Value = svc.data;
     if service_data.is_null() {
         return Err(AppError::Internal(
             "Service sans données associées.".to_string(),
@@ -471,112 +471,6 @@ pub async fn generate_product_video(
         cta_override,
     );
 
-    let orchestrator = ImmersiveOrchestrator::new(state.clone());
-    let timeline_broll_assets: Vec<TimelineBrollAsset> = broll_clips
-        .iter()
-        .filter_map(|clip| {
-            let portrait_variant = clip
-                .variants
-                .iter()
-                .find(|variant| variant.format == "portrait" && variant.path.exists());
-            let fallback_variant = clip.variants.iter().find(|variant| variant.path.exists());
-
-            let (path_string, format_string) = if let Some(variant) = portrait_variant {
-                (
-                    variant.path.to_string_lossy().to_string(),
-                    variant.format.clone(),
-                )
-            } else if let Some(variant) = fallback_variant {
-                (
-                    variant.path.to_string_lossy().to_string(),
-                    variant.format.clone(),
-                )
-            } else if clip.local_path.exists() {
-                (
-                    clip.local_path.to_string_lossy().to_string(),
-                    "original".to_string(),
-                )
-            } else {
-                return None;
-            };
-
-            Some(TimelineBrollAsset {
-                path: path_string,
-                format: format_string,
-                source: format!("{:?}", clip.source),
-                duration_seconds: clip.duration_seconds,
-            })
-        })
-        .collect();
-    progress_steps.push(ProgressStep::completed(
-        "broll_selection",
-        "Clips b-roll sélectionnés",
-        Some(format!("{} clip(s)", broll_clips.len())),
-    ));
-    if let Some(job_id) = job_id {
-        try_store_progress(&state, job_id, "running", &progress_steps).await;
-    }
-
-    let timeline_request = TimelineRequest {
-        script_outline: script_outline.clone(),
-        product_name: product_name.clone(),
-        headline: headline.clone(),
-        call_to_action: call_to_action.clone(),
-        style: payload.style.clone(),
-        duration_seconds: duration_seconds as f32,
-        broll_assets: timeline_broll_assets,
-    };
-
-    let mut immersive_timeline: Option<ImmersiveTimeline> = None;
-    let mut immersive_analytics: Option<TimelineAnalytics> = None;
-    let mut orchestration_warnings: Vec<String> = Vec::new();
-    let mut sfx_layers: Vec<audio_pipeline::AudioLayer> = Vec::new();
-
-    match orchestrator.generate_timeline(timeline_request).await {
-        Ok(result) => {
-            orchestration_warnings.extend(result.warnings.clone());
-            immersive_timeline = Some(result.timeline.clone());
-            immersive_analytics = Some(result.analytics.clone());
-            progress_steps.push(ProgressStep::completed(
-                "timeline_generation",
-                "Timeline immersive générée",
-                Some(format!(
-                    "{} scènes, {} b-roll",
-                    result.analytics.total_scenes, result.analytics.broll_clips_used
-                )),
-            ));
-            if let Some(job_id) = job_id {
-                try_store_progress(&state, job_id, "running", &progress_steps).await;
-            }
-
-            let sfx_root = Path::new("assets/sfx");
-            if sfx_root.exists() {
-                match audio_pipeline::build_sfx_layers_from_timeline(&result.timeline, sfx_root) {
-                    Ok(layers) => {
-                        sfx_layers = layers;
-                    }
-                    Err(err) => {
-                        warn!("[VideoGeneration] Impossible de générer les SFX timeline: {err}");
-                        orchestration_warnings.push(format!("sfx_generation_failed: {err}"));
-                    }
-                }
-            } else {
-                warn!(
-                    "[VideoGeneration] Dossier SFX introuvable pour la timeline immersive (assets/sfx)"
-                );
-                orchestration_warnings.push("sfx_library_missing: assets/sfx".to_string());
-            }
-        }
-        Err(err) => {
-            warn!("[VideoGeneration] Orchestrateur immersif indisponible: {err}");
-            orchestration_warnings.push(format!("orchestrator_error: {err}"));
-        }
-    }
-    let used_media_ids: Vec<i32> = media_sources
-        .iter()
-        .filter_map(|source| source.id)
-        .collect();
-
     let kenburns_enabled = payload
         .style_effects
         .as_ref()
@@ -659,6 +553,112 @@ pub async fn generate_product_video(
         run_ffmpeg(&session_dir, args).await?;
         slide_filenames.push(slide_name);
     }
+
+    let timeline_broll_assets: Vec<TimelineBrollAsset> = broll_clips
+        .iter()
+        .filter_map(|clip| {
+            let portrait_variant = clip
+                .variants
+                .iter()
+                .find(|variant| variant.format == "portrait" && variant.path.exists());
+            let fallback_variant = clip.variants.iter().find(|variant| variant.path.exists());
+
+            let (path_string, format_string) = if let Some(variant) = portrait_variant {
+                (
+                    variant.path.to_string_lossy().to_string(),
+                    variant.format.clone(),
+                )
+            } else if let Some(variant) = fallback_variant {
+                (
+                    variant.path.to_string_lossy().to_string(),
+                    variant.format.clone(),
+                )
+            } else if clip.local_path.exists() {
+                (
+                    clip.local_path.to_string_lossy().to_string(),
+                    "original".to_string(),
+                )
+            } else {
+                return None;
+            };
+
+            Some(TimelineBrollAsset {
+                path: path_string,
+                format: format_string,
+                source: format!("{:?}", clip.source),
+                duration_seconds: clip.duration_seconds,
+            })
+        })
+        .collect();
+    progress_steps.push(ProgressStep::completed(
+        "broll_selection",
+        "Clips b-roll sélectionnés",
+        Some(format!("{} clip(s)", broll_clips.len())),
+    ));
+    if let Some(job_id) = job_id {
+        try_store_progress(&state, job_id, "running", &progress_steps).await;
+    }
+
+    let orchestrator = ImmersiveOrchestrator::new(state.clone());
+    let timeline_request = TimelineRequest {
+        script_outline: script_outline.clone(),
+        product_name: product_name.clone(),
+        headline: headline.clone(),
+        call_to_action: call_to_action.clone(),
+        style: payload.style.clone(),
+        duration_seconds: duration_seconds as f32,
+        broll_assets: timeline_broll_assets,
+    };
+
+    let mut immersive_timeline: Option<ImmersiveTimeline> = None;
+    let mut immersive_analytics: Option<TimelineAnalytics> = None;
+    let mut orchestration_warnings: Vec<String> = Vec::new();
+    let mut sfx_layers: Vec<audio_pipeline::AudioLayer> = Vec::new();
+
+    match orchestrator.generate_timeline(timeline_request).await {
+        Ok(result) => {
+            orchestration_warnings.extend(result.warnings.clone());
+            immersive_timeline = Some(result.timeline.clone());
+            immersive_analytics = Some(result.analytics.clone());
+            progress_steps.push(ProgressStep::completed(
+                "timeline_generation",
+                "Timeline immersive générée",
+                Some(format!(
+                    "{} scènes, {} b-roll",
+                    result.analytics.total_scenes, result.analytics.broll_clips_used
+                )),
+            ));
+            if let Some(job_id) = job_id {
+                try_store_progress(&state, job_id, "running", &progress_steps).await;
+            }
+
+            let sfx_root = Path::new("assets/sfx");
+            if sfx_root.exists() {
+                match audio_pipeline::build_sfx_layers_from_timeline(&result.timeline, sfx_root) {
+                    Ok(layers) => {
+                        sfx_layers = layers;
+                    }
+                    Err(err) => {
+                        warn!("[VideoGeneration] Impossible de générer les SFX timeline: {err}");
+                        orchestration_warnings.push(format!("sfx_generation_failed: {err}"));
+                    }
+                }
+            } else {
+                warn!(
+                    "[VideoGeneration] Dossier SFX introuvable pour la timeline immersive (assets/sfx)"
+                );
+                orchestration_warnings.push("sfx_library_missing: assets/sfx".to_string());
+            }
+        }
+        Err(err) => {
+            warn!("[VideoGeneration] Orchestrateur immersif indisponible: {err}");
+            orchestration_warnings.push(format!("orchestrator_error: {err}"));
+        }
+    }
+    let used_media_ids: Vec<i32> = media_sources
+        .iter()
+        .filter_map(|source| source.id)
+        .collect();
 
     let transition_type = payload.style_transitions.as_ref().and_then(|transitions| {
         transitions
@@ -1871,29 +1871,29 @@ fn locate_product_array(data: &Value) -> Option<&Vec<Value>> {
 }
 
 fn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {
-    if let Value::Array(arr) = data {
-        return Some(arr);
-    }
-
-    if let Value::Object(map) = data {
-        if let Some(value) = map.get_mut("produits") {
-            if let Value::Array(arr) = value {
-                return Some(arr);
-            }
-
-            if let Value::Object(inner) = value {
-                if let Some(Value::Array(arr)) = inner.get_mut("valeur") {
+    match data {
+        Value::Array(arr) => Some(arr),
+        Value::Object(map) => {
+            if let Some(value) = map.get_mut("produits") {
+                if let Value::Array(arr) = value {
                     return Some(arr);
                 }
+
+                if let Value::Object(inner) = value {
+                    if let Some(Value::Array(arr)) = inner.get_mut("valeur") {
+                        return Some(arr);
+                    }
+                }
             }
-        }
 
-        if let Some(value) = map.get_mut("data") {
-            return locate_product_array_mut(value);
+            if let Some(value) = map.get_mut("data") {
+                return locate_product_array_mut(value);
+            }
+
+            None
         }
+        _ => None,
     }
-
-    None
 }
 
 fn extract_string(value: &Value, keys: &[&str]) -> Option<String> {

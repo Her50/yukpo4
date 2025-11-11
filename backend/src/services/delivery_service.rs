@@ -2,15 +2,16 @@ use crate::{
     core::types::{AppError, AppResult},
     models::delivery_model::{
         Courier, CourierApplication, CourierAsset, DeliveryCancelReason, DeliveryPricing,
-        DeliveryRecipient, DeliveryStatus, DeliverySummary, GeoPoint, ParcelType,
-        ShoppingItemStatus, ShoppingOrder, ShoppingOrderItem, ShoppingStatus,
+        DeliveryRecipient, DeliveryRecipientUpdate, DeliveryStatus, DeliveryStatusEvent,
+        DeliverySummary, GeoPoint, ParcelType, ShoppingItemStatus, ShoppingOrder,
+        ShoppingOrderItem, ShoppingStatus,
     },
     services::{
         delivery_repository::{
             DeliveryRepository, DeliveryTimestampField, NewClientRating, NewCourierApplication,
             NewCourierAsset, NewCourierProfile, NewCourierRating, NewDeliveryPricing,
             NewDeliveryRecipient, NewDeliveryRequest, NewShoppingOrder, NewShoppingOrderItem,
-            NewStatusEvent, NewTrackingPoint, ShoppingEstimateResult, UserPreview,
+            NewStatusEvent, NewTrackingPoint, ShoppingEstimateItem, ShoppingEstimateResult,
             WalletEventDirection,
         },
         phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
@@ -2176,7 +2177,8 @@ impl DeliveryService {
 
         let pricing_view = pricing.map(FrontendDeliveryPricing::from);
         let shopping_view = shopping_order
-            .map(|order| FrontendShoppingSummary::from_order(order, shopping_items.clone()));
+            .as_ref()
+            .map(|order| FrontendShoppingSummary::from_order(order.clone(), shopping_items.clone()));
 
         let metadata = summary.metadata.clone();
 

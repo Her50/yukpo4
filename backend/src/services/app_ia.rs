@@ -2432,7 +2432,7 @@ Contraintes :
 
         let prompt = format!(
             "Tu es le stratège diffusion de Yukpomnang. Produit un plan succinct en JSON STRICT :\n{{\n  \"summary\": \"...\",\n  \"hashtags\": [\"...\"],\n  \"schedule\": [\n    {{ \"channel\": \"...\", \"best_time\": \"...\", \"call_to_action\": \"...\" }}\n  ]\n}}
-Contraintes : summary <= 30 mots, hashtags max 5, best_time = format local (ex: "Lundi 18h"), call_to_action <= 12 mots.
+        Contraintes : summary <= 30 mots, hashtags max 5, best_time = format local (ex: \"Lundi 18h\"), call_to_action <= 12 mots.
 
 Produit : {product}
 Canaux : {channels}
@@ -2507,6 +2507,16 @@ fn extract_json_block(response: &str) -> Option<&str> {
     let start = response.find('{')?;
     let end = response.rfind('}')?;
     (start < end).then_some(&response[start..=end])
+}
+
+fn format_timestamp(value: f32) -> String {
+    let total_ms = (value * 1000.0).round() as u64;
+    let hours = total_ms / 3_600_000;
+    let minutes = (total_ms % 3_600_000) / 60_000;
+    let seconds = (total_ms % 60_000) / 1000;
+    let millis = total_ms % 1000;
+
+    format!("{:02}:{:02}:{:02},{:03}", hours, minutes, seconds, millis)
 }
 
 fn parse_time_value(

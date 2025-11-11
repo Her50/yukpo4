@@ -14,7 +14,7 @@ use crate::{
     middlewares::jwt::{jwt_auth, AuthenticatedUser},
     models::delivery_model::{ShoppingItemStatus, ShoppingStatus},
     services::delivery_service::{
-        CreateShoppingOrderParams, DeliveryRecipientInput, ShoppingBasketItemInput,
+        CreateShoppingOrderParams, DeliveryRecipientInput, LocationInput, ShoppingBasketItemInput,
         ShoppingCheckoutInput, ShoppingEstimateInput, ShoppingItemUpdateInput,
         ShoppingStatusUpdateInput, ShoppingStoreInput,
     },
@@ -348,9 +348,9 @@ impl From<ShoppingItemPayload> for ShoppingBasketItemInput {
     }
 }
 
-impl From<LocationPayload> for super::delivery_routes::LocationInput {
+impl From<LocationPayload> for LocationInput {
     fn from(value: LocationPayload) -> Self {
-        super::delivery_routes::LocationInput {
+        LocationInput {
             latitude: value.latitude,
             longitude: value.longitude,
             address: value.address,
@@ -367,7 +367,7 @@ impl From<&RecipientPayload> for DeliveryRecipientInput {
             notes: value.notes.clone(),
             chat_thread_id: value.chat_thread_id,
             dropoff_override: value.dropoff_override.as_ref().map(|loc| {
-                super::delivery_routes::LocationInput {
+                LocationInput {
                     latitude: loc.latitude,
                     longitude: loc.longitude,
                     address: loc.address.clone(),
