@@ -18,32 +18,29 @@ async fn fetch_recent_audience(
     service_id: i32,
     exclude_user_id: i32,
 ) -> anyhow::Result<Vec<i32>> {
+    let lookback_days: i32 = AUDIENCE_LOOKBACK_DAYS as i32;
     let rows = sqlx::query!(
         r#"
-        SELECT user_id, MAX(created_at) AS last_interaction
+        SELECT user_id AS "user_id!", MAX(created_at) AS last_interaction
         FROM service_interactions_tracking
         WHERE service_id = $1
           AND user_id IS NOT NULL
           AND user_id <> $2
-          AND created_at >= NOW() - INTERVAL '1 day' * $3
+          AND created_at >= NOW() - ($3::int * INTERVAL '1 day')
         GROUP BY user_id
         ORDER BY last_interaction DESC
         LIMIT $4
         "#,
         service_id,
         exclude_user_id,
-        AUDIENCE_LOOKBACK_DAYS,
+        lookback_days,
         AUDIENCE_LIMIT
     )
     .fetch_all(pool)
     .await?;
 
     let mut audience = Vec::with_capacity(rows.len());
-    for row in rows {
-        if let Some(user_id) = row.user_id {
-            audience.push(user_id);
-        }
-    }
+    let audience = rows.into_iter().map(|row| row.user_id).collect();
 
     Ok(audience)
 }

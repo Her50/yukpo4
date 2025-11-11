@@ -105,12 +105,12 @@ pub struct SocialAccountRecord {
 
 pub async fn create_oauth_state(redis: &redis::Client, user_id: i32) -> AppResult<String> {
     let mut conn = redis
-        .get_async_connection()
+        .get_multiplexed_async_connection()
         .await
         .map_err(|e| AppError::Internal(format!("Redis connection error: {e}")))?;
     let state_id = format!("{}:{}", user_id, Uuid::new_v4());
     let key = format!("social_oauth:{}", &state_id);
-    conn.set_ex(key, user_id, 600)
+    conn.set_ex::<_, _, ()>(key, user_id, 600)
         .await
         .map_err(|e| AppError::Internal(format!("Redis set_ex error: {e}")))?;
     Ok(state_id)
@@ -118,7 +118,7 @@ pub async fn create_oauth_state(redis: &redis::Client, user_id: i32) -> AppResul
 
 pub async fn consume_oauth_state(redis: &redis::Client, state: &str) -> AppResult<Option<i32>> {
     let mut conn = redis
-        .get_async_connection()
+        .get_multiplexed_async_connection()
         .await
         .map_err(|e| AppError::Internal(format!("Redis connection error: {e}")))?;
     let key = format!("social_oauth:{}", state);
