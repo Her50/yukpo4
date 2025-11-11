@@ -1874,18 +1874,23 @@ fn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {
     match data {
         Value::Array(arr) => Some(arr),
         Value::Object(map) => {
-            if let Some(result) = map.get_mut("produits").and_then(|value| match value {
-                Value::Array(arr) => Some(arr),
-                Value::Object(inner) => inner
-                    .get_mut("valeur")
-                    .and_then(|v| v.as_array_mut())
-                    .map(|arr| arr),
-                _ => None,
-            }) {
-                return Some(result);
+            if let Some(value) = map.get_mut("produits") {
+                if let Value::Array(arr) = value {
+                    return Some(arr);
+                }
+
+                if let Value::Object(inner) = value {
+                    if let Some(Value::Array(arr)) = inner.get_mut("valeur") {
+                        return Some(arr);
+                    }
+                }
             }
 
-            map.get_mut("data").and_then(locate_product_array_mut)
+            if let Some(value) = map.get_mut("data") {
+                return locate_product_array_mut(value);
+            }
+
+            None
         }
         _ => None,
     }
