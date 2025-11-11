@@ -183,15 +183,16 @@ pub async fn video_analytics_overview(
     horizon_days: i64,
 ) -> AppResult<VideoAnalyticsOverview> {
     let days = horizon_days.clamp(1, 30);
+    let days_i32 = days as i32;
 
     let media_row = sqlx::query!(
         r#"
         SELECT COUNT(*) AS total
         FROM media
         WHERE media_type = 'video'
-          AND uploaded_at >= NOW() - ($1 || ' days')::interval
+          AND uploaded_at >= NOW() - ($1::int * INTERVAL '1 day')
         "#,
-        days
+        days_i32
     )
     .fetch_one(&state.pg)
     .await
@@ -204,10 +205,10 @@ pub async fn video_analytics_overview(
             COUNT(*) FILTER (WHERE event_type = 'share') AS shares,
             COALESCE(AVG((metadata ->> 'quality_score')::float), 0.0) AS avg_quality
         FROM media_engagement
-        WHERE occurred_at >= NOW() - ($1 || ' days')::interval
+        WHERE occurred_at >= NOW() - ($1::int * INTERVAL '1 day')
           AND event_type IN ('view', 'share', 'quality_score')
         "#,
-        days
+        days_i32
     )
     .fetch_one(&state.pg)
     .await
@@ -219,9 +220,9 @@ pub async fn video_analytics_overview(
             COUNT(*) FILTER (WHERE status = 'completed') AS completed,
             COUNT(*) FILTER (WHERE status IN ('scheduled', 'processing')) AS pending
         FROM media_distribution
-        WHERE updated_at >= NOW() - ($1 || ' days')::interval
+        WHERE updated_at >= NOW() - ($1::int * INTERVAL '1 day')
         "#,
-        days
+        days_i32
     )
     .fetch_one(&state.pg)
     .await
