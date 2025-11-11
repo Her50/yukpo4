@@ -63,8 +63,15 @@ impl AudioMasteringService {
             self.config.provider
         );
 
-        let file_part = Part::file(input)
+        let file_bytes = tokio::fs::read(input)
+            .await
             .map_err(|err| AppError::Internal(format!("Impossible de lire audio source: {err}")))?;
+        let file_name = input
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("source_audio.wav");
+
+        let file_part = Part::bytes(file_bytes).file_name(file_name.to_string());
 
         let mut form = Form::new().part("file", file_part);
 

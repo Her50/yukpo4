@@ -2,7 +2,6 @@ use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use futures::StreamExt;
 use log::{debug, info, warn};
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
@@ -108,7 +107,7 @@ impl BrollService {
         let key = self.cache_key(request);
         let mut conn = self
             .redis_client
-            .get_async_connection()
+            .get_multiplexed_async_connection()
             .await
             .map_err(|err| {
                 AppError::Internal(format!("Connexion Redis b-roll impossible: {err}"))
@@ -138,7 +137,7 @@ impl BrollService {
         let key = self.cache_key(request);
         let mut conn = self
             .redis_client
-            .get_async_connection()
+            .get_multiplexed_async_connection()
             .await
             .map_err(|err| {
                 AppError::Internal(format!("Connexion Redis b-roll impossible: {err}"))
@@ -147,7 +146,7 @@ impl BrollService {
         let payload = serde_json::to_vec(clip).map_err(|err| {
             AppError::Internal(format!("Sérialisation cache b-roll impossible: {err}"))
         })?;
-        let ttl = self.config.cache.ttl.as_secs() as usize;
+        let ttl = self.config.cache.ttl.as_secs();
         let _: () = conn
             .set_ex(key, payload, ttl)
             .await
@@ -422,19 +421,17 @@ impl BrollService {
             )));
         }
 
-        let mut stream = response.bytes_stream();
         let mut file = fs::File::create(&dest_path).await.map_err(|err| {
             AppError::Internal(format!("Création fichier b-roll impossible: {err}"))
         })?;
 
-        while let Some(chunk) = stream.next().await {
-            let bytes = chunk.map_err(|err| {
-                AppError::Internal(format!("Lecture flux b-roll impossible: {err}"))
-            })?;
-            file.write_all(&bytes).await.map_err(|err| {
-                AppError::Internal(format!("Écriture fichier b-roll impossible: {err}"))
-            })?;
-        }
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|err| AppError::Internal(format!("Lecture flux b-roll impossible: {err}")))?;
+        file.write_all(&bytes).await.map_err(|err| {
+            AppError::Internal(format!("Écriture fichier b-roll impossible: {err}"))
+        })?;
 
         file.flush()
             .await

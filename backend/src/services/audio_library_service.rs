@@ -78,7 +78,7 @@ pub async fn attach_loop_to_service(
             .map_err(AppError::from)?
             .ok_or_else(|| AppError::NotFound("Service introuvable".to_string()))?;
 
-    if service_owner != Some(user.id) {
+    if service_owner != user.id {
         return Err(AppError::Unauthorized(
             "Accès interdit à ce service".to_string(),
         ));

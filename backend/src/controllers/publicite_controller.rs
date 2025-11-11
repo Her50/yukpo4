@@ -7,7 +7,7 @@ use axum::{
 use log;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::{types::Json, PgPool, Row};
+use sqlx::{PgPool, Row};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -230,8 +230,8 @@ pub async fn create_publicite(
         .bind(&payload.produits_indexes)
         .bind(&payload.videos)
         .bind(&payload.thumbnails)
-        .bind(Json(videos_meta_json.clone()))
-        .bind(Json(video_stats_json.clone()))
+        .bind(videos_meta_json.clone())
+        .bind(video_stats_json.clone())
         .bind(payload.duree_jours)
         .bind(payload.cout)
         .bind(&payload.zone_geographique)
@@ -257,8 +257,8 @@ pub async fn create_publicite(
         .bind(&payload.produits_indexes)
         .bind(&payload.videos)
         .bind(&payload.thumbnails)
-        .bind(Json(videos_meta_json.clone()))
-        .bind(Json(video_stats_json.clone()))
+        .bind(videos_meta_json.clone())
+        .bind(video_stats_json.clone())
         .bind(payload.duree_jours)
         .bind(payload.cout)
         .bind(&payload.zone_geographique)
@@ -735,7 +735,7 @@ async fn record_video_event(
     }
 
     sqlx::query("UPDATE publicites SET video_stats = $1, updated_at = NOW() WHERE id = $2")
-        .bind(Json(stats_value))
+        .bind(stats_value)
         .bind(publicite_id)
         .execute(pool)
         .await

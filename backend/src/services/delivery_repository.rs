@@ -677,7 +677,9 @@ impl DeliveryRepository {
                 contact_name: delivery_row.recipient_contact_name,
                 contact_phone: delivery_row.recipient_contact_phone,
                 notes: delivery_row.recipient_notes,
-                tracking_token: delivery_row.recipient_tracking_token,
+                tracking_token: delivery_row
+                    .recipient_tracking_token
+                    .unwrap_or(delivery_row.tracking_token),
                 dropoff_override: delivery_row.recipient_dropoff_override.map(|geo| GeoPoint {
                     latitude: geo.y(),
                     longitude: geo.x(),
@@ -685,6 +687,11 @@ impl DeliveryRepository {
                 dropoff_address: delivery_row.recipient_dropoff_address,
                 dropoff_updated_at: delivery_row.recipient_dropoff_updated_at,
                 chat_thread_id: delivery_row.recipient_chat_thread_id,
+                country_code: None,
+                allow_tracking: None,
+                allow_contact: None,
+                consent_granted: None,
+                preferred_language: None,
             })
             .filter(|recipient| {
                 recipient.user_id.is_some()
@@ -692,6 +699,10 @@ impl DeliveryRepository {
                     || recipient.contact_phone.is_some()
                     || recipient.dropoff_override.is_some()
             }),
+            store_name: None,
+            store_location: None,
+            shopping_required: false,
+            metadata: Value::Object(Default::default()),
         };
 
         Ok(summary)

@@ -378,6 +378,10 @@ struct PricingPayload {
     discount_cents: i32,
     currency: String,
     details: Value,
+    #[serde(default)]
+    shopping_cost_cents: i32,
+    #[serde(default)]
+    shopping_discount_cents: i32,
 }
 
 async fn upsert_pricing(
@@ -400,6 +404,8 @@ async fn upsert_pricing(
             discount_cents: payload.discount_cents,
             currency: payload.currency,
             details: payload.details,
+            shopping_cost_cents: payload.shopping_cost_cents,
+            shopping_discount_cents: payload.shopping_discount_cents,
         })
         .await?;
     Ok(Json(serde_json::json!({ "status": "ok" })))

@@ -1858,32 +1858,26 @@ fn locate_product_array(data: &Value) -> Option<&Vec<Value>> {
 }
 
 fn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {
-    if data.is_array() {
-        return data.as_array_mut();
+    if let Value::Array(arr) = data {
+        return Some(arr);
     }
 
-    if data.is_object() {
-        if data
-            .get_mut("produits")
-            .and_then(Value::as_array_mut)
-            .is_some()
-        {
-            return data.get_mut("produits").and_then(Value::as_array_mut);
-        }
-
-        if let Some(inner) = data.get_mut("produits").and_then(Value::as_object_mut) {
-            if inner.get_mut("valeur").and_then(Value::as_array_mut).is_some() {
-                return inner.get_mut("valeur").and_then(Value::as_array_mut);
+    if let Value::Object(map) = data {
+        if let Some(value) = map.get_mut("produits") {
+            match value {
+                Value::Array(arr) => return Some(arr),
+                Value::Object(inner) => {
+                    if let Some(Value::Array(arr)) = inner.get_mut("valeur") {
+                        return Some(arr);
+                    }
+                }
+                _ => {}
             }
         }
 
-        if let Some(inner_data) = data.get_mut("data").and_then(Value::as_object_mut) {
-            if inner_data
-                .get_mut("produits")
-                .and_then(Value::as_array_mut)
-                .is_some()
-            {
-                return inner_data.get_mut("produits").and_then(Value::as_array_mut);
+        if let Some(Value::Object(inner_data)) = map.get_mut("data") {
+            if let Some(Value::Array(arr)) = inner_data.get_mut("produits") {
+                return Some(arr);
             }
         }
     }
