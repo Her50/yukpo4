@@ -2,7 +2,7 @@
 import * as ReactNavigation from '@react-navigation/native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, DeviceEventEmitter, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card, Chip, Switch, Text, TextInput } from 'react-native-paper';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
@@ -46,7 +46,7 @@ const CreateServiceScreen: React.FC = () => {
 
       try {
         const response = await apiGet(`/api/services/utilisateur/${user.id}/dernier-contact`);
-        
+
         if (response.data && Object.keys(response.data).length > 0) {
           const contactData = {
             whatsapp: response.data.whatsapp?.valeur || response.data.whatsapp || '',
@@ -82,7 +82,7 @@ const CreateServiceScreen: React.FC = () => {
       // Pré-remplir avec les données de l'IA
       if (params.suggestion.data) {
         const suggestion = params.suggestion.data;
-        
+
         // Extraire les valeurs des champs
         const getFieldValue = (field: any): any => {
           if (!field) return '';
@@ -143,7 +143,8 @@ const CreateServiceScreen: React.FC = () => {
             {
               text: 'OK',
               onPress: () => {
-                (navigation as any).navigate('MesServices');
+                DeviceEventEmitter.emit('service:refresh');
+                (navigation as any).navigate('Main', { screen: 'Services' });
               }
             }
           ]
@@ -179,7 +180,7 @@ const CreateServiceScreen: React.FC = () => {
         <View style={styles.header}>
           <Text style={styles.title}>Créer un Nouveau Service</Text>
           <Text style={styles.subtitle}>Partagez votre expertise avec la communauté</Text>
-          
+
           {/* Indicateur d'étapes */}
           <View style={styles.stepsIndicator}>
             {[...Array(totalSteps)].map((_, index) => (
@@ -476,7 +477,7 @@ const CreateServiceScreen: React.FC = () => {
               <Text style={styles.prevButtonText}>Précédent</Text>
             </TouchableOpacity>
           )}
-          
+
           {currentStep < totalSteps ? (
             <TouchableOpacity style={styles.nextButton} onPress={nextStep}>
               <Text style={styles.nextButtonText}>Suivant</Text>

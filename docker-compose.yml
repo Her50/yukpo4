@@ -16,7 +16,7 @@ services:
     networks:
       - yukpo-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,6 +27,17 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
+      - LIVEKIT_API_URL=http://livekit:7880
+      - LIVEKIT_WS_URL=ws://localhost:7880
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+      - LIVEKIT_HLS_URL=http://localhost:8080/live
+      - LIVEKIT_INGRESS_MODE=rtmp
+      - LIVEKIT_ROOM_TTL_SECONDS=7200
+      - LIVE_RECORDING_ENABLED=true
+      - LIVE_FALLBACK_ENABLED=true
+      - SRS_RTMP_URL=rtmp://localhost:1935/live
+      - SRS_HLS_URL=http://localhost:8080/live
       - RUST_LOG=info
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/yukpomnang
       - JWT_SECRET=your-secret-key
@@ -36,12 +47,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      livekit:
+        condition: service_started
+      srs:
+        condition: service_started
     networks:
       - yukpo-network
     volumes:
       - ./backend/uploads:/app/uploads
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3001/healthz || exit 1"]
+      test: [ "CMD-SHELL", "curl -f http://localhost:3001/healthz || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -61,6 +76,37 @@ services:
     networks:
       - yukpo-network
 
+  livekit:
+    image: livekit/livekit-server:latest
+    command:
+      - livekit-server
+      - "--bind=0.0.0.0"
+      - "--keys=${LIVEKIT_KEYS:-devkey:secret}"
+      - "--config-body=room: {}"
+    environment:
+      - LIVEKIT_KEYS=${LIVEKIT_KEYS:-devkey:secret}
+    ports:
+      - "7880:7880" # HTTP / WebRTC signaling
+      - "7881:7881" # WebRTC fallback
+      - "7882:7882/udp" # RTP
+    networks:
+      - yukpo-network
+
+  srs:
+    image: ossrs/srs:5
+    ports:
+      - "1935:1935" # RTMP
+      - "8080:8080" # HLS HTTP
+    volumes:
+      - ./config/srs/srs.conf:/usr/local/srs/conf/srs.conf:ro
+    command:
+      - livekit-server
+      - "--bind=0.0.0.0"
+      - "--keys=${LIVEKIT_KEYS:-devkey:secret}"
+      - "--config-body=room: {}"
+    networks:
+      - yukpo-network
+
   # ⚖️ Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
@@ -77,6 +123,7 @@ services:
 volumes:
   postgres_data:
 
+
 networks:
   yukpo-network:
-    driver: bridge 
+    driver: bridge

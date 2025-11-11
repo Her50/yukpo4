@@ -1,5 +1,6 @@
 import React, { Component, ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Sentry from 'sentry-expo';
 
 interface Props {
     children: ReactNode;
@@ -23,6 +24,7 @@ class ErrorBoundary extends Component<Props, State> {
 
     componentDidCatch(error: Error, errorInfo: any) {
         console.error('ErrorBoundary caught an error:', error, errorInfo);
+        Sentry.Native.captureException(error, { extra: errorInfo });
     }
 
     handleRetry = () => {
@@ -66,7 +68,11 @@ class ErrorBoundary extends Component<Props, State> {
                             <TouchableOpacity
                                 style={styles.reportButton}
                                 onPress={() => {
-                                    // TODO: Implémenter le signalement d'erreur
+                                    if (this.state.error) {
+                                        Sentry.Native.captureException(this.state.error, {
+                                            extra: { origin: 'ErrorBoundaryUserReport' },
+                                        });
+                                    }
                                     console.log('Report error:', this.state.error);
                                 }}
                             >

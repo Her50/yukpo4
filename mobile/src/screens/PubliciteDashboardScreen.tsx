@@ -35,7 +35,30 @@ interface PubliciteStats {
     produits_count: number;
     date_debut: string;
     date_fin: string;
+    videos_meta?: PubliciteVideoMeta[];
+    video_stats?: Record<string, any>;
 }
+
+interface PubliciteVideoMeta {
+    format?: string | null;
+    source?: string | null;
+    duration_ms?: number | null;
+    ai_generated?: boolean | null;
+}
+
+interface VideoSummary {
+    views_by_format: Record<string, number>;
+    clicks_by_format: Record<string, number>;
+    ai_generated_videos: number;
+    manual_videos: number;
+}
+
+const emptyVideoSummary: VideoSummary = {
+    views_by_format: {},
+    clicks_by_format: {},
+    ai_generated_videos: 0,
+    manual_videos: 0,
+};
 
 const PubliciteDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -50,7 +73,8 @@ const PubliciteDashboardScreen: React.FC = () => {
         total_clics: 0,
         taux_conversion_moyen: 0,
         budget_total_depense: 0,
-        publicites_actives: 0
+        publicites_actives: 0,
+        video_summary: emptyVideoSummary,
     });
 
     useEffect(() => {
@@ -64,8 +88,23 @@ const PubliciteDashboardScreen: React.FC = () => {
             const response = await apiGet('/api/publicites/dashboard');
 
             if (response.success && response.data) {
-                setPublicites(response.data.publicites || []);
-                setGlobalStats(response.data.stats || globalStats);
+                const statsPayload = response.data.stats || {};
+                setGlobalStats({
+                    total_vues: statsPayload.total_vues || 0,
+                    total_clics: statsPayload.total_clics || 0,
+                    taux_conversion_moyen: statsPayload.taux_conversion_moyen || 0,
+                    budget_total_depense: statsPayload.budget_total_depense || 0,
+                    publicites_actives: statsPayload.publicites_actives || 0,
+                    video_summary: statsPayload.video_summary || emptyVideoSummary,
+                });
+
+                const pubsPayload: PubliciteStats[] = (response.data.publicites || []).map((pub: any) => ({
+                    ...pub,
+                    videos_meta: Array.isArray(pub.videos_meta) ? pub.videos_meta : [],
+                    video_stats: pub.video_stats || {},
+                }));
+
+                setPublicites(pubsPayload);
             }
 
             setLoading(false);
@@ -105,6 +144,84 @@ const PubliciteDashboardScreen: React.FC = () => {
             default:
                 return status;
         }
+    };
+
+    const renderTopFormatChips = (formatMap: Record<string, number>, label: string) => {
+        const entries = Object.entries(formatMap || {})
+            .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+            .slice(0, 3);
+
+        if (entries.length === 0) {
+            return null;
+        }
+
+        return (
+            <View style={styles.videoFormatRow}>
+                {entries.map(([format, value]) => (
+                    <View key={`${label}_${format}`} style={styles.videoFormatChip}>
+                        <SafeIcon name="play-circle" size={14} color="#4F46E5" />
+                        <Text style={styles.videoFormatText}>
+                            {label} {format.toUpperCase()} · {value}
+                        </Text>
+                    </View>
+                ))}
+            </View>
+        );
+    };
+
+    const renderVideoMetaSection = (pub: PubliciteStats) => {
+        const metas = Array.isArray(pub.videos_meta) ? pub.videos_meta : [];
+        const stats = pub.video_stats || {};
+        const views = stats.views || {};
+        const clicks = stats.clicks || {};
+
+        if (!metas.length && (!Object.keys(views).length && !Object.keys(clicks).length)) {
+            return null;
+        }
+
+        return (
+            <View style={styles.videoMetaSection}>
+                <Text style={styles.videoMetaTitle}>Vidéos</Text>
+                {metas.length > 0 && (
+                    <View style={styles.videoMetaChipRow}>
+                        {metas.slice(0, 4).map((meta, index) => {
+                            const format = (meta.format || (meta.ai_generated ? 'square' : 'video') || 'video').toString();
+                            const source = (meta.source || (meta.ai_generated ? 'ai' : 'manual') || 'manual').toString();
+                            return (
+                                <View key={`${pub.id}_meta_${index}`} style={styles.videoMetaChip}>
+                                    <SafeIcon name={meta.ai_generated ? 'sparkles' : 'film'} size={12} color={meta.ai_generated ? '#6366F1' : '#059669'} />
+                                    <Text style={styles.videoMetaChipText}>
+                                        {format.toUpperCase()} · {source.toUpperCase()}
+                                    </Text>
+                                </View>
+                            );
+                        })}
+                        {metas.length > 4 && (
+                            <View style={styles.videoMetaChip}>
+                                <SafeIcon name="plus" size={12} color="#6B7280" />
+                                <Text style={styles.videoMetaChipText}>+{metas.length - 4}</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+
+                {Object.keys(views).length > 0 && (
+                    <View style={styles.videoStatsRow}>
+                        <SafeIcon name="eye" size={14} color="#3B82F6" />
+                        <Text style={styles.videoStatsLabel}>Vues par format</Text>
+                    </View>
+                )}
+                {renderTopFormatChips(views, 'Vue')}
+
+                {Object.keys(clicks).length > 0 && (
+                    <View style={styles.videoStatsRow}>
+                        <SafeIcon name="mouse-pointer" size={14} color="#10B981" />
+                        <Text style={styles.videoStatsLabel}>Clics par format</Text>
+                    </View>
+                )}
+                {renderTopFormatChips(clicks, 'Clic')}
+            </View>
+        );
     };
 
     if (loading) {
@@ -177,6 +294,32 @@ const PubliciteDashboardScreen: React.FC = () => {
                         <Text style={styles.statLabel}>{t('stats.budget')}</Text>
                     </NativeCard>
                 </View>
+
+                {/* Résumé vidéos */}
+                <NativeCard style={styles.videoSummaryCard}>
+                    <Text style={styles.videoSummaryTitle}>Performance vidéos</Text>
+                    <View style={styles.videoSummaryRow}>
+                        <View style={styles.videoSummaryItem}>
+                            <SafeIcon name="sparkles" size={18} color="#6366F1" />
+                            <View>
+                                <Text style={styles.videoSummaryValue}>{globalStats.video_summary.ai_generated_videos}</Text>
+                                <Text style={styles.videoSummaryLabel}>IA générées</Text>
+                            </View>
+                        </View>
+                        <View style={styles.videoSummaryItem}>
+                            <SafeIcon name="film" size={18} color="#059669" />
+                            <View>
+                                <Text style={styles.videoSummaryValue}>{globalStats.video_summary.manual_videos}</Text>
+                                <Text style={styles.videoSummaryLabel}>Manuelles</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={styles.videoSummaryFormats}>
+                        {renderTopFormatChips(globalStats.video_summary.views_by_format, 'Vue')}
+                        {renderTopFormatChips(globalStats.video_summary.clicks_by_format, 'Clic')}
+                    </View>
+                </NativeCard>
 
                 {/* Liste des publicités */}
                 <View style={styles.section}>
@@ -299,6 +442,8 @@ const PubliciteDashboardScreen: React.FC = () => {
                                         <Text style={styles.modifyButtonText}>Modifier</Text>
                                     </TouchableOpacity>
                                 </View>
+
+                                {renderVideoMetaSection(pub)}
                             </NativeCard>
                         ))
                     )}
@@ -368,6 +513,61 @@ const styles = StyleSheet.create({
     statLabel: {
         fontSize: 12,
         color: modernColors.textSecondary,
+    },
+    videoSummaryCard: {
+        padding: 16,
+        marginBottom: 24,
+    },
+    videoSummaryTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 12,
+    },
+    videoSummaryRow: {
+        flexDirection: 'row',
+        gap: 16,
+        marginBottom: 16,
+    },
+    videoSummaryItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+        padding: 14,
+        borderRadius: 14,
+        backgroundColor: '#EEF2FF',
+    },
+    videoSummaryValue: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    videoSummaryLabel: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+    },
+    videoSummaryFormats: {
+        gap: 8,
+    },
+    videoFormatRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    videoFormatChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: '#E0E7FF',
+    },
+    videoFormatText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#4338CA',
     },
     section: {
         marginBottom: 24,
@@ -488,6 +688,49 @@ const styles = StyleSheet.create({
     metricLabel: {
         fontSize: 11,
         color: modernColors.textSecondary,
+    },
+    videoMetaSection: {
+        marginTop: 16,
+        gap: 10,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: modernColors.border,
+    },
+    videoMetaTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: modernColors.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.6,
+    },
+    videoMetaChipRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    videoMetaChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: '#F3F4F6',
+    },
+    videoMetaChipText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+    },
+    videoStatsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    videoStatsLabel: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontWeight: '600',
     },
     publiciteFooter: {
         flexDirection: 'row',

@@ -1,5 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { GeneratedVideoResponse, VideoCostEstimation, VideoGenerationPayload } from '../types/VideoGeneration';
+import {
+  DeliveryLocationUpdatePayload,
+  DeliveryRecipientPayload,
+  ShoppingOrderPayload,
+} from '../types/delivery';
+
 // Configuration de base - Valeurs par défaut
 import { config } from '../config/environment';
 
@@ -22,6 +29,92 @@ interface ApiResponse<T = any> {
   success?: boolean;
   message?: string;
   error?: string;
+}
+
+export interface UploadedMediaItem {
+  id: number;
+  path: string;
+  media_type: string;
+}
+
+export interface ContentAnalyticsSummary {
+  days: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  avg_view_duration_ms: number;
+}
+
+export interface ContentAnalyticsBreakdownItem {
+  content_type: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  avg_view_duration_ms: number;
+}
+
+export interface ContentAnalyticsTopItem {
+  content_id: string;
+  content_type: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  avg_view_duration_ms: number;
+  likes: number;
+  saves: number;
+  last_seen: string | null;
+}
+
+export interface ContentAnalyticsApiData {
+  summary: ContentAnalyticsSummary;
+  breakdown: ContentAnalyticsBreakdownItem[];
+  top_content: ContentAnalyticsTopItem[];
+}
+
+export interface ContentAnalyticsApiResponse {
+  success: boolean;
+  data: ContentAnalyticsApiData;
+}
+
+export interface VideoAnalyticsOverview {
+  horizon_days: number;
+  videos_generated: number;
+  total_views: number;
+  total_shares: number;
+  average_quality_score: number;
+  distribution_success: number;
+  distribution_pending: number;
+}
+
+export interface VideoAnalyticsOverviewResponse {
+  success: boolean;
+  data: VideoAnalyticsOverview;
+}
+
+export interface VideoJobProgressStep {
+  key: string;
+  label: string;
+  status: string;
+  detail?: string | null;
+}
+
+export interface VideoJobStatus {
+  job_id: string;
+  user_id: number;
+  service_id?: number | null;
+  product_index?: number | null;
+  status: string;
+  progress_steps: VideoJobProgressStep[];
+  result_media_id?: number | null;
+  error_message?: string | null;
+  result_payload?: GeneratedVideoResponse | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StartVideoJobResponse {
+  job_id: string;
+  status: string;
 }
 
 // Fonction pour récupérer le token d'authentification
@@ -331,6 +424,251 @@ export const servicesApi = {
   },
 };
 
+// ===== DELIVERY & SHOPPING =====
+
+interface WalletBalanceResponse {
+  balance: number;
+  currency: string;
+  pending?: number;
+  updated_at?: string;
+}
+
+interface DeliveryListResponse {
+  deliveries: any[];
+}
+
+export const deliveryApi = {
+  listActiveDeliveries: async () => {
+    return apiCall<DeliveryListResponse>('/api/deliveries/active');
+  },
+  getDeliveryById: async (deliveryId: string) => {
+    return apiCall(`/api/deliveries/${deliveryId}`);
+  },
+  getRecipientUpdates: async (deliveryId: string) => {
+    return apiCall(`/api/deliveries/${deliveryId}/recipient/updates`);
+  },
+  assignRecipient: async (deliveryId: string, payload: DeliveryRecipientPayload) => {
+    return apiCall(`/api/deliveries/${deliveryId}/recipient`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateRecipientLocation: async (deliveryId: string, payload: DeliveryLocationUpdatePayload) => {
+    return apiCall(`/api/deliveries/${deliveryId}/recipient/location`, {
+      method: 'POST',
+      body: JSON.stringify({
+        ...payload,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  },
+  updateStatus: async (deliveryId: string, status: string, metadata?: Record<string, any>) => {
+    return apiCall(`/api/deliveries/${deliveryId}/status`, {
+      method: 'POST',
+      body: JSON.stringify({
+        status,
+        metadata,
+      }),
+    });
+  },
+  cancelDelivery: async (deliveryId: string, reason?: string) => {
+    return apiCall(`/api/deliveries/${deliveryId}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({
+        reason,
+      }),
+    });
+  },
+  rateDelivery: async (deliveryId: string, rating: number, feedback?: string) => {
+    return apiCall(`/api/deliveries/${deliveryId}/rating`, {
+      method: 'POST',
+      body: JSON.stringify({
+        rating,
+        feedback,
+      }),
+    });
+  },
+};
+
+export const shoppingApi = {
+  estimateOrder: async (payload: ShoppingOrderPayload) => {
+    return apiCall('/api/shopping/orders/estimate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateOrderItem: async (
+    orderId: string,
+    itemId: string,
+    payload: {
+      actual_total?: number;
+      actual_price?: number;
+      note?: string;
+      is_substitution?: boolean;
+      status?: string;
+    }
+  ) => {
+    return apiCall(`/api/shopping/orders/${orderId}/items/${itemId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+  markShoppingStatus: async (
+    orderId: string,
+    payload: {
+      status: string;
+      note?: string;
+    }
+  ) => {
+    return apiCall(`/api/shopping/orders/${orderId}/status`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  createOrder: async (payload: ShoppingOrderPayload) => {
+    return apiCall('/api/shopping/orders', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  getOrderById: async (orderId: string) => {
+    return apiCall(`/api/shopping/orders/${orderId}`);
+  },
+  checkoutOrder: async (
+    orderId: string,
+    payload: {
+      actual_total: number;
+      currency: string;
+      receipt_url?: string;
+      purchased_items?: Array<{
+        id: string;
+        actualPrice?: number;
+        actualTotal?: number;
+        note?: string;
+        isSubstitution?: boolean;
+      }>;
+    }
+  ) => {
+    return apiCall(`/api/shopping/orders/${orderId}/checkout`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+};
+
+export const walletApi = {
+  getBalance: async () => {
+    return apiCall<WalletBalanceResponse>('/api/wallet/balance');
+  },
+  debitForDelivery: async (deliveryId: string, amount: number, currency: string) => {
+    return apiCall(`/api/wallet/debit`, {
+      method: 'POST',
+      body: JSON.stringify({
+        delivery_id: deliveryId,
+        amount,
+        currency,
+      }),
+    });
+  },
+  refundDelivery: async (deliveryId: string, amount: number, currency: string, reason?: string) => {
+    return apiCall(`/api/wallet/refund`, {
+      method: 'POST',
+      body: JSON.stringify({
+        delivery_id: deliveryId,
+        amount,
+        currency,
+        reason,
+      }),
+    });
+  },
+};
+
+// ===== MEDIA =====
+
+export const mediaApi = {
+  getServiceMediaDetailed: async (serviceId: string | number) => {
+    return apiCall(`/api/services/${serviceId}/media`);
+  },
+  getProductMedia: async (serviceId: string | number, productIndex: string | number) => {
+    return apiCall(`/api/media/product/${serviceId}/${productIndex}`);
+  },
+  generateProductVideo: async (
+    serviceId: string | number,
+    productIndex: string | number,
+    payload: Record<string, any>
+  ) => {
+    return apiCall(`/api/media/product/${serviceId}/${productIndex}/generate-video`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  trackMediaView: async (mediaId: number, payload: { channel?: string; session_id?: string; metadata?: any }) => {
+    return apiCall(`/api/media/${mediaId}/track-view`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  trackMediaShare: async (mediaId: number, payload: { channel?: string; session_id?: string; metadata?: any }) => {
+    return apiCall(`/api/media/${mediaId}/track-share`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateMediaDistribution: async (
+    mediaId: number,
+    target: string,
+    payload: { status: string; metadata?: any }
+  ) => {
+    return apiCall(`/api/media/${mediaId}/distribution/${target}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+  uploadServiceAudio: async (
+    serviceId: string | number,
+    file: { uri: string; name?: string; type?: string }
+  ): Promise<UploadedMediaItem | null> => {
+    const token = await getAuthToken();
+    const formData = new FormData();
+    formData.append('audio', {
+      uri: file.uri,
+      name: file.name || `audio_${Date.now()}.mp3`,
+      type: file.type || 'audio/mpeg',
+    } as any);
+
+    const response = await fetch(`${API_BASE_URL}/api/media/${serviceId}/upload`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Échec de l’import audio');
+    }
+
+    const data = await response.json();
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0] as UploadedMediaItem;
+    }
+    return null;
+  },
+  getAudioLibrary: async () => {
+    return apiCall('/api/audio-library');
+  },
+  attachAudioLoop: async (loopId: string, serviceId: number) => {
+    return apiCall(`/api/audio-library/${loopId}/attach/${serviceId}`, {
+      method: 'POST',
+    });
+  },
+  getVideoJobStatus: async (jobId: string) => {
+    return apiCall<VideoJobStatus>(`/api/media/jobs/${jobId}`);
+  },
+};
+
 // ===== IA =====
 
 export const iaApi = {
@@ -398,6 +736,87 @@ export const iaApi = {
       method: 'POST',
       body: JSON.stringify({ audio: audioData }),
     });
+  },
+  generateVideoBrief: async (payload: {
+    product_name: string;
+    description?: string;
+    price?: string;
+    promotion?: string;
+    highlights?: string[];
+    target_audience?: string;
+    tone?: string;
+    lang?: string;
+    variant_count?: number;
+  }) => {
+    return apiCall('/api/ia/video-brief', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  estimateVideoCost: async (
+    serviceId: string | number,
+    productIndex: number,
+    payload: VideoGenerationPayload,
+  ) => {
+    return apiCall<{ success: boolean; data: VideoCostEstimation }>(
+      `/api/media/product/${serviceId}/${productIndex}/estimate-video`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+  generateImmersiveVideo: async (
+    serviceId: string | number,
+    productIndex: number,
+    payload: VideoGenerationPayload,
+  ) => {
+    return apiCall<StartVideoJobResponse>(
+      `/api/media/product/${serviceId}/${productIndex}/generate-video`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+  generateVideoStyle: async (payload: {
+    channel: string;
+    product_type?: string;
+    tone?: string;
+    promotion?: string;
+    highlights?: string[];
+    lang?: string;
+  }) => {
+    return apiCall('/api/ia/video-style', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  analyzeMedia: async (payload: {
+    product_name: string;
+    media_tags?: string[];
+    description?: string;
+    lang?: string;
+  }) => {
+    return apiCall('/api/ia/media-analysis', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  generateDistributionPlan: async (payload: {
+    product_name: string;
+    channels?: string[];
+    target_audience?: string;
+    marketing_angle?: string;
+    lang?: string;
+  }) => {
+    return apiCall('/api/ia/distribution-plan', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  getVideoAnalyticsOverview: async (days: number = 7) => {
+    return apiCall('/api/media/analytics/overview?days=' + days);
   },
 };
 
@@ -563,29 +982,73 @@ export const notificationsApi = {
   },
 };
 
+export const analyticsApi = {
+  getContentAnalytics: async (params?: {
+    days?: number;
+    limit?: number;
+    contentType?: 'organic' | 'paid';
+  }) => {
+    const queryParts: string[] = [];
+    if (params?.days !== undefined) {
+      queryParts.push(`days=${encodeURIComponent(params.days)}`);
+    }
+    if (params?.limit !== undefined) {
+      queryParts.push(`limit=${encodeURIComponent(params.limit)}`);
+    }
+    if (params?.contentType) {
+      queryParts.push(`content_type=${encodeURIComponent(params.contentType)}`);
+    }
+    const queryString = queryParts.length ? `?${queryParts.join('&')}` : '';
+    return apiCall<ContentAnalyticsApiResponse>(`/api/content/analytics${queryString}`, {
+      method: 'GET',
+    });
+  },
+  getVideoOverview: async (params?: { days?: number }) => {
+    const queryParts: string[] = [];
+    if (params?.days !== undefined) {
+      queryParts.push(`days=${encodeURIComponent(params.days)}`);
+    }
+    const queryString = queryParts.length ? `?${queryParts.join('&')}` : '';
+    return apiCall<VideoAnalyticsOverviewResponse>(`/api/media/analytics/overview${queryString}`, {
+      method: 'GET',
+    });
+  },
+};
+
 // Gestion des commentaires produits (fil moderne)
 export const commentsApi = {
   getProductComments: async (serviceId: number) => {
-    return apiGet(`/api/services/${serviceId}/comments`);
+    return apiCall(`/api/services/${serviceId}/comments`);
   },
   createProductComment: async (
     serviceId: number,
     payload: { content: string; rating?: number | null; mentions?: number[]; parent_comment_id?: number | null }
   ) => {
-    return apiPost(`/api/services/${serviceId}/comments`, payload);
+    return apiCall(`/api/services/${serviceId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
   updateProductComment: async (
     commentId: number,
     payload: { content?: string; rating?: number | null; mentions?: number[] }
   ) => {
-    return apiPatch(`/api/comments/${commentId}`, payload);
+    return apiCall(`/api/comments/${commentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
   },
   deleteProductComment: async (commentId: number) => {
-    return apiDelete(`/api/comments/${commentId}`);
+    return apiCall(`/api/comments/${commentId}`, {
+      method: 'DELETE',
+    });
   },
   toggleCommentReaction: async (commentId: number, reactionType: string) => {
-    return apiPost(`/api/comments/${commentId}/reactions`, {
-      reaction_type: reactionType,
+    return apiCall(`/api/comments/${commentId}/reactions`, {
+      method: 'POST',
+      body: JSON.stringify({
+        reaction_type: reactionType,
+      }),
     });
   },
 };

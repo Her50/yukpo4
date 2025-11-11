@@ -18,6 +18,13 @@ pub enum NotificationType {
     CommentMention,
     SystemAlert,
     PaymentReceived,
+    LiveScheduled,
+    LiveLiveNow,
+    LiveReplayReady,
+    LiveFlashSaleScheduled,
+    LiveFlashSaleLive,
+    LiveFlashSaleEndingSoon,
+    LiveFlashSaleCommentary,
 }
 
 impl NotificationType {
@@ -35,6 +42,13 @@ impl NotificationType {
             NotificationType::CommentMention => "comment_mention",
             NotificationType::SystemAlert => "system_alert",
             NotificationType::PaymentReceived => "payment_received",
+            NotificationType::LiveScheduled => "live_scheduled",
+            NotificationType::LiveLiveNow => "live_live_now",
+            NotificationType::LiveReplayReady => "live_replay_ready",
+            NotificationType::LiveFlashSaleScheduled => "live_flash_sale_scheduled",
+            NotificationType::LiveFlashSaleLive => "live_flash_sale_live",
+            NotificationType::LiveFlashSaleEndingSoon => "live_flash_sale_ending_soon",
+            NotificationType::LiveFlashSaleCommentary => "live_flash_sale_commentary",
         }
     }
 }

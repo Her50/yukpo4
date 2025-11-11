@@ -1,3 +1,4 @@
+import QualityScoreWidget, { QualityScoreItem } from '@/components/dashboard/QualityScoreWidget';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/buttons/Button';
@@ -56,6 +57,10 @@ const DashboardPrestataire: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d'>('30d');
   const [selectedService, setSelectedService] = useState<string>('all');
+  const [qualityAverage, setQualityAverage] = useState<number>(0);
+  const [qualityItems, setQualityItems] = useState<QualityScoreItem[]>([]);
+  const [coachBrief, setCoachBrief] = useState<string | null>(null);
+  const [coachChannel, setCoachChannel] = useState<'chat' | 'product' | 'shorts'>('chat');
   const { user } = useUser();
   const { toast } = useToast();
 
@@ -74,9 +79,33 @@ const DashboardPrestataire: React.FC = () => {
         }
       });
 
+      const qualityPromise = fetch('/api/media/quality?limit=20', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      }).then(async (res) => {
+        if (!res.ok) {
+          return null;
+        }
+        return res.json();
+      }).catch(() => null);
+
       if (response.ok) {
         const data = await response.json();
         setDashboardData(data);
+
+        const qualityResponse = await qualityPromise;
+        if (qualityResponse?.success) {
+          const average = qualityResponse.data?.average_quality_score ?? 0;
+          const items = Array.isArray(qualityResponse.data?.items)
+            ? qualityResponse.data.items.map((item: any) => ({
+              mediaId: item.media_id,
+              serviceId: item.service_id,
+              qualityScore: item.quality_score,
+              occurredAt: item.occurred_at,
+            }))
+            : [];
+          setQualityAverage(Math.round(average * 10) / 10);
+          setQualityItems(items);
+        }
       } else {
         // Charger les données réelles depuis l'API des services et du budget
         const [servicesResponse, budgetResponse] = await Promise.all([
@@ -134,6 +163,21 @@ const DashboardPrestataire: React.FC = () => {
           }
         };
         setDashboardData(realData);
+
+        const qualityResponse = await qualityPromise;
+        if (qualityResponse?.success) {
+          const average = qualityResponse.data?.average_quality_score ?? 0;
+          const items = Array.isArray(qualityResponse.data?.items)
+            ? qualityResponse.data.items.map((item: any) => ({
+              mediaId: item.media_id,
+              serviceId: item.service_id,
+              qualityScore: item.quality_score,
+              occurredAt: item.occurred_at,
+            }))
+            : [];
+          setQualityAverage(Math.round(average * 10) / 10);
+          setQualityItems(items);
+        }
       }
     } catch (error) {
       console.error('Erreur chargement dashboard:', error);
@@ -295,6 +339,65 @@ const DashboardPrestataire: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+
+        <QualityScoreWidget average={qualityAverage} items={qualityItems} className="mb-8" />
+
+        <Card className="mb-8 border-indigo-100">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-indigo-600">
+              <Star className="w-5 h-5" />
+              Coach IA Yukpo (web)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Retrouvez vos scripts, transitions et plans de diffusion proposés par l’IA. Choisissez un canal pour adapter le brief.
+            </p>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-sm text-gray-500">Canal cible :</span>
+              <Button
+                size="sm"
+                variant={coachChannel === 'chat' ? 'default' : 'outline'}
+                onClick={() => setCoachChannel('chat')}
+              >
+                Chat commerce
+              </Button>
+              <Button
+                size="sm"
+                variant={coachChannel === 'product' ? 'default' : 'outline'}
+                onClick={() => setCoachChannel('product')}
+              >
+                Fiche produit
+              </Button>
+              <Button
+                size="sm"
+                variant={coachChannel === 'shorts' ? 'default' : 'outline'}
+                onClick={() => setCoachChannel('shorts')}
+              >
+                Shorts / Reels
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              className="flex items-center gap-2 mb-4"
+              onClick={() =>
+                setCoachBrief(
+                  coachBrief
+                    ? null
+                    : `🎯 Brief ${coachChannel} : mettez en avant la promo du mois et la livraison express pour générer des conversions rapides.`
+                )
+              }
+            >
+              <Sparkles className="w-4 h-4" />
+              {coachBrief ? 'Masquer le brief IA' : 'Afficher un brief suggéré'}
+            </Button>
+            {coachBrief && (
+              <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
+                {coachBrief}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Graphiques et analyses */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

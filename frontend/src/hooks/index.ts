@@ -8,3 +8,6 @@ export * as useTranslator from './useTranslator';
 export * as useUser from './useUser';
 export * as useWelcomeAudio from './useWelcomeAudio'; // ✅ plus de default attendu
 export * as useWebSocket from './useWebSocket';
+export * from './useShoppingBasket';
+export * from './useShoppingEstimate';
+export * from './useCourierShopping';

@@ -1,0 +1,234 @@
+.yt-intro-container,
+.yt-product-container,
+.yt-ar-container,
+.yt-cta-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 24px;
+}
+
+.yt-intro-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+}
+
+.yt-intro-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    filter: blur(16px);
+    opacity: 0.3;
+}
+
+.yt-intro-glow {
+    position: absolute;
+    inset: 0;
+    mix-blend-mode: screen;
+    opacity: 0.2;
+}
+
+.yt-intro-headline {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 75%;
+}
+
+.yt-intro-headline h1 {
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+
+.yt-intro-subheadline {
+    margin-top: 12px;
+    font-size: clamp(16px, 3vw, 20px);
+    opacity: 0.85;
+}
+
+.yt-intro-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2);
+}
+
+.yt-product-container {
+    padding: 24px;
+}
+
+.yt-product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+    height: 100%;
+}
+
+.yt-product-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    backdrop-filter: blur(12px);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.yt-product-image {
+    position: relative;
+    border-radius: 14px;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+
+.yt-product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.yt-product-kenburns {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.12);
+    mix-blend-mode: multiply;
+}
+
+.yt-product-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    aspect-ratio: 1 / 1;
+    font-size: 36px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.yt-product-content h3 {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.yt-product-content p {
+    font-size: 14px;
+    opacity: 0.75;
+}
+
+.yt-product-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.yt-product-price {
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.yt-product-promo {
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+}
+
+.yt-ar-container {
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 18px;
+}
+
+.yt-ar-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid;
+    border-radius: 999px;
+    padding: 10px 16px;
+    gap: 8px;
+    font-size: 18px;
+    background: rgba(15, 23, 42, 0.4);
+}
+
+.yt-ar-title {
+    font-size: clamp(28px, 4vw, 36px);
+    font-weight: 800;
+}
+
+.yt-ar-points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 12px;
+}
+
+.yt-ar-points li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+}
+
+.yt-ar-bullet {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+}
+
+.yt-cta-container {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    overflow: hidden;
+}
+
+.yt-cta-orb {
+    position: absolute;
+    width: 360px;
+    height: 360px;
+    border-radius: 999px;
+    filter: blur(120px);
+}
+
+.yt-cta-title {
+    position: relative;
+    z-index: 2;
+    font-size: clamp(30px, 4.5vw, 42px);
+    font-weight: 800;
+    text-align: center;
+}
+
+.yt-cta-button {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 32px;
+    border-radius: 999px;
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+    box-shadow: 0 16px 32px rgba(20, 184, 166, 0.25);
+}

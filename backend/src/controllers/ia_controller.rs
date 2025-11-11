@@ -7,13 +7,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 
-use crate::state::AppState;
 use crate::{
     core::types::AppResult,
-    ia::behavior_engine::{compute_behavior_score, is_suspicious},
-    // services::{
-    //     // services::context_enricher::enrichir_input_context,
-    // },
+    middlewares::jwt::AuthenticatedUser,
+    services::app_ia::{
+        DistributionRequest, DistributionSuggestion, MediaAnalysisRequest, MediaAnalysisResult,
+        VideoBriefRequest, VideoStyleRequest,
+    },
+    services::audio_library_service::{attach_loop_to_service, list_curated_audio_loops},
+    services::video_analytics_service::{record_engagement, update_distribution_status},
+    state::AppState,
 };
 
 /// ?? Analyse comportementale (bas?e sur IP, fr?quence, chemin)
@@ -202,5 +205,246 @@ pub async fn analyze_text_input(
         security_score,
         optimization_tips,
         model_recommendation,
+    }))
+}
+
+#[derive(Deserialize)]
+pub struct GenerateSubtitlesInput {
+    pub product_name: String,
+    pub outline: Vec<String>,
+    pub lang: Option<String>,
+    #[serde(default = "default_duration")]
+    pub duration_seconds: u32,
+}
+
+#[derive(Serialize)]
+pub struct GenerateSubtitlesOutput {
+    pub success: bool,
+    pub srt: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VideoBriefPayload {
+    pub product_name: String,
+    pub description: Option<String>,
+    pub price: Option<String>,
+    pub promotion: Option<String>,
+    #[serde(default)]
+    pub highlights: Vec<String>,
+    pub target_audience: Option<String>,
+    pub tone: Option<String>,
+    pub lang: Option<String>,
+    pub variant_count: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct VideoBriefVariant {
+    pub headline: Option<String>,
+    pub call_to_action: Option<String>,
+    pub script_outline: Vec<String>,
+    pub hook: Option<String>,
+    pub voiceover: Option<String>,
+    pub hashtags: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct VideoBriefResponse {
+    pub success: bool,
+    pub variants: Vec<VideoBriefVariant>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VideoStylePayload {
+    pub channel: String,
+    pub product_type: Option<String>,
+    pub tone: Option<String>,
+    pub promotion: Option<String>,
+    #[serde(default)]
+    pub highlights: Vec<String>,
+    pub lang: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct VideoStyleResponse {
+    pub success: bool,
+    pub suggestion: VideoStyleSuggestion,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MediaAnalysisPayload {
+    pub product_name: String,
+    #[serde(default)]
+    pub media_tags: Vec<String>,
+    pub description: Option<String>,
+    pub lang: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MediaAnalysisResponse {
+    pub success: bool,
+    pub analysis: MediaAnalysisResult,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DistributionPayload {
+    pub product_name: String,
+    #[serde(default)]
+    pub channels: Vec<String>,
+    pub target_audience: Option<String>,
+    pub marketing_angle: Option<String>,
+    pub lang: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DistributionResponse {
+    pub success: bool,
+    pub plan: DistributionSuggestion,
+}
+
+fn default_duration() -> u32 {
+    30
+}
+
+fn default_variant_count() -> Option<u32> {
+    Some(3)
+}
+
+pub async fn generate_video_brief(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<VideoBriefPayload>,
+) -> AppResult<Json<VideoBriefResponse>> {
+    let request = VideoBriefRequest {
+        product_name: payload.product_name.clone(),
+        description: payload.description.clone(),
+        price: payload.price.clone(),
+        promotion: payload.promotion.clone(),
+        highlights: payload.highlights.clone(),
+        target_audience: payload.target_audience.clone(),
+        tone: payload.tone.clone(),
+        lang: payload.lang.unwrap_or_else(|| "fr".to_string()),
+        variant_count: payload.variant_count.unwrap_or(3),
+    };
+
+    let briefs = state.ia.generate_video_briefs(&request).await?;
+
+    let variants = briefs
+        .into_iter()
+        .map(|brief| VideoBriefVariant {
+            headline: brief.headline,
+            call_to_action: brief.call_to_action,
+            script_outline: brief.script_outline,
+            hook: brief.hook,
+            voiceover: brief.voiceover,
+            hashtags: brief.hashtags,
+        })
+        .collect::<Vec<_>>();
+
+    Ok(Json(VideoBriefResponse {
+        success: true,
+        variants,
+    }))
+}
+
+pub async fn generate_video_style(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<VideoStylePayload>,
+) -> AppResult<Json<VideoStyleResponse>> {
+    let request = VideoStyleRequest {
+        channel: payload.channel.clone(),
+        product_type: payload.product_type.clone(),
+        tone: payload.tone.clone(),
+        promotion: payload.promotion.clone(),
+        highlights: payload.highlights.clone(),
+        lang: payload.lang.unwrap_or_else(|| "fr".to_string()),
+    };
+
+    let suggestion = state.ia.generate_video_style(&request).await?;
+
+    Ok(Json(VideoStyleResponse {
+        success: true,
+        suggestion,
+    }))
+}
+
+#[derive(Deserialize)]
+pub struct GenerateTTSInput {
+    pub script: String,
+    pub lang: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct GenerateTTSOutput {
+    pub success: bool,
+    pub audio_base64: Option<String>,
+    pub format: Option<String>,
+}
+
+pub async fn generate_tts_voice(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<GenerateTTSInput>,
+) -> AppResult<Json<GenerateTTSOutput>> {
+    let lang = payload.lang.unwrap_or_else(|| "fr".to_string());
+    let result = state.ia.generate_tts_audio(&payload.script, &lang).await?;
+
+    let (success, audio_base64, format) = match result {
+        Some((bytes, fmt)) => (
+            true,
+            Some(base64::engine::general_purpose::STANDARD.encode(bytes)),
+            Some(fmt),
+        ),
+        None => (false, None, None),
+    };
+
+    Ok(Json(GenerateTTSOutput {
+        success,
+        audio_base64,
+        format,
+    }))
+}
+
+pub async fn analyze_media_tags(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<MediaAnalysisPayload>,
+) -> AppResult<Json<MediaAnalysisResponse>> {
+    let request = MediaAnalysisRequest {
+        product_name: payload.product_name.clone(),
+        media_tags: payload.media_tags.clone(),
+        description: payload.description.clone(),
+        lang: payload.lang.unwrap_or_else(|| "fr".to_string()),
+    };
+
+    let analysis = state.ia.analyze_media(&request).await?;
+
+    Ok(Json(MediaAnalysisResponse {
+        success: true,
+        analysis,
+    }))
+}
+
+pub async fn generate_distribution_plan(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<DistributionPayload>,
+) -> AppResult<Json<DistributionResponse>> {
+    let request = DistributionRequest {
+        product_name: payload.product_name.clone(),
+        channels: if payload.channels.is_empty() {
+            vec![
+                "product".to_string(),
+                "chat".to_string(),
+                "shorts".to_string(),
+            ]
+        } else {
+            payload.channels.clone()
+        },
+        target_audience: payload.target_audience.clone(),
+        marketing_angle: payload.marketing_angle.clone(),
+        lang: payload.lang.unwrap_or_else(|| "fr".to_string()),
+    };
+
+    let plan = state.ia.generate_distribution_plan(&request).await?;
+
+    Ok(Json(DistributionResponse {
+        success: true,
+        plan,
     }))
 }

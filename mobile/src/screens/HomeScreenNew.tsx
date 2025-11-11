@@ -154,8 +154,8 @@ const HomeScreenNew: React.FC = () => {
                 // TODO: Naviguer vers le formulaire de création quand l'écran sera créé
                 Alert.alert('Succès', 'Suggestions générées ! Redirection vers le formulaire...');
 
-                // Pour l'instant, rediriger vers Mes Services
-                navigation.navigate('MesServices' as never);
+                // Pour l'instant, rediriger vers l'onglet Mes Services
+                (navigation as any).navigate('Main', { screen: 'Services' });
             } else {
                 Alert.alert('Erreur', 'Erreur lors de la génération des suggestions');
             }

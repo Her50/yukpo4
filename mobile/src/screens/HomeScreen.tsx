@@ -10,7 +10,9 @@ import LanguageSelector from '../components/LanguageSelector';
 import MixedContentCarousel from '../components/MixedContentCarousel'; // ✅ NOUVEAU: Carousel mixte
 import ModernBackground from '../components/ModernBackground';
 import ModernGPSModal from '../components/ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
+import { NativeButton, NativeCard } from '../components/NativeDesign';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
+import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
@@ -677,6 +679,69 @@ const HomeScreen: React.FC = () => {
                             userBehavior={userBehaviorCategories}
                             publiciteFrequency={3} // 1 pub toutes les 3 cartes
                         />
+
+                        <View style={styles.deliverySection}>
+                            <Text style={styles.deliveryTitle}>Livraison intelligente Yukpo</Text>
+                            <Text style={styles.deliverySubtitle}>
+                                Courses supermarché, suivi en temps réel, notifications destinataire et avance de fonds sécurisée.
+                            </Text>
+
+                            <View style={styles.deliveryCards}>
+                                <NativeCard
+                                    style={styles.deliveryCard}
+                                    onPress={() => (navigation as any).navigate('DeliveryShoppingFlow')}
+                                >
+                                    <View style={styles.deliveryCardHeader}>
+                                        <View style={styles.deliveryIcon}>
+                                            <SafeIcon name="shopping-cart" size={24} color="#fff" />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.deliveryCardTitle}>Courses supermarché</Text>
+                                            <Text style={styles.deliveryCardSubtitle}>
+                                                Compose ton panier, nous avançons l&apos;achat et tu suis ton coursier en direct.
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <NativeButton
+                                        title="Commander maintenant"
+                                        variant="primary"
+                                        onPress={() => (navigation as any).navigate('DeliveryShoppingFlow')}
+                                    />
+                                </NativeCard>
+
+                                <NativeCard
+                                    style={styles.deliveryCard}
+                                    onPress={() =>
+                                        Alert.alert(
+                                            'Flux colis en préparation',
+                                            'Le parcours complet pour livrer un colis est en finalisation. Reste connecté !'
+                                        )
+                                    }
+                                >
+                                    <View style={styles.deliveryCardHeader}>
+                                        <View style={styles.deliveryIconSecondary}>
+                                            <SafeIcon name="package" size={24} color="#fff" />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.deliveryCardTitle}>Envoyer un colis</Text>
+                                            <Text style={styles.deliveryCardSubtitle}>
+                                                Déclare ton colis, choisis le coursier idéal et partage le suivi au destinataire.
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <NativeButton
+                                        title="Bientôt disponible"
+                                        variant="outline"
+                                        onPress={() =>
+                                            Alert.alert(
+                                                'Bientôt disponible',
+                                                'Nous finalisons les derniers écrans pour la livraison de colis.'
+                                            )
+                                        }
+                                    />
+                                </NativeCard>
+                            </View>
+                        </View>
                     </View>
                 </ScrollView>
 
@@ -1435,6 +1500,59 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#6B7280',
         fontWeight: '500',
+    },
+    deliverySection: {
+        marginTop: 24,
+        gap: 16,
+        paddingHorizontal: 8,
+    },
+    deliveryTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    deliverySubtitle: {
+        fontSize: 13,
+        color: '#64748B',
+        lineHeight: 20,
+    },
+    deliveryCards: {
+        gap: 16,
+    },
+    deliveryCard: {
+        gap: 16,
+    },
+    deliveryCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+    },
+    deliveryIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#6366F1',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    deliveryIconSecondary: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#0EA5E9',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    deliveryCardTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 6,
+    },
+    deliveryCardSubtitle: {
+        fontSize: 13,
+        color: '#475569',
+        lineHeight: 18,
     },
 });
 

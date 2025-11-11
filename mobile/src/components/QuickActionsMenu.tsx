@@ -1,6 +1,6 @@
 ﻿// Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
-import { BarChart3, Bell, Briefcase, Camera, Clock, Document, Heart, Home, ChatCircle, Plus, Search, Settings, Share, Star, User, X } from 'phosphor-react-native';
+import { BarChart3, Bell, Briefcase, Camera, ChatCircle, Clock, Document, Heart, Home, PlayCircle, Plus, Search, Settings, Share, Star, User, X } from 'phosphor-react-native';
 import * as React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme/theme';
@@ -28,6 +28,8 @@ const getActionIcon = (iconName: string, size: number, color: string) => {
         'briefcase': <Briefcase size={size} color={color} />,
         'time': <Clock size={size} color={color} />,
         'analytics': <BarChart3 size={size} color={color} />,
+        'card': <Document size={size} color={color} />,
+        'video': <PlayCircle size={size} color={color} />,
     };
 
     return iconMap[iconName] || <Plus size={size} color={color} />;
@@ -42,7 +44,7 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ isVisible, onClose 
             title: 'Mes Services',
             icon: 'briefcase',
             onPress: () => {
-                navigation.navigate('MyServices' as never);
+                (navigation as any).navigate('Main', { screen: 'Services' });
                 onClose();
             }
         },
@@ -65,11 +67,20 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ isVisible, onClose 
             }
         },
         {
-            id: 'dashboard',
-            title: 'Dashboard',
+            id: 'videoFeed',
+            title: 'Flux Vidéo',
+            icon: 'video',
+            onPress: () => {
+                navigation.navigate('VideoFeed' as never);
+                onClose();
+            }
+        },
+        {
+            id: 'videoAnalytics',
+            title: 'Analyse Vidéo',
             icon: 'analytics',
             onPress: () => {
-                navigation.navigate('Dashboard' as never);
+                navigation.navigate('VideoAnalytics' as never);
                 onClose();
             }
         },

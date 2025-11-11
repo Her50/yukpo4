@@ -1,5 +1,6 @@
 // This file contains the implementation of the AppIA service.
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use redis::Client as RedisClient;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -73,6 +74,87 @@ pub struct TrainingData {
     pub user_feedback: Option<UserFeedback>,
     pub quality_score: f64,
     pub created_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct VideoBrief {
+    pub headline: Option<String>,
+    pub call_to_action: Option<String>,
+    pub script_outline: Vec<String>,
+    pub hook: Option<String>,
+    pub voiceover: Option<String>,
+    pub hashtags: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct VideoStyleSuggestion {
+    pub effects: Vec<String>,
+    pub transitions: Vec<String>,
+    pub color_palette: Option<String>,
+    pub overlay_tips: Vec<String>,
+    pub music_hint: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MediaAnalysisResult {
+    pub dominant_colors: Vec<String>,
+    pub detected_objects: Vec<String>,
+    pub ambiance: Option<String>,
+    pub marketing_angle: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DistributionSuggestion {
+    pub summary: Option<String>,
+    pub hashtags: Vec<String>,
+    pub schedule: Vec<DistributionScheduleItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DistributionScheduleItem {
+    pub channel: String,
+    pub best_time: String,
+    pub call_to_action: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct VideoBriefRequest {
+    pub product_name: String,
+    pub description: Option<String>,
+    pub price: Option<String>,
+    pub promotion: Option<String>,
+    pub highlights: Vec<String>,
+    pub target_audience: Option<String>,
+    pub tone: Option<String>,
+    pub lang: String,
+    pub variant_count: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct VideoStyleRequest {
+    pub channel: String,
+    pub product_type: Option<String>,
+    pub tone: Option<String>,
+    pub promotion: Option<String>,
+    pub highlights: Vec<String>,
+    pub lang: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaAnalysisRequest {
+    pub product_name: String,
+    pub media_tags: Vec<String>,
+    pub description: Option<String>,
+    pub lang: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct DistributionRequest {
+    pub product_name: String,
+    pub channels: Vec<String>,
+    pub target_audience: Option<String>,
+    pub marketing_angle: Option<String>,
+    pub lang: String,
 }
 
 /// ?? Service IA avanc? avec apprentissage autonome
@@ -170,7 +252,7 @@ impl AppIA {
                 presence_penalty: 0.1,
                 timeout: 30,
                 retry_count: 3,
-                priority: 7,
+                priority: 8,
                 cost_per_token: 0.000002,
                 enabled: true,
             });
@@ -190,7 +272,7 @@ impl AppIA {
                 presence_penalty: 0.0,  // Supprim? pour acc?l?rer
                 timeout: 20,            // R?duit de 30s ? 20s
                 retry_count: 2,         // R?duit ? 2 tentatives
-                priority: 9,
+                priority: 3,
                 cost_per_token: 0.000024,
                 enabled: true,
             });
@@ -210,8 +292,30 @@ impl AppIA {
                 presence_penalty: 0.1,
                 timeout: 40, // Augment? ? 40s pour analyse compl?te des images
                 retry_count: 3,
-                priority: 8,
+                priority: 5,
                 cost_per_token: 0.00000375, // Tr?s ?conomique
+                enabled: true,
+            });
+        }
+
+        // DeepSeek Chat (priorit? interm?diaire)
+        if let Ok(api_key) = std::env::var("DEEPSEEK_API_KEY") {
+            models.push(ModelConfig {
+                name: "deepseek-chat".to_string(),
+                api_key,
+                base_url: std::env::var("DEEPSEEK_BASE_URL")
+                    .unwrap_or_else(|_| "https://api.deepseek.com/v1".to_string()),
+                model: std::env::var("DEEPSEEK_MODEL")
+                    .unwrap_or_else(|_| "deepseek-chat".to_string()),
+                temperature: 0.6,
+                max_tokens: 4000,
+                top_p: 0.9,
+                frequency_penalty: 0.0,
+                presence_penalty: 0.0,
+                timeout: 40,
+                retry_count: 3,
+                priority: 4,
+                cost_per_token: 0.000002,
                 enabled: true,
             });
         }
@@ -230,7 +334,7 @@ impl AppIA {
                 presence_penalty: 0.1,
                 timeout: 40, // Augment? ? 40s pour analyse compl?te des images
                 retry_count: 3,
-                priority: 8,
+                priority: 7,
                 cost_per_token: 0.000003, // Tr?s ?conomique
                 enabled: true,
             });
@@ -250,7 +354,7 @@ impl AppIA {
                 presence_penalty: 0.1,
                 timeout: 30,
                 retry_count: 3,
-                priority: 7,
+                priority: 6,
                 cost_per_token: 0.000015,
                 enabled: true,
             });
@@ -271,7 +375,7 @@ impl AppIA {
                 presence_penalty: 0.1,
                 timeout: 30,
                 retry_count: 3,
-                priority: 5,
+                priority: 2,
                 cost_per_token: 0.0,
                 enabled: true,
             });
@@ -292,7 +396,7 @@ impl AppIA {
                 presence_penalty: 0.1,
                 timeout: 30,
                 retry_count: 3,
-                priority: 4,
+                priority: 1,
                 cost_per_token: 0.0,
                 enabled: true,
             });
@@ -312,7 +416,7 @@ impl AppIA {
                 presence_penalty: 0.1,
                 timeout: 30,
                 retry_count: 3,
-                priority: 6,
+                priority: 2,
                 cost_per_token: 0.000015,
                 enabled: true,
             });
@@ -340,7 +444,8 @@ impl AppIA {
 
         // 2. S?lection intelligente du mod?le
         let models = self.models.read().await;
-        let enabled_models: Vec<&ModelConfig> = models.iter().filter(|m| m.enabled).collect();
+        let mut enabled_models: Vec<&ModelConfig> = models.iter().filter(|m| m.enabled).collect();
+        enabled_models.sort_by(|a, b| b.priority.cmp(&a.priority));
 
         if enabled_models.is_empty() {
             log::warn!("[AppIA] Aucun mod?le activ?, utilisation du fallback");
@@ -417,10 +522,11 @@ impl AppIA {
 
         // 1. S?lection intelligente du mod?le (priorit? aux mod?les multimodaux)
         let models = self.models.read().await;
-        let enabled_models: Vec<&ModelConfig> = models
+        let mut enabled_models: Vec<&ModelConfig> = models
             .iter()
             .filter(|m| m.enabled && self.supports_multimodal(m))
             .collect();
+        enabled_models.sort_by(|a, b| b.priority.cmp(&a.priority));
 
         if enabled_models.is_empty() {
             log::warn!("[AppIA] Aucun mod?le multimodal activ?, fallback vers texte uniquement");
@@ -482,6 +588,142 @@ impl AppIA {
         // 3. Fallback vers texte uniquement si multimodal ?choue
         log::warn!("[AppIA] Mod?les multimodaux ont ?chou?, fallback vers texte uniquement");
         self.predict(prompt).await
+    }
+
+    /// Génère des sous-titres au format SRT via l'orchestrateur IA
+    pub async fn generate_subtitles_srt(
+        &self,
+        product_name: &str,
+        outline: &[String],
+        lang: &str,
+        duration_seconds: u32,
+    ) -> AppResult<Option<String>> {
+        if outline.is_empty() {
+            return Ok(None);
+        }
+
+        let serialized_outline = outline
+            .iter()
+            .enumerate()
+            .map(|(i, line)| format!("{}\\. {}", i + 1, line))
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        let prompt = format!(
+            "Tu es l'assistant IA officiel de Yukpomnang. Génére des sous-titres professionnels en langue {lang} \
+pour la vidéo d'un produit nommé \"{product_name}\".\n\
+Durée approximative: {duration} secondes.\n\
+Réponds STRICTEMENT avec un JSON de la forme {{\"subtitles\":[{{\"start\":\"00:00:00,000\",\"end\":\"00:00:04,500\",\"text\":\"...\"}}, ...]}}.\n\
+Les timestamps doivent être au format HH:MM:SS,mmm (virgule comme séparateur millisecondes).\n\
+Voici l'outline chronologique des scènes:\n{outline}",
+            duration = duration_seconds,
+            outline = serialized_outline
+        );
+
+        let (_, response, _) = self.predict(&prompt).await?;
+        let json_block = extract_json_block(&response).ok_or_else(|| {
+            AppError::Internal("Réponse IA sous-titres invalide (JSON manquant)".to_string())
+        })?;
+
+        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
+            AppError::Internal(format!(
+                "JSON sous-titres IA illisible: {err} - {json_block}"
+            ))
+        })?;
+
+        let subtitles = parsed
+            .get("subtitles")
+            .and_then(Value::as_array)
+            .ok_or_else(|| {
+                AppError::Internal("JSON sous-titres IA sans champ 'subtitles'".to_string())
+            })?;
+
+        if subtitles.is_empty() {
+            return Ok(None);
+        }
+
+        let mut srt = String::new();
+        for (idx, entry) in subtitles.iter().enumerate() {
+            let text = entry
+                .get("text")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .trim();
+            if text.is_empty() {
+                continue;
+            }
+
+            let start_seconds = parse_time_value(
+                entry.get("start"),
+                idx,
+                subtitles.len(),
+                duration_seconds as f32,
+            )?;
+            let end_seconds = parse_time_value(
+                entry.get("end"),
+                idx + 1,
+                subtitles.len(),
+                duration_seconds as f32,
+            )?;
+
+            srt.push_str(&format!(
+                "{}\n{} --> {}\n{}\n\n",
+                idx + 1,
+                format_timestamp(start_seconds),
+                format_timestamp(end_seconds),
+                text
+            ));
+        }
+
+        if srt.trim().is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(srt))
+    }
+
+    /// Génère une voix-off (base64 mp3) via l'orchestrateur IA
+    pub async fn generate_tts_audio(
+        &self,
+        script: &str,
+        lang: &str,
+    ) -> AppResult<Option<(Vec<u8>, String)>> {
+        if script.trim().is_empty() {
+            return Ok(None);
+        }
+
+        let prompt = format!(
+            "Tu es le moteur TTS neural officiel de Yukpomnang. Génère un JSON strict \
+{{\"audio_base64\":\"...\",\"format\":\"mp3\"}} contenant l'audio encodé en base64 (mp3 48kHz, voix naturelle, langue {lang}). \
+Ne retourne aucun autre texte. Texte à vocaliser:\n```{script}```"
+        );
+
+        let (_, response, _) = self.predict(&prompt).await?;
+        let json_block = match extract_json_block(&response) {
+            Some(block) => block,
+            None => return Ok(None),
+        };
+
+        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
+            AppError::Internal(format!("JSON TTS IA invalide: {err} - {json_block}"))
+        })?;
+
+        let audio_b64 = parsed
+            .get("audio_base64")
+            .and_then(Value::as_str)
+            .ok_or_else(|| AppError::Internal("Réponse TTS IA sans audio_base64".to_string()))?;
+
+        let format = parsed
+            .get("format")
+            .and_then(Value::as_str)
+            .unwrap_or("mp3")
+            .to_string();
+
+        let decoded = STANDARD
+            .decode(audio_b64.trim())
+            .map_err(|err| AppError::Internal(format!("Audio IA base64 invalide: {err}")))?;
+
+        Ok(Some((decoded, format)))
     }
 
     /// ?? V?rifie si un mod?le supporte le multimodal
@@ -607,6 +849,7 @@ impl AppIA {
             "gemini-pro" => self.call_gemini(model, prompt).await,
             "claude-3-5-sonnet" | "claude-3-sonnet" => self.call_anthropic(model, prompt).await,
             "mistral-large" => self.call_mistral(model, prompt).await,
+            "deepseek-chat" => self.call_deepseek(model, prompt).await,
             "ollama-mistral" | "ollama-llama2" => self.call_ollama(model, prompt).await,
             "cohere-command" => self.call_cohere(model, prompt).await,
             _ => Err("Mod?le non support?".into()),
@@ -778,6 +1021,91 @@ impl AppIA {
             let estimated = (prompt.len() / 4).max(10) + (content.len() / 4).max(5);
             log::warn!(
                 "[Mistral] Pas d'info usage, estimation: {} tokens",
+                estimated
+            );
+            estimated as u32
+        };
+
+        Ok((content.to_string(), tokens_used))
+    }
+
+    /// 🔁 Appel DeepSeek (API compatible OpenAI)
+    #[allow(dead_code)]
+    async fn call_deepseek(&self, model: &ModelConfig, prompt: &str) -> AppResult<(String, u32)> {
+        let base = model.base_url.trim_end_matches('/');
+        let url = format!("{}/chat/completions", base);
+
+        let payload = json!({
+            "model": model.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Tu es l'assistant DeepSeek optimisé pour Yukpo. Tu produis des réponses JSON strictement structurées selon les directives internes."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": model.temperature,
+            "max_tokens": model.max_tokens,
+            "top_p": model.top_p,
+            "frequency_penalty": model.frequency_penalty,
+            "presence_penalty": model.presence_penalty,
+            "stream": false
+        });
+
+        let response = self
+            .http
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", model.api_key))
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .timeout(Duration::from_secs(model.timeout))
+            .send()
+            .await
+            .map_err(|e| format!("DeepSeek API error: {}", e))?;
+
+        if !response.status().is_success() {
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(format!("DeepSeek API error: {}", error_text).into());
+        }
+
+        let body: Value = response
+            .json()
+            .await
+            .map_err(|e| format!("DeepSeek JSON parse error: {}", e))?;
+
+        let content = body["choices"][0]["message"]["content"]
+            .as_str()
+            .ok_or("DeepSeek response missing content")?;
+
+        let tokens_used = if let Some(usage) = body.get("usage") {
+            let prompt_tokens = usage
+                .get("prompt_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            let completion_tokens = usage
+                .get("completion_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            let total_tokens = usage
+                .get("total_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(prompt_tokens + completion_tokens);
+
+            log::info!(
+                "[DeepSeek] Tokens utilisés: prompt={}, completion={}, total={}",
+                prompt_tokens,
+                completion_tokens,
+                total_tokens
+            );
+
+            total_tokens as u32
+        } else {
+            let estimated = (prompt.len() / 4).max(10) + (content.len() / 4).max(5);
+            log::warn!(
+                "[DeepSeek] Pas d'info usage, estimation: {} tokens",
                 estimated
             );
             estimated as u32
@@ -1818,4 +2146,395 @@ impl AppIA {
             }
         }
     }
+
+    pub async fn generate_video_briefs(
+        &self,
+        request: &VideoBriefRequest,
+    ) -> AppResult<Vec<VideoBrief>> {
+        let highlights = if request.highlights.is_empty() {
+            "- Mettre en avant les points forts classiques (qualité, rapidité, garantie)"
+                .to_string()
+        } else {
+            request
+                .highlights
+                .iter()
+                .enumerate()
+                .map(|(idx, h)| format!("{}. {}", idx + 1, h))
+                .collect::<Vec<String>>()
+                .join("\n")
+        };
+
+        let variants = request.variant_count.clamp(1, 5);
+
+        let prompt = format!(
+            "Tu es le directeur marketing IA de Yukpomnang. Génère {variants} variantes pour une courte vidéo produit.
+Langue cible: {lang}.
+Réponds STRICTEMENT avec le JSON suivant :\n{{\n  \"variants\": [\n    {{\n      \"headline\": \"...\",\n      \"call_to_action\": \"...\",\n      \"script_outline\": [\"...\"],\n      \"hook\": \"...\",\n      \"voiceover\": \"...\",\n      \"hashtags\": [\"...\"]\n    }}\n  ]\n}}
+
+Contraintes : 4 à 6 éléments dans script_outline, CTA concret, hashtags (max 3) adaptés au canal, voix off <= 80 mots.
+
+Données produit:
+- Nom: {name}
+- Description: {description}
+- Prix: {price}
+- Promotion: {promotion}
+- Points forts:\n{highlights}
+- Audience cible: {audience}
+- Style attendu: {tone}",
+            variants = variants,
+            lang = request.lang,
+            name = request.product_name,
+            description = request.description.clone().unwrap_or_else(|| "Non renseignée".to_string()),
+            price = request.price.clone().unwrap_or_else(|| "Non communiqué".to_string()),
+            promotion = request.promotion.clone().unwrap_or_else(|| "Aucune".to_string()),
+            highlights = highlights,
+            audience = request
+                .target_audience
+                .clone()
+                .unwrap_or_else(|| "Audience générale Yukpomnang".to_string()),
+            tone = request.tone.clone().unwrap_or_else(|| "TikTok dynamique".to_string()),
+        );
+
+        let (_, response, _) = self.predict(&prompt).await?;
+        let json_block = extract_json_block(&response).ok_or_else(|| {
+            AppError::Internal("Réponse IA vidéo invalide (JSON manquant)".to_string())
+        })?;
+        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
+            AppError::Internal(format!("JSON vidéo IA illisible: {err} - {json_block}"))
+        })?;
+
+        let variants = parsed
+            .get("variants")
+            .and_then(Value::as_array)
+            .ok_or_else(|| AppError::Internal("JSON vidéo IA sans champ 'variants'".to_string()))?;
+
+        let mut results: Vec<VideoBrief> = Vec::new();
+        for entry in variants {
+            let mut brief = VideoBrief::default();
+            brief.headline = entry
+                .get("headline")
+                .and_then(Value::as_str)
+                .map(|s| s.trim().to_string());
+            brief.call_to_action = entry
+                .get("call_to_action")
+                .and_then(Value::as_str)
+                .map(|s| s.trim().to_string());
+            brief.hook = entry
+                .get("hook")
+                .and_then(Value::as_str)
+                .map(|s| s.trim().to_string());
+            brief.voiceover = entry
+                .get("voiceover")
+                .and_then(Value::as_str)
+                .map(|s| s.trim().to_string());
+            brief.hashtags = entry
+                .get("hashtags")
+                .and_then(Value::as_array)
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str())
+                        .map(|s| s.trim().to_string())
+                        .collect::<Vec<String>>()
+                })
+                .unwrap_or_default();
+            brief.script_outline = entry
+                .get("script_outline")
+                .and_then(Value::as_array)
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str())
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect::<Vec<String>>()
+                })
+                .unwrap_or_default();
+
+            if brief.script_outline.is_empty() && brief.headline.is_some() {
+                brief.script_outline = vec![
+                    format!("Hook: {}", brief.headline.clone().unwrap()),
+                    "Scene 2: Démonstration rapide".to_string(),
+                    "Scene 3: Preuve sociale / témoignage".to_string(),
+                    "Scene 4: CTA final".to_string(),
+                ];
+            }
+
+            results.push(brief);
+        }
+
+        Ok(results)
+    }
+
+    pub async fn generate_video_style(
+        &self,
+        request: &VideoStyleRequest,
+    ) -> AppResult<VideoStyleSuggestion> {
+        let highlights = if request.highlights.is_empty() {
+            "- Mettre en avant les bénéfices clés (qualité, disponibilité, rapidité)".to_string()
+        } else {
+            request
+                .highlights
+                .iter()
+                .map(|item| format!("- {item}"))
+                .collect::<Vec<String>>()
+                .join("\n")
+        };
+
+        let prompt = format!(
+            "Tu es le directeur artistique IA de Yukpomnang. Pour un format {channel}, propose une direction visuelle concise en JSON STRICT :\n{{\n  \"effects\": [\"...\"],\n  \"transitions\": [\"...\"],\n  \"color_palette\": \"...\",\n  \"overlay_tips\": [\"...\"],\n  \"music_hint\": \"...\"\n}}\n
+Contraintes : maximum 4 éléments dans effects/transitions/overlay_tips. Color_palette = 2-3 couleurs (hex ou noms). music_hint <= 15 mots.
+
+Données :\n- Produit : {product_type}\n- Ton : {tone}\n- Promotion : {promotion}\n- Points clés :\n{highlights}\n- Langue : {lang}",
+            channel = request.channel,
+            product_type = request.product_type.as_deref().unwrap_or("générique"),
+            tone = request.tone.as_deref().unwrap_or("TikTok dynamique"),
+            promotion = request.promotion.as_deref().unwrap_or("Aucune promotion"),
+            highlights = highlights,
+            lang = request.lang,
+        );
+
+        let (_, response, _) = self.predict(&prompt).await?;
+        let json_block = extract_json_block(&response).ok_or_else(|| {
+            AppError::Internal("Réponse IA style invalide (JSON manquant)".to_string())
+        })?;
+        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
+            AppError::Internal(format!("JSON style IA illisible: {err} - {json_block}"))
+        })?;
+
+        let mut suggestion = VideoStyleSuggestion::default();
+        suggestion.effects = parsed
+            .get("effects")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<String>>()
+            })
+            .unwrap_or_default();
+        suggestion.transitions = parsed
+            .get("transitions")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<String>>()
+            })
+            .unwrap_or_default();
+        suggestion.overlay_tips = parsed
+            .get("overlay_tips")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<String>>()
+            })
+            .unwrap_or_default();
+        suggestion.color_palette = parsed
+            .get("color_palette")
+            .and_then(Value::as_str)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        suggestion.music_hint = parsed
+            .get("music_hint")
+            .and_then(Value::as_str)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        Ok(suggestion)
+    }
+
+    pub async fn analyze_media(
+        &self,
+        request: &MediaAnalysisRequest,
+    ) -> AppResult<MediaAnalysisResult> {
+        let prompt = format!(
+            "Tu es l'expert vision IA de Yukpomnang. À partir des informations suivantes, déduis le ressenti visuel.
+Réponds STRICTEMENT avec :\n{{\n  \"dominant_colors\": [\"...\"],\n  \"detected_objects\": [\"...\"],\n  \"ambiance\": \"...\",\n  \"marketing_angle\": \"...\"\n}}
+
+Produit : {name}
+Description : {description}
+Tags : {tags}
+Langue : {lang}
+
+Contraintes :
+- dominant_colors : max 3 valeurs (palette hex ou nom).
+- detected_objects : liste de 3-5 éléments maximum.
+- ambiance : phrase <= 10 mots.
+- marketing_angle : phrase marketing <= 15 mots, orientée conversion.",
+            name = request.product_name,
+            description = request.description.clone().unwrap_or_else(|| "Non renseignée".to_string()),
+            tags = if request.media_tags.is_empty() {
+                "aucun tag fourni".to_string()
+            } else {
+                request.media_tags.join(", ")
+            },
+            lang = request.lang,
+        );
+
+        let (_, response, _) = self.predict(&prompt).await?;
+        let json_block = extract_json_block(&response)
+            .ok_or_else(|| AppError::Internal("Réponse IA analyse média invalide".to_string()))?;
+        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
+            AppError::Internal(format!(
+                "JSON analyse média illisible: {err} - {json_block}"
+            ))
+        })?;
+
+        let mut result = MediaAnalysisResult::default();
+        result.dominant_colors = parsed
+            .get("dominant_colors")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| s.trim().to_string())
+                    .collect::<Vec<String>>()
+            })
+            .unwrap_or_default();
+        result.detected_objects = parsed
+            .get("detected_objects")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| s.trim().to_string())
+                    .collect::<Vec<String>>()
+            })
+            .unwrap_or_default();
+        result.ambiance = parsed
+            .get("ambiance")
+            .and_then(Value::as_str)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        result.marketing_angle = parsed
+            .get("marketing_angle")
+            .and_then(Value::as_str)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        Ok(result)
+    }
+
+    pub async fn generate_distribution_plan(
+        &self,
+        request: &DistributionRequest,
+    ) -> AppResult<DistributionSuggestion> {
+        let channels = if request.channels.is_empty() {
+            "chat, product, instagram, youtube".to_string()
+        } else {
+            request.channels.join(", ")
+        };
+
+        let prompt = format!(
+            "Tu es le stratège diffusion de Yukpomnang. Produit un plan succinct en JSON STRICT :\n{{\n  \"summary\": \"...\",\n  \"hashtags\": [\"...\"],\n  \"schedule\": [\n    {{ \"channel\": \"...\", \"best_time\": \"...\", \"call_to_action\": \"...\" }}\n  ]\n}}
+Contraintes : summary <= 30 mots, hashtags max 5, best_time = format local (ex: "Lundi 18h"), call_to_action <= 12 mots.
+
+Produit : {product}
+Canaux : {channels}
+Audience : {audience}
+Angle marketing : {angle}
+Langue : {lang}",
+            product = request.product_name,
+            channels = channels,
+            audience = request
+                .target_audience
+                .clone()
+                .unwrap_or_else(|| "Audience générale Yukpomnang".to_string()),
+            angle = request
+                .marketing_angle
+                .clone()
+                .unwrap_or_else(|| "Mettre en avant la valeur et la confiance".to_string()),
+            lang = request.lang,
+        );
+
+        let (_, response, _) = self.predict(&prompt).await?;
+        let json_block = extract_json_block(&response)
+            .ok_or_else(|| AppError::Internal("Réponse IA diffusion invalide".to_string()))?;
+        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
+            AppError::Internal(format!("JSON diffusion IA illisible: {err} - {json_block}"))
+        })?;
+
+        let mut suggestion = DistributionSuggestion::default();
+        suggestion.summary = parsed
+            .get("summary")
+            .and_then(Value::as_str)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        suggestion.hashtags = parsed
+            .get("hashtags")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| s.trim().trim_start_matches('#').to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<String>>()
+            })
+            .unwrap_or_default();
+        suggestion.schedule = parsed
+            .get("schedule")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|item| {
+                        let channel = item.get("channel")?.as_str()?.trim().to_string();
+                        let best_time = item.get("best_time")?.as_str()?.trim().to_string();
+                        let call_to_action = item
+                            .get("call_to_action")
+                            .and_then(Value::as_str)
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| !s.is_empty());
+                        Some(DistributionScheduleItem {
+                            channel,
+                            best_time,
+                            call_to_action,
+                        })
+                    })
+                    .collect::<Vec<DistributionScheduleItem>>()
+            })
+            .unwrap_or_default();
+
+        Ok(suggestion)
+    }
+}
+
+fn extract_json_block(response: &str) -> Option<&str> {
+    let start = response.find('{')?;
+    let end = response.rfind('}')?;
+    (start < end).then_some(&response[start..=end])
+}
+
+fn parse_time_value(
+    value: Option<&Value>,
+    index: usize,
+    total: usize,
+    duration_seconds: f32,
+) -> AppResult<f32> {
+    if let Some(val) = value {
+        if let Some(s) = val.as_str() {
+            return parse_timestamp_string(s)
+                .ok_or_else(|| AppError::Internal(format!("Horodatage IA invalide: {}", s)));
+        } else if let Some(n) = val.as_f64() {
+            return Ok(n as f32);
+        }
+    }
+    let segment = duration_seconds / total.max(1) as f32;
+    Ok((index as f32 * segment).min(duration_seconds))
+}
+
+fn parse_timestamp_string(input: &str) -> Option<f32> {
+    let sanitized = input.trim().replace(',', ".");
+    let parts: Vec<&str> = sanitized.split(':').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+    let hours: f32 = parts[0].parse().ok()?;
+    let minutes: f32 = parts[1].parse().ok()?;
+    let seconds: f32 = parts[2].parse().ok()?;
+    Some(hours * 3600.0 + minutes * 60.0 + seconds)
 }

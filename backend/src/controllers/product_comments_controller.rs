@@ -12,7 +12,7 @@ use chrono::{DateTime, Utc};
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::{Row};
+use sqlx::Row;
 
 use crate::{
     middlewares::jwt::AuthenticatedUser,
@@ -149,19 +149,17 @@ pub async fn create_product_comment(
     }
 
     let reply_to_info = if let Some(parent_id) = payload.parent_comment_id {
-        let row = sqlx::query(
-            "SELECT service_id, user_id FROM product_comments WHERE id = $1",
-        )
-        .bind(parent_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|err| {
-            error!(
-                "[ProductComments] ❌ Erreur lors de la vérification du parent {}: {}",
-                parent_id, err
-            );
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+        let row = sqlx::query("SELECT service_id, user_id FROM product_comments WHERE id = $1")
+            .bind(parent_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|err| {
+                error!(
+                    "[ProductComments] ❌ Erreur lors de la vérification du parent {}: {}",
+                    parent_id, err
+                );
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
         match row {
             Some(parent) => {
@@ -390,19 +388,18 @@ pub async fn toggle_product_comment_reaction(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    let comment_row = sqlx::query(
-        "SELECT service_id FROM product_comments WHERE id = $1 AND is_deleted = FALSE",
-    )
-    .bind(comment_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|err| {
-        error!(
-            "[ProductComments] ❌ Erreur lors de la vérification du commentaire {}: {}",
-            comment_id, err
-        );
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let comment_row =
+        sqlx::query("SELECT service_id FROM product_comments WHERE id = $1 AND is_deleted = FALSE")
+            .bind(comment_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|err| {
+                error!(
+                    "[ProductComments] ❌ Erreur lors de la vérification du commentaire {}: {}",
+                    comment_id, err
+                );
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
     if comment_row.is_none() {
         return Err(StatusCode::NOT_FOUND);
@@ -644,10 +641,7 @@ async fn load_comments(
             for row in rows {
                 let cid: i32 = row.get("comment_id");
                 let reaction: String = row.get("reaction_type");
-                user_reaction_map
-                    .entry(cid)
-                    .or_default()
-                    .push(reaction);
+                user_reaction_map.entry(cid).or_default().push(reaction);
             }
         }
     }
@@ -666,18 +660,10 @@ async fn load_comments(
         comment_map.insert(id, comment);
     }
 
-    root_ids.sort_by(|a, b| {
-        created_at_map
-            .get(a)
-            .cmp(&created_at_map.get(b))
-    });
+    root_ids.sort_by(|a, b| created_at_map.get(a).cmp(&created_at_map.get(b)));
 
     for children in children_map.values_mut() {
-        children.sort_by(|a, b| {
-            created_at_map
-                .get(a)
-                .cmp(&created_at_map.get(b))
-        });
+        children.sort_by(|a, b| created_at_map.get(a).cmp(&created_at_map.get(b)));
     }
 
     let mut comments = Vec::new();
@@ -736,10 +722,11 @@ fn build_comment_tree(
 }
 
 async fn fetch_display_name(pool: &sqlx::PgPool, user_id: i32) -> Result<String, sqlx::Error> {
-    let row = sqlx::query("SELECT COALESCE(nom_complet, email) AS display_name FROM users WHERE id = $1")
-        .bind(user_id)
-        .fetch_one(pool)
-        .await?;
+    let row =
+        sqlx::query("SELECT COALESCE(nom_complet, email) AS display_name FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(pool)
+            .await?;
     Ok(row.get("display_name"))
 }
 
@@ -803,5 +790,3 @@ fn normalize_mentions(mentions: Option<Vec<i32>>, exclude_id: i32) -> Vec<i32> {
     }
     set.into_iter().collect()
 }
-
-

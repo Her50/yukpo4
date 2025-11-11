@@ -1,0 +1,131 @@
+use std::sync::Arc;
+
+use axum::{
+    extract::{Path, State},
+    Extension, Json,
+};
+use log::{error, info, warn};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use uuid::Uuid;
+
+use crate::{
+    core::types::{AppError, AppResult},
+    middlewares::jwt::AuthenticatedUser,
+    services::video_generation_service::{
+        estimate_video_cost, generate_product_video, VideoGenerationPayload, VideoGenerationResult,
+    },
+    services::video_job_service::VideoGenerationJob,
+    state::AppState,
+};
+
+#[derive(Debug, Deserialize)]
+pub struct ProductVideoPath(usize);
+
+#[derive(Debug, Serialize)]
+pub struct StartVideoGenerationResponse {
+    pub job_id: Uuid,
+    pub status: &'static str,
+}
+
+/// Crée une vidéo marketing pour un produit spécifique et l'enregistre dans la médiathèque.
+pub async fn generate_video_for_product(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((service_id, product_index)): Path<(i32, i32)>,
+    Json(payload): Json<VideoGenerationPayload>,
+) -> AppResult<Json<StartVideoGenerationResponse>> {
+    info!(
+        "[ProductVideoController] Génération vidéo - user_id={}, service_id={}, product_index={}",
+        user.id, service_id, product_index
+    );
+
+    let job_id = state
+        .video_jobs
+        .create_job(user.id, service_id, product_index)
+        .await?;
+
+    state.video_jobs.mark_running(job_id).await?;
+
+    let state_clone = state.clone();
+    let user_clone = user.clone();
+    let payload_clone = payload.clone();
+
+    tokio::spawn(async move {
+        match generate_product_video(
+            state_clone.clone(),
+            &user_clone,
+            service_id,
+            product_index,
+            payload_clone,
+            Some(job_id),
+        )
+        .await
+        {
+            Ok(result) => {
+                let steps = result.progress_steps.clone();
+                let result_json = serde_json::to_value(&result).unwrap_or_else(|_| json!({}));
+                if let Err(err) = state_clone
+                    .video_jobs
+                    .mark_completed(job_id, result.media_id, &steps, &result_json)
+                    .await
+                {
+                    warn!(
+                        "[ProductVideoController] Impossible de marquer le job {} comme terminé: {}",
+                        job_id, err
+                    );
+                }
+            }
+            Err(err) => {
+                if let Err(mark_err) = state_clone
+                    .video_jobs
+                    .mark_failed(job_id, &err.to_string(), None)
+                    .await
+                {
+                    warn!(
+                        "[ProductVideoController] Impossible de marquer le job {} comme échoué: {}",
+                        job_id, mark_err
+                    );
+                }
+                error!(
+                    "[ProductVideoController] Erreur génération vidéo pour job {}: {:?}",
+                    job_id, err
+                );
+            }
+        }
+    });
+
+    Ok(Json(StartVideoGenerationResponse {
+        job_id,
+        status: "running",
+    }))
+}
+
+/// Estime le coût de génération d'une vidéo immersive sans lancer le rendu.
+pub async fn estimate_video_cost_for_product(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((service_id, product_index)): Path<(i32, i32)>,
+    Json(payload): Json<VideoGenerationPayload>,
+) -> AppResult<Json<crate::services::cost_service::CostEstimation>> {
+    info!(
+        "[ProductVideoController] Estimation coût vidéo - user_id={}, service_id={}, product_index={}",
+        user.id, service_id, product_index
+    );
+
+    let estimation = estimate_video_cost(state, &user, service_id, product_index, payload).await?;
+    Ok(Json(estimation))
+}
+
+pub async fn get_video_generation_job_status(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<Uuid>,
+) -> AppResult<Json<VideoGenerationJob>> {
+    let job = state
+        .video_jobs
+        .get_job(job_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Job de génération introuvable".to_string()))?;
+
+    Ok(Json(job))
+}

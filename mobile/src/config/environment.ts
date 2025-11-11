@@ -11,6 +11,7 @@ export const ENVIRONMENT = {
     // Pour développement local: http://localhost:3000
     // Pour autre serveur: définir EXPO_PUBLIC_API_BASE_URL dans .env
     API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpomnang.onrender.com',
+    UPLOAD_BASE_URL: process.env.EXPO_PUBLIC_UPLOAD_BASE_URL || process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpomnang.onrender.com',
 
     // Environnement (development, production, staging)
     ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'production',
@@ -82,6 +83,7 @@ export const config = {
     ENVIRONMENT: ENVIRONMENT.ENVIRONMENT,
     GOOGLE_TRANSLATE_API_KEY: ENVIRONMENT.GOOGLE_TRANSLATE_API_KEY,
     GOOGLE_MAPS_API_KEY: ENVIRONMENT.GOOGLE_MAPS_API_KEY,
+    UPLOAD_BASE_URL: ENVIRONMENT.UPLOAD_BASE_URL,
 };
 
 export default ENVIRONMENT;

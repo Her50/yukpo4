@@ -16,6 +16,8 @@ use tokio::io::AsyncReadExt;
 use crate::models::input_model::MultiModalInput;
 use crate::{
     controllers::{
+        audio_library_controller,
+        ia_controller,
         intelligent_service_controller::{
             get_services_pending_processing, process_services_intelligently,
             reactivate_service_intelligent,
@@ -24,32 +26,43 @@ use crate::{
             get_service_interactions, get_service_reviews, get_service_score, get_service_stats,
             post_audio, post_call, post_message, post_review, post_review_helpful, post_share,
         },
+        media_analytics_controller,
+        places_controller, // ✅ NOUVEAU 2025-11-02
+        product_addition_controller::add_product_to_service, // ✅ NOUVEAU 2025-11-01
         product_comments_controller::{
             create_product_comment, delete_product_comment, get_product_comments,
             toggle_product_comment_reaction, update_product_comment,
         },
-        places_controller, // ✅ NOUVEAU 2025-11-02
-        product_addition_controller::add_product_to_service, // ✅ NOUVEAU 2025-11-01
         product_lifecycle_controller::{deactivate_product, reactivate_product}, // ✅ NOUVEAU 2025-11-01
+        product_video_controller,
         service_controller::{
             get_my_services, get_service_by_id, get_services_for_prestataire, modifier_service,
             supprimer_service, toggle_service_status,
         },
+        social_connector_controller,
     },
     core::types::{AppError, AppResult},
     middlewares::{
-        audit_log, check_tokens::check_tokens, hide_headers,
+        audit_log,
+        check_tokens::check_tokens,
+        hide_headers,
         jwt::{jwt_auth, optional_jwt_auth},
-        monitoring, rate_limit, request_size_limit, service_interaction::track_service_interaction,
+        monitoring, rate_limit, request_size_limit,
+        service_interaction::track_service_interaction,
     },
     routers::router_modalities,
     routes::products_management::{delete_product, update_product},
     routes::{
-        ai_chat_routes::ai_chat_routes, appliance_model_routes::appliance_model_routes,
-        diagnostic_routes::diagnostic_routes, health_structure_routes::health_structure_routes,
-        nearby_services_routes::nearby_services_routes, phone_model_routes::phone_model_routes,
-        places_routes::autocomplete_places, popular_products_routes::popular_products_routes,
-        recommendation_routes::recommendation_routes, vehicle_model_routes::vehicle_model_routes,
+        ai_chat_routes::ai_chat_routes,
+        appliance_model_routes::appliance_model_routes,
+        diagnostic_routes::diagnostic_routes,
+        health_structure_routes::health_structure_routes,
+        nearby_services_routes::nearby_services_routes,
+        phone_model_routes::phone_model_routes,
+        places_routes::{autocomplete_places, fetch_place_photo},
+        popular_products_routes::popular_products_routes,
+        recommendation_routes::recommendation_routes,
+        vehicle_model_routes::vehicle_model_routes,
         weather_routes::weather_routes,
     },
     services::creer_service,
@@ -85,6 +98,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/places/enrich",
             get(places_controller::enrich_location),
         )
+        .route("/api/places/photo", get(fetch_place_photo))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))
         .layer(axum::middleware::from_fn(rate_limit::rate_limit))
@@ -109,6 +123,37 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 check_tokens,
             )),
         )
+        .route(
+            "/api/ia/generate-subtitles",
+            post(ia_controller::generate_video_subtitles)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        .route(
+            "/api/ia/tts",
+            post(ia_controller::generate_tts_voice)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        .route(
+            "/api/ia/video-brief",
+            post(ia_controller::generate_video_brief)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        .route(
+            "/api/ia/video-style",
+            post(ia_controller::generate_video_style)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        .route(
+            "/api/ia/media-analysis",
+            post(ia_controller::analyze_media_tags)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        .route(
+            "/api/ia/distribution-plan",
+            post(ia_controller::generate_distribution_plan)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        .layer(axum::middleware::from_fn(jwt_auth))
         .route(
             "/api/search/direct",
             post(handle_direct_search).layer(axum::middleware::from_fn_with_state(
@@ -249,6 +294,52 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(reactivate_product),
         )
         .route("/api/products/{product_id}", delete(delete_product))
+        .route(
+            "/api/media/{media_id}/track-view",
+            post(media_analytics_controller::track_view)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        .route(
+            "/api/media/{media_id}/track-share",
+            post(media_analytics_controller::track_share)
+                .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        .route(
+            "/api/media/{media_id}/distribution/{target}",
+            patch(media_analytics_controller::update_distribution)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/media/quality",
+            get(media_analytics_controller::list_quality_scores)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/media/analytics/overview",
+            get(media_analytics_controller::video_overview)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/audio-library",
+            get(audio_library_controller::get_audio_library),
+        )
+        .route(
+            "/api/audio-library/{loop_id}/attach/{service_id}",
+            post(audio_library_controller::attach_audio_loop)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/media/product/{service_id}/{product_index}/generate-video",
+            post(product_video_controller::generate_video_for_product),
+        )
+        .route(
+            "/api/media/product/{service_id}/{product_index}/estimate-video",
+            post(product_video_controller::estimate_video_cost_for_product),
+        )
+        .route(
+            "/api/media/jobs/{job_id}",
+            get(product_video_controller::get_video_generation_job_status),
+        )
         // Route pour r?cup?rer un service par ID (public)
         .route("/api/services/{service_id}", get(get_service_by_id))
         // Route pour récupérer les médias d'un service
@@ -288,8 +379,38 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             request_size_limit::request_size_limit,
         ));
 
-    // Routes publiques pour les APIs mobiles
-    let mobile_routes = Router::<Arc<AppState>>::new()
+    let social = Router::new()
+        .route(
+            "/api/social/accounts",
+            get(social_connector_controller::get_accounts),
+        )
+        .route(
+            "/api/social/accounts",
+            post(social_connector_controller::connect_account),
+        )
+        .route(
+            "/api/social/youtube/authorize",
+            get(social_connector_controller::youtube_authorize),
+        )
+        .route(
+            "/api/social/youtube/callback",
+            get(social_connector_controller::youtube_callback),
+        )
+        .route(
+            "/api/social/instagram/authorize",
+            get(social_connector_controller::instagram_authorize),
+        )
+        .route(
+            "/api/social/instagram/callback",
+            get(social_connector_controller::instagram_callback),
+        )
+        .layer(axum::middleware::from_fn(jwt_auth));
+
+    let app = Router::new()
+        .route(
+            "/",
+            get(|| async { "Yukpomnang Backend API - Service actif" }),
+        )
         .merge(weather_routes(state.clone()))
         .merge(nearby_services_routes(state.clone()))
         .merge(ai_chat_routes(state.clone()))
@@ -383,7 +504,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Combinaison des routes
     public_routes
         .merge(protected_routes)
-        .merge(mobile_routes)
+        .merge(app)
         .merge(conversation_routes_merged)
         .merge(signalement_routes_merged)
         .merge(scheduling_search_routes_merged)
@@ -1230,7 +1351,7 @@ Format JSON attendu :
                     match crate::services::autocomplete_combinations_service::extract_combinations_from_ai_response(&data) {
                         Ok(seeds) => {
                             log::info!("[handle_creation_service_direct] ✅ {} seeds extraits", seeds.len());
-                            
+
                             // Sauvegarder les seeds immédiatement
                             match crate::services::autocomplete_combinations_service::save_ai_combinations_batch(
                                 &state.pg,
@@ -1244,19 +1365,19 @@ Format JSON attendu :
                                     log::warn!("[handle_creation_service_direct] Erreur sauvegarde seeds: {}", e);
                                 }
                             }
-                            
+
                             // Estimer le nombre total de combinaisons
                             match crate::services::exhaustive_combination_generator::ExhaustiveCombinationGenerator::from_ia_response(&data) {
                                 Ok(generator) => {
                                     let estimated_total = generator.estimate_total_combinations();
                                     let estimated_time = crate::services::background_combination_generator::estimate_generation_time(estimated_total);
-                                    
+
                                     log::info!(
                                         "[handle_creation_service_direct] Estimation: {} combinaisons (~{} secondes)",
                                         estimated_total,
                                         estimated_time
                                     );
-                                    
+
                                     combination_info = json!({
                                         "status": "in_progress",
                                         "seeds_count": seeds.len(),
@@ -1264,15 +1385,15 @@ Format JSON attendu :
                                         "estimated_time_seconds": estimated_time,
                                         "progress_endpoint": format!("/api/combinations/progress/{}", session_id)
                                     });
-                                    
+
                                     // 🚀 LANCER LA GÉNÉRATION EN BACKGROUND (non-bloquant)
                                     let state_clone = state.clone();
                                     let data_clone = data.clone();
                                     let session_id_clone = session_id.clone();
-                                    
+
                                     tokio::spawn(async move {
                                         log::info!("[Background] 🚀 Task de génération lancée pour session {}", session_id_clone);
-                                        
+
                                         if let Err(e) = crate::services::background_combination_generator::generate_all_combinations_background(
                                             state_clone,
                                             data_clone,
@@ -1283,7 +1404,7 @@ Format JSON attendu :
                                             log::info!("[Background] ✅ Génération terminée pour session {}", session_id_clone);
                                         }
                                     });
-                                    
+
                                     log::info!("[handle_creation_service_direct] 🚀 Génération background lancée");
                                 }
                                 Err(e) => {

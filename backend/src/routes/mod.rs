@@ -4,8 +4,11 @@ pub mod auth_routes;
 pub mod autocomplete_routes; // ✅ NOUVEAU: Routes pour autocomplete characteristics
 pub mod chat_routes; // ✅ NOUVEAU: Routes de chat avec push notifications
 pub mod combination_routes; // ✅ NOUVEAU 2025-11-03: Routes pour progression génération combinaisons
+pub mod content_routes; // ✅ NOUVEAU: Routes pour engagement contenu mixte
 pub mod conversation_routes; // ✅ NOUVEAU: Routes pour @mentions et multi-participants
 pub mod debug_routes;
+pub mod delivery_metrics_routes;
+pub mod delivery_routes;
 pub mod diagnostic_routes; // ✅ NOUVEAU 2025-11-04: Routes de diagnostic de la base de données
 pub mod echange_routes;
 pub mod embedding_routes; // ✅ Routes pour embeddings
@@ -14,7 +17,10 @@ pub mod health_structure_routes;
 pub mod history_routes;
 pub mod ia_routes;
 pub mod image_search_routes;
+pub mod live_ai_routes;
+pub mod live_routes;
 pub mod media_routes;
+pub mod metrics_routes;
 pub mod nearby_services_routes;
 pub mod notification_routes; // ✅ Routes de notifications
 pub mod payment_routes;
@@ -32,7 +38,9 @@ pub mod scheduling_search_routes; // ✅ NOUVEAU: Routes pour recherche avec pla
 pub mod search_history_routes; // ✅ NOUVEAU: Routes pour historique de recherche
 pub mod service_routes;
 pub mod service_team_routes; // ✅ NOUVEAU: Routes pour gestion d'équipe des services
+pub mod shopping_routes;
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
+pub mod system_health_routes;
 pub mod token_pack_routes;
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens
 pub mod user_routes;

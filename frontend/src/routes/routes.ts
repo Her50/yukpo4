@@ -4,17 +4,18 @@ import React from 'react';
 // ✅ Composants associés à certaines routes
 import AdminAccessAudit from '@/pages/admin/AdminAccessAudit';
 import ApiDashboardPage from '@/pages/ApiDashboardPage';
-import SingleServicePage from '@/pages/SingleServicePage';
+import CataloguePage from '@/pages/CataloguePage';
 import MesOpportunitesPage from '@/pages/dashboard/MesOpportunites';
 import MesServicesPage from '@/pages/dashboard/MesServices';
-import CataloguePage from '@/pages/CataloguePage';
+import SingleServicePage from '@/pages/SingleServicePage';
 
-import TranslateTestPanel from '@/pages/TranslateTestPanel';
-import TranslateTestAdmin from '@/pages/admin/TranslateTestAdmin';
-import ModerationPanel from '@/pages/admin/ModerationPanel';
 import LoadTestDashboard from '@/pages/admin/LoadTestDashboard';
-import PaiementPlanPage from '@/pages/PaiementPlanPage';
+import ModerationPanel from '@/pages/admin/ModerationPanel';
+import TranslateTestAdmin from '@/pages/admin/TranslateTestAdmin';
 import CreationService from '@/pages/CreationService'; // ✅ À ajouter en haut
+import PaiementPlanPage from '@/pages/PaiementPlanPage';
+import TranslateTestPanel from '@/pages/TranslateTestPanel';
+import ImmersiveVideoWizard from '@/pages/video/ImmersiveVideoWizard';
 
 
 export enum ROUTES {
@@ -48,8 +49,9 @@ export enum ROUTES {
   TICKET = "/ticket",
   UPGRADE = "/upgrade",
   USERINTERACTIONIACENTER = "/userinteractioniacenter",
-  USERSTATSIADASHBOARD = "/userstatsiadashboard",  
+  USERSTATSIADASHBOARD = "/userstatsiadashboard",
   SERVICE_CREATE = "/CreationService",
+  IMMERSIVE_VIDEO = "/immersive-video",
 
   // Admin
   ADMIN_AUDIT_ACCESS = "/admin/audit-access",
@@ -189,5 +191,12 @@ export const ROUTES_CONFIG: RouteMeta[] = [
     component: CreationService,
     plan: "free", // ou autre si tu veux limiter aux plans pro
   },
-  
+  {
+    label: "Studio Vidéo Immersif",
+    path: ROUTES.IMMERSIVE_VIDEO,
+    roles: ["user", "client", "admin"],
+    component: ImmersiveVideoWizard,
+    plan: "pro",
+  },
+
 ];

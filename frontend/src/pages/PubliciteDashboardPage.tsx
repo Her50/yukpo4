@@ -4,12 +4,15 @@ import {
     Calendar,
     DollarSign,
     Eye,
+    Film,
     Globe,
     MapPin,
     Megaphone,
     MousePointer,
     Package,
+    PlayCircle,
     Plus,
+    Sparkles,
     TrendingUp
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -31,6 +34,8 @@ interface PubliciteStats {
     produits_count: number;
     date_debut: string;
     date_fin: string;
+    videos_meta?: PubliciteVideoMeta[];
+    video_stats?: Record<string, any>;
 }
 
 interface GlobalStats {
@@ -39,7 +44,29 @@ interface GlobalStats {
     taux_conversion_moyen: number;
     budget_total_depense: number;
     publicites_actives: number;
+    video_summary: VideoSummary;
 }
+
+interface PubliciteVideoMeta {
+    format?: string | null;
+    source?: string | null;
+    duration_ms?: number | null;
+    ai_generated?: boolean | null;
+}
+
+interface VideoSummary {
+    views_by_format: Record<string, number>;
+    clicks_by_format: Record<string, number>;
+    ai_generated_videos: number;
+    manual_videos: number;
+}
+
+const defaultVideoSummary: VideoSummary = {
+    views_by_format: {},
+    clicks_by_format: {},
+    ai_generated_videos: 0,
+    manual_videos: 0,
+};
 
 const PubliciteDashboardPage: React.FC = () => {
     const navigate = useNavigate();
@@ -50,7 +77,8 @@ const PubliciteDashboardPage: React.FC = () => {
         total_clics: 0,
         taux_conversion_moyen: 0,
         budget_total_depense: 0,
-        publicites_actives: 0
+        publicites_actives: 0,
+        video_summary: defaultVideoSummary,
     });
 
     useEffect(() => {
@@ -63,8 +91,22 @@ const PubliciteDashboardPage: React.FC = () => {
             const response = await apiGet('/api/publicites/dashboard');
 
             if (response.success && response.data) {
-                setPublicites(response.data.publicites || []);
-                setGlobalStats(response.data.stats || globalStats);
+                const statsPayload = response.data.stats || {};
+                setGlobalStats({
+                    total_vues: statsPayload.total_vues ?? 0,
+                    total_clics: statsPayload.total_clics ?? 0,
+                    taux_conversion_moyen: statsPayload.taux_conversion_moyen ?? 0,
+                    budget_total_depense: statsPayload.budget_total_depense ?? 0,
+                    publicites_actives: statsPayload.publicites_actives ?? 0,
+                    video_summary: statsPayload.video_summary ?? defaultVideoSummary,
+                });
+
+                const pubsPayload: PubliciteStats[] = (response.data.publicites || []).map((pub: any) => ({
+                    ...pub,
+                    videos_meta: Array.isArray(pub.videos_meta) ? pub.videos_meta : [],
+                    video_stats: pub.video_stats || {},
+                }));
+                setPublicites(pubsPayload);
             }
 
             setLoading(false);
@@ -98,6 +140,119 @@ const PubliciteDashboardPage: React.FC = () => {
             default:
                 return status;
         }
+    };
+
+    const renderFormatBadges = (
+        data: Record<string, number>,
+        label: string,
+        options?: { compact?: boolean },
+    ) => {
+        const entries = Object.entries(data || {})
+            .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+            .slice(0, 3);
+
+        if (entries.length === 0) {
+            return null;
+        }
+
+        const compact = options?.compact;
+        const badgeClasses = compact
+            ? 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold'
+            : 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold';
+
+        return (
+            <div className={`flex flex-wrap gap-2 ${compact ? 'mt-2' : ''}`}>
+                {entries.map(([format, value]) => (
+                    <div key={`${label}_${format}`} className={badgeClasses}>
+                        <PlayCircle className={compact ? 'w-3 h-3' : 'w-4 h-4'} />
+                        <span>
+                            {label} {format.toUpperCase()} · {value}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    const renderVideoDetails = (pub: PubliciteStats) => {
+        const metas = Array.isArray(pub.videos_meta) ? pub.videos_meta : [];
+        const stats = pub.video_stats || {};
+        const views = stats.views || {};
+        const clicks = stats.clicks || {};
+
+        if (
+            metas.length === 0 &&
+            Object.keys(views).length === 0 &&
+            Object.keys(clicks).length === 0
+        ) {
+            return null;
+        }
+
+        return (
+            <div className="mt-4 pt-4 border-t border-dashed border-gray-200 space-y-3">
+                <h4 className="text-xs font-semibold text-gray-500 tracking-wide uppercase">
+                    Vidéos
+                </h4>
+
+                {metas.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                        {metas.slice(0, 4).map((meta, index) => {
+                            const format =
+                                typeof meta.format === 'string' && meta.format.trim().length > 0
+                                    ? meta.format.trim().toUpperCase()
+                                    : meta.ai_generated
+                                        ? 'SQUARE'
+                                        : 'VIDEO';
+                            const source =
+                                typeof meta.source === 'string' && meta.source.trim().length > 0
+                                    ? meta.source.trim().toUpperCase()
+                                    : meta.ai_generated
+                                        ? 'IA'
+                                        : 'MANUEL';
+
+                            const Icon = meta.ai_generated ? Sparkles : Film;
+                            const chipClasses = meta.ai_generated
+                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+
+                            return (
+                                <div
+                                    key={`${pub.id}_meta_${index}`}
+                                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${chipClasses}`}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    <span>
+                                        {format} · {source}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                        {metas.length > 4 && (
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold">
+                                <Plus className="w-4 h-4" />
+                                <span>+{metas.length - 4}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {Object.keys(views).length > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Eye className="w-4 h-4" />
+                        <span>Vues par format</span>
+                    </div>
+                )}
+                {renderFormatBadges(views, 'Vue', { compact: true })}
+
+                {Object.keys(clicks).length > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <MousePointer className="w-4 h-4" />
+                        <span>Clics par format</span>
+                    </div>
+                )}
+                {renderFormatBadges(clicks, 'Clic', { compact: true })}
+            </div>
+        );
     };
 
     if (loading) {
@@ -197,6 +352,42 @@ const PubliciteDashboardPage: React.FC = () => {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Résumé vidéos */}
+                <Card className="bg-white border-indigo-200 mb-8">
+                    <CardContent className="py-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-gray-900">Performance vidéo</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
+                                <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                                    <Sparkles className="w-6 h-6 text-indigo-600" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold text-gray-900">
+                                        {globalStats.video_summary.ai_generated_videos}
+                                    </p>
+                                    <p className="text-sm text-gray-600">Vidéos IA générées</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
+                                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                                    <Film className="w-6 h-6 text-emerald-600" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold text-gray-900">
+                                        {globalStats.video_summary.manual_videos}
+                                    </p>
+                                    <p className="text-sm text-gray-600">Vidéos importées</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {renderFormatBadges(globalStats.video_summary.views_by_format, 'Vues')}
+                        {renderFormatBadges(globalStats.video_summary.clicks_by_format, 'Clics')}
+                    </CardContent>
+                </Card>
 
                 {/* Liste des publicités */}
                 <Card>
@@ -334,6 +525,8 @@ const PubliciteDashboardPage: React.FC = () => {
                                                 Modifier
                                             </Button>
                                         </div>
+
+                                        {renderVideoDetails(pub)}
                                     </div>
                                 ))}
                             </div>

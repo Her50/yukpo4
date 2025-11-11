@@ -108,6 +108,7 @@ export const WS_ENDPOINTS = {
   NOTIFICATIONS: (userId: string | number) => `${WS_BASE_URL}/ws/notifications/${userId}`,
   STATUS: (userId: string | number) => `${WS_BASE_URL}/ws/status/${userId}`,
   PAYMENTS: (userId: string | number) => `${WS_BASE_URL}/ws/payments/${userId}`,
+  DELIVERY_TRACKING: (deliveryId: string | number) => `${WS_BASE_URL}/delivery/${deliveryId}/ws`,
 };
 
 // Helper pour construire une URL complète

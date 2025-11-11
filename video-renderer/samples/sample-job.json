@@ -1,0 +1,58 @@
+{
+    "fps": 30,
+    "width": 1080,
+    "height": 1920,
+    "scenes": [
+        {
+            "id": "intro",
+            "template": "IntroPulse",
+            "durationInFrames": 120,
+            "assets": {
+                "headline": "Yukpo Immersive Launch",
+                "subheadline": "Crée des vidéos TikTok-ready en quelques secondes"
+            },
+            "transition": {
+                "type": "orbit-3d",
+                "durationInFrames": 24
+            },
+            "colorGrade": {
+                "style": "cinematic",
+                "intensity": 0.65
+            }
+        },
+        {
+            "id": "product",
+            "template": "ProductShowcase",
+            "durationInFrames": 180,
+            "assets": {
+                "headline": "Pack Booster",
+                "body": "Templates Remotion + B-roll IA + Analytics + Audio premium"
+            },
+            "transition": {
+                "type": "parallax",
+                "durationInFrames": 18
+            },
+            "colorGrade": {
+                "style": "glow",
+                "intensity": 0.5
+            }
+        },
+        {
+            "id": "cta",
+            "template": "GlowCTA",
+            "durationInFrames": 120,
+            "assets": {
+                "headline": "Lance ta vidéo immersive Yukpo",
+                "subheadline": "Upload ton brief → Laisse la pipeline IA s’occuper du reste"
+            },
+            "transition": {
+                "type": "speed-ramp",
+                "durationInFrames": 30
+            },
+            "colorGrade": {
+                "style": "cinematic",
+                "intensity": 0.7
+            }
+        }
+    ]
+}

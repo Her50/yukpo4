@@ -1,5 +1,6 @@
 // ✅ Fonction utilitaire pour générer une route dynamique
 export const getServiceDetailRoute = (id: string | number): string => `/services/${id}`;
+export const getLiveViewRoute = (sessionId: string | number): string => `/live/${sessionId}`;
 
 // ✅ Constante globale des routes utilisées dans App.tsx
 export const ROUTES = {
@@ -14,6 +15,7 @@ export const ROUTES = {
   CREATION_SMART_SERVICE: "/creation-smart-service",
   FORMULAIRE_YUKPO_INTELLIGENT: "/formulaire-yukpo-intelligent",
   FORMULAIRE_SERVICE_MODERNE: "/formulaire-service-moderne",  // Nouvelle page moderne
+  IMMERSIVE_VIDEO_WIZARD: "/immersive-video",
 
   // 🔍 Recherche intelligente de service
   RECHERCHE_BESOIN: "/recherche-besoin",
@@ -32,9 +34,19 @@ export const ROUTES = {
   CONTACT: "/contact",
   ABOUT: "/about",
   ESPACE: "/espace",
+  LIVES: "/lives",
+  LIVE_GO_LIVE: "/live/go-live",
+  LIVE_VIEW: "/live/:sessionId",
   DASHBOARD_ADMIN_AUDIT: "/admin/audit",
   MES_SERVICES: "/dashboard/mes-services", // ✅ Correction : route complète pour correspondre à la configuration imbriquée
   DASHBOARD: "/dashboard",
   DASHBOARD_ADMIN_API: "/admin/api",
   PLANS: "/plans",
+  DELIVERY_HOME: "/delivery",
+  DELIVERY_SHOPPING_BASKET: "/delivery/shopping/basket",
+  DELIVERY_SHOPPING_BUDGET: "/delivery/shopping/budget",
+  DELIVERY_SHOPPING_PICKUP_DROP: "/delivery/shopping/pickup-drop",
+  DELIVERY_SHOPPING_SUMMARY: "/delivery/shopping/summary",
+  DELIVERY_TRACKING: "/delivery/:deliveryId/tracking",
+  DELIVERY_COURIER_DASHBOARD: "/delivery/:deliveryId/courier",
 } as const;

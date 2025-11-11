@@ -20,6 +20,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 // ✅ IMPORTS DIRECTS - Écrans principaux
 import HomeScreen from '../screens/HomeScreen';
 import MesInteractionsScreen from '../screens/MesInteractionsScreen';
+import MesServicesScreen from '../screens/MesServicesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 // ✅ IMPORTS DIRECTS - Écrans secondaires
@@ -35,7 +36,18 @@ import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
 import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
+import VideoAnalyticsScreen from '../screens/VideoAnalyticsScreen';
+import VideoFeedScreen from '../screens/VideoFeedScreen';
 import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
+import DeliveryHomeScreen from '../screens/delivery/DeliveryHomeScreen';
+import DeliveryShoppingTrackingScreen from '../screens/delivery/DeliveryShoppingTrackingScreen';
+import ShoppingBasketScreen from '../screens/delivery/ShoppingBasketScreen';
+import ShoppingBudgetScreen from '../screens/delivery/ShoppingBudgetScreen';
+import ShoppingPickupDropScreen from '../screens/delivery/ShoppingPickupDropScreen';
+import ShoppingSummaryScreen from '../screens/delivery/ShoppingSummaryScreen';
+import VideoCreationIntroScreen from '../screens/video/VideoCreationIntroScreen';
+import VideoCreationWizardScreen from '../screens/video/VideoCreationWizardScreen';
+import VideoGenerationResultScreen from '../screens/video/VideoGenerationResultScreen';
 
 markNavigatorSafeAreaHandled(HomeScreen as any);
 markNavigatorSafeAreaHandled(ContactScreen as any);
@@ -44,6 +56,7 @@ const LoginScreenWithSafeArea = withNavigatorSafeArea(LoginScreen);
 const RegisterScreenWithSafeArea = withNavigatorSafeArea(RegisterScreen);
 const HomeScreenWithSafeArea = withNavigatorSafeArea(HomeScreen);
 const MesInteractionsScreenWithSafeArea = withNavigatorSafeArea(MesInteractionsScreen);
+const MesServicesScreenWithSafeArea = withNavigatorSafeArea(MesServicesScreen);
 const ProfileScreenWithSafeArea = withNavigatorSafeArea(ProfileScreen);
 const MesProduitsScreenWithSafeArea = withNavigatorSafeArea(MesProduitsScreen);
 const ContactScreenWithSafeArea = withNavigatorSafeArea(ContactScreen);
@@ -58,9 +71,21 @@ const CreatePubliciteScreenWithSafeArea = withNavigatorSafeArea(CreatePubliciteS
 const PubliciteDashboardScreenWithSafeArea = withNavigatorSafeArea(PubliciteDashboardScreen);
 const SoldeDetailScreenWithSafeArea = withNavigatorSafeArea(SoldeDetailScreen);
 const YukpoServicePlaceholderScreenWithSafeArea = withNavigatorSafeArea(YukpoServicePlaceholderScreen);
+const VideoFeedScreenWithSafeArea = withNavigatorSafeArea(VideoFeedScreen);
+const VideoAnalyticsScreenWithSafeArea = withNavigatorSafeArea(VideoAnalyticsScreen);
+const VideoCreationIntroScreenWithSafeArea = withNavigatorSafeArea(VideoCreationIntroScreen);
+const VideoCreationWizardScreenWithSafeArea = withNavigatorSafeArea(VideoCreationWizardScreen);
+const VideoGenerationResultScreenWithSafeArea = withNavigatorSafeArea(VideoGenerationResultScreen);
+const DeliveryHomeScreenWithSafeArea = withNavigatorSafeArea(DeliveryHomeScreen);
+const ShoppingBasketScreenWithSafeArea = withNavigatorSafeArea(ShoppingBasketScreen);
+const ShoppingBudgetScreenWithSafeArea = withNavigatorSafeArea(ShoppingBudgetScreen);
+const ShoppingPickupDropScreenWithSafeArea = withNavigatorSafeArea(ShoppingPickupDropScreen);
+const ShoppingSummaryScreenWithSafeArea = withNavigatorSafeArea(ShoppingSummaryScreen);
+const DeliveryShoppingTrackingScreenWithSafeArea = withNavigatorSafeArea(DeliveryShoppingTrackingScreen);
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const DeliveryShoppingStack = createStackNavigator();
 
 // Composant de chargement
 const LoadingScreen = () => (
@@ -74,6 +99,7 @@ const LoadingScreen = () => (
 const TabIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focused }) => {
   const icons: { [key: string]: string } = {
     'home': '🏠',
+    'delivery': '🚚',
     'services': '🛍️',
     'dashboard': '📊',
     'history': '📋',
@@ -128,13 +154,47 @@ const MainStack = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreenWithSafeArea} options={{ tabBarLabel: 'Accueil' }} />
-      <Tab.Screen name="Services" component={MesProduitsScreenWithSafeArea} options={{
-        tabBarLabel: 'Mes Services',
-        title: 'Gestion Produits'
-      }} />
+      <Tab.Screen
+        name="Delivery"
+        component={DeliveryHomeScreenWithSafeArea}
+        options={{
+          tabBarLabel: 'Livraison',
+        }}
+      />
+      <Tab.Screen
+        name="Services"
+        component={MesProduitsScreenWithSafeArea}
+        options={{
+          tabBarLabel: 'Mes Services',
+          title: 'Mes Services',
+        }}
+      />
       <Tab.Screen name="History" component={MesInteractionsScreenWithSafeArea} options={{ tabBarLabel: 'Historique' }} />
       <Tab.Screen name="Profile" component={ProfileScreenWithSafeArea} options={{ tabBarLabel: 'Mon Compte' }} />
     </Tab.Navigator>
+  );
+};
+
+const DeliveryShoppingFlow = () => {
+  return (
+    <DeliveryShoppingStack.Navigator screenOptions={{ headerShown: false }}>
+      <DeliveryShoppingStack.Screen
+        name="ShoppingBasket"
+        component={ShoppingBasketScreenWithSafeArea}
+      />
+      <DeliveryShoppingStack.Screen
+        name="ShoppingBudget"
+        component={ShoppingBudgetScreenWithSafeArea}
+      />
+      <DeliveryShoppingStack.Screen
+        name="ShoppingPickupDrop"
+        component={ShoppingPickupDropScreenWithSafeArea}
+      />
+      <DeliveryShoppingStack.Screen
+        name="ShoppingSummary"
+        component={ShoppingSummaryScreenWithSafeArea}
+      />
+    </DeliveryShoppingStack.Navigator>
   );
 };
 
@@ -165,6 +225,17 @@ const SecondaryStack = () => {
         <Stack.Screen name="PubliciteDashboard" component={PubliciteDashboardScreenWithSafeArea} />
         <Stack.Screen name="SoldeDetail" component={SoldeDetailScreenWithSafeArea} />
         <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreenWithSafeArea} />
+        <Stack.Screen name="VideoFeed" component={VideoFeedScreenWithSafeArea} />
+        <Stack.Screen name="VideoAnalytics" component={VideoAnalyticsScreenWithSafeArea} />
+        <Stack.Screen name="VideoCreationIntro" component={VideoCreationIntroScreenWithSafeArea} />
+        <Stack.Screen name="VideoCreationWizard" component={VideoCreationWizardScreenWithSafeArea} />
+        <Stack.Screen name="VideoGenerationResult" component={VideoGenerationResultScreenWithSafeArea} />
+        <Stack.Screen name="DeliveryHome" component={DeliveryHomeScreenWithSafeArea} />
+        <Stack.Screen name="DeliveryShoppingFlow" component={DeliveryShoppingFlow} />
+        <Stack.Screen
+          name="DeliveryShoppingTracking"
+          component={DeliveryShoppingTrackingScreenWithSafeArea}
+        />
       </Stack.Navigator>
     </DeepLinkHandler>
   );

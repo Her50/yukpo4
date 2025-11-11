@@ -10,6 +10,7 @@ interface SearchHistory {
 interface UserBehavior {
     searchHistory: SearchHistory[];
     categoryPreferences: Record<string, number>; // catégorie -> nombre de recherches
+    livePreferences: Record<string, number>; // live_id -> poids d'intérêt
     lastUpdated: number;
 }
 
@@ -90,6 +91,7 @@ class UserBehaviorService {
         return {
             searchHistory: [],
             categoryPreferences: {},
+            livePreferences: {},
             lastUpdated: Date.now()
         };
     }
@@ -120,6 +122,39 @@ class UserBehaviorService {
             console.log('[UserBehavior] Comportement réinitialisé');
         } catch (error) {
             console.error('[UserBehavior] Erreur reset:', error);
+        }
+    }
+
+    async trackLiveInterest(liveId: string, event: 'reminder' | 'join' = 'reminder'): Promise<void> {
+        if (!liveId) {
+            return;
+        }
+        try {
+            const behavior = await this.getBehavior();
+            if (!behavior.livePreferences) {
+                behavior.livePreferences = {};
+            }
+            const weight = event === 'join' ? 2 : 1;
+            behavior.livePreferences[liveId] = (behavior.livePreferences[liveId] || 0) + weight;
+            behavior.lastUpdated = Date.now();
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(behavior));
+            console.log('[UserBehavior] Live interest enregistré:', { liveId, event });
+        } catch (error) {
+            console.error('[UserBehavior] Erreur tracking live:', error);
+        }
+    }
+
+    async getPreferredLives(limit: number = 5): Promise<string[]> {
+        try {
+            const behavior = await this.getBehavior();
+            const map = behavior.livePreferences || {};
+            return Object.entries(map)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, limit)
+                .map(([liveId]) => liveId);
+        } catch (error) {
+            console.error('[UserBehavior] Erreur préférences live:', error);
+            return [];
         }
     }
 

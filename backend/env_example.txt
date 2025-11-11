@@ -13,4 +13,43 @@ JWT_SECRET=your-jwt-secret-here
 PINECONE_API_KEY=your-pinecone-api-key-here
 PINECONE_INDEX=service-embeddings
 PINECONE_ENV=us-east-1-aws
-YUKPO_API_KEY=yukpo_embedding_key_2024 
+YUKPO_API_KEY=yukpo_embedding_key_2024
+
+# Vidéo immersive – coûts IA & conversions
+IA_COST_PER_1K_TOKENS_USD=0.015
+VIDEO_DEFAULT_TOKENS_ESTIMATE=2400
+VIDEO_TOKENS_PER_SLIDE_ESTIMATE=220
+VIDEO_AUDIO_MASTERING_COST_USD=0.8
+VIDEO_BROLL_AI_COST_USD=1.2
+USD_TO_FCFA_RATE=600
+USD_TO_EUR_RATE=0.92
+VIDEO_DEFAULT_USER_CURRENCY=XAF
+
+# Worker Remotion
+VIDEO_RENDERER_ENABLED=true
+VIDEO_RENDERER_PROJECT_ROOT=video-renderer
+VIDEO_RENDERER_NODE_BIN=node
+VIDEO_RENDERER_AUTO_BUILD=true
+VIDEO_RENDERER_ENABLE_GPU=false
+# VIDEO_RENDERER_CHROMIUM_EXECUTABLE=/usr/bin/chromium
+# VIDEO_RENDERER_BROWSER_DOWNLOAD_DIR=/tmp/remotion-chrome
+
+# Audio premium (désactiver si pas de clé valide)
+PREMIUM_AUDIO_ENABLED=false
+# PREMIUM_AUDIO_PROVIDER=dolby
+# PREMIUM_AUDIO_ENDPOINT=https://api.dolby.com/media
+# PREMIUM_AUDIO_API_KEY=your-dolby-key
+PREMIUM_AUDIO_POLL_INTERVAL_MS=3000
+
+# B-roll IA / stock
+# STOCK_VIDEO_API_URL=https://api.pexels.com/videos
+# STOCK_VIDEO_API_KEY=your-stock-key
+# RUNWAY_API_URL=https://api.runwayml.com
+# RUNWAY_API_KEY=your-runway-key
+# PIKA_API_URL=https://api.pika.art
+# PIKA_API_KEY=your-pika-key
+# SORA_API_URL=https://api.sora.openai.com
+# SORA_API_KEY=your-sora-key
+BROLL_DOWNLOAD_DIR=storage/broll
+BROLL_CACHE_ENABLED=true
+BROLL_CACHE_TTL_SECS=86400

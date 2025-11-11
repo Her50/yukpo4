@@ -14,6 +14,12 @@ export const WEBSOCKET_CONFIG = {
       }
       return WS_ENDPOINTS.STATUS(userId);
     },
+    deliveryTracking: (deliveryId: string | number) => {
+      if (import.meta.env.DEV) {
+        return `ws://localhost:3001/delivery/${deliveryId}/ws`;
+      }
+      return WS_ENDPOINTS.DELIVERY_TRACKING(deliveryId);
+    },
     notifications: (userId: number) => {
       if (import.meta.env.DEV) {
         return `ws://localhost:3001/ws/notifications/${userId}`;
@@ -128,6 +134,10 @@ export const WEBSOCKET_EVENTS = {
   USER_ONLINE: 'user_online',
   USER_OFFLINE: 'user_offline',
   USER_TYPING: 'user_typing',
+  DELIVERY_STATUS: 'delivery_status',
+  DELIVERY_LOCATION: 'delivery_location',
+  DELIVERY_PRICING: 'delivery_pricing',
+  SHOPPING_STATUS: 'shopping_status',
 
   // Événements système
   PING: 'ping',

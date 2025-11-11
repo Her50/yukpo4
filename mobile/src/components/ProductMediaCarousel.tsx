@@ -5,7 +5,7 @@
 
 import { ResizeMode, Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
     Image,
@@ -36,8 +36,9 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
 }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [playingVideoIndex, setPlayingVideoIndex] = useState<number | null>(null);
-    const [fullscreenMedia, setFullscreenMedia] = useState<string | null>(null);
+    const [fullscreenMedia, setFullscreenMedia] = useState<{ type: 'image' | 'video'; uri: string } | null>(null);
     const scrollViewRef = useRef<ScrollView>(null);
+    const fullscreenVideoRef = useRef<Video | null>(null);
 
     // Combiner toutes les médias avec priorité variantImage
     const allMedia: Array<{ type: 'image' | 'video'; uri: string; index: number }> = [];
@@ -47,17 +48,22 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         allMedia.push({ type: 'image', uri: variantImage, index: 0 });
     }
 
+    // Vidéos en priorité (DOIVENT apparaître au début du carrousel)
+    videos.forEach((vid) => {
+        if (vid) {
+            allMedia.push({ type: 'video', uri: vid, index: allMedia.length });
+        }
+    });
+
     // Images normales
-    images.forEach((img, idx) => {
+    images.forEach((img) => {
+        if (!img) {
+            return;
+        }
         // Éviter de dupliquer l'image de variation
         if (!variantImage || img !== variantImage) {
             allMedia.push({ type: 'image', uri: img, index: allMedia.length });
         }
-    });
-
-    // Vidéos
-    videos.forEach((vid, idx) => {
-        allMedia.push({ type: 'video', uri: vid, index: allMedia.length });
     });
 
     // Si pas de variantImage et pas d'images, utiliser la première image disponible
@@ -83,9 +89,28 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
     };
 
     const openFullscreen = (media: { type: 'image' | 'video'; uri: string }) => {
-        setFullscreenMedia(media.uri);
+        setPlayingVideoIndex(null);
+        setFullscreenMedia(media);
         onImagePress?.(media.type === 'image' ? 0 : -1);
     };
+
+    const closeFullscreen = async () => {
+        if (fullscreenVideoRef.current) {
+            try {
+                await fullscreenVideoRef.current.stopAsync();
+            } catch (error) {
+                console.warn('[ProductMediaCarousel] Erreur arrêt vidéo plein écran:', error);
+            }
+        }
+        setFullscreenMedia(null);
+    };
+
+    useEffect(() => {
+        // S'assurer que la vidéo plein écran démarre quand le modal s'ouvre
+        if (fullscreenMedia?.type === 'video' && fullscreenVideoRef.current) {
+            fullscreenVideoRef.current.playAsync().catch(() => undefined);
+        }
+    }, [fullscreenMedia]);
 
     if (allMedia.length === 0) {
         return (
@@ -141,6 +166,13 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                                         isMuted={false}
                                         useNativeControls
                                     />
+                                    <TouchableOpacity
+                                        style={styles.fullscreenButton}
+                                        onPress={() => openFullscreen(media)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <SafeIcon name="maximize" size={18} color="#FFF" />
+                                    </TouchableOpacity>
                                     {playingVideoIndex !== index && (
                                         <TouchableOpacity
                                             style={styles.playButton}
@@ -200,20 +232,33 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                     visible={!!fullscreenMedia}
                     transparent
                     animationType="fade"
-                    onRequestClose={() => setFullscreenMedia(null)}
+                    onRequestClose={closeFullscreen}
                 >
                     <View style={styles.fullscreenContainer}>
                         <TouchableOpacity
                             style={styles.closeFullscreenButton}
-                            onPress={() => setFullscreenMedia(null)}
+                            onPress={closeFullscreen}
                         >
                             <SafeIcon name="x" size={24} color="#FFF" />
                         </TouchableOpacity>
-                        <Image
-                            source={{ uri: fullscreenMedia }}
-                            style={styles.fullscreenImage}
-                            resizeMode="contain"
-                        />
+                        {fullscreenMedia.type === 'image' ? (
+                            <Image
+                                source={{ uri: fullscreenMedia.uri }}
+                                style={styles.fullscreenImage}
+                                resizeMode="contain"
+                            />
+                        ) : (
+                            <Video
+                                ref={(ref) => {
+                                    fullscreenVideoRef.current = ref;
+                                }}
+                                source={{ uri: fullscreenMedia.uri }}
+                                style={styles.fullscreenVideo}
+                                resizeMode={ResizeMode.CONTAIN}
+                                shouldPlay
+                                useNativeControls
+                            />
+                        )}
                     </View>
                 </Modal>
             )}
@@ -266,6 +311,15 @@ const styles = StyleSheet.create({
         height: 60,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    fullscreenButton: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
+        borderRadius: 18,
+        padding: 8,
+        zIndex: 6,
     },
     indicators: {
         position: 'absolute',
@@ -363,6 +417,11 @@ const styles = StyleSheet.create({
     fullscreenImage: {
         width: SCREEN_WIDTH,
         height: '100%',
+    },
+    fullscreenVideo: {
+        width: SCREEN_WIDTH,
+        height: SCREEN_WIDTH * 1.3,
+        maxHeight: '80%',
     },
 });
 

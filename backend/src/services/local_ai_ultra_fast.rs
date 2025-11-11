@@ -302,14 +302,14 @@ impl LocalAIUltraFast {
                 "vitesse_tarissement": "moyenne",
                 "gps": false
             }).to_string(),
-            
+
             ModelType::NeedSearch => json!({
                 "intention": "recherche_besoin",
                 "query_optimized": prompt,
                 "suggestions": ["suggestion 1", "suggestion 2"],
                 "filters": { "category": "auto", "price_range": "100-500" }
             }).to_string(),
-            
+
             _ => json!({
                 "intention": "classification",
                 "category": "general",

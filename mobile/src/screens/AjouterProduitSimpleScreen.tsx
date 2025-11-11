@@ -9,12 +9,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     Alert,
+    DeviceEventEmitter,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View
 } from 'react-native';
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
@@ -28,6 +28,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
+import { applyPriceVariantToProduits, extractPriceVariant } from '../utils/priceVariant';
 
 const AjouterProduitSimpleScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -172,8 +173,15 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const prix_produit = extractValue(suggestionData.prix_produit) || extractValue(suggestionData.prix) || '';
     const devise_produit = extractValue(suggestionData.devise_produit) || extractValue(suggestionData.devise) || 'XAF';
 
-    // ✅ Variabilité de prix
-    const variabilite_prix = extractValue(suggestionData.variabilite_prix) || extractValue(suggestionData.variation_prix) || extractValue(suggestionData.price_variant) || null;
+    // ✅ Variabilité de prix (normalisée, y compris si imbriquée dans produits)
+    const iaPriceVariant =
+        extractPriceVariant(suggestionData.variabilite_prix) ||
+        extractPriceVariant(suggestionData.variation_prix) ||
+        extractPriceVariant(suggestionData.price_variant) ||
+        extractPriceVariant(suggestionData.produits);
+    const prefillPriceVariant =
+        extractPriceVariant(prefill.variabilite_prix || prefill.price_variant) ||
+        extractPriceVariant(prefill.produits);
 
     // ✅ Caractéristiques autocomplete (avec sous_caracteristiques)
     const produits = extractValue(suggestionData.produits) || [];
@@ -190,20 +198,35 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         description_produit,
         prix_produit,
         devise_produit,
-        variabilite_prix: variabilite_prix ? 'OUI' : 'NON',
+        variabilite_prix: iaPriceVariant ? 'OUI' : 'NON',
         produits: produits.length || 0,
         lieu_produit: lieu_produit ? 'OUI' : 'NON'
     });
 
     const [primaryProductImage, setPrimaryProductImage] = useState<string | null>(initialProductImages[0] || null);
 
+    const initialPriceVariant = prefillPriceVariant || iaPriceVariant || null;
+    const variantCurrency = getCurrencyFromVariant(initialPriceVariant);
+
+    const initialCurrency = (
+        (typeof prefill.devise_produit === 'string' && prefill.devise_produit.trim().length > 0
+            ? prefill.devise_produit.trim().toUpperCase()
+            : undefined) ||
+        (typeof devise_produit === 'string' && devise_produit.trim().length > 0
+            ? String(devise_produit).trim().toUpperCase()
+            : undefined) ||
+        variantCurrency ||
+        'XAF'
+    );
+
     const initialFormValues = {
         nom_produit: prefill.nom_produit ?? nom_produit,
         categorie_produit: prefill.categorie_produit ?? categorie_produit,
         description_produit: prefill.description_produit ?? description_produit,
         prix_produit: prefill.prix_produit ?? prix_produit,
-        devise_produit: prefill.devise_produit ?? devise_produit,
-        variabilite_prix: prefill.variabilite_prix ?? prefill.price_variant ?? variabilite_prix,
+        devise_produit: initialCurrency,
+        variabilite_prix: initialPriceVariant,
+        price_variant: initialPriceVariant,
         produits: prefillProduits.length > 0 ? prefillProduits : suggestionProduits,
         sous_caracteristiques: prefill.sous_caracteristiques ?? sous_caracteristiques,
         lieu_produit: prefill.lieu_produit ?? lieu_produit,
@@ -223,6 +246,40 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             ? formValues.variabilite_prix
             : [];
     const hasExistingVariants = currentModalites.length > 0;
+    const variantCurrencyCurrent = getCurrencyFromVariant(formValues.variabilite_prix || formValues.price_variant || initialPriceVariant);
+    const modaliteCurrencies = currentModalites
+        .map((mod: any) => {
+            if (!mod || typeof mod !== 'object') {
+                return undefined;
+            }
+            if (typeof mod.devise === 'string' && mod.devise.trim().length > 0) {
+                return mod.devise.trim().toUpperCase();
+            }
+            if (typeof mod.currency === 'string' && mod.currency.trim().length > 0) {
+                return mod.currency.trim().toUpperCase();
+            }
+            return undefined;
+        })
+        .filter((currency?: string) => Boolean(currency)) as string[];
+
+    const defaultCurrencyPool = [
+        'XAF', 'XOF', 'USD', 'EUR', 'NGN', 'GHS', 'KES', 'TZS', 'UGX', 'RWF', 'BIF', 'CDF', 'ZMW', 'ZAR',
+        'MAD', 'DZD', 'TND', 'EGP', 'LYD', 'MUR', 'MGA', 'MZN', 'AOA', 'SCR', 'KMF', 'SOS', 'SDG', 'SSP',
+        'DJF', 'MRU', 'ERN', 'STN'
+    ];
+
+    const availableVariantCurrencies = Array.from(
+        new Set(
+            [
+                ...modaliteCurrencies,
+                variantCurrencyCurrent,
+                initialCurrency,
+                ...defaultCurrencyPool
+            ]
+                .filter((currency): currency is string => Boolean(currency))
+                .map((currency) => currency.toUpperCase())
+        )
+    );
 
     const toolbarTitle = isEditing
         ? 'Modifier un produit'
@@ -246,8 +303,111 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         ? (isEditing ? '⏳ Mise à jour...' : isDuplicate ? '⏳ Duplication...' : '⏳ Ajout en cours...')
         : (isEditing ? 'Enregistrer les modifications' : isDuplicate ? 'Dupliquer le produit' : 'Ajouter le produit');
 
+    const getCurrencyFromVariant = (variant: any): string | undefined => {
+        if (!variant) {
+            return undefined;
+        }
+
+        const modalitesSource = Array.isArray(variant?.modalites)
+            ? variant.modalites
+            : Array.isArray(variant)
+                ? variant
+                : Array.isArray(variant?.valeur?.modalites)
+                    ? variant.valeur.modalites
+                    : [];
+
+        for (const entry of modalitesSource) {
+            if (!entry || typeof entry !== 'object') {
+                continue;
+            }
+
+            const currencyRaw = typeof entry.devise === 'string' && entry.devise.trim().length > 0
+                ? entry.devise.trim()
+                : typeof entry.currency === 'string' && entry.currency.trim().length > 0
+                    ? entry.currency.trim()
+                    : undefined;
+
+            if (currencyRaw) {
+                return currencyRaw.toUpperCase();
+            }
+        }
+
+        return undefined;
+    };
+
     // Gérer changement de champ
     const handleFieldChange = (fieldName: string, value: any) => {
+        if (fieldName === 'produits') {
+            setFormValues((prev: any) => {
+                const normalizedPriceVariant = extractPriceVariant(
+                    value,
+                    value?.origine_champs || prev?.produits?.origine_champs
+                );
+
+                const nextState: Record<string, any> = {
+                    ...prev
+                };
+
+                if (normalizedPriceVariant) {
+                    nextState.variabilite_prix = normalizedPriceVariant;
+                    nextState.price_variant = normalizedPriceVariant;
+                    nextState.produits = applyPriceVariantToProduits(value, normalizedPriceVariant);
+                    const inferredCurrency = getCurrencyFromVariant(normalizedPriceVariant);
+                    if (inferredCurrency) {
+                        nextState.devise_produit = inferredCurrency;
+                        nextState.devise = inferredCurrency;
+                    }
+                } else {
+                    nextState.produits = applyPriceVariantToProduits(
+                        value,
+                        prev.variabilite_prix ? extractPriceVariant(prev.variabilite_prix) : null
+                    );
+
+                    if (!nextState.produits?.variation_prix && !nextState.produits?.variabilite_prix) {
+                        delete nextState.variabilite_prix;
+                        delete nextState.price_variant;
+                    }
+                }
+
+                return nextState;
+            });
+            return;
+        }
+
+        if (fieldName === 'variabilite_prix' || fieldName === 'price_variant') {
+            const normalizedPriceVariant = extractPriceVariant(value, value?.origine_champs || 'formulaire');
+            setFormValues((prev: any) => {
+                const nextState: Record<string, any> = {
+                    ...prev,
+                    [fieldName]: value
+                };
+
+                if (normalizedPriceVariant) {
+                    const existingProduits = prev.produits
+                        ? applyPriceVariantToProduits(prev.produits, normalizedPriceVariant)
+                        : undefined;
+
+                    if (existingProduits) {
+                        nextState.produits = existingProduits;
+                    }
+                    nextState.variabilite_prix = normalizedPriceVariant;
+                    nextState.price_variant = normalizedPriceVariant;
+                    const inferredCurrency = getCurrencyFromVariant(normalizedPriceVariant);
+                    if (inferredCurrency) {
+                        nextState.devise_produit = inferredCurrency;
+                        nextState.devise = inferredCurrency;
+                    }
+                } else if (prev.produits) {
+                    nextState.produits = applyPriceVariantToProduits(prev.produits, null);
+                    delete nextState.variabilite_prix;
+                    delete nextState.price_variant;
+                }
+
+                return nextState;
+            });
+            return;
+        }
+
         setFormValues((prev: any) => ({
             ...prev,
             [fieldName]: value
@@ -494,7 +654,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                             text: 'OK',
                                             onPress: () => {
                                                 // Retour vers gestion des services
-                                                navigation.goBack();
+                                                DeviceEventEmitter.emit('service:refresh');
+                                                (navigation as any).navigate('Main', { screen: 'Services' });
                                             }
                                         }
                                     ]
@@ -646,28 +807,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.fieldGroup}>
-                                    <Text style={styles.label}>Devise</Text>
-                                    <View style={styles.pickerContainer}>
-                                        {/* Simuler un select avec boutons */}
-                                        <View style={styles.deviseButtons}>
-                                            {['XAF', 'EUR', 'USD', 'GBP', 'CAD', 'CHF'].map((devise) => (
-                                                <TouchableOpacity
-                                                    key={devise}
-                                                    style={[
-                                                        styles.deviseButton,
-                                                        formValues.devise_produit === devise && styles.deviseButtonActive
-                                                    ]}
-                                                    onPress={() => handleFieldChange('devise_produit', devise)}
-                                                >
-                                                    <Text style={[
-                                                        styles.deviseButtonText,
-                                                        formValues.devise_produit === devise && styles.deviseButtonTextActive
-                                                    ]}>
-                                                        {devise}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
+                                    <Text style={styles.label}>Devise (automatique)</Text>
+                                    <View style={styles.autoCurrencyBadge}>
+                                        <SafeIcon name="info" size={14} color={modernColors.primary} />
+                                        <Text style={styles.autoCurrencyText}>
+                                            {(formValues.devise_produit || 'Auto')} — déterminée selon le lieu
+                                        </Text>
                                     </View>
                                 </View>
                             </>
@@ -699,7 +844,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         filtrable: true,
                                         origine_champs: 'formulaire'
                                     })}
-                                    defaultCurrency={formValues.devise_produit || 'XAF'}
+                                    defaultCurrency={formValues.devise_produit || variantCurrencyCurrent || initialCurrency}
+                                    availableCurrencies={availableVariantCurrencies}
                                     helperText="Modifiez les variations détectées par l’IA (prix, stock, image)."
                                     showEmptyStateDetails={false}
                                 />
@@ -802,33 +948,22 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.textSecondary,
     },
-    pickerContainer: {
-        marginTop: 4,
-    },
-    deviseButtons: {
+    autoCurrencyBadge: {
+        marginTop: 8,
         flexDirection: 'row',
-        flexWrap: 'wrap',
+        alignItems: 'center',
         gap: 8,
-    },
-    deviseButton: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 14,
         paddingVertical: 10,
-        borderRadius: 8,
-        backgroundColor: '#F3F4F6',
+        borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#CBD5F5',
+        backgroundColor: '#EEF2FF',
     },
-    deviseButtonActive: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
-    },
-    deviseButtonText: {
-        fontSize: 14,
+    autoCurrencyText: {
+        fontSize: 13,
         fontWeight: '600',
-        color: modernColors.text,
-    },
-    deviseButtonTextActive: {
-        color: '#FFFFFF',
+        color: '#312E81',
     },
     autoGrowingInput: {
         minHeight: 52,

@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 // ✅ CORRECTION: expo-video n'est pas installé, on le remplace par un placeholder
 // import { getThumbnailAsync } from 'expo-video';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -19,11 +19,15 @@ import {
 } from 'react-native';
 import { NativeButton, NativeCard, NativeInput } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
+import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
+import { config } from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { ManagedProduct } from '../types/ManagedProduct';
+import { GeneratedVideoResponse } from '../types/VideoGeneration';
 
 const { width } = Dimensions.get('window');
 
@@ -52,6 +56,115 @@ const EXCHANGE_RATES: { [key: string]: number } = {
 
 const PRICE_PER_DAY_FCFA = 500; // 500 FCFA par jour
 
+const buildMediaUrl = (path?: string | null): string | null => {
+    if (!path || typeof path !== 'string') {
+        return null;
+    }
+    const trimmed = path.trim();
+    if (trimmed.length === 0) {
+        return null;
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+        return trimmed;
+    }
+    const base = (config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+    if (!base) {
+        return null;
+    }
+    return `${base}/${trimmed.replace(/^\//, '')}`;
+};
+
+const stripDataUriPrefix = (value: string): string => value.replace(/^data:.*;base64,/, '');
+
+const looksLikeBase64Media = (value?: string | null): boolean => {
+    if (!value || typeof value !== 'string') {
+        return false;
+    }
+    const sanitized = value.replace(/\s/g, '');
+    if (sanitized.startsWith('data:')) {
+        return false;
+    }
+    return sanitized.length > 64 && /^[A-Za-z0-9+/=]+$/.test(sanitized);
+};
+
+const downloadAsBase64 = async (url: string, extension: string): Promise<string | null> => {
+    try {
+        const targetPath = `${FileSystem.cacheDirectory}publicite_media_${Date.now()}.${extension}`;
+        const download = await FileSystem.downloadAsync(url, targetPath);
+        const base64 = await FileSystem.readAsStringAsync(download.uri, { encoding: FileSystem.EncodingType.Base64 });
+        await FileSystem.deleteAsync(download.uri, { idempotent: true });
+        return base64;
+    } catch (error) {
+        console.error('[CreatePublicite] Conversion base64 impossible:', error);
+        return null;
+    }
+};
+
+const pickSquareVideoUrl = (result: GeneratedVideoResponse): string | null => {
+    const variants = Array.isArray(result.additional_outputs) ? result.additional_outputs : [];
+    const squareVariant = variants.find((variant) => {
+        const format = String((variant as any)?.format || '').toLowerCase();
+        return format.includes('square') || format.includes('1x1') || format.includes('feed');
+    });
+
+    const candidate =
+        (squareVariant as any)?.video_url ||
+        (squareVariant as any)?.path ||
+        result.video_url ||
+        null;
+
+    if (!candidate) {
+        return null;
+    }
+    return buildMediaUrl(candidate) || candidate;
+};
+
+const pickSquareThumbnail = async (
+    result: GeneratedVideoResponse,
+    product: ManagedProduct | null,
+): Promise<string | null> => {
+    const variants = Array.isArray(result.additional_outputs) ? result.additional_outputs : [];
+    const squareVariant = variants.find((variant) => {
+        const format = String((variant as any)?.format || '').toLowerCase();
+        return format.includes('square') || format.includes('1x1') || format.includes('feed');
+    });
+
+    if ((squareVariant as any)?.thumbnail_base64) {
+        return stripDataUriPrefix((squareVariant as any).thumbnail_base64);
+    }
+
+    if ((squareVariant as any)?.thumbnail_url) {
+        const url = buildMediaUrl((squareVariant as any).thumbnail_url) || (squareVariant as any).thumbnail_url;
+        if (url && url.startsWith('http')) {
+            const base64 = await downloadAsBase64(url, 'jpg');
+            if (base64) {
+                return base64;
+            }
+        }
+    }
+
+    if (product?.images && product.images.length > 0) {
+        const imageSource = product.images[0];
+        if (typeof imageSource === 'string' && imageSource.length > 0) {
+            if (imageSource.startsWith('data:image')) {
+                return stripDataUriPrefix(imageSource);
+            }
+            if (looksLikeBase64Media(imageSource)) {
+                return imageSource;
+            }
+            const remoteUrl = buildMediaUrl(imageSource) || imageSource;
+            if (remoteUrl && remoteUrl.startsWith('http')) {
+                const base64 = await downloadAsBase64(remoteUrl, 'jpg');
+                if (base64) {
+                    return base64;
+                }
+            }
+        }
+    }
+
+    return null;
+};
+
 const CreatePubliciteScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -62,10 +175,14 @@ const CreatePubliciteScreen: React.FC = () => {
     const publiciteId = (route.params as any)?.publiciteId;
     const relanceId = (route.params as any)?.relanceId;
     const mode = publiciteId ? 'edit' : relanceId ? 'relance' : 'create';
+    const isEditMode = mode === 'edit';
+    const isRelanceMode = mode === 'relance';
+    const isExistingMode = isEditMode || isRelanceMode;
+    const existingNoticeShownRef = useRef(false);
 
     const [loading, setLoading] = useState(false);
     const [mesServices, setMesServices] = useState<any[]>([]);
-    const [produitsList, setProduitsList] = useState<any[]>([]);
+    const [produitsList, setProduitsList] = useState<ManagedProduct[]>([]);
     const [selectedProduits, setSelectedProduits] = useState<string[]>([]);
     const [videos, setVideos] = useState<any[]>([]);
     const [titre, setTitre] = useState('');
@@ -74,6 +191,9 @@ const CreatePubliciteScreen: React.FC = () => {
     const [zoneGeographique, setZoneGeographique] = useState('local'); // local, regional, international
     const [coutEstime, setCoutEstime] = useState(0);
     const [userCurrency, setUserCurrency] = useState('FCFA');
+    const [videoCreatorVisible, setVideoCreatorVisible] = useState(false);
+    const [primaryProduct, setPrimaryProduct] = useState<ManagedProduct | null>(null);
+    const [isConvertingVideo, setIsConvertingVideo] = useState(false);
 
     // Charger les services et produits de l'utilisateur
     useEffect(() => {
@@ -81,12 +201,22 @@ const CreatePubliciteScreen: React.FC = () => {
         loadUserCurrency();
 
         // Si mode modification ou relance, charger les données de la publicité
-        if (mode === 'edit' && publiciteId) {
+        if (isEditMode && publiciteId) {
             loadPubliciteData(publiciteId);
-        } else if (mode === 'relance' && relanceId) {
+        } else if (isRelanceMode && relanceId) {
             loadPubliciteData(relanceId);
         }
     }, []);
+
+    useEffect(() => {
+        if (isExistingMode && !existingNoticeShownRef.current) {
+            existingNoticeShownRef.current = true;
+            Alert.alert(
+                'ℹ️ Yukpo IA',
+                'Les vidéos existantes ne sont pas rechargées automatiquement. Pensez à les importer à nouveau ou à générer une nouvelle version carrée avec Yukpo IA.',
+            );
+        }
+    }, [isExistingMode]);
 
     const loadUserCurrency = async () => {
         try {
@@ -133,17 +263,28 @@ const CreatePubliciteScreen: React.FC = () => {
                 setMesServices(response.data as any[]);
 
                 // Extraire tous les produits
-                const allProducts: any[] = [];
+                const allProducts: ManagedProduct[] = [];
                 (response.data as any[]).forEach((service: any) => {
                     if (service.data?.produits && Array.isArray(service.data.produits)) {
                         service.data.produits.forEach((product: any, index: number) => {
-                            allProducts.push({
-                                ...product,
+                            const normalized: ManagedProduct = {
                                 id: `${service.id}_${index}`,
+                                nom: product.nom || product.name || product.title || `Produit ${index + 1}`,
+                                type: product.type,
+                                prix: product.prix,
+                                devise: product.devise || service.data?.devise || 'FCFA',
+                                description: product.description,
                                 serviceId: service.id,
                                 serviceTitre: service.data?.titre_service?.valeur || service.titre || 'Service',
-                                productIndex: index
-                            });
+                                images: Array.isArray(product.images) ? product.images : [],
+                                videos: Array.isArray(product.videos) ? product.videos : [],
+                                product_index: index,
+                                category_key: product.category_key,
+                                category_label: product.category_label,
+                                rawProductId: product.id ?? product.productId,
+                                ...product,
+                            };
+                            allProducts.push(normalized);
                         });
                     }
                 });
@@ -202,12 +343,23 @@ const CreatePubliciteScreen: React.FC = () => {
                         encoding: FileSystem.EncodingType.Base64,
                     });
 
-                    setVideos([...videos, {
-                        uri: video.uri,
-                        base64: videoBase64,
-                        thumbnail: thumbnailBase64,
-                        duration: video.duration || 0
-                    }]);
+                    const durationSeconds = typeof video.duration === 'number' ? video.duration : 0;
+                    const durationMs = durationSeconds > 0 && durationSeconds < 1000
+                        ? Math.round(durationSeconds * 1000)
+                        : Math.round(durationSeconds);
+
+                    setVideos((prev) => [
+                        ...prev,
+                        {
+                            uri: video.uri,
+                            base64: videoBase64,
+                            thumbnail: thumbnailBase64,
+                            duration: durationMs,
+                            source: 'manual',
+                            format: 'video',
+                            ai_generated: false,
+                        },
+                    ]);
                 } catch (thumbError) {
                     console.error('Erreur génération miniature:', thumbError);
                     Alert.alert(t('message.error'), 'Impossible de générer la miniature de la vidéo');
@@ -298,6 +450,16 @@ const CreatePubliciteScreen: React.FC = () => {
                                     produits_indexes: selectedProduits,
                                     videos: videos.map(v => v.base64),
                                     thumbnails: videos.map(v => v.thumbnail),
+                                    videos_meta: videos.map((video) => ({
+                                        format: typeof video.format === 'string'
+                                            ? video.format
+                                            : (typeof video.source === 'string' && video.source.includes('ai') ? 'square' : undefined),
+                                        source: typeof video.source === 'string' ? video.source : undefined,
+                                        duration_ms: typeof video.duration === 'number' ? video.duration : undefined,
+                                        ai_generated: typeof video.ai_generated === 'boolean'
+                                            ? video.ai_generated
+                                            : (typeof video.source === 'string' && video.source.includes('ai')),
+                                    })),
                                     duree_jours: parseInt(duree),
                                     cout: coutEnFCFA, // Toujours en FCFA côté backend
                                     zone_geographique: zoneGeographique,
@@ -352,6 +514,88 @@ const CreatePubliciteScreen: React.FC = () => {
     const removeVideo = (index: number) => {
         setVideos(videos.filter((_, i) => i !== index));
     };
+
+    const openVideoCreator = () => {
+        if (produitsList.length === 0) {
+            Alert.alert(t('message.error'), 'Ajoutez au moins un produit pour générer une vidéo.');
+            return;
+        }
+
+        const preferredProduct =
+            produitsList.find((prod) => selectedProduits.includes(prod.id)) || produitsList[0];
+
+        setPrimaryProduct(preferredProduct || null);
+        setVideoCreatorVisible(true);
+    };
+
+    const handleVideoGenerationSuccess = async (result: GeneratedVideoResponse) => {
+        try {
+            setIsConvertingVideo(true);
+            const squareVideoUrl = pickSquareVideoUrl(result);
+
+            if (!squareVideoUrl) {
+                Alert.alert(t('message.error'), 'Impossible de récupérer la vidéo générée.');
+                return;
+            }
+
+            const normalizedVideoUrl =
+                squareVideoUrl.startsWith('data:')
+                    ? squareVideoUrl
+                    : buildMediaUrl(squareVideoUrl) || squareVideoUrl;
+
+            if (!normalizedVideoUrl || (!normalizedVideoUrl.startsWith('http') && !normalizedVideoUrl.startsWith('data:'))) {
+                Alert.alert(t('message.error'), 'Format de vidéo inattendu.');
+                return;
+            }
+
+            const videoBase64 = normalizedVideoUrl.startsWith('data:video')
+                ? stripDataUriPrefix(normalizedVideoUrl)
+                : await downloadAsBase64(normalizedVideoUrl, 'mp4');
+
+            if (!videoBase64) {
+                Alert.alert(t('message.error'), 'Conversion de la vidéo IA impossible.');
+                return;
+            }
+
+            const thumbnailBase64 =
+                (await pickSquareThumbnail(result, primaryProduct)) ||
+                (await pickSquareThumbnail(result, produitsList.find((prod) => selectedProduits.includes(prod.id)) || null)) ||
+                '';
+
+            const durationMs = (result.duration_seconds || 0) * 1000;
+
+            setVideos((prev) => [
+                ...prev,
+                {
+                    uri: normalizedVideoUrl,
+                    base64: videoBase64,
+                    thumbnail: thumbnailBase64,
+                    duration: durationMs,
+                    source: 'ai',
+                    format: 'square',
+                    ai_generated: true,
+                },
+            ]);
+
+            setVideoCreatorVisible(false);
+            Alert.alert('✅ Vidéo ajoutée', 'La vidéo carrée IA est prête pour votre publicité.');
+        } catch (error) {
+            console.error('[CreatePublicite] Erreur intégration vidéo IA:', error);
+            Alert.alert(t('message.error'), 'Impossible d’intégrer la vidéo générée.');
+        } finally {
+            setIsConvertingVideo(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedProduits.length === 0 || produitsList.length === 0) {
+            return;
+        }
+        const firstSelected = produitsList.find((prod) => selectedProduits.includes(prod.id));
+        if (firstSelected) {
+            setPrimaryProduct(firstSelected);
+        }
+    }, [selectedProduits, produitsList]);
 
     const getZoneLabel = (zone: string): string => {
         const labels: { [key: string]: string } = {
@@ -505,10 +749,41 @@ const CreatePubliciteScreen: React.FC = () => {
                     <Text style={styles.sectionTitle}>🎬 {t('publicite.videos')} ({videos.length})</Text>
                     <Text style={styles.sectionHint}>Maximum 30 secondes par vidéo</Text>
 
-                    <TouchableOpacity style={styles.addVideoButton} onPress={handleSelectVideo}>
+                    <TouchableOpacity
+                        style={[styles.addVideoButton, isConvertingVideo && styles.addVideoButtonDisabled]}
+                        onPress={handleSelectVideo}
+                        disabled={isConvertingVideo}
+                    >
                         <SafeIcon name="video" size={20} color={modernColors.primary} />
                         <Text style={styles.addVideoText}>Ajouter une vidéo</Text>
                     </TouchableOpacity>
+
+                    {isExistingMode && (
+                        <View style={styles.noticeRow}>
+                            <SafeIcon name="info" size={16} color={modernColors.primary} />
+                            <Text style={styles.noticeText}>
+                                Les vidéos ajoutées auparavant ne sont pas rechargées automatiquement. Importez-les à nouveau ou générez une nouvelle version carrée avec Yukpo IA.
+                            </Text>
+                        </View>
+                    )}
+
+                    <Text style={[styles.fieldHint, { marginTop: 12 }]}>
+                        ✨ Générer automatiquement une vidéo carrée optimisée grâce à Yukpo IA.
+                    </Text>
+                    <NativeButton
+                        title={isConvertingVideo ? 'Génération IA en cours…' : '✨ Générer une vidéo carrée IA'}
+                        onPress={openVideoCreator}
+                        variant="secondary"
+                        size="medium"
+                        disabled={isConvertingVideo || produitsList.length === 0}
+                        style={styles.generateButton}
+                    />
+                    {isConvertingVideo && (
+                        <View style={styles.aiProgressRow}>
+                            <ActivityIndicator size="small" color={modernColors.primary} />
+                            <Text style={styles.aiProgressText}>Conversion du média IA…</Text>
+                        </View>
+                    )}
 
                     {videos.length > 0 && (
                         <View style={styles.videosGrid}>
@@ -578,6 +853,14 @@ const CreatePubliciteScreen: React.FC = () => {
 
                 <View style={{ height: 100 }} />
             </ScrollView>
+
+            <ProductVideoCreationModal
+                visible={videoCreatorVisible}
+                primaryProduct={primaryProduct}
+                products={produitsList}
+                onClose={() => setVideoCreatorVisible(false)}
+                onSuccess={handleVideoGenerationSuccess}
+            />
         </View>
     );
 };
@@ -784,10 +1067,41 @@ const styles = StyleSheet.create({
         borderColor: modernColors.border,
         backgroundColor: modernColors.surface,
     },
+    addVideoButtonDisabled: {
+        opacity: 0.6,
+    },
     addVideoText: {
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.primary,
+    },
+    noticeRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        marginTop: 12,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 10,
+        padding: 12,
+    },
+    noticeText: {
+        flex: 1,
+        fontSize: 12,
+        lineHeight: 16,
+        color: modernColors.textSecondary,
+    },
+    generateButton: {
+        marginTop: 12,
+    },
+    aiProgressRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 10,
+    },
+    aiProgressText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
     },
     videosGrid: {
         flexDirection: 'row',

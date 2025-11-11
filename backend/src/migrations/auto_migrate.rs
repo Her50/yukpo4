@@ -1,6 +1,511 @@
 // Module pour exécuter automatiquement les migrations au démarrage
+use chrono::Utc;
 use log::{error, info, warn};
+use serde_json::json;
 use sqlx::PgPool;
+use std::env;
+use uuid::Uuid;
+
+/// Vérifie et crée les tables media_engagement et media_distribution si elles n'existent pas
+pub async fn ensure_media_analytics_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables media_engagement & media_distribution...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS media_engagement (
+            id SERIAL PRIMARY KEY,
+            media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            event_type TEXT NOT NULL,
+            channel TEXT,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            session_id TEXT,
+            metadata JSONB,
+            occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum
+                WHERE enumlabel = 'shopping_in_progress' AND enumtypid = 'delivery_status'::regtype
+            ) THEN
+                ALTER TYPE delivery_status ADD VALUE 'shopping_in_progress';
+            END IF;
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum
+                WHERE enumlabel = 'shopping_completed' AND enumtypid = 'delivery_status'::regtype
+            ) THEN
+                ALTER TYPE delivery_status ADD VALUE 'shopping_completed';
+            END IF;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            CREATE TYPE shopping_status AS ENUM (
+                'pending',
+                'awaiting_purchase',
+                'shopping_in_progress',
+                'shopping_completed',
+                'checkout_submitted',
+                'cancelled'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            CREATE TYPE shopping_item_status AS ENUM (
+                'pending',
+                'purchased',
+                'missing',
+                'replaced'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_media_engagement_media ON media_engagement(media_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_media_engagement_event ON media_engagement(event_type)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_media_engagement_service ON media_engagement(service_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS media_distribution (
+            id SERIAL PRIMARY KEY,
+            media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            target TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'scheduled',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            metadata JSONB
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_media_distribution_media ON media_distribution(media_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_media_distribution_target ON media_distribution(target)",
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn ensure_video_generation_jobs_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table video_generation_jobs...");
+
+    sqlx::query(r#"CREATE EXTENSION IF NOT EXISTS "uuid-ossp""#)
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS video_generation_jobs (
+            job_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+            product_index INTEGER,
+            status TEXT NOT NULL DEFAULT 'queued',
+            progress_steps JSONB NOT NULL DEFAULT '[]'::jsonb,
+            result_media_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+            result_payload JSONB,
+            error_message TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "ALTER TABLE video_generation_jobs
+         ADD COLUMN IF NOT EXISTS result_payload JSONB",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_user ON video_generation_jobs(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_service ON video_generation_jobs(service_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_status ON video_generation_jobs(status)",
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn ensure_user_token_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des colonnes tokens/utilisateurs...");
+
+    sqlx::query(
+        r#"ALTER TABLE users
+           ADD COLUMN IF NOT EXISTS tokens_balance BIGINT NOT NULL DEFAULT 0"#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"ALTER TABLE users
+           ADD COLUMN IF NOT EXISTS token_price_user DOUBLE PRECISION NOT NULL DEFAULT 1.0"#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"ALTER TABLE users
+           ADD COLUMN IF NOT EXISTS token_price_provider DOUBLE PRECISION NOT NULL DEFAULT 1.0"#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"ALTER TABLE users
+           ADD COLUMN IF NOT EXISTS commission_pct REAL NOT NULL DEFAULT 0.0"#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"ALTER TABLE users
+           ADD COLUMN IF NOT EXISTS preferred_lang TEXT NOT NULL DEFAULT 'fr'"#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"ALTER TABLE users
+           ADD COLUMN IF NOT EXISTS is_provider BOOLEAN NOT NULL DEFAULT FALSE"#,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn ensure_delivery_wallet_events_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table delivery_wallet_events...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_wallet_events (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            direction TEXT NOT NULL CHECK (direction IN ('debit', 'refund')),
+            amount_cents BIGINT NOT NULL,
+            reason TEXT,
+            balance_after BIGINT NOT NULL,
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_wallet_events_user ON delivery_wallet_events(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_wallet_events_delivery ON delivery_wallet_events(delivery_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_wallet_events_created_at ON delivery_wallet_events(created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn ensure_live_streaming_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables de live streaming...");
+
+    sqlx::query(r#"CREATE EXTENSION IF NOT EXISTS "uuid-ossp""#)
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS live_sessions (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            host_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            status VARCHAR(32) NOT NULL DEFAULT 'scheduled',
+            start_at TIMESTAMPTZ NOT NULL,
+            end_at TIMESTAMPTZ,
+            livekit_room_name TEXT,
+            livekit_participant_identity TEXT,
+            livekit_ingress_id TEXT,
+            livekit_ingress_url TEXT,
+            stream_key TEXT,
+            webrtc_url TEXT,
+            hls_url TEXT,
+            fallback_rtmp_url TEXT,
+            fallback_hls_url TEXT,
+            current_viewers INTEGER NOT NULL DEFAULT 0,
+            peak_viewers INTEGER NOT NULL DEFAULT 0,
+            total_watch_time_seconds BIGINT NOT NULL DEFAULT 0,
+            metadata JSONB DEFAULT '{}'::JSONB,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_live_sessions_status ON live_sessions(status)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_live_sessions_start_at ON live_sessions(start_at)")
+        .execute(pool)
+        .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_live_sessions_service_id ON live_sessions(service_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS live_replays (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            live_session_id UUID NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
+            replay_url TEXT NOT NULL,
+            storage_provider TEXT,
+            format TEXT,
+            duration_seconds INTEGER,
+            size_bytes BIGINT,
+            available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_live_replays_session_id ON live_replays(live_session_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS live_session_analytics (
+            live_session_id UUID PRIMARY KEY REFERENCES live_sessions(id) ON DELETE CASCADE,
+            total_viewers INTEGER NOT NULL DEFAULT 0,
+            hls_viewers INTEGER NOT NULL DEFAULT 0,
+            webrtc_viewers INTEGER NOT NULL DEFAULT 0,
+            total_watch_time_seconds BIGINT NOT NULL DEFAULT 0,
+            average_watch_time_seconds NUMERIC(10,2) NOT NULL DEFAULT 0,
+            conversions INTEGER NOT NULL DEFAULT 0,
+            revenue_cfa NUMERIC(14,2) NOT NULL DEFAULT 0,
+            last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_live_session_analytics_last_synced ON live_session_analytics(last_synced_at)",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Tables de live streaming vérifiées");
+    Ok(())
+}
+
+pub async fn ensure_live_flash_sales_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables de ventes flash live...");
+
+    sqlx::query(r#"CREATE EXTENSION IF NOT EXISTS "uuid-ossp""#)
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS live_flash_sales (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            live_session_id UUID NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            promo_price_cfa NUMERIC(14,2) NOT NULL CHECK (promo_price_cfa >= 0),
+            stock_target INTEGER NOT NULL CHECK (stock_target > 0),
+            start_at TIMESTAMPTZ NOT NULL,
+            end_at TIMESTAMPTZ NOT NULL,
+            status VARCHAR(32) NOT NULL DEFAULT 'scheduled' CHECK (
+                status IN ('scheduled', 'live', 'ended', 'cancelled')
+            ),
+            commentary_mode VARCHAR(20) NOT NULL DEFAULT 'host' CHECK (
+                commentary_mode IN ('host', 'ai_voice')
+            ),
+            commentary_interval_seconds INTEGER NOT NULL DEFAULT 60 CHECK (commentary_interval_seconds >= 15),
+            ai_voice_profile TEXT,
+            scheduled_notification_sent_at TIMESTAMPTZ,
+            live_notification_sent_at TIMESTAMPTZ,
+            ending_notification_sent_at TIMESTAMPTZ,
+            last_commentary_sent_at TIMESTAMPTZ,
+            metadata JSONB DEFAULT '{}'::JSONB,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CHECK (end_at > start_at)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_live_flash_sales_session ON live_flash_sales(live_session_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_live_flash_sales_status ON live_flash_sales(status)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_live_flash_sales_timing ON live_flash_sales(start_at, end_at)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS live_flash_sale_reservations (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            flash_sale_id UUID NOT NULL REFERENCES live_flash_sales(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+            reserved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE (flash_sale_id, user_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_live_flash_sale_reservations_flash ON live_flash_sale_reservations(flash_sale_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_live_flash_sale_reservations_user ON live_flash_sale_reservations(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS live_flash_sale_commentaries (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            flash_sale_id UUID NOT NULL REFERENCES live_flash_sales(id) ON DELETE CASCADE,
+            created_by VARCHAR(20) NOT NULL CHECK (created_by IN ('host', 'ai_voice')),
+            message TEXT NOT NULL,
+            metadata JSONB DEFAULT '{}'::JSONB,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_live_flash_sale_commentaries_flash ON live_flash_sale_commentaries(flash_sale_id, created_at)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("ALTER TABLE live_flash_sales ADD COLUMN IF NOT EXISTS commentary_mode VARCHAR(20) NOT NULL DEFAULT 'host'")
+        .execute(pool)
+        .await?;
+    sqlx::query("ALTER TABLE live_flash_sales ADD COLUMN IF NOT EXISTS commentary_interval_seconds INTEGER NOT NULL DEFAULT 60")
+        .execute(pool)
+        .await?;
+    sqlx::query("ALTER TABLE live_flash_sales ADD COLUMN IF NOT EXISTS ai_voice_profile TEXT")
+        .execute(pool)
+        .await?;
+    sqlx::query(
+        "ALTER TABLE live_flash_sales ADD COLUMN IF NOT EXISTS last_commentary_sent_at TIMESTAMPTZ",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Tables live_flash_sales vérifiées");
+    Ok(())
+}
 
 /// Vérifie et crée la fonction deactivate_expired_products() si elle n'existe pas
 pub async fn ensure_deactivate_expired_products_function(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -212,6 +717,36 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             info!("✅ Colonnes analytics ajoutées");
         }
 
+        // ✅ Vérifier videos_meta
+        let has_videos_meta = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'publicites' AND column_name = 'videos_meta')"
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !has_videos_meta {
+            warn!("⚠️ Colonne 'videos_meta' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE publicites ADD COLUMN IF NOT EXISTS videos_meta JSONB NOT NULL DEFAULT '[]'::jsonb")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'videos_meta' ajoutée");
+        }
+
+        // ✅ Vérifier video_stats
+        let has_video_stats = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'publicites' AND column_name = 'video_stats')"
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !has_video_stats {
+            warn!("⚠️ Colonne 'video_stats' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE publicites ADD COLUMN IF NOT EXISTS video_stats JSONB NOT NULL DEFAULT '{}'::jsonb")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'video_stats' ajoutée");
+        }
+
         // ✅ NOUVEAU 2025-11-06: Vérifier boost_level et frequency_ratio
         let has_boost_level = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'publicites' AND column_name = 'boost_level')"
@@ -263,6 +798,8 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             -- Médias publicitaires (stockés en base64)
             videos TEXT[] DEFAULT '{}',
             thumbnails TEXT[] DEFAULT '{}',
+            videos_meta JSONB NOT NULL DEFAULT '[]'::jsonb,
+            video_stats JSONB NOT NULL DEFAULT '{}'::jsonb,
             
             -- Tarification et durée
             duree_jours INTEGER NOT NULL CHECK (duree_jours > 0),
@@ -601,9 +1138,11 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
 
         if !has_product_id {
             warn!("⚠️ Colonne 'product_id' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS product_id TEXT")
-                .execute(pool)
-                .await?;
+            sqlx::query(
+                "ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS product_id TEXT",
+            )
+            .execute(pool)
+            .await?;
             info!("✅ Colonne 'product_id' ajoutée");
         }
 
@@ -1131,8 +1670,7 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
     "#)
     .execute(pool)
     .await?;
-}
-
+    }
 
     // Créer les index
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_service_id ON autocomplete_combinations(service_id) WHERE service_id IS NOT NULL")
@@ -1619,7 +2157,10 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
             .await?;
 
             if !has_column {
-                warn!("⚠️ Colonne '{}' manquante sur product_comments, ajout en cours...", column);
+                warn!(
+                    "⚠️ Colonne '{}' manquante sur product_comments, ajout en cours...",
+                    column
+                );
                 sqlx::query(ddl).execute(pool).await?;
                 info!("✅ Colonne '{}' ajoutée", column);
             }
@@ -1686,20 +2227,26 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
     sqlx::query("UPDATE product_comments SET mentions = '{}' WHERE mentions IS NULL")
         .execute(pool)
         .await?;
-    sqlx::query("UPDATE product_comments SET reaction_counts = '{}'::jsonb WHERE reaction_counts IS NULL")
-        .execute(pool)
-        .await?;
+    sqlx::query(
+        "UPDATE product_comments SET reaction_counts = '{}'::jsonb WHERE reaction_counts IS NULL",
+    )
+    .execute(pool)
+    .await?;
 
     // Index
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_product_comments_service ON product_comments(service_id)")
-        .execute(pool)
-        .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_comments_service ON product_comments(service_id)",
+    )
+    .execute(pool)
+    .await?;
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_product_comments_parent ON product_comments(parent_comment_id)")
         .execute(pool)
         .await?;
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_product_comments_user ON product_comments(user_id)")
-        .execute(pool)
-        .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_comments_user ON product_comments(user_id)",
+    )
+    .execute(pool)
+    .await?;
 
     // Fonction + trigger updated_at
     sqlx::query(
@@ -2351,6 +2898,928 @@ pub async fn ensure_african_locations_table(pool: &PgPool) -> Result<(), sqlx::E
     Ok(())
 }
 
+pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables livraison (enums + structures)...");
+
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            CREATE TYPE delivery_status AS ENUM (
+                'requested',
+                'awaiting_courier_confirmation',
+                'accepted',
+                'en_route_pickup',
+                'arrival_pickup',
+                'picked_up',
+                'en_route_delivery',
+                'arrival_destination',
+                'delivered',
+                'completed',
+                'cancelled'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            CREATE TYPE delivery_cancel_reason AS ENUM (
+                'client_cancelled',
+                'courier_cancelled',
+                'no_courier_available',
+                'parcel_issue',
+                'system_failure'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            CREATE TYPE delivery_engine_type AS ENUM (
+                'moto',
+                'scooter',
+                'voiture',
+                'camionnette',
+                'velo_cargo',
+                'pieton',
+                'camion_leger',
+                'autre'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            CREATE TYPE delivery_courier_status AS ENUM (
+                'pending_review',
+                'approved',
+                'rejected',
+                'suspended'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            CREATE TYPE delivery_terrain_difficulty AS ENUM (
+                'smooth',
+                'moderate',
+                'rough',
+                'blocked'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            CREATE TYPE delivery_application_status AS ENUM (
+                'draft',
+                'submitted',
+                'under_review',
+                'approved',
+                'rejected'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS parcel_types (
+            id SERIAL PRIMARY KEY,
+            slug TEXT UNIQUE NOT NULL,
+            display_name TEXT NOT NULL,
+            description TEXT,
+            max_weight_kg NUMERIC(6,2),
+            max_volume_cm3 NUMERIC(12,2),
+            requires_isothermal BOOLEAN DEFAULT FALSE,
+            requires_fragile_handling BOOLEAN DEFAULT FALSE,
+            requires_secure_box BOOLEAN DEFAULT FALSE,
+            requires_document_protection BOOLEAN DEFAULT FALSE,
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ DEFAULT now()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_parcel_types_slug ON parcel_types(slug)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        r#"
+            CREATE TABLE IF NOT EXISTS courier_applications (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                status delivery_application_status NOT NULL DEFAULT 'draft',
+                submitted_at TIMESTAMPTZ,
+                reviewed_at TIMESTAMPTZ,
+                reviewer_id INTEGER REFERENCES users(id),
+                rejection_reason TEXT,
+                profile_data JSONB DEFAULT '{}'::jsonb,
+                documents JSONB DEFAULT '[]'::jsonb,
+                notes JSONB DEFAULT '[]'::jsonb,
+                created_at TIMESTAMPTZ DEFAULT now(),
+                updated_at TIMESTAMPTZ DEFAULT now()
+            )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_courier_applications_user ON courier_applications(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+            CREATE TABLE IF NOT EXISTS couriers (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                application_id UUID UNIQUE REFERENCES courier_applications(id) ON DELETE SET NULL,
+                status delivery_courier_status NOT NULL DEFAULT 'pending_review',
+                rating_average NUMERIC(3,2) DEFAULT 0,
+                rating_count INTEGER DEFAULT 0,
+                bio TEXT,
+                hired_at TIMESTAMPTZ,
+                suspended_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT now(),
+                updated_at TIMESTAMPTZ DEFAULT now()
+            )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS courier_assets (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            courier_id UUID NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+            engine_type delivery_engine_type NOT NULL,
+            is_primary BOOLEAN DEFAULT FALSE,
+            max_weight_kg NUMERIC(6,2),
+            max_volume_cm3 NUMERIC(12,2),
+            equipments JSONB DEFAULT '[]'::jsonb,
+            available BOOLEAN DEFAULT TRUE,
+            availability_schedule JSONB,
+            documents JSONB,
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_courier_assets_courier ON courier_assets(courier_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_courier_assets_primary ON courier_assets(courier_id) WHERE is_primary = TRUE",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_parcels (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            type_id INTEGER REFERENCES parcel_types(id) ON DELETE SET NULL,
+            weight_kg NUMERIC(6,2),
+            volume_cm3 NUMERIC(12,2),
+            declared_value NUMERIC(10,2),
+            notes TEXT,
+            photos JSONB DEFAULT '[]'::jsonb,
+            constraints JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ DEFAULT now()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS deliveries (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            courier_id UUID REFERENCES couriers(id) ON DELETE SET NULL,
+            parcel_id UUID NOT NULL REFERENCES delivery_parcels(id) ON DELETE CASCADE,
+            status delivery_status NOT NULL DEFAULT 'requested',
+            requested_at TIMESTAMPTZ DEFAULT now(),
+            confirmed_at TIMESTAMPTZ,
+            accepted_at TIMESTAMPTZ,
+            picked_up_at TIMESTAMPTZ,
+            delivered_at TIMESTAMPTZ,
+            completed_at TIMESTAMPTZ,
+            cancelled_at TIMESTAMPTZ,
+            cancel_reason delivery_cancel_reason,
+            pickup_location GEOGRAPHY(Point, 4326) NOT NULL,
+            dropoff_location GEOGRAPHY(Point, 4326) NOT NULL,
+            pickup_address TEXT,
+            dropoff_address TEXT,
+            recipient_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            recipient_contact_name TEXT,
+            recipient_contact_phone TEXT,
+            recipient_notes TEXT,
+            recipient_tracking_token UUID UNIQUE DEFAULT gen_random_uuid(),
+            recipient_dropoff_override GEOGRAPHY(Point, 4326),
+            recipient_dropoff_address TEXT,
+            recipient_dropoff_updated_at TIMESTAMPTZ,
+            recipient_chat_thread_id UUID,
+            distance_meters INTEGER,
+            estimated_duration_seconds INTEGER,
+            actual_duration_seconds INTEGER,
+            updated_at TIMESTAMPTZ DEFAULT now(),
+            pricing_id UUID,
+            tracking_token UUID UNIQUE DEFAULT gen_random_uuid(),
+            metadata JSONB DEFAULT '{}'::jsonb,
+            shopping_required BOOLEAN DEFAULT FALSE,
+            store_location GEOGRAPHY(Point, 4326),
+            store_name TEXT
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_deliveries_status_requested_at ON deliveries(status, requested_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_courier ON deliveries(courier_id)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_creator ON deliveries(creator_id)")
+        .execute(pool)
+        .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_deliveries_recipient_user ON deliveries(recipient_user_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_deliveries_recipient_tracking_token ON deliveries(recipient_tracking_token)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_deliveries_pickup_location ON deliveries USING GIST(pickup_location)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_deliveries_dropoff_location ON deliveries USING GIST(dropoff_location)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        ALTER TABLE deliveries
+            ADD COLUMN IF NOT EXISTS recipient_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            ADD COLUMN IF NOT EXISTS recipient_contact_name TEXT,
+            ADD COLUMN IF NOT EXISTS recipient_contact_phone TEXT,
+            ADD COLUMN IF NOT EXISTS recipient_notes TEXT,
+            ADD COLUMN IF NOT EXISTS recipient_tracking_token UUID DEFAULT gen_random_uuid(),
+            ADD COLUMN IF NOT EXISTS recipient_dropoff_override GEOGRAPHY(Point, 4326),
+            ADD COLUMN IF NOT EXISTS recipient_dropoff_address TEXT,
+            ADD COLUMN IF NOT EXISTS recipient_dropoff_updated_at TIMESTAMPTZ,
+            ADD COLUMN IF NOT EXISTS recipient_chat_thread_id UUID
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_status_events (
+            id BIGSERIAL PRIMARY KEY,
+            delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            status delivery_status NOT NULL,
+            occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                payload JSONB DEFAULT '{}'::jsonb,
+                recorded_by INTEGER
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_status_events_delivery ON delivery_status_events(delivery_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_status_events_delivery_time ON delivery_status_events(delivery_id, occurred_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_pricing (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            delivery_id UUID UNIQUE NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            base_price_cents INTEGER NOT NULL,
+            distance_price_cents INTEGER NOT NULL,
+            surcharge_cents INTEGER DEFAULT 0,
+            discount_cents INTEGER DEFAULT 0,
+            currency CHAR(3) DEFAULT 'XAF',
+            calculated_at TIMESTAMPTZ DEFAULT now(),
+            details JSONB DEFAULT '{}'::jsonb,
+            shopping_cost_cents INTEGER DEFAULT 0,
+            shopping_discount_cents INTEGER DEFAULT 0
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        ALTER TABLE deliveries
+        ADD CONSTRAINT IF NOT EXISTS fk_deliveries_pricing
+        FOREIGN KEY (pricing_id)
+        REFERENCES delivery_pricing(id)
+        ON DELETE SET NULL
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_tracking_points (
+            id BIGSERIAL PRIMARY KEY,
+            delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            courier_id UUID NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+            captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            location GEOGRAPHY(Point, 4326) NOT NULL,
+            speed_kmh NUMERIC(5,2),
+            bearing NUMERIC(6,2),
+            accuracy_meters NUMERIC(6,2)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_tracking_points_delivery ON delivery_tracking_points(delivery_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_tracking_points_courier ON delivery_tracking_points(courier_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_tracking_points_captured_at ON delivery_tracking_points(captured_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_tracking_points_location ON delivery_tracking_points USING GIST(location)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_recipient_updates (
+            id BIGSERIAL PRIMARY KEY,
+            delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            submitted_by INTEGER REFERENCES users(id),
+            latitude DOUBLE PRECISION NOT NULL,
+            longitude DOUBLE PRECISION NOT NULL,
+            address TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_recipient_updates_delivery ON delivery_recipient_updates(delivery_id, created_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+            CREATE TABLE IF NOT EXISTS courier_ratings (
+                id BIGSERIAL PRIMARY KEY,
+                delivery_id UUID UNIQUE NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+                courier_id UUID NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+                rater_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                score_small INTEGER NOT NULL CHECK (score_small BETWEEN 1 AND 5),
+                tags TEXT[],
+                comment TEXT,
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_courier_ratings_courier ON courier_ratings(courier_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+            CREATE TABLE IF NOT EXISTS client_ratings (
+                id BIGSERIAL PRIMARY KEY,
+                delivery_id UUID UNIQUE NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+                client_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                courier_id UUID NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+                score_small INTEGER NOT NULL CHECK (score_small BETWEEN 1 AND 5),
+                tags TEXT[],
+                comment TEXT,
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_client_ratings_client ON client_ratings(client_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS traffic_snapshots (
+            id BIGSERIAL PRIMARY KEY,
+            captured_at TIMESTAMPTZ NOT NULL,
+            source TEXT,
+            bounding_box GEOGRAPHY(Polygon, 4326),
+            payload JSONB NOT NULL
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_traffic_snapshots_captured_at ON traffic_snapshots(captured_at DESC)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_traffic_snapshots_source ON traffic_snapshots(source)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS terrain_segments (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            segment GEOGRAPHY(LineString, 4326) NOT NULL,
+            difficulty delivery_terrain_difficulty NOT NULL,
+            notes TEXT,
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ DEFAULT now()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_terrain_segments_difficulty ON terrain_segments(difficulty)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_terrain_segments_segment ON terrain_segments USING GIST(segment)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS shopping_orders (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            delivery_id UUID UNIQUE NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            status shopping_status NOT NULL DEFAULT 'pending',
+            estimated_total_cents INTEGER NOT NULL DEFAULT 0,
+            actual_total_cents INTEGER,
+            currency CHAR(3) DEFAULT 'XAF',
+            store_name TEXT,
+            store_location GEOGRAPHY(Point, 4326),
+            notes TEXT,
+            requires_balance_top_up BOOLEAN DEFAULT FALSE,
+            payload JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_shopping_orders_status ON shopping_orders(status)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS shopping_order_items (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            shopping_order_id UUID NOT NULL REFERENCES shopping_orders(id) ON DELETE CASCADE,
+            product_id UUID,
+            product_name TEXT NOT NULL,
+            characteristics JSONB DEFAULT '[]'::jsonb,
+            quantity NUMERIC(10,2) NOT NULL,
+            unit TEXT DEFAULT 'unite',
+            estimated_price_cents INTEGER DEFAULT 0,
+            actual_price_cents INTEGER,
+            status shopping_item_status NOT NULL DEFAULT 'pending',
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_shopping_order_items_order ON shopping_order_items(shopping_order_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_shopping_order_items_status ON shopping_order_items(status)",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Tables livraison vérifiées");
+    Ok(())
+}
+
+pub async fn ensure_delivery_seed_data(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des seeds livraison (parcel_types)...");
+
+    sqlx::query(
+        r#"
+        INSERT INTO parcel_types
+            (slug, display_name, description, max_weight_kg, max_volume_cm3, requires_fragile_handling, requires_isothermal, requires_secure_box, requires_document_protection)
+        VALUES
+            ('standard', 'Colis standard', 'Poids et dimensions classiques', 30, 60000, FALSE, FALSE, FALSE, FALSE),
+            ('fragile', 'Fragile', 'Verre, électronique, nécessite manutention douce', 20, 40000, TRUE, FALSE, TRUE, FALSE),
+            ('volumineux', 'Volumineux', 'Mobilier ou charges encombrantes', 80, 250000, FALSE, FALSE, FALSE, FALSE),
+            ('medical', 'Médical', 'Colis médicaux sensibles', 10, 20000, TRUE, TRUE, TRUE, FALSE),
+            ('document', 'Document', 'Documents importants/confidentiels', 5, 5000, TRUE, FALSE, TRUE, TRUE)
+        ON CONFLICT (slug) DO NOTHING
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Seeds livraison vérifiés");
+    Ok(())
+}
+
+async fn ensure_staging_demo_delivery(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let enable_seed = env::var("ENABLE_STAGING_DEMO_SEED")
+        .map(|v| v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    if !enable_seed {
+        return Ok(());
+    }
+
+    info!("🔍 Initialisation du seed staging (client, coursier, livraison)...");
+
+    let mut tx = pool.begin().await?;
+
+    let client_email = "staging-client@yukpo.com";
+    let courier_email = "staging-courier@yukpo.com";
+    let hashed_password =
+        "$argon2id$v=19$m=65536,t=3,p=1$c3RhZ2luZw$E7o9p3hoDnN/S8/kVlzUcw".to_string();
+
+    let client_id: i32 =
+        match sqlx::query_scalar::<_, i32>("SELECT id FROM users WHERE email = $1 LIMIT 1")
+            .bind(client_email)
+            .fetch_optional(&mut *tx)
+            .await?
+        {
+            Some(id) => id,
+            None => {
+                sqlx::query_scalar::<_, i32>(
+                    r#"
+                INSERT INTO users (
+                    email,
+                    password_hash,
+                    role,
+                    is_provider,
+                    tokens_balance,
+                    gps_consent,
+                    created_at,
+                    updated_at,
+                    nom,
+                    prenom,
+                    nom_complet,
+                    preferred_lang
+                )
+                VALUES ($1, $2, 'user', FALSE, $3, TRUE, $4, $4, $5, $6, $7, 'fr')
+                RETURNING id
+                "#,
+                )
+                .bind(client_email)
+                .bind(&hashed_password)
+                .bind(250_000_i64)
+                .bind(Utc::now())
+                .bind("Mbarga")
+                .bind("Aline")
+                .bind("Aline Mbarga")
+                .fetch_one(&mut *tx)
+                .await?
+            }
+        };
+
+    let courier_user_id: i32 =
+        match sqlx::query_scalar::<_, i32>("SELECT id FROM users WHERE email = $1 LIMIT 1")
+            .bind(courier_email)
+            .fetch_optional(&mut *tx)
+            .await?
+        {
+            Some(id) => id,
+            None => {
+                sqlx::query_scalar::<_, i32>(
+                    r#"
+                INSERT INTO users (
+                    email,
+                    password_hash,
+                    role,
+                    is_provider,
+                    tokens_balance,
+                    gps_consent,
+                    created_at,
+                    updated_at,
+                    nom,
+                    prenom,
+                    nom_complet
+                )
+                VALUES ($1, $2, 'user', TRUE, 0, TRUE, $3, $3, $4, $5, $6)
+                RETURNING id
+                "#,
+                )
+                .bind(courier_email)
+                .bind(&hashed_password)
+                .bind(Utc::now())
+                .bind("Biyong")
+                .bind("Yvan")
+                .bind("Yvan Biyong")
+                .fetch_one(&mut *tx)
+                .await?
+            }
+        };
+
+    let courier_id: Uuid =
+        match sqlx::query_scalar::<_, Uuid>("SELECT id FROM couriers WHERE user_id = $1 LIMIT 1")
+            .bind(courier_user_id)
+            .fetch_optional(&mut *tx)
+            .await?
+        {
+            Some(id) => id,
+            None => {
+                sqlx::query_scalar::<_, Uuid>(
+                    r#"
+                INSERT INTO couriers (
+                    user_id,
+                    application_id,
+                    status,
+                    rating_average,
+                    rating_count,
+                    bio,
+                    hired_at
+                )
+                VALUES ($1, NULL, 'approved', 0, 0, $2, NOW())
+                RETURNING id
+                "#,
+                )
+                .bind(courier_user_id)
+                .bind("Coursier staging – moto")
+                .fetch_one(&mut *tx)
+                .await?
+            }
+        };
+
+    sqlx::query(
+        r#"
+        INSERT INTO courier_assets (
+            courier_id,
+            engine_type,
+            is_primary,
+            max_weight_kg,
+            max_volume_cm3,
+            equipments,
+            available,
+            availability_schedule,
+            documents
+        )
+        VALUES ($1, 'moto', TRUE, NULL, NULL, $2, TRUE, NULL, NULL)
+        ON CONFLICT (courier_id) WHERE is_primary = TRUE
+        DO UPDATE SET
+            engine_type = EXCLUDED.engine_type,
+            equipments  = EXCLUDED.equipments,
+            available   = EXCLUDED.available,
+            updated_at  = NOW()
+        "#,
+    )
+    .bind(courier_id)
+    .bind(json!({ "helmet": true }))
+    .execute(&mut *tx)
+    .await?;
+
+    if sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM deliveries WHERE metadata ->> 'seed' = 'staging_delivery' LIMIT 1",
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .is_none()
+    {
+        let parcel_id: Uuid = sqlx::query_scalar(
+            r#"
+            INSERT INTO delivery_parcels (
+                type_id,
+                weight_kg,
+                volume_cm3,
+                declared_value,
+                notes,
+                photos,
+                constraints,
+                created_at
+            )
+            VALUES (NULL, NULL, NULL, NULL, $1, '[]'::jsonb, '{}'::jsonb, NOW())
+            RETURNING id
+            "#,
+        )
+        .bind("Panier de courses (staging)")
+        .fetch_one(&mut *tx)
+        .await?;
+
+        let delivery_id: Uuid = sqlx::query_scalar(
+            r#"
+            INSERT INTO deliveries (
+                creator_id,
+                courier_id,
+                parcel_id,
+                status,
+                pickup_location,
+                dropoff_location,
+                pickup_address,
+                dropoff_address,
+                recipient_user_id,
+                recipient_contact_name,
+                recipient_contact_phone,
+                recipient_notes,
+                recipient_chat_thread_id,
+                recipient_dropoff_override,
+                recipient_dropoff_address,
+                recipient_dropoff_updated_at,
+                distance_meters,
+                estimated_duration_seconds,
+                metadata
+            )
+            VALUES (
+                $1,
+                $2,
+                $3,
+                'accepted',
+                ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography,
+                ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
+                $8,
+                $9,
+                $1,
+                $10,
+                $11,
+                $12,
+                NULL,
+                NULL,
+                $13,
+                NOW(),
+                $14,
+                $15,
+                $16
+            )
+            RETURNING id
+            "#,
+        )
+        .bind(client_id)
+        .bind(courier_id)
+        .bind(parcel_id)
+        .bind(11.50120_f64)
+        .bind(3.89810_f64)
+        .bind(11.50210_f64)
+        .bind(3.90330_f64)
+        .bind("Supermarché Bonapriso, Douala")
+        .bind("Client Bonapriso, Douala")
+        .bind("Aline Mbarga")
+        .bind("+237650000001")
+        .bind("Commande staging auto")
+        .bind("Client Bonapriso, Douala")
+        .bind(3_500_i32)
+        .bind(780_i32)
+        .bind(json!({
+            "seed": "staging_delivery",
+            "notes": "Livraison E2E staging"
+        }))
+        .fetch_one(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO delivery_status_events (
+                delivery_id,
+                status,
+                payload,
+                recorded_by
+            )
+            VALUES ($1, 'accepted', $2, $3)
+            "#,
+        )
+        .bind(delivery_id)
+        .bind(json!({ "source": "staging_seed" }))
+        .bind(client_id)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    info!("✅ Seed staging vérifié (ENABLE_STAGING_DEMO_SEED=true)");
+    Ok(())
+}
+
 pub async fn run_auto_migrations(pool: &PgPool) {
     info!("🚀 Démarrage des migrations automatiques...");
 
@@ -2358,6 +3827,44 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_geo_hierarchy_table(pool).await {
         Ok(_) => info!("✅ Migration auto: geo_hierarchy OK"),
         Err(e) => error!("❌ Erreur migration auto geo_hierarchy: {}", e),
+    }
+
+    match ensure_media_analytics_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: media engagement/distribution ok"),
+        Err(e) => error!("❌ Erreur migration auto media analytics: {}", e),
+    }
+
+    match ensure_video_generation_jobs_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: video_generation_jobs OK"),
+        Err(e) => error!("❌ Erreur migration auto video_generation_jobs: {}", e),
+    }
+
+    match ensure_user_token_columns(pool).await {
+        Ok(_) => info!("✅ Migration auto: colonnes tokens utilisateurs OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto colonnes tokens utilisateurs: {}",
+            e
+        ),
+    }
+
+    match ensure_delivery_wallet_events_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery_wallet_events OK"),
+        Err(e) => error!("❌ Erreur migration auto delivery_wallet_events: {}", e),
+    }
+
+    match ensure_social_connectors_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: social connectors OK"),
+        Err(e) => error!("❌ Erreur migration auto social connectors: {}", e),
+    }
+
+    match ensure_live_streaming_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: live streaming tables OK"),
+        Err(e) => error!("❌ Erreur migration auto live streaming: {}", e),
+    }
+
+    match ensure_live_flash_sales_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: live flash sales tables OK"),
+        Err(e) => error!("❌ Erreur migration auto live flash sales: {}", e),
     }
 
     // Migration 0.5: Table african_locations (✅ NOUVEAU 2025-11-06)
@@ -2421,6 +3928,21 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_product_comments_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: product_comments table OK"),
         Err(e) => error!("❌ Erreur migration auto product_comments: {}", e),
+    }
+
+    match ensure_delivery_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: tables livraison OK"),
+        Err(e) => error!("❌ Erreur migration auto tables livraison: {}", e),
+    }
+
+    match ensure_delivery_seed_data(pool).await {
+        Ok(_) => info!("✅ Migration auto: seeds livraison OK"),
+        Err(e) => error!("❌ Erreur migration auto seeds livraison: {}", e),
+    }
+
+    match ensure_staging_demo_delivery(pool).await {
+        Ok(_) => {}
+        Err(e) => error!("❌ Erreur seed staging (ENABLE_STAGING_DEMO_SEED): {}", e),
     }
 
     // Migration 10: Table product_reactions (✅ NOUVEAU 2025-11-04)
@@ -2491,7 +4013,7 @@ pub async fn run_auto_migrations(pool: &PgPool) {
 async fn reindex_existing_services_once(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Compter les services actifs ayant au moins un produit défini
     let service_count = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM services WHERE is_active = TRUE AND data->'produits' IS NOT NULL"
+        "SELECT COUNT(*) FROM services WHERE is_active = TRUE AND data->'produits' IS NOT NULL",
     )
     .fetch_one(pool)
     .await?;
@@ -3475,6 +4997,82 @@ pub async fn clean_invalid_combinations_migration(pool: &PgPool) -> Result<(), s
         "📊 Nettoyage terminé: {} → {} combinaisons ({} supprimées)",
         total_before, total_after, deleted_count
     );
+
+    Ok(())
+}
+
+pub async fn ensure_social_connectors_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables social_accounts / social_publications / social_publication_jobs...");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS social_accounts (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            platform TEXT NOT NULL,
+            account_handle TEXT,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT,
+            expires_at TIMESTAMPTZ,
+            scope TEXT,
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(user_id, platform)
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS social_publications (
+            id SERIAL PRIMARY KEY,
+            media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+            platform TEXT NOT NULL,
+            external_post_id TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            published_at TIMESTAMPTZ,
+            last_synced_at TIMESTAMPTZ,
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS social_publication_jobs (
+            id SERIAL PRIMARY KEY,
+            media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+            platform TEXT NOT NULL,
+            payload JSONB NOT NULL,
+            status TEXT NOT NULL DEFAULT 'queued',
+            attempt INTEGER NOT NULL DEFAULT 0,
+            last_error TEXT,
+            scheduled_for TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_social_accounts_user_platform ON social_accounts(user_id, platform)")
+        .execute(pool)
+        .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_social_publications_media ON social_publications(media_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_social_publications_platform ON social_publications(platform)")
+        .execute(pool)
+        .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_social_publication_jobs_status ON social_publication_jobs(status, scheduled_for)",
+    )
+    .execute(pool)
+    .await?;
 
     Ok(())
 }

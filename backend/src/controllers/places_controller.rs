@@ -159,37 +159,67 @@ pub async fn enrich_location(
 
     let google_service = GooglePlacesService::new();
     let google_result = google_service
-        .search_and_build_hierarchy(&params.place_name, params.country.as_deref())
+        .search_and_enrich(
+            &params.place_name,
+            params.country.as_deref(),
+            Some("fr"),
+            None,
+        )
         .await;
 
-    // ✅ Si Google Places ne trouve rien, retourner des données par défaut au lieu de 404
-    if google_result.is_err() {
-        info!(
-            "⚠️ Lieu '{}' introuvable dans Google Places, retour données minimales",
-            params.place_name
-        );
-        return Ok(Json(EnrichLocationResponse {
-            place_name: params.place_name.clone(),
-            geoname_id: None,
-            display_name: params.place_name.clone(),
-            location_vector: vec![params.place_name.clone()],
-            hierarchy: LocationHierarchy {
-                parents: params.country.clone().map(|c| vec![c]).unwrap_or_default(),
-                children: vec![],
-                is_leaf: true,
-                admin_level: 8, // Quartier/localité
-            },
-            coordinates: Coordinates { lat: 0.0, lng: 0.0 },
-            metadata: LocationMetadata {
-                country: params.country.unwrap_or_else(|| "Inconnu".to_string()),
-                country_code: None,
-                population: None,
-                timezone: None,
-            },
-        }));
-    }
-
-    let google_data = google_result.unwrap();
+    let google_data = match google_result {
+        Ok(Some(data)) => data,
+        Ok(None) => {
+            info!(
+                "⚠️ Lieu '{}' introuvable dans Google Places, retour données minimales",
+                params.place_name
+            );
+            return Ok(Json(EnrichLocationResponse {
+                place_name: params.place_name.clone(),
+                geoname_id: None,
+                display_name: params.place_name.clone(),
+                location_vector: vec![params.place_name.clone()],
+                hierarchy: LocationHierarchy {
+                    parents: params.country.clone().map(|c| vec![c]).unwrap_or_default(),
+                    children: vec![],
+                    is_leaf: true,
+                    admin_level: 8,
+                },
+                coordinates: Coordinates { lat: 0.0, lng: 0.0 },
+                metadata: LocationMetadata {
+                    country: params.country.unwrap_or_else(|| "Inconnu".to_string()),
+                    country_code: None,
+                    population: None,
+                    timezone: None,
+                },
+            }));
+        }
+        Err(error) => {
+            info!(
+                "⚠️ Lieu '{}' introuvable dans Google Places ({}), retour données minimales",
+                params.place_name, error
+            );
+            return Ok(Json(EnrichLocationResponse {
+                place_name: params.place_name.clone(),
+                geoname_id: None,
+                display_name: params.place_name.clone(),
+                location_vector: vec![params.place_name.clone()],
+                hierarchy: LocationHierarchy {
+                    parents: params.country.clone().map(|c| vec![c]).unwrap_or_default(),
+                    children: vec![],
+                    is_leaf: true,
+                    admin_level: 8,
+                },
+                coordinates: Coordinates { lat: 0.0, lng: 0.0 },
+                metadata: LocationMetadata {
+                    country: params.country.unwrap_or_else(|| "Inconnu".to_string()),
+                    country_code: None,
+                    population: None,
+                    timezone: None,
+                },
+            }));
+        }
+    };
 
     // 3. Sauvegarder dans geo_hierarchy pour le cache
     let admin_level = determine_admin_level(&google_data.location_vector);
@@ -223,8 +253,20 @@ pub async fn enrich_location(
     .bind(is_leaf)
     .bind(&parent_country)
     .bind(&parent_country_code)
-    .bind(google_data.coordinates.lat)
-    .bind(google_data.coordinates.lng)
+    .bind(
+        google_data
+            .coordinates
+            .as_ref()
+            .map(|c| c.lat)
+            .unwrap_or(0.0),
+    )
+    .bind(
+        google_data
+            .coordinates
+            .as_ref()
+            .map(|c| c.lng)
+            .unwrap_or(0.0),
+    )
     .execute(pool)
     .await?;
 
@@ -266,8 +308,16 @@ pub async fn enrich_location(
             admin_level,
         },
         coordinates: Coordinates {
-            lat: google_data.coordinates.lat,
-            lng: google_data.coordinates.lng,
+            lat: google_data
+                .coordinates
+                .as_ref()
+                .map(|c| c.lat)
+                .unwrap_or(0.0),
+            lng: google_data
+                .coordinates
+                .as_ref()
+                .map(|c| c.lng)
+                .unwrap_or(0.0),
         },
         metadata: LocationMetadata {
             country: parent_country,

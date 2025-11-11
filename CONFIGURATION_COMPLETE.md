@@ -28,6 +28,15 @@ OPENAI_API_KEY=sk-proj-...
 MISTRAL_API_KEY=...
 GEMINI_API_KEY=...
 ANTHROPIC_API_KEY=...
+DEEPSEEK_API_KEY=...
+# Optionnel : surcharge avancée
+DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+DEEPSEEK_MODEL=deepseek-chat
+
+# Voix premium (optionnel)
+PREMIUM_TTS_ENDPOINT=https://tts.yukpo.ai/v1/voice
+PREMIUM_TTS_API_KEY=...
+PREMIUM_TTS_VOICE=yukpo-premium-fr
 
 # IA Locale (Ollama)
 OLLAMA_URL=http://localhost:11434
@@ -41,6 +50,8 @@ PINECONE_API_KEY=...
 PINECONE_INDEX=service-embeddings
 PINECONE_ENV=us-east-1-aws
 ```
+
+> 🧠 **Ordre de fallback IA** : GPT (OpenAI) ➜ Claude (Anthropic) ➜ Gemini (Google) ➜ DeepSeek ➜ autres modèles (Mistral, Cohere, Ollama).
 
 ### 🌍 **Services Google**
 ```bash

@@ -1,63 +1,296 @@
-import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useRef, useState } from 'react';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { AVPlaybackStatus, ResizeMode, Video } from 'expo-av';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Dimensions,
     Image,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
+import { config } from '../config/environment';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.85;
-const CARD_MARGIN = 12;
+const CARD_WIDTH = width * 0.82;
+const CARD_MARGIN = 16;
+const AUTO_SCROLL_INTERVAL = 6000;
 
 interface PublicitesCarouselProps {
     userId?: string;
-    userBehavior?: string[]; // Catégories préférées de l'utilisateur
+    userBehavior?: string[];
 }
+
+interface PubliciteVideoMeta {
+    format?: string | null;
+    source?: string | null;
+    duration_ms?: number | null;
+    ai_generated?: boolean | null;
+}
+
+interface ApiPublicite {
+    id: string;
+    titre?: string;
+    description?: string;
+    produits?: any[];
+    videos_meta?: PubliciteVideoMeta[];
+    video_stats?: Record<string, any>;
+    [key: string]: any;
+}
+
+const looksLikeBase64 = (value?: string | null): boolean => {
+    if (!value || typeof value !== 'string') {
+        return false;
+    }
+    const sanitized = value.replace(/\s/g, '');
+    if (sanitized.startsWith('data:')) {
+        return false;
+    }
+    return sanitized.length > 64 && /^[A-Za-z0-9+/=]+$/.test(sanitized);
+};
+
+const toVideoUri = (value?: string | null): string | null => {
+    if (!value || typeof value !== 'string') {
+        return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+    if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+    }
+    if (trimmed.startsWith('data:video')) {
+        return trimmed;
+    }
+    if (trimmed.startsWith('/')) {
+        const base = (config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+        if (base) {
+            return `${base}/${trimmed.replace(/^\//, '')}`;
+        }
+    }
+    if (trimmed.startsWith('uploads/')) {
+        const base = (config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+        if (base) {
+            return `${base}/${trimmed}`;
+        }
+    }
+    return null;
+};
+
+const toImageUri = (value?: string | null): string | null => {
+    if (!value || typeof value !== 'string') {
+        return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+    if (trimmed.startsWith('data:image')) {
+        return trimmed;
+    }
+    if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+    }
+    if (looksLikeBase64(trimmed)) {
+        return `data:image/jpeg;base64,${trimmed}`;
+    }
+    if (trimmed.startsWith('/')) {
+        const base = (config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+        if (base) {
+            return `${base}/${trimmed.replace(/^\//, '')}`;
+        }
+    }
+    if (trimmed.startsWith('uploads/')) {
+        const base = (config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+        if (base) {
+            return `${base}/${trimmed}`;
+        }
+    }
+    return null;
+};
+
+const resolveVideoSource = (pub: ApiPublicite): string | null => {
+    const candidates: Array<string | null | undefined> = [
+        pub?.square_video_url,
+        pub?.squareVideoUrl,
+        pub?.video_square_url,
+        pub?.videoSquareUrl,
+        pub?.primary_square_video,
+        pub?.video_url,
+        pub?.videoUrl,
+    ];
+
+    if (Array.isArray(pub?.video_urls)) {
+        candidates.push(...pub.video_urls);
+    }
+
+    if (Array.isArray(pub?.videos)) {
+        const prioritized = pub.videos.filter((video: string) =>
+            typeof video === 'string' && (video.toLowerCase().includes('square') || video.toLowerCase().includes('1x1'))
+        );
+        candidates.push(...prioritized, ...pub.videos);
+    }
+
+    const variants = pub?.video_variants || pub?.videoVariants || pub?.additional_outputs;
+    if (Array.isArray(variants)) {
+        variants.forEach((variant: any) => {
+            if (!variant) {
+                return;
+            }
+            const format = String(variant.format || variant.type || '').toLowerCase();
+            const url = variant.video_url || variant.url || variant.path;
+            if (format.includes('square') || format.includes('1x1') || format.includes('feed') || format.includes('carre')) {
+                candidates.push(url);
+            }
+        });
+    } else if (variants && typeof variants === 'object') {
+        ['square', '1x1', 'feed', 'carre'].forEach((key) => {
+            const data = variants[key];
+            if (!data) {
+                return;
+            }
+            if (typeof data === 'string') {
+                candidates.push(data);
+            } else if (typeof data === 'object') {
+                candidates.push(data.video_url || data.url || data.path);
+            }
+        });
+    }
+
+    for (const candidate of candidates) {
+        const uri = toVideoUri(candidate);
+        if (uri) {
+            return uri;
+        }
+    }
+    return null;
+};
+
+const resolveThumbnail = (pub: ApiPublicite): string | null => {
+    const candidates: Array<string | null | undefined> = [];
+
+    if (Array.isArray(pub?.thumbnails)) {
+        const firstThumb = pub.thumbnails.find((thumb: unknown) => typeof thumb === 'string' && thumb.trim().length > 0);
+        if (firstThumb) {
+            candidates.push(firstThumb);
+        }
+    }
+
+    candidates.push(pub?.thumbnail, pub?.preview_image, pub?.previewImage, pub?.cover_image);
+
+    if (Array.isArray(pub?.produits) && pub.produits.length > 0) {
+        const firstProduct = pub.produits[0];
+        if (Array.isArray(firstProduct?.images)) {
+            const productImage = firstProduct.images.find((img: unknown) => typeof img === 'string' && img.length > 0);
+            if (productImage) {
+                candidates.push(
+                    productImage.startsWith('data:image')
+                        ? productImage
+                        : `data:image/jpeg;base64,${productImage}`,
+                );
+            }
+        }
+    }
+
+    for (const candidate of candidates) {
+        const uri = toImageUri(candidate);
+        if (uri) {
+            return uri;
+        }
+    }
+    return null;
+};
+
+const getCategoryIcon = (type: string): string => {
+    const icons: Record<string, string> = {
+        immobilier_batiment: '🏠',
+        immobilier_terrain: '🏞️',
+        hotellerie: '🏨',
+        automobile: '🚗',
+        ticket_voyage: '🎫',
+        telephone: '📱',
+        ordinateur: '💻',
+        vetement: '👔',
+        electromenager: '🔌',
+        mobilier: '🪑',
+        pharmacie: '💊',
+        default: '📦',
+    };
+    return icons[type] || icons.default;
+};
+
+const getPrimaryVideoMeta = (pub: ApiPublicite, hasVideo: boolean): { format: string; source: string } => {
+    const metas = Array.isArray(pub.videos_meta) ? pub.videos_meta : [];
+    if (metas.length > 0) {
+        const preferred =
+            metas.find((meta) => {
+                const hasFormat = typeof meta.format === 'string' && meta.format.trim().length > 0;
+                const hasSource = typeof meta.source === 'string' && meta.source.trim().length > 0;
+                return hasFormat || hasSource;
+            }) ?? metas[0];
+
+        const aiHint =
+            preferred.ai_generated ??
+            (typeof preferred.source === 'string' && preferred.source.toLowerCase().includes('ai'));
+
+        const format =
+            typeof preferred.format === 'string' && preferred.format.trim().length > 0
+                ? preferred.format.trim().toLowerCase()
+                : aiHint
+                    ? 'square'
+                    : hasVideo
+                        ? 'video'
+                        : 'image';
+
+        const source =
+            typeof preferred.source === 'string' && preferred.source.trim().length > 0
+                ? preferred.source.trim().toLowerCase()
+                : aiHint
+                    ? 'ai'
+                    : hasVideo
+                        ? 'manual'
+                        : 'image';
+
+        return { format, source };
+    }
+
+    if (hasVideo) {
+        return { format: 'video', source: 'unknown' };
+    }
+
+    return { format: 'image', source: 'image' };
+};
 
 const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBehavior = [] }) => {
     const navigation = useNavigation();
+    const isFocused = useIsFocused();
     const { t } = useLanguageSafe();
     const scrollViewRef = useRef<ScrollView>(null);
-    const [publicites, setPublicites] = useState<any[]>([]);
+    const videoRefs = useRef<Record<string, Video | null>>({});
+    const viewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const viewedRef = useRef<Set<string>>(new Set());
+
+    const [publicites, setPublicites] = useState<ApiPublicite[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [isMuted, setIsMuted] = useState(true);
+    const [videoReady, setVideoReady] = useState<Record<string, boolean>>({});
+    const [failedVideos, setFailedVideos] = useState<Record<string, boolean>>({});
+    const [needsManualPlay, setNeedsManualPlay] = useState<Record<string, boolean>>({});
 
-    useEffect(() => {
-        loadPublicites();
-    }, [userId, userBehavior]);
+    const orderedPublicites = useMemo(() => publicites ?? [], [publicites]);
 
-    // Auto-scroll toutes les 5 secondes
-    useEffect(() => {
-        if (publicites.length <= 1) return;
-
-        const interval = setInterval(() => {
-            const nextIndex = (currentIndex + 1) % publicites.length;
-            setCurrentIndex(nextIndex);
-
-            scrollViewRef.current?.scrollTo({
-                x: nextIndex * (CARD_WIDTH + CARD_MARGIN),
-                animated: true,
-            });
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [currentIndex, publicites.length]);
-
-    const loadPublicites = async () => {
+    const loadPublicites = useCallback(async () => {
         try {
             setLoading(true);
 
-            // Construire les paramètres de requête avec comportement utilisateur
             const params = new URLSearchParams();
             if (userBehavior.length > 0) {
                 params.append('categories', userBehavior.join(','));
@@ -69,65 +302,215 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
             const response = await apiGet(`/api/publicites/actives?${params.toString()}`);
 
             if (response.success && response.data) {
-                // ✅ Trier par pertinence si comportement fourni
                 let pubs = Array.isArray(response.data) ? response.data : [];
 
                 if (userBehavior.length > 0 && pubs.length > 0) {
-                    pubs = pubs.sort((a: any, b: any) => {
-                        // Calculer score de pertinence
-                        const scoreA = a.produits?.filter((p: any) =>
-                            userBehavior.includes(p.type)
-                        ).length || 0;
-                        const scoreB = b.produits?.filter((p: any) =>
-                            userBehavior.includes(p.type)
-                        ).length || 0;
+                    pubs = pubs.sort((a: ApiPublicite, b: ApiPublicite) => {
+                        const scoreA =
+                            a.produits?.filter((p: any) => userBehavior.includes(p.type)).length || 0;
+                        const scoreB =
+                            b.produits?.filter((p: any) => userBehavior.includes(p.type)).length || 0;
                         return scoreB - scoreA;
                     });
                 }
 
-                setPublicites(pubs);
+                const normalized = pubs.map((pub: ApiPublicite) => {
+                    const id = String(pub.id ?? pub.publicite_id ?? Math.random().toString(36).slice(2));
+                    return {
+                        ...pub,
+                        id,
+                        videos_meta: Array.isArray(pub.videos_meta) ? pub.videos_meta : [],
+                        video_stats: pub.video_stats ?? {},
+                    };
+                });
+
+                setPublicites(normalized);
+                setCurrentIndex(0);
+                setVideoReady({});
+                setFailedVideos({});
+                setNeedsManualPlay({});
+                viewedRef.current.clear();
             } else {
-                // En cas d'erreur ou pas de données, définir un tableau vide
                 setPublicites([]);
             }
-
-            setLoading(false);
         } catch (error) {
             console.error('[PublicitesCarousel] Erreur chargement:', error);
-            // Ne plus continuer à essayer en boucle si l'endpoint n'existe pas
             setPublicites([]);
+        } finally {
             setLoading(false);
         }
-    };
+    }, [userBehavior, userId]);
 
-    // ✅ Enregistrer clic et naviguer vers le produit
-    const handlePubliciteClick = async (pub: any) => {
-        try {
-            // Enregistrer le clic pour les analytics
-            await apiPost('/api/publicites/track-click', {
-                publicite_id: pub.id,
-                user_id: userId
+    useEffect(() => {
+        loadPublicites();
+    }, [loadPublicites]);
+
+    useEffect(() => {
+        if (orderedPublicites.length <= 1) {
+            return;
+        }
+
+        const interval = setInterval(() => {
+            setCurrentIndex((prev) => {
+                const nextIndex = (prev + 1) % orderedPublicites.length;
+                scrollViewRef.current?.scrollTo({
+                    x: nextIndex * (CARD_WIDTH + CARD_MARGIN),
+                    animated: true,
+                });
+                return nextIndex;
+            });
+        }, AUTO_SCROLL_INTERVAL);
+
+        return () => clearInterval(interval);
+    }, [orderedPublicites.length]);
+
+    useEffect(() => {
+        const activePub = orderedPublicites[currentIndex];
+        Object.entries(videoRefs.current).forEach(([id, ref]) => {
+            if (!ref) {
+                return;
+            }
+
+            if (!isFocused || !activePub || String(activePub.id) !== id) {
+                ref.pauseAsync().catch(() => undefined);
+                ref.setPositionAsync(0).catch(() => undefined);
+                return;
+            }
+
+            ref.playAsync()
+                .then(() => {
+                    setNeedsManualPlay((prev) => ({ ...prev, [id]: false }));
+                })
+                .catch(() => {
+                    setNeedsManualPlay((prev) => ({ ...prev, [id]: true }));
+                });
+        });
+    }, [currentIndex, isFocused, orderedPublicites]);
+
+    useEffect(() => {
+        if (viewTimeoutRef.current) {
+            clearTimeout(viewTimeoutRef.current);
+            viewTimeoutRef.current = null;
+        }
+
+        const activePub = orderedPublicites[currentIndex];
+        if (!activePub) {
+            return;
+        }
+        const pubId = String(activePub.id);
+        if (viewedRef.current.has(pubId)) {
+            return;
+        }
+
+        viewTimeoutRef.current = setTimeout(() => {
+            viewedRef.current.add(pubId);
+            const hasVideo = Boolean(resolveVideoSource(activePub));
+            const primaryMeta = getPrimaryVideoMeta(activePub, hasVideo);
+            apiPost('/api/publicites/track-view', {
+                publicite_id: Number(pubId),
+                user_id: userId,
+                video_format: primaryMeta.format,
+                video_source: primaryMeta.source,
+            }).catch(() => undefined);
+        }, 2000);
+
+        return () => {
+            if (viewTimeoutRef.current) {
+                clearTimeout(viewTimeoutRef.current);
+                viewTimeoutRef.current = null;
+            }
+        };
+    }, [currentIndex, orderedPublicites, userId]);
+
+    const handlePlaybackStatus = useCallback(
+        (pubId: string) => (status: AVPlaybackStatus) => {
+            if (!status.isLoaded) {
+                return;
+            }
+            setVideoReady((prev) => {
+                if (prev[pubId]) {
+                    return prev;
+                }
+                return { ...prev, [pubId]: true };
             });
 
-            // Naviguer vers le détail du premier produit ou du service
-            if (pub.produits && pub.produits.length > 0) {
-                const firstProduct = pub.produits[0];
-
-                // Si on a le serviceId, on peut naviguer vers le détail du service
-                if (firstProduct.serviceId) {
-                    (navigation as any).navigate('ChatModal', {
-                        serviceId: firstProduct.serviceId,
-                        productId: firstProduct.id
-                    });
+            if (status.didJustFinish) {
+                const ref = videoRefs.current[pubId];
+                if (ref) {
+                    ref.setPositionAsync(0).then(() => {
+                        if (isFocused) {
+                            ref.playAsync().catch(() => undefined);
+                        }
+                    }).catch(() => undefined);
                 }
             }
-        } catch (error) {
-            console.error('[PublicitesCarousel] Erreur tracking clic:', error);
-        }
-    };
+        },
+        [isFocused],
+    );
 
-    if (loading || publicites.length === 0) {
-        return null; // Ne rien afficher si pas de publicités
+    const handlePubliciteClick = useCallback(
+        async (pub: ApiPublicite) => {
+            try {
+                const hasVideo = Boolean(resolveVideoSource(pub));
+                const primaryMeta = getPrimaryVideoMeta(pub, hasVideo);
+                await apiPost('/api/publicites/track-click', {
+                    publicite_id: Number(pub.id),
+                    user_id: userId,
+                    video_format: primaryMeta.format,
+                    video_source: primaryMeta.source,
+                });
+
+                if (Array.isArray(pub.produits) && pub.produits.length > 0) {
+                    const firstProduct = pub.produits[0];
+                    if (firstProduct?.serviceId) {
+                        (navigation as any).navigate('ChatModal', {
+                            serviceId: firstProduct.serviceId,
+                            productId: firstProduct.id,
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('[PublicitesCarousel] Erreur tracking clic:', error);
+            }
+        },
+        [navigation, userId],
+    );
+
+    const handleRetryVideo = useCallback(
+        (cardId: string, videoUri: string | null) => {
+            if (!videoUri) {
+                return;
+            }
+            setFailedVideos((prev) => ({ ...prev, [cardId]: false }));
+            setNeedsManualPlay((prev) => ({ ...prev, [cardId]: false }));
+
+            const ref = videoRefs.current[cardId];
+            if (ref) {
+                ref.setStatusAsync({ shouldPlay: true, isMuted }).catch(() => {
+                    setNeedsManualPlay((prev) => ({ ...prev, [cardId]: true }));
+                });
+            }
+        },
+        [isMuted],
+    );
+
+    const handleManualPlay = useCallback((cardId: string) => {
+        const ref = videoRefs.current[cardId];
+        if (!ref) {
+            return;
+        }
+
+        ref.playAsync()
+            .then(() => {
+                setNeedsManualPlay((prev) => ({ ...prev, [cardId]: false }));
+            })
+            .catch(() => {
+                setNeedsManualPlay((prev) => ({ ...prev, [cardId]: true }));
+            });
+    }, []);
+
+    if (loading || orderedPublicites.length === 0) {
+        return null;
     }
 
     return (
@@ -135,156 +518,218 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>✨ {t('publicite.promotions')}</Text>
                 <Text style={styles.headerSubtitle}>
-                    {userBehavior.length > 0 ? t('publicite.selected_for_you') : t('publicite.discover_offers')}
+                    {userBehavior.length > 0
+                        ? t('publicite.selected_for_you')
+                        : t('publicite.discover_offers')}
                 </Text>
             </View>
 
             <ScrollView
                 ref={scrollViewRef}
                 horizontal
-                pagingEnabled={false}
                 showsHorizontalScrollIndicator={false}
                 decelerationRate="fast"
                 snapToInterval={CARD_WIDTH + CARD_MARGIN}
                 snapToAlignment="start"
                 contentContainerStyle={styles.scrollContent}
                 onMomentumScrollEnd={(event) => {
-                    const newIndex = Math.round(event.nativeEvent.contentOffset.x / (CARD_WIDTH + CARD_MARGIN));
+                    const newIndex = Math.round(
+                        event.nativeEvent.contentOffset.x / (CARD_WIDTH + CARD_MARGIN),
+                    );
                     setCurrentIndex(newIndex);
                 }}
             >
-                {(publicites || []).map((pub, index) => (
-                    <TouchableOpacity
-                        key={pub.id}
-                        style={[styles.card, { width: CARD_WIDTH, marginRight: CARD_MARGIN }]}
-                        activeOpacity={0.9}
-                        onPress={() => handlePubliciteClick(pub)}
-                    >
-                        <LinearGradient
-                            colors={['#6366F1', '#8B5CF6', '#EC4899']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.cardGradient}
+                {orderedPublicites.map((pub) => {
+                    const cardId = String(pub.id);
+                    const videoUri = resolveVideoSource(pub);
+                    const thumbnailUri = resolveThumbnail(pub);
+                    const isActive = orderedPublicites[currentIndex]?.id === pub.id;
+                    const isVideoFailed = failedVideos[cardId];
+                    const requiresManualPlay = needsManualPlay[cardId];
+
+                    return (
+                        <TouchableOpacity
+                            key={cardId}
+                            activeOpacity={0.92}
+                            onPress={() => handlePubliciteClick(pub)}
+                            style={[styles.card, { width: CARD_WIDTH, marginRight: CARD_MARGIN }]}
                         >
-                            {/* Vidéo ou Image */}
-                            {pub.videos && pub.videos.length > 0 ? (
-                                <View style={styles.mediaContainer}>
-                                    <Image
-                                        source={{ uri: `data:image/jpeg;base64,${pub.thumbnails[0]}` }}
-                                        style={styles.media}
-                                        resizeMode="cover"
-                                    />
-                                    <View style={styles.playOverlay}>
-                                        <SafeIcon name="play" size={32} color="#fff" />
+                            <View style={styles.mediaSection}>
+                                {videoUri && !isVideoFailed ? (
+                                    <>
+                                        <Video
+                                            ref={(ref) => {
+                                                videoRefs.current[cardId] = ref;
+                                            }}
+                                            source={{ uri: videoUri }}
+                                            style={styles.video}
+                                            resizeMode={ResizeMode.COVER}
+                                            shouldPlay={isFocused && isActive && !requiresManualPlay}
+                                            isLooping
+                                            isMuted={isMuted}
+                                            onError={() => {
+                                                setFailedVideos((prev) => ({ ...prev, [cardId]: true }));
+                                            }}
+                                            onPlaybackStatusUpdate={(status) => {
+                                                handlePlaybackStatus(cardId)(status);
+                                                if (!status.isLoaded && 'error' in status && status.error) {
+                                                    setFailedVideos((prev) => ({ ...prev, [cardId]: true }));
+                                                }
+                                            }}
+                                        />
+                                        {!videoReady[cardId] && (
+                                            <View style={styles.loadingOverlay}>
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            </View>
+                                        )}
+                                        {requiresManualPlay && (
+                                            <TouchableOpacity
+                                                activeOpacity={0.9}
+                                                style={styles.manualPlayOverlay}
+                                                onPress={(event) => {
+                                                    event.stopPropagation();
+                                                    handleManualPlay(cardId);
+                                                }}
+                                            >
+                                                <SafeIcon name="play" size={28} color="#fff" />
+                                                <Text style={styles.manualPlayText}>
+                                                    {t('publicite.play_video') ?? 'Lire la vidéo'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        <View style={styles.badgesRow}>
+                                            <View style={styles.squareBadge}>
+                                                <Text style={styles.squareBadgeText}>1:1</Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                activeOpacity={0.8}
+                                                onPress={(event) => {
+                                                    event.stopPropagation();
+                                                    setIsMuted((prev) => !prev);
+                                                }}
+                                                style={styles.soundToggle}
+                                            >
+                                                <SafeIcon
+                                                    name={isMuted ? 'volume-x' : 'volume-2'}
+                                                    size={16}
+                                                    color="#fff"
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </>
+                                ) : thumbnailUri ? (
+                                    <Image source={{ uri: thumbnailUri }} style={styles.fallbackImage} />
+                                ) : (
+                                    <View style={styles.fallbackMedia}>
+                                        <SafeIcon name="image" size={42} color="#CBD5F5" />
                                     </View>
-                                </View>
-                            ) : pub.produits?.[0]?.images?.[0] ? (
-                                <Image
-                                    source={{ uri: `data:image/jpeg;base64,${pub.produits[0].images[0]}` }}
-                                    style={styles.media}
-                                    resizeMode="cover"
-                                />
-                            ) : (
-                                <View style={[styles.media, styles.placeholderMedia]}>
-                                    <SafeIcon name="image" size={48} color="#fff" />
-                                </View>
-                            )}
-
-                            {/* Contenu */}
-                            <View style={styles.cardContent}>
-                                <Text style={styles.cardTitle} numberOfLines={2}>
-                                    {pub.titre}
-                                </Text>
-                                {pub.description && (
-                                    <Text style={styles.cardDescription} numberOfLines={2}>
-                                        {pub.description}
-                                    </Text>
                                 )}
-                                <View style={styles.cardFooter}>
-                                    <View style={styles.productsCount}>
-                                        <SafeIcon name="package" size={14} color="#fff" />
-                                        <Text style={styles.productsCountText}>
-                                            {pub.produits?.length || 0} produit{(pub.produits?.length || 0) > 1 ? 's' : ''}
+
+                                {isVideoFailed && (
+                                    <TouchableOpacity
+                                        activeOpacity={0.9}
+                                        style={styles.manualPlayOverlay}
+                                        onPress={(event) => {
+                                            event.stopPropagation();
+                                            handleRetryVideo(cardId, videoUri);
+                                        }}
+                                    >
+                                        <SafeIcon name="refresh-cw" size={26} color="#fff" />
+                                        <Text style={styles.manualPlayText}>
+                                            {t('publicite.retry_video') ?? 'Relancer la vidéo'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+
+                                {pub.produits?.[0]?.type ? (
+                                    <View style={styles.categoryBadge}>
+                                        <Text style={styles.categoryBadgeText}>
+                                            {getCategoryIcon(pub.produits[0].type)}
                                         </Text>
                                     </View>
-                                    {pub.produits?.[0]?.prix && (
-                                        <Text style={styles.cardPrice}>
-                                            À partir de {pub.produits[0].prix} FCFA
-                                        </Text>
-                                    )}
-                                </View>
-
-                                {/* ✅ Bouton "Voir le produit" */}
-                                <View style={styles.ctaButton}>
-                                    <SafeIcon name="arrow-right" size={16} color="#fff" />
-                                    <Text style={styles.ctaText}>Voir le produit</Text>
-                                </View>
+                                ) : null}
                             </View>
 
-                            {/* Badge catégorie */}
-                            {pub.produits?.[0]?.type && (
-                                <View style={styles.categoryBadge}>
-                                    <Text style={styles.categoryText}>
-                                        {getCategoryIcon(pub.produits[0].type)}
+                            <View style={styles.contentSection}>
+                                <Text style={styles.title} numberOfLines={2}>
+                                    {pub.titre || 'Promotion Yukpo'}
+                                </Text>
+                                {pub.description ? (
+                                    <Text style={styles.description} numberOfLines={2}>
+                                        {pub.description}
                                     </Text>
-                                </View>
-                            )}
+                                ) : null}
 
-                            {/* Badge zone géographique */}
-                            {pub.zone_geographique && (
-                                <View style={styles.zoneBadge}>
-                                    <SafeIcon
-                                        name={pub.zone_geographique === 'local' ? 'map-pin' : 'globe'}
-                                        size={12}
-                                        color="#fff"
-                                    />
+                                <View style={styles.metricsRow}>
+                                    <View style={styles.metric}>
+                                        <SafeIcon name="package" size={14} color={modernColors.textSecondary} />
+                                        <Text style={styles.metricText}>
+                                            {(pub.produits?.length || 0).toString()} {t('publicite.products')}
+                                        </Text>
+                                    </View>
+                                    {pub.produits?.[0]?.prix ? (
+                                        <View style={styles.metric}>
+                                            <SafeIcon name="tag" size={14} color={modernColors.textSecondary} />
+                                            <Text style={styles.metricText}>
+                                                À partir de {pub.produits[0].prix} FCFA
+                                            </Text>
+                                        </View>
+                                    ) : null}
                                 </View>
-                            )}
-                        </LinearGradient>
-                    </TouchableOpacity>
-                ))}
+
+                                <View style={styles.footerRow}>
+                                    <View style={styles.zonePill}>
+                                        <SafeIcon
+                                            name={pub.zone_geographique === 'local' ? 'map-pin' : 'globe'}
+                                            size={12}
+                                            color='#fff'
+                                        />
+                                        <Text style={styles.zoneText}>
+                                            {pub.zone_geographique === 'local'
+                                                ? t('publicite.zone.local')
+                                                : pub.zone_geographique === 'regional'
+                                                    ? t('publicite.zone.regional')
+                                                    : t('publicite.zone.international')}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.ctaPill}>
+                                        <Text style={styles.ctaText}>Voir le produit</Text>
+                                        <SafeIcon name="arrow-right" size={14} color="#fff" />
+                                    </View>
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                    );
+                })}
             </ScrollView>
 
-            {/* Indicateurs de pagination */}
-            {(publicites || []).length > 1 && (
+            {orderedPublicites.length > 1 ? (
                 <View style={styles.pagination}>
-                    {(publicites || []).map((_, index) => (
-                        <View
-                            key={index}
+                    {orderedPublicites.map((pub, index) => (
+                        <TouchableOpacity
+                            key={String(pub.id)}
+                            onPress={() => {
+                                scrollViewRef.current?.scrollTo({
+                                    x: index * (CARD_WIDTH + CARD_MARGIN),
+                                    animated: true,
+                                });
+                                setCurrentIndex(index);
+                            }}
                             style={[
                                 styles.paginationDot,
-                                index === currentIndex && styles.paginationDotActive
+                                index === currentIndex && styles.paginationDotActive,
                             ]}
                         />
                     ))}
                 </View>
-            )}
+            ) : null}
         </View>
     );
 };
 
-// Fonction helper pour les icônes
-const getCategoryIcon = (type: string): string => {
-    const icons: Record<string, string> = {
-        'immobilier_batiment': '🏠',
-        'immobilier_terrain': '🏞️',
-        'hotellerie': '🏨',
-        'automobile': '🚗',
-        'ticket_voyage': '🎫',
-        'telephone': '📱',
-        'ordinateur': '💻',
-        'vetement': '👔',
-        'electromenager': '🔌',
-        'mobilier': '🪑',
-        'pharmacie': '💊',
-        'default': '📦'
-    };
-    return icons[type] || icons.default;
-};
-
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 16,
+        marginBottom: 20,
     },
     header: {
         paddingHorizontal: 16,
@@ -302,130 +747,177 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 16,
+        paddingBottom: 4,
     },
     card: {
-        height: 220,
-        borderRadius: 16,
+        borderRadius: 22,
+        backgroundColor: modernColors.surface,
         overflow: 'hidden',
-        elevation: 4,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+        elevation: 6,
     },
-    cardGradient: {
-        flex: 1,
-        flexDirection: 'row',
-    },
-    mediaContainer: {
-        width: '45%',
+    mediaSection: {
+        width: '100%',
+        aspectRatio: 1,
+        backgroundColor: '#0F172A',
         position: 'relative',
     },
-    media: {
+    video: {
         width: '100%',
         height: '100%',
     },
-    placeholderMedia: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    loadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    playOverlay: {
+    manualPlayOverlay: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.55)',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        gap: 10,
     },
-    cardContent: {
-        flex: 1,
-        padding: 16,
-        justifyContent: 'space-between',
-    },
-    cardTitle: {
-        fontSize: 16,
-        fontWeight: '700',
+    manualPlayText: {
         color: '#fff',
-        marginBottom: 8,
-    },
-    cardDescription: {
         fontSize: 13,
-        color: 'rgba(255, 255, 255, 0.9)',
-        lineHeight: 18,
-    },
-    cardFooter: {
-        gap: 8,
-    },
-    productsCount: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    productsCountText: {
-        fontSize: 12,
-        color: '#fff',
         fontWeight: '600',
     },
-    cardPrice: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#fff',
-    },
-    ctaButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
-        marginTop: 8,
-    },
-    ctaText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#fff',
-    },
-    categoryBadge: {
+    badgesRow: {
         position: 'absolute',
         top: 12,
         left: 12,
+        right: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    squareBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    },
+    squareBadgeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#fff',
+        letterSpacing: 0.4,
+    },
+    soundToggle: {
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: 'rgba(15, 23, 42, 0.55)',
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
     },
-    categoryText: {
-        fontSize: 20,
+    fallbackMedia: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#1E293B',
     },
-    zoneBadge: {
+    fallbackImage: {
+        width: '100%',
+        height: '100%',
+    },
+    categoryBadge: {
         position: 'absolute',
-        top: 12,
-        right: 12,
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        top: 16,
+        left: 16,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#fff',
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.18,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    categoryBadgeText: {
+        fontSize: 22,
+    },
+    contentSection: {
+        paddingHorizontal: 18,
+        paddingVertical: 16,
+        gap: 12,
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    description: {
+        fontSize: 13,
+        lineHeight: 18,
+        color: modernColors.textSecondary,
+    },
+    metricsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 14,
+    },
+    metric: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    metricText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+    },
+    footerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    zonePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 999,
+        backgroundColor: '#312E81',
+    },
+    zoneText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#fff',
+    },
+    ctaPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 999,
+        backgroundColor: modernColors.primary,
+    },
+    ctaText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#fff',
     },
     pagination: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 8,
-        marginTop: 12,
+        gap: 10,
+        marginTop: 14,
     },
     paginationDot: {
         width: 8,
@@ -434,9 +926,10 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.border,
     },
     paginationDotActive: {
+        width: 26,
         backgroundColor: modernColors.primary,
-        width: 24,
     },
 });
 
 export default PublicitesCarousel;
+

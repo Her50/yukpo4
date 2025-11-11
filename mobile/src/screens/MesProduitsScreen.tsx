@@ -5,6 +5,7 @@ import {
     ActivityIndicator,
     Alert,
     Animated,
+    DeviceEventEmitter,
     Modal,
     Platform,
     RefreshControl,
@@ -17,32 +18,14 @@ import {
 } from 'react-native';
 import { NativeCard } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
+import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import { useAuth } from '../contexts/AuthContext';
-import { apiDelete, apiGet, apiPatch } from '../services/api';
+import { apiDelete, apiGet, apiPatch, mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-
-interface Product {
-    id: string;
-    nom: string;
-    type: string;
-    prix: number | string;
-    devise?: string;
-    description?: string;
-    is_active?: boolean;
-    serviceId: string;
-    serviceTitre: string;
-    images?: string[];
-    [key: string]: any;
-    rawProductId?: number;
-    product_index?: number;
-    category_key?: string;
-    category_label?: string;
-    views?: number;
-    shares?: number;
-    saves?: number;
-}
+import { ManagedProduct } from '../types/ManagedProduct';
+import { GeneratedVideoResponse } from '../types/VideoGeneration';
 
 const normalizeCategoryKey = (product: Record<string, any>): string => {
     const raw = product?.categorie_produit
@@ -200,7 +183,7 @@ const HEADER_HEIGHT = Platform.OS === 'ios' ? 88 : 72;
 const MesProduitsScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
-    const [products, setProducts] = useState<Product[]>([]);
+    const [products, setProducts] = useState<ManagedProduct[]>([]);
     const [services, setServices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -209,6 +192,8 @@ const MesProduitsScreen: React.FC = () => {
     const [filtersVisible, setFiltersVisible] = useState(false);
     const [showTeamManager, setShowTeamManager] = useState(false);
     const [teamManagerServiceId, setTeamManagerServiceId] = useState<string>('');
+    const [videoCreatorVisible, setVideoCreatorVisible] = useState(false);
+    const [videoCreatorProduct, setVideoCreatorProduct] = useState<ManagedProduct | null>(null);
     const scrollY = useMemo(() => new Animated.Value(0), []);
     const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
 
@@ -229,7 +214,7 @@ const MesProduitsScreen: React.FC = () => {
     }, [headerHeight]);
 
     // Charger tous les produits de tous les services du prestataire
-    const loadProducts = async (isRefresh = false) => {
+    const loadProducts = useCallback(async (isRefresh = false) => {
         try {
             if (isRefresh) {
                 setRefreshing(true);
@@ -246,7 +231,7 @@ const MesProduitsScreen: React.FC = () => {
                 setServices(servicesData);
 
                 // Extraire tous les produits de tous les services
-                const allProducts: Product[] = [];
+                const allProducts: ManagedProduct[] = [];
 
                 servicesData.forEach((service: any) => {
                     const serviceId = service.id.toString();
@@ -351,20 +336,76 @@ const MesProduitsScreen: React.FC = () => {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
             loadProducts();
-        }, [])
+        }, [loadProducts])
     );
 
     const onRefresh = () => {
         loadProducts(true);
     };
 
+    React.useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('service:refresh', () => {
+            loadProducts(true);
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, [loadProducts]);
+
+    const openVideoCreatorForProduct = (product: ManagedProduct) => {
+        setVideoCreatorProduct(product);
+        setVideoCreatorVisible(true);
+    };
+
+    const openVideoCreatorGlobal = () => {
+        setVideoCreatorProduct(null);
+        setVideoCreatorVisible(true);
+    };
+
+    const closeVideoCreator = () => {
+        setVideoCreatorVisible(false);
+        setVideoCreatorProduct(null);
+    };
+
+    const handleVideoCreatorSuccess = useCallback(async (result: GeneratedVideoResponse) => {
+        console.log('[MesProduitsScreen] 🎬 Vidéo générée:', result);
+
+        try {
+            await mediaApi.trackMediaView(result.media_id, { channel: 'studio_preview' });
+            if (Array.isArray(result.distribution_targets) && result.distribution_targets.length > 0) {
+                await Promise.all(
+                    result.distribution_targets.map((target) =>
+                        mediaApi.updateMediaDistribution(result.media_id, target, {
+                            status: 'planned',
+                            metadata: { triggered_at: Date.now() },
+                        })
+                    )
+                );
+            }
+            await loadProducts(true);
+        } catch (error) {
+            console.error('[MesProduitsScreen] Erreur rafraîchissement après vidéo:', error);
+        } finally {
+            DeviceEventEmitter.emit('service:refresh');
+            setVideoCreatorVisible(false);
+            setVideoCreatorProduct(null);
+        }
+
+        const message = result?.headline
+            ? `${result.headline}\n\nVotre vidéo est maintenant disponible dans votre médiathèque.`
+            : 'Votre vidéo est maintenant disponible dans votre médiathèque.';
+
+        Alert.alert('🎬 Vidéo créée avec succès', message);
+    }, [loadProducts]);
+
     // Activer/Désactiver un produit spécifique
-    const handleToggleProduct = async (product: Product) => {
+    const handleToggleProduct = async (product: ManagedProduct) => {
         try {
             const newStatus = !product.is_active;
             const productIdForToggle = resolveNumericId(product.rawProductId ?? product.id);
@@ -513,7 +554,7 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Supprimer un produit
-    const handleDeleteProduct = async (product: Product) => {
+    const handleDeleteProduct = async (product: ManagedProduct) => {
         Alert.alert(
             'Supprimer le produit',
             `Êtes-vous sûr de vouloir supprimer "${product.nom}" ?\n\nCette action est irréversible.`,
@@ -557,7 +598,7 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Modifier un produit (naviguer vers le service parent en mode édition)
-    const handleEditProduct = (product: Product) => {
+    const handleEditProduct = (product: ManagedProduct) => {
         const productIdForUpdate = resolveNumericId(product.rawProductId ?? product.id);
 
         if (productIdForUpdate === null) {
@@ -583,8 +624,29 @@ const MesProduitsScreen: React.FC = () => {
         } as never);
     };
 
+    const recordProductShare = async (product: ManagedProduct, channel: string) => {
+        try {
+            if (typeof product.product_index !== 'number') return;
+            const mediaResponse = await mediaApi.getProductMedia(product.serviceId, product.product_index);
+            if (!mediaResponse.success) return;
+            const entries = mediaResponse.data?.data;
+            if (!Array.isArray(entries) || entries.length === 0) return;
+            const firstVideo = entries.find(
+                (item: any) => (item.media_type || item.type) === 'video'
+            ) || entries[0];
+            if (firstVideo?.id) {
+                await mediaApi.trackMediaShare(firstVideo.id, {
+                    channel,
+                    metadata: { product_id: product.id, service_id: product.serviceId },
+                });
+            }
+        } catch (error) {
+            console.warn('[MesProduitsScreen] Échec enregistrement partage média:', error);
+        }
+    };
+
     // Partager un produit
-    const handleShareProduct = async (product: Product) => {
+    const handleShareProduct = async (product: ManagedProduct) => {
         try {
             // Générer le lien deep link pour ouvrir l'app directement sur ce produit
             const deepLink = `yukpomnang://product/${product.id}?serviceId=${product.serviceId}`;
@@ -605,6 +667,7 @@ const MesProduitsScreen: React.FC = () => {
 
             if (result.action === Share.sharedAction) {
                 console.log('✅ Produit partagé:', product.nom, 'via', result.activityType || 'partage natif');
+                await recordProductShare(product, result.activityType || 'native_share');
             } else if (result.action === Share.dismissedAction) {
                 console.log('⚠️ Partage annulé');
             }
@@ -615,7 +678,7 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Dupliquer un produit
-    const handleDuplicateProduct = (product: Product) => {
+    const handleDuplicateProduct = (product: ManagedProduct) => {
         const prefill = buildProductPrefill(product);
         const originalName = prefill.nom_produit || product.nom || 'Produit';
         prefill.nom_produit = `${originalName} (Copie)`;
@@ -636,7 +699,7 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Promouvoir un produit
-    const handlePromoteProduct = (product: Product) => {
+    const handlePromoteProduct = (product: ManagedProduct) => {
         Alert.alert(
             '🎉 Promouvoir le produit',
             `Booster "${product.nom}" pour augmenter sa visibilité ?\n\n✨ Votre produit apparaîtra en tête des résultats de recherche.\n\n💰 Coût: À définir`,
@@ -780,7 +843,7 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Voir les statistiques d'un produit
-    const handleViewStats = (product: Product) => {
+    const handleViewStats = (product: ManagedProduct) => {
         const stats = `📊 Statistiques de "${product.nom}"\n\n` +
             `👁️ Vues: ${product.views || 0}\n` +
             `💬 Interactions: ${product.interactions || 0}\n` +
@@ -847,7 +910,7 @@ const MesProduitsScreen: React.FC = () => {
         ]
     ), [totalProducts, activeProducts, inactiveProducts, totalCategories]);
 
-    const buildProductPrefill = (product: Product) => {
+    const buildProductPrefill = (product: ManagedProduct) => {
         const prefill: Record<string, any> = {};
 
         prefill.nom_produit = product.nom || product.nom_produit || '';
@@ -918,7 +981,7 @@ const MesProduitsScreen: React.FC = () => {
         return prefill;
     };
 
-    const renderProductCard = (product: Product) => {
+    const renderProductCard = (product: ManagedProduct) => {
         const priceValue = product.prix !== undefined && product.prix !== null
             ? (typeof product.prix === 'number'
                 ? `${product.prix.toLocaleString('fr-FR')} ${product.devise || 'FCFA'}`
@@ -1044,6 +1107,12 @@ const MesProduitsScreen: React.FC = () => {
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.iconButton}
+                        onPress={() => openVideoCreatorForProduct(product)}
+                    >
+                        <SafeIcon name="video" size={20} color="#EC4899" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.iconButton}
                         onPress={() => handleDuplicateProduct(product)}
                     >
                         <SafeIcon name="copy" size={20} color="#8B5CF6" />
@@ -1094,6 +1163,15 @@ const MesProduitsScreen: React.FC = () => {
         },
     ];
 
+    const quickActionsRow = [
+        ...quickActions.slice(1),
+        {
+            label: 'Studio vidéo',
+            icon: 'video',
+            onPress: openVideoCreatorGlobal,
+        },
+    ];
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -1117,12 +1195,20 @@ const MesProduitsScreen: React.FC = () => {
                             title="Mes Produits"
                             subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
                             rightSlot={(
-                                <TouchableOpacity
-                                    style={styles.editServiceButton}
-                                    onPress={handleEditServiceInfo}
-                                >
-                                    <SafeIcon name="settings" size={18} color={modernColors.primary} />
-                                </TouchableOpacity>
+                                <View style={styles.headerActions}>
+                                    <TouchableOpacity
+                                        style={styles.headerIconButton}
+                                        onPress={openVideoCreatorGlobal}
+                                    >
+                                        <SafeIcon name="video" size={18} color={modernColors.primary} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.editServiceButton}
+                                        onPress={handleEditServiceInfo}
+                                    >
+                                        <SafeIcon name="settings" size={18} color={modernColors.primary} />
+                                    </TouchableOpacity>
+                                </View>
                             )}
                         />
                     </View>
@@ -1150,7 +1236,7 @@ const MesProduitsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.quickActionsRow}>
-                        {quickActions.slice(1).map((action) => (
+                        {quickActionsRow.map((action) => (
                             <TouchableOpacity
                                 key={action.label}
                                 style={styles.quickActionButton}
@@ -1260,7 +1346,13 @@ const MesProduitsScreen: React.FC = () => {
                     </View>
                 )}
             </Animated.ScrollView>
-
+            <ProductVideoCreationModal
+                visible={videoCreatorVisible}
+                primaryProduct={videoCreatorProduct}
+                products={products}
+                onClose={closeVideoCreator}
+                onSuccess={handleVideoCreatorSuccess}
+            />
             <Modal
                 visible={showTeamManager}
                 animationType="slide"
@@ -1299,6 +1391,21 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    headerIconButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F0FDF4',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
     },
     editServiceButton: {
         width: 36,

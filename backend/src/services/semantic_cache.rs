@@ -376,7 +376,7 @@ impl SemanticCache {
                 "active": true,
                 "type_metier": intention
             });
-            
+
             let response = self.http_client
                 .post(&format!("{}/search_embedding_pinecone", self.config.embedding_service_url))
                 .header("x-api-key", &self.config.api_key)
@@ -384,10 +384,10 @@ impl SemanticCache {
                 .timeout(Duration::from_secs(1500)) // Timeout ?quilibr? (1.5s)
                 .send()
                 .await?;
-            
+
             if response.status().is_success() {
                 let search_result: PineconeSearchResponse = response.json().await?;
-                
+
                 if let Some(best_match) = search_result.results.first() {
                     if best_match.score >= self.config.similarity_threshold {
                         if let Some(ia_response) = best_match.metadata.get("ia_response").and_then(|v| v.as_str()) {
@@ -397,14 +397,14 @@ impl SemanticCache {
                                 log::warn!("[SemanticCache] Cache ignor? - requ?te avec images mais r?ponse sans origine_champs");
                                 return Ok(None);
                             }
-                            
+
                             log::info!("[SemanticCache] ? Cache s?mantique trouv? en {:?} (score: {:.3})", start_time.elapsed(), best_match.score);
                             return Ok(Some(ia_response.to_string()));
                         }
                     }
                 }
             }
-            
+
             Ok(None)
         }).await {
             Ok(result) => result,

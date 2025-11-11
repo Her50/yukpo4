@@ -23,7 +23,7 @@ pub fn history_routes() -> Router<Arc<AppState>> {
         // Statistiques de consultation d'un service
         .route(
             "/stats/service/{service_id}/{days}",
-            get(history_controller::get_service_consultation_stats),
+            get(history_controller::get_service_consultation_stats_with_days),
         )
         .route(
             "/stats/service/{service_id}",
@@ -32,7 +32,7 @@ pub fn history_routes() -> Router<Arc<AppState>> {
         // Statistiques globales de consultation
         .route(
             "/stats/global/{days}",
-            get(history_controller::get_global_consultation_stats),
+            get(history_controller::get_global_consultation_stats_with_days),
         )
         .route(
             "/stats/global",

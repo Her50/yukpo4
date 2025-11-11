@@ -1,10 +1,12 @@
 // ?? src/services/creer_service.rs
 
 use crate::core::types::AppError;
+use crate::services::google_places_service::GooglePlacesService;
+use crate::utils::currency::{auto_fill_currencies, extract_country};
 use crate::utils::embedding_client::AddEmbeddingPineconeRequest;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
-use log::info;
+use log::{info, warn};
 use sqlx::{PgPool, Row};
 
 // ✅ NOUVEAU 2025-11-01 : Configuration des coûts de création de services et produits
@@ -33,6 +35,235 @@ mod service_costs {
     }
 }
 
+fn extract_value_string(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::String(s) => {
+            let trimmed = s.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }
+        serde_json::Value::Number(n) => Some(n.to_string()),
+        serde_json::Value::Bool(b) => Some(b.to_string()),
+        serde_json::Value::Object(map) => {
+            if let Some(valeur) = map.get("valeur") {
+                extract_value_string(valeur)
+            } else if let Some(raw) = map.get("raw").and_then(|v| v.as_str()) {
+                extract_value_string(&serde_json::Value::String(raw.to_string()))
+            } else if let Some(text) = map.get("text").and_then(|v| v.as_str()) {
+                extract_value_string(&serde_json::Value::String(text.to_string()))
+            } else if let Some(display) = map.get("display_name").and_then(|v| v.as_str()) {
+                extract_value_string(&serde_json::Value::String(display.to_string()))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+fn build_location_label(value: &serde_json::Value) -> Option<String> {
+    if let serde_json::Value::Object(map) = value {
+        if let Some(raw) = map.get("raw").and_then(|v| v.as_str()) {
+            let trimmed = raw.trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
+
+        let mut parts: Vec<String> = Vec::new();
+
+        if let Some(place_name) = map.get("place_name").and_then(|v| v.as_str()) {
+            let trimmed = place_name.trim();
+            if !trimmed.is_empty() {
+                parts.push(trimmed.to_string());
+            }
+        }
+
+        if let Some(components) = map
+            .get("composants")
+            .or_else(|| map.get("components"))
+            .and_then(|v| v.as_object())
+        {
+            for key in ["quartier", "ville", "region", "pays"] {
+                if let Some(value) = components.get(key).and_then(|v| v.as_str()) {
+                    let trimmed = value.trim();
+                    if !trimmed.is_empty()
+                        && !parts
+                            .iter()
+                            .any(|existing| existing.eq_ignore_ascii_case(trimmed))
+                    {
+                        parts.push(trimmed.to_string());
+                    }
+                }
+            }
+        }
+
+        if !parts.is_empty() {
+            return Some(parts.join(", "));
+        }
+    }
+    extract_value_string(value)
+}
+
+fn extract_coordinates_from_value(value: &serde_json::Value) -> Option<(f64, f64)> {
+    if let Some(obj) = value.as_object() {
+        if let Some(coords_obj) = obj.get("coordinates").and_then(|v| v.as_object()) {
+            let lat = coords_obj
+                .get("lat")
+                .and_then(|v| v.as_f64())
+                .or_else(|| coords_obj.get("latitude").and_then(|v| v.as_f64()));
+            let lng = coords_obj
+                .get("lng")
+                .and_then(|v| v.as_f64())
+                .or_else(|| coords_obj.get("longitude").and_then(|v| v.as_f64()));
+            if let (Some(lat), Some(lng)) = (lat, lng) {
+                return Some((lat, lng));
+            }
+        }
+        if let Some(valeur) = obj.get("valeur") {
+            if let Some(coords) = extract_coordinates_from_value(valeur) {
+                return Some(coords);
+            }
+        }
+        if let Some(raw) = obj.get("raw").and_then(|v| v.as_str()) {
+            if let Some(coords) = parse_lat_lng_from_str(raw) {
+                return Some(coords);
+            }
+        }
+    } else if let Some(s) = value.as_str() {
+        if let Some(coords) = parse_lat_lng_from_str(s) {
+            return Some(coords);
+        }
+    }
+    None
+}
+
+fn parse_lat_lng_from_str(input: &str) -> Option<(f64, f64)> {
+    let cleaned = input.trim();
+    let parts: Vec<&str> = cleaned.split(',').map(|s| s.trim()).collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let lat = parts[0].parse::<f64>().ok()?;
+    let lng = parts[1].parse::<f64>().ok()?;
+    Some((lat, lng))
+}
+
+fn extract_string_field(
+    map: &serde_json::Map<String, serde_json::Value>,
+    key: &str,
+) -> Option<String> {
+    map.get(key).and_then(|value| extract_value_string(value))
+}
+
+async fn enrich_service_with_google(data_obj: &mut serde_json::Value) -> Result<(), AppError> {
+    let map = match data_obj.as_object_mut() {
+        Some(map) => map,
+        None => return Ok(()),
+    };
+
+    if map.contains_key("google_place") {
+        return Ok(());
+    }
+
+    let titre = extract_string_field(map, "titre_service");
+    let nom_produit = extract_string_field(map, "nom_produit");
+    let nom_prestataire = extract_string_field(map, "nom_prestataire")
+        .or_else(|| extract_string_field(map, "prestataire_nom"));
+    let categorie = extract_string_field(map, "categorie_produit")
+        .or_else(|| extract_string_field(map, "category"));
+
+    let mut query_parts: Vec<String> = Vec::new();
+    if let Some(titre) = titre.clone() {
+        query_parts.push(titre);
+    }
+    if let Some(nom_produit) = nom_produit.clone() {
+        if !query_parts
+            .iter()
+            .any(|q| q.eq_ignore_ascii_case(&nom_produit))
+        {
+            query_parts.push(nom_produit);
+        }
+    }
+    if let Some(nom_prestataire) = nom_prestataire.clone() {
+        if !query_parts
+            .iter()
+            .any(|q| q.eq_ignore_ascii_case(&nom_prestataire))
+        {
+            query_parts.push(nom_prestataire);
+        }
+    }
+    if query_parts.is_empty() {
+        if let Some(categorie) = categorie.clone() {
+            query_parts.push(categorie);
+        }
+    }
+
+    let lieu_value = map
+        .get("lieu_produit")
+        .or_else(|| map.get("lieu_commercial"))
+        .or_else(|| map.get("lieu_service"))
+        .or_else(|| map.get("lieu"));
+
+    let location_label = lieu_value.and_then(|value| build_location_label(value));
+    let country = lieu_value
+        .and_then(|value| extract_country(value))
+        .or_else(|| {
+            map.get("location_vector")
+                .and_then(|vec| extract_value_string(vec))
+        });
+    let coordinates = lieu_value.and_then(|value| extract_coordinates_from_value(value));
+
+    let base_query = query_parts.join(" ").trim().to_string();
+
+    let final_query = match (base_query.is_empty(), location_label.clone()) {
+        (true, Some(location)) => location,
+        (false, Some(location)) => format!("{} {}", base_query, location),
+        (false, None) => base_query,
+        (true, None) => return Ok(()),
+    };
+
+    let places_service = GooglePlacesService::new();
+    match places_service
+        .search_and_enrich(&final_query, country.as_deref(), Some("fr"), coordinates)
+        .await
+    {
+        Ok(Some(google_place)) => {
+            if let Ok(value) = serde_json::to_value(&google_place) {
+                map.insert("google_place".to_string(), value);
+            }
+
+            if !map.contains_key("location_vector") && !google_place.location_vector.is_empty() {
+                let vector_value = serde_json::Value::Array(
+                    google_place
+                        .location_vector
+                        .iter()
+                        .cloned()
+                        .map(serde_json::Value::String)
+                        .collect(),
+                );
+                map.insert("location_vector".to_string(), vector_value);
+            }
+        }
+        Ok(None) => {
+            info!(
+                "[creer_service] Google Places n'a pas trouvé de résultat pertinent pour '{}'",
+                final_query
+            );
+        }
+        Err(error) => {
+            warn!(
+                "[creer_service] Enrichissement Google Places indisponible: {}",
+                error
+            );
+        }
+    }
+
+    Ok(())
+}
 // ?? Imports pour la génération de signatures d'images (conditionnels)
 #[cfg(feature = "image_search")]
 use md5;
@@ -637,6 +868,15 @@ pub async fn creer_service(
             .and_then(|d| d.as_i64())
             .unwrap_or(7)
     };
+    auto_fill_currencies(&mut data_obj);
+
+    if let Err(err) = enrich_service_with_google(&mut data_obj).await {
+        warn!(
+            "[creer_service] Impossible d'enrichir le service via Google Places: {}",
+            err
+        );
+    }
+
     let auto_deactivate_at = chrono::Utc::now() + chrono::Duration::days(active_days);
 
     let _cache_key = format!(
@@ -802,12 +1042,11 @@ pub async fn creer_service(
 
                         // Générer signature si feature activée et si c'est du base64
                         #[cfg(feature = "image_search")]
-                        let (image_signature, image_hash, image_metadata) = if !_image_bytes
-                            .is_empty()
-                        {
-                            match image_service.generate_image_signature(&_image_bytes).await {
-                                Ok(signature) => {
-                                    let metadata = image_service
+                        let (image_signature, image_hash, image_metadata) =
+                            if !_image_bytes.is_empty() {
+                                match image_service.generate_image_signature(&_image_bytes).await {
+                                    Ok(signature) => {
+                                        let metadata = image_service
                                         .extract_image_metadata(&_image_bytes)
                                         .await
                                         .unwrap_or_else(|_| {
@@ -823,29 +1062,29 @@ pub async fn creer_service(
                                                 contrast: 0.0,
                                             }
                                         });
-                                    let hash = format!("{:x}", md5::compute(&_image_bytes));
-                                    (
-                                        serde_json::to_value(&signature).unwrap_or_default(),
-                                        hash,
-                                        serde_json::to_value(&metadata).unwrap_or_default(),
-                                    )
+                                        let hash = format!("{:x}", md5::compute(&_image_bytes));
+                                        (
+                                            serde_json::to_value(&signature).unwrap_or_default(),
+                                            hash,
+                                            serde_json::to_value(&metadata).unwrap_or_default(),
+                                        )
+                                    }
+                                    Err(e) => {
+                                        log::warn!("[creer_service] Erreur signature: {}", e);
+                                        (
+                                            serde_json::Value::Null,
+                                            String::new(),
+                                            serde_json::Value::Null,
+                                        )
+                                    }
                                 }
-                                Err(e) => {
-                                    log::warn!("[creer_service] Erreur signature: {}", e);
-                                    (
-                                        serde_json::Value::Null,
-                                        String::new(),
-                                        serde_json::Value::Null,
-                                    )
-                                }
-                            }
-                        } else {
-                            (
-                                serde_json::Value::Null,
-                                String::new(),
-                                serde_json::Value::Null,
-                            )
-                        };
+                            } else {
+                                (
+                                    serde_json::Value::Null,
+                                    String::new(),
+                                    serde_json::Value::Null,
+                                )
+                            };
 
                         #[cfg(not(feature = "image_search"))]
                         let (image_signature, image_hash, image_metadata) = (
@@ -1626,7 +1865,7 @@ pub async fn creer_service(
                     std::time::Duration::from_secs(60), // Augmenté de 30s à 60s pour les embeddings
                     task
                 ).await;
-                
+
                 match result {
                     Ok(task_result) => {
                         match task_result {

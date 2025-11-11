@@ -6,12 +6,18 @@ use mongodb::Client as MongoClient;
 use sqlx::PgPool;
 use std::env;
 
+use crate::config::broll_config::BrollConfig;
+use crate::config::live_streaming::LiveStreamingConfig;
+use crate::config::premium_audio::PremiumAudioConfig;
+use crate::config::video_renderer::VideoRendererConfig;
 use crate::controllers::ia_status_controller::IAStats;
 use crate::services::app_ia::AppIA;
 use crate::services::mongo_history_service::MongoHistoryService;
+use crate::websocket::delivery_tracking::DeliveryTrackingManager;
 // Imports d'optimisation
 use crate::services::prompt_optimizer_pro::PromptOptimizerPro;
 use crate::services::semantic_cache_pro::SemanticCachePro;
+use crate::services::video_job_service::VideoGenerationJobService;
 
 /// ?? ?tat partag? global de l'application
 #[derive(Clone)]
@@ -36,6 +42,17 @@ pub struct AppState {
     pub semantic_cache: Option<Arc<SemanticCachePro>>,
     /// Optimiseur de prompts pour am?liorer les performances IA
     pub prompt_optimizer: Option<Arc<PromptOptimizerPro>>,
+    /// Configuration live streaming (LiveKit + SRS)
+    pub live_streaming: Arc<LiveStreamingConfig>,
+    pub delivery_ws_manager: Arc<DeliveryTrackingManager>,
+    pub delivery_service: Arc<crate::services::delivery_service::DeliveryService>,
+    pub remotion_renderer:
+        Option<Arc<crate::services::remotion_renderer_service::RemotionRendererService>>,
+    pub audio_mastering:
+        Option<Arc<crate::services::audio_mastering_service::AudioMasteringService>>,
+    pub cost_service: Arc<crate::services::cost_service::CostEstimator>,
+    pub broll_service: Option<Arc<crate::services::broll_service::BrollService>>,
+    pub video_jobs: Arc<VideoGenerationJobService>,
 }
 
 impl AppState {
@@ -63,6 +80,53 @@ impl AppState {
             .parse::<bool>()
             .unwrap_or(false);
 
+        let delivery_repo =
+            Arc::new(crate::services::delivery_repository::DeliveryRepository::new(pg.clone()));
+        let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(64));
+        let delivery_service = Arc::new(crate::services::delivery_service::DeliveryService::new(
+            delivery_repo.clone(),
+            delivery_ws_manager.clone(),
+        ));
+
+        let remotion_renderer = match VideoRendererConfig::from_env() {
+            Some(cfg) => {
+                match crate::services::remotion_renderer_service::RemotionRendererService::new(cfg)
+                {
+                    Ok(service) => Some(Arc::new(service)),
+                    Err(err) => {
+                        log::warn!("[AppState] Remotion renderer inactif: {err:?}");
+                        None
+                    }
+                }
+            }
+            None => None,
+        };
+
+        let audio_mastering = match PremiumAudioConfig::from_env() {
+            Some(cfg) => {
+                match crate::services::audio_mastering_service::AudioMasteringService::new(cfg) {
+                    Ok(service) => Some(Arc::new(service)),
+                    Err(err) => {
+                        log::warn!("[AppState] Audio mastering premium désactivé: {err:?}");
+                        None
+                    }
+                }
+            }
+            None => None,
+        };
+
+        let broll_config = BrollConfig::from_env();
+        let broll_service = Some(Arc::new(crate::services::broll_service::BrollService::new(
+            redis_client.clone(),
+            broll_config,
+        )));
+
+        let cost_service = Arc::new(crate::services::cost_service::CostEstimator::new(
+            pg.clone(),
+        ));
+
+        let video_jobs = Arc::new(VideoGenerationJobService::new(pg.clone()));
+
         AppState {
             pg,
             mongo,
@@ -74,6 +138,14 @@ impl AppState {
             redis_client,
             semantic_cache: None,
             prompt_optimizer: None,
+            live_streaming: Arc::new(LiveStreamingConfig::from_env()),
+            delivery_ws_manager,
+            delivery_service,
+            remotion_renderer,
+            audio_mastering,
+            cost_service,
+            broll_service,
+            video_jobs,
         }
     }
 
@@ -119,6 +191,17 @@ impl AppState {
             "yukpo_history_test".to_string(),
         ));
 
+        let delivery_repo =
+            Arc::new(crate::services::delivery_repository::DeliveryRepository::new(pg.clone()));
+        let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(16));
+        let delivery_service = Arc::new(crate::services::delivery_service::DeliveryService::new(
+            delivery_repo.clone(),
+            delivery_ws_manager.clone(),
+        ));
+
+        let cost_pg = pg.clone();
+        let video_pg = pg.clone();
+
         AppState {
             pg,
             mongo,
@@ -126,10 +209,18 @@ impl AppState {
             ia: app_ia,
             ia_stats,
             database_url,
-            optimizations_enabled: false, // D?sactiv? pour les tests
+            optimizations_enabled: false, // Désactivé pour les tests
             redis_client,
             semantic_cache: None,
             prompt_optimizer: None,
+            live_streaming: Arc::new(LiveStreamingConfig::from_env()),
+            delivery_ws_manager,
+            delivery_service,
+            remotion_renderer: None,
+            audio_mastering: None,
+            cost_service: Arc::new(crate::services::cost_service::CostEstimator::new(cost_pg)),
+            broll_service: None,
+            video_jobs: Arc::new(VideoGenerationJobService::new(video_pg)),
         }
     }
 }

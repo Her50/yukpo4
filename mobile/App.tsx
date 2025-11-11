@@ -4,13 +4,21 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { initObservability } from './src/observability';
+
+initObservability();
+
 // ✅ Import dynamique pour éviter les erreurs TypeScript
 const { NavigationContainer } = require('@react-navigation/native');
 
 // ✅ Composants essentiels
 import ErrorBoundary from './src/components/ErrorBoundary';
+import GPSTrackingManager from './src/components/GPSTrackingManager';
 import { linking } from './src/config/linking';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { DeliveryProvider } from './src/contexts/DeliveryContext';
+import { ShoppingProvider } from './src/contexts/ShoppingContext';
+import { WebSocketProvider } from './src/contexts/WebSocketContext';
 import { TOUS_LES_PAYS } from './src/data/africanLocations'; // ✅ OPTIMISATION 5
 import AppNavigator from './src/navigation/AppNavigator';
 import { theme } from './src/theme/theme';
@@ -65,22 +73,29 @@ export default function App() {
         <SafeAreaProvider>
           <PaperProvider theme={theme}>
             <AuthProvider>
-              <StatusBar style="auto" />
-              <NavigationContainer
-                linking={linking}
-                fallback={null}
-                onReady={() => {
-                  console.log('[NavigationContainer] ✅ Navigation prête avec Deep Linking');
-                }}
-                onStateChange={() => {
-                  console.log('[NavigationContainer] 📍 Navigation changée');
-                }}
-                onUnhandledAction={(action: any) => {
-                  console.warn('[NavigationContainer] ⚠️ Action non gérée:', action);
-                }}
-              >
-                <AppNavigator />
-              </NavigationContainer>
+              <WebSocketProvider>
+                <DeliveryProvider>
+                  <ShoppingProvider>
+                    <StatusBar style="auto" />
+                    <GPSTrackingManager />
+                    <NavigationContainer
+                      linking={linking}
+                      fallback={null}
+                      onReady={() => {
+                        console.log('[NavigationContainer] ✅ Navigation prête avec Deep Linking');
+                      }}
+                      onStateChange={() => {
+                        console.log('[NavigationContainer] 📍 Navigation changée');
+                      }}
+                      onUnhandledAction={(action: any) => {
+                        console.warn('[NavigationContainer] ⚠️ Action non gérée:', action);
+                      }}
+                    >
+                      <AppNavigator />
+                    </NavigationContainer>
+                  </ShoppingProvider>
+                </DeliveryProvider>
+              </WebSocketProvider>
             </AuthProvider>
           </PaperProvider>
         </SafeAreaProvider>

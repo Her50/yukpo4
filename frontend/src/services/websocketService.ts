@@ -2,7 +2,7 @@ import React from 'react';
 import { getWebSocketUrl, WEBSOCKET_CONFIG } from '../config/websocket';
 
 interface WebSocketOptions {
-    type: 'status' | 'notifications' | 'chat' | 'access';
+    type: 'status' | 'notifications' | 'chat' | 'access' | 'deliveryTracking';
     userId?: number;
     clientId?: string;
     onMessage?: (data: any) => void;
@@ -244,6 +244,8 @@ class WebSocketService {
                 return options.clientId ? getWebSocketUrl('chat', options.clientId) : null;
             case 'access':
                 return getWebSocketUrl('access');
+            case 'deliveryTracking':
+                return options.clientId ? getWebSocketUrl('deliveryTracking', options.clientId) : null;
             default:
                 return null;
         }
@@ -262,6 +264,8 @@ class WebSocketService {
                 return `chat_${options.clientId}`;
             case 'access':
                 return 'access';
+            case 'deliveryTracking':
+                return `delivery_${options.clientId}`;
             default:
                 return `unknown_${Date.now()}`;
         }

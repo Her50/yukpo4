@@ -309,10 +309,11 @@ pub async fn add_product_to_service(
             }
 
             let extract_string = |value: &serde_json::Value| -> Option<String> {
-                value
-                    .as_str()
-                    .map(|s| s.to_string())
-                    .or_else(|| value.get("valeur").and_then(|v| v.as_str().map(|s| s.to_string())))
+                value.as_str().map(|s| s.to_string()).or_else(|| {
+                    value
+                        .get("valeur")
+                        .and_then(|v| v.as_str().map(|s| s.to_string()))
+                })
             };
 
             let product_name = request
@@ -327,18 +328,16 @@ pub async fn add_product_to_service(
                 .and_then(extract_string)
                 .unwrap_or_else(|| "Sans catégorie".to_string());
 
-            let product_price = request
-                .product_data
-                .get("prix_produit")
-                .and_then(|v| v.as_f64().or_else(|| extract_string(v).and_then(|s| s.parse::<f64>().ok())));
+            let product_price = request.product_data.get("prix_produit").and_then(|v| {
+                v.as_f64()
+                    .or_else(|| extract_string(v).and_then(|s| s.parse::<f64>().ok()))
+            });
 
             let title = format!("✨ Produit ajouté: {}", product_name);
 
             let mut details = format!(
                 "{} ajouté (catégorie: {}, index: {})",
-                product_name,
-                product_category,
-                product_index
+                product_name, product_category, product_index
             );
 
             if let Some(price) = product_price {

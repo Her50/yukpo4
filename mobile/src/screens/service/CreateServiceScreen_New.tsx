@@ -2,7 +2,7 @@
 import * as ReactNavigation from '@react-navigation/native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, DeviceEventEmitter, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card, Chip, Switch, Text, TextInput } from 'react-native-paper';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
@@ -143,7 +143,8 @@ const CreateServiceScreen: React.FC = () => {
                         {
                             text: 'OK',
                             onPress: () => {
-                                (navigation as any).navigate('MesServices');
+                                DeviceEventEmitter.emit('service:refresh');
+                                (navigation as any).navigate('Main', { screen: 'Services' });
                             }
                         }
                     ]

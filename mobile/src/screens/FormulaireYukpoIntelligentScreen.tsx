@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  DeviceEventEmitter,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -33,6 +34,7 @@ import LocationSelector from '../components/LocationSelector';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
 import ProductFieldSelector from '../components/ProductFieldSelector';
+import { applyPriceVariantToProduits, extractPriceVariant } from '../utils/priceVariant';
 import { getSuggestedProductCategories } from '../utils/suggestProductCategories';
 // Code corrigé (remplace @ts-ignore)
 import SafeIcon from '../components/SafeIcon';
@@ -352,7 +354,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     if (currentDisplayIndex === 0) {
       if (fromMesServices) {
         try {
-          (navigation as any).navigate('MesServices');
+          (navigation as any).navigate('Main', { screen: 'Services' });
         } catch (error) {
           console.error('Erreur navigation retour MesServices:', error);
           navigation.goBack();
@@ -1664,6 +1666,29 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }
         });
 
+        // ✅ NOUVEAU: Extraire les variations de prix imbriquées dans le champ produits
+        const iaProduitsNode = suggestion.data.produits;
+        const priceVariantFromProduits = extractPriceVariant(
+          iaProduitsNode,
+          iaProduitsNode?.origine_champs || 'ia'
+        );
+        if (priceVariantFromProduits) {
+          initialValues.variabilite_prix = priceVariantFromProduits;
+          initialValues.price_variant = priceVariantFromProduits;
+          const inferredCurrencyFromVariant = getCurrencyFromVariant(priceVariantFromProduits);
+          if (inferredCurrencyFromVariant && (!initialValues.devise_produit || initialValues.devise_produit.length === 0)) {
+            initialValues.devise_produit = inferredCurrencyFromVariant;
+            initialValues.devise = inferredCurrencyFromVariant;
+          }
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Variabilité prix récupérée depuis produits:', priceVariantFromProduits);
+
+          if (initialValues.produits) {
+            initialValues.produits = applyPriceVariantToProduits(initialValues.produits, priceVariantFromProduits);
+          } else if (iaProduitsNode) {
+            initialValues.produits = applyPriceVariantToProduits(iaProduitsNode, priceVariantFromProduits);
+          }
+        }
+
         // CORRECTION: S'assurer que le champ category est bien chargé
         if (suggestion.data.category) {
           const categoryValue = typeof suggestion.data.category === 'object' && 'valeur' in suggestion.data.category
@@ -1689,10 +1714,32 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         });
 
         // Mettre à jour les states
-        setValeursFormulaire({
+        const mergedInitialValues: Record<string, any> = {
           ...initialValues,
           ...componentValues // ✅ NOUVEAU: Les valeurs des field.value
-        });
+        };
+
+        const normalizedMergedVariant =
+          extractPriceVariant(mergedInitialValues.variabilite_prix || mergedInitialValues.price_variant) ||
+          extractPriceVariant(mergedInitialValues.produits);
+
+        if (normalizedMergedVariant) {
+          mergedInitialValues.variabilite_prix = normalizedMergedVariant;
+          mergedInitialValues.price_variant = normalizedMergedVariant;
+          const inferredCurrencyFromMergedVariant = getCurrencyFromVariant(normalizedMergedVariant);
+          if (inferredCurrencyFromMergedVariant && (!mergedInitialValues.devise_produit || mergedInitialValues.devise_produit.length === 0)) {
+            mergedInitialValues.devise_produit = inferredCurrencyFromMergedVariant;
+            mergedInitialValues.devise = inferredCurrencyFromMergedVariant;
+          }
+          if (mergedInitialValues.produits) {
+            mergedInitialValues.produits = applyPriceVariantToProduits(
+              mergedInitialValues.produits,
+              normalizedMergedVariant
+            );
+          }
+        }
+
+        setValeursFormulaire(mergedInitialValues);
         setComposants(components);
         setDynamicTextareaHeights({});
         setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
@@ -1739,6 +1786,38 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   };
 
+  const getCurrencyFromVariant = (variant: any): string | undefined => {
+    if (!variant) {
+      return undefined;
+    }
+
+    const modalitesSource = Array.isArray(variant?.modalites)
+      ? variant.modalites
+      : Array.isArray(variant)
+        ? variant
+        : Array.isArray(variant?.valeur?.modalites)
+          ? variant.valeur.modalites
+          : [];
+
+    for (const entry of modalitesSource) {
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+
+      const currencyRaw = typeof entry.devise === 'string' && entry.devise.trim().length > 0
+        ? entry.devise.trim()
+        : typeof entry.currency === 'string' && entry.currency.trim().length > 0
+          ? entry.currency.trim()
+          : undefined;
+
+      if (currencyRaw) {
+        return currencyRaw.toUpperCase();
+      }
+    }
+
+    return undefined;
+  };
+
   // Gérer les changements de champs
   const handleFieldChange = (fieldName: string, value: any) => {
     // Convertir automatiquement les prix en nombres
@@ -1748,6 +1827,76 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       if (!isNaN(numericValue)) {
         processedValue = numericValue;
       }
+    }
+
+    if (fieldName === 'produits') {
+      setValeursFormulaire(prev => {
+        const normalizedPriceVariant = extractPriceVariant(
+          processedValue,
+          processedValue?.origine_champs || prev?.produits?.origine_champs
+        );
+
+        const nextState: Record<string, any> = {
+          ...prev
+        };
+
+        if (normalizedPriceVariant) {
+          nextState.variabilite_prix = normalizedPriceVariant;
+          nextState.price_variant = normalizedPriceVariant;
+          nextState.produits = applyPriceVariantToProduits(processedValue, normalizedPriceVariant);
+          const inferredCurrency = getCurrencyFromVariant(normalizedPriceVariant);
+          if (inferredCurrency) {
+            nextState.devise_produit = inferredCurrency;
+            nextState.devise = inferredCurrency;
+          }
+        } else {
+          nextState.produits = applyPriceVariantToProduits(
+            processedValue,
+            prev.variabilite_prix ? extractPriceVariant(prev.variabilite_prix) : null
+          );
+          if (!nextState.produits?.variation_prix && !nextState.produits?.variabilite_prix) {
+            delete nextState.variabilite_prix;
+            delete nextState.price_variant;
+          }
+        }
+
+        return nextState;
+      });
+      return;
+    }
+
+    if (fieldName === 'variabilite_prix' || fieldName === 'price_variant') {
+      const normalizedPriceVariant = extractPriceVariant(processedValue, processedValue?.origine_champs || 'formulaire');
+      setValeursFormulaire(prev => {
+        const nextState: Record<string, any> = {
+          ...prev,
+          [fieldName]: processedValue
+        };
+
+        if (normalizedPriceVariant) {
+          const existingProduits = prev.produits
+            ? applyPriceVariantToProduits(prev.produits, normalizedPriceVariant)
+            : undefined;
+
+          if (existingProduits) {
+            nextState.produits = existingProduits;
+          }
+          nextState.variabilite_prix = normalizedPriceVariant;
+          nextState.price_variant = normalizedPriceVariant;
+          const inferredCurrency = getCurrencyFromVariant(normalizedPriceVariant);
+          if (inferredCurrency) {
+            nextState.devise_produit = inferredCurrency;
+            nextState.devise = inferredCurrency;
+          }
+        } else if (prev.produits) {
+          nextState.produits = applyPriceVariantToProduits(prev.produits, null);
+          delete nextState.variabilite_prix;
+          delete nextState.price_variant;
+        }
+
+        return nextState;
+      });
+      return;
     }
 
     setValeursFormulaire(prev => ({
@@ -1954,6 +2103,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         currentModalites = variantsSource;
       }
     }
+    const variantCurrency = getCurrencyFromVariant(variantsSource);
+    const deviseProduitValue = extractStringValue('devise_produit') || extractStringValue('devise') || variantCurrency || 'XAF';
     const hasExistingVariants = currentModalites.length > 0;
 
     const locationField = valeursFormulaire.lieu_produit;
@@ -1965,6 +2116,40 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       descriptionProduit,
       descriptionService
     ].filter((item) => item && item.length > 0);
+
+    const modaliteCurrencies = currentModalites
+      .map((mod: any) => {
+        if (!mod || typeof mod !== 'object') {
+          return undefined;
+        }
+        if (typeof mod.devise === 'string' && mod.devise.trim().length > 0) {
+          return mod.devise.trim().toUpperCase();
+        }
+        if (typeof mod.currency === 'string' && mod.currency.trim().length > 0) {
+          return mod.currency.trim().toUpperCase();
+        }
+        return undefined;
+      })
+      .filter((currency?: string) => Boolean(currency)) as string[];
+
+    const defaultCurrencyPool = [
+      'XAF', 'XOF', 'USD', 'EUR', 'NGN', 'GHS', 'KES', 'TZS', 'UGX', 'RWF', 'BIF', 'CDF', 'ZMW', 'ZAR',
+      'MAD', 'DZD', 'TND', 'EGP', 'LYD', 'MUR', 'MGA', 'MZN', 'AOA', 'SCR', 'KMF', 'SOS', 'SDG', 'SSP',
+      'DJF', 'MRU', 'ERN', 'STN'
+    ];
+
+    const availableVariantCurrencies = Array.from(
+      new Set(
+        [
+          ...modaliteCurrencies,
+          variantCurrency,
+          deviseProduitValue,
+          ...defaultCurrencyPool
+        ]
+          .filter((currency): currency is string => Boolean(currency))
+          .map((currency) => currency.toUpperCase())
+      )
+    );
 
     return (
       <View style={styles.productBlockContent}>
@@ -2081,29 +2266,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               keyboardType="numeric"
               style={styles.fieldInput}
             />
-            <View style={styles.productCurrencyButtons}>
-              {['XAF', 'EUR', 'USD', 'GBP', 'CAD', 'CHF'].map((devise) => (
-                <TouchableOpacity
-                  key={devise}
-                  style={[
-                    styles.productCurrencyButton,
-                    deviseProduitValue === devise && styles.productCurrencyButtonActive
-                  ]}
-                  onPress={() => {
-                    handleFieldChange('devise_produit', devise);
-                    handleFieldChange('devise', devise);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.productCurrencyButtonText,
-                      deviseProduitValue === devise && styles.productCurrencyButtonTextActive
-                    ]}
-                  >
-                    {devise}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.productCurrencyInfo}>
+              <Text style={styles.productCurrencyInfoLabel}>Devise estimée</Text>
+              <Text style={styles.productCurrencyInfoValue}>
+                {deviseProduitValue ? `${deviseProduitValue} (automatique)` : 'Déterminée automatiquement selon le lieu'}
+              </Text>
             </View>
             {fieldErrors['prix_produit'] && (
               <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['prix_produit'])}</Text>
@@ -2127,7 +2294,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 });
               }}
               defaultCurrency={deviseProduitValue}
-              helperText="Modifiez les variations détectées par l’IA (prix, stock, image)."
+              availableCurrencies={availableVariantCurrencies}
+              helperText="Modifiez les variations détectées par l'IA (prix, stock, image)."
               showEmptyStateDetails={false}
             />
           </View>
@@ -2688,29 +2856,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               </View>
               <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>Devise</Text>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => {
-                    Alert.alert(
-                      'Sélectionner la devise',
-                      'Choisissez la devise du prix',
-                      [
-                        { text: 'XAF (Franc CFA)', onPress: () => handleFieldChange('devise', 'XAF') },
-                        { text: 'EUR (Euro)', onPress: () => handleFieldChange('devise', 'EUR') },
-                        { text: 'USD (Dollar)', onPress: () => handleFieldChange('devise', 'USD') },
-                        { text: 'GBP (Livre)', onPress: () => handleFieldChange('devise', 'GBP') },
-                        { text: 'CAD (Dollar canadien)', onPress: () => handleFieldChange('devise', 'CAD') },
-                        { text: 'CHF (Franc suisse)', onPress: () => handleFieldChange('devise', 'CHF') },
-                        { text: 'Annuler', style: 'cancel' }
-                      ]
-                    );
-                  }}
-                >
-                  <Text style={styles.pickerButtonText}>
-                    {valeursFormulaire.devise || 'XAF'}
+                <View style={styles.readonlyCurrencyChip}>
+                  <SafeIcon name="info" size={14} color="#0F172A" />
+                  <Text style={styles.readonlyCurrencyText}>
+                    {(valeursFormulaire.devise || deviseProduitValue || 'Auto')} (déterminée automatiquement)
                   </Text>
-                  <SafeIcon name="chevron-down" size={16} color="#666" />
-                </TouchableOpacity>
+                </View>
               </View>
             </View>
           );
@@ -3421,11 +3572,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               onPress: () => {
                 setSuccessData({ serviceId, cout: 0 });
                 setShowSuccessToast(true);
+                DeviceEventEmitter.emit('service:refresh');
                 if (fromMesProduits || isEditingServiceInfo) {
                   // Retour vers Mes Produits
                   navigation.goBack();
                 } else if (fromMesServices) {
-                  (navigation as any).navigate('MesServices');
+                  (navigation as any).navigate('Main', { screen: 'Services' });
                 } else {
                   navigation.goBack();
                 }
@@ -3491,11 +3643,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 onPress: () => {
                   setSuccessData({ serviceId, cout: cost });
                   setShowSuccessToast(true);
+                  DeviceEventEmitter.emit('service:refresh');
 
                   if (fromMesProduits) {
                     (navigation as any).navigate('MesProduits');
                   } else if (fromMesServices) {
-                    (navigation as any).navigate('MesServices');
+                    (navigation as any).navigate('Main', { screen: 'Services' });
                   } else {
                     navigation.goBack();
                   }
@@ -4134,6 +4287,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                 setSuccessData({ serviceId: result?.id || result?.service_id || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);
+                DeviceEventEmitter.emit('service:refresh');
 
                 // ✅ Marquer la soumission comme terminée
                 setIsSubmitting(false);
@@ -4142,7 +4296,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // Redirection après 3 secondes
                 setTimeout(() => {
                   if (fromMesServices) {
-                    (navigation as any).navigate('MesServices');
+                    (navigation as any).navigate('Main', { screen: 'Services' });
                   } else {
                     (navigation as any).navigate('Home');
                   }
@@ -4904,31 +5058,25 @@ const styles = StyleSheet.create({
   productFieldGroup: {
     marginBottom: 20,
   },
-  productCurrencyButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  productCurrencyInfo: {
     marginTop: 12,
-  },
-  productCurrencyButton: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F3F4F6',
+    borderColor: '#E0E7FF',
+    backgroundColor: '#EEF2FF',
   },
-  productCurrencyButtonActive: {
-    backgroundColor: modernColors.primary,
-    borderColor: modernColors.primary,
-  },
-  productCurrencyButtonText: {
-    fontSize: 14,
+  productCurrencyInfoLabel: {
+    fontSize: 12,
     fontWeight: '600',
-    color: modernColors.text,
+    color: '#312E81',
+    marginBottom: 4,
   },
-  productCurrencyButtonTextActive: {
-    color: '#FFFFFF',
+  productCurrencyInfoValue: {
+    fontSize: 13,
+    color: '#1E1B4B',
+    fontWeight: '600',
   },
   productHint: {
     fontSize: 12,
@@ -5222,6 +5370,23 @@ const styles = StyleSheet.create({
   },
   pickerButtonTextActive: {
     color: '#FFFFFF',
+  },
+  readonlyCurrencyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+    marginTop: 8,
+  },
+  readonlyCurrencyText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#312E81',
   },
   hintBox: {
     backgroundColor: modernColors.background,

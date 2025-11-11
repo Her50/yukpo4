@@ -163,30 +163,33 @@ async fn save_combinations_batch(
         return Ok(());
     }
 
-    query_builder.push_values(unique_map.into_iter(), |mut b, (product_vector, (full_vector, duplicates))| {
-        let location_vector = if !full_vector.is_empty() {
-            let candidate = full_vector.last().cloned().unwrap_or_default();
-            if candidate.trim().is_empty() {
-                Vec::new()
+    query_builder.push_values(
+        unique_map.into_iter(),
+        |mut b, (product_vector, (full_vector, duplicates))| {
+            let location_vector = if !full_vector.is_empty() {
+                let candidate = full_vector.last().cloned().unwrap_or_default();
+                if candidate.trim().is_empty() {
+                    Vec::new()
+                } else {
+                    vec![candidate]
+                }
             } else {
-                vec![candidate]
-            }
-        } else {
-            Vec::new()
-        };
+                Vec::new()
+            };
 
-        b.push_bind(session_id)
-            .push_bind(product_vector) // Pas de &, on donne ownership
-            .push_bind(location_vector) // Pas de &, on donne ownership
-            .push_bind(full_vector)
-            .push_bind(product_labels)
-            .push_bind(location_labels)
-            .push_bind(duplicates) // usage_count initial = occurrences dans le batch
-            .push_bind(false) // is_ai_preferred
-            .push_bind(0.0_f32) // ai_confidence
-            .push_bind(chrono::Utc::now())
-            .push_bind(chrono::Utc::now());
-    });
+            b.push_bind(session_id)
+                .push_bind(product_vector) // Pas de &, on donne ownership
+                .push_bind(location_vector) // Pas de &, on donne ownership
+                .push_bind(full_vector)
+                .push_bind(product_labels)
+                .push_bind(location_labels)
+                .push_bind(duplicates) // usage_count initial = occurrences dans le batch
+                .push_bind(false) // is_ai_preferred
+                .push_bind(0.0_f32) // ai_confidence
+                .push_bind(chrono::Utc::now())
+                .push_bind(chrono::Utc::now());
+        },
+    );
 
     query_builder.push(
         " ON CONFLICT ON CONSTRAINT unique_product_vector DO UPDATE SET \

@@ -83,11 +83,25 @@
       "expo-image-picker",
       "expo-document-picker",
       "expo-file-system",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "sentry-expo",
+        {
+          "organization": "yukpo",
+          "project": "mobile-app"
+        }
+      ]
     ],
     "extra": {
       "eas": {
         "projectId": "944bbf0d-5541-4e56-ba75-87ffc4c5e51f"
+      },
+      "sentryDsn": "",
+      "observability": {
+        "fpsSampleInterval": 6000,
+        "fpsWarningThreshold": 45,
+        "fpsWarningDebounce": 2,
+        "traceSampleRate": 0.2
       }
     },
     "owner": "hernandezlele"

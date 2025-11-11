@@ -126,12 +126,12 @@ pub async fn delete_product(
     let deleted_row = match result {
         Some(row) => row,
         None => {
-        log::warn!("⚠️ Produit {} non trouvé", product_id);
-        return Ok(Json(ApiResponse {
-            success: false,
-            message: "Produit non trouvé".to_string(),
-            data: None,
-        }));
+            log::warn!("⚠️ Produit {} non trouvé", product_id);
+            return Ok(Json(ApiResponse {
+                success: false,
+                message: "Produit non trouvé".to_string(),
+                data: None,
+            }));
         }
     };
 
@@ -198,26 +198,24 @@ pub async fn delete_product(
             if let Some(produits) = service_data.get_mut("produits") {
                 if let Some(valeur) = produits.get_mut("valeur") {
                     if let Some(arr) = valeur.as_array_mut() {
-                        let mut removal_index: Option<usize> = arr
-                            .iter()
-                            .position(|item| {
-                                let lifecycle_id = item
-                                    .get("product_lifecycle_id")
-                                    .and_then(|v| v.as_i64())
-                                    .map(|v| v as i32);
-                                let legacy_id = item
-                                    .get("lifecycle_id")
-                                    .and_then(|v| v.as_i64())
-                                    .map(|v| v as i32);
-                                let product_id_field = item
-                                    .get("product_id")
-                                    .and_then(|v| v.as_i64())
-                                    .map(|v| v as i32);
+                        let mut removal_index: Option<usize> = arr.iter().position(|item| {
+                            let lifecycle_id = item
+                                .get("product_lifecycle_id")
+                                .and_then(|v| v.as_i64())
+                                .map(|v| v as i32);
+                            let legacy_id = item
+                                .get("lifecycle_id")
+                                .and_then(|v| v.as_i64())
+                                .map(|v| v as i32);
+                            let product_id_field = item
+                                .get("product_id")
+                                .and_then(|v| v.as_i64())
+                                .map(|v| v as i32);
 
-                                lifecycle_id == Some(product_id_i32)
-                                    || legacy_id == Some(product_id_i32)
-                                    || product_id_field == Some(product_id_i32)
-                            });
+                            lifecycle_id == Some(product_id_i32)
+                                || legacy_id == Some(product_id_i32)
+                                || product_id_field == Some(product_id_i32)
+                        });
 
                         if removal_index.is_none()
                             && removed_index >= 0

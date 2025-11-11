@@ -84,6 +84,8 @@ const ProductDetailScreen: React.FC = () => {
             const produits = loadedService.data?.produits?.valeur || loadedService.data?.produits || [];
             const foundProduct = produits.find((p: any) => p.id === productId);
 
+            const productIndexValue = produits.findIndex((p: any) => p.id === productId);
+
             if (!foundProduct) {
                 throw new Error('Produit non trouvé dans ce service');
             }
@@ -93,6 +95,7 @@ const ProductDetailScreen: React.FC = () => {
                 ...foundProduct,
                 _service: loadedService,
                 _serviceId: serviceId,
+                _productIndex: productIndexValue,
             };
 
             setProduct(enrichedProduct);
@@ -204,6 +207,20 @@ const ProductDetailScreen: React.FC = () => {
 
                 {/* Boutons d'action */}
                 <View style={styles.actionsContainer}>
+                    <NativeButton
+                        title="🎬 Créer une vidéo immersive"
+                        onPress={() => {
+                            navigation.navigate('VideoCreationIntro' as never, {
+                                serviceId,
+                                productId,
+                                productIndex: product?._productIndex ?? 0,
+                                productName: product?.nom || product?.name || product?.title,
+                            } as never);
+                        }}
+                        variant="primary"
+                        size="large"
+                    />
+
                     <NativeButton
                         title="🔍 Voir tous les produits similaires"
                         onPress={() => {

@@ -1,0 +1,179 @@
+use std::sync::Arc;
+
+use chrono::{DateTime, Utc};
+use log::{error, info, warn};
+use serde_json::Value;
+
+use crate::{
+    core::types::{AppError, AppResult},
+    state::AppState,
+};
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct DistributionJobPayload {
+    pub caption: Option<String>,
+    pub hashtags: Vec<String>,
+    pub call_to_action: Option<String>,
+    pub schedule_time: Option<DateTime<Utc>>,
+}
+
+pub async fn enqueue_distribution_job(
+    state: Arc<AppState>,
+    media_id: i32,
+    platform: &str,
+    payload: &DistributionJobPayload,
+) -> AppResult<()> {
+    sqlx::query!(
+        "INSERT INTO social_publication_jobs (media_id, platform, payload, scheduled_for)
+         VALUES ($1, $2, $3, COALESCE($4, NOW()))",
+        media_id,
+        platform,
+        serde_json::to_value(payload).unwrap_or(Value::Null),
+        payload.schedule_time,
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|err| AppError::from(err))?;
+
+    info!(
+        "[SocialDistribution] Job ajouté pour media_id={} platform={}",
+        media_id, platform
+    );
+    Ok(())
+}
+
+pub async fn fetch_due_jobs(
+    state: Arc<AppState>,
+    limit: i64,
+) -> AppResult<Vec<SocialPublicationJob>> {
+    let rows = sqlx::query_as!(
+        SocialPublicationJob,
+        "SELECT id, media_id, platform, payload, status, attempt, last_error, scheduled_for, created_at, updated_at
+         FROM social_publication_jobs
+         WHERE status = 'queued' AND scheduled_for <= NOW()
+         ORDER BY scheduled_for ASC
+         LIMIT $1",
+        limit
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|err| AppError::from(err))?;
+
+    Ok(rows)
+}
+
+pub async fn mark_job_processing(state: Arc<AppState>, job_id: i32) -> AppResult<()> {
+    sqlx::query!(
+        "UPDATE social_publication_jobs SET status = 'processing', attempt = attempt + 1, updated_at = NOW() WHERE id = $1",
+        job_id
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|err| AppError::from(err))?
+;
+    Ok(())
+}
+
+pub async fn mark_job_done(
+    state: Arc<AppState>,
+    job: &SocialPublicationJob,
+    external_post_id: &str,
+    metadata: Value,
+) -> AppResult<()> {
+    let mut tx = state.pg.begin().await.map_err(AppError::from)?;
+
+    sqlx::query!(
+        "UPDATE social_publication_jobs SET status = 'completed', updated_at = NOW() WHERE id = $1",
+        job.id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(AppError::from)?;
+
+    sqlx::query!(
+        "INSERT INTO social_publications (media_id, platform, external_post_id, status, published_at, metadata, created_at, updated_at)
+         VALUES ($1, $2, $3, 'published', NOW(), $4, NOW(), NOW())",
+        job.media_id,
+        job.platform,
+        external_post_id,
+        metadata,
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(AppError::from)?;
+
+    tx.commit().await.map_err(AppError::from)
+}
+
+pub async fn mark_job_failed(
+    state: Arc<AppState>,
+    job_id: i32,
+    error_message: &str,
+) -> AppResult<()> {
+    sqlx::query!(
+        "UPDATE social_publication_jobs SET status = 'failed', last_error = $1, updated_at = NOW() WHERE id = $2",
+        error_message,
+        job_id
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|err| AppError::from(err))?;
+
+    warn!(
+        "[SocialDistribution] Job {} failed: {}",
+        job_id, error_message
+    );
+    Ok(())
+}
+
+#[derive(Debug, sqlx::FromRow, serde::Deserialize, serde::Serialize)]
+pub struct SocialPublicationJob {
+    pub id: i32,
+    pub media_id: i32,
+    pub platform: String,
+    pub payload: Value,
+    pub status: String,
+    pub attempt: i32,
+    pub last_error: Option<String>,
+    pub scheduled_for: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+pub async fn start_distribution_worker(state: Arc<AppState>) {
+    tokio::spawn(async move {
+        let interval = tokio::time::Duration::from_secs(60);
+        loop {
+            tokio::time::sleep(interval).await;
+
+            match fetch_due_jobs(state.clone(), 10).await {
+                Ok(jobs) => {
+                    for job in jobs {
+                        if let Err(err) = execute_job(state.clone(), job).await {
+                            error!("[SocialDistribution] Job execution error: {err:?}");
+                        }
+                    }
+                }
+                Err(err) => error!("[SocialDistribution] Fetch jobs error: {err:?}"),
+            }
+        }
+    });
+}
+
+async fn execute_job(state: Arc<AppState>, job: SocialPublicationJob) -> AppResult<()> {
+    mark_job_processing(state.clone(), job.id).await?;
+
+    // Placeholder implementation – replace with actual API calls
+    let external_id = format!(
+        "{}_{}_{}",
+        job.platform,
+        job.media_id,
+        Utc::now().timestamp()
+    );
+    let metadata = serde_json::json!({
+        "note": "Publication simulée (connecteur réel à implémenter)",
+        "payload": job.payload,
+    });
+
+    mark_job_done(state, &job, &external_id, metadata).await
+}

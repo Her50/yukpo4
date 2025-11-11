@@ -35,6 +35,11 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
 }
 ```
 
+### Titre du service (priorité nom de structure)
+
+- Si le contexte révèle un **nom de boutique / structure / établissement**, utilise-le tel quel comme `titre_service`.  
+- Sinon, construis un titre descriptif classique basé sur le produit/prestation + localisation.
+
 ### Déterminer type_offre
 
 **"produit"** : Biens matériels, marchandises, objets physiques  
@@ -159,9 +164,30 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
 4. ✅ Les dimensions liées DOIVENT être en PREMIÈRE position dans l'ordre
 5. ✅ **CHAQUE combinaison dans `valeur[]` = UNE valeur par dimension**
 
-**⚠️ RÈGLE VARIABILITÉ (dépend du cas)** :
-- **Multi-combinaisons** (texte vague) : **CHAQUE dimension AU MOINS 2 valeurs**
-- **Variation de prix** (texte spécifique) : **UNE SEULE dimension variable** (identifie selon produit : `poids`/`volume` pour alimentation, `pointure` pour chaussures, `taille` pour vêtements, etc.) avec 2+ valeurs, **autres dimensions = 1 valeur**
+**⚠️ DIMENSION VARIABLE (détection intelligente)** : applique la même logique ici en choisissant la dimension la plus pertinente pour les variantes (cf. liste d'exemples ci-dessus).
+
+**Calcul combinaisons** : 1×1×**N**×1×1×1×1×1×1 = **N combinaisons** (N = nombre de valeurs de la dimension variable)
+**Frontend reconnaît via** : `variation_prix` présent
+
+**🚨 EXPORT OBLIGATOIRE DES VARIATIONS** : Quand tu ajoutes `variation_prix` dans `produits`, tu dois aussi générer au même niveau (dans `data`) deux alias strictement identiques :
+```json
+"variabilite_prix": {
+  "type_donnee": "price_variant",
+  "variable": "[même_dimension_variable]",
+  "modalites": [ ... mêmes modalités que variation_prix ... ],
+  "filtrable": true,
+  "origine_champs": "ia"
+},
+"price_variant": {
+  "type_donnee": "price_variant",
+  "variable": "[même_dimension_variable]",
+  "modalites": [ ... mêmes modalités que variation_prix ... ],
+  "filtrable": true,
+  "origine_champs": "ia"
+}
+```
+- Ces alias doivent toujours refléter exactement la même structure (variable + modalites + métadonnées) que `produits.variation_prix`.
+- Si aucune variation pertinente n'est détectée, n'ajoute ni `variation_prix`, ni `variabilite_prix`, ni `price_variant`.
 
 ---
 
@@ -530,13 +556,7 @@ T-shirt → CM → M/L/XL (dépendances)
 - La dimension variable DOIT être dans **`variation_prix.variable`**
 - Les valeurs dans `modalites[]` DOIVENT correspondre à `sous_caracteristiques`
 
-**⚠️ DIMENSION VARIABLE PAR TYPE** :
-- **Alimentation** : `poids` ou `volume` (ex: riz → 5kg, 10kg, 25kg)
-- **Chaussures** : `pointure` (ex: 38, 39, 40, 41, 42)
-- **Vêtements** : `taille` (ex: S, M, L, XL, XXL)
-- **Boissons** : `contenance` (ex: 33cl, 50cl, 1L, 1.5L)
-- **Meubles** : `dimensions` (ex: 120cm, 160cm, 200cm)
-- **Électronique** : `capacite` ou `taille_ecran` (ex: 128GB, 256GB, 512GB)
+**⚠️ DIMENSION VARIABLE PAR TYPE** : se baser sur la règle de détection intelligente ci-dessus pour choisir la caractéristique la plus pertinente (taille, formule, durée, volume, etc.) adaptée au produit/prestation identifié.
 
 **Exemple 1 : Riz avec variation de poids**
 ```json
@@ -599,7 +619,6 @@ T-shirt → CM → M/L/XL (dépendances)
 ```
 
 **Calcul combinaisons** : 1×1×**N**×1×1×1×1×1×1 = **N combinaisons** (N = nombre de valeurs de la dimension variable)
-
 **Frontend reconnaît via** : `variation_prix` présent
 
 ---

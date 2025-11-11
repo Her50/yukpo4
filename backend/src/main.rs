@@ -1,4 +1,4 @@
-use std::{env, net::SocketAddr, sync::Arc};
+use std::{env, fs, net::SocketAddr, path::Path, sync::Arc};
 
 use dotenvy::dotenv;
 use mongodb::Client as MongoClient;
@@ -14,6 +14,7 @@ use yukpomnang_backend::{
 
 use yukpomnang_backend::services::gpu_optimizer::GPUOptimizer;
 use yukpomnang_backend::services::massive_load_handler::MassiveLoadHandler;
+use yukpomnang_backend::tasks;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,6 +23,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let db_url = env::var("DATABASE_URL")?;
     let timeout_config = TimeoutConfig::from_env();
+
+    let upload_storage_path =
+        env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "/var/data/uploads".to_string());
+    if let Err(err) = fs::create_dir_all(&upload_storage_path) {
+        eprintln!("⚠️ Impossible de créer le dossier des uploads ({upload_storage_path}): {err}");
+    }
+    if let Err(err) = fs::create_dir_all(Path::new(&upload_storage_path).join("tmp")) {
+        eprintln!("⚠️ Impossible de créer le dossier temporaire des uploads: {err}");
+    }
 
     let pg_pool = PgPoolOptions::new()
         .max_connections(10) // Augmenté de 5 à 10 pour de meilleures performances
@@ -74,6 +84,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         redis_client,
     ));
 
+    crate::services::social_distribution_service::start_distribution_worker(app_state.clone());
+
     // ?? Initialiser l'architecture cloud massive
     let massive_load_handler = MassiveLoadHandler::new();
     let gpu_optimizer = GPUOptimizer::new();
@@ -111,6 +123,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .await;
     });
+
+    // ✅ Lancer le nettoyage périodique des rooms/ingress LiveKit/SRS
+    tasks::livekit_cleanup::start_livekit_cleanup_task(app_state.clone());
+    // ✅ Lancer la synchronisation des analytics LiveKit
+    tasks::live_analytics::start_live_analytics_task(app_state.clone());
+    // ✅ Scheduler pour les ventes flash live
+    tasks::live_flash_sale_scheduler::start_flash_sale_scheduler(app_state.clone());
+    // ✅ Worker pipeline health (alerting interne)
+    tasks::pipeline_health_worker::start_pipeline_health_worker(app_state.clone());
 
     // Construction de l'application avec Extension
     let app = build_app(app_state.clone())

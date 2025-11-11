@@ -41,5 +41,237 @@
   },
   "language": {
     "switch": "Changer de langue"
+  },
+  "videoWizard": {
+    "defaultProduct": "Votre produit",
+    "hero": {
+      "title": "Studio vidéo immersif Yukpo",
+      "subtitle": "Composez des spots dignes de TikTok/Reels : timeline IA, b-roll génératif, mix audio Dolby et signature Yukpo intégrée."
+    },
+    "meta": {
+      "service": "Service",
+      "selectService": "Sélectionnez un service",
+      "step": "Étape",
+      "stepCounter": "Étape {{step}}/3 · {{label}}",
+      "stepCountShort": "Étape {{step}}/3"
+    },
+    "inputs": {
+      "serviceId": "ID service",
+      "productIndex": "Index produit",
+      "voiceover": "Voix off"
+    },
+    "controls": {
+      "storyboard": "Storyboard IA",
+      "storyboardHint": "Laisse Yukpo proposer 6 plans optimisés.",
+      "voiceover": "Voix Yukpo",
+      "voiceoverHint": "Narration générée avec tonalité naturelle et filtres Dolby."
+    },
+    "steps": {
+      "describe": "Décris ta vidéo",
+      "assets": "Sélectionne les assets",
+      "preview": "Prévisualise et lance"
+    },
+    "sections": {
+      "context": "Ton contexte",
+      "describe": "Décris ton spot",
+      "style": "Style & IA",
+      "audio": "Musique & voix",
+      "media": "Médias sélectionnés",
+      "epilogue": "Avant-première & publication",
+      "summary": "Résumé",
+      "mode": "Mode IA",
+      "publication": "Publication"
+    },
+    "placeholders": {
+      "brief": "Ex : Lancement édition limitée, effet wahou, CTA DM Instagram",
+      "headline": "Titre accrocheur (optionnel)",
+      "cta": "Call-to-action (optionnel)",
+      "voiceLang": "Langue (fr, en...)"
+    },
+    "mode": {
+      "standardTitle": "Mode Créateur",
+      "standardDesc": "Idéal si tu as déjà des visuels percutants.",
+      "expertTitle": "Mode Expert IA",
+      "expertDesc": "B-roll IA, LUT ciné, SFX synchronisés inclus."
+    },
+    "musicModes": {
+      "pulse": "Pulse rythmée",
+      "lofi": "Lofi chill",
+      "ambient": "Ambiance douce",
+      "cinematic": "Ciné épique",
+      "none": "Sans musique"
+    },
+    "channels": {
+      "chat": "Chat Commerce",
+      "product": "Carte Service",
+      "shorts": "Shorts / Reels"
+    },
+    "buttons": {
+      "estimating": "Estimation...",
+      "nextStep": "Valider le budget",
+      "nextStepGeneric": "Étape suivante",
+      "prevStep": "Retour étape {{step}}",
+      "prevStepShort": "Étape précédente",
+      "previewTimeline": "Prévisualiser la timeline",
+      "rendering": "Rendu en cours...",
+      "launchRender": "Lancer le rendu"
+    },
+    "notifications": {
+      "costReady": "Budget validé ✅",
+      "noMedia": "Ajoute des visuels dans ta médiathèque pour profiter du mode expert.",
+      "rendering": "Génération en cours...",
+      "renderComplete": "Vidéo générée 🎬",
+      "mediaReady": "La vidéo est disponible dans ta médiathèque."
+    },
+    "errors": {
+      "serviceFetch": "Impossible de charger le service.",
+      "invalidContext": "Service ou produit manquant.",
+      "costEstimation": "Impossible de valider le budget.",
+      "launchFailed": "Échec du lancement de la génération",
+      "rendering": "Impossible de lancer la génération."
+    },
+    "summary": {
+      "totalLocal": "Total local",
+      "tokens": "Tokens IA",
+      "breakdown": "IA : {{tokens}} • Audio : {{audio}} • B-roll : {{broll}}",
+      "margin": "Marge appliquée",
+      "affordable": "Solde suffisant ✅",
+      "notAffordable": "Solde insuffisant ❌",
+      "noCost": "Valide d’abord le budget pour débloquer la prévisualisation.",
+      "finalConfirm": "Prêt à mettre Yukpo en lumière ?",
+      "finalHint": "Le rendu dure environ 30 à 90 secondes selon les assets IA.",
+      "service": "Service",
+      "product": "Produit",
+      "style": "Style",
+      "mode": "Mode",
+      "mediaSelected": "Médias sélectionnés",
+      "costTitle": "Coût estimé",
+      "costLine": "~ {{usd}} $ / marge x{{multiplier}}",
+      "totalDuration": "Durée",
+      "tokensLabel": "Tokens IA"
+    },
+    "result": {
+      "title": "Vidéo générée",
+      "duration": "Durée",
+      "style": "Style",
+      "headline": "Headline",
+      "cta": "CTA",
+      "viewInNewTab": "Ouvrir dans un nouvel onglet",
+      "goToLibrary": "Voir la médiathèque"
+    },
+    "progress": {
+      "title": "Progression du rendu",
+      "completed": "Terminé",
+      "running": "En cours",
+      "pending": "À venir",
+      "jobId": "Job ID : {{jobId}}",
+      "jobIdle": "Lance un rendu pour suivre la timeline.",
+      "modalTitle": "Yukpo assemble ton chef-d’œuvre",
+      "modalSubtitle": "Timeline, b-roll IA, audio Dolby et mastering en cours...",
+      "modalJob": "Job : {{jobId}} · Yukpo envoie tout ça en haute résolution...",
+      "modalWaiting": "Initialisation du rendu...",
+      "steps": {
+        "cost_estimation": "Budget validé",
+        "broll_selection": "B-roll & assets",
+        "timeline_generation": "Timeline immersive",
+        "audio_mix": "Mix audio premium",
+        "video_mux": "Master vidéo"
+      }
+    },
+    "accessibility": {
+      "channelGroup": "Cibles de publication",
+      "channelToggle": "Activer la publication {{channel}}",
+      "templateOption": "Sélectionner le template {{template}}",
+      "modeOption": "Utiliser le {{mode}}",
+      "musicGroup": "Style musical",
+      "musicOption": "Choisir le mode {{mode}}",
+      "progressList": "Étapes de génération de la vidéo",
+      "previewVideo": "Prévisualisation de la vidéo générée"
+    }
+  },
+  "video": {
+    "analytics": {
+      "title": "Performance du flux vidéo",
+      "loader": "Chargement des analytics...",
+      "overview": {
+        "title": "Synthèse vidéo IA",
+        "horizon": "Horizon {{days}} jours",
+        "generated": "Vidéos générées",
+        "views": "Vues totales",
+        "shares": "Partages",
+        "qualityLabel": "Score qualité moyen",
+        "distributionLabel": "Distribution",
+        "successRate": "{{percent}}% ok",
+        "published": "{{count}} publiées",
+        "pending": "{{count}} en file"
+      },
+      "summary": {
+        "impressions": "Impressions",
+        "clicks": "Clics",
+        "ctr": "CTR",
+        "avgDuration": "Durée moyenne"
+      },
+      "breakdown": {
+        "title": "Répartition par type",
+        "type": {
+          "paid": "Sponsorisé",
+          "organic": "Organique"
+        },
+        "impressions": "Impressions",
+        "ctr": "CTR",
+        "avgDuration": "Durée moyenne"
+      },
+      "top": {
+        "title": "Top contenus",
+        "seenAt": "Vu le {{date}}",
+        "labels": {
+          "impressions": "Impressions",
+          "ctr": "CTR",
+          "duration": "Durée",
+          "likes": "Likes",
+          "saves": "Enregistrements",
+          "clicks": "Clics"
+        }
+      },
+      "live": {
+        "title": "Lives récents",
+        "empty": "Aucun live analysé pour l'instant.",
+        "emptyHint": "Lancez un live pour voir ses performances ici.",
+        "status": {
+          "live": "En direct",
+          "scheduled": "Planifié",
+          "replay_ready": "Replay prêt",
+          "ended": "Terminé"
+        },
+        "metrics": {
+          "audienceTotal": "Audience totale",
+          "hls": "HLS",
+          "webrtc": "WebRTC",
+          "totalWatchTime": "Durée cumulée",
+          "avgWatchTime": "Durée moyenne",
+          "conversions": "Conversions",
+          "revenue": "Revenus"
+        }
+      },
+      "tabs": {
+        "content": "Contenus",
+        "live": "Lives",
+        "ariaLabel": "Segmentation analytics vidéo"
+      },
+      "error": {
+        "overviewFetch": "Impossible de récupérer la synthèse vidéo.",
+        "contentFetch": "Impossible de récupérer les analytics contenus.",
+        "liveFetch": "Impossible de récupérer les analytics des lives.",
+        "invalidOverviewPayload": "Synthèse vidéo inattendue.",
+        "invalidContentPayload": "Analytics contenus inattendus.",
+        "generic": "Erreur inattendue lors du chargement des analytics."
+      },
+      "units": {
+        "secondsShort": "s",
+        "minutesShort": "min",
+        "hoursShort": "h",
+        "cfa": "CFA"
+      }
+    }
   }
 }

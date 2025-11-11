@@ -1,4 +1,3 @@
-
 {
   "app": {
     "title": "Yukpo - Your intelligent assistant",
@@ -42,5 +41,237 @@
   },
   "language": {
     "switch": "Change language"
+  },
+  "videoWizard": {
+    "defaultProduct": "Your product",
+    "hero": {
+      "title": "Yukpo immersive video studio",
+      "subtitle": "Create TikTok/Reels-level clips: AI timeline, generative b-roll, Dolby mix, and Yukpo signature."
+    },
+    "meta": {
+      "service": "Service",
+      "selectService": "Select a service",
+      "step": "Step",
+      "stepCounter": "Step {{step}}/3 · {{label}}",
+      "stepCountShort": "Step {{step}}/3"
+    },
+    "inputs": {
+      "serviceId": "Service ID",
+      "productIndex": "Product index",
+      "voiceover": "Voice-over"
+    },
+    "controls": {
+      "storyboard": "AI Storyboard",
+      "storyboardHint": "Let Yukpo suggest 6 optimized shots.",
+      "voiceover": "Yukpo Voice",
+      "voiceoverHint": "Narration generated with natural tone and Dolby filters."
+    },
+    "steps": {
+      "describe": "Describe your video",
+      "assets": "Select assets",
+      "preview": "Preview & launch"
+    },
+    "sections": {
+      "context": "Your context",
+      "describe": "Describe your spot",
+      "style": "Style & AI",
+      "audio": "Music & voice",
+      "media": "Selected media",
+      "epilogue": "Preview & publishing",
+      "summary": "Summary",
+      "mode": "AI mode",
+      "publication": "Distribution"
+    },
+    "placeholders": {
+      "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
+      "headline": "Catchy headline (optional)",
+      "cta": "Call-to-action (optional)",
+      "voiceLang": "Language (fr, en, ...)"
+    },
+    "mode": {
+      "standardTitle": "Creator Mode",
+      "standardDesc": "Perfect if you already have strong visuals.",
+      "expertTitle": "AI Expert Mode",
+      "expertDesc": "Includes AI b-roll, cinema LUTs, synchronized SFX."
+    },
+    "musicModes": {
+      "pulse": "Pulse energy",
+      "lofi": "Lofi chill",
+      "ambient": "Ambient soft",
+      "cinematic": "Cinematic impact",
+      "none": "No music"
+    },
+    "channels": {
+      "chat": "Chat Commerce",
+      "product": "Service card",
+      "shorts": "Shorts / Reels"
+    },
+    "buttons": {
+      "estimating": "Estimating...",
+      "nextStep": "Validate budget",
+      "nextStepGeneric": "Next step",
+      "prevStep": "Back to step {{step}}",
+      "prevStepShort": "Previous step",
+      "previewTimeline": "Preview timeline",
+      "rendering": "Rendering...",
+      "launchRender": "Launch render"
+    },
+    "notifications": {
+      "costReady": "Budget validated ✅",
+      "noMedia": "Add visuals to your library to enjoy expert mode.",
+      "rendering": "Generation in progress...",
+      "renderComplete": "Video generated 🎬",
+      "mediaReady": "The video is available in your media library."
+    },
+    "errors": {
+      "serviceFetch": "Unable to load service.",
+      "invalidContext": "Missing service or product.",
+      "costEstimation": "Budget validation failed.",
+      "launchFailed": "Failed to start generation",
+      "rendering": "Unable to start the rendering."
+    },
+    "summary": {
+      "totalLocal": "Local total",
+      "tokens": "AI tokens",
+      "breakdown": "AI: {{tokens}} • Audio: {{audio}} • B-roll: {{broll}}",
+      "margin": "Applied margin",
+      "affordable": "Enough balance ✅",
+      "notAffordable": "Insufficient balance ❌",
+      "noCost": "Validate the budget first to unlock preview.",
+      "finalConfirm": "Ready to spotlight Yukpo?",
+      "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
+      "service": "Service",
+      "product": "Product",
+      "style": "Style",
+      "mode": "Mode",
+      "mediaSelected": "Selected media",
+      "costTitle": "Estimated cost",
+      "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+      "totalDuration": "Duration",
+      "tokensLabel": "AI tokens"
+    },
+    "result": {
+      "title": "Generated video",
+      "duration": "Duration",
+      "style": "Style",
+      "headline": "Headline",
+      "cta": "CTA",
+      "viewInNewTab": "Open in new tab",
+      "goToLibrary": "Go to media library"
+    },
+    "progress": {
+      "title": "Render progress",
+      "completed": "Completed",
+      "running": "In progress",
+      "pending": "Upcoming",
+      "jobId": "Job ID: {{jobId}}",
+      "jobIdle": "Start a render to follow the timeline.",
+      "modalTitle": "Yukpo assembles your masterpiece",
+      "modalSubtitle": "Timeline, AI b-roll, Dolby audio, and mastering in progress...",
+      "modalJob": "Job: {{jobId}} · Yukpo is exporting in high resolution...",
+      "modalWaiting": "Initializing render...",
+      "steps": {
+        "cost_estimation": "Budget validated",
+        "broll_selection": "B-roll & assets",
+        "timeline_generation": "Immersive timeline",
+        "audio_mix": "Premium audio mix",
+        "video_mux": "Master export"
+      }
+    },
+    "accessibility": {
+      "channelGroup": "Publication targets",
+      "channelToggle": "Toggle publication {{channel}}",
+      "templateOption": "Select template {{template}}",
+      "modeOption": "Use {{mode}}",
+      "musicGroup": "Music style",
+      "musicOption": "Choose mode {{mode}}",
+      "progressList": "Video generation steps",
+      "previewVideo": "Preview of the generated video"
+    }
+  },
+  "video": {
+    "analytics": {
+      "title": "Video performance overview",
+      "loader": "Loading analytics...",
+      "overview": {
+        "title": "AI video overview",
+        "horizon": "{{days}}-day horizon",
+        "generated": "Videos generated",
+        "views": "Total views",
+        "shares": "Shares",
+        "qualityLabel": "Average quality score",
+        "distributionLabel": "Distribution",
+        "successRate": "{{percent}}% ok",
+        "published": "{{count}} published",
+        "pending": "{{count}} queued"
+      },
+      "summary": {
+        "impressions": "Impressions",
+        "clicks": "Clicks",
+        "ctr": "CTR",
+        "avgDuration": "Average duration"
+      },
+      "breakdown": {
+        "title": "Breakdown by type",
+        "type": {
+          "paid": "Sponsored",
+          "organic": "Organic"
+        },
+        "impressions": "Impressions",
+        "ctr": "CTR",
+        "avgDuration": "Average duration"
+      },
+      "top": {
+        "title": "Top content",
+        "seenAt": "Seen on {{date}}",
+        "labels": {
+          "impressions": "Impressions",
+          "ctr": "CTR",
+          "duration": "Duration",
+          "likes": "Likes",
+          "saves": "Saves",
+          "clicks": "Clicks"
+        }
+      },
+      "live": {
+        "title": "Recent live sessions",
+        "empty": "No live analysed yet.",
+        "emptyHint": "Start a live session to monitor its performance here.",
+        "status": {
+          "live": "Live",
+          "scheduled": "Scheduled",
+          "replay_ready": "Replay ready",
+          "ended": "Ended"
+        },
+        "metrics": {
+          "audienceTotal": "Total audience",
+          "hls": "HLS",
+          "webrtc": "WebRTC",
+          "totalWatchTime": "Total watch time",
+          "avgWatchTime": "Average watch time",
+          "conversions": "Conversions",
+          "revenue": "Revenue"
+        }
+      },
+      "tabs": {
+        "content": "Content",
+        "live": "Live",
+        "ariaLabel": "Video analytics segmentation"
+      },
+      "error": {
+        "overviewFetch": "Unable to fetch video overview.",
+        "contentFetch": "Unable to fetch content analytics.",
+        "liveFetch": "Unable to fetch live analytics.",
+        "invalidOverviewPayload": "Unexpected video overview payload.",
+        "invalidContentPayload": "Unexpected content analytics payload.",
+        "generic": "Unexpected error while loading analytics."
+      },
+      "units": {
+        "secondsShort": "s",
+        "minutesShort": "min",
+        "hoursShort": "h",
+        "cfa": "CFA"
+      }
+    }
   }
 }

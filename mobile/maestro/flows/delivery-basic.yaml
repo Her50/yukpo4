@@ -1,0 +1,16 @@
+appId: com.yukpomnang.mobile
+name: Yukpo Delivery – Basic Smoke
+tags:
+  - delivery
+  - smoke
+---
+- launchApp
+- assertVisible:
+    text: Livraison intelligente Yukpo
+- assertVisible:
+    text: Courses supermarché
+- tapOn:
+    text: Commander au supermarché
+- waitForAnimationToEnd
+- back
+

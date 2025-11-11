@@ -15,8 +15,8 @@ use crate::services::scoring_service::{compute_score, get_score, ServiceScore};
 use crate::services::sharing_service::generate_share_link;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::sync::Arc;
 use sqlx::Row;
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct MessagePayload {

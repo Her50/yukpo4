@@ -1,11 +1,11 @@
 // @ts-nocheck
 // Design moderne inspiré du frontend
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, DeviceEventEmitter, Dimensions, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeButton, NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import ServiceCardModern from '../components/ServiceCardModern';
@@ -41,11 +41,7 @@ const MesServicesScreen: React.FC = () => {
   const [showTeamManager, setShowTeamManager] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
-  useEffect(() => {
-    loadServices();
-  }, []);
-
-  const loadServices = async (isRefresh = false) => {
+  const loadServices = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -103,7 +99,27 @@ const MesServicesScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadServices();
+  }, [loadServices]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadServices(true);
+    }, [loadServices])
+  );
+
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('service:refresh', () => {
+      loadServices(true);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [loadServices]);
 
   const onRefresh = () => {
     loadServices(true);

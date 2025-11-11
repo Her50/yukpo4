@@ -1,15 +1,16 @@
 use std::{
-    fs::{create_dir_all, remove_file, OpenOptions},
+    fs::{create_dir_all, OpenOptions},
     io::Write,
+    path::{Path, PathBuf},
 };
 
 use axum::{
-    extract::{Extension, Multipart, Path},
+    extract::{Extension, Multipart, Path as AxumPath},
     Json,
 };
 use chrono::{NaiveDateTime, Utc};
 use sqlx::{FromRow, PgPool};
-use tokio::fs::File;
+use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
@@ -29,13 +30,38 @@ pub struct MediaItem {
     pub uploaded_at: Option<NaiveDateTime>,
 }
 
+#[derive(Debug, serde::Serialize)]
+pub struct UploadedMediaResponse {
+    pub id: i32,
+    pub path: String,
+    pub media_type: String,
+}
+
+fn upload_storage_root() -> PathBuf {
+    std::env::var("UPLOAD_STORAGE_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("uploads"))
+}
+
+fn absolute_media_path(relative: &str) -> PathBuf {
+    let root = upload_storage_root();
+    let relative_path = Path::new(relative);
+    if relative_path.is_absolute() {
+        relative_path.to_path_buf()
+    } else if let Ok(stripped) = relative_path.strip_prefix("uploads") {
+        root.join(stripped)
+    } else {
+        root.join(relative_path)
+    }
+}
+
 /// ?? Upload d?un fichier (audio, image, vid?o) prot?g?
 pub async fn upload_media(
-    Path(service_id): Path<i32>,
+    AxumPath(service_id): AxumPath<i32>,
     Extension(pool): Extension<PgPool>,
     Extension(user): Extension<AuthenticatedUser>,
     mut multipart: Multipart,
-) -> AppResult<Json<Vec<String>>> {
+) -> AppResult<Json<Vec<UploadedMediaResponse>>> {
     info!(
         "[upload_media] Called for user_id={}, service_id={}",
         user.id, service_id
@@ -56,10 +82,12 @@ pub async fn upload_media(
             user.id
         );
         return Err(AppError::Unauthorized(
-            "? Vous n??tes pas propri?taire de ce service.".to_string(),
+            "❌ Vous n’êtes pas propriétaire de ce service.".to_string(),
         ));
     }
-    if let Err(e) = create_dir_all("uploads/services") {
+    let storage_root = upload_storage_root();
+    let services_dir = storage_root.join("services");
+    if let Err(e) = create_dir_all(&services_dir) {
         error!("[upload_media] create_dir_all error: {e:?}");
         return Err(AppError::from(e));
     }
@@ -75,15 +103,21 @@ pub async fn upload_media(
             return Err(AppError::from(e));
         }
     };
-    let mut saved_paths = vec![];
+
+    let mut uploaded_items: Vec<UploadedMediaResponse> = Vec::new();
+
     while let Some(field) = multipart.next_field().await? {
         let name = field.name().unwrap_or("unknown").to_string();
         let filename = field.file_name().unwrap_or("file").to_string();
         let ext = filename.split('.').next_back().unwrap_or("bin").to_string();
-        let new_path = format!("uploads/services/{}.{}", Uuid::new_v4(), ext);
+        let unique_name = format!("{}.{}", Uuid::new_v4(), ext);
+        let relative_path = format!("uploads/services/{}", unique_name);
+        let absolute_path = services_dir.join(&unique_name);
+
         let bytes = field.bytes().await?;
-        let mut file = File::create(&new_path).await?;
+        let mut file = File::create(&absolute_path).await?;
         file.write_all(&bytes).await?;
+
         let media_type = if name.contains("audio") {
             "audio"
         } else if name.contains("video") {
@@ -91,18 +125,20 @@ pub async fn upload_media(
         } else {
             "image"
         };
-        if let Err(e) = sqlx::query!(
-            "INSERT INTO media (service_id, type, path) VALUES ($1, $2, $3)",
+
+        let record = sqlx::query!(
+            "INSERT INTO media (service_id, type, path) VALUES ($1, $2, $3) RETURNING id, type",
             service_id,
             media_type,
-            new_path
+            relative_path
         )
-        .execute(&pool)
+        .fetch_one(&pool)
         .await
-        {
+        .map_err(|e| {
             error!("[upload_media] DB error (insert media): {e:?}");
-            return Err(AppError::from(e));
-        }
+            AppError::from(e)
+        })?;
+
         writeln!(
             log_file,
             "[{}] UPLOAD - user_id={} - service_id={} - type={} - path={}",
@@ -110,22 +146,28 @@ pub async fn upload_media(
             user.id,
             service_id,
             media_type,
-            new_path
+            absolute_path.to_string_lossy()
         )
         .ok();
-        saved_paths.push(new_path);
+
+        uploaded_items.push(UploadedMediaResponse {
+            id: record.id,
+            path: relative_path.clone(),
+            media_type: record.r#type,
+        });
     }
+
     info!(
         "[upload_media] Uploaded {} files for service_id={}",
-        saved_paths.len(),
+        uploaded_items.len(),
         service_id
     );
-    Ok(Json(saved_paths))
+    Ok(Json(uploaded_items))
 }
 
 /// ?? R?cup?re les m?dias li?s ? un service donn?
 pub async fn get_service_media(
-    Path(service_id): Path<i32>,
+    AxumPath(service_id): AxumPath<i32>,
     Extension(pool): Extension<PgPool>,
 ) -> AppResult<Json<Vec<MediaItem>>> {
     info!("[get_service_media] Called for service_id={}", service_id);
@@ -166,7 +208,7 @@ pub async fn get_all_media(Extension(pool): Extension<PgPool>) -> AppResult<Json
 
 /// ??? Supprime un m?dia si le user est propri?taire du service
 pub async fn delete_media(
-    Path(media_id): Path<i32>,
+    AxumPath(media_id): AxumPath<i32>,
     Extension(pool): Extension<PgPool>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<Json<&'static str>> {
@@ -210,10 +252,16 @@ pub async fn delete_media(
             user.id
         );
         return Err(AppError::Unauthorized(
-            "? Suppression interdite : vous n??tes pas propri?taire du service.".to_string(),
+            "❌ Suppression interdite : vous n’êtes pas propriétaire du service.".to_string(),
         ));
     }
-    let _ = remove_file(&record.path);
+    let absolute_path = absolute_media_path(&record.path);
+    if let Err(e) = fs::remove_file(&absolute_path).await {
+        error!(
+            "[delete_media] remove_file error for {:?}: {e:?}",
+            absolute_path
+        );
+    }
     if let Err(e) = sqlx::query!("DELETE FROM media WHERE id = $1", media_id)
         .execute(&pool)
         .await
@@ -244,5 +292,5 @@ pub async fn delete_media(
     )
     .ok();
     info!("[delete_media] Deleted media_id={}", media_id);
-    Ok(Json("? M?dia supprim?"))
+    Ok(Json("✅ Média supprimé"))
 }

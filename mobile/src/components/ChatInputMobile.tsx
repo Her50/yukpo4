@@ -61,6 +61,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     const [banner, setBanner] = useState<string[]>([]);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
+    const [lastRecordedDuration, setLastRecordedDuration] = useState(0);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [gpsData, setGpsData] = useState<{ lat: number; lng: number; address?: string } | null>(null);
     const [gpsString, setGpsString] = useState<string>(''); // Format: "lat,lng" ou "lat1,lng1|lat2,lng2|..."
@@ -571,6 +572,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             setRecording(newRecording);
             setIsRecording(true);
             setRecordingDuration(0);
+            setLastRecordedDuration(0);
             setAudioUri(null);
             setAudioBase64(null);
             console.log('[ChatInput] ✅ Enregistrement démarré avec succès');
@@ -595,6 +597,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 
         try {
             console.log('[ChatInput] Arrêt enregistrement...');
+            const finalDurationSeconds = recordingDuration;
             setIsRecording(false);
 
             await recording.stopAndUnloadAsync();
@@ -612,6 +615,8 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             const uri = recording.getURI();
             console.log('[ChatInput] URI audio:', uri);
 
+            let computedDurationSeconds = finalDurationSeconds;
+
             if (uri) {
                 setAudioUri(uri);
                 try {
@@ -620,6 +625,19 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                     });
                     setAudioBase64(base64Audio);
                     console.log('[ChatInput] ✅ Audio converti en base64 (taille):', base64Audio.length);
+
+                    try {
+                        const playback = new Audio.Sound();
+                        await playback.loadAsync({ uri });
+                        const status = await playback.getStatusAsync();
+                        if (status.isLoaded && typeof status.durationMillis === 'number') {
+                            const durationFromFile = Math.max(1, Math.round(status.durationMillis / 1000));
+                            computedDurationSeconds = Math.max(computedDurationSeconds, durationFromFile);
+                        }
+                        await playback.unloadAsync();
+                    } catch (durationError) {
+                        console.warn('[ChatInput] ⚠️ Impossible de déterminer la durée audio via Sound:', durationError);
+                    }
                 } catch (fsError) {
                     console.error('[ChatInput] ❌ Erreur conversion audio en base64:', fsError);
                     Alert.alert('Erreur', 'Impossible de traiter l\'audio enregistré.');
@@ -631,6 +649,8 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                 setAudioBase64(null);
             }
 
+            setLastRecordedDuration(computedDurationSeconds > 0 ? computedDurationSeconds : 0);
+            setRecordingDuration(0);
             setRecording(null);
         } catch (error) {
             console.error('[ChatInput] ❌ Erreur arrêt enregistrement:', error);
@@ -657,8 +677,8 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         setAudioUri(null);
         setAudioBase64(null);
         setRecordingDuration(0);
+        setLastRecordedDuration(0);
         setIsRecording(false);
-        setRecordingDuration(0);
     };
 
     const removeGPS = () => {
@@ -728,6 +748,8 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         setAudioBase64(null);
         setGpsData(null);
         setGpsString('');
+        setRecordingDuration(0);
+        setLastRecordedDuration(0);
         setSuggestions([]);
         setShowSuggestions(false);
         setDynamicPlaceholder(null);
@@ -912,7 +934,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                     ) : (
                         <View style={styles.audioItem}>
                             <Text style={styles.audioIcon}>🎤</Text>
-                            <Text style={styles.audioText}>Audio enregistré ({formatDuration(recordingDuration)})</Text>
+                            <Text style={styles.audioText}>Audio enregistré ({formatDuration(lastRecordedDuration)})</Text>
                             <TouchableOpacity onPress={removeAudio}>
                                 <Text style={styles.closeIconSmall}>❌</Text>
                             </TouchableOpacity>

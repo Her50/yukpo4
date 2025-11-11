@@ -87,6 +87,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     // États pour les appels internes
     const [showCallModal, setShowCallModal] = useState(false);
     const [callType, setCallType] = useState<'audio' | 'video'>('audio');
+    const [showContactSheet, setShowContactSheet] = useState(false);
 
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -133,6 +134,25 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         return 'Non spécifié';
     };
 
+    const getRawFieldString = (field: any): string | null => {
+        if (!field) return null;
+        if (typeof field === 'string') {
+            const trimmed = field.trim();
+            return trimmed.length > 0 ? trimmed : null;
+        }
+        if (field && typeof field === 'object') {
+            if (typeof field.valeur === 'string') {
+                const trimmed = field.valeur.trim();
+                return trimmed.length > 0 ? trimmed : null;
+            }
+            if (typeof field.value === 'string') {
+                const trimmed = field.value.trim();
+                return trimmed.length > 0 ? trimmed : null;
+            }
+        }
+        return null;
+    };
+
     const nomPrestataire =
         prestataireInfo?.nom_complet ||
         prestataireInfo?.nom ||
@@ -142,6 +162,124 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         `Prestataire #${service?.user_id}`;
     const titreService = getServiceFieldValue(service?.data?.titre_service);
     const categorieService = getServiceFieldValue(service?.data?.category);
+    const googlePlace = service?.data?.google_place || null;
+
+    const contactEntries: Array<{
+        label: string;
+        value: string;
+        type: 'phone' | 'link' | 'text' | 'whatsapp';
+        source: 'service' | 'google';
+    }> = [];
+
+    const servicePhone =
+        getRawFieldString(service?.data?.contact_phone) ||
+        getRawFieldString(service?.data?.telephone) ||
+        getRawFieldString(service?.data?.phone);
+    if (servicePhone) {
+        contactEntries.push({
+            label: 'Téléphone (service)',
+            value: servicePhone,
+            type: 'phone',
+            source: 'service',
+        });
+    }
+
+    const serviceEmail =
+        getRawFieldString(service?.data?.email) ||
+        getRawFieldString(service?.data?.contact_email);
+    if (serviceEmail) {
+        contactEntries.push({
+            label: 'Email',
+            value: serviceEmail,
+            type: 'text',
+            source: 'service',
+        });
+    }
+
+    const serviceWebsite =
+        getRawFieldString(service?.data?.website) ||
+        getRawFieldString(service?.data?.site_web);
+    if (serviceWebsite) {
+        contactEntries.push({
+            label: 'Site web (service)',
+            value: serviceWebsite,
+            type: 'link',
+            source: 'service',
+        });
+    }
+
+    const whatsappRaw =
+        typeof prestataireInfo?.whatsapp === 'string'
+            ? prestataireInfo.whatsapp
+            : typeof service?.data?.whatsapp?.valeur === 'string'
+                ? service.data.whatsapp.valeur
+                : typeof service?.data?.whatsapp === 'string'
+                    ? service.data.whatsapp
+                    : typeof prestataireInfo?.telephone === 'string'
+                        ? prestataireInfo.telephone
+                        : null;
+    const whatsappNumber = whatsappRaw ? whatsappRaw.trim() : null;
+    if (whatsappNumber) {
+        contactEntries.push({
+            label: 'WhatsApp',
+            value: whatsappNumber,
+            type: 'whatsapp',
+            source: 'service',
+        });
+    }
+
+    if (googlePlace) {
+        const internationalPhone =
+            typeof googlePlace.international_phone_number === 'string'
+                ? googlePlace.international_phone_number.trim()
+                : '';
+        const nationalPhone =
+            typeof googlePlace.national_phone_number === 'string'
+                ? googlePlace.national_phone_number.trim()
+                : '';
+        if (internationalPhone) {
+            contactEntries.push({
+                label: 'Téléphone (Google)',
+                value: internationalPhone,
+                type: 'phone',
+                source: 'google',
+            });
+        }
+        if (nationalPhone && nationalPhone !== internationalPhone) {
+            contactEntries.push({
+                label: 'Téléphone local',
+                value: nationalPhone,
+                type: 'phone',
+                source: 'google',
+            });
+        }
+        const googleWebsite =
+            typeof googlePlace.website_uri === 'string'
+                ? googlePlace.website_uri.trim()
+                : '';
+        if (googleWebsite) {
+            contactEntries.push({
+                label: 'Site officiel',
+                value: googleWebsite.startsWith('http')
+                    ? googleWebsite
+                    : `https://${googleWebsite}`,
+                type: 'link',
+                source: 'google',
+            });
+        }
+        const googleMapsUri =
+            typeof googlePlace.google_maps_uri === 'string'
+                ? googlePlace.google_maps_uri.trim()
+                : '';
+        if (googleMapsUri) {
+            contactEntries.push({
+                label: 'Voir sur Google Maps',
+                value: googleMapsUri,
+                type: 'link',
+                source: 'google',
+            });
+        }
+    }
 
     // Auto-scroll vers le bas
     useEffect(() => {
@@ -769,6 +907,13 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 </TouchableOpacity>
                             )}
 
+                            <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => setShowContactSheet(true)}
+                            >
+                                <SafeIcon name="info" size={20} color={modernColors.primary} />
+                            </TouchableOpacity>
+
                             {/* ✅ Bouton liste des participants */}
                             <TouchableOpacity
                                 style={[styles.actionButton, participants.length > 2 && styles.actionButtonHighlight]}
@@ -1183,6 +1328,84 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 service={service}
                 onSelectMedia={handleSelectGalleryMedia}
             />
+
+            <Modal
+                visible={showContactSheet}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowContactSheet(false)}
+            >
+                <View style={styles.contactOverlay}>
+                    <View style={styles.contactContainer}>
+                        <Text style={styles.contactTitle}>Contacts disponibles</Text>
+                        <ScrollView style={styles.contactList}>
+                            {contactEntries.length === 0 ? (
+                                <Text style={styles.contactEmpty}>Aucun contact supplémentaire</Text>
+                            ) : (
+                                contactEntries.map((entry, index) => (
+                                    <TouchableOpacity
+                                        key={`${entry.label}-${index}`}
+                                        style={[
+                                            styles.contactItem,
+                                            entry.type === 'text' && styles.contactItemStatic
+                                        ]}
+                                        activeOpacity={entry.type === 'text' ? 1 : 0.85}
+                                        onPress={() => {
+                                            if (entry.type === 'phone') {
+                                                const phone = entry.value.replace(/\s+/g, '');
+                                                Linking.openURL(`tel:${phone}`).catch(() =>
+                                                    Alert.alert('Téléphone', 'Impossible de lancer l’appel')
+                                                );
+                                            } else if (entry.type === 'link') {
+                                                Linking.openURL(entry.value).catch(() =>
+                                                    Alert.alert('Lien', 'Impossible d’ouvrir ce lien')
+                                                );
+                                            } else if (entry.type === 'whatsapp') {
+                                                const phone = entry.value.replace(/\s+/g, '');
+                                                const message = encodeURIComponent(`Bonjour ${nomPrestataire}, je souhaite discuter de ${titreService}.`);
+                                                Linking.openURL(`https://wa.me/${phone}?text=${message}`).catch(() =>
+                                                    Alert.alert('WhatsApp', 'Impossible d’ouvrir WhatsApp')
+                                                );
+                                            }
+                                        }}
+                                    >
+                                        <View style={styles.contactIconWrapper}>
+                                            <SafeIcon
+                                                name={
+                                                    entry.type === 'phone'
+                                                        ? 'phone'
+                                                        : entry.type === 'link'
+                                                            ? 'link'
+                                                            : entry.type === 'whatsapp'
+                                                                ? 'message-circle'
+                                                                : 'info'
+                                                }
+                                                size={18}
+                                                color={modernColors.primary}
+                                            />
+                                        </View>
+                                        <View style={styles.contactContent}>
+                                            <Text style={styles.contactLabel}>{entry.label}</Text>
+                                            <Text style={styles.contactValue} numberOfLines={1}>
+                                                {entry.value}
+                                            </Text>
+                                        </View>
+                                        {entry.type !== 'text' && (
+                                            <SafeIcon name="external-link" size={14} color="#9CA3AF" />
+                                        )}
+                                    </TouchableOpacity>
+                                ))
+                            )}
+                        </ScrollView>
+                        <TouchableOpacity
+                            style={styles.contactCloseButton}
+                            onPress={() => setShowContactSheet(false)}
+                        >
+                            <Text style={styles.contactCloseButtonText}>Fermer</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Modal d'appel interne (audio/vidéo) */}
             <InAppCallModal
@@ -1643,6 +1866,81 @@ const styles = StyleSheet.create({
     connectionText: {
         fontSize: 11,
         color: modernColors.textSecondary,
+    },
+    contactOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15,23,42,0.45)',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    contactContainer: {
+        backgroundColor: modernColors.surface,
+        borderRadius: 20,
+        padding: 20,
+        maxHeight: '70%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 24,
+        elevation: 8,
+    },
+    contactTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 16,
+    },
+    contactList: {
+        maxHeight: 280,
+    },
+    contactEmpty: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        paddingVertical: 16,
+    },
+    contactItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(148, 163, 184, 0.2)',
+    },
+    contactItemStatic: {
+        opacity: 0.85,
+    },
+    contactIconWrapper: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#EEF2FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    contactContent: {
+        flex: 1,
+    },
+    contactLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    contactValue: {
+        fontSize: 13,
+        color: modernColors.text,
+        marginTop: 2,
+    },
+    contactCloseButton: {
+        marginTop: 16,
+        backgroundColor: modernColors.primary,
+        borderRadius: 12,
+        paddingVertical: 10,
+        alignItems: 'center',
+    },
+    contactCloseButtonText: {
+        color: '#FFFFFF',
+        fontWeight: '600',
     },
     mediaPreviewContainer: {
         paddingVertical: 12,

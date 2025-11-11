@@ -1,6 +1,7 @@
-use crate::core::types::AppResult;
+use crate::core::types::{AppError, AppResult};
 use chrono::Utc;
 use futures::TryStreamExt;
+use log::error;
 use mongodb::{
     bson::{doc, DateTime},
     Client as MongoClient, Collection,
@@ -170,17 +171,22 @@ impl MongoHistoryService {
             "user_id": user_id,
         };
 
-        let mut cursor = collection
-            .find(filter, None)
-            .await
-            .map_err(|e| format!("Erreur r?cup?ration historique IA: {}", e))?;
+        let mut cursor = collection.find(filter, None).await.map_err(|e| {
+            error!(
+                "[MongoHistory] Erreur récupération historique IA (user_id={}): {}",
+                user_id, e
+            );
+            format!("Erreur récupération historique IA: {}", e)
+        })?;
 
         let mut events = Vec::new();
-        while let Some(doc) = cursor
-            .try_next()
-            .await
-            .map_err(|e| format!("Erreur it?ration historique: {}", e))?
-        {
+        while let Some(doc) = cursor.try_next().await.map_err(|e| {
+            error!(
+                "[MongoHistory] Erreur itération historique IA (user_id={}): {}",
+                user_id, e
+            );
+            format!("Erreur itération historique: {}", e)
+        })? {
             if let Ok(event) = mongodb::bson::from_document::<HistoryEvent>(doc) {
                 events.push(event);
             }
@@ -225,17 +231,16 @@ impl MongoHistoryService {
             };
         }
 
-        let mut cursor = collection
-            .aggregate(pipeline, None)
-            .await
-            .map_err(|e| format!("Erreur agr?gation feedback: {}", e))?;
+        let mut cursor = collection.aggregate(pipeline, None).await.map_err(|e| {
+            error!("[MongoHistory] Erreur agrégation feedback: {}", e);
+            format!("Erreur agrégation feedback: {}", e)
+        })?;
 
         let mut stats = serde_json::Map::new();
-        while let Some(doc) = cursor
-            .try_next()
-            .await
-            .map_err(|e| format!("Erreur it?ration stats: {}", e))?
-        {
+        while let Some(doc) = cursor.try_next().await.map_err(|e| {
+            error!("[MongoHistory] Erreur itération stats feedback: {}", e);
+            format!("Erreur itération stats: {}", e)
+        })? {
             if let Ok(bson) = mongodb::bson::to_bson(&doc) {
                 if let Ok(json) = serde_json::to_value(bson) {
                     if let Some(model) = json["_id"].as_str() {
@@ -261,10 +266,13 @@ impl MongoHistoryService {
             "timestamp": { "$lt": cutoff_date }
         };
 
-        let result = collection
-            .delete_many(filter, None)
-            .await
-            .map_err(|e| format!("Erreur nettoyage historique: {}", e))?;
+        let result = collection.delete_many(filter, None).await.map_err(|e| {
+            error!(
+                "[MongoHistory] Erreur nettoyage historique (days_old={}): {}",
+                days_old, e
+            );
+            format!("Erreur nettoyage historique: {}", e)
+        })?;
 
         Ok(result.deleted_count)
     }
@@ -273,13 +281,18 @@ impl MongoHistoryService {
     async fn insert_event(&self, event: HistoryEvent) -> AppResult<()> {
         let collection = self.get_collection("history").await;
 
-        let doc = mongodb::bson::to_document(&event)
-            .map_err(|e| format!("Erreur s?rialisation ?v?nement: {}", e))?;
+        let doc = mongodb::bson::to_document(&event).map_err(|e| {
+            error!("[MongoHistory] Erreur sérialisation événement: {}", e);
+            format!("Erreur sérialisation événement: {}", e)
+        })?;
 
-        collection
-            .insert_one(doc, None)
-            .await
-            .map_err(|e| format!("Erreur insertion historique: {}", e))?;
+        collection.insert_one(doc, None).await.map_err(|e| {
+            error!(
+                "[MongoHistory] Erreur insertion historique (user_id={:?}, service_id={:?}): {}",
+                event.user_id, event.service_id, e
+            );
+            format!("Erreur insertion historique: {}", e)
+        })?;
 
         Ok(())
     }
@@ -300,7 +313,27 @@ impl MongoHistoryService {
         user_id: i32,
         service_id: i32,
         consultation_data: Value,
+        metadata: Option<Value>,
     ) -> AppResult<()> {
+        let mut metadata_map = serde_json::Map::new();
+        metadata_map.insert(
+            "action_type".to_string(),
+            serde_json::Value::String("service_consultation".to_string()),
+        );
+        metadata_map.insert(
+            "timestamp".to_string(),
+            serde_json::Value::String(Utc::now().to_rfc3339()),
+        );
+
+        if let Some(Value::Object(extra)) = metadata {
+            for (key, value) in extra {
+                metadata_map.insert(key, value);
+            }
+        }
+
+        let mut metadata_value = Value::Object(metadata_map);
+        sanitize_metadata_value(&mut metadata_value, 512);
+
         let event = HistoryEvent {
             event_type: HistoryEventType::UserAction,
             user_id: Some(user_id),
@@ -308,13 +341,22 @@ impl MongoHistoryService {
             interaction_id: None,
             timestamp: DateTime::now(),
             data: consultation_data,
-            metadata: Some(json!({
-                "action_type": "service_consultation",
-                "timestamp": Utc::now(),
-            })),
+            metadata: Some(metadata_value),
         };
 
         self.insert_event(event).await
+    }
+
+    pub async fn ping(&self) -> AppResult<()> {
+        let database = self.client.database(&self.database_name);
+        database
+            .run_command(doc! { "ping": 1 }, None)
+            .await
+            .map_err(|e| {
+                error!("[MongoHistory] Ping échoué: {}", e);
+                AppError::Internal(format!("MongoDB ping failed: {}", e))
+            })?;
+        Ok(())
     }
 
     /// ?? R?cup?rer les consultations d'un utilisateur
@@ -331,17 +373,22 @@ impl MongoHistoryService {
             "metadata.action_type": "service_consultation",
         };
 
-        let mut cursor = collection
-            .find(filter, None)
-            .await
-            .map_err(|e| format!("Erreur r?cup?ration consultations: {}", e))?;
+        let mut cursor = collection.find(filter, None).await.map_err(|e| {
+            error!(
+                "[MongoHistory] Erreur récupération consultations utilisateur (user_id={}): {}",
+                user_id, e
+            );
+            format!("Erreur récupération consultations: {}", e)
+        })?;
 
         let mut events = Vec::new();
-        while let Some(doc) = cursor
-            .try_next()
-            .await
-            .map_err(|e| format!("Erreur it?ration consultations: {}", e))?
-        {
+        while let Some(doc) = cursor.try_next().await.map_err(|e| {
+            error!(
+                "[MongoHistory] Erreur itération consultations utilisateur (user_id={}): {}",
+                user_id, e
+            );
+            format!("Erreur itération consultations: {}", e)
+        })? {
             if let Ok(event) = mongodb::bson::from_document::<HistoryEvent>(doc) {
                 events.push(event);
             }
@@ -370,17 +417,22 @@ impl MongoHistoryService {
             "metadata.action_type": "service_consultation",
         };
 
-        let mut cursor = collection
-            .find(filter, None)
-            .await
-            .map_err(|e| format!("Erreur r?cup?ration consultations service: {}", e))?;
+        let mut cursor = collection.find(filter, None).await.map_err(|e| {
+            error!(
+                "[MongoHistory] Erreur récupération consultations service (service_id={}): {}",
+                service_id, e
+            );
+            format!("Erreur récupération consultations service: {}", e)
+        })?;
 
         let mut events = Vec::new();
-        while let Some(doc) = cursor
-            .try_next()
-            .await
-            .map_err(|e| format!("Erreur it?ration consultations service: {}", e))?
-        {
+        while let Some(doc) = cursor.try_next().await.map_err(|e| {
+            error!(
+                "[MongoHistory] Erreur itération consultations service (service_id={}): {}",
+                service_id, e
+            );
+            format!("Erreur itération consultations service: {}", e)
+        })? {
             if let Ok(event) = mongodb::bson::from_document::<HistoryEvent>(doc) {
                 events.push(event);
             }
@@ -448,17 +500,22 @@ impl MongoHistoryService {
             };
         }
 
-        let mut cursor = collection
-            .aggregate(pipeline, None)
-            .await
-            .map_err(|e| format!("Erreur agr?gation stats globales: {}", e))?;
+        let mut cursor = collection.aggregate(pipeline, None).await.map_err(|e| {
+            error!(
+                "[MongoHistory] Erreur agrégation stats globales (days={:?}): {}",
+                days, e
+            );
+            format!("Erreur agrégation stats globales: {}", e)
+        })?;
 
         let mut stats = serde_json::Map::new();
-        if let Some(doc) = cursor
-            .try_next()
-            .await
-            .map_err(|e| format!("Erreur it?ration stats globales: {}", e))?
-        {
+        if let Some(doc) = cursor.try_next().await.map_err(|e| {
+            error!(
+                "[MongoHistory] Erreur itération stats globales (days={:?}): {}",
+                days, e
+            );
+            format!("Erreur itération stats globales: {}", e)
+        })? {
             if let Ok(bson) = mongodb::bson::to_bson(&doc) {
                 if let Ok(json) = serde_json::to_value(bson) {
                     stats = json.as_object().unwrap().clone();
@@ -467,5 +524,25 @@ impl MongoHistoryService {
         }
 
         Ok(serde_json::Value::Object(stats))
+    }
+}
+
+fn sanitize_metadata_value(value: &mut Value, max_len: usize) {
+    match value {
+        Value::String(s) if s.len() > max_len => {
+            s.truncate(max_len.saturating_sub(3));
+            s.push_str("...");
+        }
+        Value::Array(arr) => {
+            for item in arr {
+                sanitize_metadata_value(item, max_len);
+            }
+        }
+        Value::Object(map) => {
+            for val in map.values_mut() {
+                sanitize_metadata_value(val, max_len);
+            }
+        }
+        _ => {}
     }
 }

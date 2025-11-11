@@ -6,8 +6,18 @@ use axum::{
 };
 use log;
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
+use serde_json::{json, Value};
+use sqlx::{types::Json, PgPool, Row};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PubliciteVideoMeta {
+    pub format: Option<String>,
+    pub source: Option<String>,
+    pub duration_ms: Option<i64>,
+    pub ai_generated: Option<bool>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePubliciteRequest {
@@ -17,6 +27,7 @@ pub struct CreatePubliciteRequest {
     pub produits_indexes: Vec<String>,
     pub videos: Vec<String>,     // Base64
     pub thumbnails: Vec<String>, // Base64
+    pub videos_meta: Option<Vec<PubliciteVideoMeta>>,
     pub duree_jours: i32,
     pub cout: i32, // En FCFA
     pub zone_geographique: String,
@@ -50,6 +61,7 @@ pub struct PubliciteDashboardStats {
     pub taux_conversion_moyen: f64,
     pub budget_total_depense: i64,
     pub publicites_actives: i64,
+    pub video_summary: VideoPerformanceSummary,
 }
 
 #[derive(Debug, Serialize)]
@@ -73,6 +85,16 @@ pub struct PubliciteWithDetails {
     pub date_debut: String,
     pub date_fin: String,
     pub produits: Vec<serde_json::Value>,
+    pub videos_meta: Vec<PubliciteVideoMeta>,
+    pub video_stats: Value,
+}
+
+#[derive(Debug, Default, Serialize)]
+pub struct VideoPerformanceSummary {
+    pub views_by_format: HashMap<String, i64>,
+    pub clicks_by_format: HashMap<String, i64>,
+    pub ai_generated_videos: i64,
+    pub manual_videos: i64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -85,6 +107,8 @@ pub struct GetPublicitesQuery {
 pub struct TrackClickRequest {
     pub publicite_id: i32,
     pub user_id: Option<i32>,
+    pub video_format: Option<String>,
+    pub video_source: Option<String>,
 }
 
 /// Créer une nouvelle publicité
@@ -126,6 +150,33 @@ pub async fn create_publicite(
             _ => 0,
         });
 
+    // Calculer métadonnées vidéos
+    let videos_meta_vec = payload.videos_meta.clone().unwrap_or_default();
+    let videos_meta_json = serde_json::to_value(&videos_meta_vec).unwrap_or_else(|_| json!([]));
+
+    let mut ai_generated_count: i64 = 0;
+    let mut manual_count: i64 = 0;
+    for meta in &videos_meta_vec {
+        let ai_generated = meta.ai_generated.unwrap_or_else(|| {
+            meta.source
+                .as_ref()
+                .map(|s| s.to_lowercase().contains("ai"))
+                .unwrap_or(false)
+        });
+        if ai_generated {
+            ai_generated_count += 1;
+        } else {
+            manual_count += 1;
+        }
+    }
+    let mut video_stats_json = json!({});
+    if ai_generated_count > 0 || manual_count > 0 {
+        video_stats_json["inventory"] = json!({
+            "ai_generated": ai_generated_count,
+            "manual": manual_count
+        });
+    }
+
     // Vérifier le solde de l'utilisateur
     let user_balance: Option<i32> =
         sqlx::query_scalar("SELECT tokens_balance FROM users WHERE id = $1")
@@ -164,11 +215,11 @@ pub async fn create_publicite(
         sqlx::query(&format!(
             r#"
             INSERT INTO publicites (
-                user_id, titre, description, produits_indexes, videos, thumbnails,
+                user_id, titre, description, produits_indexes, videos, thumbnails, videos_meta, video_stats,
                 duree_jours, cout, zone_geographique, geo_publicitaire, rayon_km,
                 date_debut, date_fin
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, {}, $10, NOW(), NOW() + ($7 || ' days')::interval)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, {}, $12, NOW(), NOW() + ($9 || ' days')::interval)
             RETURNING id, date_debut, date_fin
             "#,
             geo
@@ -179,6 +230,8 @@ pub async fn create_publicite(
         .bind(&payload.produits_indexes)
         .bind(&payload.videos)
         .bind(&payload.thumbnails)
+        .bind(Json(videos_meta_json.clone()))
+        .bind(Json(video_stats_json.clone()))
         .bind(payload.duree_jours)
         .bind(payload.cout)
         .bind(&payload.zone_geographique)
@@ -190,11 +243,11 @@ pub async fn create_publicite(
         sqlx::query(
             r#"
             INSERT INTO publicites (
-                user_id, titre, description, produits_indexes, videos, thumbnails,
+                user_id, titre, description, produits_indexes, videos, thumbnails, videos_meta, video_stats,
                 duree_jours, cout, zone_geographique, rayon_km,
                 date_debut, date_fin
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW() + ($7 || ' days')::interval)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW() + ($9 || ' days')::interval)
             RETURNING id, date_debut, date_fin
             "#
         )
@@ -204,6 +257,8 @@ pub async fn create_publicite(
         .bind(&payload.produits_indexes)
         .bind(&payload.videos)
         .bind(&payload.thumbnails)
+        .bind(Json(videos_meta_json.clone()))
+        .bind(Json(video_stats_json.clone()))
         .bind(payload.duree_jours)
         .bind(payload.cout)
         .bind(&payload.zone_geographique)
@@ -252,9 +307,21 @@ pub async fn get_active_publicites(
     let pool = &state.pg;
     log::info!("📋 [Publicité] Récupération publicités actives");
 
+    let categories: Vec<String> = params
+        .categories
+        .as_ref()
+        .map(|c| {
+            c.split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+    let categories_lower: HashSet<String> = categories.iter().map(|c| c.to_lowercase()).collect();
+
     let mut query_str = r#"
         SELECT 
-            id, user_id, titre, description, produits_indexes, videos, thumbnails,
+            id, user_id, titre, description, produits_indexes, videos, thumbnails, videos_meta, video_stats,
             duree_jours, cout, zone_geographique, status, vues, clics,
             date_debut, date_fin, created_at
         FROM publicites
@@ -274,24 +341,99 @@ pub async fn get_active_publicites(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let publicites: Vec<serde_json::Value> = rows
-        .iter()
-        .map(|row| {
-            serde_json::json!({
-                "id": row.get::<i32, _>("id"),
-                "user_id": row.get::<i32, _>("user_id"),
-                "titre": row.get::<String, _>("titre"),
-                "description": row.get::<Option<String>, _>("description"),
-                "produits_indexes": row.get::<Vec<String>, _>("produits_indexes"),
-                "zone_geographique": row.get::<String, _>("zone_geographique"),
-                "status": row.get::<String, _>("status"),
-                "vues": row.get::<i32, _>("vues"),
-                "clics": row.get::<i32, _>("clics"),
-            })
-        })
-        .collect();
+    let mut prepared_publicites: Vec<PubliciteItem> = Vec::new();
+    let mut produit_service_ids: HashSet<i32> = HashSet::new();
 
-    Ok(Json(publicites))
+    for row in rows {
+        let id: i32 = row.get::<i32, _>("id");
+        let user_id: i32 = row.get::<i32, _>("user_id");
+        let titre: String = row.get::<String, _>("titre");
+        let description: Option<String> = row.get::<Option<String>, _>("description");
+        let produits_indexes: Vec<String> = row.get::<Vec<String>, _>("produits_indexes");
+        let zone: String = row.get::<String, _>("zone_geographique");
+        let status: String = row.get::<String, _>("status");
+        let vues: i32 = row.get::<i32, _>("vues");
+        let clics: i32 = row.get::<i32, _>("clics");
+        let videos_meta_value: Value = row.try_get("videos_meta").unwrap_or_else(|_| json!([]));
+        let video_stats_value: Value = row.try_get("video_stats").unwrap_or_else(|_| json!({}));
+
+        for service_id in produits_indexes
+            .iter()
+            .filter_map(|idx| extract_service_id(idx))
+        {
+            produit_service_ids.insert(service_id);
+        }
+
+        let json = serde_json::json!({
+            "id": id,
+            "user_id": user_id,
+            "titre": titre,
+            "description": description,
+            "produits_indexes": produits_indexes.clone(),
+            "zone_geographique": zone,
+            "status": status,
+            "vues": vues,
+            "clics": clics,
+            "videos_meta": videos_meta_value,
+            "video_stats": video_stats_value,
+        });
+
+        prepared_publicites.push(PubliciteItem {
+            json,
+            produits_indexes,
+        });
+    }
+
+    let service_category_map = if !categories_lower.is_empty() && !produit_service_ids.is_empty() {
+        fetch_service_categories(pool, &produit_service_ids)
+            .await
+            .map_err(|e| {
+                log::error!(
+                    "Erreur récupération catégories services pour publicités: {:?}",
+                    e
+                );
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+    } else {
+        HashMap::new()
+    };
+
+    let mut filtered_publicites: Vec<serde_json::Value> = if categories_lower.is_empty() {
+        prepared_publicites
+            .iter()
+            .map(|item| item.json.clone())
+            .collect()
+    } else {
+        prepared_publicites
+            .iter()
+            .filter(|item| {
+                item.produits_indexes.iter().any(|idx| {
+                    extract_service_id(idx)
+                        .and_then(|service_id| {
+                            service_category_map
+                                .get(&service_id)
+                                .and_then(|cat| cat.as_ref())
+                        })
+                        .map(|category| categories_lower.contains(&category.to_lowercase()))
+                        .unwrap_or(false)
+                })
+            })
+            .map(|item| item.json.clone())
+            .collect()
+    };
+
+    if filtered_publicites.is_empty() && !categories_lower.is_empty() {
+        log::info!(
+            "ℹ️ [Publicité] Aucune publicité ne correspond aux catégories {:?}, retour au flux complet",
+            categories
+        );
+        filtered_publicites = prepared_publicites
+            .into_iter()
+            .map(|item| item.json)
+            .collect();
+    }
+
+    Ok(Json(filtered_publicites))
 }
 
 /// Dashboard des publicités pour un utilisateur
@@ -335,12 +477,13 @@ pub async fn get_publicite_dashboard(
         0.0
     };
 
-    let stats = PubliciteDashboardStats {
+    let mut stats = PubliciteDashboardStats {
         total_vues,
         total_clics,
         taux_conversion_moyen: taux_conversion,
         budget_total_depense: stats_row.try_get("budget_total").unwrap_or(0),
         publicites_actives: stats_row.try_get("actives").unwrap_or(0),
+        video_summary: VideoPerformanceSummary::default(),
     };
 
     // Liste des publicités
@@ -349,7 +492,8 @@ pub async fn get_publicite_dashboard(
         SELECT 
             id, titre, status, vues, clics, cout as budget_depense,
             zone_geographique, produits_indexes, date_debut, date_fin,
-            EXTRACT(DAY FROM (date_fin - NOW()))::integer as jours_restants
+            EXTRACT(DAY FROM (date_fin - NOW()))::integer as jours_restants,
+            videos_meta, video_stats
         FROM publicites
         WHERE user_id = $1
         ORDER BY created_at DESC
@@ -363,41 +507,132 @@ pub async fn get_publicite_dashboard(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let publicites: Vec<PubliciteWithDetails> = pub_rows
-        .iter()
-        .map(|row| {
-            let vues: i32 = row.try_get("vues").unwrap_or(0);
-            let clics: i32 = row.try_get("clics").unwrap_or(0);
-            let conversion = if vues > 0 {
-                (clics as f64 / vues as f64) * 100.0
-            } else {
-                0.0
-            };
+    let mut publicites: Vec<PubliciteWithDetails> = Vec::new();
+    let mut video_summary = VideoPerformanceSummary::default();
 
-            let produits_indexes: Vec<String> = row.try_get("produits_indexes").unwrap_or_default();
+    for row in pub_rows.iter() {
+        let vues: i32 = row.try_get("vues").unwrap_or(0);
+        let clics: i32 = row.try_get("clics").unwrap_or(0);
+        let conversion = if vues > 0 {
+            (clics as f64 / vues as f64) * 100.0
+        } else {
+            0.0
+        };
 
-            PubliciteWithDetails {
-                id: row.try_get("id").unwrap_or(0),
-                titre: row.try_get("titre").unwrap_or_default(),
-                status: row.try_get("status").unwrap_or_default(),
-                vues,
-                clics,
-                conversion_rate: conversion,
-                budget_depense: row.try_get("budget_depense").unwrap_or(0),
-                jours_restants: row.try_get("jours_restants").unwrap_or(0),
-                zone_geographique: row.try_get("zone_geographique").unwrap_or_default(),
-                produits_count: produits_indexes.len() as i32,
-                date_debut: "".to_string(),
-                date_fin: "".to_string(),
-                produits: vec![],
+        let produits_indexes: Vec<String> = row.try_get("produits_indexes").unwrap_or_default();
+        let video_stats_value: Value = row.try_get("video_stats").unwrap_or_else(|_| json!({}));
+        let videos_meta_value: Value = row.try_get("videos_meta").unwrap_or_else(|_| json!([]));
+        let videos_meta: Vec<PubliciteVideoMeta> =
+            serde_json::from_value(videos_meta_value.clone()).unwrap_or_default();
+
+        if let Some(views_obj) = video_stats_value.get("views").and_then(|v| v.as_object()) {
+            for (format, count) in views_obj {
+                let format_key = format.to_lowercase();
+                let increment = count.as_i64().unwrap_or(0);
+                if increment > 0 {
+                    *video_summary.views_by_format.entry(format_key).or_insert(0) += increment;
+                }
             }
-        })
-        .collect();
+        }
+
+        if let Some(clicks_obj) = video_stats_value.get("clicks").and_then(|v| v.as_object()) {
+            for (format, count) in clicks_obj {
+                let format_key = format.to_lowercase();
+                let increment = count.as_i64().unwrap_or(0);
+                if increment > 0 {
+                    *video_summary
+                        .clicks_by_format
+                        .entry(format_key)
+                        .or_insert(0) += increment;
+                }
+            }
+        }
+
+        let mut ai_count: i64 = 0;
+        let mut manual_count: i64 = 0;
+        for meta in &videos_meta {
+            let ai_generated = meta.ai_generated.unwrap_or_else(|| {
+                meta.source
+                    .as_ref()
+                    .map(|s| s.to_lowercase().contains("ai"))
+                    .unwrap_or(false)
+            });
+            if ai_generated {
+                ai_count += 1;
+            } else {
+                manual_count += 1;
+            }
+        }
+        video_summary.ai_generated_videos += ai_count;
+        video_summary.manual_videos += manual_count.max(0);
+
+        publicites.push(PubliciteWithDetails {
+            id: row.try_get("id").unwrap_or(0),
+            titre: row.try_get("titre").unwrap_or_default(),
+            status: row.try_get("status").unwrap_or_default(),
+            vues,
+            clics,
+            conversion_rate: conversion,
+            budget_depense: row.try_get("budget_depense").unwrap_or(0),
+            jours_restants: row.try_get("jours_restants").unwrap_or(0),
+            zone_geographique: row.try_get("zone_geographique").unwrap_or_default(),
+            produits_count: produits_indexes.len() as i32,
+            date_debut: "".to_string(),
+            date_fin: "".to_string(),
+            produits: vec![],
+            videos_meta,
+            video_stats: video_stats_value,
+        });
+    }
+
+    stats.video_summary = video_summary;
 
     Ok(Json(PubliciteDashboardResponse { stats, publicites }))
 }
 
 // Autres fonctions simplifiées...
+
+struct PubliciteItem {
+    json: serde_json::Value,
+    produits_indexes: Vec<String>,
+}
+
+fn extract_service_id(index: &str) -> Option<i32> {
+    index
+        .split('_')
+        .next()
+        .and_then(|id_part| id_part.parse::<i32>().ok())
+}
+
+async fn fetch_service_categories(
+    pool: &PgPool,
+    service_ids: &HashSet<i32>,
+) -> Result<HashMap<i32, Option<String>>, sqlx::Error> {
+    if service_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let ids: Vec<i32> = service_ids.iter().copied().collect();
+    let rows = sqlx::query(
+        r#"
+        SELECT id, category
+        FROM services
+        WHERE id = ANY($1)
+        "#,
+    )
+    .bind(ids)
+    .fetch_all(pool)
+    .await?;
+
+    let mut map = HashMap::new();
+    for row in rows {
+        let id: i32 = row.try_get("id")?;
+        let category: Option<String> = row.try_get("category").ok();
+        map.insert(id, category);
+    }
+
+    Ok(map)
+}
 pub async fn get_publicite_by_id(
     State(state): State<Arc<AppState>>,
     Path(id): Path<i32>,
@@ -448,6 +683,70 @@ pub async fn update_publicite(
     })))
 }
 
+fn bump_counter(stats: &mut Value, category: &str, key: &str) {
+    if !stats.is_object() {
+        *stats = json!({});
+    }
+    if let Some(map) = stats.as_object_mut() {
+        let entry = map.entry(category.to_string()).or_insert_with(|| json!({}));
+        if !entry.is_object() {
+            *entry = json!({});
+        }
+        if let Some(obj) = entry.as_object_mut() {
+            let counter = obj.entry(key.to_string()).or_insert(json!(0));
+            let current = counter.as_i64().unwrap_or(0) + 1;
+            *counter = json!(current);
+        }
+    }
+}
+
+async fn record_video_event(
+    pool: &PgPool,
+    publicite_id: i32,
+    category: &str,
+    format: Option<String>,
+    source: Option<String>,
+) -> Result<(), StatusCode> {
+    let existing: Option<Value> =
+        sqlx::query_scalar("SELECT video_stats FROM publicites WHERE id = $1")
+            .bind(publicite_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| {
+                log::error!("Erreur récupération vidéo stats: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+
+    let mut stats_value = existing.unwrap_or_else(|| json!({}));
+
+    if let Some(format_key) = format {
+        let fmt = format_key.trim().to_lowercase();
+        if !fmt.is_empty() {
+            bump_counter(&mut stats_value, category, &fmt);
+        }
+    }
+
+    if let Some(source_key) = source {
+        let src = source_key.trim().to_lowercase();
+        if !src.is_empty() {
+            let category_by_source = format!("{}_by_source", category);
+            bump_counter(&mut stats_value, &category_by_source, &src);
+        }
+    }
+
+    sqlx::query("UPDATE publicites SET video_stats = $1, updated_at = NOW() WHERE id = $2")
+        .bind(Json(stats_value))
+        .bind(publicite_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            log::error!("Erreur mise à jour video_stats: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(())
+}
+
 pub async fn track_publicite_click(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<TrackClickRequest>,
@@ -466,6 +765,19 @@ pub async fn track_publicite_click(
             log::error!("Erreur tracking clic: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
+
+    let format = payload
+        .video_format
+        .as_ref()
+        .map(|f| f.trim().to_lowercase())
+        .filter(|f| !f.is_empty());
+    let source = payload
+        .video_source
+        .as_ref()
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty());
+
+    record_video_event(pool, payload.publicite_id, "clicks", format, source).await?;
 
     Ok(Json(serde_json::json!({ "success": true })))
 }
@@ -490,6 +802,19 @@ pub async fn track_publicite_view(
         log::error!("Erreur tracking vue: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    let format = payload
+        .video_format
+        .as_ref()
+        .map(|f| f.trim().to_lowercase())
+        .filter(|f| !f.is_empty());
+    let source = payload
+        .video_source
+        .as_ref()
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty());
+
+    record_video_event(pool, payload.publicite_id, "views", format, source).await?;
 
     Ok(Json(serde_json::json!({ "success": true })))
 }

@@ -22,9 +22,15 @@ pub mod websocket;
 // pub mod orchestration_ia_optimized;
 use crate::middlewares::cors_middleware;
 use crate::state::AppState;
-use axum::{extract::DefaultBodyLimit, extract::State, routing::get, Json, Router};
+use axum::{
+    extract::{DefaultBodyLimit, State},
+    http::StatusCode,
+    routing::{get, get_service},
+    Json, Router,
+};
 use chrono;
 use std::sync::Arc;
+use tower_http::services::ServeDir;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use crate::routers::router_yukpo::router_yukpo;
@@ -36,10 +42,16 @@ use crate::routes::{
     autocomplete_routes::autocomplete_routes, // ✅ NOUVEAU: Routes autocomplete
     chat_routes::chat_routes,                 // ✅ NOUVEAU : Routes de chat
     combination_routes::combination_routes, // ✅ NOUVEAU 2025-11-03: Routes progression combinaisons
+    content_routes::content_routes,         // ✅ NOUVEAU: Routes engagement contenu
     debug_routes::debug_routes,             // ✅ NOUVEAU 2025-11-06: Routes debug tables
+    delivery_metrics_routes::delivery_metrics_routes,
+    delivery_routes::delivery_routes,
     history_routes::history_routes,
     ia_routes::ia_routes,
+    live_ai_routes::live_ai_routes,
+    live_routes::live_routes,
     media_routes::media_routes,
+    metrics_routes::metrics_routes,
     notification_routes::notification_routes, // ✅ NOUVEAU : Routes de notifications
     payment_routes::payment_routes,
     prestataire_routes::prestataire_routes,
@@ -48,6 +60,8 @@ use crate::routes::{
     recommendation_routes::recommendation_routes,       // ✅ NOUVEAU: Routes recommandations
     search_history_routes::search_history_routes,       // ✅ NOUVEAU: Routes historique recherche
     service_routes::service_routes,
+    shopping_routes::shopping_routes,
+    system_health_routes::system_health_routes,
     user_routes::user_routes,
     webhook_routes::webhook_routes,
     webrtc_routes::webrtc_routes, // ✅ NOUVEAU : Routes WebRTC
@@ -186,19 +200,42 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
 
     // ✅ Routes de gestion du cycle de vie des produits
     let product_lifecycle = product_lifecycle_routes(state.clone());
+    let delivery = delivery_routes(state.clone());
+    let delivery_metrics = delivery_metrics_routes(state.clone());
+    let shopping = shopping_routes(state.clone());
 
     // ✅ NOUVEAU: Routes autocomplete et historique de recherche
     let autocomplete = autocomplete_routes(state.clone());
     let search_history = search_history_routes(state.clone());
+    let content = content_routes(state.clone());
 
     // ✅ NOUVEAU 2025-11-03: Routes progression génération combinaisons
     let combinations = combination_routes(state.clone());
 
+    // ✅ Healthcheck système
+    let system_health = system_health_routes(state.clone());
+    let metrics = metrics_routes(state.clone());
+
     // ✅ NOUVEAU 2025-11-06: Routes debug pour vérification des tables
     let debug = debug_routes(state.clone());
 
+    // ✅ Automatisation IA pour les lives produits
+    let live_ai = live_ai_routes(state.clone());
+    let live = live_routes(state.clone());
+
     // ✅ Routes des modalités personnalisées (déjà incluses dans router_yukpo)
     // let modalities = modalities::routes::create_modalities_router();
+
+    let uploads_dir =
+        std::env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "/var/data/uploads".to_string());
+    let uploads_service = get_service(ServeDir::new(uploads_dir.clone())).handle_error(
+        |error: std::io::Error| async move {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur accès média: {}", error),
+            )
+        },
+    );
 
     let app = Router::new()
         .route(
@@ -229,10 +266,19 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(notifications) // ✅ NOUVEAU : Routes de notifications
         .merge(push_notifs) // ✅ NOUVEAU : Routes push notifications
         .merge(product_lifecycle) // ✅ Routes de gestion du cycle de vie des produits
+        .merge(delivery)
+        .merge(delivery_metrics)
+        .merge(shopping)
         .merge(autocomplete) // ✅ NOUVEAU : Routes autocomplete
         .merge(search_history) // ✅ NOUVEAU : Routes historique recherche
         .merge(combinations) // ✅ NOUVEAU 2025-11-03: Routes progression génération combinaisons
+        .merge(content) // ✅ NOUVEAU : Routes engagement contenu
         .merge(debug) // ✅ NOUVEAU 2025-11-06: Routes debug tables
+        .merge(live)
+        .merge(live_ai)
+        .merge(system_health)
+        .merge(metrics)
+        .nest_service("/uploads", uploads_service)
         // .merge(modalities)  // ✅ Routes des modalités personnalisées (déjà dans router_yukpo)
         .nest("/api", recommendation_routes()) // ✅ NOUVEAU : Routes recommandations
         .route(

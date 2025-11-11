@@ -1,5 +1,12 @@
 import { Alert } from 'react-native';
 
+import {
+  recordWebSocketError,
+  recordWebSocketMessage,
+  recordWebSocketReconnect,
+  recordWebSocketStatusChange,
+} from '../observability';
+
 interface WebSocketMessage {
   type: string;
   data: any;
@@ -24,6 +31,7 @@ class WebSocketManager implements WebSocketService {
   private messageCallbacks: ((message: WebSocketMessage) => void)[] = [];
   private statusCallbacks: ((status: 'online' | 'offline') => void)[] = [];
   private isConnecting = false;
+  private connectStartedAt: number | null = null;
 
   constructor(url: string) {
     this.url = url;
@@ -37,6 +45,8 @@ class WebSocketManager implements WebSocketService {
     this.isConnecting = true;
     console.log('🔌 [WebSocket] Tentative de connexion...');
 
+    this.connectStartedAt = Date.now();
+
     try {
       this.ws = new WebSocket(this.url);
 
@@ -44,6 +54,8 @@ class WebSocketManager implements WebSocketService {
         console.log('✅ [WebSocket] Connexion établie');
         this.isConnecting = false;
         this.reconnectAttempts = 0;
+        const duration = this.connectStartedAt ? Date.now() - this.connectStartedAt : undefined;
+        recordWebSocketStatusChange('online', duration ? { durationMs: duration } : undefined);
         this.notifyStatusChange('online');
       };
 
@@ -51,15 +63,18 @@ class WebSocketManager implements WebSocketService {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
           console.log('📨 [WebSocket] Message reçu:', message.type);
+          recordWebSocketMessage(message.type);
           this.messageCallbacks.forEach(callback => callback(message));
         } catch (error) {
           console.error('❌ [WebSocket] Erreur parsing message:', error);
+          recordWebSocketError(error);
         }
       };
 
       this.ws.onclose = (event) => {
         console.log('🔌 [WebSocket] Connexion fermée:', event.code, event.reason);
         this.isConnecting = false;
+        recordWebSocketStatusChange('offline');
         this.notifyStatusChange('offline');
 
         // Reconnexion automatique si la fermeture n'était pas propre
@@ -71,6 +86,7 @@ class WebSocketManager implements WebSocketService {
       this.ws.onerror = (error) => {
         console.error('❌ [WebSocket] Erreur:', error);
         this.isConnecting = false;
+        recordWebSocketError(error);
         this.notifyStatusChange('offline');
       };
 
@@ -110,12 +126,18 @@ class WebSocketManager implements WebSocketService {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
 
-  onMessage(callback: (message: WebSocketMessage) => void): void {
+  onMessage(callback: (message: WebSocketMessage) => void): () => void {
     this.messageCallbacks.push(callback);
+    return () => {
+      this.messageCallbacks = this.messageCallbacks.filter(cb => cb !== callback);
+    };
   }
 
-  onStatusChange(callback: (status: 'online' | 'offline') => void): void {
+  onStatusChange(callback: (status: 'online' | 'offline') => void): () => void {
     this.statusCallbacks.push(callback);
+    return () => {
+      this.statusCallbacks = this.statusCallbacks.filter(cb => cb !== callback);
+    };
   }
 
   private scheduleReconnect(): void {
@@ -123,6 +145,7 @@ class WebSocketManager implements WebSocketService {
     const delay = this.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1);
 
     console.log(`🔄 [WebSocket] Reconnexion dans ${delay}ms (tentative ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    recordWebSocketReconnect(this.reconnectAttempts, delay);
 
     setTimeout(() => {
       if (this.reconnectAttempts <= this.maxReconnectAttempts) {

@@ -11,6 +11,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Linking,
   ScrollView,
   Share,
   StyleSheet,
@@ -18,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { config } from '../config/environment';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
@@ -354,15 +356,113 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const isTrending = usageCount >= 10; // Tendance si recherché 10+ fois
 
   // Images et vidéos
-  const images = product.images || service?.images || [];
-  const videos = product.videos || service?.videos || [];
+  const rawProductImages: string[] = Array.isArray(product.images)
+    ? product.images.filter(Boolean)
+    : [];
+  const rawServiceImages: string[] = Array.isArray(service?.images)
+    ? (service?.images as string[]).filter(Boolean)
+    : [];
+  const serviceBannerImage = firstNonEmptyString(
+    service?.data?.banner?.valeur,
+    service?.data?.banner,
+  );
+  const serviceLogoImage = firstNonEmptyString(
+    service?.data?.logo?.valeur,
+    service?.data?.logo,
+  );
+  const googlePlaceMeta = service?.data?.google_place;
+  const googlePhotoUrls: string[] = Array.isArray(googlePlaceMeta?.photos)
+    ? (googlePlaceMeta.photos as any[])
+      .map((photo) => {
+        const name = typeof photo?.name === 'string' ? photo.name : null;
+        if (!name) {
+          return null;
+        }
+        const maxWidth =
+          typeof photo?.width_px === 'number' && photo.width_px > 0
+            ? Math.min(photo.width_px, 1600)
+            : 800;
+        return `${config.API_BASE_URL}/api/places/photo?name=${encodeURIComponent(
+          name,
+        )}&maxWidth=${maxWidth}`;
+      })
+      .filter((url): url is string => typeof url === 'string')
+    : [];
+
+  const orderedImages: string[] = [];
+  const addImage = (uri?: string | null) => {
+    if (!uri) return;
+    if (orderedImages.includes(uri)) return;
+    orderedImages.push(uri);
+  };
+
+  addImage(serviceBannerImage);
+  addImage(serviceLogoImage);
+  rawProductImages.forEach(addImage);
+  rawServiceImages.forEach(addImage);
+  googlePhotoUrls.forEach(addImage);
+
+  const images = orderedImages;
+  const videos: string[] = Array.isArray(product.videos)
+    ? product.videos.filter(Boolean)
+    : Array.isArray(service?.videos)
+      ? (service?.videos as string[]).filter(Boolean)
+      : [];
+
+  const googleRating =
+    typeof googlePlaceMeta?.rating === 'number' ? googlePlaceMeta.rating : null;
+  const googleRatingCount =
+    typeof googlePlaceMeta?.rating_count === 'number'
+      ? googlePlaceMeta.rating_count
+      : null;
+  const googlePrimaryTag = firstNonEmptyString(
+    googlePlaceMeta?.primary_type_display_name,
+    googlePlaceMeta?.primary_type,
+  );
+  const googleCuisineBadges = Array.isArray(googlePlaceMeta?.serves_cuisine)
+    ? (googlePlaceMeta.serves_cuisine as string[])
+      .filter((cuisine) => typeof cuisine === 'string' && cuisine.trim().length > 0)
+      .slice(0, 3)
+    : [];
+  const googleOpenNow = (() => {
+    const opening = googlePlaceMeta?.current_opening_hours;
+    if (opening && typeof opening === 'object' && 'openNow' in opening) {
+      const value = (opening as any).openNow;
+      if (typeof value === 'boolean') {
+        return value;
+      }
+    }
+    return null;
+  })();
+  const googleOpeningHeadline = (() => {
+    const opening = googlePlaceMeta?.current_opening_hours;
+    if (opening && typeof opening === 'object') {
+      const nextMessage = (opening as any).nextOpenTimeMessage;
+      if (typeof nextMessage === 'string' && nextMessage.trim().length > 0) {
+        return nextMessage.trim();
+      }
+      const descriptions = (opening as any).weekdayDescriptions;
+      if (Array.isArray(descriptions) && descriptions.length > 0) {
+        return descriptions[0];
+      }
+    }
+    return null;
+  })();
+  const googleEditorialSummary =
+    typeof googlePlaceMeta?.editorial_summary === 'string'
+      ? googlePlaceMeta.editorial_summary
+      : undefined;
+  const googleMapsUri =
+    typeof googlePlaceMeta?.google_maps_uri === 'string'
+      ? googlePlaceMeta.google_maps_uri
+      : undefined;
 
   // Image de la variation sélectionnée (si existe)
   const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
     ? variants[selectedVariantIndex]
     : null;
   const variantImage = selectedVariant?.image || selectedVariant?.images?.[0];
-  const hasMedia = (images?.length || 0) + (videos?.length || 0) > 0 || !!variantImage;
+  const hasMedia = images.length > 0 || videos.length > 0 || !!variantImage;
 
   const serviceId = product.service_id || service?.id;
   const productIndex =
@@ -779,6 +879,67 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </View>
               )}
 
+              {(googleRating ||
+                googlePrimaryTag ||
+                googleCuisineBadges.length > 0 ||
+                googleOpenNow !== null) && (
+                  <View style={styles.googleMetaSection}>
+                    {googlePrimaryTag && (
+                      <View style={styles.googleMetaChip}>
+                        <SafeIcon name="sparkles" size={12} color="#4F46E5" />
+                        <Text style={styles.googleMetaText}>{googlePrimaryTag}</Text>
+                      </View>
+                    )}
+                    {googleRating && (
+                      <View style={styles.googleMetaChip}>
+                        <SafeIcon name="star" size={12} color="#F59E0B" />
+                        <Text style={styles.googleMetaText}>{googleRating.toFixed(1)}</Text>
+                        {typeof googleRatingCount === 'number' && googleRatingCount > 0 && (
+                          <Text style={styles.googleMetaSubText}>({googleRatingCount})</Text>
+                        )}
+                      </View>
+                    )}
+                    {googleOpenNow !== null && (
+                      <View
+                        style={[
+                          styles.googleMetaChip,
+                          googleOpenNow ? styles.googleMetaChipOpen : styles.googleMetaChipClosed,
+                        ]}
+                      >
+                        <SafeIcon
+                          name="clock"
+                          size={12}
+                          color={googleOpenNow ? '#047857' : '#B91C1C'}
+                        />
+                        <Text
+                          style={[
+                            styles.googleMetaText,
+                            googleOpenNow ? styles.googleMetaTextOpen : styles.googleMetaTextClosed,
+                          ]}
+                        >
+                          {googleOpenNow ? 'Ouvert' : 'Fermé'}
+                        </Text>
+                      </View>
+                    )}
+                    {googleCuisineBadges.map((cuisine) => (
+                      <View key={cuisine} style={styles.googleCuisineChip}>
+                        <Text style={styles.googleCuisineText}>🍽️ {cuisine}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              {googleOpeningHeadline && (
+                <Text style={styles.googleMetaSubInfo} numberOfLines={1}>
+                  {googleOpeningHeadline}
+                </Text>
+              )}
+
+              {googleEditorialSummary && (
+                <Text style={styles.googleEditorialText} numberOfLines={2}>
+                  {googleEditorialSummary}
+                </Text>
+              )}
+
               {(totalReactions > 0 || usageCount > 0) && (
                 <LinearGradient
                   colors={['#EEF2FF', '#FFFFFF']}
@@ -941,6 +1102,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   >
                     <SafeIcon name="image" size={18} color={modernColors.primary} />
                     <Text style={styles.secondaryActionText}>Galerie</Text>
+                  </TouchableOpacity>
+                )}
+                {googleMapsUri && (
+                  <TouchableOpacity
+                    style={styles.secondaryActionButton}
+                    onPress={async () => {
+                      try {
+                        await Linking.openURL(googleMapsUri);
+                      } catch (error) {
+                        Alert.alert('Google Maps', 'Impossible d\'ouvrir la fiche Google Maps');
+                      }
+                    }}
+                  >
+                    <SafeIcon name="map" size={18} color={modernColors.primary} />
+                    <Text style={styles.secondaryActionText}>Google Maps</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -1562,6 +1738,64 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: modernColors.primary,
+  },
+  googleMetaSection: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  googleMetaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+  },
+  googleMetaChipOpen: {
+    backgroundColor: '#DCFCE7',
+  },
+  googleMetaChipClosed: {
+    backgroundColor: '#FEE2E2',
+  },
+  googleMetaText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#312E81',
+  },
+  googleMetaTextOpen: {
+    color: '#047857',
+  },
+  googleMetaTextClosed: {
+    color: '#991B1B',
+  },
+  googleMetaSubText: {
+    fontSize: 11,
+    color: '#6366F1',
+  },
+  googleCuisineChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#E0E7FF',
+  },
+  googleCuisineText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#3730A3',
+  },
+  googleMetaSubInfo: {
+    fontSize: 11,
+    color: '#4B5563',
+    marginTop: 6,
+  },
+  googleEditorialText: {
+    fontSize: 12,
+    color: '#1F2937',
+    marginTop: 8,
+    lineHeight: 16,
   },
   secondaryActions: {
     flexDirection: 'row',

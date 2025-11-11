@@ -1717,7 +1717,7 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
         .split_whitespace()
         .filter(|word| {
             let word = word.trim_matches(|c: char| !c.is_alphanumeric());
-            !word.is_empty() && 
+            !word.is_empty() &&
             word.len() > 2 && // Mots de plus de 2 caractères
             !stop_words.contains(&word) &&
             !word.chars().all(|c| c.is_numeric()) && // Pas que des chiffres

@@ -1,7 +1,8 @@
 use axum::{
+    body::Full,
     extract::{Query, State},
-    http::StatusCode,
-    response::IntoResponse,
+    http::{HeaderValue, StatusCode},
+    response::{IntoResponse, Response},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -198,6 +199,80 @@ pub async fn autocomplete_places(
                     error: None,
                 }),
             )
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PlacePhotoQuery {
+    pub name: String,
+    pub max_width: Option<u32>,
+    pub max_height: Option<u32>,
+}
+
+/// Proxy pour récupérer les photos Google Places sans exposer la clé côté client
+pub async fn fetch_place_photo(Query(params): Query<PlacePhotoQuery>) -> impl IntoResponse {
+    let api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_default();
+    if api_key.is_empty() {
+        return StatusCode::BAD_REQUEST.into_response();
+    }
+
+    let name = params.name.trim();
+    if name.is_empty() || !name.starts_with("places/") {
+        return StatusCode::BAD_REQUEST.into_response();
+    }
+
+    let max_width = params.max_width.unwrap_or(800);
+    let mut url = format!(
+        "https://places.googleapis.com/v1/{}/media?maxWidthPx={}",
+        name, max_width
+    );
+
+    if let Some(max_height) = params.max_height {
+        url.push_str(&format!("&maxHeightPx={}", max_height));
+    }
+
+    let client = reqwest::Client::new();
+    match client
+        .get(&url)
+        .header("X-Goog-Api-Key", api_key)
+        .send()
+        .await
+    {
+        Ok(response) => {
+            if !response.status().is_success() {
+                return StatusCode::from_u16(response.status().as_u16())
+                    .unwrap_or(StatusCode::BAD_GATEWAY)
+                    .into_response();
+            }
+
+            let content_type = response
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("image/jpeg")
+                .to_string();
+
+            match response.bytes().await {
+                Ok(bytes) => Response::builder()
+                    .status(StatusCode::OK)
+                    .header(
+                        axum::http::header::CONTENT_TYPE,
+                        HeaderValue::from_str(&content_type)
+                            .unwrap_or_else(|_| HeaderValue::from_static("image/jpeg")),
+                    )
+                    .body(Full::from(bytes))
+                    .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+                    .into_response(),
+                Err(err) => {
+                    eprintln!("[Places] Impossible de lire la photo: {:?}", err);
+                    StatusCode::BAD_GATEWAY.into_response()
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("[Places] Erreur appel photo: {:?}", err);
+            StatusCode::BAD_GATEWAY.into_response()
         }
     }
 }

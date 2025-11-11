@@ -1,8 +1,8 @@
 // Service API centralise avec gestion d'authentification amelioree
 // Remplace les appels fetch directs avec gestion des tokens
 
-import { getValidToken } from '../utils/auth';
 import { API_BASE_URL } from '../config/api.config';
+import { getValidToken } from '../utils/auth';
 
 interface ApiServiceOptions extends RequestInit {
   isAuthenticated?: boolean;
@@ -13,6 +13,7 @@ export const apiService = async (
   options: ApiServiceOptions = {}
 ): Promise<Response> => {
   const { isAuthenticated = true, headers, ...rest } = options;
+  const { signal, ...requestOptions } = rest;
 
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
@@ -33,13 +34,13 @@ export const apiService = async (
   }
 
   const config: RequestInit = {
-    ...rest,
+    ...requestOptions,
     headers: {
       ...defaultHeaders,
       ...headers,
     },
     // Ajouter un timeout pour éviter les requêtes qui traînent
-    signal: AbortSignal.timeout(30000), // 30 secondes timeout
+    signal: signal ?? AbortSignal.timeout(30000), // 30 secondes timeout par défaut
   };
 
   // ✅ CORRIGÉ: Utilise la configuration centralisée depuis api.config.ts
