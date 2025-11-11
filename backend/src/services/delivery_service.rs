@@ -1090,8 +1090,20 @@ impl DeliveryService {
         &self,
         params: CreateDeliveryParams,
     ) -> AppResult<DeliverySummary> {
+        let CreateDeliveryParams {
+            creator_id,
+            parcel,
+            pickup,
+            dropoff,
+            recipient,
+            distance_meters,
+            estimated_duration_seconds,
+            metadata,
+            initial_event_payload,
+        } = params;
+
         // Validations de base
-        if let Some(distance) = params.distance_meters {
+        if let Some(distance) = distance_meters {
             if distance <= 0 {
                 return Err(AppError::BadRequest(
                     "La distance estimée doit être positive".into(),
@@ -1099,7 +1111,7 @@ impl DeliveryService {
             }
         }
 
-        if let Some(duration) = params.estimated_duration_seconds {
+        if let Some(duration) = estimated_duration_seconds {
             if duration <= 0 {
                 return Err(AppError::BadRequest(
                     "La durée estimée doit être positive".into(),
@@ -1107,16 +1119,18 @@ impl DeliveryService {
             }
         }
 
+        let pickup_address = pickup.address.clone();
+        let dropoff_address = dropoff.address.clone();
+
         let mut request = NewDeliveryRequest {
-            creator_id: params.creator_id,
+            creator_id,
             courier_id: None,
-            parcel: params.parcel.into(),
-            pickup: params.pickup.into(),
-            pickup_address: params.pickup.address.clone(),
-            dropoff: params.dropoff.into(),
-            dropoff_address: params.dropoff.address.clone(),
-            recipient: params
-                .recipient
+            parcel: parcel.into(),
+            pickup: pickup.clone().into(),
+            pickup_address,
+            dropoff: dropoff.clone().into(),
+            dropoff_address,
+            recipient: recipient
                 .as_ref()
                 .map(|recipient| NewDeliveryRecipient {
                     user_id: recipient.user_id,
@@ -1135,12 +1149,12 @@ impl DeliveryService {
                     consent_granted: recipient.consent_granted,
                     preferred_language: recipient.preferred_language.clone(),
                 }),
-            distance_meters: params.distance_meters,
-            estimated_duration_seconds: params.estimated_duration_seconds,
-            metadata: params.metadata,
+            distance_meters,
+            estimated_duration_seconds,
+            metadata,
             initial_status: DeliveryStatus::Requested,
-            initial_event_payload: params.initial_event_payload,
-            initial_status_author: Some(params.creator_id),
+            initial_event_payload,
+            initial_status_author: Some(creator_id),
         };
 
         if let Some(recipient) = &request.recipient {
@@ -1220,8 +1234,9 @@ impl DeliveryService {
             });
 
             if !validation.is_valid {
-                let message = validation
-                    .error_message
+                let error_opt = validation.error_message.clone();
+                let message = error_opt
+                    .clone()
                     .unwrap_or_else(|| "Numéro de téléphone invalide.".to_string());
                 log::warn!(
                     "[DeliveryService] assign_delivery_recipient invalid phone number (delivery {}, user {:?}): {}",
@@ -1231,7 +1246,7 @@ impl DeliveryService {
                 );
 
                 return Err(AppError::BadRequest(
-                    validation.error_message.unwrap_or(message),
+                    error_opt.unwrap_or(message),
                 ));
             }
 
