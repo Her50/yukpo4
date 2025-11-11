@@ -26,7 +26,7 @@ hyper = { version = "0.14.28", features = ["full"] }
 http = "1.3.1"
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.4", features = ["full"] }
-tower-http = { version = "0.3", features = ["cors", "trace", "limit", "fs"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "limit", "fs"] }
 reqwest = { version = "0.11", features = ["json", "multipart"] }
 http-body = "1.0.1"
 

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Client;

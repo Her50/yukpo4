@@ -50,7 +50,7 @@ pub struct Authenticated(pub AuthenticatedUser);
 #[async_trait]
 impl<S> FromRequestParts<S> for Authenticated
 where
-    S: Send + Sync,
+    S: Send + Sync + 'static,
 {
     type Rejection = AppError;
 

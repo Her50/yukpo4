@@ -146,7 +146,7 @@ impl CostEstimator {
         } else {
             self.default_tokens
         };
-        estimated_tokens += (script_outline_len as i64 * self.tokens_per_slide);
+        estimated_tokens += script_outline_len as i64 * self.tokens_per_slide;
 
         let token_cost_usd = (estimated_tokens as f64 / 1_000.0) * self.token_price_per_1k_usd;
         let base_cost_usd =

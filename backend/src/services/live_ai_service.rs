@@ -1,7 +1,6 @@
 use crate::core::types::{AppError, AppResult};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use std::fmt::Write as _;
 use std::sync::Arc;
 
