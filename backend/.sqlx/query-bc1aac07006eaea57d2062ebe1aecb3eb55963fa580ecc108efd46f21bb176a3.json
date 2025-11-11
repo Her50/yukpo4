@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO delivery_status_events (\n                delivery_id,\n                status,\n                payload,\n                recorded_by\n            )\n            VALUES ($1, $2, $3, $4)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "delivery_status",
+            "kind": {
+              "Enum": [
+                "requested",
+                "awaiting_courier_confirmation",
+                "accepted",
+                "en_route_pickup",
+                "arrival_pickup",
+                "picked_up",
+                "shopping_in_progress",
+                "shopping_completed",
+                "en_route_delivery",
+                "arrival_destination",
+                "delivered",
+                "completed",
+                "cancelled"
+              ]
+            }
+          }
+        },
+        "Jsonb",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bc1aac07006eaea57d2062ebe1aecb3eb55963fa580ecc108efd46f21bb176a3"
+}

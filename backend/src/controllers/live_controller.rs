@@ -3,7 +3,6 @@ use axum::{
     http::request::Parts,
     Json,
 };
-use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
@@ -47,20 +46,24 @@ pub struct FlashSaleCommentaryPayload {
 
 pub struct Authenticated(pub AuthenticatedUser);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Authenticated
 where
-    S: Send + Sync + 'static,
+    S: Send + Sync,
 {
     type Rejection = AppError;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        parts
-            .extensions
-            .get::<AuthenticatedUser>()
-            .cloned()
-            .map(Authenticated)
-            .ok_or_else(|| AppError::Unauthorized("Authentification requise".into()))
+    fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> std::future::Ready<Result<Self, Self::Rejection>> {
+        std::future::ready(
+            parts
+                .extensions
+                .get::<AuthenticatedUser>()
+                .cloned()
+                .map(Authenticated)
+                .ok_or_else(|| AppError::Unauthorized("Authentification requise".into())),
+        )
     }
 }
 

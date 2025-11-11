@@ -2,6 +2,8 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE EXTENSION IF NOT EXISTS "unaccent";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- Migration unifiée : création de toutes les tables et colonnes importantes pour Yukpo
 
@@ -11,6 +13,11 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL,
+    nom VARCHAR(255),
+    prenom VARCHAR(255),
+    nom_complet VARCHAR(255),
+    photo_profil VARCHAR(500),
+    avatar_url VARCHAR(500),
     is_provider BOOLEAN NOT NULL DEFAULT FALSE,
     tokens_balance BIGINT NOT NULL DEFAULT 0,
     token_price_user DOUBLE PRECISION NOT NULL,
@@ -171,14 +178,14 @@ CREATE INDEX IF NOT EXISTS idx_payment_transactions_created_at ON payment_transa
 CREATE INDEX IF NOT EXISTS idx_token_transactions_user_id ON token_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_token_transactions_type ON token_transactions(transaction_type);
 
--- Table autocomplete_characteristics (✅ 2025-11-04 - Vectorielle)
+-- Table autocomplete_characteristics (mise à jour 2025-11-04 - vectorielle)
 -- Stocke les VRAIS produits validés par les prestataires (mode vectoriel)
 -- Permet la recherche intelligente avec filtre lieu intégré
 CREATE TABLE IF NOT EXISTS autocomplete_characteristics (
     id SERIAL PRIMARY KEY,
     identifiant_base VARCHAR(255) NOT NULL,
     
-    -- ✅ MODE VECTORIEL (nouveaux champs 2025-11-04)
+    -- Mode vectoriel (nouveaux champs 2025-11-04)
     characteristic_vector TEXT[] DEFAULT '{}',  -- Vecteur produit validé par prestataire
     location_vector TEXT[] DEFAULT '{}',        -- Vecteur lieu bidirectionnel (lieu choisi TOUJOURS en position 0)
     full_vector TEXT[] DEFAULT '{}',            -- characteristic_vector + location_vector
@@ -187,7 +194,7 @@ CREATE TABLE IF NOT EXISTS autocomplete_characteristics (
     chosen_location_geoname_id BIGINT,         -- ID GeoNames (GARANTIT unicité)
     is_real_product BOOLEAN DEFAULT TRUE,      -- TRUE = produit réel prestataire
     
-    -- ✅ MODE INDIVIDUEL (ancien, conservé pour compatibilité)
+    -- Mode individuel (ancien, conservé pour compatibilité)
     sous_caracteristique VARCHAR(255),
     valeur VARCHAR(500),
     
@@ -239,7 +246,7 @@ BEGIN
     END IF;
 END $$;
 
--- Table autocomplete_combinations (✅ NOUVEAU 2025-11-02)
+-- Table autocomplete_combinations (nouveau 2025-11-02)
 -- Stocke les vecteurs complets de produits pour recherche intelligente
 CREATE TABLE IF NOT EXISTS autocomplete_combinations (
     id SERIAL PRIMARY KEY,
@@ -250,7 +257,7 @@ CREATE TABLE IF NOT EXISTS autocomplete_combinations (
     location_vector TEXT[] DEFAULT '{}',   -- Ex: ["Douala", "Akwa", "Littoral", "Cameroun"]
     full_vector TEXT[] NOT NULL,           -- product_vector + location_vector
     
-    -- Vecteurs d'ÉTIQUETTES (labels) - ✅ NOUVEAU pour traçabilité
+    -- Vecteurs d'étiquettes (labels) - nouveau pour traçabilité
     product_labels TEXT[] NOT NULL,        -- Ex: ["marque", "modele", "couleur", "pointure"]
     location_labels TEXT[] DEFAULT '{}',   -- DEPRECATED: Ne plus utiliser
     
@@ -344,7 +351,7 @@ BEGIN
     END IF;
 END $$;
 
--- ✅ Table service_reviews (avis/commentaires avec support réponses - 2025-11-04)
+-- Table service_reviews (avis/commentaires avec support réponses - 2025-11-04)
 -- Permet à TOUS les utilisateurs de noter et commenter les produits/services
 -- Supporte les réponses aux commentaires avec indexation claire
 CREATE TABLE IF NOT EXISTS service_reviews (
@@ -376,7 +383,7 @@ BEGIN
     END IF;
 END $$;
 
--- ✅ Table product_reactions (réactions/émotions sur les produits - 2025-11-04)
+-- Table product_reactions (réactions/émotions sur les produits - 2025-11-04)
 -- Permet aux utilisateurs de réagir avec des émotions sur les produits
 CREATE TABLE IF NOT EXISTS product_reactions (
     id SERIAL PRIMARY KEY,
@@ -384,12 +391,12 @@ CREATE TABLE IF NOT EXISTS product_reactions (
     service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
     product_id TEXT NOT NULL,  -- Format: "serviceId_productIndex"
     reaction_type VARCHAR(20) NOT NULL CHECK (reaction_type IN (
-        'love',        -- ❤️ J'adore
-        'like',        -- 👍 J'aime
-        'wow',         -- 😮 Impressionnant
-        'interested',  -- 🎯 Intéressant
-        'thinking',    -- 🤔 À réfléchir
-        'disappointed' -- 😕 Déçu
+        'love',        -- adore
+        'like',        -- aime
+        'wow',         -- impressionnant
+        'interested',  -- interessant
+        'thinking',    -- a reflechir
+        'disappointed' -- decu
     )),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, service_id, product_id, reaction_type)
@@ -420,7 +427,7 @@ BEGIN
     END IF;
 END $$;
 
--- ✅ Table product_comments (fil de discussion moderne - 2025-11-08)
+-- Table product_comments (fil de discussion moderne - 2025-11-08)
 CREATE TABLE IF NOT EXISTS product_comments (
     id SERIAL PRIMARY KEY,
     service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
@@ -487,7 +494,7 @@ SELECT
     pc.updated_at,
     pc.edited_at,
     pc.is_deleted,
-    u.nom_complet AS user_name,
+    COALESCE(u.nom_complet, u.email) AS user_name,
     u.avatar_url AS user_avatar,
     (
         SELECT jsonb_object_agg(reaction_type, reaction_count)
@@ -509,7 +516,7 @@ JOIN users u ON u.id = pc.user_id;
 
 COMMENT ON VIEW product_comments_view IS 'Commentaires produits enrichis avec auteur, réactions agrégées et nombre de réponses';
 
--- ✅ Table private_conversations (conversations privées 1-to-1 - 2025-11-04)
+-- Table private_conversations (conversations privées 1-to-1 - 2025-11-04)
 CREATE TABLE IF NOT EXISTS private_conversations (
     id SERIAL PRIMARY KEY,
     user_1_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -1514,11 +1521,22 @@ CREATE TABLE IF NOT EXISTS delivery_pricing (
     shopping_discount_cents INTEGER DEFAULT 0
 );
 
-ALTER TABLE deliveries
-    ADD CONSTRAINT IF NOT EXISTS fk_deliveries_pricing
-    FOREIGN KEY (pricing_id)
-    REFERENCES delivery_pricing(id)
-    ON DELETE SET NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_deliveries_pricing'
+          AND table_name = 'deliveries'
+          AND constraint_type = 'FOREIGN KEY'
+    ) THEN
+        ALTER TABLE deliveries
+            ADD CONSTRAINT fk_deliveries_pricing
+            FOREIGN KEY (pricing_id)
+            REFERENCES delivery_pricing(id)
+            ON DELETE SET NULL;
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS delivery_tracking_points (
     id BIGSERIAL PRIMARY KEY,

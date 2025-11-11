@@ -1,0 +1,117 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE courier_applications\n            SET status = $2,\n                reviewed_at = NOW(),\n                reviewer_id = $3,\n                rejection_reason = $4,\n                updated_at = NOW()\n            WHERE id = $1\n            RETURNING\n                id,\n                user_id,\n                status AS \"status: DeliveryApplicationStatus\",\n                submitted_at,\n                reviewed_at,\n                reviewer_id,\n                rejection_reason,\n                profile_data,\n                documents,\n                notes,\n                created_at,\n                updated_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "status: DeliveryApplicationStatus",
+        "type_info": {
+          "Custom": {
+            "name": "delivery_application_status",
+            "kind": {
+              "Enum": [
+                "draft",
+                "submitted",
+                "under_review",
+                "approved",
+                "rejected"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "submitted_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "reviewed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "reviewer_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "rejection_reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "profile_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "documents",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 9,
+        "name": "notes",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "delivery_application_status",
+            "kind": {
+              "Enum": [
+                "draft",
+                "submitted",
+                "under_review",
+                "approved",
+                "rejected"
+              ]
+            }
+          }
+        },
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "04f944ab3b99c0ff598e0f89c2b9f44735a1c183374465a6ecc6a23314ec1a7f"
+}

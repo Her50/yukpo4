@@ -4,9 +4,18 @@
 -- Ajouter la colonne 'don' à la table echanges si elle n'existe pas
 DO $$ 
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_name = 'echanges' AND column_name = 'don') THEN
-        ALTER TABLE echanges ADD COLUMN don BOOLEAN DEFAULT false;
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+          AND table_name = 'echanges'
+    ) THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'echanges' AND column_name = 'don'
+        ) THEN
+            ALTER TABLE echanges ADD COLUMN don BOOLEAN DEFAULT false;
+        END IF;
     END IF;
 END $$;
 
@@ -24,7 +33,18 @@ CREATE TABLE IF NOT EXISTS programmes_scolaires (
 
 -- Index pour optimiser les performances
 CREATE INDEX IF NOT EXISTS idx_programmes_scolaires_etablissement_classe ON programmes_scolaires(etablissement, classe);
-CREATE INDEX IF NOT EXISTS idx_echanges_don ON echanges(don);
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+          AND table_name = 'echanges'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_echanges_don ON echanges(don);
+    END IF;
+END $$;
 
 -- Trigger pour updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()

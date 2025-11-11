@@ -1,0 +1,126 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO shopping_order_items (\n                    shopping_order_id,\n                    product_id,\n                    product_name,\n                    characteristics,\n                    quantity,\n                    unit,\n                    estimated_price_cents,\n                    actual_price_cents,\n                    status,\n                    metadata\n                )\n                VALUES (\n                    $1,$2,$3,$4,$5,$6,$7,NULL,$8,$9\n                )\n                RETURNING\n                    id,\n                    shopping_order_id,\n                    product_id,\n                    product_name,\n                    characteristics,\n                    quantity,\n                    unit,\n                    estimated_price_cents,\n                    actual_price_cents,\n                    status AS \"status: ShoppingItemStatus\",\n                    metadata,\n                    created_at,\n                    updated_at\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "shopping_order_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "product_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "product_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "characteristics",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "quantity",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "unit",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "estimated_price_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "actual_price_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "status: ShoppingItemStatus",
+        "type_info": {
+          "Custom": {
+            "name": "shopping_item_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "purchased",
+                "missing",
+                "replaced"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Numeric",
+        "Text",
+        "Int4",
+        {
+          "Custom": {
+            "name": "shopping_item_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "purchased",
+                "missing",
+                "replaced"
+              ]
+            }
+          }
+        },
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "fac9bb77deadd83bc1a1f24fab4b3eef165b499e2e97ad6aa1ab8e04ef705e4b"
+}

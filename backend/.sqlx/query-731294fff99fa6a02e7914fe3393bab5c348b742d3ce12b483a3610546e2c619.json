@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT liked, saved\n            FROM content_engagement\n            WHERE user_id = $1 AND content_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "liked",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "saved",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "731294fff99fa6a02e7914fe3393bab5c348b742d3ce12b483a3610546e2c619"
+}

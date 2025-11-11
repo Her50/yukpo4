@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COALESCE(AVG(tokens_ia_consumed)::numeric, 0)::BIGINT AS avg_tokens\n            FROM token_usage_logs\n            WHERE intention = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avg_tokens",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0e18498a542f421f4ef797b2b25f680fe0fa5539885b3e8f7ef8debb21f61975"
+}

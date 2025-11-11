@@ -30,6 +30,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger mise à jour updated_at
+DROP TRIGGER IF EXISTS trigger_product_comments_updated_at ON product_comments;
 CREATE TRIGGER trigger_product_comments_updated_at
     BEFORE UPDATE ON product_comments
     FOR EACH ROW
@@ -55,7 +56,7 @@ CREATE TABLE IF NOT EXISTS product_comment_reactions (
 CREATE INDEX IF NOT EXISTS idx_product_comment_reactions_comment ON product_comment_reactions(comment_id);
 CREATE INDEX IF NOT EXISTS idx_product_comment_reactions_user ON product_comment_reactions(user_id);
 
--- Vue pour récupérer les commentaires avec leurs métadonnées consolidées
+DROP VIEW IF EXISTS product_comments_view;
 CREATE OR REPLACE VIEW product_comments_view AS
 SELECT
     pc.id,
@@ -70,7 +71,7 @@ SELECT
     pc.updated_at,
     pc.edited_at,
     pc.is_deleted,
-    u.nom_complet AS user_name,
+    COALESCE(u.nom_complet::TEXT, u.email) AS user_name,
     u.avatar_url AS user_avatar,
     (
         SELECT jsonb_object_agg(reaction_type, reaction_count)

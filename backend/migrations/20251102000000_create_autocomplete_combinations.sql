@@ -111,11 +111,24 @@ CREATE TRIGGER trigger_combinations_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_combinations_updated_at();
 
+DO $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN 
+        SELECT oid::regprocedure AS func_signature
+        FROM pg_proc 
+        WHERE proname = 'upsert_autocomplete_combination'
+    LOOP
+        EXECUTE format('DROP FUNCTION IF EXISTS %s CASCADE', rec.func_signature);
+    END LOOP;
+END $$;
+
 -- Fonction pour upsert une combinaison (incrémenter usage_count si existe)
 CREATE OR REPLACE FUNCTION upsert_autocomplete_combination(
     p_product_vector TEXT[],
-    p_location_vector TEXT[] DEFAULT '{}',
-    p_full_vector TEXT[],
+    p_location_vector TEXT[] DEFAULT ARRAY[]::TEXT[],
+    p_full_vector TEXT[] DEFAULT ARRAY[]::TEXT[],
     p_chosen_location TEXT DEFAULT NULL,
     p_is_ai_preferred BOOLEAN DEFAULT FALSE,
     p_ai_confidence FLOAT DEFAULT 0.0,

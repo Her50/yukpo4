@@ -81,13 +81,30 @@ CREATE TRIGGER trigger_update_service_reviews_updated_at
 -- Ajouter les colonnes manquantes à la table echanges si elles n'existent pas
 DO $$ 
 BEGIN
-    -- Ajouter quantite_offerte si elle n'existe pas
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'echanges' AND column_name = 'quantite_offerte') THEN
-        ALTER TABLE echanges ADD COLUMN quantite_offerte DECIMAL(10,2);
-    END IF;
-    
-    -- Ajouter quantite_requise si elle n'existe pas
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'echanges' AND column_name = 'quantite_requise') THEN
-        ALTER TABLE echanges ADD COLUMN quantite_requise DECIMAL(10,2);
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+          AND table_name = 'echanges'
+    ) THEN
+        -- Ajouter quantite_offerte si elle n'existe pas
+        IF NOT EXISTS (
+            SELECT 1 
+            FROM information_schema.columns 
+            WHERE table_name = 'echanges' 
+              AND column_name = 'quantite_offerte'
+        ) THEN
+            ALTER TABLE echanges ADD COLUMN quantite_offerte DECIMAL(10,2);
+        END IF;
+        
+        -- Ajouter quantite_requise si elle n'existe pas
+        IF NOT EXISTS (
+            SELECT 1 
+            FROM information_schema.columns 
+            WHERE table_name = 'echanges' 
+              AND column_name = 'quantite_requise'
+        ) THEN
+            ALTER TABLE echanges ADD COLUMN quantite_requise DECIMAL(10,2);
+        END IF;
     END IF;
 END $$; 

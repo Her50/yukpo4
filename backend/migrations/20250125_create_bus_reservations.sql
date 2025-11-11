@@ -134,10 +134,14 @@ SELECT
     br.status,
     br.created_at,
     br.updated_at,
-    u.name as user_name,
-    u.email as user_email,
-    p.name as product_name,
-    p.type as product_type
+    COALESCE(
+        u.nom_complet,
+        NULLIF(TRIM(CONCAT(u.prenom, ' ', u.nom)), ''),
+        u.email
+    ) AS user_name,
+    u.email AS user_email,
+    p.name AS product_name,
+    p.type AS product_type
 FROM bus_reservations br
 JOIN users u ON u.id = br.user_id
 LEFT JOIN products p ON p.id::text = br.product_id

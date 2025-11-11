@@ -30,6 +30,7 @@ use axum::{
 };
 use chrono;
 use std::sync::Arc;
+use tower::ServiceExt;
 use tower_http::services::ServeDir;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -228,13 +229,14 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
 
     let uploads_dir =
         std::env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "/var/data/uploads".to_string());
-    let uploads_service = get_service(ServeDir::<axum::body::Body>::new(uploads_dir.clone()))
-        .handle_error(|error: std::io::Error| async move {
+    let uploads_service = get_service(
+        ServeDir::new(uploads_dir.clone()).handle_error(|error: std::io::Error| async move {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Erreur accès média: {}", error),
             )
-        });
+        }),
+    );
 
     let app = Router::new()
         .route(

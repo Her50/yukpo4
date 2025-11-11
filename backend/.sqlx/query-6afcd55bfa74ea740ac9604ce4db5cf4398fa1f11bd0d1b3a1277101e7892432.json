@@ -1,0 +1,106 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                shopping_order_id,\n                product_id,\n                product_name,\n                characteristics,\n                quantity,\n                unit,\n                estimated_price_cents,\n                actual_price_cents,\n                status AS \"status: ShoppingItemStatus\",\n                metadata,\n                created_at,\n                updated_at\n            FROM shopping_order_items\n            WHERE shopping_order_id = $1\n            ORDER BY created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "shopping_order_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "product_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "product_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "characteristics",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "quantity",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "unit",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "estimated_price_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "actual_price_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "status: ShoppingItemStatus",
+        "type_info": {
+          "Custom": {
+            "name": "shopping_item_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "purchased",
+                "missing",
+                "replaced"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "6afcd55bfa74ea740ac9604ce4db5cf4398fa1f11bd0d1b3a1277101e7892432"
+}

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE shopping_order_items\n            SET status = $2,\n                actual_price_cents = COALESCE($3, actual_price_cents),\n                metadata = COALESCE($4, metadata),\n                updated_at = NOW()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "shopping_item_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "purchased",
+                "missing",
+                "replaced"
+              ]
+            }
+          }
+        },
+        "Int4",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ce934056b4835abf02204319d5c18f40806a9f2127b0f75f6bd8eecbd69c85d6"
+}

@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                delivery_id,\n                base_price_cents,\n                distance_price_cents,\n                surcharge_cents,\n                discount_cents,\n                currency,\n                calculated_at,\n                details,\n                shopping_cost_cents,\n                shopping_discount_cents\n            FROM delivery_pricing\n            WHERE delivery_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "delivery_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "base_price_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "distance_price_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "surcharge_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "discount_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "currency",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "calculated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "details",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 9,
+        "name": "shopping_cost_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "shopping_discount_cents",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "8d4d602d9ae4afcac8fc96a8dbe1209386180f8f8492f596aa6ec5bf0cc4e4ec"
+}

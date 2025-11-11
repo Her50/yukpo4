@@ -26,7 +26,7 @@
       {
         "ordinal": 4,
         "name": "uploaded_at",
-        "type_info": "Timestamp"
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -39,7 +39,7 @@
       false,
       false,
       false,
-      true
+      false
     ]
   },
   "hash": "e006d01b9944b646fd89acd98a52dce24c3f983fff2d0743b5c40650d80e95e3"
