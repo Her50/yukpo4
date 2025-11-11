@@ -1345,12 +1345,17 @@ impl DeliveryService {
             input.currency.clone()
         };
 
-        let mut estimated_items = Vec::with_capacity(input.items.len());
+        let mut estimated_items: Vec<ShoppingEstimateItem> =
+            Vec::with_capacity(input.items.len());
         let mut total_cents = 0;
 
         for item in input.items {
-            let quantity = Decimal::from_f64(item.quantity).unwrap_or_else(Decimal::zero);
-            if quantity <= Decimal::zero() {
+            let quantity = Decimal::from_f64(item.quantity)
+                .ok_or_else(|| AppError::BadRequest(format!(
+                    "Quantité invalide pour le produit {}",
+                    item.product_name
+                )))?;
+            if quantity <= Decimal::ZERO {
                 return Err(AppError::BadRequest(format!(
                     "Quantité invalide pour le produit {}",
                     item.product_name
@@ -1493,7 +1498,11 @@ impl DeliveryService {
                 product_id: item.product_id,
                 product_name: item.product_name.clone(),
                 characteristics: item.characteristics.clone(),
-                quantity: Decimal::from_f64(item.quantity).unwrap_or_else(Decimal::zero),
+                quantity: Decimal::from_f64(item.quantity)
+                    .ok_or_else(|| AppError::BadRequest(format!(
+                        "Quantité invalide pour le produit {}",
+                        item.product_name
+                    )))?,
                 unit: item.unit.clone(),
                 estimated_price_cents: item.estimated_price_cents.unwrap_or(0),
                 status: ShoppingItemStatus::Pending,
@@ -1632,7 +1641,7 @@ impl DeliveryService {
         user_id: i32,
         input: ShoppingItemUpdateInput,
     ) -> AppResult<()> {
-        let (order, delivery) = self.load_shopping_context(input.order_id).await?;
+        let (_, delivery) = self.load_shopping_context(input.order_id).await?;
         self.ensure_courier_for_delivery(&delivery, user_id).await?;
 
         self.repository
@@ -1666,7 +1675,8 @@ impl DeliveryService {
             ShoppingStatus::Cancelled => {
                 if delivery.creator_id != user_id {
                     // Coursier peut annuler pour indisponibilité
-                    self.ensure_courier_for_delivery(&delivery, user_id).await?
+                    self.ensure_courier_for_delivery(&delivery, user_id)
+                        .await?;
                 }
             }
             _ => {
@@ -2096,6 +2106,12 @@ impl DeliveryService {
                         vehicle_type: None,
                         eta_minutes: None,
                         is_online: None,
+                        allow_tracking: None,
+                        allow_contact: None,
+                        consent_granted: None,
+                        country_code: None,
+                        preferred_language: None,
+                        current_location: None,
                     })
             } else {
                 None

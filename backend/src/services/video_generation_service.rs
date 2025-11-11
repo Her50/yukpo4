@@ -1858,31 +1858,29 @@ fn locate_product_array(data: &Value) -> Option<&Vec<Value>> {
 }
 
 fn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {
-    match data {
-        Value::Array(arr) => Some(arr),
-        Value::Object(map) => {
-            if let Some(Value::Array(arr)) = map.get_mut("produits") {
+    if let Some(arr) = data.as_array_mut() {
+        return Some(arr);
+    }
+
+    if let Some(obj) = data.as_object_mut() {
+        if let Some(arr) = obj.get_mut("produits").and_then(Value::as_array_mut) {
+            return Some(arr);
+        }
+
+        if let Some(inner) = obj.get_mut("produits").and_then(Value::as_object_mut) {
+            if let Some(arr) = inner.get_mut("valeur").and_then(Value::as_array_mut) {
                 return Some(arr);
             }
-
-            if let Some(Value::Object(inner)) = map.get_mut("produits") {
-                if let Some(value) = inner.get_mut("valeur") {
-                    if let Some(arr) = value.as_array_mut() {
-                        return Some(arr);
-                    }
-                }
-            }
-
-            if let Some(Value::Object(inner_data)) = map.get_mut("data") {
-                if let Some(value) = inner_data.get_mut("produits") {
-                    return value.as_array_mut();
-                }
-            }
-
-            None
         }
-        _ => None,
+
+        if let Some(inner_data) = obj.get_mut("data").and_then(Value::as_object_mut) {
+            if let Some(arr) = inner_data.get_mut("produits").and_then(Value::as_array_mut) {
+                return Some(arr);
+            }
+        }
     }
+
+    None
 }
 
 fn extract_string(value: &Value, keys: &[&str]) -> Option<String> {

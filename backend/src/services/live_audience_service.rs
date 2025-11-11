@@ -39,8 +39,7 @@ async fn fetch_recent_audience(
     .fetch_all(pool)
     .await?;
 
-    let mut audience = Vec::with_capacity(rows.len());
-    let audience = rows.into_iter().map(|row| row.user_id).collect();
+    let audience: Vec<i32> = rows.into_iter().map(|row| row.user_id).collect();
 
     Ok(audience)
 }
