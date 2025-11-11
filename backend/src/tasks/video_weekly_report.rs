@@ -64,6 +64,13 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
     )
     .fetch_one(&state.pg)
     .await
+    .map_err(|err| {
+        error!(
+            "[VideoWeeklyReport] Impossible de compter les vidéos: {:?}",
+            err
+        );
+        AppError::from(err)
+    })?
     .unwrap_or(0);
 
     let total_views = sqlx::query_scalar!(
@@ -78,6 +85,13 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
     )
     .fetch_one(&state.pg)
     .await
+    .map_err(|err| {
+        error!(
+            "[VideoWeeklyReport] Impossible de compter les vues: {:?}",
+            err
+        );
+        AppError::from(err)
+    })?
     .unwrap_or(0);
 
     let average_quality = sqlx::query_scalar!(
@@ -92,7 +106,13 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
     )
     .fetch_one(&state.pg)
     .await
-    .unwrap_or(None)
+    .map_err(|err| {
+        error!(
+            "[VideoWeeklyReport] Impossible de calculer la qualité moyenne: {:?}",
+            err
+        );
+        AppError::from(err)
+    })?
     .unwrap_or(0.0);
 
     let top_services = sqlx::query!(

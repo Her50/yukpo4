@@ -48,5 +48,20 @@
         "src/types/*"
       ]
     }
-  }
+  },
+  "exclude": [
+    "src/legacy",
+    "src/legacy/**",
+    "**/*.backup.tsx",
+    "App.MINIMAL-CRASH-TEST.tsx",
+    "App.MINIMAL-TEST.tsx",
+    "App.simple.tsx",
+    "App.test.tsx",
+    "App.ULTRA_MINIMAL.tsx",
+    "App.tsx.backup",
+    "App.tsx.backup-current",
+    "App.complex.tsx.backup",
+    "log-analyzer.js",
+    "vitest.config.ts"
+  ]
 }

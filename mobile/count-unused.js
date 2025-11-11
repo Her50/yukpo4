@@ -1,5 +1,10 @@
 const fs = require("fs");
-const lines = fs.readFileSync("ts-prune-report.txt", "utf8").split(/\r?\n/).filter(Boolean);
+const reportPath = process.argv[2] || "ts-prune-after.txt";
+if (!fs.existsSync(reportPath)) {
+  console.error(`Report file not found: ${reportPath}`);
+  process.exit(1);
+}
+const lines = fs.readFileSync(reportPath, "utf8").split(/\r?\n/).filter(Boolean);
 const counts = new Map();
 for (const line of lines) {
   const marker = '\\src\\';
@@ -14,4 +19,5 @@ for (const line of lines) {
 }
 const entries = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
 const output = entries.map(([dir, count]) => `${dir}: ${count}`).join('\n');
-fs.writeFileSync('counts.txt', output, 'utf8');
+const outPath = process.argv[3] || "counts.txt";
+fs.writeFileSync(outPath, output, "utf8");

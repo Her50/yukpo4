@@ -1,0 +1,13 @@
+components: 178
+utils: 98
+services: 50
+config: 44
+hooks: 43
+screens: 35
+data: 30
+types: 20
+lib: 10
+routes: 3
+theme: 3
+<root>: 1
+contexts: 1
