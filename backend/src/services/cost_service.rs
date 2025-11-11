@@ -98,7 +98,7 @@ impl CostEstimator {
         user_id: i32,
         script_outline_len: usize,
     ) -> AppResult<CostEstimation> {
-        let mut estimation = self
+        let estimation = self
             .estimate_video_generation_cost_only(user_id, script_outline_len)
             .await?;
 

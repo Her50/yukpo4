@@ -191,9 +191,12 @@ pub async fn generate_product_video(
         ));
     }
 
-    let mut service_data: Value = svc
-        .data
-        .ok_or_else(|| AppError::Internal("Service sans données associées.".to_string()))?;
+    let mut service_data: Value = svc.data;
+    if service_data.is_null() {
+        return Err(AppError::Internal(
+            "Service sans données associées.".to_string(),
+        ));
+    }
 
     let product_array_len = {
         let array = locate_product_array(&service_data).ok_or_else(|| {
@@ -743,10 +746,14 @@ pub async fn generate_product_video(
                             Some(path)
                         }
                     }
-                    Ok(None) | Err(err) => {
-                        if let Err(e) = &err {
-                            warn!("[VideoGeneration] Voix IA indisponible: {e}");
-                        }
+                    Ok(None) => {
+                        let voice = payload.voiceover_voice.as_deref().unwrap_or("fr");
+                        generate_voiceover_audio(&session_dir, &trimmed, lang, voice)
+                            .await
+                            .ok()
+                    }
+                    Err(err) => {
+                        warn!("[VideoGeneration] Voix IA indisponible: {err}");
                         let voice = payload.voiceover_voice.as_deref().unwrap_or("fr");
                         generate_voiceover_audio(&session_dir, &trimmed, lang, voice)
                             .await
@@ -1863,20 +1870,18 @@ fn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {
     }
 
     if let Value::Object(map) = data {
-        if let Some(value) = map.get_mut("produits") {
-            match value {
-                Value::Array(arr) => return Some(arr),
-                Value::Object(inner) => {
-                    if let Some(Value::Array(arr)) = inner.get_mut("valeur") {
-                        return Some(arr);
-                    }
-                }
-                _ => {}
-            }
+        if let Some(arr_ref) = match map.get_mut("produits") {
+            Some(Value::Array(arr)) => Some(arr),
+            Some(Value::Object(inner)) => inner
+                .get_mut("valeur")
+                .and_then(Value::as_array_mut),
+            _ => None,
+        } {
+            return Some(arr_ref);
         }
 
-        if let Some(Value::Object(inner_data)) = map.get_mut("data") {
-            if let Some(Value::Array(arr)) = inner_data.get_mut("produits") {
+        if let Some(data_value) = map.get_mut("data") {
+            if let Some(arr) = locate_product_array_mut(data_value) {
                 return Some(arr);
             }
         }
