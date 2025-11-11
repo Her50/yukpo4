@@ -45,12 +45,23 @@ CREATE TABLE IF NOT EXISTS services (
 CREATE TABLE IF NOT EXISTS media (
     id SERIAL PRIMARY KEY,
     service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    product_id TEXT,
+    product_index INTEGER,
     type TEXT NOT NULL,
     path TEXT NOT NULL,
-    uploaded_at TIMESTAMP DEFAULT NOW(),
+    uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     media_type TEXT,
     file_size BIGINT,
-    file_format TEXT
+    file_format TEXT,
+    is_main_image BOOLEAN NOT NULL DEFAULT FALSE,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    ai_description TEXT,
+    ai_tags TEXT[],
+    ai_category VARCHAR(100),
+    ai_metadata JSONB,
+    ai_analyzed_at TIMESTAMPTZ,
+    ai_model_used VARCHAR(100),
+    ai_confidence DOUBLE PRECISION
 );
 -- Contrainte sur media_type
 DO $$
@@ -73,6 +84,29 @@ BEGIN
         CREATE INDEX idx_media_service_id ON media (service_id);
     END IF;
 END $$;
+
+CREATE INDEX IF NOT EXISTS idx_media_product_id ON media (product_id) WHERE product_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_media_product_index ON media (product_index) WHERE product_index IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_media_service_product ON media (service_id, product_index);
+CREATE INDEX IF NOT EXISTS idx_media_main_image ON media (product_id, is_main_image) WHERE is_main_image = TRUE;
+CREATE INDEX IF NOT EXISTS idx_media_product_display ON media (product_id, display_order) WHERE product_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_media_ai_description_fulltext
+    ON media USING GIN (to_tsvector('french', COALESCE(ai_description, '')));
+CREATE INDEX IF NOT EXISTS idx_media_ai_tags_gin ON media USING GIN (ai_tags);
+CREATE INDEX IF NOT EXISTS idx_media_ai_category ON media(ai_category) WHERE ai_category IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_media_ai_metadata_gin ON media USING GIN (ai_metadata);
+
+COMMENT ON COLUMN media.product_id IS 'ID du produit spécifique auquel ce média appartient';
+COMMENT ON COLUMN media.product_index IS 'Index du produit dans service.data.produits[] (0-based)';
+COMMENT ON COLUMN media.is_main_image IS 'Indique si ce média est l''image principale du produit';
+COMMENT ON COLUMN media.display_order IS 'Ordre d''affichage du média pour un produit';
+COMMENT ON COLUMN media.ai_description IS 'Description générée par IA pour recherche full-text';
+COMMENT ON COLUMN media.ai_tags IS 'Tags IA utilisés pour le matching';
+COMMENT ON COLUMN media.ai_category IS 'Catégorie détectée automatiquement';
+COMMENT ON COLUMN media.ai_metadata IS 'Métadonnées IA (marque, couleurs, caractéristiques...)';
+COMMENT ON COLUMN media.ai_analyzed_at IS 'Date de la dernière analyse IA';
+COMMENT ON COLUMN media.ai_model_used IS 'Modèle IA utilisé';
+COMMENT ON COLUMN media.ai_confidence IS 'Score de confiance de l''analyse IA';
 
 -- Table consultation_historique
 CREATE TABLE IF NOT EXISTS consultation_historique (
