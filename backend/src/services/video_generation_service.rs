@@ -1863,18 +1863,25 @@ fn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {
     }
 
     if let Some(obj) = data.as_object_mut() {
-        if let Some(arr) = obj.get_mut("produits").and_then(Value::as_array_mut) {
-            return Some(arr);
-        }
-
-        if let Some(inner) = obj.get_mut("produits").and_then(Value::as_object_mut) {
-            if let Some(arr) = inner.get_mut("valeur").and_then(Value::as_array_mut) {
+        if let Some(value) = obj.get_mut("produits") {
+            if let Some(arr) = value.as_array_mut() {
                 return Some(arr);
+            }
+            if let Value::Object(inner) = value {
+                if let Some(valeur) = inner.get_mut("valeur") {
+                    if let Some(arr) = valeur.as_array_mut() {
+                        return Some(arr);
+                    }
+                }
             }
         }
 
-        if let Some(inner_data) = obj.get_mut("data").and_then(Value::as_object_mut) {
-            if let Some(arr) = inner_data.get_mut("produits").and_then(Value::as_array_mut) {
+        if let Some(data_value) = obj.get_mut("data") {
+            if let Some(arr) = data_value
+                .as_object_mut()
+                .and_then(|inner| inner.get_mut("produits"))
+                .and_then(Value::as_array_mut)
+            {
                 return Some(arr);
             }
         }

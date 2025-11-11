@@ -1494,21 +1494,33 @@ impl DeliveryService {
         let items_payload: Vec<NewShoppingOrderItem> = params
             .items
             .iter()
-            .map(|item| NewShoppingOrderItem {
-                product_id: item.product_id,
-                product_name: item.product_name.clone(),
-                characteristics: item.characteristics.clone(),
-                quantity: Decimal::from_f64(item.quantity)
-                    .ok_or_else(|| AppError::BadRequest(format!(
+            .map(|item| {
+                let quantity = Decimal::from_f64(item.quantity)
+                    .ok_or_else(|| {
+                        AppError::BadRequest(format!(
+                            "Quantité invalide pour le produit {}",
+                            item.product_name
+                        ))
+                    })?;
+                if quantity <= Decimal::ZERO {
+                    return Err(AppError::BadRequest(format!(
                         "Quantité invalide pour le produit {}",
                         item.product_name
-                    )))?,
-                unit: item.unit.clone(),
-                estimated_price_cents: item.estimated_price_cents.unwrap_or(0),
-                status: ShoppingItemStatus::Pending,
-                metadata: Value::Object(Default::default()),
+                    )));
+                }
+
+                Ok(NewShoppingOrderItem {
+                    product_id: item.product_id,
+                    product_name: item.product_name.clone(),
+                    characteristics: item.characteristics.clone(),
+                    quantity,
+                    unit: item.unit.clone(),
+                    estimated_price_cents: item.estimated_price_cents.unwrap_or(0),
+                    status: ShoppingItemStatus::Pending,
+                    metadata: Value::Object(Default::default()),
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>, AppError>>()?;
 
         let (order, items) = self
             .repository
