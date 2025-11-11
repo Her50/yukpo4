@@ -1859,18 +1859,18 @@ fn locate_product_array(data: &Value) -> Option<&Vec<Value>> {
 }
 
 fn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {
-    if let Some(produits) = data.get_mut("produits") {
-        if let Some(arr) = produits.as_array_mut() {
-            return Some(arr);
-        }
+    if let Some(Value::Array(arr)) = data.get_mut("produits") {
+        return Some(arr);
+    }
 
-        if let Some(arr) = produits.get_mut("valeur").and_then(Value::as_array_mut) {
+    if let Some(Value::Object(map)) = data.get_mut("produits") {
+        if let Some(Value::Array(arr)) = map.get_mut("valeur") {
             return Some(arr);
         }
     }
 
-    if let Some(data_obj) = data.get_mut("data") {
-        if let Some(arr) = data_obj.get_mut("produits").and_then(Value::as_array_mut) {
+    if let Some(Value::Object(map)) = data.get_mut("data") {
+        if let Some(Value::Array(arr)) = map.get_mut("produits") {
             return Some(arr);
         }
     }

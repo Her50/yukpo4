@@ -1,0 +1,679 @@
+\metro.config.js:6 - resolver
+\src\components\AdminServiceMediaButton.tsx:16 - default
+\src\components\AdvancedGPSModal.tsx:813 - default
+\src\components\AssuranceProduitSelector.tsx:494 - default
+\src\components\AutocompleteGranularEditor.tsx:42 - AutocompleteGranularEditor (used in module)
+\src\components\AutocompleteGranularEditor.tsx:942 - default
+\src\components\AutocompleteStructure.tsx:474 - default
+\src\components\AutoDetectAndTranslate.tsx:61 - default
+\src\components\AvatarMenuModal.tsx:304 - default
+\src\components\BadgePlan.tsx:28 - default
+\src\components\BehaviorScoreCard.tsx:27 - default
+\src\components\BusSeatSelector.tsx:1073 - default
+\src\components\BusSeatSelectorMulti.tsx:793 - default
+\src\components\CaptchaChallenge.tsx:80 - default
+\src\components\CardService.tsx:43 - default
+\src\components\CategoryFilters.tsx:1247 - default
+\src\components\ChatInputPanel.tsx:502 - default
+\src\components\ChatModal.tsx:931 - default
+\src\components\ChaussureVariantManager.tsx:466 - default
+\src\components\CloudImage.tsx:31 - CloudImage (used in module)
+\src\components\CloudImage.tsx:123 - default
+\src\components\CombinationProgressBar.tsx:11 - CombinationProgressBar
+\src\components\CreateNewKeyFlow.tsx:29 - CreateNewKeyFlow
+\src\components\CreationSection.tsx:17 - default
+\src\components\DebugFloatingButton.tsx:18 - DebugFloatingButton
+\src\components\DebugOverlay.tsx:397 - default
+\src\components\DeferredProviders.tsx:87 - default
+\src\components\DesktopMenu.tsx:74 - default
+\src\components\DistanceBadge.tsx:15 - DistanceBadge (used in module)
+\src\components\DistanceBadge.tsx:88 - default
+\src\components\DynamicAutocompleteFilters.tsx:33 - DynamicAutocompleteFilters (used in module)
+\src\components\DynamicAutocompleteFilters.tsx:614 - default
+\src\components\DynamicField.tsx:678 - default
+\src\components\DynamicMenu.tsx:66 - default
+\src\components\EmergencyDebugScreen.tsx:9 - default
+\src\components\EnhancedGPSModal.tsx:792 - default
+\src\components\ErrorBoundaryWithDebug.tsx:18 - ErrorBoundaryWithDebug
+\src\components\ErrorTestComponent.tsx:123 - default
+\src\components\ExportShareCard.tsx:71 - default
+\src\components\ExternalServiceShare.tsx:298 - default
+\src\components\FloatingHelpButton.tsx:16 - default
+\src\components\Footer.tsx:10 - YukpoBrand (used in module)
+\src\components\Footer.tsx:71 - default
+\src\components\GlassmorphismCard.tsx:81 - default
+\src\components\GlobalIAStats.tsx:25 - GlobalIAStatsProvider
+\src\components\GlobalIAStats.tsx:80 - useGlobalIAStats
+\src\components\GlobalIAStatsPanel.tsx:172 - default
+\src\components\GPSAutoTracker.tsx:196 - default
+\src\components\GPSDisplay.tsx:202 - default
+\src\components\GPSManager.tsx:35 - default
+\src\components\GroupeForm.tsx:184 - default
+\src\components\HeaderController.tsx:253 - default
+\src\components\HealthStructureSelector.tsx:19 - HealthStructureSelector (used in module)
+\src\components\HealthStructureSelector.tsx:292 - default
+\src\components\HeroBanner.tsx:52 - default
+\src\components\HeroSection.tsx:32 - default
+\src\components\HotelLocationDisplay.tsx:408 - default
+\src\components\HotelStructureSelector.tsx:19 - HotelStructureSelector (used in module)
+\src\components\HotelStructureSelector.tsx:472 - default
+\src\components\HotelVariantManager.tsx:557 - default
+\src\components\IconPreview.tsx:236 - default
+\src\components\IncomingCallManager.tsx:99 - default
+\src\components\InfractionChart.tsx:37 - default
+\src\components\IntelligentLanguageProvider.tsx:34 - IntelligentLanguageProvider (used in module)
+\src\components\IntelligentLanguageProvider.tsx:121 - useIntelligentLanguageContext (used in module)
+\src\components\IntelligentLanguageProvider.tsx:130 - AutoTranslate
+\src\components\IntelligentLanguageProvider.tsx:162 - useAutoTranslate
+\src\components\IntelligentLanguageProvider.tsx:171 - default
+\src\components\IntelligentProductField.tsx:50 - IntelligentProductField
+\src\components\IntelligentSearchBar.tsx:169 - IntelligentSearchBar (used in module)
+\src\components\IntelligentSearchBar.tsx:1153 - default
+\src\components\LangSwitcher.tsx:48 - default
+\src\components\LanguageSelector.tsx:16 - LANGUAGES (used in module)
+\src\components\LazyManagers.tsx:73 - default
+\src\components\LinearAutocompleteEditor.tsx:504 - LinearAutocompleteEditor (used in module)
+\src\components\Loader.tsx:13 - default
+\src\components\LocationDisplayModern.tsx:33 - LocationDisplayModern (used in module)
+\src\components\LocationProximityFilter.tsx:22 - LocationMode (used in module)
+\src\components\LocationProximityFilter.tsx:30 - LocationProximityFilter (used in module)
+\src\components\LocationSelector.tsx:186 - LocationSelector (used in module)
+\src\components\MainMenu.tsx:26 - default
+\src\components\MatchSection.tsx:17 - default
+\src\components\MediaManager.tsx:219 - default
+\src\components\MenuAuto.tsx:31 - default
+\src\components\MissingComponent.tsx:13 - MissingComponent (used in module)
+\src\components\MissingComponent.tsx:54 - default
+\src\components\ModernGPSSelector.tsx:662 - default
+\src\components\ModernServiceCard.tsx:544 - default
+\src\components\ModernToggle.tsx:94 - default
+\src\components\NativeDatePicker.tsx:163 - default
+\src\components\NativeDesign.tsx:113 - NativeInputProps (used in module)
+\src\components\NativeDesign.tsx:415 - default
+\src\components\NativeTimePicker.tsx:169 - default
+\src\components\NavigatorToolbar.tsx:22 - NavigatorToolbar (used in module)
+\src\components\NetworkDiagnostics.tsx:193 - default
+\src\components\NewGPSModal.tsx:457 - default
+\src\components\OptimizedImage.tsx:140 - default
+\src\components\OptionsPrimesManager.tsx:347 - default
+\src\components\OutilsSection.tsx:19 - default
+\src\components\PaiementEnLigneModal.tsx:710 - default
+\src\components\PerformanceMonitor.tsx:74 - usePerformanceMonitor (used in module)
+\src\components\PerformanceMonitor.tsx:104 - PerformanceWrapper
+\src\components\PerformanceMonitor.tsx:126 - default
+\src\components\PreviousContactsPanel.tsx:257 - default
+\src\components\PriceVariantSelector.tsx:42 - PriceVariantSelector (used in module)
+\src\components\ProductCardErrorBoundary.tsx:137 - default
+\src\components\ProductCardSkeleton.tsx:232 - default
+\src\components\ProductManager.tsx:321 - default
+\src\components\ProductManagerMobile.tsx:4080 - default
+\src\components\ProductReactivationModal.tsx:604 - default
+\src\components\ProductVariantManager.tsx:530 - default
+\src\components\ProOnlyBanner.tsx:9 - default
+\src\components\PublicitesCarousel.tsx:934 - default (used in module)
+\src\components\QuickActionsMenu.tsx:192 - default
+\src\components\RecentActivityCard.tsx:246 - default
+\src\components\RequireAuth.tsx:71 - default
+\src\components\ResultsHeader.tsx:174 - default
+\src\components\RolePlanNotice.tsx:13 - default
+\src\components\SafeIcon.tsx:231 - TabIcon
+\src\components\SafeIcon.tsx:256 - ActionIcon
+\src\components\SafeNativeView.tsx:62 - SafeScreen
+\src\components\SafeNativeView.tsx:78 - SafeContainer
+\src\components\SafeNativeView.tsx:101 - default
+\src\components\SchedulerStatusCard.tsx:84 - default
+\src\components\SearchBar.tsx:123 - default
+\src\components\ServiceCard.tsx:1006 - default
+\src\components\ServiceFormDynamic.tsx:163 - default
+\src\components\ServiceHistoryModal.tsx:709 - default
+\src\components\ServiceManagementCard.tsx:626 - default
+\src\components\ServiceRating.tsx:44 - ServiceRating (used in module)
+\src\components\ServiceResultCard.tsx:423 - default
+\src\components\ShareServiceModal.tsx:202 - default
+\src\components\Sidebar.tsx:29 - default
+\src\components\SidebarByRole.tsx:22 - default
+\src\components\SidebarMenu.tsx:76 - default
+\src\components\SignalementModal.tsx:464 - default
+\src\components\SimpleChart.tsx:329 - default
+\src\components\SimpleGPSManager.tsx:209 - default
+\src\components\SmartApplianceInput.tsx:428 - default
+\src\components\SmartModalityInput.tsx:38 - SmartModalityInput
+\src\components\SmartPhoneModelInput.tsx:425 - default
+\src\components\SmartProductForm.tsx:33 - SmartProductForm
+\src\components\SmartSearchBar.tsx:43 - SmartSearchBar (used in module)
+\src\components\SmartSearchBar.tsx:499 - default
+\src\components\SmartVehicleModelInput.tsx:428 - default
+\src\components\StarterHero.tsx:46 - default
+\src\components\StatCard.tsx:142 - default
+\src\components\TestimonialsAndPartners.tsx:42 - default
+\src\components\ToasterProvider.tsx:18 - ToasterProvider
+\src\components\ToasterProvider.tsx:49 - useToaster
+\src\components\TokensBalance.tsx:13 - TokensBalance (used in module)
+\src\components\TokensBalance.tsx:68 - default
+\src\components\TopServicesCard.tsx:290 - default
+\src\components\TranslateBox.tsx:70 - default
+\src\components\TranslatedPage.tsx:51 - default
+\src\components\TranslatedText.tsx:83 - default
+\src\components\UltraModernServiceCard.tsx:686 - default
+\src\components\UniversalProductForm.tsx:38 - UniversalProductForm
+\src\components\UpgradeBanner.tsx:13 - default
+\src\components\VehicleModelSelector.tsx:390 - default
+\src\components\VideoLangDetector.tsx:69 - default
+\src\components\VoiceButton.tsx:26 - default
+\src\components\WhyUsSection.tsx:81 - default
+\src\components\YukpoBrand.tsx:8 - YukpoBrand
+\src\components\YukpoLogo.tsx:76 - default
+\src\components\YukpoServicesQuickAccess.tsx:216 - default
+\src\config\api.config.ts:19 - WS_BASE_URL (used in module)
+\src\config\api.config.ts:92 - buildUrl (used in module)
+\src\config\api.config.ts:96 - default
+\src\config\api.ts:8 - config (used in module)
+\src\config\appConfig.ts:2 - appConfig (used in module)
+\src\config\appConfig.ts:33 - logError
+\src\config\appConfig.ts:39 - logDebug
+\src\config\appConfig.ts:44 - default
+\src\config\categoryConfig.ts:20 - CategoryTerminology (used in module)
+\src\config\categoryConfig.ts:37 - CategoryStyle (used in module)
+\src\config\categoryConfig.ts:45 - CategoryConfig (used in module)
+\src\config\categoryConfig.ts:59 - CATEGORY_CONFIGS (used in module)
+\src\config\categoryConfig.ts:16870 - getCategoryConfig (used in module)
+\src\config\categoryConfig.ts:16909 - findCategoryByKeyword
+\src\config\categoryConfig.ts:16934 - getCategoryKeywords
+\src\config\categoryConfig.ts:16963 - categorySupportsVariants
+\src\config\categoryConfig.ts:16970 - VARIANT_SUPPORTED_CATEGORIES
+\src\config\completeFormsConfig.ts:940 - getCompleteFormConfig (used in module)
+\src\config\completeFormsConfig.ts:959 - hasManualConfig (used in module)
+\src\config\completeFormsConfig.ts:966 - hasCompleteConfig
+\src\config\completeFormsConfig.ts:14 - FieldType (used in module)
+\src\config\completeFormsConfig.ts:106 - TELEPHONE_FORM_CONFIG (used in module)
+\src\config\completeFormsConfig.ts:316 - AUTOMOBILE_FORM_CONFIG (used in module)
+\src\config\completeFormsConfig.ts:572 - AGRICULTURE_FORM_CONFIG (used in module)
+\src\config\completeFormsConfig.ts:672 - IMMOBILIER_FORM_CONFIG (used in module)
+\src\config\completeFormsConfig.ts:828 - VETEMENT_FORM_CONFIG (used in module)
+\src\config\completeFormsConfig.ts:921 - FORMS_CONFIG_MAP (used in module)
+\src\config\gpsConfig.ts:2 - GPS_CONFIG (used in module)
+\src\config\gpsConfig.ts:40 - isGPSEnabled
+\src\config\splashConfig.ts:2 - splashConfig (used in module)
+\src\config\splashConfig.ts:29 - default
+\src\config\startupConfig.ts:27 - default
+\src\config\weatherConfig.ts:102 - isWeatherApiConfigured (used in module)
+\src\config\weatherConfig.ts:107 - getMaxPeriod
+\src\config\websocket.ts:3 - WEBSOCKET_CONFIG (used in module)
+\src\config\websocket.ts:60 - isWebSocketEnabled (used in module)
+\src\config\websocket.ts:63 - getWebSocketUrl
+\src\config\websocket.ts:77 - WebSocketMessage (used in module)
+\src\config\websocket.ts:84 - NotificationMessage
+\src\config\websocket.ts:96 - ChatMessage
+\src\config\websocket.ts:109 - StatusMessage
+\src\config\websocket.ts:118 - PaymentMessage
+\src\config\websocket.ts:130 - WEBSOCKET_EVENTS (used in module)
+\src\config\websocket.ts:143 - WebSocketEventType
+\src\contexts\DeliveryContext.tsx:727 - useDelivery
+\src\data\africanLocations.ts:4 - QuartierInfo
+\src\data\africanLocations.ts:11 - VilleInfo (used in module)
+\src\data\africanLocations.ts:19 - PaysInfo (used in module)
+\src\data\africanLocations.ts:31 - CAMEROUN (used in module)
+\src\data\africanLocations.ts:176 - RDC (used in module)
+\src\data\africanLocations.ts:294 - COTE_IVOIRE (used in module)
+\src\data\africanLocations.ts:409 - SENEGAL (used in module)
+\src\data\africanLocations.ts:524 - MALI (used in module)
+\src\data\africanLocations.ts:638 - BURKINA_FASO (used in module)
+\src\data\africanLocations.ts:677 - NIGER (used in module)
+\src\data\africanLocations.ts:716 - TCHAD (used in module)
+\src\data\africanLocations.ts:755 - GUINEE (used in module)
+\src\data\africanLocations.ts:794 - BENIN (used in module)
+\src\data\africanLocations.ts:841 - TOGO (used in module)
+\src\data\africanLocations.ts:888 - CONGO_BRAZZAVILLE (used in module)
+\src\data\africanLocations.ts:928 - GABON (used in module)
+\src\data\africanLocations.ts:975 - CENTRAFRIQUE (used in module)
+\src\data\africanLocations.ts:1006 - MADAGASCAR (used in module)
+\src\data\africanLocations.ts:1053 - BURUNDI (used in module)
+\src\data\africanLocations.ts:1092 - RWANDA (used in module)
+\src\data\africanLocations.ts:1123 - DJIBOUTI (used in module)
+\src\data\africanLocations.ts:1150 - COMORES (used in module)
+\src\data\africanLocations.ts:1176 - MAURITANIE (used in module)
+\src\data\africanLocations.ts:1246 - getPaysByCode (used in module)
+\src\data\africanLocations.ts:1253 - getVillesByPays (used in module)
+\src\data\africanLocations.ts:1261 - getQuartiersByVille (used in module)
+\src\data\africanLocations.ts:1307 - getVillesPrioritaires (used in module)
+\src\data\africanLocations.ts:1325 - getVillesPourSelecteur
+\src\data\africanLocations.ts:1368 - getQuartiersPourSelecteur
+\src\data\africanLocations.ts:1381 - extraireNomVille
+\src\data\assuranceModalities.ts:6 - AssuranceModalityCategory (used in module)
+\src\data\concoursGrandesEcoles.ts:4 - ConcoursInfo (used in module)
+\src\data\concoursGrandesEcoles.ts:19 - DomaineConcoursInfo (used in module)
+\src\data\concoursGrandesEcoles.ts:1076 - TOUS_LES_CONCOURS (used in module)
+\src\data\concoursGrandesEcoles.ts:1103 - getConcoursByPays
+\src\data\concoursGrandesEcoles.ts:1116 - getConcoursByType
+\src\data\concoursGrandesEcoles.ts:1273 - getMatieresConcours
+\src\data\concoursGrandesEcoles.ts:1281 - getTypesConcours
+\src\data\concoursGrandesEcoles.ts:1303 - getNiveauxPreparationConcours
+\src\data\concoursGrandesEcoles.ts:1333 - getConcoursParDomaine
+\src\data\concoursGrandesEcoles.ts:1366 - rechercherConcours
+\src\data\educationSystems.ts:4 - NiveauScolaire (used in module)
+\src\data\educationSystems.ts:12 - MatiereParNiveau (used in module)
+\src\data\educationSystems.ts:18 - SystemeEducatif (used in module)
+\src\data\educationSystems.ts:30 - SYSTEME_CAMEROUN (used in module)
+\src\data\educationSystems.ts:99 - SYSTEME_RDC (used in module)
+\src\data\educationSystems.ts:147 - SYSTEME_COTE_IVOIRE (used in module)
+\src\data\educationSystems.ts:198 - SYSTEME_SENEGAL (used in module)
+\src\data\educationSystems.ts:245 - SYSTEME_MALI (used in module)
+\src\data\educationSystems.ts:286 - SYSTEME_GENERIQUE (used in module)
+\src\data\educationSystems.ts:320 - TOUS_LES_SYSTEMES_EDUCATIFS (used in module)
+\src\data\educationSystems.ts:336 - getSystemeEducatif (used in module)
+\src\data\educationSystems.ts:439 - getExamensNationaux
+\src\data\enrichedProductDatabase.ts:520 - getEnrichedProductsByCategory
+\src\data\enrichedProductDatabase.ts:534 - getEnrichedProductsByCountry
+\src\data\enrichedProductDatabase.ts:9 - ProductCharacteristics (used in module)
+\src\data\enrichedProductDatabase.ts:53 - TELEPHONES_ENRICHIS (used in module)
+\src\data\enrichedProductDatabase.ts:222 - AUTOMOBILES_ENRICHIES (used in module)
+\src\data\enrichedProductDatabase.ts:343 - PRODUITS_AGRICOLES_ENRICHIS (used in module)
+\src\data\enrichedProductDatabase.ts:439 - MATERIAUX_CONSTRUCTION_ENRICHIS (used in module)
+\src\data\hotelsReelsAfricains.ts:249 - getHotelsByCountry (used in module)
+\src\data\hotelsReelsAfricains.ts:256 - getAllHotels (used in module)
+\src\data\hotelsReelsAfricains.ts:263 - searchHotels
+\src\data\laboratoiresAfricains.ts:4 - LaboratoireInfo (used in module)
+\src\data\laboratoiresAfricains.ts:13 - LaboratoiresPays (used in module)
+\src\data\laboratoiresAfricains.ts:24 - LABORATOIRES_CAMEROUN (used in module)
+\src\data\laboratoiresAfricains.ts:165 - LABORATOIRES_COTE_IVOIRE (used in module)
+\src\data\laboratoiresAfricains.ts:224 - LABORATOIRES_SENEGAL (used in module)
+\src\data\laboratoiresAfricains.ts:274 - LABORATOIRES_MALI (used in module)
+\src\data\laboratoiresAfricains.ts:311 - LABORATOIRES_RD_CONGO (used in module)
+\src\data\laboratoiresAfricains.ts:354 - LABORATOIRES_CONGO_BRAZZA (used in module)
+\src\data\laboratoiresAfricains.ts:380 - LABORATOIRES_GABON (used in module)
+\src\data\laboratoiresAfricains.ts:408 - LABORATOIRES_TOGO (used in module)
+\src\data\laboratoiresAfricains.ts:434 - LABORATOIRES_BENIN (used in module)
+\src\data\laboratoiresAfricains.ts:460 - LABORATOIRES_BURKINA_FASO (used in module)
+\src\data\laboratoiresAfricains.ts:487 - LABORATOIRES_NIGER (used in module)
+\src\data\laboratoiresAfricains.ts:511 - LABORATOIRES_MADAGASCAR (used in module)
+\src\data\laboratoiresAfricains.ts:541 - LABORATOIRES_TCHAD (used in module)
+\src\data\laboratoiresAfricains.ts:564 - LABORATOIRES_RCA (used in module)
+\src\data\laboratoiresAfricains.ts:584 - LABORATOIRES_GUINEE (used in module)
+\src\data\laboratoiresAfricains.ts:609 - TOUS_LES_LABORATOIRES (used in module)
+\src\data\laboratoiresAfricains.ts:747 - genererLaboratoiresParVille
+\src\data\laboratoiresAfricains.ts:769 - genererLaboratoiresParType
+\src\data\laboratoiresAfricains.ts:792 - rechercherLaboratoires
+\src\data\laboratoiresAfricains.ts:825 - detecterLocalisationUtilisateur
+\src\data\multiSelectFields.ts:4 - MultiSelectFieldConfig (used in module)
+\src\data\multiSelectFields.ts:10 - ProductTypeMultiSelectConfig (used in module)
+\src\data\multiSelectFields.ts:15 - MULTI_SELECT_FIELDS (used in module)
+\src\data\multiSelectFields.ts:369 - isMultiSelectField
+\src\data\multiSelectFields.ts:377 - getMultiSelectConfig (used in module)
+\src\data\multiSelectFields.ts:385 - getMultiSelectFieldsForProductType
+\src\data\multiSelectFields.ts:390 - getMaxSelections
+\src\data\multiSelectFields.ts:396 - getFieldDescription
+\src\data\pharmaciesReellesAfricaines.ts:107 - getPharmaciesByVille
+\src\data\productModalities.ts:17 - genererHopitauxAfricains (used in module)
+\src\data\productModalities.ts:22 - genererPharmaciesAfricaines (used in module)
+\src\data\productModalities.ts:28 - ModalityCategory (used in module)
+\src\data\productModalities.ts:33 - genererToutesLesVilles (used in module)
+\src\data\productModalities.ts:63 - genererQuartiersPays (used in module)
+\src\data\productModalities.ts:255 - IMMOBILIER_MODALITIES (used in module)
+\src\data\productModalities.ts:387 - IMMOBILIER_TERRAIN_MODALITIES (used in module)
+\src\data\productModalities.ts:653 - LOCATION_COURTE_DUREE_MODALITIES (used in module)
+\src\data\productModalities.ts:872 - HOTELLERIE_MODALITIES (used in module)
+\src\data\productModalities.ts:1071 - VOYAGE_MODALITIES (used in module)
+\src\data\productModalities.ts:1209 - TRANSPORT_INTRA_URBAIN_MODALITIES (used in module)
+\src\data\productModalities.ts:1325 - COVOITURAGE_MODALITIES
+\src\data\productModalities.ts:1352 - VOYAGE_TOURISME_MODALITIES (used in module)
+\src\data\productModalities.ts:1389 - VETEMENTS_MODALITIES (used in module)
+\src\data\productModalities.ts:1572 - CHAUSSURES_MODALITIES
+\src\data\productModalities.ts:1623 - ELECTROMENAGER_MODALITIES (used in module)
+\src\data\productModalities.ts:1787 - IMAGE_SON_MODALITIES (used in module)
+\src\data\productModalities.ts:2352 - REPARATEUR_TELEPHONE_TABLETTE_MODALITIES (used in module)
+\src\data\productModalities.ts:2772 - REPARATEUR_INFORMATIQUE_MODALITIES (used in module)
+\src\data\productModalities.ts:3377 - REPARATEUR_ELECTROMENAGER_MODALITIES (used in module)
+\src\data\productModalities.ts:3726 - ORDINATEURS_MODALITIES (used in module)
+\src\data\productModalities.ts:4204 - MOBILIER_MODALITIES (used in module)
+\src\data\productModalities.ts:4373 - ALIMENTS_MODALITIES (used in module)
+\src\data\productModalities.ts:4452 - AGROALIMENTAIRE_MODALITIES (used in module)
+\src\data\productModalities.ts:4903 - VIN_LIQUEUR_MODALITIES (used in module)
+\src\data\productModalities.ts:5147 - LIVRES_FOURNITURES_MODALITIES (used in module)
+\src\data\productModalities.ts:5285 - QUINCAILLERIE_MODALITIES (used in module)
+\src\data\productModalities.ts:5520 - SANITAIRE_MODALITIES (used in module)
+\src\data\productModalities.ts:5783 - PRESTATIONS_SERVICE_MODALITIES (used in module)
+\src\data\productModalities.ts:6071 - PHARMACIE_MODALITIES (used in module)
+\src\data\productModalities.ts:6093 - COSMETIQUES_PARFUMS_MODALITIES (used in module)
+\src\data\productModalities.ts:6255 - BIJOUX_MODALITIES (used in module)
+\src\data\productModalities.ts:6464 - COIFFURE_BEAUTE_MODALITIES (used in module)
+\src\data\productModalities.ts:6935 - COUTURIER_MODALITIES (used in module)
+\src\data\productModalities.ts:7350 - getDemenagementModalities (used in module)
+\src\data\productModalities.ts:7619 - DEMENAGEMENT_MODALITIES (used in module)
+\src\data\productModalities.ts:7623 - JOUETS_ENFANTS_MODALITIES (used in module)
+\src\data\productModalities.ts:7819 - USTENSILES_CUISINE_MODALITIES (used in module)
+\src\data\productModalities.ts:8084 - PIECES_AUTO_MODALITIES (used in module)
+\src\data\productModalities.ts:8312 - PIECES_INDUSTRIELLES_MODALITIES (used in module)
+\src\data\productModalities.ts:8615 - RESTAURATION_MODALITIES (used in module)
+\src\data\productModalities.ts:9572 - ELECTRONIQUE_MODALITIES (used in module)
+\src\data\productModalities.ts:9608 - SOUTIEN_SCOLAIRE_MODALITIES (used in module)
+\src\data\productModalities.ts:9984 - FORMATION_EDUCATION_MODALITIES (used in module)
+\src\data\productModalities.ts:10629 - EVENEMENTIEL_MODALITIES (used in module)
+\src\data\productModalities.ts:10944 - AGRICULTURE_ELEVAGE_MODALITIES (used in module)
+\src\data\productModalities.ts:11484 - AGRICULTURE_MODALITIES
+\src\data\productModalities.ts:11487 - SPORT_FITNESS_MODALITIES (used in module)
+\src\data\productModalities.ts:11631 - BIEN_ETRE_SPA_MODALITIES (used in module)
+\src\data\productModalities.ts:11950 - ANIMAUX_VETERINAIRE_MODALITIES (used in module)
+\src\data\productModalities.ts:12158 - NETTOYAGE_ENTRETIEN_MODALITIES
+\src\data\productModalities.ts:12193 - JARDINAGE_PAYSAGISME_MODALITIES (used in module)
+\src\data\productModalities.ts:12438 - SECURITE_SURVEILLANCE_MODALITIES (used in module)
+\src\data\productModalities.ts:12790 - PLOMBERIE_MODALITIES (used in module)
+\src\data\productModalities.ts:12841 - ELECTRICIEN_MODALITIES (used in module)
+\src\data\productModalities.ts:12888 - FORGERON_MODALITIES (used in module)
+\src\data\productModalities.ts:13363 - ELECTRICIEN_AUTO_MODALITIES (used in module)
+\src\data\productModalities.ts:13425 - MACON_MODALITIES (used in module)
+\src\data\productModalities.ts:13481 - CARRELEUR_MODALITIES (used in module)
+\src\data\productModalities.ts:13584 - INGENIEUR_ARCHI_MODALITIES (used in module)
+\src\data\productModalities.ts:13649 - PLOMBERIE_SANITAIRE_MODALITIES (used in module)
+\src\data\productModalities.ts:13716 - NETTOYAGE_MODALITIES (used in module)
+\src\data\productModalities.ts:13956 - REPARATION_MODALITIES (used in module)
+\src\data\productModalities.ts:13993 - ELECTRICITE_MODALITIES (used in module)
+\src\data\productModalities.ts:14202 - SANTE_BEAUTE_MODALITIES (used in module)
+\src\data\productModalities.ts:14217 - JURIDIQUE_MODALITIES (used in module)
+\src\data\productModalities.ts:14229 - MUSIQUE_SERVICES_MODALITIES (used in module)
+\src\data\productModalities.ts:14244 - PHOTOGRAPHIE_MODALITIES (used in module)
+\src\data\productModalities.ts:14259 - ENTREPRISE_INDUSTRIE_MODALITIES (used in module)
+\src\data\productModalities.ts:14274 - DECORATION_MODALITIES (used in module)
+\src\data\productModalities.ts:14423 - ENFANTS_BEBES_MODALITIES (used in module)
+\src\data\productModalities.ts:14440 - BRICOLAGE_MODALITIES (used in module)
+\src\data\productModalities.ts:14456 - CARRELAGE_MODALITIES (used in module)
+\src\data\productModalities.ts:14566 - MENUISERIE_MODALITIES (used in module)
+\src\data\productModalities.ts:14952 - REPARATEUR_CLIMATISEUR_MODALITIES (used in module)
+\src\data\productModalities.ts:15296 - MUSIQUE_INSTRUMENTS_MODALITIES (used in module)
+\src\data\productModalities.ts:15718 - EMPLOI_MODALITIES (used in module)
+\src\data\productModalities.ts:16012 - MECANICIEN_MODALITIES (used in module)
+\src\data\productModalities.ts:16187 - MECANICIEN_MOTO_MODALITIES (used in module)
+\src\data\productModalities.ts:16380 - FRIGORISTE_MODALITIES (used in module)
+\src\data\productModalities.ts:16838 - REPARATEUR_ELECTRONIQUE_MODALITIES (used in module)
+\src\data\productModalities.ts:17345 - MENUISIER_ALUMINIUM_MODALITIES (used in module)
+\src\data\productModalities.ts:17855 - CRECHE_GARDERIE_MODALITIES (used in module)
+\src\data\productModalities.ts:19591 - addCustomModality
+\src\data\productModalities.ts:19709 - getCategoriesCount
+\src\data\productModalities.ts:19714 - hasModalities
+\src\data\productModalities.ts:19720 - getModalitiesFieldsCount
+\src\data\vehicleLocalNames.ts:370 - getFiltersFromLocalName
+\src\data\vehicleLocalNames.ts:400 - getAllVehicleSearchKeywords
+\src\data\vehicleLocalNames.ts:27 - VEHICLE_NAMES_CAMEROUN (used in module)
+\src\data\vehicleLocalNames.ts:79 - VEHICLE_NAMES_COTE_IVOIRE (used in module)
+\src\data\vehicleLocalNames.ts:119 - VEHICLE_NAMES_SENEGAL (used in module)
+\src\data\vehicleLocalNames.ts:165 - VEHICLE_NAMES_CONGO (used in module)
+\src\data\vehicleLocalNames.ts:203 - VEHICLE_NAMES_BENIN_TOGO (used in module)
+\src\data\vehicleLocalNames.ts:233 - VEHICLE_NAMES_MALI (used in module)
+\src\data\vehicleLocalNames.ts:265 - VEHICLE_NAMES_GABON (used in module)
+\src\hooks\useAIServices.ts:12 - useAIServices
+\src\hooks\useCloudFiles.ts:104 - useCloudFiles
+\src\hooks\useCombinationProgress.ts:32 - useCombinationProgress
+\src\hooks\useCombinationProgress.ts:17 - UseCombinationProgressResult (used in module)
+\src\hooks\useCostCalculation.ts:14 - useCostCalculation
+\src\hooks\useCourierShopping.ts:15 - useCourierShopping (used in module)
+\src\hooks\useCourierShopping.ts:163 - default
+\src\hooks\useFavorites.ts:26 - useFavorites (used in module)
+\src\hooks\useFormValidation.ts:24 - useFormValidation
+\src\hooks\useGeocoding.ts:12 - useGeocoding
+\src\hooks\useLocation.ts:3 - useLocation (used in module)
+\src\hooks\useNearbyServices.ts:21 - useNearbyServices
+\src\hooks\useNotifications.ts:27 - useNotifications
+\src\hooks\useNotifications.ts:190 - sendLocalNotification
+\src\hooks\useOnlineStatus.ts:19 - useOnlineStatus (used in module)
+\src\hooks\usePreviousContacts.ts:22 - usePreviousContacts
+\src\hooks\useProductAutoComplete.ts:51 - useProductAutoComplete (used in module)
+\src\hooks\useProductAutoComplete.ts:154 - useProductCharacteristics
+\src\hooks\useProductAutoComplete.ts:188 - useFormAutoFill
+\src\hooks\useProductAutoComplete.ts:30 - AutoCompleteState (used in module)
+\src\hooks\useProductAutoFill.ts:41 - useProductAutoFill
+\src\hooks\useProductAutoFill.ts:261 - useProductSuggestions
+\src\hooks\useProductAutoFill.ts:24 - AutoFillResult (used in module)
+\src\hooks\useSafeEffect.ts:70 - useSafeTimerEffect
+\src\hooks\useSafeEffect.ts:93 - default
+\src\hooks\useServiceMedia.ts:26 - useServiceMedia (used in module)
+\src\hooks\useShoppingBasket.ts:40 - default
+\src\hooks\useSmartSuggestions.ts:36 - useSmartSuggestions (used in module)
+\src\hooks\useSmartSuggestions.ts:137 - useSimpleSuggestions
+\src\hooks\useSmartSuggestions.ts:151 - useConditionalSuggestions
+\src\hooks\useSmartSuggestions.ts:194 - useRecordSelection
+\src\hooks\useSmartSuggestions.ts:26 - SmartSuggestion (used in module)
+\src\hooks\useTranslation.ts:5 - UseTranslationReturn (used in module)
+\src\hooks\useTranslation.ts:128 - default
+\src\hooks\useUser.ts:20 - default
+\src\hooks\useUserCountry.ts:7 - UserCountryInfo
+\src\hooks\useUserServices.ts:9 - useUserServices (used in module)
+\src\hooks\useUserServices.ts:44 - default
+\src\hooks\useVideoGenerationProgress.ts:5 - DEFAULT_PROGRESS_STEPS (used in module)
+\src\hooks\useWalletBalance.ts:6 - useWalletBalance (used in module)
+\src\hooks\useWalletBalance.ts:52 - default
+\src\hooks\useWeather.ts:14 - useWeather
+\src\hooks\useWebSocket.ts:29 - useWebSocket (used in module)
+\src\lib\yukpoaclient.ts:11 - login
+\src\lib\yukpoaclient.ts:45 - logout
+\src\lib\yukpoaclient.ts:51 - toggleDevMode
+\src\lib\yukpoaclient.ts:76 - appelerMoteurIA
+\src\lib\yukpoaclient.ts:219 - creerService
+\src\lib\yukpoaclient.ts:285 - validerBrouillonService
+\src\lib\yukpoaclient.ts:312 - modifierService
+\src\lib\yukpoaclient.ts:373 - vectoriserService
+\src\lib\yukpoaclient.ts:61 - IAResponse (used in module)
+\src\lib\yukpoaclient.ts:70 - IAResponseWithHeaders (used in module)
+\src\routes\AppRoutesRegistry.ts:43 - RouteKey
+\src\routes\AppRoutesRegistry.ts:45 - default
+\src\routes\routes.ts:37 - default
+\src\screens\AboutScreen.tsx:125 - default
+\src\screens\AcquisitionTracker.tsx:41 - default
+\src\screens\DashboardPrestataireScreen.tsx:582 - default
+\src\screens\DashboardScreen.tsx:986 - default
+\src\screens\ErrorScreen.tsx:141 - default
+\src\screens\HomeScreenNew.tsx:564 - default
+\src\screens\LoginScreen.tsx:288 - default
+\src\screens\MesServices.tsx:299 - default
+\src\screens\ModernHomeScreen.tsx:397 - default
+\src\screens\MonProfil.tsx:308 - default
+\src\screens\MonProfilScreen.tsx:308 - default
+\src\screens\NotFound.tsx:79 - default
+\src\screens\PaiementPlanScreen.tsx:14 - default
+\src\screens\RegisterScreen.tsx:331 - default
+\src\screens\ResultatBesoin.tsx:6 - default
+\src\screens\ResultatBesoinScreen.backup-20251104-131537.tsx:1043 - default
+\src\screens\ServicesInteragisScreen.tsx:335 - default
+\src\screens\ServicesListScreen.tsx:365 - default
+\src\screens\ServicesScreen.tsx:826 - default
+\src\screens\SettingsScreen.tsx:733 - default
+\src\screens\SimpleErrorScreen.tsx:143 - default
+\src\screens\StartScreen.tsx:116 - default
+\src\screens\TestCreateServiceScreen.tsx:182 - default
+\src\screens\TestDashboardScreen.tsx:85 - default
+\src\screens\TestNotificationScreen.tsx:280 - default
+\src\screens\TestSearchScreen.tsx:234 - default
+\src\screens\YukAIGateway.tsx:63 - default
+\src\services\autocompleteHistoryService.ts:8 - AutocompleteSuggestion (used in module)
+\src\services\autocompleteHistoryService.ts:13 - AutocompleteCharacteristic
+\src\services\cloudDownload.ts:8 - DownloadProgress (used in module)
+\src\services\cloudDownload.ts:189 - getCloudFileMetadata
+\src\services\cloudDownload.ts:266 - clearCloudCache
+\src\services\cloudDownload.ts:283 - getCloudCacheSize
+\src\services\cloudDownload.ts:313 - getCloudinaryVariants
+\src\services\cloudUpload.ts:11 - UploadProgress (used in module)
+\src\services\cloudUpload.ts:17 - UploadResult (used in module)
+\src\services\cloudUpload.ts:35 - uploadToCloud (used in module)
+\src\services\cloudUpload.ts:279 - canUploadFile
+\src\services\errorHandler.ts:4 - ApiError (used in module)
+\src\services\errorHandler.ts:11 - ErrorHandler (used in module)
+\src\services\errorHandler.ts:214 - errorHandler (used in module)
+\src\services\errorHandler.ts:217 - handleApiError (used in module)
+\src\services\errorHandler.ts:221 - showErrorAlert (used in module)
+\src\services\errorHandler.ts:225 - handleNavigationError (used in module)
+\src\services\errorHandler.ts:229 - handleAuthError (used in module)
+\src\services\externalProductDatabaseService.ts:17 - ExternalProductSource (used in module)
+\src\services\externalProductDatabaseService.ts:28 - SyncResult (used in module)
+\src\services\externalProductDatabaseService.ts:38 - ProductImportOptions (used in module)
+\src\services\externalProductDatabaseService.ts:517 - externalProductDatabaseService
+\src\services\intelligentSearch.ts:3 - IntelligentSearchResult (used in module)
+\src\services\intelligentSearch.ts:19 - SearchContext (used in module)
+\src\services\intelligentSearch.ts:29 - IntelligentSearchService
+\src\services\jumiaScrapingService.ts:16 - JumiaScrapingConfig (used in module)
+\src\services\jumiaScrapingService.ts:23 - JumiaProduct (used in module)
+\src\services\jumiaScrapingService.ts:38 - ScrapingResult (used in module)
+\src\services\jumiaScrapingService.ts:537 - jumiaScrapingService
+\src\services\liveMarketingService.ts:33 - liveMarketingService (used in module)
+\src\services\liveStreamingService.ts:41 - LiveJoinInformationRecord (used in module)
+\src\services\liveStreamingService.ts:54 - StartLiveSessionPayload (used in module)
+\src\services\liveStreamingService.ts:63 - SaveReplayPayload (used in module)
+\src\services\liveStreamingService.ts:77 - liveStreamingService (used in module)
+\src\services\modalityService.ts:4 - CustomModality (used in module)
+\src\services\modalityService.ts:14 - ModalityResponse
+\src\services\productAutoFillService.ts:16 - AutoFilledFormData (used in module)
+\src\services\searchHistoryService.ts:8 - SearchHistoryEntry (used in module)
+\src\services\searchHistoryService.ts:25 - PopularSearch (used in module)
+\src\services\translationService.ts:17 - SUPPORTED_LANGUAGES (used in module)
+\src\services\translationService.ts:32 - TranslationService (used in module)
+\src\services\unpavedRoadEstimation.ts:29 - estimateUnpavedRoad (used in module)
+\src\services\unpavedRoadEstimation.ts:184 - calculateUnpavedSurcharge (used in module)
+\src\services\unpavedRoadEstimation.ts:196 - getRouteConditionMessage (used in module)
+\src\services\unpavedRoadEstimation.ts:210 - default
+\src\services\userBehaviorService.ts:191 - userBehaviorService (used in module)
+\src\services\yukpoclient.ts:182 - creerService (used in module)
+\src\services\yukpoclient.ts:5 - IAResponse (used in module)
+\src\services\yukpoclient.ts:14 - IAResponseWithHeaders (used in module)
+\src\services\yukpoclient.ts:245 - default
+\src\theme\advancedTheme.ts:2 - advancedThemes (used in module)
+\src\theme\advancedTheme.ts:141 - createGradientStyle
+\src\theme\modernTheme.ts:127 - default
+\src\types\delivery.ts:1 - DeliveryKind (used in module)
+\src\types\delivery.ts:3 - DeliveryStatus (used in module)
+\src\types\delivery.ts:16 - DeliveryLocation (used in module)
+\src\types\delivery.ts:26 - DeliveryParticipant (used in module)
+\src\types\delivery.ts:35 - DeliveryRecipient (used in module)
+\src\types\delivery.ts:43 - DeliveryCourier (used in module)
+\src\types\delivery.ts:49 - DeliveryPricingBreakdown (used in module)
+\src\types\delivery.ts:62 - DeliveryCheckpoint (used in module)
+\src\types\delivery.ts:94 - ShoppingBudgetCheck (used in module)
+\src\types\serviceTeam.ts:25 - ServicePermission (used in module)
+\src\types\serviceTeam.ts:32 - PermissionCategory (used in module)
+\src\types\serviceTeam.ts:41 - ServiceTeamInvitation
+\src\types\serviceTeam.ts:54 - ServiceTeamActivity
+\src\types\VideoGeneration.ts:31 - GeneratedVideoVariant (used in module)
+\src\types\VideoGeneration.ts:63 - ImmersiveAnalytics (used in module)
+\src\types\VideoGeneration.ts:72 - ImmersiveTimeline (used in module)
+\src\types\VideoGeneration.ts:79 - ImmersiveScene (used in module)
+\src\types\VideoGeneration.ts:158 - AIDistributionItem (used in module)
+\src\types\yukpoIaClient.ts:3 - MultiModalInput
+\src\types\yukpoIaClient.ts:18 - IAResponse
+\src\types\yukpoIaClient.ts:27 - SearchResponse
+\src\types\yukpoIaClient.ts:37 - Service
+\src\types\yukpoIaClient.ts:45 - Prestataire
+\src\utils\analytics.ts:9 - AnalyticsEventType (used in module)
+\src\utils\analytics.ts:24 - AnalyticsEvent (used in module)
+\src\utils\analytics.ts:46 - getSessionId (used in module)
+\src\utils\analytics.ts:58 - logEvent (used in module)
+\src\utils\analytics.ts:103 - trackCategoryFilter
+\src\utils\analytics.ts:119 - trackProductView
+\src\utils\analytics.ts:136 - trackProductContact
+\src\utils\analytics.ts:153 - trackProductShare
+\src\utils\analytics.ts:183 - trackFilterHistory
+\src\utils\analytics.ts:196 - trackSearch
+\src\utils\analytics.ts:212 - trackCategorySwitch
+\src\utils\analytics.ts:225 - trackError
+\src\utils\analytics.ts:241 - resetSession
+\src\utils\busReturnNotifier.ts:14 - checkAndNotifyReturnRequests (used in module)
+\src\utils\busReturnNotifier.ts:66 - handleBusCreated
+\src\utils\busTicketPdfGenerator.ts:57 - generateBusTicketHTML (used in module)
+\src\utils\busTicketPdfGenerator.ts:433 - generateAndDownloadTicket
+\src\utils\busTicketPdfGenerator.ts:456 - shareTicketPDF
+\src\utils\busTicketPdfGenerator.ts:23 - BusTicketData (used in module)
+\src\utils\categoryAnalyzer.ts:437 - getCategoryConfiguration
+\src\utils\categoryDetector.ts:371 - categoryDetector (used in module)
+\src\utils\characteristicsExtractor.ts:95 - filterProductsByAutocomplete (used in module)
+\src\utils\characteristicsExtractor.ts:164 - filterProductsByProximity (used in module)
+\src\utils\characteristicsExtractor.ts:248 - default
+\src\utils\DebugLogger.tsx:68 - debugLogger
+\src\utils\debugNotifications.ts:13 - NotificationDebugInfo (used in module)
+\src\utils\deepLinkHandler.ts:15 - savePendingDeepLink
+\src\utils\deepLinkHandler.ts:86 - clearPendingDeepLink
+\src\utils\errorHandler.ts:115 - safeImport (used in module)
+\src\utils\errorHandler.ts:119 - default
+\src\utils\formConfigExtractor.ts:16 - generateBasicFormConfig
+\src\utils\formConfigExtractor.ts:396 - getAllAvailableCategories
+\src\utils\formDispatcher.ts:465 - extractSuggestionValues
+\src\utils\formDispatcher.ts:36 - IAData (used in module)
+\src\utils\formDispatcher.ts:61 - IASuggestion (used in module)
+\src\utils\geocoding.ts:67 - parseGPS
+\src\utils\geocoding.ts:108 - formatDistance
+\src\utils\healthServiceHelpers.ts:11 - isPharmacyOpenNow (used in module)
+\src\utils\healthServiceHelpers.ts:62 - getPharmacyStatus
+\src\utils\healthServiceHelpers.ts:98 - isPrestationAvailable (used in module)
+\src\utils\healthServiceHelpers.ts:159 - filterEtablissementsByPrestation
+\src\utils\healthServiceHelpers.ts:180 - getCurrentDayShort (used in module)
+\src\utils\healthServiceHelpers.ts:188 - getCurrentMoment (used in module)
+\src\utils\healthServiceHelpers.ts:199 - formatPrestationPlanning
+\src\utils\healthServiceHelpers.ts:228 - countAvailablePrestations
+\src\utils\healthServiceHelpers.ts:247 - hasEmergencyAvailable
+\src\utils\jwtDecode.ts:115 - isTokenExpired
+\src\utils\jwtDecode.ts:128 - getTokenTTL
+\src\utils\jwtDecode.ts:60 - DecodedToken (used in module)
+\src\utils\mediaHelpers.ts:81 - sanitizeImageArray (used in module)
+\src\utils\paymentValidation.ts:4 - PhoneValidationResult (used in module)
+\src\utils\paymentValidation.ts:12 - CardValidationResult (used in module)
+\src\utils\paymentValidation.ts:224 - validateCVV
+\src\utils\paymentValidation.ts:241 - formatPhoneNumber
+\src\utils\prestationFieldsConfig.ts:4 - FieldConfig (used in module)
+\src\utils\prestationFieldsConfig.ts:76 - getFieldsConfig
+\src\utils\prestationFieldsConfig.ts:687 - countVisibleFields (used in module)
+\src\utils\prestationFieldsConfig.ts:694 - getEncouragementMessage
+\src\utils\priceVariant.ts:1 - PriceVariantModality (used in module)
+\src\utils\priceVariant.ts:15 - NormalizedPriceVariant (used in module)
+\src\utils\productCategoryMapper.ts:288 - detectProductTypeFromCategory
+\src\utils\productCategoryMapper.ts:381 - shouldShowProductManager
+\src\utils\productCategoryMapper.ts:411 - detectProductTypeFromProduct
+\src\utils\productCategoryMapper.ts:501 - suggestProductCategoriesFromServiceData
+\src\utils\productFormTemplates.ts:17 - getProductFormTemplate
+\src\utils\productFormTemplates.ts:590 - hasProductTemplate
+\src\utils\productFormTemplates.ts:8 - ProductFormTemplate
+\src\utils\productFormTemplates.ts:576 - SUPPORTED_CATEGORIES (used in module)
+\src\utils\productKnowledgeBase.ts:444 - initializeProductKnowledge
+\src\utils\productKnowledgeBase.ts:41 - ProductVariant (used in module)
+\src\utils\productNormalizer.ts:39 - normalizeProduct (used in module)
+\src\utils\relationshipAnalyzer.ts:488 - initializeRelationships
+\src\utils\relationshipAnalyzer.ts:19 - RelationType (used in module)
+\src\utils\relationshipAnalyzer.ts:28 - FieldRelationship (used in module)
+\src\utils\relationshipAnalyzer.ts:483 - relationshipAnalyzer (used in module)
+\src\utils\smartFilterSuggestions.ts:9 - ProductPattern (used in module)
+\src\utils\smartFilterSuggestions.ts:35 - analyzeProductPatterns (used in module)
+\src\utils\smartFilterSuggestions.ts:137 - generateSmartFilterSuggestions
+\src\utils\smartFilterSuggestions.ts:304 - calculateProductCategoryWeight (used in module)
+\src\utils\smartFilterSuggestions.ts:356 - detectDominantCategoryWeighted
+\src\utils\smartFilterSuggestions.ts:406 - FilterHistory (used in module)
+\src\utils\smartFilterSuggestions.ts:419 - saveFilterToHistory
+\src\utils\smartFilterSuggestions.ts:452 - getFilterHistory (used in module)
+\src\utils\smartFilterSuggestions.ts:473 - suggestFiltersFromHistory
+\src\utils\suggestProductCategories.ts:5 - SuggestedCategory (used in module)
+\src\utils\suggestProductCategories.ts:170 - mapSuggestedToProductTypes
+\src\utils\ticketValidation.ts:56 - isTicketStillValid
+\src\utils\ticketValidation.ts:119 - getDepartureWarning
+\src\utils\ticketValidation.ts:133 - formatTimeUntilDeparture
+\src\utils\ticketValidation.ts:6 - TicketProduct (used in module)
+\src\utils\userZone.ts:46 - getCountryCodeFromGPS (used in module)
+\src\utils\userZone.ts:129 - getCountryEmoji (used in module)
+\src\utils\vehicleSearchResolver.ts:40 - resolveVehicleSearch (used in module)
+\src\utils\vehicleSearchResolver.ts:84 - getLocalNamesForVehicle (used in module)
+\src\utils\vehicleSearchResolver.ts:142 - filterVehiclesBySearch
+\src\utils\vehicleSearchResolver.ts:229 - getSearchHelpMessage
+\src\utils\vehicleSearchResolver.ts:260 - getPopularVehicleNamesForCountry
+\src\utils\vehicleSearchResolver.ts:19 - ResolvedVehicleSearch (used in module)
+\src\data\externalDatabases\index.ts:22 - getAllLocalProductsByCountry (used in module)
+\src\data\externalDatabases\index.ts:43 - getProductCountByCountry
+\src\data\externalDatabases\index.ts:50 - getCategoriesByCountry
+\src\data\externalDatabases\index.ts:8 - CAMEROON_LOCAL_PRODUCTS (used in module)
+\src\data\externalDatabases\index.ts:8 - getCameroonProductsByCategory
+\src\data\externalDatabases\index.ts:8 - searchCameroonProduct
+\src\data\externalDatabases\index.ts:10 - BURKINA_FASO_LOCAL_PRODUCTS
+\src\data\externalDatabases\index.ts:11 - getAllLocalProductsByCountryCode (used in module)
+\src\data\externalDatabases\index.ts:12 - getLocalProductCountByCountry
+\src\data\externalDatabases\index.ts:12 - IVORY_COAST_LOCAL_PRODUCTS
+\src\data\externalDatabases\index.ts:12 - MALI_LOCAL_PRODUCTS
+\src\data\externalDatabases\index.ts:12 - searchLocalProducts (used in module)
+\src\data\externalDatabases\index.ts:12 - SENEGAL_LOCAL_PRODUCTS
+\src\screens\ai\AIChatScreen.tsx:228 - default
+\src\screens\ai\AIHubScreen.tsx:253 - default
+\src\screens\dashboard\MonProfilScreen.tsx:308 - default
+\src\screens\service\CreateServiceScreen_New.tsx:764 - default
+\src\screens\service\CreateServiceScreen.tsx:764 - default
+\src\screens\service\MesServicesScreen.tsx:317 - default
+\src\screens\service\MyServicesScreen.tsx:180 - default
+\src\screens\service\ServiceDetailScreen.tsx:344 - default

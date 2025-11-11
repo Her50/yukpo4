@@ -51,6 +51,8 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
     let now = Utc::now();
     let week_end = now;
     let week_start = now - Duration::days(7);
+    let week_start_naive = week_start.naive_utc();
+    let week_end_naive = week_end.naive_utc();
 
     let total_videos = sqlx::query_scalar!(
         r#"
@@ -59,8 +61,8 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
         WHERE type = 'video'
           AND uploaded_at BETWEEN $1 AND $2
         "#,
-        week_start,
-        week_end
+        week_start_naive,
+        week_end_naive
     )
     .fetch_one(&state.pg)
     .await
@@ -80,8 +82,8 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
         WHERE event_type = 'view'
           AND occurred_at BETWEEN $1 AND $2
         "#,
-        week_start,
-        week_end
+        week_start_naive,
+        week_end_naive
     )
     .fetch_one(&state.pg)
     .await
@@ -101,8 +103,8 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
         WHERE event_type = 'quality_score'
           AND occurred_at BETWEEN $1 AND $2
         "#,
-        week_start,
-        week_end
+        week_start_naive,
+        week_end_naive
     )
     .fetch_one(&state.pg)
     .await
@@ -131,8 +133,8 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
         ORDER BY videos_count DESC
         LIMIT 5
         "#,
-        week_start,
-        week_end
+        week_start_naive,
+        week_end_naive
     )
     .fetch_all(&state.pg)
     .await

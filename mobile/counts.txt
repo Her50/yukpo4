@@ -1,11 +1,11 @@
-components: 178
+data: 203
+components: 165
 utils: 98
 services: 50
 config: 44
 hooks: 43
 screens: 35
-data: 30
-types: 20
+types: 23
 lib: 10
 routes: 3
 theme: 3
