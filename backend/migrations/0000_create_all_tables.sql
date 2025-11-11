@@ -1128,6 +1128,82 @@ CREATE INDEX IF NOT EXISTS idx_social_publications_media ON social_publications(
 CREATE INDEX IF NOT EXISTS idx_social_publications_platform ON social_publications(platform);
 CREATE INDEX IF NOT EXISTS idx_social_publication_jobs_status ON social_publication_jobs(status, scheduled_for);
 
+-- Table media_engagement
+CREATE TABLE IF NOT EXISTS media_engagement (
+    id SERIAL PRIMARY KEY,
+    media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    event_type TEXT NOT NULL,
+    channel TEXT,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    session_id TEXT,
+    metadata JSONB,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_media_engagement_media ON media_engagement(media_id);
+CREATE INDEX IF NOT EXISTS idx_media_engagement_event ON media_engagement(event_type);
+CREATE INDEX IF NOT EXISTS idx_media_engagement_service ON media_engagement(service_id);
+
+-- Table media_distribution
+CREATE TABLE IF NOT EXISTS media_distribution (
+    id SERIAL PRIMARY KEY,
+    media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    target TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'scheduled',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    metadata JSONB
+);
+CREATE INDEX IF NOT EXISTS idx_media_distribution_media ON media_distribution(media_id);
+CREATE INDEX IF NOT EXISTS idx_media_distribution_target ON media_distribution(target);
+
+-- Table content_engagement
+CREATE TABLE IF NOT EXISTS content_engagement (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content_id TEXT NOT NULL,
+    liked BOOLEAN NOT NULL DEFAULT FALSE,
+    saved BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, content_id)
+);
+CREATE INDEX IF NOT EXISTS idx_content_engagement_user ON content_engagement(user_id);
+CREATE INDEX IF NOT EXISTS idx_content_engagement_content ON content_engagement(content_id);
+
+CREATE OR REPLACE FUNCTION set_content_engagement_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_content_engagement_updated_at ON content_engagement;
+CREATE TRIGGER trg_content_engagement_updated_at
+    BEFORE UPDATE ON content_engagement
+    FOR EACH ROW
+    EXECUTE FUNCTION set_content_engagement_updated_at();
+
+-- Table video_generation_jobs
+CREATE TABLE IF NOT EXISTS video_generation_jobs (
+    job_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+    product_index INTEGER,
+    status TEXT NOT NULL DEFAULT 'queued',
+    progress_steps JSONB NOT NULL DEFAULT '[]'::jsonb,
+    result_media_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+    result_payload JSONB,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_user ON video_generation_jobs(user_id);
+CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_service ON video_generation_jobs(service_id);
+CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_status ON video_generation_jobs(status);
+
 -- Delivery service enums
 DO $$
 BEGIN

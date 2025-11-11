@@ -138,6 +138,70 @@ pub async fn ensure_media_analytics_tables(pool: &PgPool) -> Result<(), sqlx::Er
     Ok(())
 }
 
+pub async fn ensure_content_engagement_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table content_engagement...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS content_engagement (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            content_id TEXT NOT NULL,
+            liked BOOLEAN NOT NULL DEFAULT FALSE,
+            saved BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE (user_id, content_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_content_engagement_user ON content_engagement(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_content_engagement_content ON content_engagement(content_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION set_content_engagement_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("DROP TRIGGER IF EXISTS trg_content_engagement_updated_at ON content_engagement")
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TRIGGER trg_content_engagement_updated_at
+            BEFORE UPDATE ON content_engagement
+            FOR EACH ROW
+            EXECUTE FUNCTION set_content_engagement_updated_at()
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 pub async fn ensure_video_generation_jobs_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table video_generation_jobs...");
 
@@ -3832,6 +3896,11 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_media_analytics_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: media engagement/distribution ok"),
         Err(e) => error!("❌ Erreur migration auto media analytics: {}", e),
+    }
+
+    match ensure_content_engagement_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: content_engagement OK"),
+        Err(e) => error!("❌ Erreur migration auto content_engagement: {}", e),
     }
 
     match ensure_video_generation_jobs_table(pool).await {
