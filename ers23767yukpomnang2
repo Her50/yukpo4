@@ -57,3 +57,51 @@
    // Si aucun composant généré, utiliser les composants par défaut[m
    if (components.length === 0) {[m
      console.log('[formDispatcher] Aucun composant généré, utilisation des composants par défaut');[m
+warning: in the working copy of 'backend/src/lib.rs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/services/video_generation_service.rs', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/backend/src/lib.rs b/backend/src/lib.rs[m
+[1mindex 55ac153..c1202f8 100644[m
+[1m--- a/backend/src/lib.rs[m
+[1m+++ b/backend/src/lib.rs[m
+[36m@@ -26,11 +26,10 @@[m [muse axum::{[m
+     extract::{DefaultBodyLimit, State},[m
+     http::StatusCode,[m
+     routing::{get, get_service},[m
+[31m-    Json, Router,[m
+[32m+[m[32m    Json, Router, ServiceExt,[m
+ };[m
+ use chrono;[m
+ use std::sync::Arc;[m
+[31m-use tower::ServiceExt;[m
+ use tower_http::services::ServeDir;[m
+ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};[m
+ [m
+[1mdiff --git a/backend/src/services/video_generation_service.rs b/backend/src/services/video_generation_service.rs[m
+[1mindex 14afcec..89a7493 100644[m
+[1m--- a/backend/src/services/video_generation_service.rs[m
+[1m+++ b/backend/src/services/video_generation_service.rs[m
+[36m@@ -1884,14 +1884,18 @@[m [mfn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {[m
+     match data {[m
+         Value::Array(arr) => Some(arr),[m
+         Value::Object(map) => {[m
+[31m-            if let Some(produits_value) = map.get_mut("produits") {[m
+[31m-                if let Some(arr) = product_array_from_value(produits_value) {[m
+[31m-                    return Some(arr);[m
+[31m-                }[m
+[32m+[m[32m            if let Some(arr) = {[m
+[32m+[m[32m                let produits_value = map.get_mut("produits");[m
+[32m+[m[32m                produits_value.and_then(product_array_from_value)[m
+[32m+[m[32m            } {[m
+[32m+[m[32m                return Some(arr);[m
+             }[m
+ [m
+[31m-            if let Some(value) = map.get_mut("data") {[m
+[31m-                return locate_product_array_mut(value);[m
+[32m+[m[32m            if let Some(arr) = {[m
+[32m+[m[32m                let data_value = map.get_mut("data");[m
+[32m+[m[32m                data_value.and_then(locate_product_array_mut)[m
+[32m+[m[32m            } {[m
+[32m+[m[32m                return Some(arr);[m
+             }[m
+ [m
+             None[m
