@@ -247,7 +247,7 @@ pub async fn enrich_location(
             updated_at = NOW()",
     )
     .bind(&params.place_name)
-    .bind(&google_data.place_name)
+    .bind(&google_data.display_name)
     .bind(&google_data.location_vector)
     .bind(admin_level)
     .bind(is_leaf)
@@ -299,7 +299,7 @@ pub async fn enrich_location(
     Ok(Json(EnrichLocationResponse {
         place_name: params.place_name,
         geoname_id: None,
-        display_name: google_data.place_name.clone(),
+        display_name: google_data.display_name.clone(),
         location_vector: google_data.location_vector.clone(),
         hierarchy: LocationHierarchy {
             parents,

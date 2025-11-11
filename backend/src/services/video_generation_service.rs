@@ -181,7 +181,7 @@ pub async fn generate_product_video(
     })?
     .ok_or_else(|| AppError::NotFound("Service introuvable pour ce prestataire.".to_string()))?;
 
-    if svc.user_id != Some(user.id) {
+    if svc.user_id != user.id {
         warn!(
             "[VideoGeneration] Tentative non autorisée - user_id={}, owner={:?}",
             user.id, svc.user_id
@@ -191,7 +191,7 @@ pub async fn generate_product_video(
         ));
     }
 
-    let mut service_data: Value = svc.data;
+    let mut service_data: Value = svc.data.unwrap_or(Value::Null);
     if service_data.is_null() {
         return Err(AppError::Internal(
             "Service sans données associées.".to_string(),
@@ -417,6 +417,18 @@ pub async fn generate_product_video(
         ))
     })?;
 
+    let fallback_subtitles = || async {
+        match generate_subtitles_file(&session_dir, &script_outline, duration_seconds).await {
+            Ok(opt) => opt,
+            Err(err) => {
+                warn!(
+                    "[VideoGeneration] Impossible de générer des sous-titres offline: {err}"
+                );
+                None
+            }
+        }
+    };
+
     let subtitle_file = match payload.subtitle_mode.as_deref().unwrap_or("auto") {
         "none" => None,
         _ => match state
@@ -433,21 +445,15 @@ pub async fn generate_product_video(
                 let path = session_dir.join("subtitles_ai.srt");
                 if let Err(err) = fs::write(&path, srt.as_bytes()).await {
                     error!("[VideoGeneration] Impossible d'écrire sous-titres IA: {err}");
-                    generate_subtitles_file(&session_dir, &script_outline, duration_seconds)
-                        .ok()
-                        .flatten()
+                    fallback_subtitles().await
                 } else {
                     Some(path)
                 }
             }
-            Ok(None) => generate_subtitles_file(&session_dir, &script_outline, duration_seconds)
-                .ok()
-                .flatten(),
+            Ok(None) => fallback_subtitles().await,
             Err(err) => {
                 warn!("[VideoGeneration] Sous-titres IA indisponibles: {err}");
-                generate_subtitles_file(&session_dir, &script_outline, duration_seconds)
-                    .ok()
-                    .flatten()
+                fallback_subtitles().await
             }
         },
     };
@@ -1870,20 +1876,20 @@ fn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {
     }
 
     if let Value::Object(map) = data {
-        if let Some(arr_ref) = match map.get_mut("produits") {
-            Some(Value::Array(arr)) => Some(arr),
-            Some(Value::Object(inner)) => inner
-                .get_mut("valeur")
-                .and_then(Value::as_array_mut),
-            _ => None,
-        } {
-            return Some(arr_ref);
-        }
-
-        if let Some(data_value) = map.get_mut("data") {
-            if let Some(arr) = locate_product_array_mut(data_value) {
+        if let Some(value) = map.get_mut("produits") {
+            if let Value::Array(arr) = value {
                 return Some(arr);
             }
+
+            if let Value::Object(inner) = value {
+                if let Some(Value::Array(arr)) = inner.get_mut("valeur") {
+                    return Some(arr);
+                }
+            }
+        }
+
+        if let Some(value) = map.get_mut("data") {
+            return locate_product_array_mut(value);
         }
     }
 
@@ -2476,7 +2482,7 @@ async fn resolve_audio_track(
     Ok(None)
 }
 
-fn generate_subtitles_file(
+async fn generate_subtitles_file(
     session_dir: &Path,
     lines: &[String],
     duration_seconds: u32,

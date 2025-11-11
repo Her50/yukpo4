@@ -7,10 +7,7 @@ use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::{
-    core::types::{AppError, AppResult},
-    services::video_generation_service::ProgressStep,
-};
+use crate::{core::types::AppResult, services::video_generation_service::ProgressStep};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobProgressStep {

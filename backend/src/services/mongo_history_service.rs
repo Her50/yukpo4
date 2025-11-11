@@ -7,7 +7,7 @@ use mongodb::{
     Client as MongoClient, Collection,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::sync::Arc;
 
 /// ??? Types d'?v?nements historis?s

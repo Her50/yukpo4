@@ -2,7 +2,6 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use chrono::Utc;
 use reqwest::Client;
 use sqlx::{types::Uuid, PgPool};
 

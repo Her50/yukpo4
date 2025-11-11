@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use chrono::{DateTime, Duration, Utc};
-use log::{error, info, warn};
+use log::{error, info};
 use redis::AsyncCommands;
 use reqwest::Client;
 use serde::Deserialize;
