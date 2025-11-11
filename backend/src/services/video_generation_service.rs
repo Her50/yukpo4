@@ -1596,7 +1596,7 @@ async fn append_video_to_service_data(
 
     sqlx::query!(
         "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2",
-        service_data,
+        serde_json::Value::clone(service_data),
         service_id
     )
     .execute(&state.pg)
@@ -1621,35 +1621,34 @@ async fn append_video_variants_to_service_data(
         .map_err(|err| AppError::from(err))?
         .ok_or_else(|| AppError::NotFound("Service introuvable".to_string()))?;
 
-    if let Some(ref mut data_value) = service_row.data {
-        if let Some(array) = locate_product_array_mut(data_value) {
-            if let Some(product_value) = array.get_mut(product_index as usize) {
-                if let Value::Object(obj) = product_value {
-                    let mut current_variants = match obj.get_mut("videos_variants") {
-                        Some(Value::Array(existing)) => existing.clone(),
-                        Some(_) => Vec::new(),
-                        None => Vec::new(),
-                    };
+    let mut data_value = service_row.data;
+    if let Some(array) = locate_product_array_mut(&mut data_value) {
+        if let Some(product_value) = array.get_mut(product_index as usize) {
+            if let Value::Object(obj) = product_value {
+                let mut current_variants = match obj.get_mut("videos_variants") {
+                    Some(Value::Array(existing)) => existing.clone(),
+                    Some(_) => Vec::new(),
+                    None => Vec::new(),
+                };
 
-                    for (format, url) in variant_urls {
-                        current_variants.push(json!({
-                            "format": format,
-                            "url": url,
-                        }));
-                    }
-
-                    obj.insert(
-                        "videos_variants".to_string(),
-                        Value::Array(current_variants),
-                    );
+                for (format, url) in variant_urls {
+                    current_variants.push(json!({
+                        "format": format,
+                        "url": url,
+                    }));
                 }
+
+                obj.insert(
+                    "videos_variants".to_string(),
+                    Value::Array(current_variants),
+                );
             }
         }
     }
 
     sqlx::query!(
         "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2",
-        service_row.data,
+        data_value,
         service_id
     )
     .execute(&state.pg)
