@@ -26,15 +26,15 @@ pub fn shopping_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/shopping/orders/estimate", post(estimate_shopping_order))
         .route("/shopping/orders", post(create_shopping_order))
         .route(
-            "/shopping/orders/:order_id/items/:item_id",
+            "/shopping/orders/{order_id}/items/{item_id}",
             post(update_shopping_item),
         )
         .route(
-            "/shopping/orders/:order_id/status",
+            "/shopping/orders/{order_id}/status",
             post(update_shopping_status),
         )
         .route(
-            "/shopping/orders/:order_id/checkout",
+            "/shopping/orders/{order_id}/checkout",
             post(submit_shopping_checkout),
         )
         .route("/shopping/wallet/balance", get(get_wallet_balance))
