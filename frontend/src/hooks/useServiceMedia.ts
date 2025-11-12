@@ -55,7 +55,7 @@ export const useServiceMedia = (serviceId: number): ServiceMedia => {
 
         // Grouper les médias par type et construire les URLs
         const groupedMedia = mediaItems.reduce((acc, item) => {
-          const mediaUrl = `/api/media/${item.path}`;
+          const mediaUrl = `/api/media/files/${item.path}`;
           console.log(`🔗 [useServiceMedia] URL construite pour ${item.type}: ${mediaUrl}`);
           
           switch (item.type) {

@@ -496,7 +496,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
 
     // ⚠️ Route générique wildcard - DOIT être mergée EN DERNIER pour éviter les conflits
     let media_fallback_route =
-        Router::new().route("/api/media/{*file_path}", get(serve_media_file));
+        Router::new().route("/api/media/files/{*file_path}", get(serve_media_file));
 
     // ✅ NOUVEAU: Routes pour statistiques de tokens
     let token_stats_routes_merged = crate::routes::token_stats_routes::token_stats_routes();

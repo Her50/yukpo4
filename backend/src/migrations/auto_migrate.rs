@@ -266,6 +266,9 @@ pub async fn ensure_user_token_columns(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
+    sqlx::query("ALTER TABLE users ALTER COLUMN tokens_balance SET DEFAULT 0")
+        .execute(pool)
+        .await?;
 
     sqlx::query(
         r#"ALTER TABLE users
@@ -273,6 +276,9 @@ pub async fn ensure_user_token_columns(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
+    sqlx::query("ALTER TABLE users ALTER COLUMN token_price_user SET DEFAULT 1.0")
+        .execute(pool)
+        .await?;
 
     sqlx::query(
         r#"ALTER TABLE users
@@ -280,6 +286,9 @@ pub async fn ensure_user_token_columns(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
+    sqlx::query("ALTER TABLE users ALTER COLUMN token_price_provider SET DEFAULT 1.0")
+        .execute(pool)
+        .await?;
 
     sqlx::query(
         r#"ALTER TABLE users
@@ -287,6 +296,9 @@ pub async fn ensure_user_token_columns(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
+    sqlx::query("ALTER TABLE users ALTER COLUMN commission_pct SET DEFAULT 0.0")
+        .execute(pool)
+        .await?;
 
     sqlx::query(
         r#"ALTER TABLE users
@@ -294,6 +306,9 @@ pub async fn ensure_user_token_columns(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
+    sqlx::query("ALTER TABLE users ALTER COLUMN preferred_lang SET DEFAULT 'fr'")
+        .execute(pool)
+        .await?;
 
     sqlx::query(
         r#"ALTER TABLE users
@@ -301,6 +316,9 @@ pub async fn ensure_user_token_columns(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
+    sqlx::query("ALTER TABLE users ALTER COLUMN is_provider SET DEFAULT FALSE")
+        .execute(pool)
+        .await?;
 
     Ok(())
 }
@@ -2425,8 +2443,8 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
             pc.updated_at,
             pc.edited_at,
             pc.is_deleted,
-            u.nom_complet AS user_name,
-            u.avatar_url AS user_avatar,
+            (u.nom_complet)::TEXT AS user_name,
+            (u.avatar_url)::TEXT AS user_avatar,
             (
                 SELECT jsonb_object_agg(reaction_type, reaction_count)
                 FROM (
@@ -3322,21 +3340,40 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     .await?;
 
     sqlx::query(
-        r#"
-        ALTER TABLE deliveries
-            ADD COLUMN IF NOT EXISTS recipient_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-            ADD COLUMN IF NOT EXISTS recipient_contact_name TEXT,
-            ADD COLUMN IF NOT EXISTS recipient_contact_phone TEXT,
-            ADD COLUMN IF NOT EXISTS recipient_notes TEXT,
-            ADD COLUMN IF NOT EXISTS recipient_tracking_token UUID DEFAULT gen_random_uuid(),
-            ADD COLUMN IF NOT EXISTS recipient_dropoff_override GEOGRAPHY(Point, 4326),
-            ADD COLUMN IF NOT EXISTS recipient_dropoff_address TEXT,
-            ADD COLUMN IF NOT EXISTS recipient_dropoff_updated_at TIMESTAMPTZ,
-            ADD COLUMN IF NOT EXISTS recipient_chat_thread_id UUID
-        "#,
+        "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL",
     )
     .execute(pool)
     .await?;
+    sqlx::query("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_contact_name TEXT")
+        .execute(pool)
+        .await?;
+    sqlx::query("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_contact_phone TEXT")
+        .execute(pool)
+        .await?;
+    sqlx::query("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_notes TEXT")
+        .execute(pool)
+        .await?;
+    sqlx::query(
+        "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_tracking_token UUID DEFAULT gen_random_uuid()",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_dropoff_override GEOGRAPHY(Point, 4326)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_dropoff_address TEXT")
+        .execute(pool)
+        .await?;
+    sqlx::query(
+        "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_dropoff_updated_at TIMESTAMPTZ",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_chat_thread_id UUID")
+        .execute(pool)
+        .await?;
 
     sqlx::query(
         r#"
@@ -3345,8 +3382,8 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
             status delivery_status NOT NULL,
             occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                payload JSONB DEFAULT '{}'::jsonb,
-                recorded_by INTEGER
+            payload JSONB DEFAULT '{}'::jsonb,
+            recorded_by INTEGER
         )
         "#,
     )
@@ -3657,6 +3694,9 @@ async fn ensure_staging_demo_delivery(pool: &PgPool) -> Result<(), sqlx::Error> 
     let courier_email = "staging-courier@yukpo.com";
     let hashed_password =
         "$argon2id$v=19$m=65536,t=3,p=1$c3RhZ2luZw$E7o9p3hoDnN/S8/kVlzUcw".to_string();
+    let default_token_price_user = 1.0_f64;
+    let default_token_price_provider = 1.0_f64;
+    let default_commission_pct = 0.0_f32;
 
     let client_id: i32 =
         match sqlx::query_scalar::<_, i32>("SELECT id FROM users WHERE email = $1 LIMIT 1")
@@ -3680,9 +3720,12 @@ async fn ensure_staging_demo_delivery(pool: &PgPool) -> Result<(), sqlx::Error> 
                     nom,
                     prenom,
                     nom_complet,
-                    preferred_lang
+                    preferred_lang,
+                    token_price_user,
+                    token_price_provider,
+                    commission_pct
                 )
-                VALUES ($1, $2, 'user', FALSE, $3, TRUE, $4, $4, $5, $6, $7, 'fr')
+                VALUES ($1, $2, 'user', FALSE, $3, TRUE, $4, $4, $5, $6, $7, 'fr', $8, $9, $10)
                 RETURNING id
                 "#,
                 )
@@ -3693,6 +3736,9 @@ async fn ensure_staging_demo_delivery(pool: &PgPool) -> Result<(), sqlx::Error> 
                 .bind("Mbarga")
                 .bind("Aline")
                 .bind("Aline Mbarga")
+                .bind(default_token_price_user)
+                .bind(default_token_price_provider)
+                .bind(default_commission_pct)
                 .fetch_one(&mut *tx)
                 .await?
             }
@@ -3719,9 +3765,13 @@ async fn ensure_staging_demo_delivery(pool: &PgPool) -> Result<(), sqlx::Error> 
                     updated_at,
                     nom,
                     prenom,
-                    nom_complet
+                    nom_complet,
+                    preferred_lang,
+                    token_price_user,
+                    token_price_provider,
+                    commission_pct
                 )
-                VALUES ($1, $2, 'user', TRUE, 0, TRUE, $3, $3, $4, $5, $6)
+                VALUES ($1, $2, 'user', TRUE, 0, TRUE, $3, $3, $4, $5, $6, 'fr', $7, $8, $9)
                 RETURNING id
                 "#,
                 )
@@ -3731,6 +3781,9 @@ async fn ensure_staging_demo_delivery(pool: &PgPool) -> Result<(), sqlx::Error> 
                 .bind("Biyong")
                 .bind("Yvan")
                 .bind("Yvan Biyong")
+                .bind(default_token_price_user)
+                .bind(default_token_price_provider)
+                .bind(default_commission_pct)
                 .fetch_one(&mut *tx)
                 .await?
             }

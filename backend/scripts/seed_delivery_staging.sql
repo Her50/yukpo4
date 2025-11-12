@@ -21,7 +21,10 @@ BEGIN
         nom,
         prenom,
         nom_complet,
-        preferred_lang
+        preferred_lang,
+        token_price_user,
+        token_price_provider,
+        commission_pct
     )
     VALUES (
         'staging-client@yukpo.com',
@@ -35,7 +38,10 @@ BEGIN
         'Mbarga',
         'Aline',
         'Aline Mbarga',
-        'fr'
+        'fr',
+        1.0,
+        1.0,
+        0.0
     )
     ON CONFLICT (email) DO UPDATE
         SET
@@ -62,7 +68,11 @@ BEGIN
         updated_at,
         nom,
         prenom,
-        nom_complet
+        nom_complet,
+        preferred_lang,
+        token_price_user,
+        token_price_provider,
+        commission_pct
     )
     VALUES (
         'staging-courier@yukpo.com',
@@ -75,7 +85,11 @@ BEGIN
         NOW(),
         'Biyong',
         'Yvan',
-        'Yvan Biyong'
+        'Yvan Biyong',
+        'fr',
+        1.0,
+        1.0,
+        0.0
     )
     ON CONFLICT (email) DO UPDATE
         SET updated_at = NOW()
