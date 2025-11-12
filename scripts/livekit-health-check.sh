@@ -38,3 +38,5 @@ echo
 echo "✅ Vérifications terminées."
 
 
+
+

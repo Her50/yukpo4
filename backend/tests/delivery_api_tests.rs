@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod delivery_api_tests {
     use axum::{
-        body::Body,
+        body::{to_bytes, Body},
         http::{Request, StatusCode},
         Router,
     };
@@ -101,7 +101,7 @@ mod delivery_api_tests {
             .await
             .expect("La requête assign recipient doit répondre");
         assert_eq!(response.status(), StatusCode::OK);
-        let body_bytes = hyper::body::to_bytes(response.into_body())
+        let body_bytes = to_bytes(response.into_body())
             .await
             .expect("Lecture du corps réponse assign");
         let body_json: serde_json::Value =
@@ -133,7 +133,7 @@ mod delivery_api_tests {
             .expect("La requête update recipient location doit répondre");
         assert_eq!(update_response.status(), StatusCode::OK);
 
-        let updated_body = hyper::body::to_bytes(update_response.into_body())
+        let updated_body = to_bytes(update_response.into_body())
             .await
             .expect("Lecture du corps réponse update");
         let updated_json: serde_json::Value =
@@ -215,7 +215,7 @@ mod delivery_api_tests {
             .await
             .expect("La requête metrics doit répondre");
         assert_eq!(metrics_response.status(), StatusCode::OK);
-        let metrics_body = hyper::body::to_bytes(metrics_response.into_body())
+        let metrics_body = to_bytes(metrics_response.into_body())
             .await
             .expect("Lecture du corps des métriques");
         let metrics_text = String::from_utf8(metrics_body.to_vec()).expect("Texte métriques UTF-8");
@@ -302,7 +302,7 @@ mod delivery_api_tests {
             .await
             .expect("La requête get recipient doit répondre");
         assert_eq!(get_response.status(), StatusCode::OK);
-        let get_body = hyper::body::to_bytes(get_response.into_body())
+        let get_body = to_bytes(get_response.into_body())
             .await
             .expect("lecture corps get recipient");
         let get_json: serde_json::Value =

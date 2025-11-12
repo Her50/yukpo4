@@ -39,3 +39,5 @@ npm run test:e2e -- --project=chromium --grep="Immersive"
 popd >/dev/null
 
 printf '\n✅ QA pipeline terminée. Voir docs/video_pipeline_qa.md pour détails.\n'
+
+

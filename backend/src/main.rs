@@ -14,6 +14,7 @@ use yukpomnang_backend::{
 
 use yukpomnang_backend::services::gpu_optimizer::GPUOptimizer;
 use yukpomnang_backend::services::massive_load_handler::MassiveLoadHandler;
+use yukpomnang_backend::services::social_distribution_service;
 use yukpomnang_backend::tasks;
 
 #[tokio::main]
@@ -84,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         redis_client,
     ));
 
-    crate::services::social_distribution_service::start_distribution_worker(app_state.clone());
+    social_distribution_service::start_distribution_worker(app_state.clone());
 
     // ?? Initialiser l'architecture cloud massive
     let massive_load_handler = MassiveLoadHandler::new();

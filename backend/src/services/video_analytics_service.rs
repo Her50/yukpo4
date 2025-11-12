@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use log::{error, info};
 use serde::Serialize;
 use serde_json::Value;
@@ -15,7 +15,7 @@ pub struct QualityScoreRecord {
     pub media_id: i32,
     pub service_id: i32,
     pub quality_score: f32,
-    pub occurred_at: chrono::DateTime<Utc>,
+    pub occurred_at: DateTime<Utc>,
 }
 
 pub async fn record_engagement(
@@ -49,7 +49,7 @@ pub async fn record_engagement(
         user_id,
         session_id,
         metadata,
-        Utc::now(),
+        Utc::now()
     )
     .execute(&state.pg)
     .await
@@ -75,8 +75,8 @@ pub async fn list_recent_quality_scores(
         SELECT
             media_id,
             service_id,
-            COALESCE((metadata ->> 'quality_score')::float, 0.0) AS quality_score,
-            occurred_at
+            COALESCE((metadata ->> 'quality_score')::float, 0.0) AS "quality_score!: f64",
+            occurred_at                                  AS "occurred_at: DateTime<Utc>"
         FROM media_engagement
         WHERE event_type = 'quality_score'
         ORDER BY occurred_at DESC
@@ -99,7 +99,7 @@ pub async fn list_recent_quality_scores(
         .map(|row| QualityScoreRecord {
             media_id: row.media_id,
             service_id: row.service_id,
-            quality_score: row.quality_score.unwrap_or(0.0) as f32,
+            quality_score: row.quality_score as f32,
             occurred_at: row.occurred_at,
         })
         .collect())
@@ -187,7 +187,7 @@ pub async fn video_analytics_overview(
 
     let media_row = sqlx::query!(
         r#"
-        SELECT COUNT(*) AS total
+        SELECT COUNT(*) AS "total!: i64"
         FROM media
         WHERE media_type = 'video'
           AND uploaded_at >= NOW() - ($1::int * INTERVAL '1 day')
@@ -201,9 +201,9 @@ pub async fn video_analytics_overview(
     let engagement_row = sqlx::query!(
         r#"
         SELECT
-            COUNT(*) FILTER (WHERE event_type = 'view') AS views,
-            COUNT(*) FILTER (WHERE event_type = 'share') AS shares,
-            COALESCE(AVG((metadata ->> 'quality_score')::float), 0.0) AS avg_quality
+            COUNT(*) FILTER (WHERE event_type = 'view')   AS "views!: i64",
+            COUNT(*) FILTER (WHERE event_type = 'share')  AS "shares!: i64",
+            COALESCE(AVG((metadata ->> 'quality_score')::float), 0.0) AS "avg_quality!: f64"
         FROM media_engagement
         WHERE occurred_at >= NOW() - ($1::int * INTERVAL '1 day')
           AND event_type IN ('view', 'share', 'quality_score')
@@ -217,8 +217,8 @@ pub async fn video_analytics_overview(
     let distribution_row = sqlx::query!(
         r#"
         SELECT
-            COUNT(*) FILTER (WHERE status = 'completed') AS completed,
-            COUNT(*) FILTER (WHERE status IN ('scheduled', 'processing')) AS pending
+            COUNT(*) FILTER (WHERE status = 'completed')                       AS "completed!: i64",
+            COUNT(*) FILTER (WHERE status IN ('scheduled', 'processing'))      AS "pending!: i64"
         FROM media_distribution
         WHERE updated_at >= NOW() - ($1::int * INTERVAL '1 day')
         "#,
@@ -230,12 +230,12 @@ pub async fn video_analytics_overview(
 
     Ok(VideoAnalyticsOverview {
         horizon_days: days,
-        videos_generated: media_row.total.unwrap_or(0),
-        total_views: engagement_row.views.unwrap_or(0),
-        total_shares: engagement_row.shares.unwrap_or(0),
-        average_quality_score: engagement_row.avg_quality.unwrap_or(0.0) as f32,
-        distribution_success: distribution_row.completed.unwrap_or(0),
-        distribution_pending: distribution_row.pending.unwrap_or(0),
+        videos_generated: media_row.total,
+        total_views: engagement_row.views,
+        total_shares: engagement_row.shares,
+        average_quality_score: engagement_row.avg_quality as f32,
+        distribution_success: distribution_row.completed,
+        distribution_pending: distribution_row.pending,
     })
 }
 

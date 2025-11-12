@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE deliveries\n            SET\n                recipient_user_id = $2,\n                recipient_contact_name = $3,\n                recipient_contact_phone = $4,\n                recipient_notes = $5,\n                recipient_chat_thread_id = $6,\n                recipient_dropoff_override = CASE\n                    WHEN $7::double precision IS NOT NULL AND $8::double precision IS NOT NULL\n                    THEN ST_SetSRID(ST_MakePoint($8::double precision, $7::double precision), 4326)::geography\n                    ELSE NULL\n                END,\n                recipient_dropoff_address = $9,\n                recipient_dropoff_updated_at = CASE\n                    WHEN $7 IS NOT NULL AND $8 IS NOT NULL\n                    THEN NOW()\n                    ELSE NULL\n                END,\n                recipient_tracking_token = COALESCE(recipient_tracking_token, gen_random_uuid()),\n                metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(\n                    'recipient_extras',\n                    jsonb_strip_nulls(\n                        jsonb_build_object(\n                            'country_code', to_jsonb($10::text),\n                            'allow_tracking', to_jsonb($11::bool),\n                            'allow_contact', to_jsonb($12::bool),\n                            'consent_granted', to_jsonb($13::bool),\n                            'preferred_language', to_jsonb($14::text)\n                        )\n                    )\n                ),\n                updated_at = NOW()\n            WHERE id = $1\n            RETURNING\n                recipient_user_id,\n                recipient_contact_name,\n                recipient_contact_phone,\n                recipient_notes,\n                recipient_tracking_token,\n                ST_Y(recipient_dropoff_override::geometry) AS \"recipient_dropoff_lat?: f64\",\n                ST_X(recipient_dropoff_override::geometry) AS \"recipient_dropoff_lng?: f64\",\n                recipient_dropoff_address,\n                recipient_dropoff_updated_at,\n                recipient_chat_thread_id,\n                metadata\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "recipient_user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "recipient_contact_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "recipient_contact_phone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "recipient_notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "recipient_tracking_token",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "recipient_dropoff_lat?: f64",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 6,
+        "name": "recipient_dropoff_lng?: f64",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 7,
+        "name": "recipient_dropoff_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "recipient_dropoff_updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "recipient_chat_thread_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 10,
+        "name": "metadata",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Float8",
+        "Float8",
+        "Text",
+        "Text",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      null,
+      null,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d7ed2f3defb32e64139fbe138da9efc673aeb26b275c9a9d7266c2e65359a284"
+}

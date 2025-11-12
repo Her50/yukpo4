@@ -366,12 +366,10 @@ impl From<&RecipientPayload> for DeliveryRecipientInput {
             contact_phone: value.contact_phone.clone(),
             notes: value.notes.clone(),
             chat_thread_id: value.chat_thread_id,
-            dropoff_override: value.dropoff_override.as_ref().map(|loc| {
-                LocationInput {
-                    latitude: loc.latitude,
-                    longitude: loc.longitude,
-                    address: loc.address.clone(),
-                }
+            dropoff_override: value.dropoff_override.as_ref().map(|loc| LocationInput {
+                latitude: loc.latitude,
+                longitude: loc.longitude,
+                address: loc.address.clone(),
             }),
             dropoff_address: value.dropoff_address.clone(),
             country_code: value.country_code.clone(),

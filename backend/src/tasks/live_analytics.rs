@@ -2,8 +2,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
+use bigdecimal::{BigDecimal, FromPrimitive};
 use reqwest::Client;
-use sqlx::{types::Uuid, PgPool};
+use sqlx::{types::Uuid, PgConnection, PgPool};
 
 use crate::{config::live_streaming::LiveStreamingConfig, state::AppState};
 
@@ -136,18 +137,20 @@ async fn update_session_metrics(
             END,
             updated_at = NOW()
         WHERE livekit_room_name = $1
-        RETURNING id, peak_viewers, total_watch_time_seconds
+        RETURNING id                              AS "id: Uuid",
+                  peak_viewers                    AS "peak_viewers: i32",
+                  total_watch_time_seconds        AS "total_watch_time_seconds: i64"
         "#,
         room_name,
         viewers,
         interval_secs
     )
-    .fetch_optional(&mut tx)
+    .fetch_optional(&mut *tx)
     .await?;
 
     if let Some(record) = record {
         upsert_analytics(
-            &mut tx,
+            &mut *tx,
             record.id,
             viewers,
             record.peak_viewers,
@@ -163,17 +166,27 @@ async fn update_session_metrics(
 }
 
 async fn upsert_analytics(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    conn: &mut PgConnection,
     session_id: Uuid,
     webrtc_viewers: i32,
     peak_viewers: i32,
     interval_secs: i64,
     total_watch_time_seconds: i64,
 ) -> Result<()> {
-    let watch_increment = (webrtc_viewers as i64).max(0) * interval_secs.max(0);
+    let _watch_increment = (webrtc_viewers as i64).max(0) * interval_secs.max(0);
     let total_watch = total_watch_time_seconds.max(0);
     let max_viewers = peak_viewers.max(webrtc_viewers).max(1) as f64;
-    let average_watch = (total_watch as f64).max(0.0) / max_viewers.max(1.0);
+    let average_watch = if max_viewers > 0.0 {
+        total_watch as f64 / max_viewers
+    } else {
+        0.0
+    };
+    let conversions = 0;
+    let revenue_cfa = 0.0f64;
+
+    let average_watch_bd =
+        BigDecimal::from_f64(average_watch).unwrap_or_else(|| BigDecimal::from(0));
+    let revenue_cfa_bd = BigDecimal::from_f64(revenue_cfa).unwrap_or_else(|| BigDecimal::from(0));
 
     sqlx::query!(
         r#"
@@ -188,27 +201,28 @@ async fn upsert_analytics(
             revenue_cfa,
             last_synced_at
         )
-        VALUES ($1, $2, 0, $3, $4, $5, 0, 0, NOW())
-        ON CONFLICT (live_session_id) DO UPDATE SET
-            total_viewers = GREATEST(live_session_analytics.total_viewers, $2),
-            webrtc_viewers = $3,
-            total_watch_time_seconds = live_session_analytics.total_watch_time_seconds + $6,
-            average_watch_time_seconds = CASE
-                WHEN GREATEST(live_session_analytics.total_viewers, $2) > 0
-                THEN (live_session_analytics.total_watch_time_seconds + $6)::NUMERIC
-                    / GREATEST(GREATEST(live_session_analytics.total_viewers, $2), 1)
-                ELSE 0
-            END,
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        ON CONFLICT (live_session_id)
+        DO UPDATE SET
+            total_viewers = EXCLUDED.total_viewers,
+            hls_viewers = EXCLUDED.hls_viewers,
+            webrtc_viewers = EXCLUDED.webrtc_viewers,
+            total_watch_time_seconds = EXCLUDED.total_watch_time_seconds,
+            average_watch_time_seconds = EXCLUDED.average_watch_time_seconds,
+            conversions = EXCLUDED.conversions,
+            revenue_cfa = EXCLUDED.revenue_cfa,
             last_synced_at = NOW()
         "#,
         session_id,
+        webrtc_viewers,
         peak_viewers,
         webrtc_viewers,
-        total_watch_time_seconds + watch_increment,
-        average_watch,
-        watch_increment
+        total_watch,
+        average_watch_bd,
+        conversions,
+        revenue_cfa_bd,
     )
-    .execute(&mut *tx)
+    .execute(conn)
     .await?;
 
     Ok(())

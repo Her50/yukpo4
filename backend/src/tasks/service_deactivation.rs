@@ -23,7 +23,9 @@ pub async fn envoyer_alertes_prestataires(pool: &PgPool) -> Result<(), sqlx::Err
     // R?cup?rer les services d?sactiv?s sans alerte r?cente
     let services = sqlx::query!(
         r#"
-        SELECT id, user_id, last_alert_sent_at
+        SELECT id,
+               user_id,
+               last_alert_sent_at AS "last_alert_sent_at: Option<chrono::NaiveDateTime>"
         FROM services
         WHERE is_active = FALSE
           AND is_tarissable = TRUE

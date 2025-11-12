@@ -406,9 +406,9 @@ impl LiveStreamingService {
                 lsa.hls_viewers AS "analytics_hls_viewers!",
                 lsa.webrtc_viewers AS "analytics_webrtc_viewers!",
                 lsa.total_watch_time_seconds AS "analytics_total_watch_time_seconds!",
-                lsa.average_watch_time_seconds AS "analytics_average_watch_time_seconds!",
+                (lsa.average_watch_time_seconds)::FLOAT8 AS "analytics_average_watch_time_seconds!: f64",
                 lsa.conversions AS "analytics_conversions!",
-                lsa.revenue_cfa AS "analytics_revenue_cfa!",
+                (lsa.revenue_cfa)::FLOAT8 AS "analytics_revenue_cfa!: f64",
                 lsa.last_synced_at AS "analytics_last_synced_at!"
             FROM live_sessions ls
             JOIN live_session_analytics lsa ON lsa.live_session_id = ls.id
@@ -455,9 +455,9 @@ impl LiveStreamingService {
                     hls_viewers: row.analytics_hls_viewers,
                     webrtc_viewers: row.analytics_webrtc_viewers,
                     total_watch_time_seconds: row.analytics_total_watch_time_seconds,
-                    average_watch_time_seconds: row.analytics_average_watch_time_seconds,
+                    average_watch_time_seconds: Some(row.analytics_average_watch_time_seconds),
                     conversions: row.analytics_conversions,
-                    revenue_cfa: row.analytics_revenue_cfa,
+                    revenue_cfa: Some(row.analytics_revenue_cfa),
                     last_synced_at: row.analytics_last_synced_at,
                 };
 

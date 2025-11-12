@@ -1,7 +1,7 @@
 // Service pour gérer les combinaisons autocomplete vectorielles
 use crate::core::types::AppError;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use sqlx::{types::Decimal, PgPool, Row};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -21,7 +21,7 @@ pub struct AutocompleteCombination {
     pub has_variant: bool,
     pub variant_dimension: Option<String>,
     pub variant_value: Option<String>,
-    pub prix: Option<rust_decimal::Decimal>,
+    pub prix: Option<Decimal>,
     pub devise: Option<String>,
     pub stock: Option<i32>,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -63,6 +63,8 @@ pub async fn save_ai_combinations_batch(
             );
         }
 
+        let prix_decimal = combo.prix.clone();
+
         match upsert_combination(
             pool,
             &combo.product_vector,
@@ -77,7 +79,7 @@ pub async fn save_ai_combinations_batch(
             combo.has_variant,
             combo.variant_dimension.as_deref(),
             combo.variant_value.as_deref(),
-            combo.prix,
+            prix_decimal,
             combo.devise.as_deref().unwrap_or("XAF"),
             combo.stock,
             None, // service_id sera ajouté plus tard lors de la création du service
@@ -127,12 +129,12 @@ pub async fn upsert_combination(
     has_variant: bool,
     variant_dimension: Option<&str>,
     variant_value: Option<&str>,
-    prix: Option<f64>,
+    prix: Option<Decimal>,
     devise: &str,
     stock: Option<i32>,
     service_id: Option<i32>,
 ) -> Result<i32, AppError> {
-    let prix_decimal = prix.map(rust_decimal::Decimal::from_f64_retain).flatten();
+    let prix_decimal = prix;
 
     let base_insert = sqlx::query(
         r#"
@@ -583,6 +585,8 @@ pub fn extract_combinations_from_ai_response(
                 (default_prix, default_devise.clone(), None)
             };
 
+            let prix_decimal = prix.and_then(Decimal::from_f64_retain);
+
             // Confiance IA : légèrement décroissante pour les combinaisons suivantes
             // SAUF si c'est la préférée, on garde la confiance du preferred_match
             let ai_confidence = if index == 0 && preferred_confidence.is_some() {
@@ -612,7 +616,7 @@ pub fn extract_combinations_from_ai_response(
                 has_variant,
                 variant_dimension: variant_dimension.clone(),
                 variant_value,
-                prix,
+                prix: prix_decimal,
                 devise: Some(devise),
                 stock,
                 preferred_explanation: expl, // ✅ NOUVEAU 2025-11-03
@@ -647,7 +651,7 @@ pub struct AICombinationInput {
     pub has_variant: bool,
     pub variant_dimension: Option<String>,
     pub variant_value: Option<String>,
-    pub prix: Option<f64>,
+    pub prix: Option<Decimal>,
     pub devise: Option<String>,
     pub stock: Option<i32>,
     pub preferred_explanation: Option<String>, // ✅ NOUVEAU 2025-11-03: Explication choix préféré

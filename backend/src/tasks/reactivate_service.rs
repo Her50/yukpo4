@@ -11,7 +11,7 @@ pub async fn reactivate_service(
 ) -> Result<Value, AppError> {
     // R?cup?rer si le service est tarissable
     let service = sqlx::query!(
-        "SELECT is_tarissable FROM services WHERE id = $1 AND user_id = $2",
+        "SELECT is_tarissable AS \"is_tarissable: Option<bool>\" FROM services WHERE id = $1 AND user_id = $2",
         service_id,
         user_id
     )
@@ -21,7 +21,11 @@ pub async fn reactivate_service(
 
     // Limitation ? 30 jours si tarissable
     let mut days = extra_duration.num_days();
-    if service.is_tarissable.unwrap_or(false) && days > 30 {
+    let is_tarissable = service
+        .is_tarissable
+        .unwrap_or(Some(false))
+        .unwrap_or(false);
+    if is_tarissable && days > 30 {
         days = 30;
     }
     let new_off = Utc::now() + Duration::days(days);
@@ -35,7 +39,8 @@ pub async fn reactivate_service(
                auto_deactivate_at = $3
          WHERE id = $1
            AND user_id = $2
-         RETURNING id, auto_deactivate_at
+         RETURNING id,
+                   auto_deactivate_at AS "auto_deactivate_at: Option<chrono::DateTime<Utc>>"
         "#,
         service_id,
         user_id,
@@ -47,12 +52,15 @@ pub async fn reactivate_service(
     .map_err(|e| AppError::internal_server_error(e.to_string()))?;
 
     // R?indexation Pinecone : r?cup?rer les donn?es du service
-    let rec = sqlx::query!("SELECT data, gps FROM services WHERE id = $1", service_id)
+    let rec = sqlx::query!(
+        "SELECT data AS \"data: serde_json::Value\", gps AS \"gps: Option<String>\" FROM services WHERE id = $1",
+        service_id
+    )
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::internal_server_error(e.to_string()))?;
     let _data_obj: serde_json::Value = serde_json::from_value(rec.data).unwrap_or_default();
-    let gps = rec.gps.as_ref().and_then(|s| {
+    let gps = rec.gps.and_then(|opt| opt).and_then(|s| {
         let parts: Vec<&str> = s.split(',').collect();
         if parts.len() == 2 {
             Some((

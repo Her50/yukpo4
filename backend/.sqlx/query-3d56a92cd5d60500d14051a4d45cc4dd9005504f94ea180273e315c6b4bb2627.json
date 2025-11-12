@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE media_distribution\n         SET status = $1, metadata = COALESCE(metadata, '{}'::jsonb) || COALESCE($2, '{}'::jsonb), updated_at = NOW()\n         WHERE media_id = $3 AND target = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3d56a92cd5d60500d14051a4d45cc4dd9005504f94ea180273e315c6b4bb2627"
+}

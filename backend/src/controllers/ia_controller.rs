@@ -11,13 +11,10 @@ use std::sync::Arc;
 use crate::{
     core::types::AppResult,
     ia::behavior_engine::{compute_behavior_score, is_suspicious},
-    middlewares::jwt::AuthenticatedUser,
     services::app_ia::{
         DistributionRequest, DistributionSuggestion, MediaAnalysisRequest, MediaAnalysisResult,
         VideoBriefRequest, VideoStyleRequest, VideoStyleSuggestion,
     },
-    services::audio_library_service::{attach_loop_to_service, list_curated_audio_loops},
-    services::video_analytics_service::{record_engagement, update_distribution_status},
     state::AppState,
 };
 
@@ -333,10 +330,6 @@ pub struct DistributionResponse {
 
 fn default_duration() -> u32 {
     30
-}
-
-fn default_variant_count() -> Option<u32> {
-    Some(3)
 }
 
 pub async fn generate_video_brief(

@@ -18,6 +18,7 @@ use crate::{
     },
     websocket::delivery_tracking::{DeliveryTrackingManager, DeliveryWsEvent},
 };
+use bigdecimal::BigDecimal;
 use chrono::{DateTime, Duration, Utc};
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
@@ -25,6 +26,7 @@ use rust_decimal::{
 };
 use serde::Serialize;
 use serde_json::{json, Value};
+use std::str::FromStr;
 use std::sync::{
     atomic::{AtomicI64, AtomicU64, Ordering},
     Arc,
@@ -493,6 +495,15 @@ fn compute_eta_iso(summary: &DeliverySummary) -> Option<String> {
         .map(|seconds| summary.requested_at + Duration::seconds(seconds.into()))
         .map(|eta| eta.to_rfc3339())
 }
+
+fn decimal_to_bigdecimal(value: Decimal) -> BigDecimal {
+    BigDecimal::from_str(&value.to_string()).unwrap_or_else(|_| BigDecimal::from(0))
+}
+
+fn decimal_opt_to_bigdecimal(value: Option<Decimal>) -> Option<BigDecimal> {
+    value.map(decimal_to_bigdecimal)
+}
+
 /// Payload colis (coté service)
 #[derive(Debug, Clone)]
 pub struct NewDeliveryParcelInput {
@@ -1070,12 +1081,12 @@ impl DeliveryService {
                     courier_id: courier.id,
                     engine_type: asset_input.engine_type,
                     is_primary: true,
-                    max_weight_kg: asset_input.max_weight_kg,
-                    max_volume_cm3: asset_input.max_volume_cm3,
-                    equipments: asset_input.equipments,
+                    max_weight_kg: decimal_opt_to_bigdecimal(asset_input.max_weight_kg),
+                    max_volume_cm3: decimal_opt_to_bigdecimal(asset_input.max_volume_cm3),
+                    equipments: asset_input.equipments.clone(),
                     available: asset_input.available,
-                    availability_schedule: asset_input.availability_schedule,
-                    documents: asset_input.documents,
+                    availability_schedule: asset_input.availability_schedule.clone(),
+                    documents: asset_input.documents.clone(),
                 })
                 .await?;
             Some(inserted)
@@ -1131,25 +1142,23 @@ impl DeliveryService {
             pickup_address,
             dropoff: dropoff.clone().into(),
             dropoff_address,
-            recipient: recipient
-                .as_ref()
-                .map(|recipient| NewDeliveryRecipient {
-                    user_id: recipient.user_id,
-                    contact_name: recipient.contact_name.clone(),
-                    contact_phone: recipient.contact_phone.clone(),
-                    notes: recipient.notes.clone(),
-                    chat_thread_id: recipient.chat_thread_id,
-                    dropoff_override: recipient.dropoff_override.as_ref().map(|loc| GeoPoint {
-                        latitude: loc.latitude,
-                        longitude: loc.longitude,
-                    }),
-                    dropoff_address: recipient.dropoff_address.clone(),
-                    country_code: recipient.country_code.clone(),
-                    allow_tracking: recipient.allow_tracking,
-                    allow_contact: recipient.allow_contact,
-                    consent_granted: recipient.consent_granted,
-                    preferred_language: recipient.preferred_language.clone(),
+            recipient: recipient.as_ref().map(|recipient| NewDeliveryRecipient {
+                user_id: recipient.user_id,
+                contact_name: recipient.contact_name.clone(),
+                contact_phone: recipient.contact_phone.clone(),
+                notes: recipient.notes.clone(),
+                chat_thread_id: recipient.chat_thread_id,
+                dropoff_override: recipient.dropoff_override.as_ref().map(|loc| GeoPoint {
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
                 }),
+                dropoff_address: recipient.dropoff_address.clone(),
+                country_code: recipient.country_code.clone(),
+                allow_tracking: recipient.allow_tracking,
+                allow_contact: recipient.allow_contact,
+                consent_granted: recipient.consent_granted,
+                preferred_language: recipient.preferred_language.clone(),
+            }),
             distance_meters,
             estimated_duration_seconds,
             metadata,
@@ -1246,9 +1255,7 @@ impl DeliveryService {
                     message
                 );
 
-                return Err(AppError::BadRequest(
-                    error_opt.unwrap_or(message),
-                ));
+                return Err(AppError::BadRequest(error_opt.unwrap_or(message)));
             }
 
             if let Some(formatted) = validation.formatted_number {
@@ -1361,17 +1368,17 @@ impl DeliveryService {
             input.currency.clone()
         };
 
-        let mut estimated_items: Vec<ShoppingEstimateItem> =
-            Vec::with_capacity(input.items.len());
+        let mut estimated_items: Vec<ShoppingEstimateItem> = Vec::with_capacity(input.items.len());
         let mut total_cents = 0;
 
         for item in input.items {
-            let quantity = Decimal::from_f64(item.quantity)
-                .ok_or_else(|| AppError::BadRequest(format!(
+            let quantity_decimal = Decimal::from_f64(item.quantity).ok_or_else(|| {
+                AppError::BadRequest(format!(
                     "Quantité invalide pour le produit {}",
                     item.product_name
-                )))?;
-            if quantity <= Decimal::ZERO {
+                ))
+            })?;
+            if quantity_decimal <= Decimal::ZERO {
                 return Err(AppError::BadRequest(format!(
                     "Quantité invalide pour le produit {}",
                     item.product_name
@@ -1381,7 +1388,7 @@ impl DeliveryService {
 
             estimated_items.push(ShoppingEstimateItem {
                 product_name: item.product_name,
-                quantity,
+                quantity: decimal_to_bigdecimal(quantity_decimal),
                 unit: item.unit,
                 estimated_price_cents: estimated_price,
             });
@@ -1511,19 +1518,19 @@ impl DeliveryService {
             .items
             .iter()
             .map(|item| {
-                let quantity = Decimal::from_f64(item.quantity)
-                    .ok_or_else(|| {
-                        AppError::BadRequest(format!(
-                            "Quantité invalide pour le produit {}",
-                            item.product_name
-                        ))
-                    })?;
-                if quantity <= Decimal::ZERO {
+                let quantity_decimal = Decimal::from_f64(item.quantity).ok_or_else(|| {
+                    AppError::BadRequest(format!(
+                        "Quantité invalide pour le produit {}",
+                        item.product_name
+                    ))
+                })?;
+                if quantity_decimal <= Decimal::ZERO {
                     return Err(AppError::BadRequest(format!(
                         "Quantité invalide pour le produit {}",
                         item.product_name
                     )));
                 }
+                let quantity = decimal_to_bigdecimal(quantity_decimal);
 
                 Ok(NewShoppingOrderItem {
                     product_id: item.product_id,
@@ -1633,9 +1640,9 @@ impl DeliveryService {
                     longitude: input.longitude,
                 },
                 captured_at: input.captured_at,
-                speed_kmh: input.speed_kmh,
-                bearing: input.bearing,
-                accuracy_meters: input.accuracy_meters,
+                speed_kmh: decimal_opt_to_bigdecimal(input.speed_kmh.clone()),
+                bearing: decimal_opt_to_bigdecimal(input.bearing.clone()),
+                accuracy_meters: decimal_opt_to_bigdecimal(input.accuracy_meters.clone()),
             })
             .await?;
 
@@ -1703,8 +1710,7 @@ impl DeliveryService {
             ShoppingStatus::Cancelled => {
                 if delivery.creator_id != user_id {
                     // Coursier peut annuler pour indisponibilité
-                    self.ensure_courier_for_delivery(&delivery, user_id)
-                        .await?;
+                    self.ensure_courier_for_delivery(&delivery, user_id).await?;
                 }
             }
             _ => {
@@ -1977,12 +1983,12 @@ impl DeliveryService {
                 courier_id: input.courier_id,
                 engine_type: input.engine_type,
                 is_primary: true,
-                max_weight_kg: input.max_weight_kg,
-                max_volume_cm3: input.max_volume_cm3,
-                equipments: input.equipments,
+                max_weight_kg: decimal_opt_to_bigdecimal(input.max_weight_kg),
+                max_volume_cm3: decimal_opt_to_bigdecimal(input.max_volume_cm3),
+                equipments: input.equipments.clone(),
                 available: input.available,
-                availability_schedule: input.availability_schedule,
-                documents: input.documents,
+                availability_schedule: input.availability_schedule.clone(),
+                documents: input.documents.clone(),
             })
             .await?;
 
@@ -2176,9 +2182,9 @@ impl DeliveryService {
             .map(|checkpoint| checkpoint.timestamp.clone());
 
         let pricing_view = pricing.map(FrontendDeliveryPricing::from);
-        let shopping_view = shopping_order
-            .as_ref()
-            .map(|order| FrontendShoppingSummary::from_order(order.clone(), shopping_items.clone()));
+        let shopping_view = shopping_order.as_ref().map(|order| {
+            FrontendShoppingSummary::from_order(order.clone(), shopping_items.clone())
+        });
 
         let metadata = summary.metadata.clone();
 
@@ -2491,9 +2497,9 @@ impl From<NewDeliveryParcelInput> for crate::services::delivery_repository::NewD
     fn from(value: NewDeliveryParcelInput) -> Self {
         Self {
             type_id: value.type_id,
-            weight_kg: value.weight_kg,
-            volume_cm3: value.volume_cm3,
-            declared_value: value.declared_value,
+            weight_kg: decimal_opt_to_bigdecimal(value.weight_kg),
+            volume_cm3: decimal_opt_to_bigdecimal(value.volume_cm3),
+            declared_value: decimal_opt_to_bigdecimal(value.declared_value),
             notes: value.notes,
             photos: value.photos,
             constraints: value.constraints,
@@ -2516,7 +2522,7 @@ fn build_rejected_courier() -> Courier {
         user_id: 0,
         application_id: None,
         status: crate::models::delivery_model::DeliveryCourierStatus::Rejected,
-        rating_average: Decimal::ZERO,
+        rating_average: decimal_to_bigdecimal(Decimal::ZERO),
         rating_count: 0,
         bio: None,
         hired_at: None,

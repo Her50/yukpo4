@@ -27,7 +27,6 @@ use axum::{
     http::StatusCode,
     routing::{get, get_service},
     Json, Router,
-    ServiceExt,
 };
 use chrono;
 use std::sync::Arc;
@@ -123,7 +122,7 @@ pub fn init_logging() {
 async fn fournitures_axum_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<serde_json::Value>,
-) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+) -> Result<Json<serde_json::Value>, StatusCode> {
     // use crate::services::fournitures_service::gestion_fournitures_scolaires;
     let _user_id = payload
         .get("user_id")
@@ -135,9 +134,9 @@ async fn fournitures_axum_handler(
     //     Err(e) => {
     //         // Si c'est une erreur de validation, retourne 400 avec le message
     //         if let crate::core::types::AppError::BadRequest(_msg) = &e {
-    //             return Err(axum::http::StatusCode::BAD_REQUEST);
+    //             return Err(StatusCode::BAD_REQUEST);
     //         }
-    //         Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+    //         Err(StatusCode::INTERNAL_SERVER_ERROR)
     //     }
     // }
     Ok(Json(
@@ -229,14 +228,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
 
     let uploads_dir =
         std::env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "/var/data/uploads".to_string());
-    let uploads_service = get_service(
-        ServeDir::new(uploads_dir.clone()).handle_error(|error: std::io::Error| async move {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Erreur accès média: {}", error),
-            )
-        }),
-    );
+    let uploads_service = get_service(ServeDir::new(uploads_dir.clone()));
 
     let app = Router::new()
         .route(

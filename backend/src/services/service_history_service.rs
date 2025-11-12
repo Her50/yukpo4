@@ -67,14 +67,14 @@ pub async fn enregistrer_consultation(
         r#"
             SELECT
                 s.user_id,
-                s.data,
+                s.data                        AS "data: serde_json::Value",
                 s.is_active,
                 s.category,
                 u.nom               AS provider_nom,
                 u.prenom            AS provider_prenom,
                 u.nom_complet       AS provider_nom_complet,
                 u.avatar_url        AS provider_avatar_url,
-                u.tokens_balance    AS provider_tokens_balance
+                u.tokens_balance    AS "provider_tokens_balance: i64"
             FROM services s
             JOIN users u ON u.id = s.user_id
             WHERE s.id = $1
@@ -424,14 +424,14 @@ async fn fetch_service_and_provider_snapshot(
         r#"
             SELECT
                 s.user_id,
-                s.data,
+                s.data                        AS "data: serde_json::Value",
                 s.is_active,
                 s.category,
                 u.nom               AS provider_nom,
                 u.prenom            AS provider_prenom,
                 u.nom_complet       AS provider_nom_complet,
                 u.avatar_url        AS provider_avatar_url,
-                u.tokens_balance    AS provider_tokens_balance
+                u.tokens_balance    AS "provider_tokens_balance: i64"
             FROM services s
             JOIN users u ON u.id = s.user_id
             WHERE s.id = $1

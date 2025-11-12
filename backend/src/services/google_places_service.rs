@@ -51,6 +51,7 @@ pub struct GooglePlaceEnriched {
     pub country_code: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct TextValue {
@@ -60,6 +61,7 @@ struct TextValue {
     language_code: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LatLng {
@@ -67,6 +69,7 @@ struct LatLng {
     longitude: f64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AddressComponent {
@@ -78,6 +81,7 @@ struct AddressComponent {
     types: Vec<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SearchPlace {
@@ -99,6 +103,7 @@ struct PlacesSearchResponse {
     places: Option<Vec<SearchPlace>>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AuthorAttribution {
@@ -107,6 +112,7 @@ struct AuthorAttribution {
     photo_uri: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PlacePhoto {
@@ -116,6 +122,7 @@ struct PlacePhoto {
     author_attribution: Option<Vec<AuthorAttribution>>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PlaceDetails {
@@ -401,14 +408,16 @@ mod tests {
     async fn test_search_makepe() {
         let service = GooglePlacesService::new();
         let result = service
-            .search_and_build_hierarchy("Makepe", Some("Cameroun"))
+            .search_and_enrich("Makepe", Some("Cameroun"), None, None)
             .await;
 
-        if let Ok(data) = result {
-            println!("Place: {}", data.place_name);
+        if let Ok(Some(data)) = result {
+            println!("Place: {}", data.display_name);
             println!("Vector: {:?}", data.location_vector);
-            println!("Coords: {}, {}", data.coordinates.lat, data.coordinates.lng);
-            assert!(data.location_vector.len() > 0);
+            if let Some(coords) = data.coordinates.as_ref() {
+                println!("Coords: {}, {}", coords.lat, coords.lng);
+            }
+            assert!(!data.location_vector.is_empty());
         }
     }
 }

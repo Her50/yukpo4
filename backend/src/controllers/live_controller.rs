@@ -55,7 +55,7 @@ where
     fn from_request_parts(
         parts: &mut Parts,
         _state: &S,
-    ) -> std::future::Ready<Result<Self, Self::Rejection>> {
+    ) -> impl std::future::Future<Output = Result<Self, Self::Rejection>> + Send {
         std::future::ready(
             parts
                 .extensions

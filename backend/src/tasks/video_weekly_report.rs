@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chrono::{Duration, Utc};
+use chrono::{DateTime, Duration, Utc};
 use log::{error, info};
 use serde_json::json;
 
@@ -11,8 +11,8 @@ use crate::{
 
 #[derive(Debug)]
 pub struct WeeklyVideoSummary {
-    pub week_start: chrono::DateTime<Utc>,
-    pub week_end: chrono::DateTime<Utc>,
+    pub week_start: DateTime<Utc>,
+    pub week_end: DateTime<Utc>,
     pub total_videos: i64,
     pub total_views: i64,
     pub average_quality: f64,
@@ -51,18 +51,16 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
     let now = Utc::now();
     let week_end = now;
     let week_start = now - Duration::days(7);
-    let week_start_naive = week_start.naive_utc();
-    let week_end_naive = week_end.naive_utc();
 
     let total_videos = sqlx::query_scalar!(
         r#"
-        SELECT COUNT(*)::BIGINT
+        SELECT COUNT(*)::BIGINT AS "total!: i64"
         FROM media
         WHERE type = 'video'
           AND uploaded_at BETWEEN $1 AND $2
         "#,
-        week_start_naive,
-        week_end_naive
+        week_start,
+        week_end
     )
     .fetch_one(&state.pg)
     .await
@@ -72,18 +70,17 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
             err
         );
         AppError::from(err)
-    })?
-    .unwrap_or(0);
+    })?;
 
     let total_views = sqlx::query_scalar!(
         r#"
-        SELECT COUNT(*)::BIGINT
+        SELECT COUNT(*)::BIGINT AS "total!: i64"
         FROM media_engagement
         WHERE event_type = 'view'
           AND occurred_at BETWEEN $1 AND $2
         "#,
-        week_start_naive,
-        week_end_naive
+        week_start,
+        week_end
     )
     .fetch_one(&state.pg)
     .await
@@ -93,18 +90,17 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
             err
         );
         AppError::from(err)
-    })?
-    .unwrap_or(0);
+    })?;
 
     let average_quality = sqlx::query_scalar!(
         r#"
-        SELECT AVG((metadata ->> 'quality_score')::FLOAT)
+        SELECT COALESCE(AVG((metadata ->> 'quality_score')::FLOAT), 0.0) AS "avg!: f64"
         FROM media_engagement
         WHERE event_type = 'quality_score'
           AND occurred_at BETWEEN $1 AND $2
         "#,
-        week_start_naive,
-        week_end_naive
+        week_start,
+        week_end
     )
     .fetch_one(&state.pg)
     .await
@@ -114,15 +110,14 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
             err
         );
         AppError::from(err)
-    })?
-    .unwrap_or(0.0);
+    })?;
 
     let top_services = sqlx::query!(
         r#"
         SELECT
             m.service_id,
-            COUNT(*)::BIGINT AS videos_count,
-            AVG((e.metadata ->> 'quality_score')::FLOAT) AS avg_quality
+            COUNT(*)::BIGINT AS "videos_count!: i64",
+            AVG((e.metadata ->> 'quality_score')::FLOAT) AS "avg_quality?: f64"
         FROM media m
         LEFT JOIN media_engagement e
           ON e.media_id = m.id
@@ -130,11 +125,11 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
         WHERE m.type = 'video'
           AND m.uploaded_at BETWEEN $1 AND $2
         GROUP BY m.service_id
-        ORDER BY videos_count DESC
+        ORDER BY COUNT(*) DESC
         LIMIT 5
         "#,
-        week_start_naive,
-        week_end_naive
+        week_start,
+        week_end
     )
     .fetch_all(&state.pg)
     .await
@@ -143,7 +138,7 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
     .map(|record| {
         json!({
             "service_id": record.service_id,
-            "videos_count": record.videos_count.unwrap_or(0),
+            "videos_count": record.videos_count,
             "average_quality": record.avg_quality.unwrap_or(0.0),
         })
     })

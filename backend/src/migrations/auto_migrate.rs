@@ -347,6 +347,35 @@ pub async fn ensure_delivery_wallet_events_table(pool: &PgPool) -> Result<(), sq
     Ok(())
 }
 
+pub async fn ensure_video_weekly_reports_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table video_weekly_reports...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS video_weekly_reports (
+            id SERIAL PRIMARY KEY,
+            week_start TIMESTAMPTZ NOT NULL,
+            week_end TIMESTAMPTZ NOT NULL,
+            total_videos BIGINT NOT NULL,
+            total_views BIGINT NOT NULL,
+            average_quality DOUBLE PRECISION NOT NULL,
+            top_services JSONB NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_video_weekly_reports_week ON video_weekly_reports(week_start, week_end)",
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 pub async fn ensure_live_streaming_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables de live streaming...");
 
@@ -3919,6 +3948,11 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_delivery_wallet_events_table(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_wallet_events OK"),
         Err(e) => error!("❌ Erreur migration auto delivery_wallet_events: {}", e),
+    }
+
+    match ensure_video_weekly_reports_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: video_weekly_reports OK"),
+        Err(e) => error!("❌ Erreur migration auto video_weekly_reports: {}", e),
     }
 
     match ensure_social_connectors_tables(pool).await {

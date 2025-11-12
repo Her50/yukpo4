@@ -23,3 +23,5 @@ exec node dist/src/cli/render-worker.js \
   $EXTRA_ARGS \
   "$@"
 
+
+

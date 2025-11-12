@@ -51,7 +51,7 @@ impl VideoGenerationJobService {
             r#"
             INSERT INTO video_generation_jobs (user_id, service_id, product_index, status)
             VALUES ($1, $2, $3, 'queued')
-            RETURNING job_id
+            RETURNING job_id AS "job_id: Uuid"
             "#,
             user_id,
             service_id,
@@ -168,17 +168,17 @@ impl VideoGenerationJobService {
         let row = sqlx::query!(
             r#"
             SELECT
-                job_id,
+                job_id           AS "job_id: Uuid",
                 user_id,
-                service_id,
-                product_index,
+                service_id       AS "service_id: Option<i32>",
+                product_index    AS "product_index: Option<i32>",
                 status,
-                progress_steps,
-                result_media_id,
-                error_message,
-            result_payload,
-                created_at,
-                updated_at
+                progress_steps   AS "progress_steps: Option<serde_json::Value>",
+                result_media_id  AS "result_media_id: Option<i32>",
+                error_message    AS "error_message: Option<String>",
+                result_payload   AS "result_payload: Option<serde_json::Value>",
+                created_at       AS "created_at: DateTime<Utc>",
+                updated_at       AS "updated_at: DateTime<Utc>"
             FROM video_generation_jobs
             WHERE job_id = $1
             "#,
@@ -196,13 +196,13 @@ impl VideoGenerationJobService {
             Ok(Some(VideoGenerationJob {
                 job_id: row.job_id,
                 user_id: row.user_id,
-                service_id: row.service_id,
-                product_index: row.product_index,
+                service_id: row.service_id.and_then(|value| value),
+                product_index: row.product_index.and_then(|value| value),
                 status: row.status,
                 progress_steps: steps,
-                result_media_id: row.result_media_id,
-                error_message: row.error_message,
-                result_payload: row.result_payload,
+                result_media_id: row.result_media_id.and_then(|value| value),
+                error_message: row.error_message.and_then(|value| value),
+                result_payload: row.result_payload.and_then(|value| value),
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             }))

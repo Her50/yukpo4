@@ -78,16 +78,44 @@ pub async fn list_social_accounts(
     state: Arc<AppState>,
     user_id: i32,
 ) -> AppResult<Vec<SocialAccountRecord>> {
-    let rows = sqlx::query_as!(
-        SocialAccountRecord,
-        "SELECT id, user_id, platform, account_handle, expires_at, scope, metadata, created_at, updated_at FROM social_accounts WHERE user_id = $1 ORDER BY platform",
+    let rows = sqlx::query!(
+        r#"SELECT id,
+                  user_id,
+                  platform,
+                  account_handle,
+                  expires_at       AS "expires_at: Option<DateTime<Utc>>",
+                  scope            AS "scope: Option<String>",
+                  metadata         AS "metadata: Option<serde_json::Value>",
+                  created_at       AS "created_at: DateTime<Utc>",
+                  updated_at       AS "updated_at: DateTime<Utc>"
+          FROM social_accounts
+          WHERE user_id = $1
+          ORDER BY platform"#,
         user_id
     )
     .fetch_all(&state.pg)
     .await
-    .map_err(|err| AppError::from(err))?;
+    .map_err(AppError::from)?;
 
-    Ok(rows)
+    let records = rows
+        .into_iter()
+        .map(|row| SocialAccountRecord {
+            id: row.id,
+            user_id: row.user_id,
+            platform: row.platform,
+            account_handle: row.account_handle,
+            expires_at: row.expires_at.flatten(),
+            scope: row.scope.flatten(),
+            metadata: row
+                .metadata
+                .flatten()
+                .unwrap_or_else(|| serde_json::Value::Object(Default::default())),
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+        .collect::<Vec<_>>();
+
+    Ok(records)
 }
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]

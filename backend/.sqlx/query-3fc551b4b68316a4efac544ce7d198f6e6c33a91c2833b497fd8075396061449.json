@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO media (\n            service_id,\n            product_id,\n            product_index,\n            type,\n            media_type,\n            path,\n            file_size,\n            file_format,\n            ai_description,\n            ai_tags,\n            ai_metadata,\n            ai_analyzed_at,\n            ai_model_used,\n            ai_confidence\n        )\n        VALUES (\n            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), $12, $13\n        )\n        RETURNING id AS \"id: i32\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: i32",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Text",
+        "Text",
+        "TextArray",
+        "Jsonb",
+        "Varchar",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3fc551b4b68316a4efac544ce7d198f6e6c33a91c2833b497fd8075396061449"
+}

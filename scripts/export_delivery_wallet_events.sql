@@ -20,3 +20,5 @@
     ORDER BY dwe.created_at DESC
 ) TO STDOUT WITH CSV HEADER;
 
+
+

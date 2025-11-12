@@ -87,7 +87,7 @@ pub async fn youtube_callback(
     let redirect_uri = env::var("YOUTUBE_REDIRECT_URI")
         .map_err(|_| AppError::Internal("YOUTUBE_REDIRECT_URI manquant".into()))?;
 
-    let http = reqwest::Client::new();
+    let http = Client::new();
     let token_set =
         exchange_youtube_code(&http, &client_id, &client_secret, &redirect_uri, &code).await?;
 
@@ -144,7 +144,7 @@ pub async fn instagram_callback(
     let redirect_uri = env::var("INSTAGRAM_REDIRECT_URI")
         .map_err(|_| AppError::Internal("INSTAGRAM_REDIRECT_URI manquant".into()))?;
 
-    let http = reqwest::Client::new();
+    let http = Client::new();
     let token_set =
         exchange_instagram_code(&http, &app_id, &app_secret, &redirect_uri, &code).await?;
 

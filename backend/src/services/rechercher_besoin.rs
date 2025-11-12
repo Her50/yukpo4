@@ -1,4 +1,5 @@
 use crate::core::types::AppResult;
+use chrono::Utc;
 use sqlx::Row;
 
 // use crate::utils::embedding_client::SearchEmbeddingPineconeRequest; // SUSPENDU - Recherche native PostgreSQL uniquement
@@ -49,7 +50,11 @@ async fn search_services_fallback(
     for term in search_terms {
         let services = sqlx::query!(
             r#"
-            SELECT s.id, s.user_id, s.data, s.is_active, s.created_at
+            SELECT s.id,
+                   s.user_id,
+                   s.data                AS "data: serde_json::Value",
+                   s.is_active,
+                   s.created_at         AS "created_at: chrono::DateTime<Utc>"
             FROM services s
             WHERE s.is_active = true
             AND (
@@ -1178,7 +1183,7 @@ async fn validate_services_exist(
         if let Some(service_id) = resultat.get("service_id").and_then(|v| v.as_i64()) {
             // Vérifier si le service existe et est actif
             let service_exists = sqlx::query!(
-                "SELECT id FROM services WHERE id = $1 AND is_active = true",
+                "SELECT id AS \"id: i32\" FROM services WHERE id = $1 AND is_active = true",
                 service_id as i32
             )
             .fetch_optional(pool)

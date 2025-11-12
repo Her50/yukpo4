@@ -51,13 +51,11 @@ pub struct TimelineResult {
     pub warnings: Vec<String>,
 }
 
-pub struct ImmersiveOrchestrator {
-    state: Arc<AppState>,
-}
+pub struct ImmersiveOrchestrator;
 
 impl ImmersiveOrchestrator {
-    pub fn new(state: Arc<AppState>) -> Self {
-        Self { state }
+    pub fn new(_state: Arc<AppState>) -> Self {
+        Self
     }
 
     pub fn build_plan(&self, context: &ImmersiveContext) -> AppResult<ImmersivePlan> {

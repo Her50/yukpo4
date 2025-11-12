@@ -223,3 +223,5 @@ export const captureHandledError = (error: unknown, context?: Record<string, unk
     Sentry.Native.captureException(error, { extra: context });
 };
 
+
+

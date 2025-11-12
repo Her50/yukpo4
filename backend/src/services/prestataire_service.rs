@@ -34,7 +34,7 @@ pub async fn get_prestataire_info(
             gps,
             photo_profil,
             avatar_url,
-            created_at
+            created_at AS "created_at: chrono::DateTime<chrono::Utc>"
         FROM users 
         WHERE id = $1
         "#,
@@ -70,7 +70,7 @@ pub async fn get_prestataires_info_batch(
             gps,
             photo_profil,
             avatar_url,
-            created_at
+            created_at AS "created_at: chrono::DateTime<chrono::Utc>"
         FROM users 
         WHERE id = ANY($1)
         ORDER BY id
@@ -100,7 +100,7 @@ pub async fn get_all_prestataires(pool: &PgPool) -> AppResult<Vec<PrestataireInf
             gps,
             photo_profil,
             avatar_url,
-            created_at
+            created_at AS "created_at: chrono::DateTime<chrono::Utc>"
         FROM users 
         WHERE is_provider = true
         ORDER BY CASE 

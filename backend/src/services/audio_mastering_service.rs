@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use log::{debug, error, info, warn};
+use log::{debug, info, warn};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::multipart::{Form, Part};
 use tokio::process::Command;

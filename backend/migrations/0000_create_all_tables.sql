@@ -1652,6 +1652,33 @@ CREATE TABLE IF NOT EXISTS shopping_order_items (
 CREATE INDEX IF NOT EXISTS idx_shopping_order_items_order ON shopping_order_items(shopping_order_id);
 CREATE INDEX IF NOT EXISTS idx_shopping_order_items_status ON shopping_order_items(status);
 
+CREATE TABLE IF NOT EXISTS delivery_wallet_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    direction TEXT NOT NULL CHECK (direction IN ('debit', 'refund')),
+    amount_cents BIGINT NOT NULL,
+    reason TEXT,
+    balance_after BIGINT NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_delivery_wallet_events_user ON delivery_wallet_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_wallet_events_delivery ON delivery_wallet_events(delivery_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_wallet_events_created_at ON delivery_wallet_events(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS video_weekly_reports (
+    id SERIAL PRIMARY KEY,
+    week_start TIMESTAMPTZ NOT NULL,
+    week_end TIMESTAMPTZ NOT NULL,
+    total_videos BIGINT NOT NULL,
+    total_views BIGINT NOT NULL,
+    average_quality DOUBLE PRECISION NOT NULL,
+    top_services JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_video_weekly_reports_week ON video_weekly_reports(week_start, week_end);
+
 -- Seed default parcel types
 INSERT INTO parcel_types (slug, display_name, description, max_weight_kg, max_volume_cm3, requires_fragile_handling, requires_isothermal, requires_secure_box, requires_document_protection)
 VALUES

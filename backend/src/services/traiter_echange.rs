@@ -242,7 +242,18 @@ pub async fn traiter_echange(
 
     loop {
         let candidats = sqlx::query!(
-            r#"SELECT id, user_id, offre, besoin, quantite_offerte, quantite_requise, lot_id, disponibilite, contraintes, gps_fixe_lat, gps_fixe_lon, don 
+            r#"SELECT id,
+                     user_id,
+                     offre                      AS "offre: serde_json::Value",
+                     besoin                     AS "besoin: serde_json::Value",
+                     quantite_offerte::FLOAT8   AS "quantite_offerte: Option<f64>",
+                     quantite_requise::FLOAT8   AS "quantite_requise: Option<f64>",
+                     lot_id,
+                     disponibilite             AS "disponibilite: Option<serde_json::Value>",
+                     contraintes               AS "contraintes: Option<serde_json::Value>",
+                     gps_fixe_lat::FLOAT8      AS "gps_fixe_lat: Option<f64>",
+                     gps_fixe_lon::FLOAT8      AS "gps_fixe_lon: Option<f64>",
+                     don                       AS "don: Option<bool>"
                FROM echanges 
                WHERE statut = 'en_attente' AND id != $1 
                ORDER BY created_at DESC 
@@ -277,7 +288,7 @@ pub async fn traiter_echange(
         for c in &candidats_filtres {
             // Matching dons
             let is_don = don;
-            let is_candidat_don = c.don;
+            let is_candidat_don = c.don.and_then(|value| value).unwrap_or(false);
             let is_offre_seule = !offre.is_null() && (besoin.is_null() || besoin == Value::Null);
             let is_besoin_seul = !besoin.is_null() && (offre.is_null() || offre == Value::Null);
             let is_candidat_offre_seule =
@@ -285,15 +296,10 @@ pub async fn traiter_echange(
             let is_candidat_besoin_seul =
                 !c.besoin.is_null() && (c.offre.is_null() || c.offre == Value::Null);
 
-            if is_don || is_candidat_don.unwrap_or(false) {
-                let match_don = (is_don
-                    && is_besoin_seul
-                    && is_candidat_don.unwrap_or(false)
-                    && is_candidat_offre_seule)
-                    || (is_candidat_don.unwrap_or(false)
-                        && is_candidat_besoin_seul
-                        && is_don
-                        && is_offre_seule);
+            if is_don || is_candidat_don {
+                let match_don =
+                    (is_don && is_besoin_seul && is_candidat_don && is_candidat_offre_seule)
+                        || (is_candidat_don && is_candidat_besoin_seul && is_don && is_offre_seule);
                 if !match_don {
                     continue;
                 }
@@ -329,15 +335,15 @@ pub async fn traiter_echange(
                 besoin: c.besoin.clone(),
                 statut: "en_attente".to_string(),
                 matched_with: None,
-                quantite_offerte: c.quantite_offerte,
-                quantite_requise: c.quantite_requise,
+                quantite_offerte: c.quantite_offerte.and_then(|value| value),
+                quantite_requise: c.quantite_requise.and_then(|value| value),
                 lot_id: c.lot_id,
-                disponibilite: c.disponibilite.clone(),
-                contraintes: c.contraintes.clone(),
+                disponibilite: c.disponibilite.clone().and_then(|value| value),
+                contraintes: c.contraintes.clone().and_then(|value| value),
                 reputation: Some(user_reputation),
-                gps_fixe_lat: c.gps_fixe_lat,
-                gps_fixe_lon: c.gps_fixe_lon,
-                don: c.don.unwrap_or(false),
+                gps_fixe_lat: c.gps_fixe_lat.and_then(|value| value),
+                gps_fixe_lon: c.gps_fixe_lon.and_then(|value| value),
+                don: is_candidat_don,
                 created_at: chrono::Utc::now().naive_utc(),
                 updated_at: chrono::Utc::now().naive_utc(),
             };

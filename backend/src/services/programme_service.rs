@@ -35,7 +35,7 @@ pub async fn get_programme_scolaire(
 ) -> AppResult<Value> {
     let rec = sqlx::query!(
         r#"
-        SELECT programme FROM programmes_scolaires
+        SELECT programme AS "programme: serde_json::Value" FROM programmes_scolaires
         WHERE etablissement = $1 AND classe = $2
         ORDER BY annee DESC NULLS LAST
         LIMIT 1

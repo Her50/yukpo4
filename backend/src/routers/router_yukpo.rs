@@ -379,7 +379,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             request_size_limit::request_size_limit,
         ));
 
-    let social = Router::new()
+    let _social = Router::new()
         .route(
             "/api/social/accounts",
             get(social_connector_controller::get_accounts),

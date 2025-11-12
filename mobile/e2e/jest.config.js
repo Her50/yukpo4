@@ -6,3 +6,5 @@ module.exports = {
     setupFilesAfterEnv: ['detox/runners/jest/index.js'],
 };
 
+
+

@@ -5,7 +5,7 @@ use axum::{
     Extension, Json,
 };
 use log::{error, info, warn};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -13,14 +13,11 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     services::video_generation_service::{
-        estimate_video_cost, generate_product_video, VideoGenerationPayload, VideoGenerationResult,
+        estimate_video_cost, generate_product_video, VideoGenerationPayload,
     },
     services::video_job_service::VideoGenerationJob,
     state::AppState,
 };
-
-#[derive(Debug, Deserialize)]
-pub struct ProductVideoPath(usize);
 
 #[derive(Debug, Serialize)]
 pub struct StartVideoGenerationResponse {

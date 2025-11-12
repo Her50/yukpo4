@@ -48,11 +48,20 @@ pub async fn fetch_due_jobs(
 ) -> AppResult<Vec<SocialPublicationJob>> {
     let rows = sqlx::query_as!(
         SocialPublicationJob,
-        "SELECT id, media_id, platform, payload, status, attempt, last_error, scheduled_for, created_at, updated_at
+        r#"SELECT id,
+                 media_id,
+                 platform,
+                 payload        AS "payload: Value",
+                 status,
+                 attempt,
+                 last_error,
+                 scheduled_for  AS "scheduled_for: DateTime<Utc>",
+                 created_at     AS "created_at: DateTime<Utc>",
+                 updated_at     AS "updated_at: DateTime<Utc>"
          FROM social_publication_jobs
          WHERE status = 'queued' AND scheduled_for <= NOW()
          ORDER BY scheduled_for ASC
-         LIMIT $1",
+         LIMIT $1"#,
         limit
     )
     .fetch_all(&state.pg)
@@ -69,8 +78,7 @@ pub async fn mark_job_processing(state: Arc<AppState>, job_id: i32) -> AppResult
     )
     .execute(&state.pg)
     .await
-    .map_err(|err| AppError::from(err))?
-;
+    .map_err(AppError::from)?;
     Ok(())
 }
 
@@ -140,8 +148,8 @@ pub struct SocialPublicationJob {
     pub updated_at: DateTime<Utc>,
 }
 
-pub async fn start_distribution_worker(state: Arc<AppState>) {
-    tokio::spawn(async move {
+pub fn start_distribution_worker(state: Arc<AppState>) {
+    let _ = tokio::spawn(async move {
         let interval = tokio::time::Duration::from_secs(60);
         loop {
             tokio::time::sleep(interval).await;

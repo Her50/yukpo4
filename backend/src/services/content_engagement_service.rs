@@ -1,5 +1,5 @@
 use crate::core::types::AppResult;
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 
 pub struct ContentEngagementService;
 
@@ -13,7 +13,7 @@ impl ContentEngagementService {
     ) -> AppResult<()> {
         let existing = sqlx::query!(
             r#"
-            SELECT liked, saved
+            SELECT liked AS "liked: Option<bool>", saved AS "saved: Option<bool>"
             FROM content_engagement
             WHERE user_id = $1 AND content_id = $2
             "#,
@@ -23,8 +23,9 @@ impl ContentEngagementService {
         .fetch_optional(pool)
         .await?;
 
-        let current_liked = existing.as_ref().and_then(|row| row.liked).unwrap_or(false);
-        let current_saved = existing.as_ref().and_then(|row| row.saved).unwrap_or(false);
+        let (current_liked, current_saved) = existing
+            .map(|row| (row.liked.unwrap_or(false), row.saved.unwrap_or(false)))
+            .unwrap_or((false, false));
 
         let next_liked = liked.unwrap_or(current_liked);
         let next_saved = saved.unwrap_or(current_saved);
@@ -50,28 +51,20 @@ impl ContentEngagementService {
     }
 
     pub async fn get_counts(pool: &PgPool, content_id: &str) -> AppResult<(i64, i64)> {
-        let row = sqlx::query(
+        let row = sqlx::query!(
             r#"
             SELECT 
-                SUM(CASE WHEN liked THEN 1 ELSE 0 END)::BIGINT AS likes,
-                SUM(CASE WHEN saved THEN 1 ELSE 0 END)::BIGINT AS saves
+                COALESCE(SUM(CASE WHEN liked THEN 1 ELSE 0 END)::BIGINT, 0) AS "likes!: i64",
+                COALESCE(SUM(CASE WHEN saved THEN 1 ELSE 0 END)::BIGINT, 0) AS "saves!: i64"
             FROM content_engagement
             WHERE content_id = $1
             "#,
+            content_id
         )
-        .bind(content_id)
         .fetch_one(pool)
         .await?;
 
-        let likes = row
-            .try_get::<Option<i64>, _>("likes")
-            .unwrap_or(Some(0))
-            .unwrap_or(0);
-        let saves = row
-            .try_get::<Option<i64>, _>("saves")
-            .unwrap_or(Some(0))
-            .unwrap_or(0);
-        Ok((likes, saves))
+        Ok((row.likes, row.saves))
     }
 
     pub async fn get_bulk_status(
@@ -83,63 +76,46 @@ impl ContentEngagementService {
             return Ok(vec![]);
         }
 
-        let counts = sqlx::query(
+        let counts = sqlx::query!(
             r#"
             SELECT 
                 content_id,
-                SUM(CASE WHEN liked THEN 1 ELSE 0 END)::BIGINT AS likes,
-                SUM(CASE WHEN saved THEN 1 ELSE 0 END)::BIGINT AS saves
+                COALESCE(SUM(CASE WHEN liked THEN 1 ELSE 0 END)::BIGINT, 0) AS "likes!: i64",
+                COALESCE(SUM(CASE WHEN saved THEN 1 ELSE 0 END)::BIGINT, 0) AS "saves!: i64"
             FROM content_engagement
             WHERE content_id = ANY($1)
             GROUP BY content_id
             "#,
+            content_ids
         )
-        .bind(content_ids)
         .fetch_all(pool)
         .await?;
 
         let mut map = counts
             .into_iter()
-            .filter_map(|row| {
-                let content_id = row.try_get::<String, _>("content_id").ok()?;
-                let likes = row
-                    .try_get::<Option<i64>, _>("likes")
-                    .unwrap_or(Some(0))
-                    .unwrap_or(0);
-                let saves = row
-                    .try_get::<Option<i64>, _>("saves")
-                    .unwrap_or(Some(0))
-                    .unwrap_or(0);
-                Some((content_id, (likes, saves)))
-            })
+            .map(|row| (row.content_id, (row.likes, row.saves)))
             .collect::<std::collections::HashMap<_, _>>();
 
         let mut user_map: std::collections::HashMap<String, (bool, bool)> =
             std::collections::HashMap::new();
         if let Some(uid) = user_id {
-            let rows = sqlx::query(
+            let rows = sqlx::query!(
                 r#"
-                SELECT content_id, liked, saved
+                SELECT content_id, liked AS "liked: Option<bool>", saved AS "saved: Option<bool>"
                 FROM content_engagement
                 WHERE user_id = $1 AND content_id = ANY($2)
                 "#,
+                uid,
+                content_ids
             )
-            .bind(uid)
-            .bind(content_ids)
             .fetch_all(pool)
             .await?;
 
             for row in rows {
-                let cid = row.try_get::<String, _>("content_id").unwrap_or_default();
-                let liked = row
-                    .try_get::<Option<bool>, _>("liked")
-                    .unwrap_or(Some(false))
-                    .unwrap_or(false);
-                let saved = row
-                    .try_get::<Option<bool>, _>("saved")
-                    .unwrap_or(Some(false))
-                    .unwrap_or(false);
-                user_map.insert(cid, (liked, saved));
+                user_map.insert(
+                    row.content_id,
+                    (row.liked.unwrap_or(false), row.saved.unwrap_or(false)),
+                );
             }
         }
 

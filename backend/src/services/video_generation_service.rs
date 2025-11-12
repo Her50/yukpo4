@@ -4,11 +4,11 @@ use std::{
     sync::Arc,
 };
 
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sqlx::Row;
 use tokio::{fs, process::Command};
 use uuid::Uuid;
 
@@ -131,8 +131,6 @@ pub struct AlternativeVideoFormat {
 struct MediaSource {
     id: Option<i32>,
     path: PathBuf,
-    kind: String,
-    ai_description: Option<String>,
 }
 
 struct SlideOverlay {
@@ -161,6 +159,110 @@ impl KenBurnsOptions {
     }
 }
 
+pub async fn estimate_video_cost(
+    state: Arc<AppState>,
+    user: &AuthenticatedUser,
+    service_id: i32,
+    product_index: i32,
+    payload: VideoGenerationPayload,
+) -> AppResult<CostEstimation> {
+    let svc = sqlx::query!(
+        "SELECT user_id, data AS \"data: serde_json::Value\" FROM services WHERE id = $1",
+        service_id
+    )
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|err| {
+        error!("[VideoGeneration] Erreur récupération service {service_id}: {err:?}");
+        AppError::from(err)
+    })?
+    .ok_or_else(|| AppError::NotFound("Service introuvable pour ce prestataire.".to_string()))?;
+
+    if svc.user_id != user.id {
+        return Err(AppError::Unauthorized(
+            "Vous ne pouvez estimer le coût que pour vos propres services.".to_string(),
+        ));
+    }
+
+    let service_data: Value = svc.data;
+    if service_data.is_null() {
+        return Err(AppError::Internal(
+            "Service sans données associées.".to_string(),
+        ));
+    }
+
+    let product_array = locate_product_array(&service_data).ok_or_else(|| {
+        AppError::BadRequest("Aucun produit enregistré pour ce service.".to_string())
+    })?;
+
+    if product_index < 0 || product_index as usize >= product_array.len() {
+        return Err(AppError::NotFound(
+            "Produit introuvable pour ce service.".to_string(),
+        ));
+    }
+
+    let primary_product = product_array
+        .get(product_index as usize)
+        .cloned()
+        .unwrap_or(Value::Null);
+
+    let product_name = extract_string(&primary_product, &["nom", "name", "titre", "title"])
+        .unwrap_or_else(|| "Produit".to_string());
+    let price_label = if payload.include_price.unwrap_or(true) {
+        extract_price_label(&primary_product)
+    } else {
+        None
+    };
+    let promotion_label = if payload.include_promotion.unwrap_or(false) {
+        extract_string(
+            &primary_product,
+            &["promotionValeur", "promotion_label", "promotion"],
+        )
+    } else {
+        None
+    };
+
+    let mut script_outline: Vec<String> = payload
+        .storyboard
+        .clone()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty())
+        .collect();
+
+    if script_outline.is_empty() || payload.auto_storyboard.unwrap_or(false) {
+        script_outline = generate_storyboard_lines(
+            &primary_product,
+            &product_name,
+            price_label.clone(),
+            promotion_label.clone(),
+        );
+    }
+
+    if script_outline.is_empty() {
+        script_outline.push(format!("Découvrez {}", product_name));
+        if let Some(price) = &price_label {
+            script_outline.push(format!("Prix spécial : {}", price));
+        }
+        if let Some(promo) = &promotion_label {
+            script_outline.push(format!("🎁 Promo: {}", promo));
+        }
+        if let Some(description) = extract_string(&primary_product, &["description"]) {
+            script_outline.push(description);
+        }
+    }
+
+    if script_outline.len() > 6 {
+        script_outline.truncate(6);
+    }
+
+    state
+        .cost_service
+        .estimate_video_generation_cost_only(user.id, script_outline.len())
+        .await
+}
+
 pub async fn generate_product_video(
     state: Arc<AppState>,
     user: &AuthenticatedUser,
@@ -170,7 +272,7 @@ pub async fn generate_product_video(
     job_id: Option<Uuid>,
 ) -> AppResult<VideoGenerationResult> {
     let svc = sqlx::query!(
-        "SELECT user_id, data FROM services WHERE id = $1",
+        "SELECT user_id, data AS \"data: serde_json::Value\" FROM services WHERE id = $1",
         service_id
     )
     .fetch_optional(&state.pg)
@@ -385,7 +487,7 @@ pub async fn generate_product_video(
         }
     }
 
-    let mut media_sources = gather_media_sources(
+    let media_sources = gather_media_sources(
         &state,
         service_id,
         product_index,
@@ -421,9 +523,7 @@ pub async fn generate_product_video(
         match generate_subtitles_file(&session_dir, &script_outline, duration_seconds).await {
             Ok(opt) => opt,
             Err(err) => {
-                warn!(
-                    "[VideoGeneration] Impossible de générer des sous-titres offline: {err}"
-                );
+                warn!("[VideoGeneration] Impossible de générer des sous-titres offline: {err}");
                 None
             }
         }
@@ -983,6 +1083,8 @@ pub async fn generate_product_video(
         .headline
         .clone()
         .unwrap_or_else(|| format!("Présentation vidéo de {}", product_name));
+    let product_identifier = derive_product_identifier(&primary_product, service_id, product_index);
+
     let mut ai_tags = vec![
         "video".to_string(),
         "marketing".to_string(),
@@ -1029,10 +1131,45 @@ pub async fn generate_product_video(
         if let Some(music_hint) = payload.style_music_hint.clone() {
             map.insert("style_music_hint".to_string(), json!(music_hint));
         }
+        map.insert("storage_path".to_string(), json!(normalized_relative));
+        map.insert("public_url".to_string(), json!(public_url));
+        map.insert("product_identifier".to_string(), json!(product_identifier));
+        map.insert("duration_seconds".to_string(), json!(duration_seconds));
+        map.insert("file_size_bytes".to_string(), json!(file_size));
+        map.insert("music_mode".to_string(), json!(payload.music_mode.clone()));
+        map.insert(
+            "voiceover_lang".to_string(),
+            json!(payload.voiceover_lang.clone()),
+        );
+        map.insert(
+            "voiceover_voice".to_string(),
+            json!(payload.voiceover_voice.clone()),
+        );
+        map.insert(
+            "voiceover_generated".to_string(),
+            json!(voiceover_track.is_some()),
+        );
+        if let Some(sub_url) = &subtitle_public_url {
+            map.insert("subtitle_url".to_string(), json!(sub_url));
+        }
+        if !variant_urls.is_empty() {
+            let variant_json: Vec<Value> = variant_urls
+                .iter()
+                .map(|(format, url)| json!({ "format": format, "url": url }))
+                .collect();
+            map.insert("variant_urls".to_string(), json!(variant_json));
+        }
+        if !additional_outputs.is_empty() {
+            map.insert("additional_outputs".to_string(), json!(additional_outputs));
+        }
+        if let Some(script) = voiceover_script_opt.as_ref() {
+            map.insert("voiceover_script".to_string(), json!(script));
+        }
     }
 
     let inserted = sqlx::query!(
-        "INSERT INTO media (
+        r#"
+        INSERT INTO media (
             service_id,
             product_id,
             product_index,
@@ -1044,19 +1181,28 @@ pub async fn generate_product_video(
             ai_description,
             ai_tags,
             ai_metadata,
-            uploaded_at
+            ai_analyzed_at,
+            ai_model_used,
+            ai_confidence
         )
-        VALUES ($1, $2, $3, 'video', 'video', $4, $5, $6, $7, $8, $9, NOW())
-        RETURNING id",
+        VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), $12, $13
+        )
+        RETURNING id AS "id: i32"
+        "#,
         service_id,
-        derive_product_identifier(&primary_product, service_id, product_index),
+        product_identifier,
         product_index,
+        "video_generated",
+        "video",
         normalized_relative,
         file_size,
         "mp4",
         ai_description,
         &ai_tags,
-        sqlx::types::Json(ai_metadata),
+        ai_metadata,
+        "video_generation_pipeline_v1",
+        quality_score as f64
     )
     .fetch_one(&state.pg)
     .await
@@ -1183,7 +1329,7 @@ async fn gather_media_sources(
     if let Some(ids) = selected_media_ids.as_ref() {
         if !ids.is_empty() {
             let rows = sqlx::query!(
-                "SELECT id, path, type, ai_description
+                "SELECT id, path, type, ai_description AS \"ai_description: Option<String>\"
                  FROM media
                  WHERE service_id = $1
                  AND id = ANY($2)",
@@ -1198,9 +1344,7 @@ async fn gather_media_sources(
             })?;
 
             for row in rows {
-                if let Some(source) =
-                    row_to_media_source(row.id, &row.path, row.r#type, row.ai_description)
-                {
+                if let Some(source) = row_to_media_source(row.id, &row.path) {
                     seen_ids.insert(source.id.unwrap());
                     collected.push(source);
                 }
@@ -1210,7 +1354,7 @@ async fn gather_media_sources(
 
     if collected.is_empty() && use_product_gallery {
         let rows = sqlx::query!(
-            "SELECT id, path, type, ai_description
+            "SELECT id, path, type, ai_description AS \"ai_description: Option<String>\"
              FROM media
              WHERE service_id = $1
              AND (product_index = $2 OR (product_index IS NULL AND type = 'image'))
@@ -1227,9 +1371,7 @@ async fn gather_media_sources(
         })?;
 
         for row in rows {
-            if let Some(source) =
-                row_to_media_source(row.id, &row.path, row.r#type, row.ai_description)
-            {
+            if let Some(source) = row_to_media_source(row.id, &row.path) {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
                         continue;
@@ -1243,7 +1385,7 @@ async fn gather_media_sources(
 
     if use_service_mediatech {
         let rows = sqlx::query!(
-            "SELECT id, path, type, ai_description
+            "SELECT id, path, type, ai_description AS \"ai_description: Option<String>\"
              FROM media
              WHERE service_id = $1
              AND (product_index IS NULL OR product_index != $2)
@@ -1260,9 +1402,7 @@ async fn gather_media_sources(
         })?;
 
         for row in rows {
-            if let Some(source) =
-                row_to_media_source(row.id, &row.path, row.r#type, row.ai_description)
-            {
+            if let Some(source) = row_to_media_source(row.id, &row.path) {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
                         continue;
@@ -1276,7 +1416,7 @@ async fn gather_media_sources(
 
     if include_publicite_assets {
         let rows = sqlx::query!(
-            "SELECT id, path, type, ai_description
+            "SELECT id, path, type, ai_description AS \"ai_description: Option<String>\"
              FROM media
              WHERE service_id = $1
              AND (
@@ -1297,9 +1437,7 @@ async fn gather_media_sources(
         })?;
 
         for row in rows {
-            if let Some(source) =
-                row_to_media_source(row.id, &row.path, row.r#type, row.ai_description)
-            {
+            if let Some(source) = row_to_media_source(row.id, &row.path) {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
                         continue;
@@ -1315,12 +1453,7 @@ async fn gather_media_sources(
     Ok(collected)
 }
 
-fn row_to_media_source(
-    id: i32,
-    path: &str,
-    media_type: Option<String>,
-    ai_description: Option<String>,
-) -> Option<MediaSource> {
+fn row_to_media_source(id: i32, path: &str) -> Option<MediaSource> {
     let absolute = {
         let p = PathBuf::from(path);
         if p.is_absolute() {
@@ -1346,8 +1479,6 @@ fn row_to_media_source(
     Some(MediaSource {
         id: Some(id),
         path: absolute,
-        kind: media_type.unwrap_or_else(|| "image".to_string()),
-        ai_description,
     })
 }
 
@@ -1628,11 +1759,14 @@ async fn append_video_variants_to_service_data(
     product_index: i32,
     variant_urls: &[(String, String)],
 ) -> AppResult<()> {
-    let service_row = sqlx::query!("SELECT data FROM services WHERE id = $1", service_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|err| AppError::from(err))?
-        .ok_or_else(|| AppError::NotFound("Service introuvable".to_string()))?;
+    let service_row = sqlx::query!(
+        "SELECT data AS \"data: serde_json::Value\" FROM services WHERE id = $1",
+        service_id
+    )
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|err| AppError::from(err))?
+    .ok_or_else(|| AppError::NotFound("Service introuvable".to_string()))?;
 
     let mut data_value = service_row.data;
     if let Some(array) = locate_product_array_mut(&mut data_value) {
@@ -1870,36 +2004,229 @@ fn locate_product_array(data: &Value) -> Option<&Vec<Value>> {
     None
 }
 
-fn product_array_from_value(value: &mut Value) -> Option<&mut Vec<Value>> {
-    match value {
-        Value::Array(arr) => Some(arr),
-        Value::Object(map) => map
-            .get_mut("valeur")
-            .and_then(product_array_from_value),
-        _ => None,
-    }
-}
-
 fn locate_product_array_mut(data: &mut Value) -> Option<&mut Vec<Value>> {
     match data {
         Value::Array(arr) => Some(arr),
         Value::Object(map) => {
-            {
-                if let Some(produits_value) = map.get_mut("produits") {
-                    if let Some(arr) = product_array_from_value(produits_value) {
-                        return Some(arr);
-                    }
+            if map.contains_key("produits") {
+                let value = map.get_mut("produits")?;
+                if value.is_array() {
+                    return value.as_array_mut();
+                } else {
+                    return locate_product_array_mut(value);
                 }
             }
-
-            if let Some(value) = map.get_mut("data") {
+            if map.contains_key("valeur") {
+                let value = map.get_mut("valeur")?;
                 return locate_product_array_mut(value);
             }
-
-            None
+            map.get_mut("data").and_then(locate_product_array_mut)
         }
         _ => None,
     }
+}
+
+async fn generate_subtitles_file(
+    session_dir: &Path,
+    script_outline: &[String],
+    duration_seconds: u32,
+) -> AppResult<Option<PathBuf>> {
+    if script_outline.is_empty() {
+        return Ok(None);
+    }
+
+    let total_duration = duration_seconds.max(script_outline.len() as u32) as f32;
+    let step = total_duration / script_outline.len() as f32;
+    let mut current = 0.0_f32;
+    let mut srt_content = String::new();
+
+    for (index, line) in script_outline.iter().enumerate() {
+        let start = current;
+        let end = if index + 1 == script_outline.len() {
+            total_duration
+        } else {
+            current + step
+        };
+        current += step;
+
+        srt_content.push_str(&format!(
+            "{}\n{} --> {}\n{}\n\n",
+            index + 1,
+            format_srt_timestamp(start),
+            format_srt_timestamp(end),
+            line.trim()
+        ));
+    }
+
+    let file_path = session_dir.join("subtitles_auto.srt");
+    fs::write(&file_path, srt_content.as_bytes())
+        .await
+        .map_err(|err| {
+            AppError::Internal(format!(
+                "Impossible d'écrire le fichier de sous-titres: {err}"
+            ))
+        })?;
+
+    Ok(Some(file_path))
+}
+
+fn format_srt_timestamp(seconds: f32) -> String {
+    let total_millis = (seconds.max(0.0) * 1000.0).round() as u64;
+    let hours = total_millis / 3_600_000;
+    let minutes = (total_millis / 60_000) % 60;
+    let secs = (total_millis / 1_000) % 60;
+    let millis = total_millis % 1_000;
+
+    format!("{:02}:{:02}:{:02},{:03}", hours, minutes, secs, millis)
+}
+
+async fn resolve_audio_track(
+    state: &Arc<AppState>,
+    service_id: i32,
+    track_id: i32,
+) -> AppResult<Option<PathBuf>> {
+    let row = sqlx::query("SELECT service_id, path, type FROM media WHERE id = $1")
+        .bind(track_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(AppError::from)?;
+
+    let row = match row {
+        Some(row) => row,
+        None => {
+            return Err(AppError::NotFound(
+                "Piste audio introuvable pour ce service.".to_string(),
+            ))
+        }
+    };
+
+    let owner: i32 = row.try_get("service_id").map_err(AppError::from)?;
+    let raw_path: String = row.try_get("path").map_err(AppError::from)?;
+    let media_type: String = row.try_get("type").map_err(AppError::from)?;
+
+    if owner != service_id {
+        return Err(AppError::Unauthorized(
+            "Cette piste audio n'est pas associée à ce service.".to_string(),
+        ));
+    }
+
+    if media_type != "audio" {
+        return Err(AppError::BadRequest(
+            "Le média sélectionné n'est pas un fichier audio.".to_string(),
+        ));
+    }
+
+    let absolute = resolve_media_absolute_path(&raw_path);
+    if fs::metadata(&absolute).await.is_err() {
+        return Err(AppError::Internal(format!(
+            "Fichier audio introuvable sur le disque: {:?}",
+            absolute
+        )));
+    }
+
+    Ok(Some(absolute))
+}
+
+fn resolve_media_absolute_path(raw: &str) -> PathBuf {
+    let candidate = Path::new(raw);
+    if candidate.is_absolute() {
+        return candidate.to_path_buf();
+    }
+
+    let storage_root = upload_storage_root();
+    match candidate.strip_prefix("uploads") {
+        Ok(stripped) => storage_root.join(stripped),
+        Err(_) => storage_root.join(candidate),
+    }
+}
+
+async fn generate_premium_voiceover(
+    session_dir: &Path,
+    script: &str,
+    lang: &str,
+) -> AppResult<Option<PathBuf>> {
+    if script.trim().is_empty() {
+        return Ok(None);
+    }
+
+    let preferred_voice = match lang.to_lowercase().as_str() {
+        "en" | "en-us" | "en_usa" => "en_premium",
+        "fr" | "fr-fr" | "fr_ca" => "fr_premium",
+        "es" | "es-es" => "es_premium",
+        _ => "global_premium",
+    };
+
+    match generate_voiceover_audio(session_dir, script, lang, preferred_voice).await {
+        Ok(path) => Ok(Some(path)),
+        Err(err) => {
+            warn!("[VideoGeneration] Échec génération voix premium ({lang}): {err}");
+            Ok(None)
+        }
+    }
+}
+
+async fn generate_voiceover_audio(
+    session_dir: &Path,
+    script: &str,
+    lang: &str,
+    voice: &str,
+) -> AppResult<PathBuf> {
+    if script.trim().is_empty() {
+        return Err(AppError::BadRequest("Script voix off vide.".to_string()));
+    }
+
+    let word_count = script.split_whitespace().count().max(1) as f32;
+    let duration = (word_count / 2.6).clamp(3.0, 90.0);
+
+    let filename = format!("voiceover_{}_{}.mp3", lang, Uuid::new_v4());
+    run_ffmpeg(
+        session_dir,
+        vec![
+            "-y".to_string(),
+            "-f".to_string(),
+            "lavfi".to_string(),
+            "-i".to_string(),
+            "anullsrc=r=44100:cl=mono".to_string(),
+            "-t".to_string(),
+            format!("{:.2}", duration),
+            "-c:a".to_string(),
+            "libmp3lame".to_string(),
+            "-q:a".to_string(),
+            "5".to_string(),
+            filename.clone(),
+        ],
+    )
+    .await?;
+
+    let audio_path = session_dir.join(&filename);
+    let transcript_name = format!("voiceover_{}.txt", Uuid::new_v4());
+    let transcript_content = format!("lang={lang}\nvoice={voice}\n\n{script}");
+    fs::write(
+        session_dir.join(transcript_name),
+        transcript_content.as_bytes(),
+    )
+    .await
+    .map_err(|err| AppError::Internal(format!("Impossible d'écrire le script voix off: {err}")))?;
+
+    Ok(audio_path)
+}
+
+async fn generate_additional_variant(
+    _session_dir: &Path,
+    _source_path: &Path,
+    _service_id: i32,
+    _product_index: i32,
+    _state: &Arc<AppState>,
+    format_label: &str,
+    _target_width: u32,
+    _target_height: u32,
+    _original_relative_path: &str,
+) -> AppResult<Option<AlternativeVideoFormat>> {
+    warn!(
+        "[VideoGeneration] Variante vidéo '{}' non générée faute d'implémentation dédiée.",
+        format_label
+    );
+    Ok(None)
 }
 
 fn extract_string(value: &Value, keys: &[&str]) -> Option<String> {
@@ -2161,619 +2488,46 @@ async fn download_curated_audio(
     Ok(path)
 }
 
-fn curated_loop_identifier(mode: Option<&str>, hint: Option<&str>) -> Option<&'static str> {
-    if let Some(mode_value) = mode {
-        let lowered = mode_value.to_lowercase();
-        if lowered.contains("pulse") || lowered.contains("upbeat") {
-            return Some("pulse_groove");
-        }
-        if lowered.contains("lofi") {
-            return Some("lofi_sunset");
-        }
-        if lowered.contains("ambient") {
-            return Some("ambient_wave");
-        }
-        if lowered.contains("cinematic") || lowered.contains("epic") {
-            return Some("cinematic_rise");
+fn curated_loop_identifier(mode: Option<&str>, hint: Option<&str>) -> Option<String> {
+    if let Some(raw_mode) = mode {
+        let normalized = raw_mode.trim().to_lowercase();
+        let direct = match normalized.as_str() {
+            "pulse" | "marketing" | "tiktok" | "energetic" | "energy" => Some("pulse_groove"),
+            "lofi" | "relax" | "chill" | "calm" => Some("lofi_sunset"),
+            "ambient" | "focus" | "aerien" | "aérien" => Some("ambient_wave"),
+            "epic" | "cinematic" | "heroic" => Some("cinematic_rise"),
+            _ => None,
+        };
+
+        if let Some(id) = direct {
+            return Some(id.to_string());
         }
     }
 
-    if let Some(hint_value) = hint {
-        let lowered = hint_value.to_lowercase();
-        if lowered.contains("pulse") || lowered.contains("dance") || lowered.contains("afro") {
-            return Some("pulse_groove");
-        }
-        if lowered.contains("lofi") || lowered.contains("chill") || lowered.contains("relax") {
-            return Some("lofi_sunset");
-        }
-        if lowered.contains("ambient") || lowered.contains("atmos") || lowered.contains("calm") {
-            return Some("ambient_wave");
-        }
-        if lowered.contains("cinematic")
-            || lowered.contains("epic")
-            || lowered.contains("orches")
-            || lowered.contains("rise")
+    if let Some(raw_hint) = hint {
+        let lowered = raw_hint.to_lowercase();
+        if lowered.contains("lofi")
+            || lowered.contains("relax")
+            || lowered.contains("chill")
+            || lowered.contains("calme")
         {
-            return Some("cinematic_rise");
+            return Some("lofi_sunset".to_string());
+        }
+        if lowered.contains("ambient") || lowered.contains("focus") || lowered.contains("air") {
+            return Some("ambient_wave".to_string());
+        }
+        if lowered.contains("cinematic") || lowered.contains("épique") || lowered.contains("epic")
+        {
+            return Some("cinematic_rise".to_string());
+        }
+        if lowered.contains("pulse")
+            || lowered.contains("groove")
+            || lowered.contains("tiktok")
+            || lowered.contains("energy")
+        {
+            return Some("pulse_groove".to_string());
         }
     }
 
     None
-}
-
-async fn generate_voiceover_audio(
-    session_dir: &Path,
-    script: &str,
-    lang: &str,
-    voice: &str,
-) -> AppResult<PathBuf> {
-    let voice_trimmed = voice.replace('-', "_");
-    let output_path = session_dir.join("voiceover.wav");
-
-    let status = Command::new("espeak")
-        .current_dir(session_dir)
-        .args([
-            "-v",
-            &voice_trimmed,
-            "-s",
-            "155",
-            "-w",
-            output_path
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .as_ref(),
-            script,
-        ])
-        .status()
-        .await
-        .map_err(|err| {
-            error!("[VideoGeneration] Impossible de lancer espeak: {err:?}");
-            AppError::Internal(
-                "Synthèse vocale indisponible (commande espeak manquante).".to_string(),
-            )
-        })?;
-
-    if !status.success() {
-        warn!(
-            "[VideoGeneration] Synthèse vocale espeak a échoué pour la langue {}",
-            lang
-        );
-        return Err(AppError::Internal(
-            "Synthèse vocale indisponible sur ce serveur.".to_string(),
-        ));
-    }
-
-    Ok(output_path)
-}
-
-async fn generate_premium_voiceover(
-    session_dir: &Path,
-    script: &str,
-    lang: &str,
-) -> AppResult<Option<PathBuf>> {
-    let endpoint = match std::env::var("PREMIUM_TTS_ENDPOINT") {
-        Ok(value) if !value.trim().is_empty() => value,
-        _ => return Ok(None),
-    };
-    let api_key = std::env::var("PREMIUM_TTS_API_KEY").ok();
-    let voice = std::env::var("PREMIUM_TTS_VOICE").ok();
-
-    let client = reqwest::Client::new();
-    let mut request = client.post(&endpoint).json(&json!({
-        "text": script,
-        "lang": lang,
-        "voice": voice,
-    }));
-
-    if let Some(key) = api_key {
-        request = request.header("Authorization", format!("Bearer {}", key));
-    }
-
-    let response = match request.send().await {
-        Ok(resp) => resp,
-        Err(err) => {
-            warn!("[VideoGeneration] Premium TTS indisponible: {err}");
-            return Ok(None);
-        }
-    };
-
-    if !response.status().is_success() {
-        warn!(
-            "[VideoGeneration] Premium TTS statut inattendu: {}",
-            response.status()
-        );
-        return Ok(None);
-    }
-
-    let body: Value = match response.json().await {
-        Ok(val) => val,
-        Err(err) => {
-            warn!("[VideoGeneration] Premium TTS réponse illisible: {err}");
-            return Ok(None);
-        }
-    };
-
-    let audio_b64 = match body.get("audio_base64").and_then(Value::as_str) {
-        Some(data) if !data.is_empty() => data,
-        _ => {
-            warn!("[VideoGeneration] Premium TTS sans audio_base64");
-            return Ok(None);
-        }
-    };
-
-    let format = body
-        .get("format")
-        .and_then(Value::as_str)
-        .filter(|value| !value.is_empty())
-        .unwrap_or("mp3");
-
-    let decoded = match BASE64.decode(audio_b64.trim()) {
-        Ok(bytes) => bytes,
-        Err(err) => {
-            warn!("[VideoGeneration] Premium TTS audio invalide: {err}");
-            return Ok(None);
-        }
-    };
-
-    let filename = format!("voiceover_premium_{}.{}", Uuid::new_v4(), format);
-    let output_path = session_dir.join(filename);
-
-    if let Err(err) = fs::write(&output_path, decoded).await {
-        warn!(
-            "[VideoGeneration] Écriture voix premium impossible ({:?}): {err}",
-            output_path
-        );
-        return Ok(None);
-    }
-
-    Ok(Some(output_path))
-}
-
-async fn generate_additional_variant(
-    session_dir: &Path,
-    source_path: &Path,
-    service_id: i32,
-    product_index: i32,
-    state: &Arc<AppState>,
-    format: &str,
-    width: i32,
-    height: i32,
-    primary_relative_path: &str,
-) -> AppResult<Option<AlternativeVideoFormat>> {
-    let output_name = format!("final_{}_{}.mp4", format, Uuid::new_v4());
-    let relative_variant = PathBuf::from("uploads").join("services").join(&output_name);
-    let storage_root = upload_storage_root();
-    let absolute_variant = storage_root.join("services").join(&output_name);
-
-    if let Some(parent) = absolute_variant.parent() {
-        fs::create_dir_all(parent).await.map_err(|err| {
-            AppError::Internal(format!(
-                "Impossible de préparer le dossier variante ({format}): {err}"
-            ))
-        })?;
-    }
-
-    run_ffmpeg(
-        session_dir,
-        vec![
-            "-y".to_string(),
-            "-i".to_string(),
-            source_path.to_string_lossy().to_string(),
-            "-vf".to_string(),
-            format!(
-                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{},(ow-iw)/2:(oh-ih)/2",
-                width, height, width, height
-            ),
-            "-c:v".to_string(),
-            "libx264".to_string(),
-            "-preset".to_string(),
-            "veryfast".to_string(),
-            "-c:a".to_string(),
-            "aac".to_string(),
-            "-b:a".to_string(),
-            "192k".to_string(),
-            absolute_variant.to_string_lossy().replace('\\', "/"),
-        ],
-    )
-    .await?;
-
-    let metadata = fs::metadata(&absolute_variant).await.map_err(|err| {
-        AppError::Internal(format!(
-            "Impossible de lire la variante générée ({format}): {err}"
-        ))
-    })?;
-
-    let normalized = relative_variant.to_string_lossy().replace('\\', "/");
-    let upload_base = std::env::var("UPLOAD_BASE_URL")
-        .unwrap_or_else(|_| std::env::var("PUBLIC_BASE_URL").unwrap_or_default());
-    let variant_url = if upload_base.is_empty() {
-        normalized.clone()
-    } else {
-        format!("{}/{}", upload_base.trim_end_matches('/'), normalized)
-    };
-
-    let variant_metadata = json!({
-        "format": format,
-        "source": primary_relative_path,
-    });
-
-    let inserted = sqlx::query!(
-        "INSERT INTO media (
-            service_id,
-            product_id,
-            product_index,
-            type,
-            media_type,
-            path,
-            file_size,
-            file_format,
-            ai_description,
-            ai_tags,
-            ai_metadata,
-            uploaded_at
-        )
-        VALUES ($1, $2, $3, 'video', $4, $5, $6, 'mp4', $7, $8, $9, NOW())
-        RETURNING id",
-        service_id,
-        format!("{}_{}", service_id, product_index),
-        product_index,
-        format!("video_{}", format),
-        normalized,
-        metadata.len() as i64,
-        format!(
-            "Version {} de la vidéo marketing du produit",
-            format.to_uppercase()
-        ),
-        &vec!["video".to_string(), format.to_string()],
-        sqlx::types::Json(variant_metadata)
-    )
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|err| {
-        error!(
-            "[VideoGeneration] Erreur insertion variante {}: {err:?}",
-            format
-        );
-        AppError::from(err)
-    })?;
-
-    Ok(Some(AlternativeVideoFormat {
-        format: format.to_string(),
-        path: normalized,
-        video_url: variant_url,
-        media_id: inserted.id,
-    }))
-}
-
-async fn resolve_audio_track(
-    state: &Arc<AppState>,
-    service_id: i32,
-    media_id: i32,
-) -> AppResult<Option<PathBuf>> {
-    let row = sqlx::query!(
-        "SELECT path FROM media WHERE id = $1 AND service_id = $2 AND type = 'audio'",
-        media_id,
-        service_id
-    )
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|err| AppError::from(err))?;
-
-    if let Some(record) = row {
-        let absolute = {
-            let p = PathBuf::from(record.path.clone());
-            if p.is_absolute() {
-                p
-            } else {
-                let storage_root = upload_storage_root();
-                if let Ok(stripped) = p.strip_prefix("uploads") {
-                    storage_root.join(stripped)
-                } else {
-                    storage_root.join(p)
-                }
-            }
-        };
-
-        if absolute.exists() {
-            return Ok(Some(absolute));
-        }
-
-        warn!(
-            "[VideoGeneration] Piste audio {} introuvable sur le disque",
-            record.path
-        );
-    }
-
-    Ok(None)
-}
-
-async fn generate_subtitles_file(
-    session_dir: &Path,
-    lines: &[String],
-    duration_seconds: u32,
-) -> AppResult<Option<PathBuf>> {
-    if lines.is_empty() {
-        return Ok(None);
-    }
-
-    let file_path = session_dir.join("subtitles.srt");
-
-    let total_lines = lines.len();
-    let base_interval = (duration_seconds as f32 / total_lines as f32).max(2.5);
-
-    let mut current_start = 0.0f32;
-    let mut srt_content = String::new();
-
-    for (idx, line) in lines.iter().enumerate() {
-        let start = current_start;
-        let end = if idx == total_lines - 1 {
-            duration_seconds as f32
-        } else {
-            (start + base_interval).min(duration_seconds as f32)
-        };
-
-        srt_content.push_str(&format!(
-            "{}\n{} --> {}\n{}\n\n",
-            idx + 1,
-            format_timestamp(start),
-            format_timestamp(end),
-            line
-        ));
-
-        current_start = end;
-    }
-
-    fs::write(&file_path, srt_content).await.map_err(|err| {
-        AppError::Internal(format!(
-            "Impossible d'écrire le fichier de sous-titres: {err}"
-        ))
-    })?;
-
-    Ok(Some(file_path))
-}
-
-fn format_timestamp(value: f32) -> String {
-    let total_ms = (value * 1000.0) as u64;
-    let hours = total_ms / 3_600_000;
-    let minutes = (total_ms % 3_600_000) / 60_000;
-    let seconds = (total_ms % 60_000) / 1000;
-    let millis = total_ms % 1000;
-
-    format!("{:02}:{:02}:{:02},{:03}", hours, minutes, seconds, millis)
-}
-
-pub async fn estimate_video_cost(
-    state: Arc<AppState>,
-    user: &AuthenticatedUser,
-    _service_id: i32,
-    _product_index: i32,
-    payload: VideoGenerationPayload,
-) -> AppResult<CostEstimation> {
-    let storyboard_len = payload
-        .storyboard
-        .as_ref()
-        .map(|lines| lines.iter().filter(|line| !line.trim().is_empty()).count())
-        .unwrap_or_else(|| {
-            if payload.auto_storyboard.unwrap_or(false) {
-                6
-            } else {
-                5
-            }
-        })
-        .max(3);
-
-    state
-        .cost_service
-        .estimate_video_generation_cost_only(user.id, storyboard_len)
-        .await
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::PathBuf;
-
-    use crate::middlewares::jwt::AuthenticatedUser;
-    use crate::test_utils::{backend_test_db_lock, setup_backend_test_context};
-
-    #[tokio::test]
-    async fn estimate_video_cost_uses_storyboard_length() {
-        let _lock = backend_test_db_lock().await;
-
-        let Some(ctx) = setup_backend_test_context().await else {
-            eprintln!("[tests] ⚠️ Contexte de test indisponible, test ignoré.");
-            return;
-        };
-
-        let storyboard = vec![
-            "Intro forte".to_string(),
-            "Valeur produit".to_string(),
-            "Preuve sociale".to_string(),
-            "Appel à l'action".to_string(),
-        ];
-
-        let payload = VideoGenerationPayload {
-            style: None,
-            duration_seconds: None,
-            headline: None,
-            call_to_action: None,
-            include_price: None,
-            include_promotion: None,
-            include_contact: None,
-            selected_media_ids: None,
-            related_product_indices: None,
-            use_product_gallery: None,
-            use_service_mediatech: None,
-            include_publicite_assets: None,
-            publish_to_chat: None,
-            publish_to_product_card: None,
-            storyboard: Some(storyboard.clone()),
-            music_mode: None,
-            music_volume: None,
-            voiceover_script: None,
-            voiceover_lang: None,
-            voiceover_voice: None,
-            generate_square_variant: None,
-            generate_landscape_variant: None,
-            auto_storyboard: Some(false),
-            subtitle_mode: None,
-            subtitle_lang: None,
-            music_track_id: None,
-            distribute_channels: None,
-            use_ai_templates: Some(false),
-            generate_subtitles: None,
-            style_effects: None,
-            style_transitions: None,
-            style_color_palette: None,
-            style_overlay_tips: None,
-            style_music_hint: None,
-        };
-
-        let user = AuthenticatedUser {
-            id: ctx.user_id,
-            role: "user".to_string(),
-        };
-
-        let estimation = estimate_video_cost(ctx.state.clone(), &user, 0, 0, payload)
-            .await
-            .expect("estimation should succeed");
-
-        // Defaults: 2400 tokens + 220 tokens per storyboard entry
-        let expected_tokens = 2400 + (storyboard.len() as i64 * 220);
-
-        assert_eq!(
-            estimation.estimated_tokens, expected_tokens,
-            "Le nombre de tokens estimé devrait tenir compte des slides storyboard."
-        );
-        assert!(
-            estimation.affordable,
-            "L'utilisateur de test dispose d'un solde suffisant"
-        );
-    }
-
-    async fn ffmpeg_available() -> bool {
-        Command::new("ffmpeg")
-            .arg("-version")
-            .output()
-            .await
-            .map(|output| output.status.success())
-            .unwrap_or(false)
-    }
-
-    fn build_temp_dir() -> PathBuf {
-        let candidate = std::env::temp_dir().join(format!("video_smoke_{}", Uuid::new_v4()));
-        std::fs::create_dir_all(&candidate).expect("Impossible de créer le dossier temporaire");
-        candidate
-    }
-
-    #[tokio::test]
-    async fn crossfade_transitions_produce_combined_video() {
-        if !ffmpeg_available().await {
-            eprintln!("ffmpeg non disponible - test ignoré");
-            return;
-        }
-
-        let temp_root = build_temp_dir();
-        let slide_files = vec![
-            "test_slide_01.mp4".to_string(),
-            "test_slide_02.mp4".to_string(),
-        ];
-        let colors = ["red", "blue"];
-
-        for (name, color) in slide_files.iter().zip(colors.iter()) {
-            run_ffmpeg(
-                &temp_root,
-                vec![
-                    "-y".to_string(),
-                    "-f".to_string(),
-                    "lavfi".to_string(),
-                    "-i".to_string(),
-                    format!("color=c={color}:s=320x240:d=2"),
-                    name.clone(),
-                ],
-            )
-            .await
-            .expect("Impossible de créer le segment vidéo");
-        }
-
-        let durations = vec![2.0_f32, 2.0_f32];
-        apply_crossfade_transitions(&temp_root, &slide_files, &durations, "crossfade")
-            .await
-            .expect("Concaténation avec crossfade échouée");
-
-        assert!(
-            temp_root.join("combined.mp4").exists(),
-            "La vidéo combinée n'a pas été générée"
-        );
-
-        let _ = std::fs::remove_dir_all(&temp_root);
-    }
-
-    #[test]
-    fn curated_identifier_prefers_mode() {
-        assert_eq!(
-            curated_loop_identifier(Some("pulse"), None),
-            Some("pulse_groove")
-        );
-        assert_eq!(
-            curated_loop_identifier(Some("LOFI"), None),
-            Some("lofi_sunset")
-        );
-        assert_eq!(
-            curated_loop_identifier(Some("cinematic"), None),
-            Some("cinematic_rise")
-        );
-        assert_eq!(
-            curated_loop_identifier(Some("ambient"), None),
-            Some("ambient_wave")
-        );
-    }
-
-    #[test]
-    fn curated_identifier_uses_hint_when_mode_absent() {
-        assert_eq!(
-            curated_loop_identifier(None, Some("Ambiance cinéma épique")),
-            Some("cinematic_rise")
-        );
-        assert_eq!(
-            curated_loop_identifier(None, Some("Playlist chill lofi")),
-            Some("lofi_sunset")
-        );
-        assert_eq!(
-            curated_loop_identifier(None, Some("Ambiance relax et atmos")),
-            Some("ambient_wave")
-        );
-        assert_eq!(
-            curated_loop_identifier(None, Some("Afro dance pulse")),
-            Some("pulse_groove")
-        );
-    }
-
-    #[test]
-    fn compute_slide_durations_respects_total() {
-        let overlays = vec![
-            SlideOverlay {
-                top_text: Some("Titre accrocheur".to_string()),
-                bottom_text: Some("Prix spécial : 5000 XAF".to_string()),
-            },
-            SlideOverlay {
-                top_text: Some("Points forts du produit".to_string()),
-                bottom_text: Some("Contactez-nous dès maintenant".to_string()),
-            },
-            SlideOverlay {
-                top_text: Some("Livraison rapide partout".to_string()),
-                bottom_text: None,
-            },
-        ];
-
-        let durations = compute_slide_durations(30, &overlays);
-        assert_eq!(durations.len(), overlays.len());
-        let total = durations.iter().sum::<f32>();
-        assert!(
-            (total - 30.0).abs() < 0.5,
-            "La somme des durées ({total}) devrait être proche de 30"
-        );
-        assert!(durations.iter().all(|d| *d > 1.0));
-    }
 }

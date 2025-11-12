@@ -173,7 +173,7 @@ pub async fn get_service_media(
     info!("[get_service_media] Called for service_id={}", service_id);
     let rows = match sqlx::query_as!(
         MediaItem,
-        "SELECT id, service_id, type, path, uploaded_at FROM media WHERE service_id = $1 ORDER BY uploaded_at DESC",
+        r#"SELECT id, service_id, type, path, uploaded_at AS "uploaded_at: Option<NaiveDateTime>" FROM media WHERE service_id = $1 ORDER BY uploaded_at DESC"#,
         service_id
     )
     .fetch_all(&pool)
@@ -192,7 +192,7 @@ pub async fn get_all_media(Extension(pool): Extension<PgPool>) -> AppResult<Json
     info!("[get_all_media] Called");
     let rows = match sqlx::query_as!(
         MediaItem,
-        "SELECT id, service_id, type, path, uploaded_at FROM media ORDER BY uploaded_at DESC"
+        r#"SELECT id, service_id, type, path, uploaded_at AS "uploaded_at: Option<NaiveDateTime>" FROM media ORDER BY uploaded_at DESC"#
     )
     .fetch_all(&pool)
     .await

@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::FromRow;
+use sqlx::{types::BigDecimal, FromRow};
 use uuid::Uuid;
 
 /// Statut d'une course de livraison
@@ -92,8 +92,8 @@ pub struct ParcelType {
     pub slug: String,
     pub display_name: String,
     pub description: Option<String>,
-    pub max_weight_kg: Option<rust_decimal::Decimal>,
-    pub max_volume_cm3: Option<rust_decimal::Decimal>,
+    pub max_weight_kg: Option<BigDecimal>,
+    pub max_volume_cm3: Option<BigDecimal>,
     pub requires_isothermal: bool,
     pub requires_fragile_handling: bool,
     pub requires_secure_box: bool,
@@ -126,7 +126,7 @@ pub struct Courier {
     pub user_id: i32,
     pub application_id: Option<Uuid>,
     pub status: DeliveryCourierStatus,
-    pub rating_average: rust_decimal::Decimal,
+    pub rating_average: BigDecimal,
     pub rating_count: i32,
     pub bio: Option<String>,
     pub hired_at: Option<DateTime<Utc>>,
@@ -142,8 +142,8 @@ pub struct CourierAsset {
     pub courier_id: Uuid,
     pub engine_type: DeliveryEngineType,
     pub is_primary: bool,
-    pub max_weight_kg: Option<rust_decimal::Decimal>,
-    pub max_volume_cm3: Option<rust_decimal::Decimal>,
+    pub max_weight_kg: Option<BigDecimal>,
+    pub max_volume_cm3: Option<BigDecimal>,
     pub equipments: serde_json::Value,
     pub available: bool,
     pub availability_schedule: Option<serde_json::Value>,
@@ -157,9 +157,9 @@ pub struct CourierAsset {
 pub struct DeliveryParcel {
     pub id: Uuid,
     pub type_id: Option<i32>,
-    pub weight_kg: Option<rust_decimal::Decimal>,
-    pub volume_cm3: Option<rust_decimal::Decimal>,
-    pub declared_value: Option<rust_decimal::Decimal>,
+    pub weight_kg: Option<BigDecimal>,
+    pub volume_cm3: Option<BigDecimal>,
+    pub declared_value: Option<BigDecimal>,
     pub notes: Option<String>,
     pub photos: serde_json::Value,
     pub constraints: serde_json::Value,
@@ -212,9 +212,9 @@ pub struct DeliveryTrackingPoint {
     pub delivery_id: Uuid,
     pub courier_id: Uuid,
     pub captured_at: DateTime<Utc>,
-    pub speed_kmh: Option<rust_decimal::Decimal>,
-    pub bearing: Option<rust_decimal::Decimal>,
-    pub accuracy_meters: Option<rust_decimal::Decimal>,
+    pub speed_kmh: Option<BigDecimal>,
+    pub bearing: Option<BigDecimal>,
+    pub accuracy_meters: Option<BigDecimal>,
     pub latitude: f64,
     pub longitude: f64,
 }
@@ -344,7 +344,7 @@ pub struct ShoppingOrderItem {
     pub product_id: Option<Uuid>,
     pub product_name: String,
     pub characteristics: serde_json::Value,
-    pub quantity: rust_decimal::Decimal,
+    pub quantity: BigDecimal,
     pub unit: String,
     pub estimated_price_cents: i32,
     pub actual_price_cents: Option<i32>,

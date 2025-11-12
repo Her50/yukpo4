@@ -46,8 +46,8 @@ pub async fn check_and_update_service_status(pool: &PgPool) -> Result<(), AppErr
     for service in expired_services {
         sqlx::query!(
             r#"
-            INSERT INTO service_logs (service_id, user_id, action, reason)
-            VALUES ($1, $2, 'auto_deactivation', 'Expiration de la p?riode active')
+            INSERT INTO service_logs (service_id, user_id, action, reason, created_at)
+            VALUES ($1, $2, 'auto_deactivation', 'Expiration de la période active', NOW())
             "#,
             service.id,
             service.user_id

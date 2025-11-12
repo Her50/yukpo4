@@ -50,9 +50,9 @@ pub struct LiveSessionAnalytics {
     pub hls_viewers: i32,
     pub webrtc_viewers: i32,
     pub total_watch_time_seconds: i64,
-    pub average_watch_time_seconds: f64,
+    pub average_watch_time_seconds: Option<f64>,
     pub conversions: i32,
-    pub revenue_cfa: f64,
+    pub revenue_cfa: Option<f64>,
     pub last_synced_at: DateTime<Utc>,
 }
 

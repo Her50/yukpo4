@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT liked AS \"liked: Option<bool>\", saved AS \"saved: Option<bool>\"\n            FROM content_engagement\n            WHERE user_id = $1 AND content_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "liked: Option<bool>",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "saved: Option<bool>",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "cf0bae51ebc7b7125f69f3aa2741456d3bf5d8b0a6cff4b5bde15ccc0eca1557"
+}

@@ -2,16 +2,16 @@ use crate::{
     core::types::{AppError, AppResult},
     models::delivery_model::{
         ClientRating, Courier, CourierApplication, CourierAsset, CourierRating,
-        DeliveryApplicationStatus, DeliveryCancelReason, DeliveryCourierStatus, DeliveryParcel,
-        DeliveryPricing, DeliveryRecipient, DeliveryRecipientUpdate, DeliveryStatus,
-        DeliveryStatusEvent, DeliverySummary, DeliveryTrackingPoint, GeoPoint, ParcelType,
-        ShoppingItemStatus, ShoppingOrder, ShoppingOrderItem, ShoppingStatus,
+        DeliveryApplicationStatus, DeliveryCancelReason, DeliveryCourierStatus, DeliveryEngineType,
+        DeliveryParcel, DeliveryPricing, DeliveryRecipient, DeliveryRecipientUpdate,
+        DeliveryStatus, DeliveryStatusEvent, DeliverySummary, DeliveryTrackingPoint, GeoPoint,
+        ParcelType, ShoppingItemStatus, ShoppingOrder, ShoppingOrderItem, ShoppingStatus,
     },
 };
 use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::types::BigDecimal;
 use sqlx::{postgres::PgQueryResult, PgPool};
 use uuid::Uuid;
 
@@ -117,16 +117,15 @@ impl DeliveryRepository {
         delivery_id: Uuid,
         limit: i64,
     ) -> AppResult<Vec<DeliveryStatusEvent>> {
-        let events = sqlx::query_as!(
-            DeliveryStatusEvent,
+        let rows = sqlx::query!(
             r#"
             SELECT
                 id,
                 delivery_id,
                 status AS "status: DeliveryStatus",
                 occurred_at,
-                payload,
-                recorded_by
+                COALESCE(payload, '{}'::jsonb) AS "payload!: serde_json::Value",
+                recorded_by AS "recorded_by?: i32"
             FROM delivery_status_events
             WHERE delivery_id = $1
             ORDER BY occurred_at ASC
@@ -138,7 +137,17 @@ impl DeliveryRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(events)
+        Ok(rows
+            .into_iter()
+            .map(|row| DeliveryStatusEvent {
+                id: row.id,
+                delivery_id: row.delivery_id,
+                status: row.status,
+                occurred_at: row.occurred_at,
+                payload: row.payload,
+                recorded_by: row.recorded_by,
+            })
+            .collect())
     }
 
     /// Historique des positions partagées par le destinataire
@@ -147,17 +156,16 @@ impl DeliveryRepository {
         delivery_id: Uuid,
         limit: i64,
     ) -> AppResult<Vec<DeliveryRecipientUpdate>> {
-        let updates = sqlx::query_as!(
-            DeliveryRecipientUpdate,
+        let rows = sqlx::query!(
             r#"
             SELECT
                 id,
                 delivery_id,
-                submitted_by,
+                submitted_by AS "submitted_by?: i32",
                 latitude,
                 longitude,
-                address,
-                created_at
+                address      AS "address?: String",
+                created_at   AS "created_at!: chrono::DateTime<Utc>"
             FROM delivery_recipient_updates
             WHERE delivery_id = $1
             ORDER BY created_at DESC
@@ -169,27 +177,37 @@ impl DeliveryRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(updates)
+        Ok(rows
+            .into_iter()
+            .map(|row| DeliveryRecipientUpdate {
+                id: row.id,
+                delivery_id: row.delivery_id,
+                submitted_by: row.submitted_by,
+                latitude: row.latitude,
+                longitude: row.longitude,
+                address: row.address,
+                created_at: row.created_at,
+            })
+            .collect())
     }
 
     /// Retourne la liste des typologies de colis
     pub async fn list_parcel_types(&self) -> AppResult<Vec<ParcelType>> {
-        let rows = sqlx::query_as!(
-            ParcelType,
+        let rows = sqlx::query!(
             r#"
             SELECT
                 id,
                 slug,
                 display_name,
                 description,
-                max_weight_kg,
-                max_volume_cm3,
-                requires_isothermal,
-                requires_fragile_handling,
-                requires_secure_box,
-                requires_document_protection,
-                metadata,
-                created_at
+                max_weight_kg      AS "max_weight_kg?: BigDecimal",
+                max_volume_cm3     AS "max_volume_cm3?: BigDecimal",
+                requires_isothermal    AS "requires_isothermal!: bool",
+                requires_fragile_handling AS "requires_fragile_handling!: bool",
+                requires_secure_box    AS "requires_secure_box!: bool",
+                requires_document_protection AS "requires_document_protection!: bool",
+                COALESCE(metadata, '{}'::jsonb) AS "metadata!: serde_json::Value",
+                created_at         AS "created_at!: chrono::DateTime<Utc>"
             FROM parcel_types
             ORDER BY display_name ASC
             "#
@@ -197,7 +215,23 @@ impl DeliveryRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows)
+        Ok(rows
+            .into_iter()
+            .map(|row| ParcelType {
+                id: row.id,
+                slug: row.slug,
+                display_name: row.display_name,
+                description: row.description,
+                max_weight_kg: row.max_weight_kg,
+                max_volume_cm3: row.max_volume_cm3,
+                requires_isothermal: row.requires_isothermal,
+                requires_fragile_handling: row.requires_fragile_handling,
+                requires_secure_box: row.requires_secure_box,
+                requires_document_protection: row.requires_document_protection,
+                metadata: row.metadata,
+                created_at: row.created_at,
+            })
+            .collect())
     }
 
     /// Crée une candidature de coursier
@@ -205,8 +239,7 @@ impl DeliveryRepository {
         &self,
         payload: NewCourierApplication,
     ) -> AppResult<CourierApplication> {
-        let record = sqlx::query_as!(
-            CourierApplication,
+        let row = sqlx::query!(
             r#"
             INSERT INTO courier_applications (
                 user_id,
@@ -220,16 +253,16 @@ impl DeliveryRepository {
             RETURNING
                 id,
                 user_id,
-                status AS "status: DeliveryApplicationStatus",
-                submitted_at,
-                reviewed_at,
+                status          AS "status: DeliveryApplicationStatus",
+                submitted_at    AS "submitted_at?: chrono::DateTime<Utc>",
+                reviewed_at     AS "reviewed_at?: chrono::DateTime<Utc>",
                 reviewer_id,
                 rejection_reason,
-                profile_data,
-                documents,
-                notes,
-                created_at,
-                updated_at
+                profile_data    AS "profile_data!: serde_json::Value",
+                documents       AS "documents!: serde_json::Value",
+                notes           AS "notes!: serde_json::Value",
+                created_at      AS "created_at!: chrono::DateTime<Utc>",
+                updated_at      AS "updated_at!: chrono::DateTime<Utc>"
             "#,
             payload.user_id,
             payload.status as DeliveryApplicationStatus,
@@ -241,7 +274,20 @@ impl DeliveryRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(record)
+        Ok(CourierApplication {
+            id: row.id,
+            user_id: row.user_id,
+            status: row.status,
+            submitted_at: row.submitted_at,
+            reviewed_at: row.reviewed_at,
+            reviewer_id: row.reviewer_id,
+            rejection_reason: row.rejection_reason,
+            profile_data: row.profile_data,
+            documents: row.documents,
+            notes: row.notes,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
     }
 
     /// Met à jour le statut d'une candidature
@@ -252,8 +298,7 @@ impl DeliveryRepository {
         reviewer_id: Option<i32>,
         rejection_reason: Option<String>,
     ) -> AppResult<CourierApplication> {
-        let record = sqlx::query_as!(
-            CourierApplication,
+        let row = sqlx::query!(
             r#"
             UPDATE courier_applications
             SET status = $2,
@@ -265,16 +310,16 @@ impl DeliveryRepository {
             RETURNING
                 id,
                 user_id,
-                status AS "status: DeliveryApplicationStatus",
-                submitted_at,
-                reviewed_at,
+                status          AS "status: DeliveryApplicationStatus",
+                submitted_at    AS "submitted_at?: chrono::DateTime<Utc>",
+                reviewed_at     AS "reviewed_at?: chrono::DateTime<Utc>",
                 reviewer_id,
                 rejection_reason,
-                profile_data,
-                documents,
-                notes,
-                created_at,
-                updated_at
+                profile_data    AS "profile_data!: serde_json::Value",
+                documents       AS "documents!: serde_json::Value",
+                notes           AS "notes!: serde_json::Value",
+                created_at      AS "created_at!: chrono::DateTime<Utc>",
+                updated_at      AS "updated_at!: chrono::DateTime<Utc>"
             "#,
             application_id,
             status as DeliveryApplicationStatus,
@@ -284,7 +329,20 @@ impl DeliveryRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(record)
+        Ok(CourierApplication {
+            id: row.id,
+            user_id: row.user_id,
+            status: row.status,
+            submitted_at: row.submitted_at,
+            reviewed_at: row.reviewed_at,
+            reviewer_id: row.reviewer_id,
+            rejection_reason: row.rejection_reason,
+            profile_data: row.profile_data,
+            documents: row.documents,
+            notes: row.notes,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
     }
 
     /// Retourne la candidature active d'un utilisateur si elle existe
@@ -292,22 +350,21 @@ impl DeliveryRepository {
         &self,
         user_id: i32,
     ) -> AppResult<Option<CourierApplication>> {
-        let record = sqlx::query_as!(
-            CourierApplication,
+        let row = sqlx::query!(
             r#"
             SELECT
                 id,
                 user_id,
-                status AS "status: DeliveryApplicationStatus",
-                submitted_at,
-                reviewed_at,
+                status          AS "status: DeliveryApplicationStatus",
+                submitted_at    AS "submitted_at?: chrono::DateTime<Utc>",
+                reviewed_at     AS "reviewed_at?: chrono::DateTime<Utc>",
                 reviewer_id,
                 rejection_reason,
-                profile_data,
-                documents,
-                notes,
-                created_at,
-                updated_at
+                profile_data    AS "profile_data!: serde_json::Value",
+                documents       AS "documents!: serde_json::Value",
+                notes           AS "notes!: serde_json::Value",
+                created_at      AS "created_at!: chrono::DateTime<Utc>",
+                updated_at      AS "updated_at!: chrono::DateTime<Utc>"
             FROM courier_applications
             WHERE user_id = $1
             ORDER BY created_at DESC
@@ -318,26 +375,38 @@ impl DeliveryRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(record)
+        Ok(row.map(|row| CourierApplication {
+            id: row.id,
+            user_id: row.user_id,
+            status: row.status,
+            submitted_at: row.submitted_at,
+            reviewed_at: row.reviewed_at,
+            reviewer_id: row.reviewer_id,
+            rejection_reason: row.rejection_reason,
+            profile_data: row.profile_data,
+            documents: row.documents,
+            notes: row.notes,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }))
     }
 
     /// Récupère le profil coursier associé à un utilisateur
     pub async fn find_courier_by_user(&self, user_id: i32) -> AppResult<Option<Courier>> {
-        let record = sqlx::query_as!(
-            Courier,
+        let row = sqlx::query!(
             r#"
             SELECT
                 id,
                 user_id,
-                application_id,
-                status AS "status: DeliveryCourierStatus",
-                rating_average,
-                rating_count,
-                bio,
-                hired_at,
-                suspended_at,
-                created_at,
-                updated_at
+                application_id    AS "application_id?: Uuid",
+                status          AS "status: DeliveryCourierStatus",
+                rating_average  AS "rating_average?: BigDecimal",
+                rating_count     AS "rating_count?: i32",
+                bio              AS "bio?: String",
+                hired_at       AS "hired_at?: chrono::DateTime<Utc>",
+                suspended_at   AS "suspended_at?: chrono::DateTime<Utc>",
+                created_at     AS "created_at!: chrono::DateTime<Utc>",
+                updated_at     AS "updated_at!: chrono::DateTime<Utc>"
             FROM couriers
             WHERE user_id = $1
             LIMIT 1
@@ -347,25 +416,36 @@ impl DeliveryRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(record)
+        Ok(row.map(|row| Courier {
+            id: row.id,
+            user_id: row.user_id,
+            application_id: row.application_id,
+            status: row.status,
+            rating_average: row.rating_average.unwrap_or_else(|| BigDecimal::from(0)),
+            rating_count: row.rating_count.unwrap_or(0),
+            bio: row.bio,
+            hired_at: row.hired_at,
+            suspended_at: row.suspended_at,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }))
     }
 
     pub async fn find_courier_by_id(&self, courier_id: Uuid) -> AppResult<Option<Courier>> {
-        let record = sqlx::query_as!(
-            Courier,
+        let row = sqlx::query!(
             r#"
             SELECT
                 id,
                 user_id,
-                application_id,
-                status AS "status: DeliveryCourierStatus",
-                rating_average,
-                rating_count,
-                bio,
-                hired_at,
-                suspended_at,
-                created_at,
-                updated_at
+                application_id    AS "application_id?: Uuid",
+                status          AS "status: DeliveryCourierStatus",
+                rating_average  AS "rating_average?: BigDecimal",
+                rating_count     AS "rating_count?: i32",
+                bio              AS "bio?: String",
+                hired_at       AS "hired_at?: chrono::DateTime<Utc>",
+                suspended_at   AS "suspended_at?: chrono::DateTime<Utc>",
+                created_at     AS "created_at!: chrono::DateTime<Utc>",
+                updated_at     AS "updated_at!: chrono::DateTime<Utc>"
             FROM couriers
             WHERE id = $1
             "#,
@@ -374,13 +454,24 @@ impl DeliveryRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(record)
+        Ok(row.map(|row| Courier {
+            id: row.id,
+            user_id: row.user_id,
+            application_id: row.application_id,
+            status: row.status,
+            rating_average: row.rating_average.unwrap_or_else(|| BigDecimal::from(0)),
+            rating_count: row.rating_count.unwrap_or(0),
+            bio: row.bio,
+            hired_at: row.hired_at,
+            suspended_at: row.suspended_at,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }))
     }
 
     /// Finalise l'activation d'un coursier
     pub async fn create_courier_profile(&self, payload: NewCourierProfile) -> AppResult<Courier> {
-        let record = sqlx::query_as!(
-            Courier,
+        let row = sqlx::query!(
             r#"
             INSERT INTO couriers (
                 user_id,
@@ -395,15 +486,15 @@ impl DeliveryRepository {
             RETURNING
                 id,
                 user_id,
-                application_id,
-                status AS "status: DeliveryCourierStatus",
-                rating_average,
-                rating_count,
-                bio,
-                hired_at,
-                suspended_at,
-                created_at,
-                updated_at
+                application_id    AS "application_id?: Uuid",
+                status            AS "status: DeliveryCourierStatus",
+                rating_average    AS "rating_average!: BigDecimal",
+                rating_count       AS "rating_count!: i32",
+                bio                AS "bio?: String",
+                hired_at           AS "hired_at?: chrono::DateTime<Utc>",
+                suspended_at       AS "suspended_at?: chrono::DateTime<Utc>",
+                created_at         AS "created_at!: chrono::DateTime<Utc>",
+                updated_at         AS "updated_at!: chrono::DateTime<Utc>"
             "#,
             payload.user_id,
             payload.application_id,
@@ -413,13 +504,24 @@ impl DeliveryRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(record)
+        Ok(Courier {
+            id: row.id,
+            user_id: row.user_id,
+            application_id: row.application_id,
+            status: row.status,
+            rating_average: row.rating_average,
+            rating_count: row.rating_count,
+            bio: row.bio,
+            hired_at: row.hired_at,
+            suspended_at: row.suspended_at,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
     }
 
     /// Ajoute un engin au profil coursier
     pub async fn upsert_courier_asset(&self, payload: NewCourierAsset) -> AppResult<CourierAsset> {
-        let record = sqlx::query_as!(
-            CourierAsset,
+        let row = sqlx::query!(
             r#"
             INSERT INTO courier_assets (
                 courier_id,
@@ -446,16 +548,16 @@ impl DeliveryRepository {
             RETURNING
                 id,
                 courier_id,
-                engine_type AS "engine_type: DeliveryEngineType",
-                is_primary,
-                max_weight_kg,
-                max_volume_cm3,
-                equipments,
-                available,
-                availability_schedule,
-                documents,
-                created_at,
-                updated_at
+                engine_type             AS "engine_type: DeliveryEngineType",
+                is_primary              AS "is_primary!: bool",
+                max_weight_kg           AS "max_weight_kg?: BigDecimal",
+                max_volume_cm3          AS "max_volume_cm3?: BigDecimal",
+                equipments              AS "equipments!: serde_json::Value",
+                available               AS "available!: bool",
+                availability_schedule   AS "availability_schedule?: serde_json::Value",
+                documents               AS "documents?: serde_json::Value",
+                created_at              AS "created_at!: chrono::DateTime<Utc>",
+                updated_at              AS "updated_at!: chrono::DateTime<Utc>"
             "#,
             payload.courier_id,
             payload.engine_type as DeliveryEngineType,
@@ -470,7 +572,20 @@ impl DeliveryRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(record)
+        Ok(CourierAsset {
+            id: row.id,
+            courier_id: row.courier_id,
+            engine_type: row.engine_type,
+            is_primary: row.is_primary,
+            max_weight_kg: row.max_weight_kg,
+            max_volume_cm3: row.max_volume_cm3,
+            equipments: row.equipments,
+            available: row.available,
+            availability_schedule: row.availability_schedule,
+            documents: row.documents,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
     }
 
     /// Crée une nouvelle course (parcel + delivery + statut initial)
@@ -480,30 +595,29 @@ impl DeliveryRepository {
     ) -> AppResult<DeliverySummary> {
         let mut tx = self.pool.begin().await?;
 
-        let parcel = sqlx::query_as!(
-            DeliveryParcel,
+        let parcel_row = sqlx::query!(
             r#"
-            INSERT INTO delivery_parcels (
-                type_id,
-                weight_kg,
-                volume_cm3,
-                declared_value,
+             INSERT INTO delivery_parcels (
+                 type_id,
+                 weight_kg,
+                 volume_cm3,
+                 declared_value,
+                 notes,
+                 photos,
+                 constraints
+             )
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING
+                 id,
+                 type_id,
+                 weight_kg       AS "weight_kg?: BigDecimal",
+                 volume_cm3      AS "volume_cm3?: BigDecimal",
+                 declared_value  AS "declared_value?: BigDecimal",
                 notes,
-                photos,
-                constraints
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING
-                id,
-                type_id,
-                weight_kg,
-                volume_cm3,
-                declared_value,
-                notes,
-                photos,
-                constraints,
-                created_at
-            "#,
+                photos         AS "photos!: serde_json::Value",
+                constraints    AS "constraints!: serde_json::Value",
+               created_at      AS "created_at!: chrono::DateTime<Utc>"
+             "#,
             payload.parcel.type_id,
             payload.parcel.weight_kg,
             payload.parcel.volume_cm3,
@@ -514,6 +628,18 @@ impl DeliveryRepository {
         )
         .fetch_one(&mut *tx)
         .await?;
+
+        let parcel = DeliveryParcel {
+            id: parcel_row.id,
+            type_id: parcel_row.type_id,
+            weight_kg: parcel_row.weight_kg,
+            volume_cm3: parcel_row.volume_cm3,
+            declared_value: parcel_row.declared_value,
+            notes: parcel_row.notes,
+            photos: parcel_row.photos,
+            constraints: parcel_row.constraints,
+            created_at: parcel_row.created_at,
+        };
 
         let recipient = payload.recipient.as_ref();
         let recipient_user_id = recipient.and_then(|r| r.user_id);
@@ -561,8 +687,8 @@ impl DeliveryRepository {
                 $2,
                 $3,
                 $4,
-                ST_SetSRID(ST_MakePoint($5, $6), 4326)::geography,
-                ST_SetSRID(ST_MakePoint($7, $8), 4326)::geography,
+                ST_SetSRID(ST_MakePoint($5::double precision, $6::double precision), 4326)::geography,
+                ST_SetSRID(ST_MakePoint($7::double precision, $8::double precision), 4326)::geography,
                 $9,
                 $10,
                 $11,
@@ -571,40 +697,47 @@ impl DeliveryRepository {
                 $14,
                 $15,
                 CASE
-                    WHEN $16 IS NOT NULL AND $17 IS NOT NULL
-                    THEN ST_SetSRID(ST_MakePoint($17, $16), 4326)::geography
+                    WHEN $16::double precision IS NOT NULL AND $17::double precision IS NOT NULL
+                    THEN ST_SetSRID(ST_MakePoint($17::double precision, $16::double precision), 4326)::geography
                     ELSE NULL
                 END,
                 $18,
                 $19,
                 $20,
-                $21
+                $21,
+                $22
             )
             RETURNING
                 id,
-                status AS "status: DeliveryStatus",
+                status                     AS "status: DeliveryStatus",
                 creator_id,
                 courier_id,
-                ST_Y(pickup_location::geometry) AS "pickup_lat!",
-                ST_X(pickup_location::geometry) AS "pickup_lng!",
-                ST_Y(dropoff_location::geometry) AS "dropoff_lat!",
-                ST_X(dropoff_location::geometry) AS "dropoff_lng!",
-                dropoff_address,
-                tracking_token,
-                recipient_user_id,
-                recipient_contact_name,
-                recipient_contact_phone,
-                recipient_notes,
-                recipient_tracking_token,
-                recipient_dropoff_override,
-                recipient_dropoff_address,
-                recipient_dropoff_updated_at,
-                recipient_chat_thread_id,
-                distance_meters,
-                estimated_duration_seconds,
-                actual_duration_seconds,
-                requested_at,
-                delivered_at
+                ST_Y(pickup_location::geometry)  AS "pickup_lat!: f64",
+                ST_X(pickup_location::geometry)  AS "pickup_lng!: f64",
+                ST_Y(dropoff_location::geometry) AS "dropoff_lat!: f64",
+                ST_X(dropoff_location::geometry) AS "dropoff_lng!: f64",
+                dropoff_address          AS "dropoff_address?: String",
+                tracking_token            AS "tracking_token!: Uuid",
+                recipient_user_id        AS "recipient_user_id?: i32",
+                recipient_contact_name   AS "recipient_contact_name?: String",
+                recipient_contact_phone  AS "recipient_contact_phone?: String",
+                recipient_notes          AS "recipient_notes?: String",
+                recipient_tracking_token  AS "recipient_tracking_token?: Uuid",
+                ST_Y(recipient_dropoff_override::geometry) AS "recipient_dropoff_lat?: f64",
+                ST_X(recipient_dropoff_override::geometry) AS "recipient_dropoff_lng?: f64",
+                recipient_dropoff_address AS "recipient_dropoff_address?: String",
+                recipient_dropoff_updated_at AS "recipient_dropoff_updated_at?: chrono::DateTime<Utc>",
+                recipient_chat_thread_id AS "recipient_chat_thread_id?: Uuid",
+                distance_meters            AS "distance_meters?: i32",
+                estimated_duration_seconds AS "estimated_duration_seconds?: i32",
+                actual_duration_seconds    AS "actual_duration_seconds?: i32",
+                requested_at              AS "requested_at!: chrono::DateTime<Utc>",
+                delivered_at              AS "delivered_at?: chrono::DateTime<Utc>",
+                shopping_required         AS "shopping_required!: bool",
+                ST_Y(store_location::geometry) AS "store_location_lat?: f64",
+                ST_X(store_location::geometry) AS "store_location_lng?: f64",
+                store_name                AS "store_name?: String",
+                metadata                  AS "metadata!: serde_json::Value"
             "#,
             payload.creator_id,
             payload.courier_id,
@@ -665,7 +798,7 @@ impl DeliveryRepository {
                 latitude: delivery_row.dropoff_lat,
                 longitude: delivery_row.dropoff_lng,
             },
-            dropoff_address: delivery_row.dropoff_address,
+            dropoff_address: delivery_row.dropoff_address.clone(),
             distance_meters: delivery_row.distance_meters,
             estimated_duration_seconds: delivery_row.estimated_duration_seconds,
             actual_duration_seconds: delivery_row.actual_duration_seconds,
@@ -674,18 +807,24 @@ impl DeliveryRepository {
             tracking_token: delivery_row.tracking_token,
             recipient: Some(DeliveryRecipient {
                 user_id: delivery_row.recipient_user_id,
-                contact_name: delivery_row.recipient_contact_name,
-                contact_phone: delivery_row.recipient_contact_phone,
-                notes: delivery_row.recipient_notes,
+                contact_name: delivery_row.recipient_contact_name.clone(),
+                contact_phone: delivery_row.recipient_contact_phone.clone(),
+                notes: delivery_row.recipient_notes.clone(),
                 tracking_token: delivery_row
                     .recipient_tracking_token
                     .unwrap_or(delivery_row.tracking_token),
-                dropoff_override: delivery_row.recipient_dropoff_override.map(|geo| GeoPoint {
-                    latitude: geo.y(),
-                    longitude: geo.x(),
-                }),
-                dropoff_address: delivery_row.recipient_dropoff_address,
-                dropoff_updated_at: delivery_row.recipient_dropoff_updated_at,
+                dropoff_override: match (
+                    delivery_row.recipient_dropoff_lat,
+                    delivery_row.recipient_dropoff_lng,
+                ) {
+                    (Some(lat), Some(lng)) => Some(GeoPoint {
+                        latitude: lat,
+                        longitude: lng,
+                    }),
+                    _ => None,
+                },
+                dropoff_address: delivery_row.recipient_dropoff_address.clone(),
+                dropoff_updated_at: delivery_row.recipient_dropoff_updated_at.clone(),
                 chat_thread_id: delivery_row.recipient_chat_thread_id,
                 country_code: None,
                 allow_tracking: None,
@@ -699,10 +838,19 @@ impl DeliveryRepository {
                     || recipient.contact_phone.is_some()
                     || recipient.dropoff_override.is_some()
             }),
-            store_name: None,
-            store_location: None,
-            shopping_required: false,
-            metadata: Value::Object(Default::default()),
+            store_name: delivery_row.store_name.clone(),
+            store_location: match (
+                delivery_row.store_location_lat,
+                delivery_row.store_location_lng,
+            ) {
+                (Some(lat), Some(lng)) => Some(GeoPoint {
+                    latitude: lat,
+                    longitude: lng,
+                }),
+                _ => None,
+            },
+            shopping_required: delivery_row.shopping_required,
+            metadata: delivery_row.metadata.clone(),
         };
 
         Ok(summary)
@@ -766,8 +914,8 @@ impl DeliveryRepository {
                 recipient_notes = $5,
                 recipient_chat_thread_id = $6,
                 recipient_dropoff_override = CASE
-                    WHEN $7 IS NOT NULL AND $8 IS NOT NULL
-                    THEN ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography
+                    WHEN $7::double precision IS NOT NULL AND $8::double precision IS NOT NULL
+                    THEN ST_SetSRID(ST_MakePoint($8::double precision, $7::double precision), 4326)::geography
                     ELSE NULL
                 END,
                 recipient_dropoff_address = $9,
@@ -781,11 +929,11 @@ impl DeliveryRepository {
                     'recipient_extras',
                     jsonb_strip_nulls(
                         jsonb_build_object(
-                            'country_code', $10,
-                            'allow_tracking', $11,
-                            'allow_contact', $12,
-                            'consent_granted', $13,
-                            'preferred_language', $14
+                            'country_code', to_jsonb($10::text),
+                            'allow_tracking', to_jsonb($11::bool),
+                            'allow_contact', to_jsonb($12::bool),
+                            'consent_granted', to_jsonb($13::bool),
+                            'preferred_language', to_jsonb($14::text)
                         )
                     )
                 ),
@@ -797,7 +945,8 @@ impl DeliveryRepository {
                 recipient_contact_phone,
                 recipient_notes,
                 recipient_tracking_token,
-                recipient_dropoff_override,
+                ST_Y(recipient_dropoff_override::geometry) AS "recipient_dropoff_lat?: f64",
+                ST_X(recipient_dropoff_override::geometry) AS "recipient_dropoff_lng?: f64",
                 recipient_dropoff_address,
                 recipient_dropoff_updated_at,
                 recipient_chat_thread_id,
@@ -836,10 +985,16 @@ impl DeliveryRepository {
             tracking_token: recipient
                 .recipient_tracking_token
                 .expect("recipient_tracking_token must be generated"),
-            dropoff_override: recipient.recipient_dropoff_override.map(|geo| GeoPoint {
-                latitude: geo.y(),
-                longitude: geo.x(),
-            }),
+            dropoff_override: match (
+                recipient.recipient_dropoff_lat,
+                recipient.recipient_dropoff_lng,
+            ) {
+                (Some(lat), Some(lng)) => Some(GeoPoint {
+                    latitude: lat,
+                    longitude: lng,
+                }),
+                _ => None,
+            },
             dropoff_address: recipient.recipient_dropoff_address,
             dropoff_updated_at: recipient.recipient_dropoff_updated_at,
             chat_thread_id: recipient.recipient_chat_thread_id,
@@ -893,7 +1048,8 @@ impl DeliveryRepository {
                 recipient_contact_phone,
                 recipient_notes,
                 recipient_tracking_token,
-                recipient_dropoff_override,
+                ST_Y(recipient_dropoff_override::geometry) AS "recipient_dropoff_lat?: f64",
+                ST_X(recipient_dropoff_override::geometry) AS "recipient_dropoff_lng?: f64",
                 recipient_dropoff_address,
                 recipient_dropoff_updated_at,
                 recipient_chat_thread_id,
@@ -944,10 +1100,16 @@ impl DeliveryRepository {
             tracking_token: recipient
                 .recipient_tracking_token
                 .expect("recipient_tracking_token must be present"),
-            dropoff_override: recipient.recipient_dropoff_override.map(|geo| GeoPoint {
-                latitude: geo.y(),
-                longitude: geo.x(),
-            }),
+            dropoff_override: match (
+                recipient.recipient_dropoff_lat,
+                recipient.recipient_dropoff_lng,
+            ) {
+                (Some(lat), Some(lng)) => Some(GeoPoint {
+                    latitude: lat,
+                    longitude: lng,
+                }),
+                _ => None,
+            },
             dropoff_address: recipient.recipient_dropoff_address,
             dropoff_updated_at: recipient.recipient_dropoff_updated_at,
             chat_thread_id: recipient.recipient_chat_thread_id,
@@ -967,45 +1129,44 @@ impl DeliveryRepository {
 
     /// Affecte un tarif à une livraison
     pub async fn upsert_pricing(&self, payload: NewDeliveryPricing) -> AppResult<DeliveryPricing> {
-        let record = sqlx::query_as!(
-            DeliveryPricing,
+        let row = sqlx::query!(
             r#"
-            INSERT INTO delivery_pricing (
-                delivery_id,
-                base_price_cents,
-                distance_price_cents,
-                surcharge_cents,
-                discount_cents,
-                currency,
-                details,
-                shopping_cost_cents,
-                shopping_discount_cents
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (delivery_id)
-            DO UPDATE SET
-                base_price_cents = EXCLUDED.base_price_cents,
-                distance_price_cents = EXCLUDED.distance_price_cents,
-                surcharge_cents = EXCLUDED.surcharge_cents,
-                discount_cents = EXCLUDED.discount_cents,
-                currency = EXCLUDED.currency,
-                details = EXCLUDED.details,
-                shopping_cost_cents = EXCLUDED.shopping_cost_cents,
-                shopping_discount_cents = EXCLUDED.shopping_discount_cents,
-                calculated_at = NOW()
-            RETURNING
-                id,
-                delivery_id,
-                base_price_cents,
-                distance_price_cents,
-                surcharge_cents,
-                discount_cents,
-                currency,
-                calculated_at,
-                details,
-                shopping_cost_cents,
-                shopping_discount_cents
-            "#,
+             INSERT INTO delivery_pricing (
+                 delivery_id,
+                 base_price_cents,
+                 distance_price_cents,
+                 surcharge_cents,
+                 discount_cents,
+                 currency,
+                 details,
+                 shopping_cost_cents,
+                 shopping_discount_cents
+             )
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             ON CONFLICT (delivery_id)
+             DO UPDATE SET
+                 base_price_cents = EXCLUDED.base_price_cents,
+                 distance_price_cents = EXCLUDED.distance_price_cents,
+                 surcharge_cents = EXCLUDED.surcharge_cents,
+                 discount_cents = EXCLUDED.discount_cents,
+                 currency = EXCLUDED.currency,
+                 details = EXCLUDED.details,
+                 shopping_cost_cents = EXCLUDED.shopping_cost_cents,
+                 shopping_discount_cents = EXCLUDED.shopping_discount_cents,
+                 calculated_at = NOW()
+             RETURNING
+                 id,
+                 delivery_id,
+                base_price_cents      AS "base_price_cents!: i32",
+                distance_price_cents  AS "distance_price_cents!: i32",
+                surcharge_cents       AS "surcharge_cents!: i32",
+                discount_cents        AS "discount_cents!: i32",
+                currency              AS "currency!: String",
+                calculated_at         AS "calculated_at?: chrono::DateTime<Utc>",
+                COALESCE(details, '{}'::jsonb) AS "details!: serde_json::Value",
+                shopping_cost_cents   AS "shopping_cost_cents!: i32",
+                shopping_discount_cents AS "shopping_discount_cents!: i32"
+             "#,
             payload.delivery_id,
             payload.base_price_cents,
             payload.distance_price_cents,
@@ -1019,37 +1180,60 @@ impl DeliveryRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(record)
+        Ok(DeliveryPricing {
+            id: row.id,
+            delivery_id: row.delivery_id,
+            base_price_cents: row.base_price_cents,
+            distance_price_cents: row.distance_price_cents,
+            surcharge_cents: row.surcharge_cents,
+            discount_cents: row.discount_cents,
+            currency: row.currency,
+            calculated_at: row.calculated_at.unwrap_or_else(|| chrono::Utc::now()),
+            details: row.details,
+            shopping_cost_cents: row.shopping_cost_cents,
+            shopping_discount_cents: row.shopping_discount_cents,
+        })
     }
 
     pub async fn get_pricing_by_delivery(
         &self,
         delivery_id: Uuid,
     ) -> AppResult<Option<DeliveryPricing>> {
-        let pricing = sqlx::query_as!(
-            DeliveryPricing,
+        let pricing = sqlx::query!(
             r#"
-            SELECT
-                id,
-                delivery_id,
-                base_price_cents,
-                distance_price_cents,
-                surcharge_cents,
-                discount_cents,
-                currency,
-                calculated_at,
-                details,
-                shopping_cost_cents,
-                shopping_discount_cents
-            FROM delivery_pricing
-            WHERE delivery_id = $1
-            "#,
+             SELECT
+                 id,
+                 delivery_id,
+                 base_price_cents      AS "base_price_cents!: i32",
+                 distance_price_cents  AS "distance_price_cents!: i32",
+                 surcharge_cents       AS "surcharge_cents!: i32",
+                 discount_cents        AS "discount_cents!: i32",
+                 currency              AS "currency!: String",
+                 calculated_at         AS "calculated_at?: chrono::DateTime<Utc>",
+                 COALESCE(details, '{}'::jsonb) AS "details!: serde_json::Value",
+                 shopping_cost_cents   AS "shopping_cost_cents!: i32",
+                 shopping_discount_cents AS "shopping_discount_cents!: i32"
+             FROM delivery_pricing
+             WHERE delivery_id = $1
+             "#,
             delivery_id
         )
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(pricing)
+        Ok(pricing.map(|row| DeliveryPricing {
+            id: row.id,
+            delivery_id: row.delivery_id,
+            base_price_cents: row.base_price_cents,
+            distance_price_cents: row.distance_price_cents,
+            surcharge_cents: row.surcharge_cents,
+            discount_cents: row.discount_cents,
+            currency: row.currency,
+            calculated_at: row.calculated_at.unwrap_or_else(|| chrono::Utc::now()),
+            details: row.details,
+            shopping_cost_cents: row.shopping_cost_cents,
+            shopping_discount_cents: row.shopping_discount_cents,
+        }))
     }
 
     /// Récupère le résumé d'une livraison
@@ -1064,31 +1248,32 @@ impl DeliveryRepository {
                 status AS "status: DeliveryStatus",
                 creator_id,
                 courier_id,
-                ST_Y(pickup_location::geometry) AS "pickup_lat!",
-                ST_X(pickup_location::geometry) AS "pickup_lng!",
-                ST_Y(dropoff_location::geometry) AS "dropoff_lat!",
-                ST_X(dropoff_location::geometry) AS "dropoff_lng!",
-                dropoff_address,
-                distance_meters,
-                estimated_duration_seconds,
-                actual_duration_seconds,
-                requested_at,
-                delivered_at,
-                tracking_token,
-                recipient_user_id,
-                recipient_contact_name,
-                recipient_contact_phone,
-                recipient_notes,
-                recipient_tracking_token,
-                recipient_dropoff_override,
-                recipient_dropoff_address,
-                recipient_dropoff_updated_at,
-                recipient_chat_thread_id,
-                store_name,
-                ST_Y(store_location::geometry) AS "store_lat?",
-                ST_X(store_location::geometry) AS "store_lng?",
-                shopping_required,
-                metadata
+                ST_Y(pickup_location::geometry) AS "pickup_lat!: f64",
+                ST_X(pickup_location::geometry) AS "pickup_lng!: f64",
+                ST_Y(dropoff_location::geometry) AS "dropoff_lat!: f64",
+                ST_X(dropoff_location::geometry) AS "dropoff_lng!: f64",
+                dropoff_address AS "dropoff_address?: String",
+                distance_meters AS "distance_meters?: i32",
+                estimated_duration_seconds AS "estimated_duration_seconds?: i32",
+                actual_duration_seconds AS "actual_duration_seconds?: i32",
+                requested_at AS "requested_at!: chrono::DateTime<Utc>",
+                delivered_at AS "delivered_at?: chrono::DateTime<Utc>",
+                tracking_token AS "tracking_token!: Uuid",
+                recipient_user_id AS "recipient_user_id?: i32",
+                recipient_contact_name AS "recipient_contact_name?: String",
+                recipient_contact_phone AS "recipient_contact_phone?: String",
+                recipient_notes AS "recipient_notes?: String",
+                recipient_tracking_token AS "recipient_tracking_token?: Uuid",
+                ST_Y(recipient_dropoff_override::geometry) AS "recipient_dropoff_lat?: f64",
+                ST_X(recipient_dropoff_override::geometry) AS "recipient_dropoff_lng?: f64",
+                recipient_dropoff_address AS "recipient_dropoff_address?: String",
+                recipient_dropoff_updated_at AS "recipient_dropoff_updated_at?: chrono::DateTime<Utc>",
+                recipient_chat_thread_id AS "recipient_chat_thread_id?: Uuid",
+                store_name AS "store_name?: String",
+                ST_Y(store_location::geometry) AS "store_lat?: f64",
+                ST_X(store_location::geometry) AS "store_lng?: f64",
+                COALESCE(shopping_required, FALSE) AS "shopping_required!: bool",
+                COALESCE(metadata, '{}'::jsonb) AS "metadata!: serde_json::Value"
             FROM deliveries
             WHERE id = $1
             "#,
@@ -1098,26 +1283,46 @@ impl DeliveryRepository {
         .await?;
 
         if let Some(row) = row {
-            let extras = row
-                .metadata
-                .as_ref()
-                .and_then(|meta| meta.get("recipient_extras"))
+            let metadata = row.metadata;
+
+            let extras = metadata
+                .get("recipient_extras")
                 .cloned()
                 .unwrap_or_else(|| Value::Object(Default::default()));
+
+            let dropoff_address = row.dropoff_address;
+            let distance_meters = row.distance_meters;
+            let estimated_duration_seconds = row.estimated_duration_seconds;
+            let actual_duration_seconds = row.actual_duration_seconds;
+            let recipient_dropoff_lat = row.recipient_dropoff_lat;
+            let recipient_dropoff_lng = row.recipient_dropoff_lng;
+            let recipient_dropoff_address = row.recipient_dropoff_address;
+            let recipient_dropoff_updated_at = row.recipient_dropoff_updated_at;
+            let recipient_chat_thread_id = row.recipient_chat_thread_id;
+            let store_lat = row.store_lat;
+            let store_lng = row.store_lng;
+            let store_name = row.store_name;
+            let shopping_required = row.shopping_required;
+            let requested_at = row.requested_at;
+            let delivered_at = row.delivered_at;
+            let tracking_token = row.tracking_token;
 
             let recipient = Some(DeliveryRecipient {
                 user_id: row.recipient_user_id,
                 contact_name: row.recipient_contact_name,
                 contact_phone: row.recipient_contact_phone,
                 notes: row.recipient_notes,
-                tracking_token: row.recipient_tracking_token.unwrap_or(row.tracking_token),
-                dropoff_override: row.recipient_dropoff_override.map(|geo| GeoPoint {
-                    latitude: geo.y(),
-                    longitude: geo.x(),
-                }),
-                dropoff_address: row.recipient_dropoff_address,
-                dropoff_updated_at: row.recipient_dropoff_updated_at,
-                chat_thread_id: row.recipient_chat_thread_id,
+                tracking_token: row.recipient_tracking_token.unwrap_or(tracking_token),
+                dropoff_override: match (recipient_dropoff_lat, recipient_dropoff_lng) {
+                    (Some(lat), Some(lng)) => Some(GeoPoint {
+                        latitude: lat,
+                        longitude: lng,
+                    }),
+                    _ => None,
+                },
+                dropoff_address: recipient_dropoff_address,
+                dropoff_updated_at: recipient_dropoff_updated_at,
+                chat_thread_id: recipient_chat_thread_id,
                 country_code: extras
                     .get("country_code")
                     .and_then(|v| v.as_str())
@@ -1150,26 +1355,24 @@ impl DeliveryRepository {
                     latitude: row.dropoff_lat,
                     longitude: row.dropoff_lng,
                 },
-                dropoff_address: row.dropoff_address,
-                distance_meters: row.distance_meters,
-                estimated_duration_seconds: row.estimated_duration_seconds,
-                actual_duration_seconds: row.actual_duration_seconds,
-                requested_at: row.requested_at,
-                delivered_at: row.delivered_at,
-                tracking_token: row.tracking_token,
+                dropoff_address,
+                distance_meters,
+                estimated_duration_seconds,
+                actual_duration_seconds,
+                requested_at,
+                delivered_at,
+                tracking_token,
                 recipient,
-                store_name: row.store_name,
-                store_location: match (row.store_lat, row.store_lng) {
+                store_name,
+                store_location: match (store_lat, store_lng) {
                     (Some(lat), Some(lng)) => Some(GeoPoint {
                         latitude: lat,
                         longitude: lng,
                     }),
                     _ => None,
                 },
-                shopping_required: row.shopping_required.unwrap_or(false),
-                metadata: row
-                    .metadata
-                    .unwrap_or_else(|| Value::Object(Default::default())),
+                shopping_required,
+                metadata,
             }));
         }
 
@@ -1184,15 +1387,16 @@ impl DeliveryRepository {
                 delivery_id,
                 status AS "status: ShoppingStatus",
                 estimated_total_cents,
-                actual_total_cents,
-                currency,
-                store_name,
-                store_location,
-                notes,
-                requires_balance_top_up,
-                payload,
-                created_at,
-                updated_at
+                actual_total_cents AS "actual_total_cents?: i32",
+                currency AS "currency!: String",
+                store_name AS "store_name?: String",
+                ST_Y(store_location::geometry) AS "store_lat?: f64",
+                ST_X(store_location::geometry) AS "store_lng?: f64",
+                notes AS "notes?: String",
+                COALESCE(requires_balance_top_up, FALSE) AS "requires_balance_top_up!: bool",
+                COALESCE(payload, '{}'::jsonb) AS "payload!: serde_json::Value",
+                created_at AS "created_at!: chrono::DateTime<Utc>",
+                updated_at AS "updated_at!: chrono::DateTime<Utc>"
             FROM shopping_orders
             WHERE delivery_id = $1
             "#,
@@ -1201,23 +1405,38 @@ impl DeliveryRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(order.map(|row| ShoppingOrder {
-            id: row.id,
-            delivery_id: row.delivery_id,
-            status: row.status,
-            estimated_total_cents: row.estimated_total_cents,
-            actual_total_cents: row.actual_total_cents,
-            currency: row.currency,
-            store_name: row.store_name,
-            store_location: row.store_location.map(|loc| GeoPoint {
-                latitude: loc.y(),
-                longitude: loc.x(),
-            }),
-            notes: row.notes,
-            requires_balance_top_up: row.requires_balance_top_up,
-            payload: row.payload,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
+        Ok(order.map(|row| {
+            let store_lat = row.store_lat;
+            let store_lng = row.store_lng;
+            let store_name = row.store_name;
+            let notes = row.notes;
+            let currency = row.currency;
+            let actual_total_cents = row.actual_total_cents;
+            let payload = row.payload;
+            let created_at = row.created_at;
+            let updated_at = row.updated_at;
+
+            ShoppingOrder {
+                id: row.id,
+                delivery_id: row.delivery_id,
+                status: row.status,
+                estimated_total_cents: row.estimated_total_cents,
+                actual_total_cents,
+                currency,
+                store_name,
+                store_location: match (store_lat, store_lng) {
+                    (Some(lat), Some(lng)) => Some(GeoPoint {
+                        latitude: lat,
+                        longitude: lng,
+                    }),
+                    _ => None,
+                },
+                notes,
+                requires_balance_top_up: row.requires_balance_top_up,
+                payload,
+                created_at,
+                updated_at,
+            }
         }))
     }
 
@@ -1232,15 +1451,16 @@ impl DeliveryRepository {
                 delivery_id,
                 status AS "status: ShoppingStatus",
                 estimated_total_cents,
-                actual_total_cents,
-                currency,
-                store_name,
-                store_location,
-                notes,
-                requires_balance_top_up,
-                payload,
-                created_at,
-                updated_at
+                actual_total_cents AS "actual_total_cents?: i32",
+                currency AS "currency!: String",
+                store_name AS "store_name?: String",
+                ST_Y(store_location::geometry) AS "store_lat?: f64",
+                ST_X(store_location::geometry) AS "store_lng?: f64",
+                notes AS "notes?: String",
+                COALESCE(requires_balance_top_up, FALSE) AS "requires_balance_top_up!: bool",
+                COALESCE(payload, '{}'::jsonb) AS "payload!: serde_json::Value",
+                created_at AS "created_at!: chrono::DateTime<Utc>",
+                updated_at AS "updated_at!: chrono::DateTime<Utc>"
             FROM shopping_orders
             WHERE id = $1
             "#,
@@ -1249,23 +1469,38 @@ impl DeliveryRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(order.map(|row| ShoppingOrder {
-            id: row.id,
-            delivery_id: row.delivery_id,
-            status: row.status,
-            estimated_total_cents: row.estimated_total_cents,
-            actual_total_cents: row.actual_total_cents,
-            currency: row.currency,
-            store_name: row.store_name,
-            store_location: row.store_location.map(|loc| GeoPoint {
-                latitude: loc.y(),
-                longitude: loc.x(),
-            }),
-            notes: row.notes,
-            requires_balance_top_up: row.requires_balance_top_up,
-            payload: row.payload,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
+        Ok(order.map(|row| {
+            let store_lat = row.store_lat;
+            let store_lng = row.store_lng;
+            let store_name = row.store_name;
+            let notes = row.notes;
+            let currency = row.currency;
+            let actual_total_cents = row.actual_total_cents;
+            let payload = row.payload;
+            let created_at = row.created_at;
+            let updated_at = row.updated_at;
+
+            ShoppingOrder {
+                id: row.id,
+                delivery_id: row.delivery_id,
+                status: row.status,
+                estimated_total_cents: row.estimated_total_cents,
+                actual_total_cents,
+                currency,
+                store_name,
+                store_location: match (store_lat, store_lng) {
+                    (Some(lat), Some(lng)) => Some(GeoPoint {
+                        latitude: lat,
+                        longitude: lng,
+                    }),
+                    _ => None,
+                },
+                notes,
+                requires_balance_top_up: row.requires_balance_top_up,
+                payload,
+                created_at,
+                updated_at,
+            }
         }))
     }
 
@@ -1273,23 +1508,22 @@ impl DeliveryRepository {
         &self,
         shopping_order_id: Uuid,
     ) -> AppResult<Vec<ShoppingOrderItem>> {
-        let rows = sqlx::query_as!(
-            ShoppingOrderItem,
+        let rows = sqlx::query!(
             r#"
             SELECT
                 id,
                 shopping_order_id,
-                product_id,
-                product_name,
-                characteristics,
-                quantity,
-                unit,
-                estimated_price_cents,
-                actual_price_cents,
-                status AS "status: ShoppingItemStatus",
-                metadata,
-                created_at,
-                updated_at
+                product_id            AS "product_id?: Uuid",
+                product_name          AS "product_name!: String",
+                COALESCE(characteristics, '{}'::jsonb) AS "characteristics!: serde_json::Value",
+                quantity               AS "quantity!: BigDecimal",
+                unit                   AS "unit!: String",
+                estimated_price_cents  AS "estimated_price_cents!: i32",
+                 actual_price_cents     AS "actual_price_cents?: i32",
+                status                 AS "status: ShoppingItemStatus",
+                COALESCE(metadata, '{}'::jsonb) AS "metadata!: serde_json::Value",
+                created_at             AS "created_at!: chrono::DateTime<Utc>",
+                updated_at             AS "updated_at!: chrono::DateTime<Utc>"
             FROM shopping_order_items
             WHERE shopping_order_id = $1
             ORDER BY created_at
@@ -1299,7 +1533,26 @@ impl DeliveryRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows)
+        let items = rows
+            .into_iter()
+            .map(|row| ShoppingOrderItem {
+                id: row.id,
+                shopping_order_id: row.shopping_order_id,
+                product_id: row.product_id,
+                product_name: row.product_name,
+                characteristics: row.characteristics,
+                quantity: row.quantity,
+                unit: row.unit,
+                estimated_price_cents: row.estimated_price_cents,
+                actual_price_cents: row.actual_price_cents,
+                status: row.status,
+                metadata: row.metadata,
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+            })
+            .collect();
+
+        Ok(items)
     }
 
     pub async fn insert_shopping_order(
@@ -1307,6 +1560,11 @@ impl DeliveryRepository {
         payload: NewShoppingOrder<'_>,
     ) -> AppResult<(ShoppingOrder, Vec<ShoppingOrderItem>)> {
         let mut tx = self.pool.begin().await?;
+        let (store_lat, store_lng) = payload
+            .store_location
+            .as_ref()
+            .map(|p| (Some(p.latitude), Some(p.longitude)))
+            .unwrap_or((None, None));
 
         let order = sqlx::query!(
             r#"
@@ -1324,31 +1582,36 @@ impl DeliveryRepository {
             )
             VALUES (
                 $1, $2, $3, NULL, $4, $5,
-                CASE WHEN $6 IS NULL THEN NULL ELSE ST_SetSRID(ST_MakePoint($7, $6), 4326)::geography END,
-                $8, $9, $10
+                CASE
+                    WHEN $6::double precision IS NULL OR $7::double precision IS NULL
+                    THEN NULL
+                    ELSE ST_SetSRID(ST_MakePoint($7::double precision, $6::double precision), 4326)::geography
+                END,
+                $8, $9, $10::jsonb
             )
             RETURNING
                 id,
                 delivery_id,
                 status AS "status: ShoppingStatus",
-                estimated_total_cents,
-                actual_total_cents,
-                currency,
-                store_name,
-                store_location,
-                notes,
-                requires_balance_top_up,
-                payload,
-                created_at,
-                updated_at
+                estimated_total_cents AS "estimated_total_cents!: i32",
+                actual_total_cents AS "actual_total_cents?: i32",
+                currency AS "currency!: String",
+                store_name AS "store_name?: String",
+                ST_Y(store_location::geometry) AS "store_lat?: f64",
+                ST_X(store_location::geometry) AS "store_lng?: f64",
+                notes AS "notes?: String",
+                requires_balance_top_up AS "requires_balance_top_up!: bool",
+                payload AS "payload!: serde_json::Value",
+                created_at AS "created_at!: chrono::DateTime<Utc>",
+                updated_at AS "updated_at!: chrono::DateTime<Utc>"
             "#,
             payload.delivery_id,
             payload.status as ShoppingStatus,
             payload.estimated_total_cents,
             payload.currency,
             payload.store_name,
-            payload.store_location.as_ref().map(|p| p.latitude),
-            payload.store_location.as_ref().map(|p| p.longitude),
+            store_lat,
+            store_lng,
             payload.notes,
             payload.requires_balance_top_up,
             payload.payload
@@ -1378,17 +1641,17 @@ impl DeliveryRepository {
                 RETURNING
                     id,
                     shopping_order_id,
-                    product_id,
+                    product_id             AS "product_id?: Uuid",
                     product_name,
-                    characteristics,
-                    quantity,
-                    unit,
-                    estimated_price_cents,
-                    actual_price_cents,
+                    characteristics AS "characteristics!: serde_json::Value",
+                    quantity AS "quantity!: BigDecimal",
+                    unit AS "unit!: String",
+                    estimated_price_cents AS "estimated_price_cents!: i32",
+                    actual_price_cents     AS "actual_price_cents?: i32",
                     status AS "status: ShoppingItemStatus",
-                    metadata,
-                    created_at,
-                    updated_at
+                    metadata AS "metadata!: serde_json::Value",
+                    created_at AS "created_at!: chrono::DateTime<Utc>",
+                    updated_at AS "updated_at!: chrono::DateTime<Utc>"
                 "#,
                 order.id,
                 item.product_id,
@@ -1403,45 +1666,63 @@ impl DeliveryRepository {
             .fetch_one(&mut *tx)
             .await?;
 
+            let product_id = inserted.product_id;
+            let characteristics = inserted.characteristics;
+            let unit = inserted.unit;
+            let estimated_price_cents = inserted.estimated_price_cents;
+            let actual_price_cents = inserted.actual_price_cents;
+            let metadata = inserted.metadata;
+            let created_at = inserted.created_at;
+            let updated_at = inserted.updated_at;
+
             items_out.push(ShoppingOrderItem {
                 id: inserted.id,
                 shopping_order_id: inserted.shopping_order_id,
-                product_id: inserted.product_id,
+                product_id,
                 product_name: inserted.product_name,
-                characteristics: inserted.characteristics,
+                characteristics,
                 quantity: inserted.quantity,
-                unit: inserted.unit,
-                estimated_price_cents: inserted.estimated_price_cents,
-                actual_price_cents: inserted.actual_price_cents,
+                unit,
+                estimated_price_cents,
+                actual_price_cents,
                 status: inserted.status,
-                metadata: inserted.metadata,
-                created_at: inserted.created_at,
-                updated_at: inserted.updated_at,
+                metadata,
+                created_at,
+                updated_at,
             });
         }
 
-        tx.commit().await?;
+        let store_lat = order.store_lat;
+        let store_lng = order.store_lng;
+        let store_name = order.store_name;
+        let notes = order.notes;
+        let payload_value = order.payload;
 
-        let order_model = ShoppingOrder {
+        let shopping_order = ShoppingOrder {
             id: order.id,
             delivery_id: order.delivery_id,
             status: order.status,
             estimated_total_cents: order.estimated_total_cents,
             actual_total_cents: order.actual_total_cents,
             currency: order.currency,
-            store_name: order.store_name,
-            store_location: order.store_location.map(|loc| GeoPoint {
-                latitude: loc.y(),
-                longitude: loc.x(),
-            }),
-            notes: order.notes,
+            store_name,
+            store_location: match (store_lat, store_lng) {
+                (Some(lat), Some(lng)) => Some(GeoPoint {
+                    latitude: lat,
+                    longitude: lng,
+                }),
+                _ => None,
+            },
+            notes,
             requires_balance_top_up: order.requires_balance_top_up,
-            payload: order.payload,
+            payload: payload_value,
             created_at: order.created_at,
             updated_at: order.updated_at,
         };
 
-        Ok((order_model, items_out))
+        tx.commit().await?;
+
+        Ok((shopping_order, items_out))
     }
 
     pub async fn update_shopping_status(
@@ -1521,21 +1802,26 @@ impl DeliveryRepository {
         store: Option<GeoPoint>,
         store_name: Option<String>,
     ) -> AppResult<()> {
+        let (store_lat, store_lng) = store
+            .as_ref()
+            .map(|p| (Some(p.latitude), Some(p.longitude)))
+            .unwrap_or((None, None));
+
         sqlx::query!(
             r#"
             UPDATE deliveries
             SET shopping_required = TRUE,
                 store_name = $2,
                 store_location = CASE
-                    WHEN $3 IS NULL THEN store_location
-                    ELSE ST_SetSRID(ST_MakePoint($4, $3), 4326)::geography
+                    WHEN $3::double precision IS NULL OR $4::double precision IS NULL THEN store_location
+                    ELSE ST_SetSRID(ST_MakePoint($4::double precision, $3::double precision), 4326)::geography
                 END
             WHERE id = $1
             "#,
             delivery_id,
             store_name,
-            store.as_ref().map(|p| p.latitude),
-            store.as_ref().map(|p| p.longitude)
+            store_lat,
+            store_lng
         )
         .execute(&self.pool)
         .await?;
@@ -1688,12 +1974,12 @@ impl DeliveryRepository {
                 id,
                 delivery_id,
                 courier_id,
-                captured_at,
-                ST_Y(location::geometry) AS "lat!",
-                ST_X(location::geometry) AS "lng!",
-                speed_kmh,
-                bearing,
-                accuracy_meters
+                captured_at AS "captured_at!: chrono::DateTime<Utc>",
+                ST_Y(location::geometry) AS "lat!: f64",
+                ST_X(location::geometry) AS "lng!: f64",
+                speed_kmh AS "speed_kmh?: BigDecimal",
+                bearing AS "bearing?: BigDecimal",
+                accuracy_meters AS "accuracy_meters?: BigDecimal"
             "#,
             payload.delivery_id,
             payload.courier_id,
@@ -1725,8 +2011,7 @@ impl DeliveryRepository {
         &self,
         payload: NewCourierRating,
     ) -> AppResult<CourierRating> {
-        let record = sqlx::query_as!(
-            CourierRating,
+        let row = sqlx::query!(
             r#"
             INSERT INTO courier_ratings (
                 delivery_id,
@@ -1749,27 +2034,39 @@ impl DeliveryRepository {
                 courier_id,
                 rater_id,
                 score_small,
-                tags,
-                comment,
-                created_at
+                tags             AS "tags?: Vec<Option<String>>",
+                comment          AS "comment?: String",
+                created_at       AS "created_at!: chrono::DateTime<Utc>"
             "#,
             payload.delivery_id,
             payload.courier_id,
             payload.rater_id,
             payload.score_small,
-            payload.tags,
+            payload.tags.as_deref(),
             payload.comment
         )
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(record)
+        let tags = row
+            .tags
+            .map(|values| values.into_iter().flatten().collect::<Vec<String>>());
+
+        Ok(CourierRating {
+            id: row.id,
+            delivery_id: row.delivery_id,
+            courier_id: row.courier_id,
+            rater_id: row.rater_id,
+            score_small: row.score_small,
+            tags,
+            comment: row.comment,
+            created_at: row.created_at,
+        })
     }
 
     /// Ajoute ou met à jour une note coursier -> client
     pub async fn upsert_client_rating(&self, payload: NewClientRating) -> AppResult<ClientRating> {
-        let record = sqlx::query_as!(
-            ClientRating,
+        let row = sqlx::query!(
             r#"
             INSERT INTO client_ratings (
                 delivery_id,
@@ -1792,21 +2089,34 @@ impl DeliveryRepository {
                 client_id,
                 courier_id,
                 score_small,
-                tags,
-                comment,
-                created_at
+                tags        AS "tags?: Vec<Option<String>>",
+                comment     AS "comment?: String",
+                created_at AS "created_at!: chrono::DateTime<Utc>"
             "#,
             payload.delivery_id,
             payload.client_id,
             payload.courier_id,
             payload.score_small,
-            payload.tags,
+            payload.tags.as_deref(),
             payload.comment
         )
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(record)
+        let tags = row
+            .tags
+            .map(|values| values.into_iter().flatten().collect::<Vec<String>>());
+
+        Ok(ClientRating {
+            id: row.id,
+            delivery_id: row.delivery_id,
+            client_id: row.client_id,
+            courier_id: row.courier_id,
+            score_small: row.score_small,
+            tags,
+            comment: row.comment,
+            created_at: row.created_at,
+        })
     }
 
     /// Met à jour le statut d'une livraison
@@ -1884,10 +2194,10 @@ pub struct NewCourierProfile {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewCourierAsset {
     pub courier_id: Uuid,
-    pub engine_type: crate::models::delivery_model::DeliveryEngineType,
+    pub engine_type: DeliveryEngineType,
     pub is_primary: bool,
-    pub max_weight_kg: Option<Decimal>,
-    pub max_volume_cm3: Option<Decimal>,
+    pub max_weight_kg: Option<BigDecimal>,
+    pub max_volume_cm3: Option<BigDecimal>,
     pub equipments: Value,
     pub available: bool,
     pub availability_schedule: Option<Value>,
@@ -1898,9 +2208,9 @@ pub struct NewCourierAsset {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewDeliveryParcel {
     pub type_id: Option<i32>,
-    pub weight_kg: Option<Decimal>,
-    pub volume_cm3: Option<Decimal>,
-    pub declared_value: Option<Decimal>,
+    pub weight_kg: Option<BigDecimal>,
+    pub volume_cm3: Option<BigDecimal>,
+    pub declared_value: Option<BigDecimal>,
     pub notes: Option<String>,
     pub photos: Value,
     pub constraints: Value,
@@ -1972,9 +2282,9 @@ pub struct NewTrackingPoint {
     pub courier_id: Uuid,
     pub position: GeoPoint,
     pub captured_at: DateTime<Utc>,
-    pub speed_kmh: Option<Decimal>,
-    pub bearing: Option<Decimal>,
-    pub accuracy_meters: Option<Decimal>,
+    pub speed_kmh: Option<BigDecimal>,
+    pub bearing: Option<BigDecimal>,
+    pub accuracy_meters: Option<BigDecimal>,
 }
 
 /// Note client vers coursier
@@ -2042,7 +2352,7 @@ pub struct NewShoppingOrderItem {
     pub product_id: Option<Uuid>,
     pub product_name: String,
     pub characteristics: Value,
-    pub quantity: Decimal,
+    pub quantity: BigDecimal,
     pub unit: String,
     pub estimated_price_cents: i32,
     pub status: ShoppingItemStatus,
@@ -2052,7 +2362,7 @@ pub struct NewShoppingOrderItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShoppingEstimateItem {
     pub product_name: String,
-    pub quantity: Decimal,
+    pub quantity: BigDecimal,
     pub unit: String,
     pub estimated_price_cents: i32,
 }
