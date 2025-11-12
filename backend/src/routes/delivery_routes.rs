@@ -91,31 +91,31 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/delivery/parcel-types", get(list_parcel_types))
         .route("/delivery", post(create_delivery))
-        .route("/delivery/:id", get(get_delivery_summary))
-        .route("/delivery/:id/status", post(update_delivery_status))
-        .route("/delivery/:id/pricing", post(upsert_pricing))
-        .route("/delivery/:id/tracking", post(add_tracking_point))
-        .route("/delivery/:id/rate-courier", post(rate_courier))
-        .route("/delivery/:id/rate-client", post(rate_client))
-        .route("/delivery/:id/ws", get(delivery_tracking_ws))
+        .route("/delivery/{id}", get(get_delivery_summary))
+        .route("/delivery/{id}/status", post(update_delivery_status))
+        .route("/delivery/{id}/pricing", post(upsert_pricing))
+        .route("/delivery/{id}/tracking", post(add_tracking_point))
+        .route("/delivery/{id}/rate-courier", post(rate_courier))
+        .route("/delivery/{id}/rate-client", post(rate_client))
+        .route("/delivery/{id}/ws", get(delivery_tracking_ws))
         .route(
-            "/delivery/:id/recipient",
+            "/delivery/{id}/recipient",
             get(get_delivery_recipient).post(assign_delivery_recipient),
         )
         .route(
-            "/delivery/:id/recipient/location",
+            "/delivery/{id}/recipient/location",
             post(update_recipient_location),
         )
         .route("/deliveries/active", get(list_frontend_deliveries))
-        .route("/deliveries/:id", get(get_frontend_delivery))
+        .route("/deliveries/{id}", get(get_frontend_delivery))
         .route(
-            "/deliveries/:id/recipient/updates",
+            "/deliveries/{id}/recipient/updates",
             get(get_frontend_recipient_updates),
         )
         .route("/wallet/debit", post(debit_wallet_for_delivery))
         .route("/wallet/refund", post(refund_wallet_for_delivery))
         .route("/courier/applications", post(submit_courier_application))
-        .route("/courier/:id/assets", post(upsert_courier_asset))
+        .route("/courier/{id}/assets", post(upsert_courier_asset))
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }
