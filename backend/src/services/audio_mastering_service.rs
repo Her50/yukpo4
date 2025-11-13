@@ -55,7 +55,8 @@ pub struct AudioPremiumWebhookPayload {
 #[derive(Debug, sqlx::FromRow)]
 struct PremiumAudioJobRecord {
     job_id: Uuid,
-    provider: String,
+    #[sqlx(rename = "provider")]
+    _provider: String,
     provider_job_id: Option<String>,
     video_job_id: Option<Uuid>,
 }
@@ -284,7 +285,12 @@ impl AudioMasteringService {
                 })?;
 
                 let result = self
-                    .download_and_store_master(&provider, &download_url, payload.metadata.clone())
+                    .download_and_store_master(
+                        &provider,
+                        &download_url,
+                        payload.metadata.clone(),
+                        None,
+                    )
                     .await?;
 
                 self.update_job_completed(job_record.job_id, "completed", &result)
@@ -564,6 +570,7 @@ impl AudioMasteringService {
         provider: &str,
         download_url: &str,
         metadata: Option<Value>,
+        output_format: Option<&str>,
     ) -> AppResult<MasteringResult> {
         let mut request = self.client.get(download_url);
         if provider == "auphonic" {
@@ -619,12 +626,21 @@ impl AudioMasteringService {
                 "storage_path".to_string(),
                 json!(location.storage_path.clone()),
             );
+            if let Some(fmt) = output_format {
+                obj.entry("output_format".to_string())
+                    .or_insert(json!(fmt));
+            }
         } else {
             merged_metadata = json!({
                 "provider": provider,
                 "public_url": location.public_url.clone(),
                 "storage_path": location.storage_path.clone(),
             });
+            if let Some(fmt) = output_format {
+                if let Some(obj) = merged_metadata.as_object_mut() {
+                    obj.insert("output_format".to_string(), json!(fmt));
+                }
+            }
         }
 
         Ok(MasteringResult {
@@ -875,6 +891,7 @@ impl AudioMasteringService {
                                     "auphonic",
                                     &download_url,
                                     status_payload.data.metadata.clone(),
+                                    file.format.as_deref(),
                                 )
                                 .await?;
 
