@@ -240,7 +240,7 @@ impl MediaStorageService {
             return None;
         }
 
-        let bucket = config.bucket.as_ref()?.clone();
+        let _ = config.bucket.as_ref()?;
         let access_key = config.access_key.as_ref()?.clone();
         let secret_key = config.secret_key.as_ref()?.clone();
 

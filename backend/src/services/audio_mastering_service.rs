@@ -8,7 +8,7 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::multipart::{Form, Part};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use sqlx::PgPool;
+use sqlx::{types::Json, PgPool};
 use tokio::process::Command;
 use tokio::time::{sleep, Duration};
 use uuid::Uuid;
@@ -52,7 +52,7 @@ pub struct AudioPremiumWebhookPayload {
     pub error_message: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, sqlx::FromRow)]
 struct PremiumAudioJobRecord {
     job_id: Uuid,
     provider: String,
@@ -116,6 +116,7 @@ impl AudioMasteringService {
         let provider_label = match self.config.provider {
             PremiumAudioProvider::Dolby => "dolby",
             PremiumAudioProvider::AudioShake => "audioshake",
+            PremiumAudioProvider::Auphonic => "auphonic",
             PremiumAudioProvider::Dual => "dual",
         }
         .to_string();
@@ -358,20 +359,20 @@ impl AudioMasteringService {
         input: &Path,
         video_job_id: Option<Uuid>,
     ) -> AppResult<()> {
-        let source_path = input.to_string_lossy();
-        sqlx::query!(
+        let source_path = input.to_string_lossy().to_string();
+        sqlx::query(
             r#"
             INSERT INTO premium_audio_jobs (job_id, provider, source_path, status, metadata, video_job_id)
             VALUES ($1, $2, $3, 'processing', $4, $5)
             "#,
-            job_id,
-            provider,
-            source_path,
-            json!({
-                "created_via": "audio_mastering_service"
-            }),
-            video_job_id
         )
+        .bind(job_id)
+        .bind(provider)
+        .bind(&source_path)
+        .bind(Json(json!({
+            "created_via": "audio_mastering_service"
+        })))
+        .bind(video_job_id)
         .execute(&self.pool)
         .await
         .map_err(|err| {
@@ -389,8 +390,9 @@ impl AudioMasteringService {
         status: &str,
         result: &MasteringResult,
     ) -> AppResult<()> {
-        let output_path = result.mastered_path.to_string_lossy();
-        sqlx::query!(
+        let output_path = result.mastered_path.to_string_lossy().to_string();
+        let metadata_json = Json(result.metadata.clone());
+        sqlx::query(
             r#"
             UPDATE premium_audio_jobs
             SET status = $1,
@@ -400,11 +402,11 @@ impl AudioMasteringService {
                 updated_at = NOW()
             WHERE job_id = $4
             "#,
-            status,
-            output_path,
-            result.metadata,
-            job_id
         )
+        .bind(status)
+        .bind(&output_path)
+        .bind(metadata_json)
+        .bind(job_id)
         .execute(&self.pool)
         .await
         .map_err(|err| {
@@ -417,7 +419,7 @@ impl AudioMasteringService {
     }
 
     async fn update_job_failed(&self, job_id: Uuid, error_message: &str) -> AppResult<()> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE premium_audio_jobs
             SET status = 'failed',
@@ -425,9 +427,9 @@ impl AudioMasteringService {
                 updated_at = NOW()
             WHERE job_id = $1
             "#,
-            job_id,
-            error_message
         )
+        .bind(job_id)
+        .bind(error_message)
         .execute(&self.pool)
         .await
         .map_err(|err| {
@@ -445,17 +447,18 @@ impl AudioMasteringService {
         provider: &str,
         metadata: Option<serde_json::Value>,
     ) -> AppResult<()> {
-        sqlx::query!(
+        let metadata_json = metadata.map(Json);
+        sqlx::query(
             r#"
             UPDATE premium_audio_jobs
             SET status = 'pending',
-                metadata = COALESCE($2, metadata),
+                metadata = COALESCE($2::jsonb, metadata),
                 updated_at = NOW()
             WHERE job_id = $1
             "#,
-            job_id,
-            metadata
         )
+        .bind(job_id)
+        .bind(metadata_json)
         .execute(&self.pool)
         .await
         .map_err(|err| {
@@ -474,7 +477,7 @@ impl AudioMasteringService {
         provider_job_id: Option<&str>,
     ) -> AppResult<PremiumAudioJobRecord> {
         if let Some(job_id) = job_id {
-            let row = sqlx::query!(
+            let row = sqlx::query_as::<_, PremiumAudioJobRecord>(
                 r#"
                 SELECT job_id,
                        provider,
@@ -483,8 +486,8 @@ impl AudioMasteringService {
                 FROM premium_audio_jobs
                 WHERE job_id = $1
                 "#,
-                job_id
             )
+            .bind(job_id)
             .fetch_optional(&self.pool)
             .await
             .map_err(|err| {
@@ -497,16 +500,11 @@ impl AudioMasteringService {
                 AppError::NotFound("Job audio premium introuvable pour webhook".to_string())
             })?;
 
-            return Ok(PremiumAudioJobRecord {
-                job_id: row.job_id,
-                provider: row.provider,
-                provider_job_id: row.provider_job_id,
-                video_job_id: row.video_job_id,
-            });
+            return Ok(row);
         }
 
         if let Some(provider_job_id) = provider_job_id {
-            let row = sqlx::query!(
+            let row = sqlx::query_as::<_, PremiumAudioJobRecord>(
                 r#"
                 SELECT job_id,
                        provider,
@@ -516,9 +514,9 @@ impl AudioMasteringService {
                 WHERE provider = $1
                   AND provider_job_id = $2
                 "#,
-                provider,
-                provider_job_id
             )
+            .bind(provider)
+            .bind(provider_job_id)
             .fetch_optional(&self.pool)
             .await
             .map_err(|err| {
@@ -531,12 +529,7 @@ impl AudioMasteringService {
                 AppError::NotFound("Job audio premium introuvable pour provider_job_id".to_string())
             })?;
 
-            return Ok(PremiumAudioJobRecord {
-                job_id: row.job_id,
-                provider: row.provider,
-                provider_job_id: row.provider_job_id,
-                video_job_id: row.video_job_id,
-            });
+            return Ok(row);
         }
 
         Err(AppError::BadRequest(
@@ -545,16 +538,16 @@ impl AudioMasteringService {
     }
 
     async fn set_provider_job_id(&self, job_id: Uuid, provider_job_id: &str) -> AppResult<()> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE premium_audio_jobs
             SET provider_job_id = $2,
                 updated_at = NOW()
             WHERE job_id = $1
             "#,
-            job_id,
-            provider_job_id
         )
+        .bind(job_id)
+        .bind(provider_job_id)
         .execute(&self.pool)
         .await
         .map_err(|err| {
@@ -981,20 +974,21 @@ impl AudioMasteringService {
         status: &str,
         metadata: Option<&serde_json::Value>,
     ) -> AppResult<()> {
-        sqlx::query!(
+        let metadata_json = metadata.cloned().map(Json);
+        sqlx::query(
             r#"
             UPDATE video_generation_jobs
             SET audio_job_id = COALESCE($2, audio_job_id),
                 audio_status = $3,
-                audio_metadata = COALESCE($4, audio_metadata),
+                audio_metadata = COALESCE($4::jsonb, audio_metadata),
                 updated_at = NOW()
             WHERE job_id = $1
             "#,
-            video_job_id,
-            audio_job_id,
-            status,
-            metadata
         )
+        .bind(video_job_id)
+        .bind(audio_job_id)
+        .bind(status)
+        .bind(metadata_json)
         .execute(&self.pool)
         .await
         .map_err(|err| {
