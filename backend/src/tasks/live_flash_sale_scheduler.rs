@@ -15,3 +15,4 @@ pub fn start_flash_sale_scheduler(state: Arc<AppState>) {
         }
     });
 }
+

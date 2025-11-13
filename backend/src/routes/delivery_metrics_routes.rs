@@ -52,3 +52,4 @@ async fn delivery_metrics_handler(State(_state): State<Arc<AppState>>) -> Respon
         .body(body.into())
         .unwrap()
 }
+
