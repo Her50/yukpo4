@@ -1,12 +1,16 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use bigdecimal::{BigDecimal, FromPrimitive};
 use reqwest::{Client, StatusCode};
 use sqlx::{types::Uuid, PgConnection, PgPool};
 
-use crate::{config::live_streaming::LiveStreamingConfig, state::AppState};
+use crate::{
+    config::live_streaming::LiveStreamingConfig,
+    state::AppState,
+    utils::livekit::generate_server_access_token,
+};
 
 const SYNC_INTERVAL_SECS: u64 = 60;
 
@@ -74,9 +78,12 @@ async fn list_livekit_rooms(
         .context("LIVEKIT_API_SECRET manquant")?;
 
     let list_endpoint = format!("{}/twirp/livekit.RoomService/ListRooms", base_url);
+    let token = generate_server_access_token(api_key, api_secret)
+        .map_err(|err| anyhow!(err))?;
+
     let response = client
         .post(list_endpoint)
-        .basic_auth(api_key, Some(api_secret))
+        .bearer_auth(token)
         .json(&serde_json::json!({}))
         .send()
         .await

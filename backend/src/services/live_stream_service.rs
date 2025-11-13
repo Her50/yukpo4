@@ -19,6 +19,7 @@ use crate::{
     },
     services::{live_audience_service, live_flash_sale_service::LiveFlashSaleService},
     state::AppState,
+    utils::livekit::generate_server_access_token,
 };
 
 const DEFAULT_MAX_PARTICIPANTS: i32 = 200;
@@ -540,6 +541,7 @@ impl LiveStreamingService {
             .ok_or_else(|| AppError::Internal("LIVEKIT_API_SECRET manquant".into()))?;
 
         let client = Client::new();
+        let server_token = generate_server_access_token(api_key, api_secret)?;
         let room_name = format!("yukpo-live-{}", Uuid::new_v4().simple());
         let host_identity = format!(
             "{HOST_IDENTITY_PREFIX}-{}-{}",
@@ -567,7 +569,7 @@ impl LiveStreamingService {
 
         let room_res = client
             .post(room_endpoint)
-            .basic_auth(api_key, Some(api_secret))
+            .bearer_auth(&server_token)
             .json(&room_body)
             .send()
             .await?;
@@ -602,9 +604,11 @@ impl LiveStreamingService {
                 "participant_name": payload.title,
             });
 
+            // generate fresh token to ensure validity if processing is long
+            let ingress_token = generate_server_access_token(api_key, api_secret)?;
             let ingress_res = client
                 .post(ingress_endpoint)
-                .basic_auth(api_key, Some(api_secret))
+                .bearer_auth(ingress_token)
                 .json(&ingress_body)
                 .send()
                 .await?;

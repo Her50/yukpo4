@@ -1,12 +1,16 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
 use reqwest::{Client, StatusCode};
 use serde_json::json;
 
-use crate::{config::live_streaming::LiveStreamingConfig, state::AppState};
+use crate::{
+    config::live_streaming::LiveStreamingConfig,
+    state::AppState,
+    utils::livekit::generate_server_access_token,
+};
 
 const CLEANUP_INTERVAL_MINUTES: u64 = 15;
 const FALLBACK_IDLE_THRESHOLD_SECS: i64 = 30 * 60; // 30 minutes
@@ -62,9 +66,11 @@ async fn cleanup_rooms(client: &Client, config: &LiveStreamingConfig) -> Result<
         .context("LIVEKIT_API_SECRET manquant")?;
 
     let list_endpoint = format!("{}/twirp/livekit.RoomService/ListRooms", base_url);
+    let token = generate_server_access_token(api_key, api_secret)
+        .map_err(|err| anyhow!(err))?;
     let response = client
         .post(list_endpoint)
-        .basic_auth(api_key, Some(api_secret))
+        .bearer_auth(token)
         .json(&json!({}))
         .send()
         .await
@@ -133,9 +139,11 @@ async fn delete_room(
     room_name: &str,
 ) -> Result<()> {
     let endpoint = format!("{}/twirp/livekit.RoomService/DeleteRoom", base_url);
+    let token = generate_server_access_token(api_key, api_secret)
+        .map_err(|err| anyhow!(err))?;
     let response = client
         .post(endpoint)
-        .basic_auth(api_key, Some(api_secret))
+        .bearer_auth(token)
         .json(&json!({ "room": room_name }))
         .send()
         .await
@@ -169,9 +177,11 @@ async fn cleanup_ingress(client: &Client, config: &LiveStreamingConfig) -> Resul
         .context("LIVEKIT_API_SECRET manquant")?;
 
     let list_endpoint = format!("{}/twirp/livekit.Ingress/ListIngress", base_url);
+    let token = generate_server_access_token(api_key, api_secret)
+        .map_err(|err| anyhow!(err))?;
     let response = client
         .post(list_endpoint)
-        .basic_auth(api_key, Some(api_secret))
+        .bearer_auth(token)
         .json(&json!({}))
         .send()
         .await
@@ -233,9 +243,11 @@ async fn delete_ingress(
     ingress_id: &str,
 ) -> Result<()> {
     let endpoint = format!("{}/twirp/livekit.Ingress/DeleteIngress", base_url);
+    let token = generate_server_access_token(api_key, api_secret)
+        .map_err(|err| anyhow!(err))?;
     let response = client
         .post(endpoint)
-        .basic_auth(api_key, Some(api_secret))
+        .bearer_auth(token)
         .json(&json!({ "ingress_id": ingress_id }))
         .send()
         .await

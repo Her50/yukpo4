@@ -1,0 +1,14 @@
+port: {{ livekit_port }}
+
+rtc:
+  tcp_port: {{ livekit_tcp_port }}
+  udp_port: {{ livekit_udp_port }}
+  use_external_ip: true
+
+keys:
+  '{{ livekit_api_key }}': '{{ livekit_api_secret }}'
+
+{% if livekit_extra_config is defined %}
+{{ livekit_extra_config | indent(0, True) }}
+{% endif %}
+

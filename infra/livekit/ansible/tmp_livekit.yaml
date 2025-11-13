@@ -1,0 +1,10 @@
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: true
+
+keys:
+  'APIPHE9xDv5RPaP': 'qVRL18gIk8W3Dp8V4Wu23I99t0XbZ5pM66D9i5MTTkE'
+

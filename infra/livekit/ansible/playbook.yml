@@ -1,0 +1,128 @@
+- hosts: edge
+  become: true
+  vars:
+    livekit_port: 7880
+    livekit_tcp_port: 7881
+    livekit_udp_port: 7882
+    livekit_binary_dest: /opt/livekit/livekit-server
+    livekit_config_path: /opt/livekit/livekit.yaml
+    livekit_service_path: /etc/systemd/system/livekit.service
+    enable_ufw_rules: false
+  pre_tasks:
+    - name: Vérifier la définition d'une source pour le binaire LiveKit
+      assert:
+        that:
+          - (livekit_download_url is defined) or (livekit_local_tarball is defined)
+        fail_msg: "Définir livekit_download_url ou livekit_local_tarball pour approvisionner le binaire LiveKit."
+
+    - name: Installer les dépendances de base
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - tar
+        state: present
+        update_cache: true
+
+  tasks:
+    - name: Créer le répertoire LiveKit
+      file:
+        path: /opt/livekit
+        state: directory
+        mode: "0755"
+
+    - name: Télécharger l'archive LiveKit depuis une URL
+      get_url:
+        url: "{{ livekit_download_url }}"
+        dest: /opt/livekit/livekit.tar.gz
+        mode: "0644"
+      when: livekit_download_url is defined
+
+    - name: Copier l'archive LiveKit depuis la machine de contrôle
+      copy:
+        src: "{{ livekit_local_tarball }}"
+        dest: /opt/livekit/livekit.tar.gz
+        mode: "0644"
+      when: livekit_local_tarball is defined
+
+    - name: Extraire le binaire LiveKit
+      unarchive:
+        src: /opt/livekit/livekit.tar.gz
+        dest: /opt/livekit
+        remote_src: true
+        creates: /opt/livekit/livekit-server
+
+    - name: Déplacer le binaire dans /usr/local/bin
+      copy:
+        src: /opt/livekit/livekit-server
+        dest: "{{ livekit_binary_dest }}"
+        mode: "0755"
+        remote_src: true
+
+    - name: Installer le binaire dans le PATH
+      file:
+        src: "{{ livekit_binary_dest }}"
+        dest: /usr/local/bin/livekit-server
+        state: link
+        force: true
+
+    - name: Déployer la configuration LiveKit
+      template:
+        src: templates/livekit.yaml.j2
+        dest: "{{ livekit_config_path }}"
+        mode: "0644"
+      notify: Restart livekit
+
+    - name: Déployer le service systemd
+      template:
+        src: templates/livekit.service.j2
+        dest: "{{ livekit_service_path }}"
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart livekit
+
+    - name: Ouvrir les ports via UFW
+      block:
+        - name: Autoriser HTTP LiveKit
+          ufw:
+            rule: allow
+            port: "{{ livekit_port }}"
+            proto: tcp
+
+        - name: Autoriser WebRTC TCP
+          ufw:
+            rule: allow
+            port: "{{ livekit_tcp_port }}"
+            proto: tcp
+
+        - name: Autoriser WebRTC UDP
+          ufw:
+            rule: allow
+            port: "{{ livekit_udp_port }}"
+            proto: udp
+      when: enable_ufw_rules | bool
+
+    - name: Nettoyer l'archive LiveKit
+      file:
+        path: /opt/livekit/livekit.tar.gz
+        state: absent
+
+    - name: Vérifier l'état du service
+      command: systemctl status livekit
+      register: livekit_status
+      changed_when: false
+
+    - name: Afficher le statut LiveKit
+      debug:
+        var: livekit_status.stdout_lines
+
+  handlers:
+    - name: Reload systemd
+      command: systemctl daemon-reload
+
+    - name: Restart livekit
+      service:
+        name: livekit
+        state: restarted
+

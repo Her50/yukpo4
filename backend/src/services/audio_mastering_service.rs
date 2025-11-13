@@ -662,7 +662,7 @@ impl AudioMasteringService {
         if let Some(preset) = &config.preset {
             form = form.text("preset", preset.clone());
         } else {
-            form = form.text("preset", "music");
+                form = form.text("preset", "music");
         }
 
         let auth_header = dolby_auth_header(config)?;
@@ -788,19 +788,19 @@ impl AudioMasteringService {
             .text("title", format!("Premium audio job {}", job_id));
 
         let create_url = format!("{}/production/", config.base_url.trim_end_matches('/'));
-        let response = self
-            .client
+            let response = self
+                .client
             .post(create_url)
             .basic_auth(&config.username, Some(&config.api_key))
             .multipart(form)
-            .send()
-            .await
-            .map_err(|err| {
+                .send()
+                .await
+                .map_err(|err| {
                 AppError::Internal(format!("Échec appel API Auphonic (create): {err}"))
-            })?;
+                })?;
 
-        if !response.status().is_success() {
-            let status = response.status();
+            if !response.status().is_success() {
+                let status = response.status();
             let text = response.text().await.unwrap_or_default();
             return Err(AppError::Internal(format!(
                 "Auphonic a renvoyé un statut invalide ({status}): {text}"

@@ -1,0 +1,19 @@
+[Unit]
+Description=LiveKit Server (Hetzner)
+After=network.target
+Wants=network-online.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/opt/livekit
+Environment="LIVEKIT_KEYS=APIPHE9xDv5RPaP: qVRL18gIk8W3Dp8V4Wu23I99t0XbZ5pM66D9i5MTTkE"
+ExecStart=/usr/local/bin/livekit-server --config=/opt/livekit/livekit.yaml
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65535
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
