@@ -102,7 +102,7 @@ impl RemotionRendererService {
             .map(|v| v.to_string())
             .unwrap_or_else(|| Uuid::new_v4().to_string());
 
-        let jobs_dir = self.config.project_root.join("jobs");
+        let jobs_dir = self.config.jobs_root.clone();
         fs::create_dir_all(&jobs_dir).await.map_err(|err| {
             AppError::Internal(format!(
                 "Impossible de créer le dossier jobs pour Remotion: {err}"
@@ -122,7 +122,7 @@ impl RemotionRendererService {
             ))
         })?;
 
-        let output_dir = self.config.project_root.join("renders").join(&job_id);
+        let output_dir = self.config.renders_root.join(&job_id);
         fs::create_dir_all(&output_dir).await.map_err(|err| {
             AppError::Internal(format!("Impossible de créer le dossier rendu: {err}"))
         })?;

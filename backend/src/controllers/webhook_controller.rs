@@ -1,4 +1,9 @@
-use axum::{extract::State, http::HeaderMap, response::Json as JsonResponse, Json};
+use axum::{
+    extract::{Path, State},
+    http::HeaderMap,
+    response::Json as JsonResponse,
+    Json,
+};
 use hex;
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
@@ -9,7 +14,10 @@ use std::sync::Arc;
 use crate::state::AppState;
 use crate::{
     core::types::{AppError, AppResult},
-    services::phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
+    services::{
+        audio_mastering_service::AudioPremiumWebhookPayload,
+        phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
+    },
 };
 
 type HmacSha256 = Hmac<Sha256>;
@@ -212,6 +220,48 @@ pub async fn generic_webhook(
         success: true,
         message: "Webhook traité avec succès".to_string(),
         transaction_id: Some(webhook.transaction_id),
+    }))
+}
+
+pub async fn audio_premium_webhook(
+    State(state): State<Arc<AppState>>,
+    Path(provider): Path<String>,
+    headers: HeaderMap,
+    Json(payload): Json<AudioPremiumWebhookPayload>,
+) -> AppResult<JsonResponse<WebhookResponse>> {
+    log::info!(
+        "[audio_premium_webhook] provider={} payload={:?}",
+        provider,
+        payload
+    );
+
+    let service = state.audio_mastering.clone().ok_or_else(|| {
+        AppError::Internal(
+            "Service de mastering audio premium non configuré sur ce backend".to_string(),
+        )
+    })?;
+
+    if let Some(secret) = service.webhook_secret() {
+        if secret.is_empty() {
+            log::warn!(
+                "[audio_premium_webhook] Secret de webhook vide, aucune vérification appliquée"
+            );
+        } else {
+            if headers.get("x-signature").is_none() {
+                log::warn!(
+                    "[audio_premium_webhook] Signature absente alors qu'un secret est configuré"
+                );
+            }
+            // TODO: implémenter la vérification HMAC (nécessite accès au body brut)
+        }
+    }
+
+    service.process_webhook(&provider, payload).await?;
+
+    Ok(Json(WebhookResponse {
+        success: true,
+        message: "Webhook audio premium traité".to_string(),
+        transaction_id: None,
     }))
 }
 

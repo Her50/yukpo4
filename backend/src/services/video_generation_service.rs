@@ -18,6 +18,7 @@ use crate::{
     services::{
         app_ia::VideoBriefRequest,
         audio_library_service,
+        audio_mastering_service::AudioMasteringOutcome,
         audio_pipeline::{self, AudioMixConfig},
         broll_service,
         cost_service::CostEstimation,
@@ -27,6 +28,7 @@ use crate::{
         immersive_timeline::ImmersiveTimeline,
         video_analytics_service::{record_engagement, schedule_distribution_targets},
         video_job_service::try_store_progress,
+        video_renderer::{RenderExecutionMode, RenderJobRequest, RenderJobResponse},
     },
     state::AppState,
 };
@@ -714,6 +716,8 @@ pub async fn generate_product_video(
     let mut immersive_analytics: Option<TimelineAnalytics> = None;
     let mut orchestration_warnings: Vec<String> = Vec::new();
     let mut sfx_layers: Vec<audio_pipeline::AudioLayer> = Vec::new();
+    let mut renderer_response: Option<RenderJobResponse> = None;
+    let mut renderer_mode: Option<RenderExecutionMode> = None;
 
     match orchestrator.generate_timeline(timeline_request).await {
         Ok(result) => {
@@ -753,6 +757,55 @@ pub async fn generate_product_video(
         Err(err) => {
             warn!("[VideoGeneration] Orchestrateur immersif indisponible: {err}");
             orchestration_warnings.push(format!("orchestrator_error: {err}"));
+        }
+    }
+
+    if renderer_response.is_none() {
+        if let (Some(timeline), Some(dispatcher)) =
+            (immersive_timeline.clone(), state.video_renderer.clone())
+        {
+            info!("[VideoGeneration] Tentative rendu via dispatcher vidéo");
+            let render_request = RenderJobRequest {
+                job_id,
+                timeline: Arc::new(timeline.clone()),
+            };
+
+            match dispatcher.render(&render_request).await {
+                Ok(response) => {
+                    renderer_mode = Some(response.mode);
+                    if !response.warnings.is_empty() {
+                        orchestration_warnings.extend(
+                            response
+                                .warnings
+                                .iter()
+                                .map(|warn| format!("renderer_warning: {warn}"))
+                                .collect::<Vec<_>>(),
+                        );
+                    }
+                    progress_steps.push(ProgressStep::completed(
+                        "video_render",
+                        match response.mode {
+                            RenderExecutionMode::GpuRpc => "Vidéo rendue via worker GPU",
+                            RenderExecutionMode::Offline => "Vidéo rendue via renderer local",
+                        },
+                        Some(format!("job={}", response.job_id)),
+                    ));
+                    if let Some(job_id) = job_id {
+                        try_store_progress(&state, job_id, "running", &progress_steps).await;
+                    }
+                    renderer_response = Some(response);
+                }
+                Err(err) => {
+                    warn!(
+                        "[VideoGeneration] Renderer dispatcher indisponible (mode={:?}): {}",
+                        err.mode, err.message
+                    );
+                    orchestration_warnings.push(format!(
+                        "renderer_error: mode={:?} message={}",
+                        err.mode, err.message
+                    ));
+                }
+            }
         }
     }
     let used_media_ids: Vec<i32> = media_sources
@@ -877,44 +930,118 @@ pub async fn generate_product_video(
         ..Default::default()
     };
 
-    let mixed_audio_path = audio_pipeline::mix_media_audio_tracks(
-        &session_dir,
-        &session_dir.join("combined.mp4"),
-        music_track.as_deref(),
-        voiceover_track.as_deref(),
-        &sfx_layers,
-        &audio_config,
-    )
-    .await?;
-    progress_steps.push(ProgressStep::completed(
-        "audio_mix",
-        "Mix audio finalisé",
-        Some(format!(
-            "musique: {} | voix: {} | sfx: {}",
-            music_track.is_some(),
-            voiceover_track.is_some(),
-            sfx_layers.len()
-        )),
-    ));
-    if let Some(job_id) = job_id {
-        try_store_progress(&state, job_id, "running", &progress_steps).await;
+    if renderer_response.is_none() {
+        let mixed_audio_path = audio_pipeline::mix_media_audio_tracks(
+            &session_dir,
+            &session_dir.join("combined.mp4"),
+            music_track.as_deref(),
+            voiceover_track.as_deref(),
+            &sfx_layers,
+            &audio_config,
+        )
+        .await?;
+        progress_steps.push(ProgressStep::completed(
+            "audio_mix",
+            "Mix audio finalisé",
+            Some(format!(
+                "musique: {} | voix: {} | sfx: {}",
+                music_track.is_some(),
+                voiceover_track.is_some(),
+                sfx_layers.len()
+            )),
+        ));
+        if let Some(job_id) = job_id {
+            try_store_progress(&state, job_id, "running", &progress_steps).await;
+        }
+
+        let mastered_audio_path = if let Some(service) = state.audio_mastering.clone() {
+            let mastering_dir = session_dir.join("mastering");
+            match service
+                .master_audio(&mixed_audio_path, &mastering_dir, job_id)
+                .await
+            {
+                Ok(crate::services::audio_mastering_service::AudioMasteringOutcome::Completed(
+                    result,
+                )) => {
+                    info!(
+                        "[VideoGeneration] Mastering premium appliqué via {}",
+                        result.provider
+                    );
+                    Some(result.mastered_path)
+                }
+                Ok(crate::services::audio_mastering_service::AudioMasteringOutcome::Pending {
+                    job_id: audio_job_id,
+                }) => {
+                    info!(
+                        "[VideoGeneration] Mastering premium en attente (job_id={})",
+                        audio_job_id
+                    );
+                    None
+                }
+                Err(err) => {
+                    warn!(
+                        "[VideoGeneration] Mastering premium indisponible, fallback local: {err}"
+                    );
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        let final_audio_source = mastered_audio_path.as_ref().unwrap_or(&mixed_audio_path);
+
+        audio_pipeline::mux_video_with_audio(
+            &session_dir.join("combined.mp4"),
+            final_audio_source,
+            &session_dir.join("final.mp4"),
+        )
+        .await?;
+        progress_steps.push(ProgressStep::completed(
+            "video_mux",
+            "Vidéo master finalisée",
+            Some(format!("durée {}s", duration_seconds)),
+        ));
+        if let Some(job_id) = job_id {
+            try_store_progress(&state, job_id, "running", &progress_steps).await;
+        }
     }
 
-    let mastered_audio_path = if let Some(service) = state.audio_mastering.clone() {
-        let mastering_dir = session_dir.join("mastering");
-        match service
-            .master_audio(&mixed_audio_path, &mastering_dir)
+    let source_master_path = renderer_response
+        .as_ref()
+        .map(|resp| resp.master_video.clone())
+        .unwrap_or_else(|| session_dir.join("final.mp4"));
+
+    let final_filename = format!("product_video_{}.mp4", session_id);
+    let storage_key = format!("services/{}", final_filename);
+
+    let stored_video = state
+        .media_storage
+        .store_file(&source_master_path, &storage_key, Some("video/mp4"))
+        .await
+        .map_err(|err| {
+            error!("[VideoGeneration] Impossible de stocker la vidéo générée: {err:?}");
+            err
+        })?;
+
+    let normalized_relative = stored_video.storage_path.replace('\\', "/");
+    let public_url = stored_video.public_url.clone();
+    let file_size = stored_video
+        .content_length
+        .unwrap_or(0)
+        .min(i64::MAX as u64) as i64;
+
+    let subtitle_public_url = if let Some(sub_file) = subtitle_file.as_ref() {
+        let subtitle_name = format!("subtitles_{}.srt", session_id);
+        let subtitle_key = format!("services/{}", subtitle_name);
+        match state
+            .media_storage
+            .store_file(sub_file, &subtitle_key, Some("application/x-subrip"))
             .await
         {
-            Ok(result) => {
-                info!(
-                    "[VideoGeneration] Mastering premium appliqué via {}",
-                    result.provider
-                );
-                Some(result.mastered_path)
-            }
+            Ok(result) => Some(result.public_url),
             Err(err) => {
-                warn!("[VideoGeneration] Mastering premium indisponible, fallback local: {err}");
+                warn!("[VideoGeneration] Impossible de stocker les sous-titres générés: {err}");
                 None
             }
         }
@@ -922,96 +1049,7 @@ pub async fn generate_product_video(
         None
     };
 
-    let final_audio_source = mastered_audio_path.as_ref().unwrap_or(&mixed_audio_path);
-
-    audio_pipeline::mux_video_with_audio(
-        &session_dir.join("combined.mp4"),
-        final_audio_source,
-        &session_dir.join("final.mp4"),
-    )
-    .await?;
-    progress_steps.push(ProgressStep::completed(
-        "video_mux",
-        "Vidéo master finalisée",
-        Some(format!("durée {}s", duration_seconds)),
-    ));
-    if let Some(job_id) = job_id {
-        try_store_progress(&state, job_id, "running", &progress_steps).await;
-    }
-
-    let final_filename = format!("product_video_{}.mp4", session_id);
-    let relative_path = PathBuf::from("uploads")
-        .join("services")
-        .join(&final_filename);
-    let absolute_output_path = storage_root.join("services").join(&final_filename);
-
-    let subtitle_public_url = if let Some(sub_file) = subtitle_file.as_ref() {
-        let subtitle_name = format!("subtitles_{}.srt", session_id);
-        let subtitle_relative = PathBuf::from("uploads")
-            .join("services")
-            .join(&subtitle_name);
-        let subtitle_absolute = storage_root.join("services").join(&subtitle_name);
-
-        if let Some(parent) = subtitle_absolute.parent() {
-            fs::create_dir_all(parent).await.ok();
-        }
-
-        if let Err(err) = fs::rename(sub_file, &subtitle_absolute).await {
-            warn!(
-                "[VideoGeneration] Impossible de déplacer le fichier de sous-titres {:?}: {err}",
-                sub_file
-            );
-            None
-        } else {
-            let normalized = subtitle_relative.to_string_lossy().replace('\\', "/");
-            let upload_base = std::env::var("UPLOAD_BASE_URL")
-                .unwrap_or_else(|_| std::env::var("PUBLIC_BASE_URL").unwrap_or_default());
-            let public_url = if upload_base.is_empty() {
-                normalized.clone()
-            } else {
-                format!("{}/{}", upload_base.trim_end_matches('/'), normalized)
-            };
-            Some(public_url)
-        }
-    } else {
-        None
-    };
-
-    if let Some(parent) = absolute_output_path.parent() {
-        fs::create_dir_all(parent).await.map_err(|err| {
-            AppError::Internal(format!(
-                "Impossible de créer le dossier de destination de la vidéo: {err}"
-            ))
-        })?;
-    }
-
-    fs::rename(session_dir.join("final.mp4"), &absolute_output_path)
-        .await
-        .map_err(|err| {
-            AppError::Internal(format!(
-                "Impossible de déplacer la vidéo générée vers la médiathèque: {err}"
-            ))
-        })?;
-
-    let final_metadata = fs::metadata(&absolute_output_path).await.map_err(|err| {
-        AppError::Internal(format!(
-            "Impossible de lire les métadonnées de la vidéo générée: {err}"
-        ))
-    })?;
-    let file_size = final_metadata.len() as i64;
-
-    let normalized_relative = relative_path.to_string_lossy().replace('\\', "/");
-    let upload_base = std::env::var("UPLOAD_BASE_URL")
-        .unwrap_or_else(|_| std::env::var("PUBLIC_BASE_URL").unwrap_or_default());
-    let public_url = if upload_base.is_empty() {
-        normalized_relative.clone()
-    } else {
-        format!(
-            "{}/{}",
-            upload_base.trim_end_matches('/'),
-            normalized_relative
-        )
-    };
+    let absolute_output_path = state.media_storage.local_path_for(&storage_key);
 
     append_video_to_service_data(
         &state,
@@ -1130,6 +1168,12 @@ pub async fn generate_product_video(
         }
         if let Some(music_hint) = payload.style_music_hint.clone() {
             map.insert("style_music_hint".to_string(), json!(music_hint));
+        }
+        if let Some(mode) = renderer_mode {
+            map.insert("render_mode".to_string(), json!(format!("{mode:?}")));
+        }
+        if let Some(renderer) = renderer_response.as_ref() {
+            map.insert("render_job_id".to_string(), json!(renderer.job_id.clone()));
         }
         map.insert("storage_path".to_string(), json!(normalized_relative));
         map.insert("public_url".to_string(), json!(public_url));

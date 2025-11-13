@@ -142,7 +142,8 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
         };
 
     let components = PipelineComponents {
-        remotion_renderer_ready: state.remotion_renderer.is_some(),
+        remotion_renderer_ready: state.video_renderer.is_some()
+            || state.remotion_renderer.is_some(),
         audio_mastering_ready: state.audio_mastering.is_some(),
     };
 

@@ -9,15 +9,18 @@ use std::env;
 use crate::config::broll_config::BrollConfig;
 use crate::config::live_streaming::LiveStreamingConfig;
 use crate::config::premium_audio::PremiumAudioConfig;
+use crate::config::storage::MediaStorageConfig;
 use crate::config::video_renderer::VideoRendererConfig;
 use crate::controllers::ia_status_controller::IAStats;
 use crate::services::app_ia::AppIA;
 use crate::services::mongo_history_service::MongoHistoryService;
 use crate::websocket::delivery_tracking::DeliveryTrackingManager;
 // Imports d'optimisation
+use crate::services::media_storage_service::MediaStorageService;
 use crate::services::prompt_optimizer_pro::PromptOptimizerPro;
 use crate::services::semantic_cache_pro::SemanticCachePro;
 use crate::services::video_job_service::VideoGenerationJobService;
+use crate::services::video_renderer::VideoRenderDispatcher;
 
 /// ?? ?tat partag? global de l'application
 #[derive(Clone)]
@@ -48,6 +51,8 @@ pub struct AppState {
     pub delivery_service: Arc<crate::services::delivery_service::DeliveryService>,
     pub remotion_renderer:
         Option<Arc<crate::services::remotion_renderer_service::RemotionRendererService>>,
+    pub media_storage: Arc<MediaStorageService>,
+    pub video_renderer: Option<Arc<VideoRenderDispatcher>>,
     pub audio_mastering:
         Option<Arc<crate::services::audio_mastering_service::AudioMasteringService>>,
     pub cost_service: Arc<crate::services::cost_service::CostEstimator>,
@@ -88,23 +93,34 @@ impl AppState {
             delivery_ws_manager.clone(),
         ));
 
-        let remotion_renderer = match VideoRendererConfig::from_env() {
-            Some(cfg) => {
-                match crate::services::remotion_renderer_service::RemotionRendererService::new(cfg)
-                {
-                    Ok(service) => Some(Arc::new(service)),
-                    Err(err) => {
-                        log::warn!("[AppState] Remotion renderer inactif: {err:?}");
-                        None
-                    }
+        let renderer_config = VideoRendererConfig::from_env();
+        let storage_config = MediaStorageConfig::from_env();
+        let media_storage = Arc::new(MediaStorageService::new(storage_config.clone()));
+
+        let remotion_renderer = renderer_config.as_ref().and_then(|cfg| {
+            match crate::services::remotion_renderer_service::RemotionRendererService::new(
+                cfg.clone(),
+            ) {
+                Ok(service) => Some(Arc::new(service)),
+                Err(err) => {
+                    log::warn!("[AppState] Remotion renderer inactif: {err:?}");
+                    None
                 }
             }
-            None => None,
-        };
+        });
+
+        let video_renderer = renderer_config.as_ref().and_then(|cfg| {
+            VideoRenderDispatcher::from_state_config(cfg.clone(), remotion_renderer.clone())
+                .map(Arc::new)
+        });
 
         let audio_mastering = match PremiumAudioConfig::from_env() {
             Some(cfg) => {
-                match crate::services::audio_mastering_service::AudioMasteringService::new(cfg) {
+                match crate::services::audio_mastering_service::AudioMasteringService::new(
+                    cfg,
+                    pg.clone(),
+                    media_storage.clone(),
+                ) {
                     Ok(service) => Some(Arc::new(service)),
                     Err(err) => {
                         log::warn!("[AppState] Audio mastering premium désactivé: {err:?}");
@@ -142,6 +158,8 @@ impl AppState {
             delivery_ws_manager,
             delivery_service,
             remotion_renderer,
+            media_storage,
+            video_renderer,
             audio_mastering,
             cost_service,
             broll_service,
@@ -217,6 +235,8 @@ impl AppState {
             delivery_ws_manager,
             delivery_service,
             remotion_renderer: None,
+            media_storage: Arc::new(MediaStorageService::new(MediaStorageConfig::from_env())),
+            video_renderer: None,
             audio_mastering: None,
             cost_service: Arc::new(crate::services::cost_service::CostEstimator::new(cost_pg)),
             broll_service: None,

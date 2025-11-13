@@ -89,16 +89,12 @@ fn is_probable_base64(data: &str) -> bool {
         .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=' | '\n' | '\r'))
 }
 
-fn produits_array_mut(
-    data_obj: &mut serde_json::Value,
-) -> Option<&mut Vec<serde_json::Value>> {
+fn produits_array_mut(data_obj: &mut serde_json::Value) -> Option<&mut Vec<serde_json::Value>> {
     let map = data_obj.as_object_mut()?;
     let produits_value = map.get_mut("produits")?;
     match produits_value {
         serde_json::Value::Array(arr) => Some(arr),
-        serde_json::Value::Object(obj) => obj
-            .get_mut("valeur")
-            .and_then(|v| v.as_array_mut()),
+        serde_json::Value::Object(obj) => obj.get_mut("valeur").and_then(|v| v.as_array_mut()),
         _ => None,
     }
 }
@@ -123,7 +119,12 @@ async fn persist_base64_media(
         .join(subdir);
     fs::create_dir_all(&service_dir).await?;
 
-    let file_name = format!("{}_{}.{}", subdir.trim_end_matches('s'), Uuid::new_v4(), extension);
+    let file_name = format!(
+        "{}_{}.{}",
+        subdir.trim_end_matches('s'),
+        Uuid::new_v4(),
+        extension
+    );
     let disk_path = service_dir.join(&file_name);
     fs::write(&disk_path, &bytes).await?;
 
@@ -869,31 +870,31 @@ pub async fn creer_service(
     // ✅ NOUVEAU: Limiter la taille du JSON pour éviter l'erreur d'index PostgreSQL
     // Supprimer les images base64 du champ produits avant insertion (elles sont déjà dans media)
     if let Some(produits_array) = produits_array_mut(&mut data_obj) {
-                    for produit in produits_array.iter_mut() {
-                        if let Some(produit_obj) = produit.as_object_mut() {
-                            produit_obj.remove("images_base64");
-                            produit_obj.remove("image_base64");
-                            produit_obj.remove("video_base64");
-                            produit_obj.remove("audio_base64");
-                            produit_obj.remove("doc_base64");
-                            produit_obj.remove("excel_base64");
+        for produit in produits_array.iter_mut() {
+            if let Some(produit_obj) = produit.as_object_mut() {
+                produit_obj.remove("images_base64");
+                produit_obj.remove("image_base64");
+                produit_obj.remove("video_base64");
+                produit_obj.remove("audio_base64");
+                produit_obj.remove("doc_base64");
+                produit_obj.remove("excel_base64");
 
-                            if let Some(description) = produit_obj.get_mut("description") {
-                                if let Some(desc_str) = description.as_str() {
-                                    let desc_len = desc_str.len();
-                                    if desc_len > 5000 {
-                                        *description = serde_json::Value::String(
-                                            desc_str.chars().take(5000).collect::<String>() + "...",
-                                        );
+                if let Some(description) = produit_obj.get_mut("description") {
+                    if let Some(desc_str) = description.as_str() {
+                        let desc_len = desc_str.len();
+                        if desc_len > 5000 {
+                            *description = serde_json::Value::String(
+                                desc_str.chars().take(5000).collect::<String>() + "...",
+                            );
                             log::warn!(
                                 "[creer_service] Description produit tronquée (trop longue: {} chars)",
                                 desc_len
                             );
-                                    }
-                                }
-                            }
                         }
                     }
+                }
+            }
+        }
         log::info!(
             "[creer_service] ✅ Nettoyage des données volumineuses dans produits (images base64 supprimées)"
         );
@@ -1114,10 +1115,7 @@ pub async fn creer_service(
                 images_to_process.extend(service_images.clone());
             }
 
-            if let Some(product_images) = produit_obj
-                .get("images")
-                .and_then(|v| v.as_array())
-            {
+            if let Some(product_images) = produit_obj.get("images").and_then(|v| v.as_array()) {
                 images_to_process.extend(
                     product_images
                         .iter()
@@ -1194,49 +1192,48 @@ pub async fn creer_service(
                     let _ = &image_bytes;
 
                     #[cfg(feature = "image_search")]
-                    let (image_signature, image_hash, image_metadata) =
-                        if !image_bytes.is_empty() {
-                            match image_service.generate_image_signature(&image_bytes).await {
-                                Ok(signature) => {
-                                    let metadata = image_service
-                                        .extract_image_metadata(&image_bytes)
-                                        .await
-                                        .unwrap_or_else(|_| {
-                                            crate::services::image_search_service::ImageMetadata {
-                                                width: 0,
-                                                height: 0,
-                                                format: "jpeg".to_string(),
-                                                file_size: image_bytes.len(),
-                                                dominant_colors: vec![],
-                                                color_histogram: vec![],
-                                                edge_density: 0.0,
-                                                brightness: 0.0,
-                                                contrast: 0.0,
-                                            }
-                                        });
-                                    let hash = format!("{:x}", md5::compute(&image_bytes));
-                                    (
-                                        serde_json::to_value(&signature).unwrap_or_default(),
-                                        hash,
-                                        serde_json::to_value(&metadata).unwrap_or_default(),
-                                    )
-                                }
-                                Err(e) => {
-                                    log::warn!("[creer_service] Erreur signature: {}", e);
-                                    (
-                                        serde_json::Value::Null,
-                                        String::new(),
-                                        serde_json::Value::Null,
-                                    )
-                                }
+                    let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+                        match image_service.generate_image_signature(&image_bytes).await {
+                            Ok(signature) => {
+                                let metadata = image_service
+                                    .extract_image_metadata(&image_bytes)
+                                    .await
+                                    .unwrap_or_else(|_| {
+                                        crate::services::image_search_service::ImageMetadata {
+                                            width: 0,
+                                            height: 0,
+                                            format: "jpeg".to_string(),
+                                            file_size: image_bytes.len(),
+                                            dominant_colors: vec![],
+                                            color_histogram: vec![],
+                                            edge_density: 0.0,
+                                            brightness: 0.0,
+                                            contrast: 0.0,
+                                        }
+                                    });
+                                let hash = format!("{:x}", md5::compute(&image_bytes));
+                                (
+                                    serde_json::to_value(&signature).unwrap_or_default(),
+                                    hash,
+                                    serde_json::to_value(&metadata).unwrap_or_default(),
+                                )
                             }
-                        } else {
-                            (
-                                serde_json::Value::Null,
-                                String::new(),
-                                serde_json::Value::Null,
-                            )
-                        };
+                            Err(e) => {
+                                log::warn!("[creer_service] Erreur signature: {}", e);
+                                (
+                                    serde_json::Value::Null,
+                                    String::new(),
+                                    serde_json::Value::Null,
+                                )
+                            }
+                        }
+                    } else {
+                        (
+                            serde_json::Value::Null,
+                            String::new(),
+                            serde_json::Value::Null,
+                        )
+                    };
 
                     #[cfg(not(feature = "image_search"))]
                     let (image_signature, image_hash, image_metadata) = (
@@ -1369,10 +1366,7 @@ pub async fn creer_service(
                         .execute(&mut *tx)
                         .await
                         {
-                            log::warn!(
-                                "[creer_service] ⚠️ Erreur mise à jour media.ai_*: {}",
-                                e
-                            );
+                            log::warn!("[creer_service] ⚠️ Erreur mise à jour media.ai_*: {}", e);
                         } else {
                             log::info!(
                                 "[creer_service] ✅ Image cataloguée avec données produit ({} tags)",
@@ -1401,15 +1395,15 @@ pub async fn creer_service(
                     .iter()
                     .map(|path| serde_json::Value::String(path.clone()))
                     .collect();
-                produit_obj.insert("images".to_string(), serde_json::Value::Array(image_paths_json));
+                produit_obj.insert(
+                    "images".to_string(),
+                    serde_json::Value::Array(image_paths_json),
+                );
             }
 
             saved_image_paths_by_product.push(saved_paths_for_product.clone());
 
-            if let Some(product_videos) = produit_obj
-                .get("videos")
-                .and_then(|v| v.as_array())
-            {
+            if let Some(product_videos) = produit_obj.get("videos").and_then(|v| v.as_array()) {
                 for (video_index, vid_url) in product_videos.iter().enumerate() {
                     if let Some(video_path) = vid_url.as_str() {
                         let file_path = if video_path.starts_with("http") {
@@ -1459,11 +1453,10 @@ pub async fn creer_service(
                 if !saved_image_paths_by_product.is_empty()
                     && !saved_image_paths_by_product[0].is_empty()
                 {
-                    let image_paths_json: Vec<serde_json::Value> =
-                        saved_image_paths_by_product[0]
-                            .iter()
-                            .map(|path| serde_json::Value::String(path.clone()))
-                            .collect();
+                    let image_paths_json: Vec<serde_json::Value> = saved_image_paths_by_product[0]
+                        .iter()
+                        .map(|path| serde_json::Value::String(path.clone()))
+                        .collect();
 
                     first_product_obj.insert(
                         "images".to_string(),
@@ -1481,10 +1474,10 @@ pub async fn creer_service(
 
     // ✅ FALLBACK : si aucune image de service n'a été sauvegardée via les produits
     if saved_service_images.is_empty() {
-    if let Some(images) = data_processed
-        .get("base64_image")
-        .and_then(|v| v.as_array())
-    {
+        if let Some(images) = data_processed
+            .get("base64_image")
+            .and_then(|v| v.as_array())
+        {
             let image_strings: Vec<String> = images
                 .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -1541,43 +1534,43 @@ pub async fn creer_service(
                     #[cfg(feature = "image_search")]
                     let (image_signature, image_hash, image_metadata) = {
                         if !image_bytes.is_empty() {
-                        match image_service.generate_image_signature(&image_bytes).await {
-                            Ok(signature) => {
-                                let metadata = image_service
-                                    .extract_image_metadata(&image_bytes)
-                                    .await
-                                    .unwrap_or_else(|_| {
-                                        crate::services::image_search_service::ImageMetadata {
-                                            width: 0,
-                                            height: 0,
-                                            format: "jpeg".to_string(),
-                                            file_size: image_bytes.len(),
-                                            dominant_colors: vec![],
-                                            color_histogram: vec![],
-                                            edge_density: 0.0,
-                                            brightness: 0.0,
-                                            contrast: 0.0,
-                                        }
-                                    });
-                                let hash = format!("{:x}", md5::compute(&image_bytes));
-                                (
-                                    serde_json::to_value(&signature).unwrap_or_default(),
-                                    hash,
-                                    serde_json::to_value(&metadata).unwrap_or_default(),
-                                )
-                            }
-                            Err(e) => {
+                            match image_service.generate_image_signature(&image_bytes).await {
+                                Ok(signature) => {
+                                    let metadata = image_service
+                                        .extract_image_metadata(&image_bytes)
+                                        .await
+                                        .unwrap_or_else(|_| {
+                                            crate::services::image_search_service::ImageMetadata {
+                                                width: 0,
+                                                height: 0,
+                                                format: "jpeg".to_string(),
+                                                file_size: image_bytes.len(),
+                                                dominant_colors: vec![],
+                                                color_histogram: vec![],
+                                                edge_density: 0.0,
+                                                brightness: 0.0,
+                                                contrast: 0.0,
+                                            }
+                                        });
+                                    let hash = format!("{:x}", md5::compute(&image_bytes));
+                                    (
+                                        serde_json::to_value(&signature).unwrap_or_default(),
+                                        hash,
+                                        serde_json::to_value(&metadata).unwrap_or_default(),
+                                    )
+                                }
+                                Err(e) => {
                                     log::warn!(
                                         "[creer_service] Erreur signature image globale {}: {}",
                                         i,
                                         e
                                     );
-                                (
-                                    serde_json::Value::Null,
-                                    String::new(),
-                                    serde_json::Value::Null,
-                                )
-                            }
+                                    (
+                                        serde_json::Value::Null,
+                                        String::new(),
+                                        serde_json::Value::Null,
+                                    )
+                                }
                             }
                         } else {
                             (
@@ -1667,11 +1660,7 @@ pub async fn creer_service(
                 {
                     Ok(value) => value,
                     Err(err) => {
-                        log::error!(
-                            "[creer_service] Erreur sauvegarde audio {}: {}",
-                            idx,
-                            err
-                        );
+                        log::error!("[creer_service] Erreur sauvegarde audio {}: {}", idx, err);
                         continue;
                     }
                 };
@@ -1734,11 +1723,7 @@ pub async fn creer_service(
                 {
                     Ok(value) => value,
                     Err(err) => {
-                        log::error!(
-                            "[creer_service] Erreur sauvegarde vidéo {}: {}",
-                            idx,
-                            err
-                        );
+                        log::error!("[creer_service] Erreur sauvegarde vidéo {}: {}", idx, err);
                         continue;
                     }
                 };
@@ -1865,11 +1850,7 @@ pub async fn creer_service(
                 {
                     Ok(value) => value,
                     Err(err) => {
-                        log::error!(
-                            "[creer_service] Erreur sauvegarde excel {}: {}",
-                            idx,
-                            err
-                        );
+                        log::error!("[creer_service] Erreur sauvegarde excel {}: {}", idx, err);
                         continue;
                     }
                 };
@@ -1896,15 +1877,14 @@ pub async fn creer_service(
     }
 
     if let Some(map) = data_obj.as_object_mut() {
-        let to_json_array =
-            |items: &Vec<String>| -> serde_json::Value {
-                serde_json::Value::Array(
-                    items
-                        .iter()
-                        .map(|p| serde_json::Value::String(p.clone()))
-                        .collect(),
-                )
-            };
+        let to_json_array = |items: &Vec<String>| -> serde_json::Value {
+            serde_json::Value::Array(
+                items
+                    .iter()
+                    .map(|p| serde_json::Value::String(p.clone()))
+                    .collect(),
+            )
+        };
 
         map.remove("images");
         map.remove("audios");

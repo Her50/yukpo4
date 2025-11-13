@@ -259,7 +259,10 @@ mod tests {
                 Arc::new(tokio::sync::Mutex::new(
                     crate::controllers::ia_status_controller::IAStats::default(),
                 )),
-                sqlx::PgPool::connect("postgres://localhost").await.unwrap(),
+                sqlx::postgres::PgPoolOptions::new()
+                    .max_connections(1)
+                    .connect_lazy("postgres://postgres:postgres@localhost/yukpomnang_test")
+                    .unwrap(),
             )),
         };
 
@@ -309,7 +312,10 @@ mod tests {
                 Arc::new(tokio::sync::Mutex::new(
                     crate::controllers::ia_status_controller::IAStats::default(),
                 )),
-                sqlx::PgPool::connect("postgres://localhost").await.unwrap(),
+                sqlx::postgres::PgPoolOptions::new()
+                    .max_connections(1)
+                    .connect_lazy("postgres://postgres:postgres@localhost/yukpomnang_test")
+                    .unwrap(),
             )),
         };
 

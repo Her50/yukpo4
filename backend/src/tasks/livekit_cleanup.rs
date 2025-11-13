@@ -242,4 +242,3 @@ async fn delete_ingress(
 
     Ok(())
 }
-

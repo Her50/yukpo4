@@ -5,13 +5,13 @@ use std::env;
 
 #[cfg(test)]
 use crate::{
-    config::live_streaming::LiveStreamingConfig,
+    config::{live_streaming::LiveStreamingConfig, storage::MediaStorageConfig},
     controllers::ia_status_controller::IAStats,
     migrations::auto_migrate::run_auto_migrations,
     services::{
         app_ia::AppIA, cost_service::CostEstimator, delivery_repository::DeliveryRepository,
-        delivery_service::DeliveryService, mongo_history_service::MongoHistoryService,
-        video_job_service::VideoGenerationJobService,
+        delivery_service::DeliveryService, media_storage_service::MediaStorageService,
+        mongo_history_service::MongoHistoryService, video_job_service::VideoGenerationJobService,
     },
     state::AppState,
     websocket::delivery_tracking::DeliveryTrackingManager,
@@ -172,6 +172,8 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
 
     let cost_service = Arc::new(CostEstimator::new(pool.clone()));
 
+    let media_storage = Arc::new(MediaStorageService::new(MediaStorageConfig::from_env()));
+
     let state = Arc::new(AppState {
         pg: pool.clone(),
         mongo: mongo_client,
@@ -186,7 +188,9 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         live_streaming: Arc::new(LiveStreamingConfig::from_env()),
         delivery_ws_manager,
         delivery_service,
+        media_storage,
         remotion_renderer: None,
+        video_renderer: None,
         audio_mastering: None,
         cost_service,
         broll_service: None,

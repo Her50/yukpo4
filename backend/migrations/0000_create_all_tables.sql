@@ -1227,7 +1227,6 @@ CREATE TRIGGER trg_content_engagement_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_content_engagement_updated_at();
 
--- Table video_generation_jobs
 CREATE TABLE IF NOT EXISTS video_generation_jobs (
     job_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

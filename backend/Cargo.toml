@@ -81,4 +81,5 @@ toml = "0.8"
 # Architecture cloud massive
 rand = "0.8"
 urlencoding = "2.1"
+aws-sdk-s3 = { version = "1.23.0", features = ["behavior-version-latest"] }
 

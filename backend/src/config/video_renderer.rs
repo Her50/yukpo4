@@ -1,5 +1,6 @@
 use std::env;
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct VideoRendererConfig {
@@ -10,6 +11,12 @@ pub struct VideoRendererConfig {
     pub enable_gpu: bool,
     pub chromium_executable: Option<String>,
     pub browser_download_dir: Option<PathBuf>,
+    pub rpc_endpoint: Option<String>,
+    pub timeout: Duration,
+    pub max_retries: u32,
+    pub shared_volume_root: Option<PathBuf>,
+    pub jobs_root: PathBuf,
+    pub renders_root: PathBuf,
 }
 
 impl VideoRendererConfig {
@@ -51,6 +58,32 @@ impl VideoRendererConfig {
             .ok()
             .map(PathBuf::from);
 
+        let rpc_endpoint = env::var("VIDEO_RENDERER_RPC_URL")
+            .ok()
+            .filter(|value| !value.trim().is_empty());
+
+        let timeout = env::var("VIDEO_RENDERER_TIMEOUT_SECS")
+            .ok()
+            .and_then(|raw| raw.parse::<u64>().ok())
+            .map(Duration::from_secs)
+            .unwrap_or_else(|| Duration::from_secs(600));
+
+        let max_retries = env::var("VIDEO_RENDERER_MAX_RETRIES")
+            .ok()
+            .and_then(|raw| raw.parse::<u32>().ok())
+            .unwrap_or(2);
+
+        let shared_volume_root = env::var("VIDEO_RENDERER_SHARED_VOLUME")
+            .ok()
+            .map(PathBuf::from)
+            .filter(|path| path.exists());
+
+        let (jobs_root, renders_root) = if let Some(shared_root) = shared_volume_root.clone() {
+            (shared_root.join("jobs"), shared_root.join("renders"))
+        } else {
+            (project_root.join("jobs"), project_root.join("renders"))
+        };
+
         Some(Self {
             enabled,
             project_root,
@@ -59,6 +92,12 @@ impl VideoRendererConfig {
             enable_gpu,
             chromium_executable,
             browser_download_dir,
+            rpc_endpoint,
+            timeout,
+            max_retries,
+            shared_volume_root,
+            jobs_root,
+            renders_root,
         })
     }
 }

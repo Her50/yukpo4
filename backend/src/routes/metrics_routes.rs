@@ -9,4 +9,3 @@ pub fn metrics_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/internal/metrics/pipeline", get(pipeline_metrics))
         .with_state(state)
 }
-
