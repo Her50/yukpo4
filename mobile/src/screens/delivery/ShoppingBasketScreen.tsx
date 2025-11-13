@@ -2,12 +2,12 @@ import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import DeliveryAvatarBubble from '../../components/DeliveryAvatarBubble';
-import { NativeButton } from '../../components/NativeDesign';
-import { SafeNativeView } from '../../components/SafeNativeView';
+import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
 import ShoppingBasketCard from '../../components/delivery/ShoppingBasketCard';
 import ShoppingProductPicker from '../../components/delivery/ShoppingProductPicker';
 import WalletAlertBanner from '../../components/delivery/WalletAlertBanner';
+import { NativeButton } from '../../components/NativeDesign';
+import { SafeNativeView } from '../../components/SafeNativeView';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
 

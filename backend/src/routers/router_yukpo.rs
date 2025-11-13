@@ -91,6 +91,10 @@ use axum::response::IntoResponse;
 pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Routes publiques sans middleware
     let public_routes = Router::new()
+        .route(
+            "/",
+            get(|| async { "Yukpomnang Backend API - Service actif" }),
+        )
         .route("/api/test/ping", get(handle_ping))
         .route("/api/geocoding/reverse", post(handle_reverse_geocode))
         .route("/api/places/autocomplete", get(autocomplete_places))
@@ -407,10 +411,6 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(axum::middleware::from_fn(jwt_auth));
 
     let app = Router::new()
-        .route(
-            "/",
-            get(|| async { "Yukpomnang Backend API - Service actif" }),
-        )
         .merge(weather_routes(state.clone()))
         .merge(nearby_services_routes(state.clone()))
         .merge(ai_chat_routes(state.clone()))

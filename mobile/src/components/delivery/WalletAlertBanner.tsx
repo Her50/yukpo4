@@ -28,12 +28,12 @@ const WalletAlertBanner: React.FC<WalletAlertBannerProps> = ({ onRecharge }) => 
         return (
             <NativeCard style={styles.card}>
                 <View style={styles.row}>
-                    <SafeIcon name='wallet' size={20} color={modernColors.primary} />
+                    <SafeIcon name="wallet" size={20} color={modernColors.primary} />
                     <View style={styles.content}>
                         <Text style={styles.title}>Solde indisponible</Text>
                         <Text style={styles.subtitle}>Actualise ton portefeuille pour vérifier ton budget.</Text>
                     </View>
-                    <NativeButton title='Actualiser' variant='outline' onPress={refreshWalletBalance} />
+                    <NativeButton title="Actualiser" variant="outline" onPress={refreshWalletBalance} />
                 </View>
             </NativeCard>
         );
@@ -43,7 +43,7 @@ const WalletAlertBanner: React.FC<WalletAlertBannerProps> = ({ onRecharge }) => 
         <NativeCard style={[styles.card, !canProceed && styles.warningCard]}>
             <View style={styles.row}>
                 <SafeIcon
-                    name='wallet'
+                    name="wallet"
                     size={20}
                     color={canProceed ? modernColors.success : modernColors.warning}
                 />
@@ -67,8 +67,8 @@ const WalletAlertBanner: React.FC<WalletAlertBannerProps> = ({ onRecharge }) => 
                 </View>
                 {!canProceed && (
                     <NativeButton
-                        title='Recharger'
-                        variant='secondary'
+                        title="Recharger"
+                        variant="secondary"
                         onPress={onRecharge ?? (() => { })}
                     />
                 )}
@@ -121,5 +121,3 @@ const styles = StyleSheet.create({
 });
 
 export default WalletAlertBanner;
-
-

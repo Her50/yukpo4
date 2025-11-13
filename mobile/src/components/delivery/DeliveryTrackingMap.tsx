@@ -98,7 +98,7 @@ const DeliveryTrackingMap: React.FC<DeliveryTrackingMapProps> = ({
                 {markers.pickup ? (
                     <Marker coordinate={markers.pickup} pinColor={modernColors.primary}>
                         <View style={styles.markerBubble}>
-                            <SafeIcon name='shopping-cart' size={14} color='#fff' />
+                            <SafeIcon name="shopping-cart" size={14} color="#fff" />
                             <Text style={styles.markerText}>{pickup?.label ?? 'Pickup'}</Text>
                         </View>
                     </Marker>
@@ -107,7 +107,7 @@ const DeliveryTrackingMap: React.FC<DeliveryTrackingMapProps> = ({
                 {markers.dropoff ? (
                     <Marker coordinate={markers.dropoff} pinColor={modernColors.accent}>
                         <View style={styles.markerBubble}>
-                            <SafeIcon name='location' size={14} color='#fff' />
+                            <SafeIcon name="location" size={14} color="#fff" />
                             <Text style={styles.markerText}>{dropoff?.label ?? 'Dropoff'}</Text>
                         </View>
                     </Marker>
@@ -116,7 +116,7 @@ const DeliveryTrackingMap: React.FC<DeliveryTrackingMapProps> = ({
                 {markers.courier ? (
                     <Marker coordinate={markers.courier} pinColor={modernColors.info}>
                         <View style={styles.markerBubble}>
-                            <SafeIcon name='car' size={14} color='#fff' />
+                            <SafeIcon name="car" size={14} color="#fff" />
                             <Text style={styles.markerText}>Coursier</Text>
                         </View>
                     </Marker>
@@ -125,7 +125,7 @@ const DeliveryTrackingMap: React.FC<DeliveryTrackingMapProps> = ({
                 {markers.recipient ? (
                     <Marker coordinate={markers.recipient} pinColor={modernColors.success}>
                         <View style={styles.markerBubble}>
-                            <SafeIcon name='profile' size={14} color='#fff' />
+                            <SafeIcon name="profile" size={14} color="#fff" />
                             <Text style={styles.markerText}>Destinataire</Text>
                         </View>
                     </Marker>
@@ -136,8 +136,8 @@ const DeliveryTrackingMap: React.FC<DeliveryTrackingMapProps> = ({
                         coordinates={markers.all}
                         strokeColor={modernColors.primary}
                         strokeWidth={4}
-                        lineCap='round'
-                        lineJoin='round'
+                        lineCap="round"
+                        lineJoin="round"
                     />
                 ) : null}
             </MapView>
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     container: {
         borderRadius: 24,
         overflow: 'hidden',
-        height: (width * 0.65),
+        height: width * 0.65,
     },
     map: {
         ...StyleSheet.absoluteFillObject,

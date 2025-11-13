@@ -51,7 +51,7 @@ Ce script exécute tous les scénarios présents dans `maestro/flows/`. Exemple 
 
 ### Pré-requis
 
-- Installer le CLI : `npm install -g @maestro/cli` (ou utiliser `npx maestro`).
+- Installer le CLI via le script officiel : `curl -fsSL "https://get.maestro.mobile.dev" | bash` (ou `brew install maestro` sur macOS).
 - Fournir un device/simulateur déjà démarré et accessible via `adb` ou `xcrun simctl`.
 
 ## 4. Intégration CI/CD

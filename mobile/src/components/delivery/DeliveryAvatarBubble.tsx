@@ -26,7 +26,7 @@ const DeliveryAvatarBubble: React.FC<DeliveryAvatarBubbleProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.icon}>
-                <SafeIcon name={iconName} size={22} color='#fff' />
+                <SafeIcon name={iconName} size={22} color="#fff" />
             </View>
             <View style={styles.texts}>
                 <Text style={styles.message}>{message}</Text>

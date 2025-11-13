@@ -2052,7 +2052,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const titreService = extractStringValue('titre_service');
 
     const prixProduitValue = extractStringValue('prix_produit') || extractStringValue('prix');
-    const deviseProduitValue = extractStringValue('devise_produit') || extractStringValue('devise') || 'XAF';
 
     const produitsField = valeursFormulaire.produits;
     let produitsValues: string[] = [];
