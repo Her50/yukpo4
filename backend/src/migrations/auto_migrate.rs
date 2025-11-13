@@ -2444,7 +2444,7 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
             pc.edited_at,
             pc.is_deleted,
             (u.nom_complet)::TEXT AS user_name,
-            (u.avatar_url)::TEXT AS user_avatar,
+            COALESCE(u.avatar_url, ''::VARCHAR(500)) AS user_avatar,
             (
                 SELECT jsonb_object_agg(reaction_type, reaction_count)
                 FROM (
@@ -2587,6 +2587,30 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
     info!("✅ Table product_reactions et ses composants vérifiés/créés avec succès !");
 
     Ok(())
+}
+
+async fn run_delivery_step(
+    pool: &PgPool,
+    label: &'static str,
+    sql: &'static str,
+) -> Result<(), sqlx::Error> {
+    info!("➡️ [delivery_migration] {}", label);
+    let result = sqlx::query(sql).execute(pool).await;
+    match result {
+        Ok(res) => {
+            info!(
+                "✅ [delivery_migration] {} ({} lignes affectées)",
+                label,
+                res.rows_affected()
+            );
+            Ok(())
+        }
+        Err(err) => {
+            error!("❌ [delivery_migration] {} -> {}", label, err);
+            error!("🧾 SQL [{}]: {}", label, sql.trim());
+            Err(err)
+        }
+    }
 }
 
 /// Vérifie et crée la fonction extract_all_product_text si elle n'existe pas
@@ -3012,7 +3036,9 @@ pub async fn ensure_african_locations_table(pool: &PgPool) -> Result<(), sqlx::E
 pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables livraison (enums + structures)...");
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create enum delivery_status",
         r#"
         DO $$
         BEGIN
@@ -3035,10 +3061,11 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         $$;
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create enum delivery_cancel_reason",
         r#"
         DO $$
         BEGIN
@@ -3055,10 +3082,11 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         $$;
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create enum delivery_engine_type",
         r#"
         DO $$
         BEGIN
@@ -3078,10 +3106,11 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         $$;
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create enum delivery_courier_status",
         r#"
         DO $$
         BEGIN
@@ -3097,10 +3126,11 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         $$;
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create enum delivery_terrain_difficulty",
         r#"
         DO $$
         BEGIN
@@ -3116,10 +3146,11 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         $$;
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create enum delivery_application_status",
         r#"
         DO $$
         BEGIN
@@ -3136,10 +3167,11 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         $$;
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create parcel_types table",
         r#"
         CREATE TABLE IF NOT EXISTS parcel_types (
             id SERIAL PRIMARY KEY,
@@ -3157,14 +3189,18 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_parcel_types_slug ON parcel_types(slug)")
-        .execute(pool)
-        .await?;
+    run_delivery_step(
+        pool,
+        "Create parcel_types slug index",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_parcel_types_slug ON parcel_types(slug)",
+    )
+    .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create courier_applications table",
         r#"
             CREATE TABLE IF NOT EXISTS courier_applications (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3182,16 +3218,18 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create courier_applications unique index",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_courier_applications_user ON courier_applications(user_id)",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create couriers table",
         r#"
             CREATE TABLE IF NOT EXISTS couriers (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3208,10 +3246,11 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create courier_assets table",
         r#"
         CREATE TABLE IF NOT EXISTS courier_assets (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3229,21 +3268,24 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create courier_assets courier index",
         "CREATE INDEX IF NOT EXISTS idx_courier_assets_courier ON courier_assets(courier_id)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create courier_assets primary unique index",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_courier_assets_primary ON courier_assets(courier_id) WHERE is_primary = TRUE",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create delivery_parcels table",
         r#"
         CREATE TABLE IF NOT EXISTS delivery_parcels (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3258,10 +3300,11 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create deliveries table",
         r#"
         CREATE TABLE IF NOT EXISTS deliveries (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3303,79 +3346,110 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create deliveries status index",
         "CREATE INDEX IF NOT EXISTS idx_deliveries_status_requested_at ON deliveries(status, requested_at DESC)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_courier ON deliveries(courier_id)")
-        .execute(pool)
-        .await?;
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_deliveries_creator ON deliveries(creator_id)")
-        .execute(pool)
-        .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create deliveries courier index",
+        "CREATE INDEX IF NOT EXISTS idx_deliveries_courier ON deliveries(courier_id)",
+    )
+    .await?;
+    run_delivery_step(
+        pool,
+        "Create deliveries creator index",
+        "CREATE INDEX IF NOT EXISTS idx_deliveries_creator ON deliveries(creator_id)",
+    )
+    .await?;
+    run_delivery_step(
+        pool,
+        "Create deliveries recipient_user index",
         "CREATE INDEX IF NOT EXISTS idx_deliveries_recipient_user ON deliveries(recipient_user_id)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create deliveries recipient_tracking_token unique index",
         "CREATE UNIQUE INDEX IF NOT EXISTS ux_deliveries_recipient_tracking_token ON deliveries(recipient_tracking_token)",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create deliveries pickup_location index",
         "CREATE INDEX IF NOT EXISTS idx_deliveries_pickup_location ON deliveries USING GIST(pickup_location)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create deliveries dropoff_location index",
         "CREATE INDEX IF NOT EXISTS idx_deliveries_dropoff_location ON deliveries USING GIST(dropoff_location)",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Add deliveries.recipient_user_id column",
         "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL",
     )
-    .execute(pool)
     .await?;
-    sqlx::query("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_contact_name TEXT")
-        .execute(pool)
-        .await?;
-    sqlx::query("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_contact_phone TEXT")
-        .execute(pool)
-        .await?;
-    sqlx::query("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_notes TEXT")
-        .execute(pool)
-        .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Add deliveries.recipient_contact_name column",
+        "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_contact_name TEXT",
+    )
+    .await?;
+    run_delivery_step(
+        pool,
+        "Add deliveries.recipient_contact_phone column",
+        "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_contact_phone TEXT",
+    )
+    .await?;
+    run_delivery_step(
+        pool,
+        "Add deliveries.recipient_notes column",
+        "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_notes TEXT",
+    )
+    .await?;
+    run_delivery_step(
+        pool,
+        "Add deliveries.recipient_tracking_token column",
         "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_tracking_token UUID DEFAULT gen_random_uuid()",
     )
-    .execute(pool)
     .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Add deliveries.recipient_dropoff_override column",
         "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_dropoff_override GEOGRAPHY(Point, 4326)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_dropoff_address TEXT")
-        .execute(pool)
-        .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Add deliveries.recipient_dropoff_address column",
+        "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_dropoff_address TEXT",
+    )
+    .await?;
+    run_delivery_step(
+        pool,
+        "Add deliveries.recipient_dropoff_updated_at column",
         "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_dropoff_updated_at TIMESTAMPTZ",
     )
-    .execute(pool)
     .await?;
-    sqlx::query("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_chat_thread_id UUID")
-        .execute(pool)
-        .await?;
+    run_delivery_step(
+        pool,
+        "Add deliveries.recipient_chat_thread_id column",
+        "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_chat_thread_id UUID",
+    )
+    .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create delivery_status_events table",
         r#"
         CREATE TABLE IF NOT EXISTS delivery_status_events (
             id BIGSERIAL PRIMARY KEY,
@@ -3387,21 +3461,24 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create delivery_status_events delivery index",
         "CREATE INDEX IF NOT EXISTS idx_delivery_status_events_delivery ON delivery_status_events(delivery_id)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create delivery_status_events delivery_time index",
         "CREATE INDEX IF NOT EXISTS idx_delivery_status_events_delivery_time ON delivery_status_events(delivery_id, occurred_at DESC)",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create delivery_pricing table",
         r#"
         CREATE TABLE IF NOT EXISTS delivery_pricing (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3418,10 +3495,11 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Add deliveries.pricing_id FK",
         r#"
         ALTER TABLE deliveries
         ADD CONSTRAINT IF NOT EXISTS fk_deliveries_pricing
@@ -3430,10 +3508,11 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         ON DELETE SET NULL
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create delivery_tracking_points table",
         r#"
         CREATE TABLE IF NOT EXISTS delivery_tracking_points (
             id BIGSERIAL PRIMARY KEY,
@@ -3447,31 +3526,36 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create tracking_points delivery index",
         "CREATE INDEX IF NOT EXISTS idx_tracking_points_delivery ON delivery_tracking_points(delivery_id)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create tracking_points courier index",
         "CREATE INDEX IF NOT EXISTS idx_tracking_points_courier ON delivery_tracking_points(courier_id)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create tracking_points captured_at index",
         "CREATE INDEX IF NOT EXISTS idx_tracking_points_captured_at ON delivery_tracking_points(captured_at DESC)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create tracking_points location index",
         "CREATE INDEX IF NOT EXISTS idx_tracking_points_location ON delivery_tracking_points USING GIST(location)",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create delivery_recipient_updates table",
         r#"
         CREATE TABLE IF NOT EXISTS delivery_recipient_updates (
             id BIGSERIAL PRIMARY KEY,
@@ -3484,16 +3568,18 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create delivery_recipient_updates index",
         "CREATE INDEX IF NOT EXISTS idx_delivery_recipient_updates_delivery ON delivery_recipient_updates(delivery_id, created_at DESC)",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create courier_ratings table",
         r#"
             CREATE TABLE IF NOT EXISTS courier_ratings (
                 id BIGSERIAL PRIMARY KEY,
@@ -3507,16 +3593,18 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create courier_ratings courier index",
         "CREATE INDEX IF NOT EXISTS idx_courier_ratings_courier ON courier_ratings(courier_id)",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create client_ratings table",
         r#"
             CREATE TABLE IF NOT EXISTS client_ratings (
                 id BIGSERIAL PRIMARY KEY,
@@ -3530,16 +3618,18 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create client_ratings client index",
         "CREATE INDEX IF NOT EXISTS idx_client_ratings_client ON client_ratings(client_id)",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create traffic_snapshots table",
         r#"
         CREATE TABLE IF NOT EXISTS traffic_snapshots (
             id BIGSERIAL PRIMARY KEY,
@@ -3550,21 +3640,24 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create traffic_snapshots captured_at index",
         "CREATE INDEX IF NOT EXISTS idx_traffic_snapshots_captured_at ON traffic_snapshots(captured_at DESC)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create traffic_snapshots source index",
         "CREATE INDEX IF NOT EXISTS idx_traffic_snapshots_source ON traffic_snapshots(source)",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create terrain_segments table",
         r#"
         CREATE TABLE IF NOT EXISTS terrain_segments (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3576,21 +3669,24 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create terrain_segments difficulty index",
         "CREATE INDEX IF NOT EXISTS idx_terrain_segments_difficulty ON terrain_segments(difficulty)",
     )
-    .execute(pool)
     .await?;
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create terrain_segments segment index",
         "CREATE INDEX IF NOT EXISTS idx_terrain_segments_segment ON terrain_segments USING GIST(segment)",
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create shopping_orders table",
         r#"
         CREATE TABLE IF NOT EXISTS shopping_orders (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3609,14 +3705,18 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_shopping_orders_status ON shopping_orders(status)")
-        .execute(pool)
-        .await?;
+    run_delivery_step(
+        pool,
+        "Create shopping_orders status index",
+        "CREATE INDEX IF NOT EXISTS idx_shopping_orders_status ON shopping_orders(status)",
+    )
+    .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create shopping_order_items table",
         r#"
         CREATE TABLE IF NOT EXISTS shopping_order_items (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3635,19 +3735,19 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         "#,
     )
-    .execute(pool)
     .await?;
 
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create shopping_order_items order index",
         "CREATE INDEX IF NOT EXISTS idx_shopping_order_items_order ON shopping_order_items(shopping_order_id)",
     )
-    .execute(pool)
     .await?;
-
-    sqlx::query(
+    run_delivery_step(
+        pool,
+        "Create shopping_order_items status index",
         "CREATE INDEX IF NOT EXISTS idx_shopping_order_items_status ON shopping_order_items(status)",
     )
-    .execute(pool)
     .await?;
 
     info!("✅ Tables livraison vérifiées");
