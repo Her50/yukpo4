@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use chrono::Utc;
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use serde_json::json;
 
 use crate::{config::live_streaming::LiveStreamingConfig, state::AppState};
@@ -70,11 +70,16 @@ async fn cleanup_rooms(client: &Client, config: &LiveStreamingConfig) -> Result<
         .await
         .context("appel ListRooms")?;
 
-    if !response.status().is_success() {
-        log::warn!(
-            "LiveKit ListRooms renvoie un statut inattendu: {}",
-            response.status()
+    let status = response.status();
+    if status == StatusCode::UNAUTHORIZED {
+        log::info!(
+            "LiveKit ListRooms a renvoyé 401 Unauthorized. Vérifiez les identifiants LiveKit."
         );
+        return Ok(());
+    }
+
+    if !status.is_success() {
+        log::warn!("LiveKit ListRooms renvoie un statut inattendu: {}", status);
         return Ok(());
     }
 
@@ -172,11 +177,16 @@ async fn cleanup_ingress(client: &Client, config: &LiveStreamingConfig) -> Resul
         .await
         .context("appel ListIngress")?;
 
-    if !response.status().is_success() {
-        log::warn!(
-            "LiveKit ListIngress renvoie un statut inattendu: {}",
-            response.status()
+    let status = response.status();
+    if status == StatusCode::UNAUTHORIZED {
+        log::info!(
+            "LiveKit ListIngress a renvoyé 401 Unauthorized. Vérifiez les identifiants LiveKit."
         );
+        return Ok(());
+    }
+
+    if !status.is_success() {
+        log::warn!("LiveKit ListIngress renvoie un statut inattendu: {}", status);
         return Ok(());
     }
 

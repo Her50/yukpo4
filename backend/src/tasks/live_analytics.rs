@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use bigdecimal::{BigDecimal, FromPrimitive};
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use sqlx::{types::Uuid, PgConnection, PgPool};
 
 use crate::{config::live_streaming::LiveStreamingConfig, state::AppState};
@@ -82,8 +82,16 @@ async fn list_livekit_rooms(
         .await
         .context("appel ListRooms")?;
 
-    if !response.status().is_success() {
-        log::warn!("LiveKit ListRooms statut inattendu: {}", response.status());
+    let status = response.status();
+    if status == StatusCode::UNAUTHORIZED {
+        log::info!(
+            "LiveKit ListRooms a renvoyé 401 Unauthorized. Synchronisation LiveKit désactivée."
+        );
+        return Ok(vec![]);
+    }
+
+    if !status.is_success() {
+        log::warn!("LiveKit ListRooms statut inattendu: {}", status);
         return Ok(vec![]);
     }
 
