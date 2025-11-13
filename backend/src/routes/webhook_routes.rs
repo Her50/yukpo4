@@ -19,7 +19,7 @@ pub fn webhook_routes() -> Router<Arc<AppState>> {
         .route("/orange-money", post(orange_money_webhook))
         .route("/mtn-money", post(mtn_money_webhook))
         .route("/generic", post(generic_webhook))
-        .route("/audio-premium/:provider", post(audio_premium_webhook))
+        .route("/audio-premium/{provider}", post(audio_premium_webhook))
         // Endpoint de test pour les webhooks
         .route("/test", post(test_webhook))
         // Endpoint de santé pour vérifier que les webhooks sont opérationnels

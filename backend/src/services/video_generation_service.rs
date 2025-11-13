@@ -18,6 +18,7 @@ use crate::{
     services::{
         app_ia::VideoBriefRequest,
         audio_library_service,
+        audio_mastering_service::AudioMasteringOutcome,
         audio_pipeline::{self, AudioMixConfig},
         broll_service,
         cost_service::CostEstimation,
@@ -959,7 +960,7 @@ pub async fn generate_product_video(
                 .master_audio(&mixed_audio_path, &mastering_dir, job_id)
                 .await
             {
-                Ok(crate::services::audio_mastering_service::AudioMasteringOutcome::Completed(
+                Ok(AudioMasteringOutcome::Completed(
                     result,
                 )) => {
                     info!(
@@ -968,7 +969,7 @@ pub async fn generate_product_video(
                     );
                     Some(result.mastered_path)
                 }
-                Ok(crate::services::audio_mastering_service::AudioMasteringOutcome::Pending {
+                Ok(AudioMasteringOutcome::Pending {
                     job_id: audio_job_id,
                 }) => {
                     info!(
