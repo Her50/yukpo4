@@ -1067,7 +1067,6 @@ pub async fn creer_service(
         })
         .unwrap_or_default();
 
-    // D'abord, extraire les produits du data_obj
     if let Some(produits_array) = produits_array_mut(&mut data_obj) {
         log::info!(
             "[creer_service] 📦 Sauvegarde médias pour {} produits",
@@ -1078,86 +1077,95 @@ pub async fn creer_service(
         let image_service =
             crate::services::image_search_service::ImageSearchService::new(pool.clone());
 
-        // ✅ CORRECTION: Collecter les chemins des images sauvegardées pour mettre à jour le JSON
-        let mut saved_image_paths_by_product: Vec<Vec<String>> = vec![];
+        let mut saved_image_paths_by_product: Vec<Vec<String>> =
+            Vec::with_capacity(produits_array.len());
 
-        for (product_index, produit) in produits_array.iter().enumerate() {
-            let product_id = produit
+        for (product_index, produit_value) in produits_array.iter_mut().enumerate() {
+            let produit_obj = match produit_value.as_object_mut() {
+                Some(obj) => obj,
+                None => {
+                    saved_image_paths_by_product.push(Vec::new());
+                    continue;
+                }
+            };
+
+            let product_id = produit_obj
                 .get("id")
                 .and_then(|v| v.as_str())
-                .unwrap_or(&format!("prod_{}", product_index))
-                .to_string();
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("prod_{}", product_index));
 
             log::info!(
                 "[creer_service] 📦 Produit {} (index {}): {}",
                 product_id,
                 product_index,
-                produit
+                produit_obj
                     .get("nom")
                     .and_then(|v| v.as_str())
                     .unwrap_or("Sans nom")
             );
 
-            // ✅ PHASE 10: Si c'est le premier produit et qu'il y a des images du service, les ajouter en premier
-            let mut images_to_process: Vec<String> = vec![];
-            if let Some(produit_obj) = produit.as_object_mut() {
-                produit_obj.remove("images");
-            }
+            let mut images_to_process: Vec<String> = Vec::new();
             if product_index == 0 && !service_images.is_empty() {
-                log::info!("[creer_service] 🖼️ PHASE 10: Ajout de {} image(s) du service comme première(s) image(s) du premier produit", service_images.len());
+                log::info!(
+                    "[creer_service] 🖼️ PHASE 10: Ajout de {} image(s) du service comme première(s) image(s) du premier produit",
+                    service_images.len()
+                );
                 images_to_process.extend(service_images.clone());
             }
 
-            // ✅ Images du produit spécifique
-            if let Some(product_images) = produit.get("images").and_then(|v| v.as_array()) {
-                let product_image_strings: Vec<String> = product_images
-                    .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect();
-                images_to_process.extend(product_image_strings);
+            if let Some(product_images) = produit_obj
+                .get("images")
+                .and_then(|v| v.as_array())
+            {
+                images_to_process.extend(
+                    product_images
+                        .iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                );
             }
 
-            // ✅ CORRECTION: Collecter les chemins des images sauvegardées pour ce produit
-            let mut saved_paths_for_product: Vec<String> = vec![];
+            produit_obj.remove("images");
 
-            // Traiter toutes les images (service + produit)
+            let mut saved_paths_for_product: Vec<String> = Vec::new();
+
             if !images_to_process.is_empty() {
-                for (image_index, img_url) in images_to_process.iter().enumerate() {
-                    let image_path = img_url.as_str();
-                    if image_path.is_empty() {
+                let service_image_count = if product_index == 0 {
+                    service_images.len()
+                } else {
+                    0
+                };
+
+                for (image_index, image_data) in images_to_process.iter().enumerate() {
+                    if image_data.is_empty() {
                         continue;
                     }
 
-                        let is_main = image_index == 0;
-                    let service_image_count = if product_index == 0 {
-                        service_images.len()
-                    } else {
-                        0
-                    };
+                    let is_main = image_index == 0;
 
-                        log::info!(
-                            "[creer_service] 🖼️ Image {} de produit {} (main: {}): {}",
-                            image_index,
-                            product_index,
-                            is_main,
-                            &image_path[..image_path.len().min(50)]
-                        );
+                    log::info!(
+                        "[creer_service] 🖼️ Image {} de produit {} (main: {}): {}",
+                        image_index,
+                        product_index,
+                        is_main,
+                        &image_data[..image_data.len().min(50)]
+                    );
 
-                    let stored = if image_path.starts_with("http") {
+                    let stored = if image_data.starts_with("http") {
                         Ok(StoredMedia {
-                            path: image_path.to_string(),
+                            path: image_data.to_string(),
                             bytes: Vec::new(),
                         })
-                    } else if is_probable_base64(image_path) {
+                    } else if is_probable_base64(image_data) {
                         persist_base64_media(
                             storage_root.as_path(),
                             service_id,
                             "images",
-                            image_path,
+                            image_data,
                             "jpg",
                         )
                         .await
-                        } else {
+                    } else {
                         log::warn!(
                             "[creer_service] Image ignorée (format non supporté) pour produit {}",
                             product_index
@@ -1173,22 +1181,24 @@ pub async fn creer_service(
                                 product_index,
                                 err
                             );
-                                    continue;
-                                }
-                        };
+                            continue;
+                        }
+                    };
 
                     let StoredMedia {
                         path: file_path,
                         bytes: image_bytes,
                     } = stored;
 
-                        // Générer signature si feature activée et si c'est du base64
-                        #[cfg(feature = "image_search")]
-                        let (image_signature, image_hash, image_metadata) =
-                            if !image_bytes.is_empty() {
-                                match image_service.generate_image_signature(&image_bytes).await {
-                                    Ok(signature) => {
-                                        let metadata = image_service
+                    #[cfg(not(feature = "image_search"))]
+                    let _ = &image_bytes;
+
+                    #[cfg(feature = "image_search")]
+                    let (image_signature, image_hash, image_metadata) =
+                        if !image_bytes.is_empty() {
+                            match image_service.generate_image_signature(&image_bytes).await {
+                                Ok(signature) => {
+                                    let metadata = image_service
                                         .extract_image_metadata(&image_bytes)
                                         .await
                                         .unwrap_or_else(|_| {
@@ -1204,218 +1214,216 @@ pub async fn creer_service(
                                                 contrast: 0.0,
                                             }
                                         });
-                                        let hash = format!("{:x}", md5::compute(&image_bytes));
-                                        (
-                                            serde_json::to_value(&signature).unwrap_or_default(),
-                                            hash,
-                                            serde_json::to_value(&metadata).unwrap_or_default(),
-                                        )
-                                    }
-                                    Err(e) => {
-                                        log::warn!("[creer_service] Erreur signature: {}", e);
-                                        (
-                                            serde_json::Value::Null,
-                                            String::new(),
-                                            serde_json::Value::Null,
-                                        )
-                                    }
+                                    let hash = format!("{:x}", md5::compute(&image_bytes));
+                                    (
+                                        serde_json::to_value(&signature).unwrap_or_default(),
+                                        hash,
+                                        serde_json::to_value(&metadata).unwrap_or_default(),
+                                    )
                                 }
-                            } else {
-                                (
-                                    serde_json::Value::Null,
-                                    String::new(),
-                                    serde_json::Value::Null,
-                                )
-                            };
+                                Err(e) => {
+                                    log::warn!("[creer_service] Erreur signature: {}", e);
+                                    (
+                                        serde_json::Value::Null,
+                                        String::new(),
+                                        serde_json::Value::Null,
+                                    )
+                                }
+                            }
+                        } else {
+                            (
+                                serde_json::Value::Null,
+                                String::new(),
+                                serde_json::Value::Null,
+                            )
+                        };
 
-                        #[cfg(not(feature = "image_search"))]
-                        let (image_signature, image_hash, image_metadata) = (
-                            serde_json::Value::Null,
-                            String::new(),
-                            serde_json::Value::Null,
-                        );
+                    #[cfg(not(feature = "image_search"))]
+                    let (image_signature, image_hash, image_metadata) = (
+                        serde_json::Value::Null,
+                        String::new(),
+                        serde_json::Value::Null,
+                    );
 
-                        // ✅ NOUVEAU : Insérer avec product_index, product_id, is_main_image, display_order
+                    if let Err(e) = sqlx::query(
+                        r#"
+                        INSERT INTO media (
+                            service_id, product_id, product_index, type, path,
+                            is_main_image, display_order, uploaded_at,
+                            image_signature, image_hash, image_metadata
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                        "#,
+                    )
+                    .bind(service_id)
+                    .bind(&product_id)
+                    .bind(product_index as i32)
+                    .bind("image")
+                    .bind(&file_path)
+                    .bind(is_main)
+                    .bind(image_index as i32)
+                    .bind(Utc::now().naive_utc())
+                    .bind(image_signature)
+                    .bind(image_hash)
+                    .bind(image_metadata)
+                    .execute(&mut *tx)
+                    .await
+                    {
+                        log::error!("[creer_service] Erreur insertion media: {}", e);
+                        continue;
+                    }
+
+                    let product_name = produit_obj
+                        .get("nom")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let product_description = produit_obj
+                        .get("description")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let product_marque = produit_obj.get("marque").and_then(|v| v.as_str());
+                    let product_category = produit_obj
+                        .get("categorie")
+                        .or_else(|| produit_obj.get("category"))
+                        .and_then(|v| v.as_str());
+                    let product_couleurs: Vec<String> = produit_obj
+                        .get("couleurs")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+
+                    let ai_description = if !product_description.is_empty() {
+                        product_description.to_string()
+                    } else if !product_name.is_empty() {
+                        format!(
+                            "{} - {}",
+                            product_name,
+                            produit_obj
+                                .get("prix")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                        )
+                    } else {
+                        String::new()
+                    };
+
+                    let mut ai_tags: Vec<String> = Vec::new();
+                    if !product_name.is_empty() {
+                        ai_tags.push(product_name.to_string());
+                    }
+                    if let Some(marque) = product_marque {
+                        ai_tags.push(marque.to_string());
+                    }
+                    ai_tags.extend(product_couleurs.clone());
+                    if let Some(cat) = product_category {
+                        ai_tags.push(cat.to_string());
+                    }
+
+                    let mut ai_metadata = serde_json::json!({});
+                    if let Some(marque) = product_marque {
+                        ai_metadata["marque"] = serde_json::json!(marque);
+                    }
+                    if !product_couleurs.is_empty() {
+                        ai_metadata["couleurs"] = serde_json::json!(product_couleurs);
+                    }
+                    if let Some(prix) = produit_obj.get("prix").and_then(|v| v.as_str()) {
+                        ai_metadata["prix"] = serde_json::json!(prix);
+                    }
+
+                    if !ai_description.is_empty() || !ai_tags.is_empty() {
                         if let Err(e) = sqlx::query(
                             r#"
-                            INSERT INTO media (
-                                service_id, product_id, product_index, type, path, 
-                                is_main_image, display_order, uploaded_at, 
-                                image_signature, image_hash, image_metadata
-                            ) 
-                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                            UPDATE media
+                            SET ai_description = $1,
+                                ai_tags = $2,
+                                ai_category = $3,
+                                ai_metadata = $4,
+                                ai_analyzed_at = $5,
+                                ai_confidence = 0.95
+                            WHERE service_id = $6 AND path = $7
                             "#,
                         )
-                        .bind(service_id)
-                        .bind(&product_id) // ✅ NOUVEAU
-                        .bind(product_index as i32) // ✅ NOUVEAU
-                        .bind("image")
-                        .bind(&file_path)
-                        .bind(is_main) // ✅ NOUVEAU
-                        .bind(image_index as i32) // ✅ NOUVEAU (display_order)
+                        .bind(if ai_description.is_empty() {
+                            None::<String>
+                        } else {
+                            Some(ai_description.clone())
+                        })
+                        .bind(if ai_tags.is_empty() {
+                            None::<Vec<String>>
+                        } else {
+                            Some(ai_tags.clone())
+                        })
+                        .bind(product_category)
+                        .bind(if ai_metadata.is_null() {
+                            None::<serde_json::Value>
+                        } else {
+                            Some(ai_metadata.clone())
+                        })
                         .bind(Utc::now().naive_utc())
-                        .bind(image_signature)
-                        .bind(image_hash)
-                        .bind(image_metadata)
+                        .bind(service_id)
+                        .bind(&file_path)
                         .execute(&mut *tx)
                         .await
                         {
-                            log::error!("[creer_service] Erreur insertion media: {}", e);
-                            continue;
-                        }
-
-                        // ✅ CORRECTION RECHERCHE IMAGE: Cataloguer automatiquement l'image avec les données du produit
-                        // Extraire les données du produit pour remplir media.ai_* et cataloguer dans image_analyses
-                        let product_name =
-                            produit.get("nom").and_then(|v| v.as_str()).unwrap_or("");
-                        let product_description = produit
-                            .get("description")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("");
-                        let product_marque = produit.get("marque").and_then(|v| v.as_str());
-                        let product_category = produit
-                            .get("categorie")
-                            .or_else(|| produit.get("category"))
-                            .and_then(|v| v.as_str());
-                        let product_couleurs: Vec<String> = produit
-                            .get("couleurs")
-                            .and_then(|v| v.as_array())
-                            .map(|arr| {
-                                arr.iter()
-                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                    .collect()
-                            })
-                            .unwrap_or_default();
-
-                        // Construire une description IA complète à partir des données du produit
-                        let ai_description = if !product_description.is_empty() {
-                            product_description.to_string()
-                        } else if !product_name.is_empty() {
-                            format!(
-                                "{} - {}",
-                                product_name,
-                                produit.get("prix").and_then(|v| v.as_str()).unwrap_or("")
-                            )
+                            log::warn!(
+                                "[creer_service] ⚠️ Erreur mise à jour media.ai_*: {}",
+                                e
+                            );
                         } else {
-                            String::new()
-                        };
-
-                        // Construire les tags IA à partir des données du produit
-                        let mut ai_tags: Vec<String> = vec![];
-                        if !product_name.is_empty() {
-                            ai_tags.push(product_name.to_string());
+                            log::info!(
+                                "[creer_service] ✅ Image cataloguée avec données produit ({} tags)",
+                                ai_tags.len()
+                            );
                         }
-                        if let Some(marque) = product_marque {
-                            ai_tags.push(marque.to_string());
-                        }
-                        ai_tags.extend(product_couleurs.clone());
-                        if let Some(cat) = product_category {
-                            ai_tags.push(cat.to_string());
-                        }
-
-                        // Construire les métadonnées IA
-                        let mut ai_metadata = serde_json::json!({});
-                        if let Some(marque) = product_marque {
-                            ai_metadata["marque"] = serde_json::json!(marque);
-                        }
-                        if !product_couleurs.is_empty() {
-                            ai_metadata["couleurs"] = serde_json::json!(product_couleurs);
-                        }
-                        if let Some(prix) = produit.get("prix").and_then(|v| v.as_str()) {
-                            ai_metadata["prix"] = serde_json::json!(prix);
-                        }
-
-                        // ✅ Mettre à jour media.ai_* avec les données du produit
-                        if !ai_description.is_empty() || !ai_tags.is_empty() {
-                            if let Err(e) = sqlx::query(
-                                r#"
-                                UPDATE media 
-                                SET ai_description = $1,
-                                    ai_tags = $2,
-                                    ai_category = $3,
-                                    ai_metadata = $4,
-                                    ai_analyzed_at = $5,
-                                    ai_confidence = 0.95
-                                WHERE service_id = $6 AND path = $7
-                                "#,
-                            )
-                            .bind(if ai_description.is_empty() {
-                                None::<String>
-                            } else {
-                                Some(ai_description.clone())
-                            })
-                            .bind(if ai_tags.is_empty() {
-                                None::<Vec<String>>
-                            } else {
-                                Some(ai_tags.clone())
-                            })
-                            .bind(product_category)
-                            .bind(if ai_metadata.is_null() {
-                                None::<serde_json::Value>
-                            } else {
-                                Some(ai_metadata.clone())
-                            })
-                            .bind(Utc::now().naive_utc())
-                            .bind(service_id)
-                            .bind(&file_path)
-                            .execute(&mut *tx)
-                            .await
-                            {
-                                log::warn!(
-                                    "[creer_service] ⚠️ Erreur mise à jour media.ai_*: {}",
-                                    e
-                                );
-                            } else {
-                                log::info!("[creer_service] ✅ Image cataloguée avec données produit ({} tags)", ai_tags.len());
-                            }
-                        }
-
-                        files_saved += 1;
-                        if product_index == 0 && image_index < service_image_count {
-                            saved_service_images.push(file_path.clone());
-                        }
-                        // ✅ CORRECTION: Ajouter le chemin à la liste des chemins sauvegardés pour ce produit
-                        saved_paths_for_product.push(file_path.clone());
-                        log::info!(
-                            "[creer_service] ✅ Image {}/{} du produit {} sauvegardée (main: {})",
-                            image_index + 1,
-                            images_to_process.len(),
-                            product_index,
-                            is_main
-                        );
                     }
+
+                    files_saved += 1;
+                    if product_index == 0 && image_index < service_image_count {
+                        saved_service_images.push(file_path.clone());
+                    }
+                    saved_paths_for_product.push(file_path.clone());
+                    log::info!(
+                        "[creer_service] ✅ Image {}/{} du produit {} sauvegardée (main: {})",
+                        image_index + 1,
+                        images_to_process.len(),
+                        product_index,
+                        is_main
+                    );
                 }
             }
 
-            if let Some(produit_obj) = produit.as_object_mut() {
-                if !saved_paths_for_product.is_empty() {
-                    let image_paths_json: Vec<serde_json::Value> = saved_paths_for_product
-                        .iter()
-                        .map(|path| serde_json::Value::String(path.clone()))
-                        .collect();
-                    produit_obj.insert("images".to_string(), serde_json::Value::Array(image_paths_json));
-                }
+            if !saved_paths_for_product.is_empty() {
+                let image_paths_json: Vec<serde_json::Value> = saved_paths_for_product
+                    .iter()
+                    .map(|path| serde_json::Value::String(path.clone()))
+                    .collect();
+                produit_obj.insert("images".to_string(), serde_json::Value::Array(image_paths_json));
             }
 
-            // ✅ CORRECTION: Stocker les chemins sauvegardés pour ce produit
             saved_image_paths_by_product.push(saved_paths_for_product.clone());
 
-            // ✅ Vidéos du produit spécifique
-            if let Some(product_videos) = produit.get("videos").and_then(|v| v.as_array()) {
+            if let Some(product_videos) = produit_obj
+                .get("videos")
+                .and_then(|v| v.as_array())
+            {
                 for (video_index, vid_url) in product_videos.iter().enumerate() {
                     if let Some(video_path) = vid_url.as_str() {
                         let file_path = if video_path.starts_with("http") {
                             video_path.to_string()
                         } else {
-                            format!("video_{}_{}.mp4", service_id, uuid::Uuid::new_v4())
+                            format!("video_{}_{}.mp4", service_id, Uuid::new_v4())
                         };
 
                         if let Err(e) = sqlx::query(
                             r#"
                             INSERT INTO media (
-                                service_id, product_id, product_index, type, path, 
+                                service_id, product_id, product_index, type, path,
                                 is_main_image, display_order, uploaded_at
-                            ) 
+                            )
                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                             "#,
                         )
@@ -1424,7 +1432,7 @@ pub async fn creer_service(
                         .bind(product_index as i32)
                         .bind("video")
                         .bind(&file_path)
-                        .bind(video_index == 0) // Première vidéo = principale
+                        .bind(video_index == 0)
                         .bind(video_index as i32)
                         .bind(Utc::now().naive_utc())
                         .execute(&mut *tx)
@@ -1446,25 +1454,26 @@ pub async fn creer_service(
             }
         }
 
-        // ✅ CORRECTION: Mettre à jour le champ images du premier produit avec les chemins sauvegardés
-        // Les images du service doivent être en premier
         if let Some(first_product) = produits_array.get_mut(0) {
             if let Some(first_product_obj) = first_product.as_object_mut() {
                 if !saved_image_paths_by_product.is_empty()
                     && !saved_image_paths_by_product[0].is_empty()
                 {
-                    let image_paths_json: Vec<serde_json::Value> = saved_image_paths_by_product[0]
-                        .iter()
-                        .map(|path| serde_json::Value::String(path.clone()))
-                        .collect();
+                    let image_paths_json: Vec<serde_json::Value> =
+                        saved_image_paths_by_product[0]
+                            .iter()
+                            .map(|path| serde_json::Value::String(path.clone()))
+                            .collect();
 
                     first_product_obj.insert(
                         "images".to_string(),
                         serde_json::Value::Array(image_paths_json),
                     );
 
-                    log::info!("[creer_service] ✅ CORRECTION: Champ 'images' du premier produit mis à jour avec {} chemin(s), images du service en premier", 
-                        saved_image_paths_by_product[0].len());
+                    log::info!(
+                        "[creer_service] ✅ CORRECTION: Champ 'images' du premier produit mis à jour avec {} chemin(s), images du service en premier",
+                        saved_image_paths_by_product[0].len()
+                    );
                 }
             }
         }
@@ -1525,6 +1534,9 @@ pub async fn creer_service(
                         path: file_path,
                         bytes: image_bytes,
                     } = stored;
+
+                    #[cfg(not(feature = "image_search"))]
+                    let _ = &image_bytes;
 
                     #[cfg(feature = "image_search")]
                     let (image_signature, image_hash, image_metadata) = {
