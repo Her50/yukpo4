@@ -231,10 +231,6 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let uploads_service = get_service(ServeDir::new(uploads_dir.clone()));
 
     let app = Router::new()
-        .route(
-            "/",
-            get(|| async { "Yukpomnang Backend API - Service actif" }),
-        )
         .route("/healthz", get(healthz))
         .route(
             "/api/health",

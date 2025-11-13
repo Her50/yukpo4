@@ -3501,11 +3501,23 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         pool,
         "Add deliveries.pricing_id FK",
         r#"
-        ALTER TABLE deliveries
-        ADD CONSTRAINT IF NOT EXISTS fk_deliveries_pricing
-        FOREIGN KEY (pricing_id)
-        REFERENCES delivery_pricing(id)
-        ON DELETE SET NULL
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM information_schema.table_constraints
+                WHERE constraint_name = 'fk_deliveries_pricing'
+                  AND table_name = 'deliveries'
+                  AND constraint_type = 'FOREIGN KEY'
+            ) THEN
+                ALTER TABLE deliveries
+                ADD CONSTRAINT fk_deliveries_pricing
+                FOREIGN KEY (pricing_id)
+                REFERENCES delivery_pricing(id)
+                ON DELETE SET NULL;
+            END IF;
+        END
+        $$;
         "#,
     )
     .await?;
