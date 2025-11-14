@@ -80,4 +80,29 @@ Si un commit doit déclencher ce déploiement automatiquement :
 
 Sinon, un déploiement manuel `ansible-playbook …` après chaque rotation de clé suffit.
 
+---
+
+## Déployer LiveKit Ingress (RTMP → LiveKit)
+
+Le playbook `playbook_ingress.yml` automatise l’installation du binaire `livekit-ingress`, utile pour accepter des flux RTMP (OBS, appareils mobiles…) et les injecter dans LiveKit.
+
+### Variables supplémentaires
+
+| Variable | Description |
+|----------|-------------|
+| `livekit_api_url` | URL HTTP de ton serveur LiveKit (ex. `http://46.224.14.85:7880`) |
+| `livekit_api_key` / `livekit_api_secret` | Paires API LiveKit |
+| `livekit_ingress_image` | Image Docker à utiliser (défaut `livekit/ingress:v1.4.3`) |
+| `ingress_rtmp_port` | Port RTMP exposé (défaut 1935) |
+
+### Commande d’exemple
+
+```bash
+ansible-playbook -i infra/livekit/ansible/inventory.example.ini \
+  infra/livekit/ansible/playbook_ingress.yml \
+  -e "livekit_api_url=http://46.224.14.85:7880"
+```
+
+Le playbook installe Docker (si nécessaire) puis lance le conteneur `livekit/ingress`. L’ingress écoute par défaut sur `rtmp://<ip>:1935/live/<stream_key>` et se connecte automatiquement à LiveKit avec les clés fournies.
+
 

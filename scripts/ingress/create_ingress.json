@@ -1,0 +1,28 @@
+{
+    "input_type": "INGRESS_INPUT_RTMP_WEB",
+    "name": "${LIVEKIT_INGRESS_NAME}",
+    "room_name": "${LIVEKIT_INGRESS_ROOM}",
+  "participant_identity": "livekit-ingester",
+    "endpoint_options": {
+        "rtmp": {},
+        "whip": {}
+    },
+    "audio": {
+        "codec": "INGRESS_AUDIO_CODEC_OPUS",
+        "channels": 2,
+        "bitrate": 96000,
+        "disable_dtx": false
+    },
+    "video": {
+        "codec": "INGRESS_VIDEO_CODEC_H264_BASELINE",
+        "frame_rate": 30,
+        "width": 1280,
+        "height": 720,
+        "bitrate": 2500000
+    },
+    "recording": {
+        "enabled": false
+    },
+    "backup_ingress": false,
+    "metadata": "{\"environment\":\"production\",\"owner\":\"live-team\"}"
+}

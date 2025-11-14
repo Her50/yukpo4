@@ -1,0 +1,14 @@
+logging:
+  level: {{ livekit_ingress_log_level | default("info") }}
+redis:
+  address: {{ livekit_ingress_redis_address | default("livekit-redis:6379") }}
+api_key: {{ livekit_api_key }}
+api_secret: {{ livekit_api_secret }}
+ws_url: {{ livekit_ws_url }}
+cpu_cost:
+  rtmp_cpu_cost: {{ livekit_ingress_cpu_cost_rtmp | default(2.0) }}
+  whip_cpu_cost: {{ livekit_ingress_cpu_cost_whip | default(2.0) }}
+  whip_bypass_transcoding_cpu_cost: {{ livekit_ingress_cpu_cost_whip_bypass | default(0.1) }}
+  url_cpu_cost: {{ livekit_ingress_cpu_cost_url | default(2.0) }}
+  min_idle_ratio: {{ livekit_ingress_cpu_min_idle | default(0.15) }}
+

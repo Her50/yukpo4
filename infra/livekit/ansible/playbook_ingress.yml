@@ -1,0 +1,133 @@
+- hosts: edge
+  become: true
+  vars:
+    livekit_api_url: "{{ livekit_api_url | default('http://127.0.0.1:7880') }}"
+    livekit_ws_url: "{{ livekit_ws_url | default('ws://127.0.0.1:7880') }}"
+    livekit_api_key: "{{ livekit_api_key | default('CHANGE_ME') }}"
+    livekit_api_secret: "{{ livekit_api_secret | default('CHANGE_ME') }}"
+    livekit_ingress_image_default: "livekit/ingress:v1.4.3"
+    livekit_redis_image_default: "redis:7-alpine"
+    ingress_rtmp_port_default: 1935
+    livekit_ingress_config_dir: "/opt/livekit/ingress"
+    livekit_ingress_config_path: "{{ livekit_ingress_config_dir }}/config.yaml"
+    livekit_ingress_log_level: "info"
+    livekit_docker_network: "livekit-net"
+    enable_ufw_rules: false
+  pre_tasks:
+    - name: Installer les paquets requis (docker & dépendances)
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-requests-unixsocket
+          - python3-pip
+        state: present
+        update_cache: true
+
+    - name: Installer Docker (paquet ubuntu)
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Assurer le démarrage automatique de Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Installer le module Python docker pour Ansible
+      pip:
+        name: docker
+        state: present
+
+  tasks:
+    - name: Créer le répertoire de configuration livekit-ingress
+      file:
+        path: "{{ livekit_ingress_config_dir }}"
+        state: directory
+        mode: "0750"
+
+    - name: Déployer la configuration livekit-ingress
+      template:
+        src: templates/livekit_ingress_config.yaml.j2
+        dest: "{{ livekit_ingress_config_path }}"
+        mode: "0640"
+
+    - name: Ouvrir le port RTMP via UFW
+      ufw:
+        rule: allow
+        port: "{{ ingress_rtmp_port | default(ingress_rtmp_port_default) }}"
+        proto: tcp
+      when: enable_ufw_rules | bool
+
+    - name: Récupérer l'image redis
+      ansible.builtin.command: >
+        docker pull {{ livekit_redis_image | default(livekit_redis_image_default) }}
+      register: redis_pull
+      changed_when: "'Status: Downloaded newer image' in redis_pull.stdout"
+
+    - name: Vérifier l'existence du réseau Docker livekit
+      ansible.builtin.command: docker network inspect {{ livekit_docker_network }}
+      register: livekit_network_inspect
+      changed_when: livekit_network_inspect.rc == 1
+      failed_when: livekit_network_inspect.rc not in [0, 1]
+
+    - name: Créer le réseau Docker livekit
+      ansible.builtin.command: docker network create {{ livekit_docker_network }}
+      when: livekit_network_inspect.rc != 0
+      register: livekit_network_create
+      changed_when: livekit_network_create.rc == 0
+
+    - name: Arrêter un conteneur livekit-redis existant
+      ansible.builtin.command: docker rm -f livekit-redis
+      register: redis_rm
+      changed_when: redis_rm.rc == 0
+      failed_when: redis_rm.rc not in [0,1]
+
+    - name: Démarrer le conteneur redis
+      ansible.builtin.command: >
+        docker run -d
+        --name livekit-redis
+        --restart=always
+        --network {{ livekit_docker_network }}
+        -p 127.0.0.1:6379:6379
+        {{ livekit_redis_image | default(livekit_redis_image_default) }}
+      register: redis_run
+      changed_when: redis_run.rc == 0
+      failed_when: redis_run.rc != 0
+
+    - name: Récupérer l'image livekit-ingress
+      ansible.builtin.command: >
+        docker pull {{ livekit_ingress_image | default(livekit_ingress_image_default) }}
+      register: docker_pull
+      changed_when: "'Status: Downloaded newer image' in docker_pull.stdout"
+
+    - name: Arrêter un conteneur livekit-ingress existant
+      ansible.builtin.command: docker rm -f livekit-ingress
+      register: docker_rm
+      changed_when: docker_rm.rc == 0
+      failed_when: docker_rm.rc not in [0,1]
+
+    - name: Démarrer le conteneur livekit-ingress
+      ansible.builtin.command: >
+        docker run -d
+        --name livekit-ingress
+        --restart=always
+        --network {{ livekit_docker_network }}
+        -p {{ ingress_rtmp_port | default(ingress_rtmp_port_default) }}:1935
+        -e INGRESS_CONFIG_FILE=/etc/livekit-ingress/config.yaml
+        -v {{ livekit_ingress_config_path }}:/etc/livekit-ingress/config.yaml:ro
+        {{ livekit_ingress_image | default(livekit_ingress_image_default) }}
+      register: docker_run
+      changed_when: docker_run.rc == 0
+      failed_when: docker_run.rc != 0
+
+    - name: Vérifier que le conteneur livekit-ingress tourne
+      ansible.builtin.command: docker ps --filter "name=livekit-ingress" --format "{{'{{'}}.Names{{'}}'}}"
+      register: docker_ps
+      changed_when: false
+      failed_when: docker_ps.stdout == ""
+
