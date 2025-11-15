@@ -1122,6 +1122,83 @@ CREATE TABLE IF NOT EXISTS live_flash_sale_commentaries (
 CREATE INDEX IF NOT EXISTS idx_live_flash_sale_commentaries_flash
     ON live_flash_sale_commentaries(flash_sale_id, created_at);
 
+CREATE TABLE IF NOT EXISTS global_promo_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    slug TEXT NOT NULL UNIQUE,
+    theme TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    description TEXT,
+    starts_at TIMESTAMPTZ NOT NULL,
+    ends_at TIMESTAMPTZ NOT NULL,
+    recurrence_rule TEXT,
+    status VARCHAR(32) NOT NULL DEFAULT 'draft' CHECK (
+        status IN ('draft', 'scheduled', 'live', 'archived')
+    ),
+    config JSONB NOT NULL DEFAULT '{}'::JSONB,
+    created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (ends_at > starts_at)
+);
+
+CREATE INDEX IF NOT EXISTS idx_global_promo_events_status
+    ON global_promo_events(status, starts_at);
+CREATE INDEX IF NOT EXISTS idx_global_promo_events_theme
+    ON global_promo_events(theme);
+
+CREATE TABLE IF NOT EXISTS global_promo_entries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id UUID NOT NULL REFERENCES global_promo_events(id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    live_session_id UUID REFERENCES live_sessions(id) ON DELETE SET NULL,
+    submitted_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    discount_percentage NUMERIC(5,2) CHECK (
+        discount_percentage IS NULL OR (discount_percentage >= 0 AND discount_percentage <= 100)
+    ),
+    promo_price_cfa NUMERIC(14,2) CHECK (promo_price_cfa IS NULL OR promo_price_cfa >= 0),
+    stock_cap INTEGER CHECK (stock_cap IS NULL OR stock_cap > 0),
+    availability VARCHAR(20) NOT NULL DEFAULT 'online' CHECK (
+        availability IN ('online', 'live', 'both')
+    ),
+    status VARCHAR(32) NOT NULL DEFAULT 'draft' CHECK (
+        status IN ('draft', 'pending_review', 'approved', 'rejected', 'published', 'ended')
+    ),
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    published_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (event_id, service_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_global_promo_entries_event_status
+    ON global_promo_entries(event_id, status);
+CREATE INDEX IF NOT EXISTS idx_global_promo_entries_service
+    ON global_promo_entries(service_id);
+CREATE INDEX IF NOT EXISTS idx_global_promo_entries_live_session
+    ON global_promo_entries(live_session_id);
+
+CREATE TABLE IF NOT EXISTS global_promo_products (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    promo_entry_id UUID NOT NULL UNIQUE REFERENCES global_promo_entries(id) ON DELETE CASCADE,
+    snapshot JSONB NOT NULL DEFAULT '{}'::JSONB,
+    availability VARCHAR(20) NOT NULL DEFAULT 'online' CHECK (
+        availability IN ('online', 'live', 'both')
+    ),
+    priority_score INTEGER NOT NULL DEFAULT 0,
+    highlighted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_global_promo_products_priority
+    ON global_promo_products(highlighted DESC, priority_score DESC);
+
+ALTER TABLE live_flash_sales
+    ADD COLUMN IF NOT EXISTS global_promo_entry_id UUID REFERENCES global_promo_entries(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_live_flash_sales_global_promo
+    ON live_flash_sales(global_promo_entry_id);
+
 -- Social connectors tables
 CREATE TABLE IF NOT EXISTS social_accounts (
     id SERIAL PRIMARY KEY,
@@ -1243,6 +1320,144 @@ CREATE TABLE IF NOT EXISTS video_generation_jobs (
 CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_user ON video_generation_jobs(user_id);
 CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_service ON video_generation_jobs(service_id);
 CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_status ON video_generation_jobs(status);
+
+CREATE TABLE IF NOT EXISTS premium_audio_jobs (
+    job_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    provider TEXT NOT NULL,
+    provider_job_id TEXT,
+    source_path TEXT NOT NULL,
+    output_path TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    error_message TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ,
+    video_job_id UUID REFERENCES video_generation_jobs(job_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_premium_audio_jobs_status ON premium_audio_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_premium_audio_jobs_updated_at ON premium_audio_jobs(updated_at);
+CREATE INDEX IF NOT EXISTS idx_premium_audio_jobs_provider ON premium_audio_jobs(provider);
+CREATE INDEX IF NOT EXISTS idx_premium_audio_jobs_provider_job ON premium_audio_jobs(provider, provider_job_id);
+
+CREATE OR REPLACE FUNCTION set_premium_audio_jobs_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_premium_audio_jobs_updated_at ON premium_audio_jobs;
+CREATE TRIGGER trg_premium_audio_jobs_updated_at
+    BEFORE UPDATE ON premium_audio_jobs
+    FOR EACH ROW
+    EXECUTE FUNCTION set_premium_audio_jobs_updated_at();
+
+ALTER TABLE video_generation_jobs
+    ADD COLUMN IF NOT EXISTS audio_job_id UUID,
+    ADD COLUMN IF NOT EXISTS audio_status TEXT NOT NULL DEFAULT 'not_requested',
+    ADD COLUMN IF NOT EXISTS audio_metadata JSONB;
+
+ALTER TABLE video_generation_jobs
+    ADD CONSTRAINT fk_video_generation_jobs_audio_job
+    FOREIGN KEY (audio_job_id) REFERENCES premium_audio_jobs(job_id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_audio_status
+    ON video_generation_jobs(audio_status);
+
+CREATE TABLE IF NOT EXISTS voice_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    provider TEXT NOT NULL DEFAULT 'custom',
+    description TEXT,
+    sample_media_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_profiles_user ON voice_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_profiles_service ON voice_profiles(service_id);
+
+CREATE OR REPLACE FUNCTION set_voice_profiles_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_voice_profiles_updated_at ON voice_profiles;
+CREATE TRIGGER trg_voice_profiles_updated_at
+    BEFORE UPDATE ON voice_profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION set_voice_profiles_updated_at();
+
+CREATE TABLE IF NOT EXISTS studio_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'draft',
+    brief JSONB NOT NULL DEFAULT '{}'::jsonb,
+    ai_recommendations JSONB NOT NULL DEFAULT '[]'::jsonb,
+    recommended_templates TEXT[] NOT NULL DEFAULT '{}'::text[],
+    timeline_settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+    distribution_plan JSONB NOT NULL DEFAULT '[]'::jsonb,
+    preview_status TEXT NOT NULL DEFAULT 'idle',
+    preview_public_url TEXT,
+    preview_job_id TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_studio_sessions_user ON studio_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_studio_sessions_service ON studio_sessions(service_id);
+
+CREATE TABLE IF NOT EXISTS studio_timeline_clips (
+    id BIGSERIAL PRIMARY KEY,
+    session_id UUID NOT NULL REFERENCES studio_sessions(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    lane TEXT,
+    duration_seconds INTEGER NOT NULL,
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_studio_clips_session
+    ON studio_timeline_clips(session_id, position);
+
+CREATE TABLE IF NOT EXISTS studio_dynamic_assets (
+    id BIGSERIAL PRIMARY KEY,
+    session_id UUID NOT NULL REFERENCES studio_sessions(id) ON DELETE CASCADE,
+    asset_type TEXT NOT NULL,
+    storage_key TEXT,
+    public_url TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_studio_assets_session
+    ON studio_dynamic_assets(session_id);
+
+CREATE OR REPLACE FUNCTION set_studio_sessions_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_studio_sessions_updated_at ON studio_sessions;
+CREATE TRIGGER trg_studio_sessions_updated_at
+    BEFORE UPDATE ON studio_sessions
+    FOR EACH ROW
+    EXECUTE FUNCTION set_studio_sessions_updated_at();
 
 -- Delivery service enums
 DO $$
@@ -1666,6 +1881,117 @@ CREATE INDEX IF NOT EXISTS idx_delivery_wallet_events_user ON delivery_wallet_ev
 CREATE INDEX IF NOT EXISTS idx_delivery_wallet_events_delivery ON delivery_wallet_events(delivery_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_wallet_events_created_at ON delivery_wallet_events(created_at DESC);
 
+-- Infrastructure de matching temps réel
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_type WHERE typname = 'delivery_matching_status'
+    ) THEN
+        CREATE TYPE delivery_matching_status AS ENUM (
+            'queued',
+            'searching',
+            'assigned',
+            'rejected',
+            'failed',
+            'timeout',
+            'cancelled',
+            'fallback',
+            'no_courier'
+        );
+    END IF;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS delivery_zones (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    description TEXT,
+    region GEOGRAPHY(MultiPolygon, 4326),
+    center GEOGRAPHY(Point, 4326),
+    max_active_couriers INTEGER NOT NULL DEFAULT 500,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_zones_region ON delivery_zones USING GIST (region);
+CREATE INDEX IF NOT EXISTS idx_delivery_zones_center ON delivery_zones USING GIST (center);
+
+CREATE TABLE IF NOT EXISTS courier_zone_assignments (
+    id BIGSERIAL PRIMARY KEY,
+    courier_id UUID NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+    zone_id UUID NOT NULL REFERENCES delivery_zones(id) ON DELETE CASCADE,
+    capacity_weight SMALLINT NOT NULL DEFAULT 1,
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (courier_id, zone_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_courier_zone_assignments_zone ON courier_zone_assignments(zone_id);
+CREATE INDEX IF NOT EXISTS idx_courier_zone_assignments_active ON courier_zone_assignments(is_active);
+
+CREATE TABLE IF NOT EXISTS courier_availability_snapshots (
+    id BIGSERIAL PRIMARY KEY,
+    courier_id UUID NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+    zone_id UUID REFERENCES delivery_zones(id),
+    captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    is_online BOOLEAN NOT NULL DEFAULT FALSE,
+    active_deliveries SMALLINT NOT NULL DEFAULT 0,
+    max_capacity SMALLINT NOT NULL DEFAULT 2,
+    load_factor NUMERIC(6,3) NOT NULL DEFAULT 0,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    location GEOGRAPHY(Point, 4326),
+    battery_level SMALLINT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_courier ON courier_availability_snapshots(courier_id);
+CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_zone ON courier_availability_snapshots(zone_id);
+CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_capture ON courier_availability_snapshots(courier_id, captured_at DESC);
+CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_location ON courier_availability_snapshots USING GIST (location);
+
+CREATE TABLE IF NOT EXISTS delivery_matching_queue (
+    id BIGSERIAL PRIMARY KEY,
+    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    zone_id UUID REFERENCES delivery_zones(id),
+    status delivery_matching_status NOT NULL DEFAULT 'queued',
+    priority SMALLINT NOT NULL DEFAULT 100,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    enqueued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (delivery_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_status ON delivery_matching_queue(status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_zone ON delivery_matching_queue(zone_id);
+
+CREATE TABLE IF NOT EXISTS delivery_matching_events (
+    id BIGSERIAL PRIMARY KEY,
+    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    courier_id UUID REFERENCES couriers(id),
+    status delivery_matching_status NOT NULL,
+    score NUMERIC(8,3),
+    reason TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_matching_events_delivery ON delivery_matching_events(delivery_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_matching_events_courier ON delivery_matching_events(courier_id);
+
+COMMENT ON TABLE delivery_zones IS 'Zones opérationnelles utilisées pour répartir les coursiers';
+COMMENT ON TABLE courier_zone_assignments IS 'Répartition des coursiers par zone avec poids de capacité';
+COMMENT ON TABLE courier_availability_snapshots IS 'Instantané de disponibilité pour le matching temps réel';
+COMMENT ON TABLE delivery_matching_queue IS 'File d''attente opérationnelle pour le matching de livraison';
+COMMENT ON TABLE delivery_matching_events IS 'Journal d''audit des tentatives de matching';
+
 CREATE TABLE IF NOT EXISTS video_weekly_reports (
     id SERIAL PRIMARY KEY,
     week_start TIMESTAMPTZ NOT NULL,
@@ -1677,6 +2003,23 @@ CREATE TABLE IF NOT EXISTS video_weekly_reports (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_video_weekly_reports_week ON video_weekly_reports(week_start, week_end);
+
+-- Inventaire temps réel par produit/service (surcharges externes)
+CREATE TABLE IF NOT EXISTS service_inventory_overrides (
+    id BIGSERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    product_index INTEGER NOT NULL,
+    stock_level INTEGER NOT NULL,
+    source TEXT,
+    note TEXT,
+    last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_service_inventory_overrides_unique
+    ON service_inventory_overrides(service_id, product_index);
+CREATE INDEX IF NOT EXISTS idx_service_inventory_overrides_last_synced
+    ON service_inventory_overrides(last_synced_at DESC);
 
 -- Seed default parcel types
 INSERT INTO parcel_types (slug, display_name, description, max_weight_kg, max_volume_cm3, requires_fragile_handling, requires_isothermal, requires_secure_box, requires_document_protection)

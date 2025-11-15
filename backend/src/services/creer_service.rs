@@ -486,6 +486,28 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
             }
         }
 
+        // ✅ Alias rétrocompatibilité : accepter "titre" à la place de "titre_service"
+        if map.contains_key("titre") && !map.contains_key("titre_service") {
+            if let Some(titre_value) = map.remove("titre") {
+                map.insert("titre_service".to_string(), titre_value);
+                log::info!(
+                    "[valider_service_json] Alias 'titre' détecté → renommé en 'titre_service'"
+                );
+            }
+        }
+        if let Some(titre_obj) = map.get("titre_service").and_then(|value| value.as_object()) {
+            let titre_vide = titre_obj
+                .get("valeur")
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().is_empty())
+                .unwrap_or(true);
+            if titre_vide {
+                return Err(AppError::BadRequest(
+                    "Le champ 'titre_service.valeur' ne peut pas être vide.".into(),
+                ));
+            }
+        }
+
         // ? OPTIMISATION : Normaliser le champ gps_fixe s'il manque la propri?t? valeur
         if let Some(gps_fixe) = map.get("gps_fixe") {
             if let Some(gps_obj) = gps_fixe.as_object() {
@@ -1074,10 +1096,6 @@ pub async fn creer_service(
             produits_array.len()
         );
 
-        #[cfg(feature = "image_search")]
-        let image_service =
-            crate::services::image_search_service::ImageSearchService::new(pool.clone());
-
         let mut saved_image_paths_by_product: Vec<Vec<String>> =
             Vec::with_capacity(produits_array.len());
 
@@ -1193,24 +1211,21 @@ pub async fn creer_service(
 
                     #[cfg(feature = "image_search")]
                     let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
-                        match image_service.generate_image_signature(&image_bytes).await {
+                        match crate::services::image_search_service::ImageSearchService::
+                            generate_image_signature(&image_bytes)
+                        {
                             Ok(signature) => {
-                                let metadata = image_service
-                                    .extract_image_metadata(&image_bytes)
-                                    .await
-                                    .unwrap_or_else(|_| {
-                                        crate::services::image_search_service::ImageMetadata {
-                                            width: 0,
-                                            height: 0,
-                                            format: "jpeg".to_string(),
-                                            file_size: image_bytes.len(),
-                                            dominant_colors: vec![],
-                                            color_histogram: vec![],
-                                            edge_density: 0.0,
-                                            brightness: 0.0,
-                                            contrast: 0.0,
-                                        }
-                                    });
+                                let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| crate::services::image_search_service::ImageMetadata {
+                                    width: 0,
+                                    height: 0,
+                                    format: "jpeg".to_string(),
+                                    file_size: image_bytes.len(),
+                                    dominant_colors: vec![],
+                                    color_histogram: vec![],
+                                    edge_density: 0.0,
+                                    brightness: 0.0,
+                                    contrast: 0.0,
+                                });
                                 let hash = format!("{:x}", md5::compute(&image_bytes));
                                 (
                                     serde_json::to_value(&signature).unwrap_or_default(),
@@ -1490,10 +1505,6 @@ pub async fn creer_service(
                     service_id
                 );
 
-                #[cfg(feature = "image_search")]
-                let image_service =
-                    crate::services::image_search_service::ImageSearchService::new(pool.clone());
-
                 for (i, image_data) in image_strings.iter().enumerate() {
                     if !is_probable_base64(image_data) {
                         log::warn!(
@@ -1534,24 +1545,21 @@ pub async fn creer_service(
                     #[cfg(feature = "image_search")]
                     let (image_signature, image_hash, image_metadata) = {
                         if !image_bytes.is_empty() {
-                            match image_service.generate_image_signature(&image_bytes).await {
+                            match crate::services::image_search_service::ImageSearchService::
+                                generate_image_signature(&image_bytes)
+                            {
                                 Ok(signature) => {
-                                    let metadata = image_service
-                                        .extract_image_metadata(&image_bytes)
-                                        .await
-                                        .unwrap_or_else(|_| {
-                                            crate::services::image_search_service::ImageMetadata {
-                                                width: 0,
-                                                height: 0,
-                                                format: "jpeg".to_string(),
-                                                file_size: image_bytes.len(),
-                                                dominant_colors: vec![],
-                                                color_histogram: vec![],
-                                                edge_density: 0.0,
-                                                brightness: 0.0,
-                                                contrast: 0.0,
-                                            }
-                                        });
+                                    let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| crate::services::image_search_service::ImageMetadata {
+                                        width: 0,
+                                        height: 0,
+                                        format: "jpeg".to_string(),
+                                        file_size: image_bytes.len(),
+                                        dominant_colors: vec![],
+                                        color_histogram: vec![],
+                                        edge_density: 0.0,
+                                        brightness: 0.0,
+                                        contrast: 0.0,
+                                    });
                                     let hash = format!("{:x}", md5::compute(&image_bytes));
                                     (
                                         serde_json::to_value(&signature).unwrap_or_default(),

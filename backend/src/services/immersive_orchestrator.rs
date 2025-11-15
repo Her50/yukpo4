@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use log::info;
+use chrono::{DateTime, Utc};
+use log::{info, warn};
 use serde::Serialize;
 
 use crate::{
@@ -11,8 +12,23 @@ use crate::{
         ImmersiveScene, ImmersiveSceneAssets, ImmersiveSceneColorGrade, ImmersiveSceneTransition,
         ImmersiveTemplate, ImmersiveTimeline, TransitionType,
     },
+    services::story_template_service::StoryTemplateSpec,
     state::AppState,
 };
+
+#[derive(Debug, Clone)]
+pub struct TimelineBusinessContext {
+    pub service_category: Option<String>,
+    pub tone: Option<String>,
+    pub cta_label: Option<String>,
+    pub delivery_sla_minutes: Option<u32>,
+    pub stock_level: Option<i32>,
+    pub promotion_active: Option<bool>,
+    pub price_label: Option<String>,
+    pub target_audience: Option<String>,
+    pub stock_last_synced_at: Option<DateTime<Utc>>,
+    pub stock_source: Option<String>,
+}
 
 #[derive(Debug, Clone)]
 pub struct TimelineBrollAsset {
@@ -31,6 +47,9 @@ pub struct TimelineRequest {
     pub style: Option<String>,
     pub duration_seconds: f32,
     pub broll_assets: Vec<TimelineBrollAsset>,
+    pub template_id: Option<String>,
+    pub business_context: Option<TimelineBusinessContext>,
+    pub ai_template_recommendations: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -41,6 +60,7 @@ pub struct TimelineAnalytics {
     pub broll_formats: HashMap<String, usize>,
     pub template_breakdown: HashMap<String, usize>,
     pub estimated_frames: u32,
+    pub selected_template: String,
 }
 
 #[derive(Debug, Clone)]
@@ -51,11 +71,28 @@ pub struct TimelineResult {
     pub warnings: Vec<String>,
 }
 
-pub struct ImmersiveOrchestrator;
+#[derive(Debug, Clone, Serialize)]
+pub struct TemplateRecommendation {
+    pub id: String,
+    pub label: String,
+    pub description: String,
+    pub score: i32,
+    pub reasons: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct TemplateEvaluation {
+    score: i32,
+    reasons: Vec<String>,
+}
+
+pub struct ImmersiveOrchestrator {
+    state: Arc<AppState>,
+}
 
 impl ImmersiveOrchestrator {
-    pub fn new(_state: Arc<AppState>) -> Self {
-        Self
+    pub fn new(state: Arc<AppState>) -> Self {
+        Self { state }
     }
 
     pub fn build_plan(&self, context: &ImmersiveContext) -> AppResult<ImmersivePlan> {
@@ -89,6 +126,7 @@ impl ImmersiveOrchestrator {
             ));
         }
 
+        let selected_template = self.select_story_template(&request);
         let script_count = request.script_outline.len();
         let total_scenes = script_count + 2; // intro + contenu + CTA
         let context = ImmersiveContext {
@@ -98,8 +136,9 @@ impl ImmersiveOrchestrator {
         let plan = self.build_plan(&context)?;
 
         let fps = 30;
-        let total_duration = request.duration_seconds.max(12.0);
-        let per_scene_seconds = (total_duration / total_scenes as f32).clamp(3.0, 9.5);
+        let _total_duration = request.duration_seconds.max(12.0);
+        let duration_target = selected_template.default_duration_seconds.max(12) as f32;
+        let per_scene_seconds = (duration_target / total_scenes as f32).clamp(3.0, 9.5);
         let per_scene_frames = (per_scene_seconds * fps as f32).round().max(15.0) as u32;
 
         let mut scenes: Vec<ImmersiveScene> = Vec::new();
@@ -208,6 +247,7 @@ impl ImmersiveOrchestrator {
             broll_formats,
             template_breakdown,
             estimated_frames: timeline.total_frames(),
+            selected_template: selected_template.id.clone(),
         };
 
         info!(
@@ -221,6 +261,287 @@ impl ImmersiveOrchestrator {
             analytics,
             warnings,
         })
+    }
+
+    fn select_story_template(&self, request: &TimelineRequest) -> StoryTemplateSpec {
+        let ai_hints = if !request.ai_template_recommendations.is_empty() {
+            request.ai_template_recommendations.clone()
+        } else if let Some(context) = &request.business_context {
+            self.derive_ai_recommendations(context)
+        } else {
+            Vec::new()
+        };
+
+        if let Some(template_id) = request.template_id.as_deref() {
+            if let Some(spec) = self.state.story_templates.get(template_id) {
+                return spec.clone();
+            }
+            warn!(
+                "[ImmersiveOrchestrator] template {} introuvable, fallback sur scoring",
+                template_id
+            );
+        }
+
+        let templates = self.state.story_templates.list();
+        let mut best = templates
+            .first()
+            .cloned()
+            .unwrap_or_else(|| StoryTemplateSpec {
+                id: "blog".into(),
+                label: "Blog / Chronicle".into(),
+                description: "Défaut".into(),
+                recommended_categories: vec![],
+                tones: vec![],
+                ctas: vec![],
+                default_duration_seconds: 30,
+                suggested_scenes: 3,
+            });
+        let mut best_score = i32::MIN;
+
+        for spec in templates {
+            let mut evaluation = self.evaluate_template(spec, request);
+            if let Some((position, _)) = ai_hints
+                .iter()
+                .enumerate()
+                .find(|(_, hint)| hint.eq_ignore_ascii_case(&spec.id))
+            {
+                let bonus = ((ai_hints.len() - position) as i32).saturating_mul(3);
+                evaluation.score += bonus;
+                evaluation
+                    .reasons
+                    .push(format!("hint_ia_rank_{}", position + 1));
+            }
+            if evaluation.score > best_score {
+                best_score = evaluation.score;
+                best = spec.clone();
+            }
+        }
+
+        if let Some(template_id) = &request.template_id {
+            if !best.id.eq_ignore_ascii_case(template_id) {
+                warn!(
+                    "[ImmersiveOrchestrator] template {} indisponible, fallback {} (score={})",
+                    template_id, best.id, best_score
+                );
+            }
+        }
+
+        best
+    }
+
+    pub fn recommend_templates(&self, request: &TimelineRequest) -> Vec<TemplateRecommendation> {
+        let mut ranked: Vec<TemplateRecommendation> = self
+            .state
+            .story_templates
+            .list()
+            .iter()
+            .map(|spec| {
+                let evaluation = self.evaluate_template(spec, request);
+                TemplateRecommendation {
+                    id: spec.id.clone(),
+                    label: spec.label.clone(),
+                    description: spec.description.clone(),
+                    score: evaluation.score,
+                    reasons: evaluation.reasons.clone(),
+                }
+            })
+            .collect();
+        ranked.sort_by(|a, b| b.score.cmp(&a.score));
+        ranked
+    }
+
+    fn evaluate_template(
+        &self,
+        spec: &StoryTemplateSpec,
+        request: &TimelineRequest,
+    ) -> TemplateEvaluation {
+        let mut score = 0;
+        let mut reasons = Vec::new();
+
+        if let Some(template_id) = &request.template_id {
+            if template_id.eq_ignore_ascii_case(&spec.id) {
+                score += 120;
+                reasons.push("template_force".to_string());
+            }
+        }
+
+        if let Some(context) = &request.business_context {
+            let context_eval = self.evaluate_business_context(spec, context);
+            score += context_eval.score;
+            reasons.extend(context_eval.reasons);
+        }
+
+        let scene_delta = spec.suggested_scenes as i32 - request.script_outline.len() as i32;
+        if scene_delta == 0 {
+            score += 3;
+            reasons.push("scenes_alignees".to_string());
+        } else {
+            score -= scene_delta.abs();
+            reasons.push(format!("ecart_scenes:{}", scene_delta));
+        }
+
+        let duration_delta =
+            (spec.default_duration_seconds as f32 - request.duration_seconds).abs();
+        if duration_delta < 5.0 {
+            score += 2;
+            reasons.push("duree_proche".to_string());
+        }
+
+        TemplateEvaluation { score, reasons }
+    }
+
+    fn evaluate_business_context(
+        &self,
+        spec: &StoryTemplateSpec,
+        context: &TimelineBusinessContext,
+    ) -> TemplateEvaluation {
+        let mut score = 0;
+        let mut reasons = Vec::new();
+
+        if let Some(category) = &context.service_category {
+            if spec
+                .recommended_categories
+                .iter()
+                .any(|cat| cat.eq_ignore_ascii_case(category))
+            {
+                score += 6;
+                reasons.push(format!("category:{}", category));
+            }
+        }
+
+        if let Some(tone) = &context.tone {
+            if spec
+                .tones
+                .iter()
+                .any(|value| value.eq_ignore_ascii_case(tone))
+            {
+                score += 4;
+                reasons.push(format!("tone:{}", tone));
+            }
+        }
+
+        if let Some(cta) = &context.cta_label {
+            if spec
+                .ctas
+                .iter()
+                .any(|value| value.eq_ignore_ascii_case(cta))
+            {
+                score += 3;
+                reasons.push(format!("cta:{}", cta));
+            }
+        }
+
+        if let Some(sla) = context.delivery_sla_minutes {
+            if sla <= 30 && (spec.id == "testimonial" || spec.id == "tutorial") {
+                score += 4;
+                reasons.push(format!("sla:{}", sla));
+            } else if sla > 60 && spec.id == "comparison" {
+                score += 2;
+                reasons.push(format!("sla_long:{}", sla));
+            } else if sla >= 90 && spec.id == "blog" {
+                score += 1;
+                reasons.push(format!("sla_editorial:{}", sla));
+            }
+        }
+
+        if let Some(stock) = context.stock_level {
+            if stock <= 3 {
+                if spec.id == "comparison" {
+                    score += 5;
+                    reasons.push("stock_critique".to_string());
+                } else {
+                    score += 3;
+                    reasons.push("stock_limite".to_string());
+                }
+            } else if stock >= 20 && spec.id == "tutorial" {
+                score += 2;
+                reasons.push("stock_abondant".to_string());
+            }
+        }
+
+        if context.promotion_active.unwrap_or(false) {
+            if spec.id == "comparison" {
+                score += 4;
+                reasons.push("promotion_active".to_string());
+            } else {
+                score += 1;
+                reasons.push("promotion_info".to_string());
+            }
+        }
+
+        if let Some(price) = &context.price_label {
+            if !price.trim().is_empty() && spec.id == "comparison" {
+                score += 2;
+                reasons.push("price_visible".to_string());
+            }
+        }
+
+        if let Some(segment) = &context.target_audience {
+            let lower = segment.to_lowercase();
+            if lower.contains("communaut") || lower.contains("fidél") || lower.contains("community")
+            {
+                if spec.id == "testimonial" {
+                    score += 3;
+                    reasons.push("audience_communaute".to_string());
+                }
+            }
+            if lower.contains("b2b") || lower.contains("profession") {
+                if spec.id == "comparison" || spec.id == "blog" {
+                    score += 2;
+                    reasons.push("audience_b2b".to_string());
+                }
+            }
+        }
+
+        TemplateEvaluation { score, reasons }
+    }
+
+    fn derive_ai_recommendations(&self, context: &TimelineBusinessContext) -> Vec<String> {
+        let mut hints: Vec<String> = Vec::new();
+
+        if context.promotion_active.unwrap_or(false) || context.price_label.is_some() {
+            hints.push("comparison".to_string());
+        }
+        if let Some(tone) = &context.tone {
+            if tone.to_lowercase().contains("edu") {
+                hints.push("tutorial".to_string());
+            }
+            if tone.to_lowercase().contains("trust") || tone.to_lowercase().contains("commun") {
+                hints.push("testimonial".to_string());
+            }
+        }
+        if let Some(audience) = &context.target_audience {
+            let lower = audience.to_lowercase();
+            if lower.contains("community") || lower.contains("loyal") {
+                hints.push("testimonial".to_string());
+            }
+            if lower.contains("b2b") {
+                hints.push("comparison".to_string());
+            }
+        }
+        if hints.is_empty() {
+            if let Some(category) = &context.service_category {
+                if category.to_lowercase().contains("coaching")
+                    || category.to_lowercase().contains("digital")
+                {
+                    hints.push("blog".to_string());
+                }
+            }
+        }
+
+        hints.push("blog".to_string());
+        hints.push("tutorial".to_string());
+
+        let mut deduped: Vec<String> = Vec::new();
+        for hint in hints {
+            if !deduped
+                .iter()
+                .any(|value| value.eq_ignore_ascii_case(&hint))
+            {
+                deduped.push(hint);
+            }
+        }
+        deduped
     }
 }
 

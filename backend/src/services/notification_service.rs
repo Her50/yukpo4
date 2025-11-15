@@ -25,6 +25,9 @@ pub enum NotificationType {
     LiveFlashSaleLive,
     LiveFlashSaleEndingSoon,
     LiveFlashSaleCommentary,
+    GlobalPromoLive,
+    GlobalPromoEntryPublished,
+    GlobalPromoEntryEnded,
 }
 
 impl NotificationType {
@@ -49,6 +52,9 @@ impl NotificationType {
             NotificationType::LiveFlashSaleLive => "live_flash_sale_live",
             NotificationType::LiveFlashSaleEndingSoon => "live_flash_sale_ending_soon",
             NotificationType::LiveFlashSaleCommentary => "live_flash_sale_commentary",
+            NotificationType::GlobalPromoLive => "global_promo_live",
+            NotificationType::GlobalPromoEntryPublished => "global_promo_entry_published",
+            NotificationType::GlobalPromoEntryEnded => "global_promo_entry_ended",
         }
     }
 }

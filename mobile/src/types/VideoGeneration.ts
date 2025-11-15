@@ -67,6 +67,7 @@ export interface ImmersiveAnalytics {
     broll_formats?: Record<string, number>;
     template_breakdown: Record<string, number>;
     estimated_frames: number;
+    selected_template?: string;
 }
 
 export interface ImmersiveTimeline {
@@ -100,6 +101,7 @@ export interface VideoGenerationPayload {
     duration_seconds?: number | null;
     headline?: string | null;
     call_to_action?: string | null;
+    story_template_id?: string | null;
     include_price?: boolean;
     include_promotion?: boolean;
     include_contact?: boolean;
@@ -130,6 +132,7 @@ export interface VideoGenerationPayload {
     style_color_palette?: string | null;
     style_overlay_tips?: string[] | null;
     style_music_hint?: string | null;
+    voice_profile_id?: number | null;
 }
 
 export interface AIVideoBriefVariant {
@@ -159,6 +162,116 @@ export interface AIDistributionItem {
     channel: string;
     best_time: string;
     call_to_action?: string | null;
+}
+
+export interface StudioSession {
+    id: string;
+    user_id: number;
+    service_id?: number | null;
+    status: string;
+    brief: Record<string, unknown>;
+    ai_recommendations: unknown;
+    recommended_templates: string[];
+    timeline_settings: Record<string, unknown>;
+    distribution_plan: unknown;
+    preview_status: string;
+    preview_public_url?: string | null;
+    preview_job_id?: string | null;
+    metadata: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface StudioTimelineClip {
+    id: number;
+    session_id: string;
+    position: number;
+    lane?: string | null;
+    duration_seconds: number;
+    payload: Record<string, unknown>;
+    created_at: string;
+}
+
+export interface StudioDynamicAsset {
+    id: number;
+    session_id: string;
+    asset_type: string;
+    storage_key?: string | null;
+    public_url?: string | null;
+    metadata: Record<string, unknown>;
+    created_at: string;
+}
+
+export interface StudioSessionAggregate {
+    session: StudioSession;
+    timeline: StudioTimelineClip[];
+    assets: StudioDynamicAsset[];
+}
+
+export interface StudioPreviewResponse {
+    session_id: string;
+    status: string;
+    preview_url?: string | null;
+    warnings: string[];
+    duration_seconds: number;
+    template?: string | null;
+    clip_count: number;
+}
+
+export interface StudioPreviewEvent {
+    id: number;
+    session_id: string;
+    template?: string | null;
+    clip_count: number;
+    duration_seconds: number;
+    status: string;
+    preview_url?: string | null;
+    warnings: unknown;
+    job_id?: string | null;
+    created_at: string;
+}
+
+export interface PreviewTemplateMetrics {
+    template?: string | null;
+    count: number;
+    avgDurationSeconds: number;
+    lastPreviewAt?: string | null;
+}
+
+export interface StudioPreviewMetrics {
+    totalPreviews: number;
+    lastPreviewAt?: string | null;
+    templates: PreviewTemplateMetrics[];
+}
+
+export interface StudioPublishResponse {
+    session_id: string;
+    status: string;
+    published_at: string;
+}
+
+export interface StoryTemplateSpec {
+    id: string;
+    label: string;
+    description: string;
+    recommendedCategories: string[];
+    tones: string[];
+    ctas: string[];
+    defaultDurationSeconds: number;
+    suggestedScenes: number;
+}
+
+export interface TemplateRecommendationItem {
+    id: string;
+    label: string;
+    description: string;
+    score: number;
+    reasons: string[];
+}
+
+export interface TemplateRecommendationResponse {
+    ordered: TemplateRecommendationItem[];
+    best_template?: string | null;
 }
 
 

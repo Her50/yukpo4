@@ -131,8 +131,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tasks::live_analytics::start_live_analytics_task(app_state.clone());
     // ✅ Scheduler pour les ventes flash live
     tasks::live_flash_sale_scheduler::start_flash_sale_scheduler(app_state.clone());
+    // ✅ Scheduler pour les campagnes promos globales (Black Friday, etc.)
+    tasks::global_promo_scheduler::start_global_promo_scheduler(app_state.clone());
     // ✅ Worker pipeline health (alerting interne)
     tasks::pipeline_health_worker::start_pipeline_health_worker(app_state.clone());
+    // ✅ Matching temps réel
+    tasks::delivery_matching_worker::start_delivery_matching_worker(app_state.clone());
+    // ✅ Surveillance SLA
+    tasks::delivery_sla_monitor::start_delivery_sla_monitor(app_state.clone());
 
     // Construction de l'application avec Extension
     let app = build_app(app_state.clone())

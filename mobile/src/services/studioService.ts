@@ -1,0 +1,178 @@
+import type {
+    StoryTemplateSpec,
+    StudioDynamicAsset,
+    StudioPreviewEvent,
+    StudioPreviewMetrics,
+    StudioPreviewResponse,
+    StudioPublishResponse,
+    StudioSession,
+    StudioSessionAggregate,
+    StudioTimelineClip,
+    TemplateRecommendationResponse,
+} from '../types/VideoGeneration';
+import { apiDelete, apiGet, apiPost, apiPut } from './api';
+
+type ApiResponse<T> = {
+    success?: boolean;
+    data?: T | null;
+    error?: string | null;
+};
+
+const BASE = '/api/studio';
+
+const ensureSuccess = <T>(response: ApiResponse<T>, fallback?: T): T => {
+    if (response.success === false) {
+        throw new Error(response.error ?? 'Erreur API Studio');
+    }
+    if (response.data === undefined || response.data === null) {
+        if (fallback !== undefined) {
+            return fallback;
+        }
+        throw new Error(response?.error ?? 'Réponse Studio vide');
+    }
+    return response.data;
+};
+
+export interface CreateStudioSessionPayload {
+    service_id?: number;
+    brief?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
+    timeline_settings?: Record<string, unknown>;
+    distribution_plan?: unknown[];
+}
+
+export interface UpdateStudioSessionPayload extends Partial<CreateStudioSessionPayload> {
+    status?: string;
+    ai_recommendations?: unknown;
+    recommended_templates?: string[];
+}
+
+export interface TimelineClipInput {
+    position: number;
+    lane?: string | null;
+    duration_seconds: number;
+    payload: Record<string, unknown>;
+}
+
+export interface AttachAssetInput {
+    asset_type: string;
+    storage_key?: string;
+    public_url?: string;
+    metadata?: Record<string, unknown>;
+}
+
+export interface TemplateBusinessContextInput {
+    service_category?: string;
+    tone?: string;
+    cta_label?: string;
+    delivery_sla_minutes?: number;
+    stock_level?: number;
+    promotion_active?: boolean;
+    price_label?: string;
+    target_audience?: string;
+}
+
+export interface TemplateRecommendationRequest {
+    script_outline: string[];
+    product_name?: string;
+    headline?: string;
+    call_to_action?: string;
+    style?: string;
+    duration_seconds?: number;
+    template_id?: string | null;
+    business_context?: TemplateBusinessContextInput;
+    ai_hints?: string[];
+}
+
+export const studioService = {
+    async listSessions(): Promise<StudioSession[]> {
+        const response = await apiGet<StudioSession[]>(`${BASE}/sessions`);
+        return ensureSuccess(response, []);
+    },
+
+    async createSession(payload: CreateStudioSessionPayload): Promise<StudioSessionAggregate> {
+        const response = await apiPost<StudioSessionAggregate>(`${BASE}/sessions`, payload);
+        return ensureSuccess(response);
+    },
+
+    async getSession(sessionId: string): Promise<StudioSessionAggregate> {
+        const response = await apiGet<StudioSessionAggregate>(`${BASE}/sessions/${sessionId}`);
+        return ensureSuccess(response);
+    },
+
+    async updateSession(
+        sessionId: string,
+        payload: UpdateStudioSessionPayload,
+    ): Promise<StudioSessionAggregate> {
+        const response = await apiPut<StudioSessionAggregate>(`${BASE}/sessions/${sessionId}`, payload);
+        return ensureSuccess(response);
+    },
+
+    async deleteSession(sessionId: string): Promise<void> {
+        const response = await apiDelete<null>(`${BASE}/sessions/${sessionId}`);
+        ensureSuccess(response, null);
+    },
+
+    async saveTimeline(sessionId: string, clips: TimelineClipInput[]): Promise<StudioTimelineClip[]> {
+        const response = await apiPut<StudioTimelineClip[]>(
+            `${BASE}/sessions/${sessionId}/timeline`,
+            clips,
+        );
+        return ensureSuccess(response, []);
+    },
+
+    async attachAsset(
+        sessionId: string,
+        payload: AttachAssetInput,
+    ): Promise<StudioDynamicAsset> {
+        const response = await apiPost<StudioDynamicAsset>(
+            `${BASE}/sessions/${sessionId}/assets`,
+            payload,
+        );
+        return ensureSuccess(response);
+    },
+
+    async requestPreview(sessionId: string): Promise<StudioPreviewResponse> {
+        const response = await apiPost<StudioPreviewResponse>(
+            `${BASE}/sessions/${sessionId}/preview`,
+            {},
+        );
+        return ensureSuccess(response);
+    },
+
+    async publishSession(sessionId: string): Promise<StudioPublishResponse> {
+        const response = await apiPost<StudioPublishResponse>(
+            `${BASE}/sessions/${sessionId}/publish`,
+            {},
+        );
+        return ensureSuccess(response);
+    },
+
+    async listTemplates(): Promise<StoryTemplateSpec[]> {
+        const response = await apiGet<StoryTemplateSpec[]>(`${BASE}/templates`);
+        return ensureSuccess(response, []);
+    },
+    async recommendTemplates(
+        sessionId: string,
+        payload: TemplateRecommendationRequest,
+    ): Promise<TemplateRecommendationResponse> {
+        const response = await apiPost<TemplateRecommendationResponse>(
+            `${BASE}/sessions/${sessionId}/template-recommendations`,
+            payload,
+        );
+        return ensureSuccess(response);
+    },
+    async listPreviewEvents(sessionId: string): Promise<StudioPreviewEvent[]> {
+        const response = await apiGet<StudioPreviewEvent[]>(
+            `${BASE}/sessions/${sessionId}/previews`,
+        );
+        return ensureSuccess(response, []);
+    },
+    async getPreviewMetrics(sessionId: string): Promise<StudioPreviewMetrics> {
+        const response = await apiGet<StudioPreviewMetrics>(
+            `${BASE}/sessions/${sessionId}/preview-metrics`,
+        );
+        return ensureSuccess(response);
+    },
+};
+

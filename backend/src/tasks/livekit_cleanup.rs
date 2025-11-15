@@ -7,8 +7,7 @@ use reqwest::{Client, StatusCode};
 use serde_json::json;
 
 use crate::{
-    config::live_streaming::LiveStreamingConfig,
-    state::AppState,
+    config::live_streaming::LiveStreamingConfig, state::AppState,
     utils::livekit::generate_server_access_token,
 };
 
@@ -66,8 +65,7 @@ async fn cleanup_rooms(client: &Client, config: &LiveStreamingConfig) -> Result<
         .context("LIVEKIT_API_SECRET manquant")?;
 
     let list_endpoint = format!("{}/twirp/livekit.RoomService/ListRooms", base_url);
-    let token = generate_server_access_token(api_key, api_secret)
-        .map_err(|err| anyhow!(err))?;
+    let token = generate_server_access_token(api_key, api_secret).map_err(|err| anyhow!(err))?;
     let response = client
         .post(list_endpoint)
         .bearer_auth(token)
@@ -139,8 +137,7 @@ async fn delete_room(
     room_name: &str,
 ) -> Result<()> {
     let endpoint = format!("{}/twirp/livekit.RoomService/DeleteRoom", base_url);
-    let token = generate_server_access_token(api_key, api_secret)
-        .map_err(|err| anyhow!(err))?;
+    let token = generate_server_access_token(api_key, api_secret).map_err(|err| anyhow!(err))?;
     let response = client
         .post(endpoint)
         .bearer_auth(token)
@@ -177,8 +174,7 @@ async fn cleanup_ingress(client: &Client, config: &LiveStreamingConfig) -> Resul
         .context("LIVEKIT_API_SECRET manquant")?;
 
     let list_endpoint = format!("{}/twirp/livekit.Ingress/ListIngress", base_url);
-    let token = generate_server_access_token(api_key, api_secret)
-        .map_err(|err| anyhow!(err))?;
+    let token = generate_server_access_token(api_key, api_secret).map_err(|err| anyhow!(err))?;
     let response = client
         .post(list_endpoint)
         .bearer_auth(token)
@@ -196,7 +192,10 @@ async fn cleanup_ingress(client: &Client, config: &LiveStreamingConfig) -> Resul
     }
 
     if !status.is_success() {
-        log::warn!("LiveKit ListIngress renvoie un statut inattendu: {}", status);
+        log::warn!(
+            "LiveKit ListIngress renvoie un statut inattendu: {}",
+            status
+        );
         return Ok(());
     }
 
@@ -243,8 +242,7 @@ async fn delete_ingress(
     ingress_id: &str,
 ) -> Result<()> {
     let endpoint = format!("{}/twirp/livekit.Ingress/DeleteIngress", base_url);
-    let token = generate_server_access_token(api_key, api_secret)
-        .map_err(|err| anyhow!(err))?;
+    let token = generate_server_access_token(api_key, api_secret).map_err(|err| anyhow!(err))?;
     let response = client
         .post(endpoint)
         .bearer_auth(token)

@@ -223,6 +223,46 @@ export const captureHandledError = (error: unknown, context?: Record<string, unk
     Sentry.Native.captureException(error, { extra: context });
 };
 
+type PreviewMetricPayload = {
+    template?: string | null;
+    durationSeconds?: number;
+    clipCount?: number;
+    warnings?: string[];
+    latencyMs?: number;
+};
+
+export const recordPreviewMetrics = (payload: PreviewMetricPayload) => {
+    const templateTag = payload.template ? payload.template.toLowerCase() : 'unknown';
+    if (typeof payload.durationSeconds === 'number') {
+        recordMetric('mobile.preview.duration_seconds', payload.durationSeconds, 'second', {
+            template: templateTag,
+        });
+    }
+    if (typeof payload.clipCount === 'number') {
+        recordMetric('mobile.preview.clip_count', payload.clipCount, 'none', { template: templateTag });
+    }
+    if (typeof payload.latencyMs === 'number') {
+        recordMetric('mobile.preview.latency_ms', payload.latencyMs, 'millisecond', {
+            template: templateTag,
+        });
+    }
+    const warningsCount = payload.warnings?.length ?? 0;
+    recordMetric('mobile.preview.warnings', warningsCount, 'none', { template: templateTag });
+
+    Sentry.Native.addBreadcrumb({
+        category: 'preview',
+        level: warningsCount > 0 ? 'warning' : 'info',
+        message: `Preview ${payload.template ?? 'unknown'} (${warningsCount} warnings)`,
+        data: {
+            template: payload.template,
+            clipCount: payload.clipCount,
+            durationSeconds: payload.durationSeconds,
+            latencyMs: payload.latencyMs,
+            warnings: payload.warnings,
+        },
+    });
+};
+
 
 
 

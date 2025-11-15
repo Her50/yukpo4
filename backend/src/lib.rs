@@ -45,7 +45,8 @@ use crate::routes::{
     content_routes::content_routes,         // ✅ NOUVEAU: Routes engagement contenu
     debug_routes::debug_routes,             // ✅ NOUVEAU 2025-11-06: Routes debug tables
     delivery_metrics_routes::delivery_metrics_routes,
-    delivery_routes::delivery_routes,
+    delivery_routes::{delivery_public_routes, delivery_routes},
+    global_promo_routes::global_promo_routes,
     history_routes::history_routes,
     ia_routes::ia_routes,
     live_ai_routes::live_ai_routes,
@@ -201,6 +202,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ Routes de gestion du cycle de vie des produits
     let product_lifecycle = product_lifecycle_routes(state.clone());
     let delivery = delivery_routes(state.clone());
+    let delivery_public = delivery_public_routes(state.clone());
     let delivery_metrics = delivery_metrics_routes(state.clone());
     let shopping = shopping_routes(state.clone());
 
@@ -211,6 +213,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
 
     // ✅ NOUVEAU 2025-11-03: Routes progression génération combinaisons
     let combinations = combination_routes(state.clone());
+
+    // ✅ Plateforme promos globales (Black Friday, campagnes communes)
+    let global_promos = global_promo_routes(state.clone());
 
     // ✅ Healthcheck système
     let system_health = system_health_routes(state.clone());
@@ -256,11 +261,13 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(push_notifs) // ✅ NOUVEAU : Routes push notifications
         .merge(product_lifecycle) // ✅ Routes de gestion du cycle de vie des produits
         .merge(delivery)
+        .merge(delivery_public)
         .merge(delivery_metrics)
         .merge(shopping)
         .merge(autocomplete) // ✅ NOUVEAU : Routes autocomplete
         .merge(search_history) // ✅ NOUVEAU : Routes historique recherche
         .merge(combinations) // ✅ NOUVEAU 2025-11-03: Routes progression génération combinaisons
+        .merge(global_promos) // ✅ Plateforme promo globale
         .merge(content) // ✅ NOUVEAU : Routes engagement contenu
         .merge(debug) // ✅ NOUVEAU 2025-11-06: Routes debug tables
         .merge(live)

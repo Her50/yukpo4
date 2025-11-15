@@ -1,18 +1,18 @@
 use crate::{
     core::types::{AppError, AppResult},
     models::delivery_model::{
-        Courier, CourierApplication, CourierAsset, DeliveryCancelReason, DeliveryPricing,
-        DeliveryRecipient, DeliveryRecipientUpdate, DeliveryStatus, DeliveryStatusEvent,
-        DeliverySummary, GeoPoint, ParcelType, ShoppingItemStatus, ShoppingOrder,
-        ShoppingOrderItem, ShoppingStatus,
+        Courier, CourierApplication, CourierAsset, CourierMatchingCandidate, DeliveryCancelReason,
+        DeliveryMatchingStatus, DeliveryPricing, DeliveryRecipient, DeliveryRecipientUpdate,
+        DeliveryStatus, DeliveryStatusEvent, DeliverySummary, GeoPoint, ParcelType,
+        ShoppingItemStatus, ShoppingOrder, ShoppingOrderItem, ShoppingStatus,
     },
     services::{
         delivery_repository::{
             DeliveryRepository, DeliveryTimestampField, NewClientRating, NewCourierApplication,
-            NewCourierAsset, NewCourierProfile, NewCourierRating, NewDeliveryPricing,
-            NewDeliveryRecipient, NewDeliveryRequest, NewShoppingOrder, NewShoppingOrderItem,
-            NewStatusEvent, NewTrackingPoint, ShoppingEstimateItem, ShoppingEstimateResult,
-            WalletEventDirection,
+            NewCourierAsset, NewCourierProfile, NewCourierRating, NewDeliveryMatchingEvent,
+            NewDeliveryMatchingQueueItem, NewDeliveryPricing, NewDeliveryRecipient,
+            NewDeliveryRequest, NewShoppingOrder, NewShoppingOrderItem, NewStatusEvent,
+            NewTrackingPoint, ShoppingEstimateItem, ShoppingEstimateResult, WalletEventDirection,
         },
         phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
     },
@@ -24,13 +24,14 @@ use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
     Decimal,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::str::FromStr;
 use std::sync::{
     atomic::{AtomicI64, AtomicU64, Ordering},
     Arc,
 };
+use std::{cmp::Ordering as CmpOrdering, env};
 use uuid::Uuid;
 
 /// Paramètres pour créer une demande de livraison
@@ -225,6 +226,29 @@ pub struct FrontendRecipientUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<String>,
     pub timestamp_iso: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct DropoffShareInfo {
+    pub delivery_id: Uuid,
+    pub tracking_token: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub share_url: Option<String>,
+    pub dropoff_pending: bool,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct PublicDropoffSnapshot {
+    pub delivery_id: Uuid,
+    pub pickup: FrontendDeliveryLocation,
+    pub dropoff: FrontendDeliveryLocation,
+    pub dropoff_pending: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheduled_pickup_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_hint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vehicle_type_id: Option<i64>,
 }
 
 impl From<DeliveryRecipientUpdate> for FrontendRecipientUpdate {
@@ -662,6 +686,9 @@ impl ShoppingStoreInput {
 }
 
 const SHOPPING_MARGIN_RATE: f64 = 0.15;
+const MATCHING_MAX_DISTANCE_METERS: f64 = 8_000.0;
+const MATCHING_SEARCH_RETRY_MINUTES: i64 = 2;
+const MATCHING_DEFAULT_PRIORITY: i16 = 100;
 
 fn compute_margin_cents(total_cents: i32) -> i32 {
     ((total_cents as f64) * SHOPPING_MARGIN_RATE).ceil() as i32
@@ -803,6 +830,26 @@ impl DeliveryService {
         if summary.creator_id != user_id {
             return Err(AppError::Forbidden(
                 "Seul le créateur de la livraison peut débiter son portefeuille.".into(),
+            ));
+        }
+
+        let merchant_inclusive = summary
+            .metadata
+            .get("billing_mode")
+            .and_then(|v| v.as_str())
+            .map(|mode| mode.eq_ignore_ascii_case("merchant_inclusive"))
+            .or_else(|| {
+                summary
+                    .metadata
+                    .get("billing_inclusive")
+                    .and_then(|v| v.as_bool())
+            })
+            .unwrap_or(false);
+
+        if merchant_inclusive {
+            return Err(AppError::BadRequest(
+                "Cette livraison est facturée au marchand (billing_mode=merchant_inclusive). Aucun débit client requis."
+                    .into(),
             ));
         }
 
@@ -1183,6 +1230,15 @@ impl DeliveryService {
         let summary = self.repository.create_delivery_request(request).await?;
         self.broadcast_status_update(summary.id, DeliveryStatus::Requested, None)
             .await;
+
+        if let Err(err) = self.enqueue_delivery_matching(&summary).await {
+            log::error!(
+                "[DeliveryMatching] Enfilement impossible pour la livraison {}: {:?}",
+                summary.id,
+                err
+            );
+        }
+
         Ok(summary)
     }
 
@@ -1350,6 +1406,139 @@ impl DeliveryService {
         }
 
         Ok(updated)
+    }
+
+    pub async fn share_dropoff_link(
+        &self,
+        delivery_id: Uuid,
+        user_id: i32,
+    ) -> AppResult<DropoffShareInfo> {
+        let summary = self.get_delivery_summary(delivery_id).await?;
+        self.ensure_delivery_access(&summary, user_id).await?;
+
+        let tracking_token = self
+            .repository
+            .ensure_recipient_tracking_token(delivery_id)
+            .await?;
+
+        let now = Utc::now().to_rfc3339();
+        self.repository
+            .merge_delivery_metadata(
+                delivery_id,
+                &json!({
+                    "dropoff_pending": true,
+                    "dropoff_pending_at": now,
+                    "dropoff_share_token": tracking_token,
+                    "dropoff_pending_reason": "customer_selection"
+                }),
+            )
+            .await?;
+
+        let _ = self
+            .repository
+            .update_matching_queue_status(
+                delivery_id,
+                DeliveryMatchingStatus::Searching,
+                Some(Utc::now() + Duration::hours(6)),
+                Some(json!({ "reason": "awaiting_dropoff_confirmation" })),
+                false,
+            )
+            .await;
+
+        let share_url = env::var("PUBLIC_TRACKING_BASE_URL")
+            .or_else(|_| env::var("PUBLIC_BASE_URL"))
+            .ok()
+            .map(|base| {
+                format!(
+                    "{}/delivery/dropoff/{}",
+                    base.trim_end_matches('/'),
+                    tracking_token
+                )
+            });
+
+        Ok(DropoffShareInfo {
+            delivery_id,
+            tracking_token,
+            share_url,
+            dropoff_pending: true,
+        })
+    }
+
+    pub async fn get_public_dropoff_snapshot(
+        &self,
+        token: Uuid,
+    ) -> AppResult<PublicDropoffSnapshot> {
+        let delivery_id = self
+            .repository
+            .find_delivery_id_by_recipient_token(token)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Lien de livraison invalide ou expiré.".into()))?;
+
+        let summary = self.get_delivery_summary(delivery_id).await?;
+        let dropoff_pending = summary
+            .metadata
+            .get("dropoff_pending")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let scheduled_pickup_at = summary
+            .metadata
+            .get("scheduled_pickup_at")
+            .and_then(|v| v.as_str())
+            .map(ToString::to_string);
+        let service_hint = summary
+            .metadata
+            .get("studio_brief_excerpt")
+            .and_then(|v| v.as_str())
+            .map(ToString::to_string);
+        let vehicle_type_id = summary
+            .metadata
+            .get("vehicle_type_id")
+            .and_then(|v| v.as_i64());
+
+        Ok(PublicDropoffSnapshot {
+            delivery_id,
+            pickup: build_pickup_location(&summary, None),
+            dropoff: build_dropoff_location(&summary),
+            dropoff_pending,
+            scheduled_pickup_at,
+            service_hint,
+            vehicle_type_id,
+        })
+    }
+
+    pub async fn submit_public_dropoff(
+        &self,
+        token: Uuid,
+        point: LocationInput,
+        address: Option<String>,
+        instructions: Option<String>,
+    ) -> AppResult<DeliverySummary> {
+        let delivery_id = self
+            .repository
+            .find_delivery_id_by_recipient_token(token)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Lien de livraison invalide ou expiré.".into()))?;
+
+        self.update_recipient_dropoff(delivery_id, point, address, None)
+            .await?;
+
+        let now = Utc::now().to_rfc3339();
+        self.repository
+            .merge_delivery_metadata(
+                delivery_id,
+                &json!({
+                    "dropoff_pending": false,
+                    "dropoff_confirmed_at": now,
+                    "dropoff_confirmed_source": "customer_link",
+                    "dropoff_client_instructions": instructions,
+                }),
+            )
+            .await?;
+
+        let summary = self.get_delivery_summary(delivery_id).await?;
+        self.enqueue_delivery_matching(&summary).await?;
+
+        Ok(summary)
     }
 
     pub async fn estimate_shopping_order(
@@ -1995,6 +2184,77 @@ impl DeliveryService {
         Ok(asset)
     }
 
+    /// Traite les éléments en file d'attente (cron/worker)
+    pub async fn process_matching_backlog(&self, batch_size: usize) -> AppResult<usize> {
+        let queue_items = self
+            .repository
+            .fetch_matching_queue_batch(batch_size as i64)
+            .await?;
+
+        let mut processed = 0usize;
+        for item in queue_items {
+            let Some(summary) = self
+                .repository
+                .get_delivery_summary(item.delivery_id)
+                .await?
+            else {
+                log::warn!(
+                    "[DeliveryMatching] Impossible de recharger la livraison {} (supprimée?)",
+                    item.delivery_id
+                );
+                self.repository
+                    .update_matching_queue_status(
+                        item.delivery_id,
+                        DeliveryMatchingStatus::Failed,
+                        None,
+                        Some(json!({ "reason": "delivery_missing" })),
+                        false,
+                    )
+                    .await?;
+                continue;
+            };
+
+            let dropoff_pending = summary
+                .metadata
+                .get("dropoff_pending")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            if dropoff_pending {
+                self.repository
+                    .update_matching_queue_status(
+                        summary.id,
+                        DeliveryMatchingStatus::Queued,
+                        Some(Utc::now() + Duration::minutes(MATCHING_SEARCH_RETRY_MINUTES)),
+                        Some(json!({ "reason": "awaiting_dropoff_confirmation" })),
+                        false,
+                    )
+                    .await?;
+                continue;
+            }
+
+            if let Err(err) = self.attempt_auto_matching(&summary, item.zone_id).await {
+                log::warn!(
+                    "[DeliveryMatching] Tentative échouée pour {}: {}",
+                    summary.id,
+                    err
+                );
+                self.repository
+                    .update_matching_queue_status(
+                        summary.id,
+                        DeliveryMatchingStatus::Searching,
+                        Some(Utc::now() + Duration::minutes(MATCHING_SEARCH_RETRY_MINUTES)),
+                        Some(json!({ "error": err.to_string() })),
+                        true,
+                    )
+                    .await?;
+            } else {
+                processed += 1;
+            }
+        }
+
+        Ok(processed)
+    }
+
     async fn load_shopping_context(
         &self,
         order_id: Uuid,
@@ -2209,6 +2469,258 @@ impl DeliveryService {
             metadata,
             last_event_at,
         })
+    }
+
+    /// Enfile immédiatement la livraison dans la file de matching et tente un dispatch express
+    async fn enqueue_delivery_matching(&self, summary: &DeliverySummary) -> AppResult<()> {
+        let zone_id = Self::extract_zone_from_metadata(&summary.metadata);
+        let scheduled_pickup_at = summary
+            .metadata
+            .get("scheduled_pickup_at")
+            .and_then(|value| value.as_str())
+            .and_then(|raw| DateTime::parse_from_rfc3339(raw).ok())
+            .map(|dt| dt.with_timezone(&Utc));
+        let should_delay_matching = scheduled_pickup_at
+            .map(|ts| ts > Utc::now() + Duration::minutes(2))
+            .unwrap_or(false);
+        let dropoff_pending = summary
+            .metadata
+            .get("dropoff_pending")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let should_delay_matching = should_delay_matching || dropoff_pending;
+        let scheduled_pickup_value = scheduled_pickup_at.map(|ts| ts.to_rfc3339());
+        let payload = json!({
+            "pickup": {
+                "lat": summary.pickup.latitude,
+                "lng": summary.pickup.longitude,
+            },
+            "dropoff": {
+                "lat": summary.dropoff.latitude,
+                "lng": summary.dropoff.longitude,
+            },
+            "shopping_required": summary.shopping_required,
+            "distance_meters": summary.distance_meters,
+            "metadata": summary.metadata,
+            "scheduled_pickup_at": scheduled_pickup_value,
+            "dropoff_pending": dropoff_pending,
+        });
+
+        self.repository
+            .enqueue_delivery_matching(NewDeliveryMatchingQueueItem {
+                delivery_id: summary.id,
+                zone_id,
+                priority: Self::compute_matching_priority(summary),
+                payload: payload.clone(),
+                next_attempt_at: scheduled_pickup_at,
+            })
+            .await?;
+
+        self.repository
+            .insert_matching_event(NewDeliveryMatchingEvent {
+                delivery_id: summary.id,
+                courier_id: None,
+                status: DeliveryMatchingStatus::Queued,
+                score: None,
+                reason: Some(
+                    if should_delay_matching {
+                        "scheduled_pickup"
+                    } else {
+                        "auto_enqueue"
+                    }
+                    .to_string(),
+                ),
+                metadata: payload,
+            })
+            .await?;
+
+        if should_delay_matching {
+            // Attendre la fenêtre programmée avant de chercher un coursier.
+            return Ok(());
+        }
+
+        self.attempt_auto_matching(summary, zone_id).await?;
+        Ok(())
+    }
+
+    /// Essaie de trouver immédiatement un coursier basé sur les snapshots récents
+    async fn attempt_auto_matching(
+        &self,
+        summary: &DeliverySummary,
+        zone_id: Option<Uuid>,
+    ) -> AppResult<()> {
+        let passenger_mode = summary
+            .metadata
+            .get("requested_delivery_mode")
+            .and_then(|mode| mode.as_str())
+            .map(|mode| mode.eq_ignore_ascii_case("passenger"))
+            .unwrap_or(false);
+        let vehicle_type_id = summary
+            .metadata
+            .get("vehicle_type_id")
+            .and_then(|value| value.as_i64());
+
+        let max_distance = if passenger_mode {
+            (MATCHING_MAX_DISTANCE_METERS * 0.6).max(1_500.0)
+        } else {
+            MATCHING_MAX_DISTANCE_METERS
+        };
+
+        let candidates = self
+            .repository
+            .list_matching_candidates(
+                summary.pickup.clone(),
+                zone_id,
+                6,
+                Some(max_distance),
+                passenger_mode,
+            )
+            .await?;
+
+        if candidates.is_empty() {
+            self.repository
+                .update_matching_queue_status(
+                    summary.id,
+                    DeliveryMatchingStatus::Searching,
+                    Some(Utc::now() + Duration::minutes(MATCHING_SEARCH_RETRY_MINUTES)),
+                    Some(json!({
+                        "reason": "no_candidates",
+                        "passenger_mode": passenger_mode,
+                        "vehicle_type_id": vehicle_type_id,
+                    })),
+                    true,
+                )
+                .await?;
+            return Ok(());
+        }
+
+        let best = candidates
+            .into_iter()
+            .map(|candidate| {
+                let score = Self::compute_candidate_score(&candidate, passenger_mode);
+                (candidate, score)
+            })
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(CmpOrdering::Equal));
+
+        let Some((best_candidate, score)) = best else {
+            return Ok(());
+        };
+
+        self.repository
+            .assign_delivery_courier(summary.id, best_candidate.courier_id)
+            .await?;
+
+        let queue_metadata = json!({
+            "courier_id": best_candidate.courier_id,
+            "score": score,
+            "distance_meters": best_candidate.distance_meters,
+        });
+
+        self.repository
+            .update_matching_queue_status(
+                summary.id,
+                DeliveryMatchingStatus::Assigned,
+                None,
+                Some(queue_metadata),
+                false,
+            )
+            .await?;
+
+        self.repository
+            .insert_matching_event(NewDeliveryMatchingEvent {
+                delivery_id: summary.id,
+                courier_id: Some(best_candidate.courier_id),
+                status: DeliveryMatchingStatus::Assigned,
+                score: rust_decimal::Decimal::from_f64(score).map(decimal_to_bigdecimal),
+                reason: Some("auto_dispatch".into()),
+                metadata: json!({
+                    "distance_meters": best_candidate.distance_meters,
+                    "load_factor": best_candidate.load_factor,
+                    "passenger_mode": passenger_mode,
+                    "vehicle_type_id": vehicle_type_id,
+                }),
+            })
+            .await?;
+
+        self.update_delivery_status(
+            summary.id,
+            DeliveryStatus::AwaitingCourierConfirmation,
+            None,
+            None,
+            Some(json!({
+                "matching": {
+                    "courier_id": best_candidate.courier_id,
+                    "auto": true,
+                    "score": score
+                }
+            })),
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    fn compute_matching_priority(summary: &DeliverySummary) -> i16 {
+        summary
+            .metadata
+            .get("logistics")
+            .and_then(|meta| meta.get("priority"))
+            .and_then(|value| value.as_i64())
+            .map(|value| value.clamp(1, 999) as i16)
+            .unwrap_or_else(|| {
+                if summary.shopping_required {
+                    60
+                } else {
+                    MATCHING_DEFAULT_PRIORITY
+                }
+            })
+    }
+
+    fn compute_candidate_score(candidate: &CourierMatchingCandidate, passenger_mode: bool) -> f64 {
+        let distance = candidate
+            .distance_meters
+            .unwrap_or(MATCHING_MAX_DISTANCE_METERS * 2.0);
+        let distance_ratio = (distance / MATCHING_MAX_DISTANCE_METERS).min(2.0);
+        let distance_component = (1.0 - distance_ratio).max(-0.5);
+
+        let load_factor = candidate
+            .load_factor
+            .to_f64()
+            .unwrap_or_default()
+            .clamp(0.0, 2.0);
+        let load_component = 1.0 - load_factor.min(1.0);
+
+        let available_capacity =
+            (candidate.max_capacity - candidate.active_deliveries).max(0) as f64;
+        let capacity_component = available_capacity / candidate.max_capacity.max(1) as f64;
+
+        let primary_bonus = if candidate.is_primary { 0.1 } else { 0.0 };
+        let weight_bonus = (candidate.capacity_weight as f64) * 0.02;
+
+        let priority_boost = if passenger_mode {
+            // Passager : on veut un coursier rapide (distance faible) + capacité poids élevée (voiture/van).
+            let distance_bonus = distance_component.max(0.0) * 0.2;
+            let capacity_bonus = weight_bonus * 1.5;
+            distance_bonus + capacity_bonus
+        } else {
+            0.0
+        };
+
+        distance_component * 0.6
+            + load_component * 0.2
+            + capacity_component * 0.1
+            + primary_bonus
+            + weight_bonus
+            + priority_boost
+    }
+
+    fn extract_zone_from_metadata(metadata: &Value) -> Option<Uuid> {
+        metadata
+            .get("logistics")
+            .and_then(|meta| meta.get("zone_id"))
+            .or_else(|| metadata.get("zone_id"))
+            .and_then(|value| value.as_str())
+            .and_then(|raw| Uuid::parse_str(raw).ok())
     }
 }
 

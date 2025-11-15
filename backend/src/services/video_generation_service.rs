@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{BTreeMap, HashMap, HashSet},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -21,14 +21,19 @@ use crate::{
         audio_mastering_service::AudioMasteringOutcome,
         audio_pipeline::{self, AudioMixConfig},
         broll_service,
+        commerce_connector_service::ProductConnectorSnapshot,
         cost_service::CostEstimation,
+        distribution_automation_service,
         immersive_orchestrator::{
-            ImmersiveOrchestrator, TimelineAnalytics, TimelineBrollAsset, TimelineRequest,
+            ImmersiveOrchestrator, TimelineAnalytics, TimelineBrollAsset, TimelineBusinessContext,
+            TimelineRequest,
         },
         immersive_timeline::ImmersiveTimeline,
+        inventory_service::INVENTORY_STALE_THRESHOLD_HOURS,
         video_analytics_service::{record_engagement, schedule_distribution_targets},
         video_job_service::try_store_progress,
         video_renderer::{RenderExecutionMode, RenderJobRequest, RenderJobResponse},
+        voice_profile_service::ResolvedVoiceProfile,
     },
     state::AppState,
 };
@@ -39,6 +44,7 @@ pub struct VideoGenerationPayload {
     pub duration_seconds: Option<u32>,
     pub headline: Option<String>,
     pub call_to_action: Option<String>,
+    pub story_template_id: Option<String>,
     pub include_price: Option<bool>,
     pub include_promotion: Option<bool>,
     pub include_contact: Option<bool>,
@@ -61,6 +67,7 @@ pub struct VideoGenerationPayload {
     pub subtitle_mode: Option<String>,
     pub subtitle_lang: Option<String>,
     pub music_track_id: Option<i32>,
+    pub voice_profile_id: Option<i32>,
     pub distribute_channels: Option<Vec<String>>,
     pub use_ai_templates: Option<bool>,
     pub generate_subtitles: Option<bool>,
@@ -69,6 +76,22 @@ pub struct VideoGenerationPayload {
     pub style_color_palette: Option<String>,
     pub style_overlay_tips: Option<Vec<String>>,
     pub style_music_hint: Option<String>,
+    #[serde(default)]
+    pub media_scene_overrides: Option<Vec<MediaSceneOverride>>,
+    #[serde(default)]
+    pub media_descriptions: Option<Vec<MediaDescriptionInput>>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MediaSceneOverride {
+    pub media_id: i32,
+    pub scene_index: i32,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MediaDescriptionInput {
+    pub media_id: i32,
+    pub description: String,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -133,6 +156,7 @@ pub struct AlternativeVideoFormat {
 struct MediaSource {
     id: Option<i32>,
     path: PathBuf,
+    ai_description: Option<String>,
 }
 
 struct SlideOverlay {
@@ -338,9 +362,51 @@ pub async fn generate_product_video(
         None
     };
 
+    let voice_profile: Option<ResolvedVoiceProfile> = match payload.voice_profile_id {
+        Some(profile_id) => Some(
+            state
+                .voice_profiles
+                .resolve_for_generation(profile_id, user.id, service_id)
+                .await?,
+        ),
+        None => None,
+    };
+
+    let product_snapshot: Option<ProductConnectorSnapshot> = match state
+        .commerce_connector
+        .snapshot_by_index(service_id, product_index)
+        .await
+    {
+        Ok(snapshot) => Some(snapshot),
+        Err(err) => {
+            warn!(
+                "[VideoGeneration] Impossible de charger le snapshot produit {}:{} ({err})",
+                service_id, product_index
+            );
+            None
+        }
+    };
+
     let mut headline = payload.headline.clone();
     let mut call_to_action = payload.call_to_action.clone();
     let mut voiceover_script_opt = payload.voiceover_script.clone();
+    let mut resolved_voiceover_lang = payload.voiceover_lang.clone();
+    if resolved_voiceover_lang.is_none() {
+        if let Some(profile) = &voice_profile {
+            if let Some(lang) = profile
+                .metadata
+                .get("lang")
+                .and_then(|value| value.as_str())
+            {
+                resolved_voiceover_lang = Some(lang.to_string());
+            }
+        }
+    }
+
+    let voice_hint = voice_profile
+        .as_ref()
+        .and_then(|profile| profile.tts_voice_hint.clone())
+        .or_else(|| payload.voiceover_voice.clone());
 
     let mut script_outline: Vec<String> = payload
         .storyboard
@@ -489,7 +555,7 @@ pub async fn generate_product_video(
         }
     }
 
-    let media_sources = gather_media_sources(
+    let mut media_sources = gather_media_sources(
         &state,
         service_id,
         product_index,
@@ -506,6 +572,42 @@ pub async fn generate_product_video(
                 .to_string(),
         ));
     }
+
+    let description_overrides: HashMap<i32, String> = payload
+        .media_descriptions
+        .as_ref()
+        .map(|entries| {
+            entries
+                .iter()
+                .filter_map(|entry| {
+                    let trimmed = entry.description.trim();
+                    if trimmed.is_empty() {
+                        None
+                    } else {
+                        Some((entry.media_id, trimmed.to_string()))
+                    }
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if !description_overrides.is_empty() {
+        apply_description_overrides(&mut media_sources, &description_overrides);
+    }
+
+    let manual_override_map = payload
+        .media_scene_overrides
+        .as_ref()
+        .map(|entries| build_manual_override_map(entries))
+        .unwrap_or_default();
+
+    let manual_override_ref = if manual_override_map.is_empty() {
+        None
+    } else {
+        Some(&manual_override_map)
+    };
+
+    media_sources = reorder_media_sources(media_sources, &script_outline, manual_override_ref);
 
     let duration_seconds = payload.duration_seconds.unwrap_or(28).clamp(10, 90);
     let per_slide_seconds = (duration_seconds as f32 / media_sources.len() as f32).clamp(3.0, 9.0);
@@ -702,6 +804,106 @@ pub async fn generate_product_video(
     }
 
     let orchestrator = ImmersiveOrchestrator::new(state.clone());
+    let service_category_hint = extract_string(
+        &primary_product,
+        &[
+            "service_category",
+            "serviceCategory",
+            "category",
+            "categorie",
+            "segment",
+            "type",
+        ],
+    )
+    .or_else(|| {
+        extract_string(
+            &service_data,
+            &[
+                "service_category",
+                "serviceCategory",
+                "category",
+                "categorie",
+                "segment",
+            ],
+        )
+    })
+    .unwrap_or_else(|| product_type.clone());
+    let delivery_sla_hint = extract_delivery_sla_hint(&primary_product)
+        .or_else(|| extract_delivery_sla_hint(&service_data));
+    let inventory_signal = state
+        .inventory
+        .latest_signal(service_id, product_index)
+        .await?;
+    let mut stock_last_synced_at = None;
+    let mut stock_source_label = None;
+    let mut stock_level_hint = product_snapshot
+        .as_ref()
+        .and_then(|snapshot| snapshot.stock);
+    let mut orchestration_warnings: Vec<String> = Vec::new();
+    match inventory_signal {
+        Some(signal) => {
+            stock_level_hint = Some(signal.stock_level);
+            stock_last_synced_at = Some(signal.last_synced_at);
+            stock_source_label = signal.source.clone();
+            if signal.is_stale(INVENTORY_STALE_THRESHOLD_HOURS) {
+                orchestration_warnings.push(format!(
+                    "inventory_stale:>{}h",
+                    INVENTORY_STALE_THRESHOLD_HOURS
+                ));
+            }
+        }
+        None => {
+            orchestration_warnings.push("inventory_sync_missing".to_string());
+        }
+    }
+    let promotion_signal = product_snapshot
+        .as_ref()
+        .map(|snapshot| snapshot.promotion_active)
+        .or_else(|| promotion_label.as_ref().map(|_| true));
+    let audience_segment = payload
+        .distribute_channels
+        .as_ref()
+        .and_then(|channels| {
+            if channels.is_empty() {
+                None
+            } else {
+                Some(channels.join(", "))
+            }
+        })
+        .or_else(|| {
+            extract_string(
+                &primary_product,
+                &[
+                    "audience",
+                    "audience_cible",
+                    "segment_cible",
+                    "segment",
+                    "targetAudience",
+                    "persona",
+                    "cible",
+                ],
+            )
+        });
+    let timeline_context = TimelineBusinessContext {
+        service_category: Some(service_category_hint),
+        tone: payload.style.clone(),
+        cta_label: call_to_action
+            .clone()
+            .or_else(|| payload.call_to_action.clone()),
+        delivery_sla_minutes: delivery_sla_hint,
+        stock_level: stock_level_hint,
+        stock_last_synced_at,
+        stock_source: stock_source_label,
+        promotion_active: promotion_signal,
+        price_label: price_label.clone(),
+        target_audience: audience_segment,
+    };
+    let ai_template_recommendations = infer_template_recommendations(
+        &payload,
+        &timeline_context,
+        product_snapshot.as_ref(),
+        script_outline.len(),
+    );
     let timeline_request = TimelineRequest {
         script_outline: script_outline.clone(),
         product_name: product_name.clone(),
@@ -710,11 +912,13 @@ pub async fn generate_product_video(
         style: payload.style.clone(),
         duration_seconds: duration_seconds as f32,
         broll_assets: timeline_broll_assets,
+        template_id: payload.story_template_id.clone(),
+        business_context: Some(timeline_context),
+        ai_template_recommendations,
     };
 
     let mut immersive_timeline: Option<ImmersiveTimeline> = None;
     let mut immersive_analytics: Option<TimelineAnalytics> = None;
-    let mut orchestration_warnings: Vec<String> = Vec::new();
     let mut sfx_layers: Vec<audio_pipeline::AudioLayer> = Vec::new();
     let mut renderer_response: Option<RenderJobResponse> = None;
     let mut renderer_mode: Option<RenderExecutionMode> = None;
@@ -724,12 +928,18 @@ pub async fn generate_product_video(
             orchestration_warnings.extend(result.warnings.clone());
             immersive_timeline = Some(result.timeline.clone());
             immersive_analytics = Some(result.analytics.clone());
+            let estimated_seconds = ((result.analytics.estimated_frames as f32
+                / result.timeline.fps as f32)
+                .ceil()) as u32;
             progress_steps.push(ProgressStep::completed(
                 "timeline_generation",
                 "Timeline immersive générée",
                 Some(format!(
-                    "{} scènes, {} b-roll",
-                    result.analytics.total_scenes, result.analytics.broll_clips_used
+                    "{} scènes, {} b-roll, template {}, ~{}s",
+                    result.analytics.total_scenes,
+                    result.analytics.broll_clips_used,
+                    result.analytics.selected_template,
+                    estimated_seconds
                 )),
             ));
             if let Some(job_id) = job_id {
@@ -885,9 +1095,10 @@ pub async fn generate_product_video(
         if trimmed.is_empty() {
             None
         } else {
-            let lang = payload.voiceover_lang.as_deref().unwrap_or("fr");
+            let lang = resolved_voiceover_lang.as_deref().unwrap_or("fr");
             if let Some(premium_path) =
-                generate_premium_voiceover(&session_dir, &trimmed, lang).await?
+                generate_premium_voiceover(&session_dir, &trimmed, lang, voice_hint.as_deref())
+                    .await?
             {
                 Some(premium_path)
             } else {
@@ -897,7 +1108,7 @@ pub async fn generate_product_video(
                         let path = session_dir.join(filename);
                         if let Err(err) = fs::write(&path, bytes).await {
                             warn!("[VideoGeneration] Écriture voix IA impossible: {err}");
-                            let voice = payload.voiceover_voice.as_deref().unwrap_or("fr");
+                            let voice = voice_hint.as_deref().unwrap_or("fr");
                             generate_voiceover_audio(&session_dir, &trimmed, lang, voice)
                                 .await
                                 .ok()
@@ -906,14 +1117,14 @@ pub async fn generate_product_video(
                         }
                     }
                     Ok(None) => {
-                        let voice = payload.voiceover_voice.as_deref().unwrap_or("fr");
+                        let voice = voice_hint.as_deref().unwrap_or("fr");
                         generate_voiceover_audio(&session_dir, &trimmed, lang, voice)
                             .await
                             .ok()
                     }
                     Err(err) => {
                         warn!("[VideoGeneration] Voix IA indisponible: {err}");
-                        let voice = payload.voiceover_voice.as_deref().unwrap_or("fr");
+                        let voice = voice_hint.as_deref().unwrap_or("fr");
                         generate_voiceover_audio(&session_dir, &trimmed, lang, voice)
                             .await
                             .ok()
@@ -960,9 +1171,7 @@ pub async fn generate_product_video(
                 .master_audio(&mixed_audio_path, &mastering_dir, job_id)
                 .await
             {
-                Ok(AudioMasteringOutcome::Completed(
-                    result,
-                )) => {
+                Ok(AudioMasteringOutcome::Completed(result)) => {
                     info!(
                         "[VideoGeneration] Mastering premium appliqué via {}",
                         result.provider
@@ -1007,22 +1216,43 @@ pub async fn generate_product_video(
         }
     }
 
+    let final_filename = format!("product_video_{}.mp4", session_id);
+    let storage_key = format!("services/{}", final_filename);
     let source_master_path = renderer_response
         .as_ref()
         .map(|resp| resp.master_video.clone())
         .unwrap_or_else(|| session_dir.join("final.mp4"));
 
-    let final_filename = format!("product_video_{}.mp4", session_id);
-    let storage_key = format!("services/{}", final_filename);
+    let remote_location = renderer_response.as_ref().and_then(|resp| {
+        if let Some(storage_path) = resp.storage_path.clone() {
+            Some(state.media_storage.remote_location_from_path(
+                storage_path,
+                resp.public_url.clone(),
+                resp.content_length,
+            ))
+        } else if let Some(storage_key) = resp.storage_key.as_ref() {
+            Some(state.media_storage.remote_location_from_key(
+                storage_key,
+                resp.public_url.clone(),
+                resp.content_length,
+            ))
+        } else {
+            None
+        }
+    });
 
-    let stored_video = state
-        .media_storage
-        .store_file(&source_master_path, &storage_key, Some("video/mp4"))
-        .await
-        .map_err(|err| {
-            error!("[VideoGeneration] Impossible de stocker la vidéo générée: {err:?}");
-            err
-        })?;
+    let stored_video = if let Some(remote) = remote_location {
+        remote
+    } else {
+        state
+            .media_storage
+            .store_file(&source_master_path, &storage_key, Some("video/mp4"))
+            .await
+            .map_err(|err| {
+                error!("[VideoGeneration] Impossible de stocker la vidéo générée: {err:?}");
+                err
+            })?
+    };
 
     let normalized_relative = stored_video.storage_path.replace('\\', "/");
     let public_url = stored_video.public_url.clone();
@@ -1129,8 +1359,11 @@ pub async fn generate_product_video(
         product_type.clone(),
         product_name.clone(),
     ];
-    if payload.style.is_some() {
-        ai_tags.push(payload.style.clone().unwrap());
+    if let Some(style) = payload.style.clone() {
+        ai_tags.push(style);
+    }
+    if let Some(template_id) = payload.story_template_id.clone() {
+        ai_tags.push(template_id);
     }
 
     let mut ai_metadata = json!({
@@ -1154,6 +1387,20 @@ pub async fn generate_product_video(
         "broll_count": broll_clips.len(),
     });
     if let Some(map) = ai_metadata.as_object_mut() {
+        if let Some(analytics) = immersive_analytics.as_ref() {
+            map.insert(
+                "immersive_template".to_string(),
+                json!(analytics.selected_template.clone()),
+            );
+            map.insert(
+                "immersive_total_scenes".to_string(),
+                json!(analytics.total_scenes),
+            );
+            map.insert(
+                "immersive_estimated_frames".to_string(),
+                json!(analytics.estimated_frames),
+            );
+        }
         if let Some(effects) = payload.style_effects.clone() {
             map.insert("style_effects".to_string(), json!(effects));
         }
@@ -1183,12 +1430,32 @@ pub async fn generate_product_video(
         map.insert("music_mode".to_string(), json!(payload.music_mode.clone()));
         map.insert(
             "voiceover_lang".to_string(),
-            json!(payload.voiceover_lang.clone()),
+            json!(resolved_voiceover_lang.clone()),
         );
-        map.insert(
-            "voiceover_voice".to_string(),
-            json!(payload.voiceover_voice.clone()),
-        );
+        map.insert("voiceover_voice".to_string(), json!(voice_hint.clone()));
+        if let Some(profile) = &voice_profile {
+            map.insert("voice_profile_id".to_string(), json!(profile.profile.id));
+            map.insert(
+                "voice_profile_provider".to_string(),
+                json!(profile.profile.provider.clone()),
+            );
+        }
+        if let Some(snapshot) = &product_snapshot {
+            map.insert(
+                "connector_snapshot".to_string(),
+                json!({
+                    "product_index": snapshot.product_index,
+                    "price_cents": snapshot.price_cents,
+                    "currency": snapshot.currency,
+                    "stock": snapshot.stock,
+                    "promotion_active": snapshot.promotion_active,
+                    "promotion_label": snapshot.promotion_label,
+                    "delivery_eta_minutes": snapshot.delivery_eta_minutes,
+                    "delivery_modes": snapshot.delivery_modes,
+                    "connectors": snapshot.connectors,
+                }),
+            );
+        }
         map.insert(
             "voiceover_generated".to_string(),
             json!(voiceover_track.is_some()),
@@ -1258,6 +1525,23 @@ pub async fn generate_product_video(
     let distribution_targets = payload.distribute_channels.clone().unwrap_or_default();
 
     schedule_distribution_targets(&state, inserted.id, service_id, &distribution_targets).await?;
+
+    if let Err(err) = distribution_automation_service::automate_media_distribution(
+        state.clone(),
+        user.id,
+        service_id,
+        product_index,
+        inserted.id,
+        product_snapshot.clone(),
+        &distribution_targets,
+    )
+    .await
+    {
+        warn!(
+            "[VideoGeneration] Automatisation distribution indisponible: {}",
+            err
+        );
+    }
 
     let analytics_for_json = immersive_analytics.clone();
     let warnings_for_json = if orchestration_warnings.is_empty() {
@@ -1388,7 +1672,8 @@ async fn gather_media_sources(
             })?;
 
             for row in rows {
-                if let Some(source) = row_to_media_source(row.id, &row.path) {
+                let ai_description = row.ai_description.clone().flatten();
+                if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
                     seen_ids.insert(source.id.unwrap());
                     collected.push(source);
                 }
@@ -1415,7 +1700,8 @@ async fn gather_media_sources(
         })?;
 
         for row in rows {
-            if let Some(source) = row_to_media_source(row.id, &row.path) {
+            let ai_description = row.ai_description.clone().flatten();
+            if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
                         continue;
@@ -1446,7 +1732,8 @@ async fn gather_media_sources(
         })?;
 
         for row in rows {
-            if let Some(source) = row_to_media_source(row.id, &row.path) {
+            let ai_description = row.ai_description.clone().flatten();
+            if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
                         continue;
@@ -1481,7 +1768,8 @@ async fn gather_media_sources(
         })?;
 
         for row in rows {
-            if let Some(source) = row_to_media_source(row.id, &row.path) {
+            let ai_description = row.ai_description.clone().flatten();
+            if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
                         continue;
@@ -1497,7 +1785,7 @@ async fn gather_media_sources(
     Ok(collected)
 }
 
-fn row_to_media_source(id: i32, path: &str) -> Option<MediaSource> {
+fn row_to_media_source(id: i32, path: &str, ai_description: Option<String>) -> Option<MediaSource> {
     let absolute = {
         let p = PathBuf::from(path);
         if p.is_absolute() {
@@ -1523,7 +1811,116 @@ fn row_to_media_source(id: i32, path: &str) -> Option<MediaSource> {
     Some(MediaSource {
         id: Some(id),
         path: absolute,
+        ai_description,
     })
+}
+
+fn apply_description_overrides(sources: &mut [MediaSource], overrides: &HashMap<i32, String>) {
+    for source in sources.iter_mut() {
+        let Some(id) = source.id else {
+            continue;
+        };
+        if let Some(description) = overrides.get(&id) {
+            if !description.trim().is_empty() {
+                source.ai_description = Some(description.trim().to_string());
+            }
+        }
+    }
+}
+
+fn build_manual_override_map(overrides: &[MediaSceneOverride]) -> HashMap<usize, i32> {
+    let mut map = HashMap::new();
+    for entry in overrides {
+        if entry.scene_index < 0 {
+            continue;
+        }
+        map.insert(entry.scene_index as usize, entry.media_id);
+    }
+    map
+}
+
+fn reorder_media_sources(
+    sources: Vec<MediaSource>,
+    script_outline: &[String],
+    manual_overrides: Option<&HashMap<usize, i32>>,
+) -> Vec<MediaSource> {
+    if sources.len() <= 1 || script_outline.is_empty() {
+        return sources;
+    }
+
+    let mut remaining = sources;
+    let mut manual_map: BTreeMap<usize, MediaSource> = BTreeMap::new();
+
+    if let Some(overrides) = manual_overrides {
+        let reverse: HashMap<i32, usize> = overrides
+            .iter()
+            .map(|(scene_idx, media_id)| (*media_id, *scene_idx))
+            .collect();
+
+        let mut retained = Vec::new();
+        for source in remaining.into_iter() {
+            if let Some(id) = source.id {
+                if let Some(scene_idx) = reverse.get(&id) {
+                    manual_map.insert(*scene_idx, source);
+                    continue;
+                }
+            }
+            retained.push(source);
+        }
+        remaining = retained;
+    }
+
+    let mut ordered: Vec<MediaSource> = Vec::new();
+
+    for scene_idx in 0..script_outline.len() {
+        if let Some(source) = manual_map.remove(&scene_idx) {
+            ordered.push(source);
+            continue;
+        }
+        if remaining.is_empty() {
+            break;
+        }
+        let best_idx = remaining
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, media)| score_media_for_line(media, &script_outline[scene_idx]))
+            .map(|(idx, _)| idx)
+            .unwrap_or(0);
+        ordered.push(remaining.remove(best_idx));
+    }
+
+    for (_, source) in manual_map.into_iter() {
+        ordered.push(source);
+    }
+
+    ordered.extend(remaining);
+    ordered
+}
+
+fn score_media_for_line(media: &MediaSource, line: &str) -> i32 {
+    let Some(description) = media.ai_description.as_ref() else {
+        return 0;
+    };
+    let lowered = description.to_lowercase();
+    let mut score = 0;
+    for keyword in extract_keywords(line) {
+        if lowered.contains(&keyword) {
+            score += 4;
+        }
+    }
+    score
+}
+
+fn extract_keywords(text: &str) -> Vec<String> {
+    text.split(|c: char| !c.is_alphanumeric())
+        .filter_map(|token| {
+            let trimmed = token.trim();
+            if trimmed.len() < 3 {
+                return None;
+            }
+            Some(trimmed.to_lowercase())
+        })
+        .collect()
 }
 
 fn build_slide_overlays(
@@ -2188,19 +2585,22 @@ async fn generate_premium_voiceover(
     session_dir: &Path,
     script: &str,
     lang: &str,
+    voice_hint: Option<&str>,
 ) -> AppResult<Option<PathBuf>> {
     if script.trim().is_empty() {
         return Ok(None);
     }
 
-    let preferred_voice = match lang.to_lowercase().as_str() {
-        "en" | "en-us" | "en_usa" => "en_premium",
-        "fr" | "fr-fr" | "fr_ca" => "fr_premium",
-        "es" | "es-es" => "es_premium",
-        _ => "global_premium",
-    };
+    let preferred_voice = voice_hint
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| match lang.to_lowercase().as_str() {
+            "en" | "en-us" | "en_usa" => "en_premium".to_string(),
+            "fr" | "fr-fr" | "fr_ca" => "fr_premium".to_string(),
+            "es" | "es-es" => "es_premium".to_string(),
+            _ => "global_premium".to_string(),
+        });
 
-    match generate_voiceover_audio(session_dir, script, lang, preferred_voice).await {
+    match generate_voiceover_audio(session_dir, script, lang, &preferred_voice).await {
         Ok(path) => Ok(Some(path)),
         Err(err) => {
             warn!("[VideoGeneration] Échec génération voix premium ({lang}): {err}");
@@ -2271,6 +2671,146 @@ async fn generate_additional_variant(
         format_label
     );
     Ok(None)
+}
+
+fn extract_delivery_sla_hint(value: &Value) -> Option<u32> {
+    if let Some(delivery) = value.get("delivery") {
+        if let Some(sla) = extract_u32(delivery, &["sla_minutes", "sla", "delay_minutes", "delai"])
+        {
+            return Some(sla);
+        }
+        if let Some(sla_obj) = delivery.get("sla") {
+            if let Some(sla) = extract_u32(sla_obj, &["minutes", "value"]) {
+                return Some(sla);
+            }
+        }
+    }
+
+    extract_u32(
+        value,
+        &[
+            "delivery_sla_minutes",
+            "deliverySlaMinutes",
+            "delivery_sla",
+            "sla_minutes",
+            "delai_minutes",
+            "delivery_delay",
+        ],
+    )
+}
+
+fn infer_template_recommendations(
+    payload: &VideoGenerationPayload,
+    context: &TimelineBusinessContext,
+    snapshot: Option<&ProductConnectorSnapshot>,
+    script_len: usize,
+) -> Vec<String> {
+    let mut hints: Vec<String> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+
+    if let Some(template_id) = payload.story_template_id.as_deref() {
+        push_template_hint(&mut hints, &mut seen, template_id);
+    }
+
+    if let Some(stock) = context.stock_level {
+        if stock <= 3 {
+            push_template_hint(&mut hints, &mut seen, "comparison");
+            push_template_hint(&mut hints, &mut seen, "testimonial");
+        } else if stock >= 20 {
+            push_template_hint(&mut hints, &mut seen, "tutorial");
+        }
+    }
+
+    if context.promotion_active.unwrap_or(false) || context.price_label.is_some() {
+        push_template_hint(&mut hints, &mut seen, "comparison");
+    }
+
+    if let Some(tone) = context.tone.as_deref() {
+        let lower = tone.to_lowercase();
+        if lower.contains("edu") || lower.contains("how") || lower.contains("guide") {
+            push_template_hint(&mut hints, &mut seen, "tutorial");
+        }
+        if lower.contains("trust")
+            || lower.contains("community")
+            || lower.contains("warm")
+            || lower.contains("social")
+        {
+            push_template_hint(&mut hints, &mut seen, "testimonial");
+        }
+        if lower.contains("thought") || lower.contains("chronicle") || lower.contains("expert") {
+            push_template_hint(&mut hints, &mut seen, "blog");
+        }
+    }
+
+    if let Some(audience) = context.target_audience.as_deref() {
+        let lower = audience.to_lowercase();
+        if lower.contains("b2b") || lower.contains("pro") || lower.contains("corporate") {
+            push_template_hint(&mut hints, &mut seen, "comparison");
+            push_template_hint(&mut hints, &mut seen, "blog");
+        }
+        if lower.contains("community")
+            || lower.contains("club")
+            || lower.contains("fidelite")
+            || lower.contains("whatsapp")
+        {
+            push_template_hint(&mut hints, &mut seen, "testimonial");
+        }
+    }
+
+    if let Some(snapshot) = snapshot {
+        if snapshot.promotion_active {
+            push_template_hint(&mut hints, &mut seen, "comparison");
+        }
+        if snapshot
+            .delivery_modes
+            .iter()
+            .any(|mode| mode.eq_ignore_ascii_case("express") || mode.eq_ignore_ascii_case("rush"))
+        {
+            push_template_hint(&mut hints, &mut seen, "tutorial");
+        }
+    }
+
+    if let Some(channels) = payload.distribute_channels.as_ref() {
+        for channel in channels {
+            let lower = channel.to_lowercase();
+            if lower.contains("stories") || lower.contains("shorts") || lower.contains("tiktok") {
+                push_template_hint(&mut hints, &mut seen, "tutorial");
+            }
+            if lower.contains("linkedin") || lower.contains("newsletter") || lower.contains("blog")
+            {
+                push_template_hint(&mut hints, &mut seen, "blog");
+            }
+            if lower.contains("whatsapp") || lower.contains("community") || lower.contains("group")
+            {
+                push_template_hint(&mut hints, &mut seen, "testimonial");
+            }
+        }
+    }
+
+    if script_len <= 3 {
+        push_template_hint(&mut hints, &mut seen, "testimonial");
+    } else if script_len >= 6 {
+        push_template_hint(&mut hints, &mut seen, "tutorial");
+    }
+
+    if hints.is_empty() {
+        push_template_hint(&mut hints, &mut seen, "blog");
+        push_template_hint(&mut hints, &mut seen, "tutorial");
+    }
+
+    hints
+}
+
+fn push_template_hint(hints: &mut Vec<String>, seen: &mut HashSet<String>, value: &str) {
+    let key = value.to_ascii_lowercase();
+    if seen.insert(key) {
+        hints.push(value.to_string());
+    }
+}
+
+fn extract_u32(value: &Value, keys: &[&str]) -> Option<u32> {
+    let raw = extract_string(value, keys)?;
+    raw.trim().parse::<u32>().ok()
 }
 
 fn extract_string(value: &Value, keys: &[&str]) -> Option<String> {

@@ -16,11 +16,16 @@ use crate::services::app_ia::AppIA;
 use crate::services::mongo_history_service::MongoHistoryService;
 use crate::websocket::delivery_tracking::DeliveryTrackingManager;
 // Imports d'optimisation
+use crate::services::commerce_connector_service::CommerceConnectorService;
+use crate::services::inventory_service::InventoryService;
 use crate::services::media_storage_service::MediaStorageService;
 use crate::services::prompt_optimizer_pro::PromptOptimizerPro;
 use crate::services::semantic_cache_pro::SemanticCachePro;
+use crate::services::story_template_service::StoryTemplateService;
+use crate::services::studio_service::StudioService;
 use crate::services::video_job_service::VideoGenerationJobService;
 use crate::services::video_renderer::VideoRenderDispatcher;
+use crate::services::voice_profile_service::VoiceProfileService;
 
 /// ?? ?tat partag? global de l'application
 #[derive(Clone)]
@@ -58,6 +63,11 @@ pub struct AppState {
     pub cost_service: Arc<crate::services::cost_service::CostEstimator>,
     pub broll_service: Option<Arc<crate::services::broll_service::BrollService>>,
     pub video_jobs: Arc<VideoGenerationJobService>,
+    pub voice_profiles: Arc<VoiceProfileService>,
+    pub commerce_connector: Arc<CommerceConnectorService>,
+    pub story_templates: Arc<StoryTemplateService>,
+    pub studio_service: Arc<StudioService>,
+    pub inventory: Arc<InventoryService>,
 }
 
 impl AppState {
@@ -87,7 +97,8 @@ impl AppState {
 
         let delivery_repo =
             Arc::new(crate::services::delivery_repository::DeliveryRepository::new(pg.clone()));
-        let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(64));
+        let delivery_ws_manager =
+            Arc::new(DeliveryTrackingManager::new(64, Some(redis_client.clone())));
         let delivery_service = Arc::new(crate::services::delivery_service::DeliveryService::new(
             delivery_repo.clone(),
             delivery_ws_manager.clone(),
@@ -142,6 +153,15 @@ impl AppState {
         ));
 
         let video_jobs = Arc::new(VideoGenerationJobService::new(pg.clone()));
+        let voice_profiles = Arc::new(VoiceProfileService::new(pg.clone(), media_storage.clone()));
+        let commerce_connector = Arc::new(CommerceConnectorService::new(pg.clone()));
+        let story_templates = Arc::new(StoryTemplateService::new());
+        let inventory = Arc::new(InventoryService::new(pg.clone()));
+        let studio_service = Arc::new(StudioService::new(
+            pg.clone(),
+            media_storage.clone(),
+            video_renderer.clone(),
+        ));
 
         AppState {
             pg,
@@ -164,6 +184,11 @@ impl AppState {
             cost_service,
             broll_service,
             video_jobs,
+            voice_profiles,
+            commerce_connector,
+            story_templates: story_templates.clone(),
+            studio_service,
+            inventory,
         }
     }
 
@@ -211,7 +236,8 @@ impl AppState {
 
         let delivery_repo =
             Arc::new(crate::services::delivery_repository::DeliveryRepository::new(pg.clone()));
-        let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(16));
+        let delivery_ws_manager =
+            Arc::new(DeliveryTrackingManager::new(16, Some(redis_client.clone())));
         let delivery_service = Arc::new(crate::services::delivery_service::DeliveryService::new(
             delivery_repo.clone(),
             delivery_ws_manager.clone(),
@@ -219,6 +245,13 @@ impl AppState {
 
         let cost_pg = pg.clone();
         let video_pg = pg.clone();
+
+        let media_storage = Arc::new(MediaStorageService::new(MediaStorageConfig::from_env()));
+        let voice_profiles = Arc::new(VoiceProfileService::new(pg.clone(), media_storage.clone()));
+        let commerce_connector = Arc::new(CommerceConnectorService::new(pg.clone()));
+        let story_templates = Arc::new(StoryTemplateService::new());
+        let inventory = Arc::new(InventoryService::new(pg.clone()));
+        let studio_service = Arc::new(StudioService::new(pg.clone(), media_storage.clone(), None));
 
         AppState {
             pg,
@@ -235,12 +268,17 @@ impl AppState {
             delivery_ws_manager,
             delivery_service,
             remotion_renderer: None,
-            media_storage: Arc::new(MediaStorageService::new(MediaStorageConfig::from_env())),
+            media_storage,
             video_renderer: None,
             audio_mastering: None,
             cost_service: Arc::new(crate::services::cost_service::CostEstimator::new(cost_pg)),
             broll_service: None,
             video_jobs: Arc::new(VideoGenerationJobService::new(video_pg)),
+            voice_profiles,
+            commerce_connector,
+            story_templates,
+            studio_service,
+            inventory,
         }
     }
 }

@@ -94,6 +94,46 @@ Variables utiles :
 
 > ℹ️ Les répertoires `/app/renders` et `/app/cache` sont déclarés en volumes pour stocker les masters rendus et le cache Chromium.
 
+### Mode serveur RPC
+
+Pour exposer le worker via HTTP (compatible avec `VIDEO_RENDERER_RPC_URL`) :
+
+```bash
+docker run --rm \
+  --gpus all \
+  -p 8088:8080 \
+  -e RENDER_SERVER=1 \
+  -e VIDEO_RENDERER_ENABLE_GPU=true \
+  -e VIDEO_RENDERER_SHARED_VOLUME=/app/renders \
+  -v /srv/yukpo/jobs:/app/renders \
+  -v /srv/yukpo/cache:/app/cache \
+  yukpo/video-renderer-gpu
+```
+
+- `GET /health` → statut du worker.
+- `POST /render` → payload :
+
+```json
+{
+  "job_id": "optionnel",
+  "timeline": { "...": "ImmersiveTimeline" }
+}
+```
+
+Réponse :
+
+```json
+{
+  "job_id": "uuid",
+  "master_video": "/app/renders/<job_id>/master.mp4",
+  "timeline_json": "/app/renders/<job_id>/<job_id>.timeline.json",
+  "output_dir": "/app/renders/<job_id>",
+  "warnings": []
+}
+```
+
+Exposez idéalement ce service derrière Traefik/Nginx (`https://renderer.yukpo.live`) et configurez `VIDEO_RENDERER_RPC_URL` côté backend.
+
 ### Intégration pipeline
 
 1. Construire et pousser l’image : `docker build -t registry.example.com/yukpo/video-renderer:latest .`.

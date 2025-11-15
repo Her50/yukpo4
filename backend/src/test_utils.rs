@@ -9,9 +9,12 @@ use crate::{
     controllers::ia_status_controller::IAStats,
     migrations::auto_migrate::run_auto_migrations,
     services::{
-        app_ia::AppIA, cost_service::CostEstimator, delivery_repository::DeliveryRepository,
-        delivery_service::DeliveryService, media_storage_service::MediaStorageService,
-        mongo_history_service::MongoHistoryService, video_job_service::VideoGenerationJobService,
+        app_ia::AppIA, commerce_connector_service::CommerceConnectorService,
+        cost_service::CostEstimator, delivery_repository::DeliveryRepository,
+        delivery_service::DeliveryService, inventory_service::InventoryService,
+        media_storage_service::MediaStorageService, mongo_history_service::MongoHistoryService,
+        story_template_service::StoryTemplateService, studio_service::StudioService,
+        video_job_service::VideoGenerationJobService, voice_profile_service::VoiceProfileService,
     },
     state::AppState,
     websocket::delivery_tracking::DeliveryTrackingManager,
@@ -164,7 +167,8 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
     ));
 
     let delivery_repo = Arc::new(DeliveryRepository::new(pool.clone()));
-    let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(16));
+    let delivery_ws_manager =
+        Arc::new(DeliveryTrackingManager::new(16, Some(redis_client.clone())));
     let delivery_service = Arc::new(DeliveryService::new(
         delivery_repo.clone(),
         delivery_ws_manager.clone(),
@@ -173,6 +177,18 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
     let cost_service = Arc::new(CostEstimator::new(pool.clone()));
 
     let media_storage = Arc::new(MediaStorageService::new(MediaStorageConfig::from_env()));
+    let voice_profiles = Arc::new(VoiceProfileService::new(
+        pool.clone(),
+        media_storage.clone(),
+    ));
+    let commerce_connector = Arc::new(CommerceConnectorService::new(pool.clone()));
+    let story_templates = Arc::new(StoryTemplateService::new());
+    let inventory = Arc::new(InventoryService::new(pool.clone()));
+    let studio_service = Arc::new(StudioService::new(
+        pool.clone(),
+        media_storage.clone(),
+        None,
+    ));
 
     let state = Arc::new(AppState {
         pg: pool.clone(),
@@ -195,6 +211,11 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         cost_service,
         broll_service: None,
         video_jobs: Arc::new(VideoGenerationJobService::new(pool.clone())),
+        voice_profiles,
+        commerce_connector,
+        story_templates,
+        studio_service,
+        inventory,
     });
 
     Some(BackendTestContext {

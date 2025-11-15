@@ -14,6 +14,8 @@ import ModerationPanel from '@/pages/admin/ModerationPanel';
 import TranslateTestAdmin from '@/pages/admin/TranslateTestAdmin';
 import CreationService from '@/pages/CreationService'; // ✅ À ajouter en haut
 import PaiementPlanPage from '@/pages/PaiementPlanPage';
+import GlobalPromoCatalogPage from '@/pages/promo/GlobalPromoCatalog';
+import GlobalPromoSelfServicePage from '@/pages/promo/GlobalPromoSelfService';
 import TranslateTestPanel from '@/pages/TranslateTestPanel';
 import ImmersiveVideoWizard from '@/pages/video/ImmersiveVideoWizard';
 
@@ -52,6 +54,7 @@ export enum ROUTES {
   USERSTATSIADASHBOARD = "/userstatsiadashboard",
   SERVICE_CREATE = "/CreationService",
   IMMERSIVE_VIDEO = "/immersive-video",
+  PROMO_GLOBAL = "/promo/global",
 
   // Admin
   ADMIN_AUDIT_ACCESS = "/admin/audit-access",
@@ -149,6 +152,19 @@ export const ROUTES_CONFIG: RouteMeta[] = [
     path: ROUTES.MES_SERVICES,
     roles: ["user", "client"],
     component: MesServicesPage,
+    plan: "free",
+  },
+  {
+    label: "Promos Black Friday",
+    path: ROUTES.PROMO_CATALOG,
+    roles: ["public"],
+    component: GlobalPromoCatalogPage,
+  },
+  {
+    label: "Promo globale",
+    path: ROUTES.PROMO_GLOBAL,
+    roles: ["user", "client", "admin"],
+    component: GlobalPromoSelfServicePage,
     plan: "free",
   },
   {

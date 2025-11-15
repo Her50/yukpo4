@@ -1,15 +1,16 @@
 // src/pages/admin/AdminPanel.tsx
-import React, { useState, useEffect } from 'react';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
+import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+import React, { useEffect } from 'react';
 
 // Composants d'administration
-import FixFrontendButton from "@/components/admin/FixFrontendButton";
-import SchedulerStatusCard from "@/components/SchedulerStatusCard";
-import ScheduleManager from "@/components/admin/ScheduleManager";
-import QuotaDashboard from "@/components/admin/QuotaDashboard";
-import NotificationLog from "@/components/admin/NotificationLog";
 import ApiKeyManager from "@/components/admin/ApiKeyManager";
+import FixFrontendButton from "@/components/admin/FixFrontendButton";
+import GlobalPromoManager from '@/components/admin/GlobalPromoManager';
+import NotificationLog from "@/components/admin/NotificationLog";
+import QuotaDashboard from "@/components/admin/QuotaDashboard";
+import ScheduleManager from "@/components/admin/ScheduleManager";
+import SchedulerStatusCard from "@/components/SchedulerStatusCard";
 
 interface BlockStatus {
   status: string;
@@ -79,6 +80,10 @@ const AdminPanel: React.FC = () => {
         <div className="mt-10">
           <h3 className="text-xl font-semibold mb-2">📢 Notifications</h3>
           <NotificationLog />
+        </div>
+
+        <div className="mt-10">
+          <GlobalPromoManager />
         </div>
       </ResponsiveContainer>
     </RequireAccess>

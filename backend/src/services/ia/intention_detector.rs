@@ -145,17 +145,18 @@ Le champ intention doit ?tre exactement l'une des valeurs ci-dessous, sans varia
 
 ## Intentions possibles :
 - creation_service: Cr?ation d'un service/offre
-- recherche_besoin: Recherche d'un service/besoin
+- recherche_service: Recherche d'un service/besoin
 - echange: ?change/troc de biens
-- assistance_generale: Question g?n?rale/aide
+- support: Support client
+- question_generale: Question g?n?rale/aide
 - programme_scolaire: Programme scolaire
 - update_programme_scolaire: Mise ? jour de programme scolaire
 
 ## R?gles de d?tection STRICTES :
-- Si la demande est une recherche (ex : commence par "je cherche", "je voudrais trouver", "je recherche", "je veux trouver", "je voudrais", "je veux", "je souhaite", "je d?sire", "je recherche", "je cherche", "je voudrais trouver", "je veux trouver", "je recherche", "je voudrais", "je veux", "je souhaite", "je d?sire", etc.) ? recherche_besoin
-- Si la demande est une cr?ation (ex : "je veux cr?er", "je souhaite ouvrir", "j'ai un", "j'ai une", "je suis un", "je suis une", "je vends", "je propose", "je loue", "je offre", "je fais", "j'ai une boutique", "j'ai un magasin", "j'ai un commerce", "j'ai une entreprise", "je suis commer?ant", "je suis vendeur", "je suis prestataire", "je suis fournisseur", "je suis entrepreneur", "je suis artisan", "je suis professionnel", "je suis expert", "je suis sp?cialiste", "je suis consultant", "je suis formateur", "je suis coach", "je suis mentor", "je suis tuteur", "je suis accompagnateur", "je suis guide", "je suis conseiller", "je suis accompagnateur", "je suis guide", "je suis conseiller", etc.) ? creation_service
+- Si la demande est une recherche (ex : commence par "je cherche", "je voudrais trouver", "je recherche", "je veux trouver", "je voudrais", "je veux", "je souhaite", "je d?sire", etc.) ? recherche_service
+- Si la demande est une cr?ation (ex : "je veux cr?er", "je souhaite ouvrir", "j'ai un", "j'ai une", "je suis un", "je suis une", "je vends", "je propose", "je loue", "j'offre", "je fais", "j'ai une boutique", "j'ai un magasin", "j'ai un commerce", "j'ai une entreprise", "je suis commer?ant", "je suis vendeur", "je suis prestataire", "je suis fournisseur", "je suis entrepreneur", "je suis artisan", "je suis professionnel", "je suis expert", "je suis sp?cialiste", "je suis consultant", "je suis formateur", "je suis coach", "je suis mentor", "je suis tuteur", "je suis accompagnateur", "je suis guide", "je suis conseiller", etc.) ? creation_service
 - Si la demande concerne un ?change (ex : "j'?change", "je troque", "je propose un ?change", "contre", "en ?change de", "je voudrais ?changer", "je veux ?changer", "je souhaite ?changer", "je d?sire ?changer", etc.) ? echange
-- Si la demande est une question g?n?rale ou n'est pas claire ? assistance_generale
+- Si la demande est une question g?n?rale ou n'est pas claire ? question_generale
 - Pour tout ce qui concerne un programme scolaire ? programme_scolaire ou update_programme_scolaire
 
 ## Demande utilisateur : "{}"
@@ -165,8 +166,8 @@ Tu dois r?pondre UNIQUEMENT avec l'intention d?tect?e, sans aucun autre texte, s
 
 ## Exemples de r?ponses correctes :
 - Si l'utilisateur dit "je vends des v?tements" ? tu r?ponds : creation_service
-- Si l'utilisateur dit "je cherche un plombier" ? tu r?ponds : recherche_besoin
-- Si l'utilisateur dit "comment ?a marche ?" ? tu r?ponds : assistance_generale
+- Si l'utilisateur dit "je cherche un plombier" ? tu r?ponds : recherche_service
+- Si l'utilisateur dit "comment ?a marche ?" ? tu r?ponds : question_generale
 
 ## R?GLE ABSOLUE : 
 NE R?PONDS QUE L'INTENTION, RIEN D'AUTRE.
@@ -205,17 +206,22 @@ NE R?PONDS QUE L'INTENTION, RIEN D'AUTRE.
                 log::info!("[IntentionDetector] Intention d?tect?e: creation_service");
                 Ok("creation_service".to_string())
             }
-            "recherche_besoin" | "recherche" | "chercher" | "trouver" => {
-                log::info!("[IntentionDetector] Intention d?tect?e: recherche_besoin");
-                Ok("recherche_besoin".to_string())
+            "recherche_service" | "recherche_besoin" | "recherche" | "chercher" | "trouver"
+            | "besoin" => {
+                log::info!("[IntentionDetector] Intention d?tect?e: recherche_service");
+                Ok("recherche_service".to_string())
             }
             "echange" | "troc" | "echanger" => {
                 log::info!("[IntentionDetector] Intention d?tect?e: echange");
                 Ok("echange".to_string())
             }
+            "support" => {
+                log::info!("[IntentionDetector] Intention d?tect?e: support");
+                Ok("support".to_string())
+            }
             "assistance_generale" | "question_generale" | "question" | "info" | "aide" => {
-                log::info!("[IntentionDetector] Intention d?tect?e: assistance_generale");
-                Ok("assistance_generale".to_string())
+                log::info!("[IntentionDetector] Intention d?tect?e: question_generale");
+                Ok("question_generale".to_string())
             }
             "programme_scolaire" | "scolaire" | "ecole" => {
                 log::info!("[IntentionDetector] Intention d?tect?e: programme_scolaire");
@@ -226,8 +232,8 @@ NE R?PONDS QUE L'INTENTION, RIEN D'AUTRE.
                 Ok("update_programme_scolaire".to_string())
             }
             _ => {
-                log::warn!("[IntentionDetector] Intention non reconnue: '{}', utilisation de 'assistance_generale'", cleaned_response);
-                Ok("assistance_generale".to_string())
+                log::warn!("[IntentionDetector] Intention non reconnue: '{}', utilisation de 'question_generale'", cleaned_response);
+                Ok("question_generale".to_string())
             }
         }
     }
@@ -251,8 +257,8 @@ NE R?PONDS QUE L'INTENTION, RIEN D'AUTRE.
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_parse_intention_response() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_parse_intention_response() {
         let detector = IntentionDetector {
             app_ia: Arc::new(AppIA::new(
                 redis::Client::open("redis://localhost").unwrap(),
@@ -304,8 +310,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_build_detection_prompt() {
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_build_detection_prompt() {
         let detector = IntentionDetector {
             app_ia: Arc::new(AppIA::new(
                 redis::Client::open("redis://localhost").unwrap(),

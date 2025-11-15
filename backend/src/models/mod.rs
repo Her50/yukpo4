@@ -2,6 +2,7 @@ pub mod alert_model;
 pub mod delivery_model;
 pub mod echange;
 pub mod echange_model;
+pub mod global_promo_model;
 pub mod history_model;
 pub mod ia_model;
 pub mod input_model;

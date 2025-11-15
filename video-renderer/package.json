@@ -7,9 +7,12 @@
     "build": "tsc --project tsconfig.json",
     "render:exec": "node ./dist/src/cli/render-worker.js",
     "render": "npm run build && npm run render:exec",
-    "render:sample": "npm run build && npm run render:exec -- --job ./samples/sample-job.json --overwrite"
+    "render:sample": "npm run build && npm run render:exec -- --job ./samples/sample-job.json --overwrite",
+    "start": "node ./dist/src/server.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.609.0",
+    "@aws-sdk/lib-storage": "^3.609.0",
     "@remotion/bundler": "^4.0.88",
     "@react-three/drei": "^9.110.0",
     "@react-three/fiber": "^8.15.12",
@@ -17,6 +20,7 @@
     "@remotion/renderer": "^4.0.88",
     "@remotion/three": "^4.0.88",
     "ffmpeg-static": "^5.2.0",
+    "express": "^4.19.2",
     "fs-extra": "^11.2.0",
     "globby": "^14.0.2",
     "picocolors": "^1.0.0",
@@ -26,6 +30,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
     "@types/glob": "^8.1.0",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.11.30",

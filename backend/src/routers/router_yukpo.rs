@@ -26,6 +26,7 @@ use crate::{
             get_service_interactions, get_service_reviews, get_service_score, get_service_stats,
             post_audio, post_call, post_message, post_review, post_review_helpful, post_share,
         },
+        inventory_controller,
         media_analytics_controller,
         places_controller, // ✅ NOUVEAU 2025-11-02
         product_addition_controller::add_product_to_service, // ✅ NOUVEAU 2025-11-01
@@ -40,6 +41,7 @@ use crate::{
             supprimer_service, toggle_service_status,
         },
         social_connector_controller,
+        studio_controller,
     },
     core::types::{AppError, AppResult},
     middlewares::{
@@ -330,6 +332,67 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/audio-library/{loop_id}/attach/{service_id}",
             post(audio_library_controller::attach_audio_loop)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/audio-library/voice-profiles",
+            get(audio_library_controller::list_voice_profiles)
+                .post(audio_library_controller::create_voice_profile)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/audio-library/voice-profiles/{profile_id}",
+            delete(audio_library_controller::delete_voice_profile)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions",
+            get(studio_controller::list_sessions)
+                .post(studio_controller::create_session)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}",
+            get(studio_controller::get_session)
+                .put(studio_controller::update_session)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/timeline",
+            put(studio_controller::save_timeline).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/assets",
+            post(studio_controller::attach_asset).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/preview",
+            post(studio_controller::trigger_preview).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/previews",
+            get(studio_controller::list_preview_events).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/preview-metrics",
+            get(studio_controller::preview_metrics).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/publish",
+            post(studio_controller::publish_session).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/template-recommendations",
+            post(studio_controller::recommend_templates).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/templates",
+            get(studio_controller::list_templates).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/services/{service_id}/products/{product_index}/stock",
+            get(inventory_controller::get_stock_status)
+                .post(inventory_controller::sync_stock)
                 .layer(axum::middleware::from_fn(jwt_auth)),
         )
         .route(
@@ -1610,6 +1673,7 @@ async fn handle_optimization_metrics(
 /// Handler pour le géocodage inverse (coordonnées GPS vers adresse)
 #[axum::debug_handler]
 async fn handle_reverse_geocode(
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<serde_json::Value>,
 ) -> AppResult<impl IntoResponse> {
     use crate::services::geocoding_service::GeocodingService;
@@ -1630,8 +1694,8 @@ async fn handle_reverse_geocode(
         ));
     }
 
-    // Créer le service de géocodage et effectuer la requête
-    let geocoding_service = GeocodingService::new();
+    // Créer le service de géocodage (avec cache Redis) et effectuer la requête
+    let geocoding_service = GeocodingService::with_cache(Some(state.redis_client.clone()));
     let result = geocoding_service.reverse_geocode(lat, lng).await?;
 
     Ok(Json(result))

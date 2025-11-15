@@ -1,18 +1,20 @@
 use crate::{
     core::types::{AppError, AppResult},
     models::delivery_model::{
-        ClientRating, Courier, CourierApplication, CourierAsset, CourierRating,
-        DeliveryApplicationStatus, DeliveryCancelReason, DeliveryCourierStatus, DeliveryEngineType,
-        DeliveryParcel, DeliveryPricing, DeliveryRecipient, DeliveryRecipientUpdate,
-        DeliveryStatus, DeliveryStatusEvent, DeliverySummary, DeliveryTrackingPoint, GeoPoint,
-        ParcelType, ShoppingItemStatus, ShoppingOrder, ShoppingOrderItem, ShoppingStatus,
+        ClientRating, Courier, CourierApplication, CourierAsset, CourierMatchingCandidate,
+        CourierRating, DeliveryApplicationStatus, DeliveryCancelReason, DeliveryCourierStatus,
+        DeliveryEngineType, DeliveryMatchingEvent, DeliveryMatchingQueueItem,
+        DeliveryMatchingStatus, DeliveryParcel, DeliveryPricing, DeliveryRecipient,
+        DeliveryRecipientUpdate, DeliveryStatus, DeliveryStatusEvent, DeliverySummary,
+        DeliveryTrackingPoint, GeoPoint, ParcelType, ShoppingItemStatus, ShoppingOrder,
+        ShoppingOrderItem, ShoppingStatus,
     },
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::BigDecimal;
-use sqlx::{postgres::PgQueryResult, PgPool};
+use sqlx::{postgres::PgQueryResult, PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
 
 /// Repository centralisant les accès base de données pour le service de livraison
@@ -2006,6 +2008,322 @@ impl DeliveryRepository {
         })
     }
 
+    /// Enfile une livraison dans la queue de matching temps réel
+    pub async fn enqueue_delivery_matching(
+        &self,
+        payload: NewDeliveryMatchingQueueItem,
+    ) -> AppResult<DeliveryMatchingQueueItem> {
+        let record = sqlx::query_as!(
+            DeliveryMatchingQueueItem,
+            r#"
+            INSERT INTO delivery_matching_queue (
+                delivery_id,
+                zone_id,
+                status,
+                priority,
+                attempt_count,
+                payload,
+                next_attempt_at,
+                enqueued_at,
+                updated_at
+            )
+            VALUES ($1, $2, 'queued', $3, 0, $4, COALESCE($5, NOW()), NOW(), NOW())
+            ON CONFLICT (delivery_id)
+            DO UPDATE SET
+                zone_id = EXCLUDED.zone_id,
+                priority = EXCLUDED.priority,
+                payload = EXCLUDED.payload,
+                status = 'queued',
+                attempt_count = 0,
+                next_attempt_at = COALESCE($5, NOW()),
+                updated_at = NOW()
+            RETURNING
+                id,
+                delivery_id,
+                zone_id,
+                status as "status: DeliveryMatchingStatus",
+                priority,
+                attempt_count,
+                payload,
+                next_attempt_at,
+                enqueued_at,
+                updated_at
+            "#,
+            payload.delivery_id,
+            payload.zone_id,
+            payload.priority,
+            payload.payload,
+            payload.next_attempt_at
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(record)
+    }
+
+    /// Met à jour le statut de file (retry, planning, etc.)
+    pub async fn update_matching_queue_status(
+        &self,
+        delivery_id: Uuid,
+        status: DeliveryMatchingStatus,
+        next_attempt_at: Option<DateTime<Utc>>,
+        payload: Option<Value>,
+        increment_attempt: bool,
+    ) -> AppResult<()> {
+        sqlx::query!(
+            r#"
+            UPDATE delivery_matching_queue
+            SET
+                status = $2,
+                next_attempt_at = COALESCE($3, next_attempt_at),
+                payload = COALESCE($4, payload),
+                attempt_count = attempt_count + CASE WHEN $5 THEN 1 ELSE 0 END,
+                updated_at = NOW()
+            WHERE delivery_id = $1
+            "#,
+            delivery_id,
+            status as DeliveryMatchingStatus,
+            next_attempt_at,
+            payload,
+            increment_attempt
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Insère un événement d'audit dans l'historique de matching
+    pub async fn insert_matching_event(
+        &self,
+        payload: NewDeliveryMatchingEvent,
+    ) -> AppResult<DeliveryMatchingEvent> {
+        let record = sqlx::query_as!(
+            DeliveryMatchingEvent,
+            r#"
+            INSERT INTO delivery_matching_events (
+                delivery_id,
+                courier_id,
+                status,
+                score,
+                reason,
+                metadata
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING
+                id,
+                delivery_id,
+                courier_id,
+                status as "status: DeliveryMatchingStatus",
+                score,
+                reason,
+                metadata,
+                created_at
+            "#,
+            payload.delivery_id,
+            payload.courier_id,
+            payload.status as DeliveryMatchingStatus,
+            payload.score,
+            payload.reason,
+            payload.metadata
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(record)
+    }
+
+    /// Liste les coursiers disponibles proches d'un point cible
+    pub async fn list_matching_candidates(
+        &self,
+        pickup: GeoPoint,
+        zone_id: Option<Uuid>,
+        limit: i64,
+        max_distance_meters: Option<f64>,
+        passenger_mode: bool,
+    ) -> AppResult<Vec<CourierMatchingCandidate>> {
+        let mut builder = QueryBuilder::<Postgres>::new(
+            "
+            SELECT
+                cas.courier_id,
+                cas.zone_id,
+                cas.active_deliveries,
+                cas.max_capacity,
+                cas.load_factor,
+                cas.latitude,
+                cas.longitude,
+                cas.captured_at,
+                COALESCE(cza.capacity_weight, 1) AS capacity_weight,
+                COALESCE(cza.is_primary, FALSE) AS is_primary,
+                COALESCE(cza.metadata, '{}'::jsonb) AS metadata,
+                CASE
+                    WHEN cas.location IS NOT NULL THEN ST_Distance(
+                        cas.location,
+                        ST_SetSRID(ST_MakePoint(",
+        );
+        builder.push_bind(pickup.longitude);
+        builder.push(", ");
+        builder.push_bind(pickup.latitude);
+        builder.push(
+            "), 4326)::geography
+                    )
+                    ELSE NULL
+                END AS distance_meters
+            FROM courier_availability_snapshots cas
+            LEFT JOIN LATERAL (
+                SELECT cza.*
+                FROM courier_zone_assignments cza
+                WHERE cza.courier_id = cas.courier_id
+                  AND cza.is_active = TRUE
+                ORDER BY cza.is_primary DESC, cza.updated_at DESC
+                LIMIT 1
+            ) cza ON TRUE
+            WHERE cas.captured_at >= NOW() - INTERVAL '30 minutes'
+              AND cas.is_online = TRUE
+              AND cas.active_deliveries < cas.max_capacity
+        ",
+        );
+
+        if passenger_mode {
+            builder.push(" AND (cza.metadata ->> 'passenger_mode')::boolean IS TRUE");
+        }
+
+        if let Some(zone) = zone_id {
+            builder.push(" AND (cas.zone_id = ");
+            builder.push_bind(zone);
+            builder.push(" OR cza.zone_id = ");
+            builder.push_bind(zone);
+            builder.push(")");
+        }
+
+        if let Some(max_distance) = max_distance_meters {
+            builder.push(
+                " AND (cas.location IS NULL OR ST_Distance(cas.location, ST_SetSRID(ST_MakePoint(",
+            );
+            builder.push_bind(pickup.longitude);
+            builder.push(", ");
+            builder.push_bind(pickup.latitude);
+            builder.push("), 4326)::geography) <= ");
+            builder.push_bind(max_distance);
+            builder.push(")");
+        }
+
+        builder.push(" ORDER BY distance_meters ASC NULLS LAST, cas.load_factor ASC LIMIT ");
+        builder.push_bind(limit.max(1));
+
+        let rows = builder
+            .build_query_as::<CourierMatchingCandidate>()
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows)
+    }
+
+    /// Associe définitivement un coursier à la livraison
+    pub async fn assign_delivery_courier(
+        &self,
+        delivery_id: Uuid,
+        courier_id: Uuid,
+    ) -> AppResult<()> {
+        sqlx::query!(
+            "UPDATE deliveries SET courier_id = $2, updated_at = NOW() WHERE id = $1",
+            delivery_id,
+            courier_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn ensure_recipient_tracking_token(&self, delivery_id: Uuid) -> AppResult<Uuid> {
+        let row = sqlx::query!(
+            r#"
+            UPDATE deliveries
+            SET recipient_tracking_token = COALESCE(recipient_tracking_token, gen_random_uuid()),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING recipient_tracking_token
+            "#,
+            delivery_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        row.recipient_tracking_token
+            .ok_or_else(|| AppError::Internal("recipient_tracking_token missing".into()))
+    }
+
+    pub async fn merge_delivery_metadata(&self, delivery_id: Uuid, patch: &Value) -> AppResult<()> {
+        sqlx::query!(
+            r#"
+            UPDATE deliveries
+            SET metadata = COALESCE(metadata, '{}'::jsonb) || $2,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+            delivery_id,
+            patch
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn find_delivery_id_by_recipient_token(
+        &self,
+        token: Uuid,
+    ) -> AppResult<Option<Uuid>> {
+        let row = sqlx::query!(
+            r#"
+            SELECT id
+            FROM deliveries
+            WHERE recipient_tracking_token = $1
+               OR tracking_token = $1
+            LIMIT 1
+            "#,
+            token
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|record| record.id))
+    }
+
+    /// Récupère un lot d'éléments de file dont l'heure de retry est échue
+    pub async fn fetch_matching_queue_batch(
+        &self,
+        limit: i64,
+    ) -> AppResult<Vec<DeliveryMatchingQueueItem>> {
+        let rows = sqlx::query_as!(
+            DeliveryMatchingQueueItem,
+            r#"
+            SELECT
+                id,
+                delivery_id,
+                zone_id,
+                status as "status: DeliveryMatchingStatus",
+                priority,
+                attempt_count,
+                payload,
+                next_attempt_at,
+                enqueued_at,
+                updated_at
+            FROM delivery_matching_queue
+            WHERE status IN ('queued', 'searching')
+              AND next_attempt_at <= NOW()
+            ORDER BY priority ASC, next_attempt_at ASC
+            LIMIT $1
+            "#,
+            limit.max(1)
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
     /// Ajoute ou met à jour une note client -> coursier
     pub async fn upsert_courier_rating(
         &self,
@@ -2285,6 +2603,27 @@ pub struct NewTrackingPoint {
     pub speed_kmh: Option<BigDecimal>,
     pub bearing: Option<BigDecimal>,
     pub accuracy_meters: Option<BigDecimal>,
+}
+
+/// Payload insertion file d'attente matching
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewDeliveryMatchingQueueItem {
+    pub delivery_id: Uuid,
+    pub zone_id: Option<Uuid>,
+    pub priority: i16,
+    pub payload: Value,
+    pub next_attempt_at: Option<DateTime<Utc>>,
+}
+
+/// Payload audit matching
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewDeliveryMatchingEvent {
+    pub delivery_id: Uuid,
+    pub courier_id: Option<Uuid>,
+    pub status: DeliveryMatchingStatus,
+    pub score: Option<BigDecimal>,
+    pub reason: Option<String>,
+    pub metadata: Value,
 }
 
 /// Note client vers coursier

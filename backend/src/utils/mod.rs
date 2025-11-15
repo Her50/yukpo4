@@ -2,6 +2,6 @@ pub mod currency;
 pub mod detect_intention;
 pub mod embedding_client;
 pub mod jwt_manager;
-pub mod livekit;
 pub mod lang;
+pub mod livekit;
 pub mod log;

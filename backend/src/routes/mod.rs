@@ -8,11 +8,13 @@ pub mod content_routes; // ✅ NOUVEAU: Routes pour engagement contenu mixte
 pub mod conversation_routes; // ✅ NOUVEAU: Routes pour @mentions et multi-participants
 pub mod debug_routes;
 pub mod delivery_metrics_routes;
+pub mod delivery_public_routes;
 pub mod delivery_routes;
 pub mod diagnostic_routes; // ✅ NOUVEAU 2025-11-04: Routes de diagnostic de la base de données
 pub mod echange_routes;
 pub mod embedding_routes; // ✅ Routes pour embeddings
 pub mod fournitures_routes;
+pub mod global_promo_routes;
 pub mod health_structure_routes;
 pub mod history_routes;
 pub mod ia_routes;

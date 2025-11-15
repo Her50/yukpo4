@@ -34,6 +34,14 @@ pub struct RenderJobResponse {
     pub timeline_json: PathBuf,
     pub output_dir: PathBuf,
     pub warnings: Vec<String>,
+    pub storage_key: Option<String>,
+    pub storage_path: Option<String>,
+    pub public_url: Option<String>,
+    pub content_length: Option<u64>,
+    pub timeline_storage_key: Option<String>,
+    pub timeline_storage_path: Option<String>,
+    pub timeline_public_url: Option<String>,
+    pub timeline_content_length: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -162,6 +170,22 @@ impl VideoRenderExecutor for RpcRenderExecutor {
             pub output_dir: Option<String>,
             #[serde(default)]
             pub warnings: Vec<String>,
+            #[serde(default)]
+            pub storage_key: Option<String>,
+            #[serde(default)]
+            pub storage_path: Option<String>,
+            #[serde(default)]
+            pub public_url: Option<String>,
+            #[serde(default)]
+            pub content_length: Option<u64>,
+            #[serde(default)]
+            pub timeline_storage_key: Option<String>,
+            #[serde(default)]
+            pub timeline_storage_path: Option<String>,
+            #[serde(default)]
+            pub timeline_public_url: Option<String>,
+            #[serde(default)]
+            pub timeline_content_length: Option<u64>,
         }
 
         let job_id_string = request.job_id.as_ref().map(|value| value.to_string());
@@ -256,6 +280,14 @@ impl VideoRenderExecutor for RpcRenderExecutor {
             timeline_json,
             output_dir,
             warnings: parsed.warnings,
+            storage_key: parsed.storage_key,
+            storage_path: parsed.storage_path,
+            public_url: parsed.public_url,
+            content_length: parsed.content_length,
+            timeline_storage_key: parsed.timeline_storage_key,
+            timeline_storage_path: parsed.timeline_storage_path,
+            timeline_public_url: parsed.timeline_public_url,
+            timeline_content_length: parsed.timeline_content_length,
         })
     }
 }
@@ -422,5 +454,13 @@ fn convert_rendered_video(
         timeline_json: rendered.timeline_json,
         output_dir: rendered.output_dir,
         warnings,
+        storage_key: None,
+        storage_path: None,
+        public_url: None,
+        content_length: None,
+        timeline_storage_key: None,
+        timeline_storage_path: None,
+        timeline_public_url: None,
+        timeline_content_length: None,
     }
 }

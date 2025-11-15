@@ -3,6 +3,9 @@
 //! Regroupe tous les jobs planifi?s ou r?currents de votre application.
 
 pub mod archived_service_cleaner;
+pub mod delivery_matching_worker;
+pub mod delivery_sla_monitor;
+pub mod global_promo_scheduler;
 pub mod intelligent_service_task;
 pub mod live_analytics;
 pub mod live_flash_sale_scheduler;

@@ -10,7 +10,7 @@ import { genererSuggestionsService } from '@/lib/yukpoaclient';
 import { MultiModalInput } from '@/types/yukpoIaClient';
 import { motion } from 'framer-motion';
 import React, { useContext, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 const HomePage: React.FC = () => {
@@ -277,6 +277,20 @@ const HomePage: React.FC = () => {
                 Une description, une image, un audio ou un fichier suffit.
               </span>
             </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                to="/promo/catalog"
+                className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-500 px-6 py-2 text-sm font-semibold text-white shadow-lg transition hover:from-indigo-500 hover:to-purple-400"
+              >
+                🔥 Voir toutes les promos Black Friday
+              </Link>
+              <Link
+                to="/promo/global"
+                className="inline-flex items-center justify-center rounded-full border border-indigo-200 px-6 py-2 text-sm font-semibold text-indigo-600 hover:border-indigo-400 hover:text-indigo-700"
+              >
+                🚀 Je propose mon service
+              </Link>
+            </div>
           </div>
 
           {/* Case à cocher pour création de service */}

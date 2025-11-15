@@ -145,6 +145,33 @@
 
 ---
 
+### 8. Mobile - Creator Studio & Livraison temps réel
+
+- ✅ `mobile/src/hooks/useCreatorStudio.ts`  
+  - Ajout d’un pont WebSocket + API delivery (`requestCourier`, `refreshDeliveryTelemetry`) pour relier les previews vidéo aux livraisons.  
+  - Gestion d’état complète : statut, ETA, timeline checkpoints, pricing, erreurs WS/action.
+- ✅ `mobile/src/components/CreatorStudioCard.tsx`  
+  - Bouton « Demander un coursier » : crée une livraison `/api/delivery` en reprenant brief/template/distribution + formulaire avancé pickup/dropoff.
+  - Sélecteur de véhicule (Moto, Tricycle, Fourgonnette, Camion) + mode passager ; tout est taggué dans `parcel.type_id` / `metadata.vehicle_type_id` pour guider le matching (moto <10 kg, tricycle ≈1 m³, fourgonnette ≈3 m³, camion >4 T).
+  - Pickup planifié : champ `scheduled_pickup_at` pour programmer la prise en charge (le matching patiente jusqu’à l’échéance).
+  - Lien “client choisit dropoff” : bouton qui génère un token public, bloque le matching (`dropoff_pending`) tant que le client n’a pas confirmé sa localisation, puis réactive la file automatiquement.
+  - Toggle “Livraison incluse” : when on, envoie `billing_mode=merchant_inclusive` + libellé marchand pour indiquer que le transport est pris en charge dans le prix produit (aucun débit wallet côté client).
+  - Bouton « Rafraîchir tracking » : force la resynchro des checkpoints/pricing.  
+  - Bloc “Livraison temps réel” : badge connexion WS, ETA, tarif estimé, derniers checkpoints, messages d’erreur.
+
+**QA rapide** :
+1. Ouvrir la carte Studio ➜ saisir un brief ➜ renseigner pickup/dropoff (coords + instructions) ➜ choisir un véhicule ➜ cliquer « Demander un coursier ».  
+2. Vérifier dans les logs backend que `delivery_matching_events` se remplit et que le webhook Slack reçoit l’alerte (répéter en mode tricycle puis fourgonnette pour voir les deux entrées).  
+3. Observer la timeline dans la carte (status/location/pricing) ou rafraîchir avec le bouton dédié.  
+4. Contrôler que les champs `parcel.type_id` / `metadata.vehicle_type_id` sont corrects (ex : 2 pour tricycle, 3 pour fourgonnette) et que le matching assigne le bon pool de coursiers.
+5. Planifier un pickup (ex. +2h) ➜ vérifier dans `delivery_matching_queue` que `next_attempt_at` = horaire fourni et qu’aucun matching auto n’est lancé avant.
+6. (XP) Activer le mode passager ➜ s’assurer que `requested_delivery_mode=passenger` et `parcel.type_id=99` remontent côté backend.  
+7. Camion (type 4) : vérifier que le backlog `delivery_matching_queue` reçoit l’entrée et que le worker s’oriente vers les coursiers “heavy duty”.
+8. Cliquer sur “Partager localisation client” ➜ valider que `dropoff_pending` passe à `true`, que la file reste bloquée tant que le client n’a pas envoyé son point public, puis que la livraison repart dès la confirmation.
+9. Activer “Livraison incluse” + renseigner un marchand ➜ contrôler que `metadata.billing_mode=merchant_inclusive`, que l’API `/wallet/debit` retourne une erreur (“facturée au marchand”) et que la carte affiche “Livraison incluse (Marchand)”.
+
+---
+
 ## 📂 STRUCTURE DES FICHIERS
 
 ```

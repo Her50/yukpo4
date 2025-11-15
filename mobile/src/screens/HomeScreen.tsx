@@ -12,6 +12,7 @@ import ModernBackground from '../components/ModernBackground';
 import ModernGPSModal from '../components/ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
 import { NativeButton, NativeCard } from '../components/NativeDesign';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
+import GlobalPromoHighlights from '../components/promotions/GlobalPromoHighlights';
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import UserAvatarMenu from '../components/UserAvatarMenu';
@@ -679,6 +680,8 @@ const HomeScreen: React.FC = () => {
                             userBehavior={userBehaviorCategories}
                             publiciteFrequency={3} // 1 pub toutes les 3 cartes
                         />
+
+                        <GlobalPromoHighlights />
 
                         <View style={styles.deliverySection}>
                             <Text style={styles.deliveryTitle}>Livraison intelligente Yukpo</Text>

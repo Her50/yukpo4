@@ -13,7 +13,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use futures::{SinkExt, StreamExt};
 use rust_decimal::{prelude::FromPrimitive, Decimal};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
@@ -22,7 +22,8 @@ use crate::{
     middlewares::jwt::{jwt_auth, AuthenticatedUser},
     services::delivery_service::{
         CourierApplicationInput, CourierAssetInput, CreateDeliveryParams, DeliveryRecipientInput,
-        DeliveryService, LocationInput, NewDeliveryParcelInput, PricingInput, TrackingInput,
+        DeliveryService, LocationInput, NewDeliveryParcelInput, PricingInput,
+        PublicDropoffSnapshot, TrackingInput,
     },
     state::AppState,
     websocket::delivery_tracking::DeliveryTrackingManager,
@@ -87,6 +88,19 @@ struct RecipientPayload {
     preferred_language: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct PublicDropoffPayload {
+    latitude: f64,
+    longitude: f64,
+    address: Option<String>,
+    instructions: Option<String>,
+}
+
+#[derive(Serialize)]
+struct PublicDropoffResponse<T> {
+    data: T,
+}
+
 pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/delivery/parcel-types", get(list_parcel_types))
@@ -106,6 +120,7 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/delivery/{id}/recipient/location",
             post(update_recipient_location),
         )
+        .route("/delivery/{id}/share-dropoff", post(share_dropoff_link))
         .route("/deliveries/active", get(list_frontend_deliveries))
         .route("/deliveries/{id}", get(get_frontend_delivery))
         .route(
@@ -117,6 +132,16 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/courier/applications", post(submit_courier_application))
         .route("/courier/{id}/assets", post(upsert_courier_asset))
         .layer(middleware::from_fn(jwt_auth))
+        .with_state(state)
+}
+
+pub fn delivery_public_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+    Router::new()
+        .route("/delivery/public/{token}", get(get_public_dropoff_snapshot))
+        .route(
+            "/delivery/public/{token}/dropoff",
+            post(submit_public_dropoff),
+        )
         .with_state(state)
 }
 
@@ -244,6 +269,21 @@ async fn update_recipient_location(
     Ok(Json(json!({ "recipient": updated })))
 }
 
+async fn share_dropoff_link(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let info = service.share_dropoff_link(delivery_id, user.id).await?;
+
+    Ok(Json(json!({
+        "tracking_token": info.tracking_token,
+        "share_url": info.share_url,
+        "dropoff_pending": info.dropoff_pending,
+    })))
+}
+
 async fn list_frontend_deliveries(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -325,6 +365,37 @@ async fn refund_wallet_for_delivery(
         )
         .await?;
     Ok(Json(json!({ "balance": balance })))
+}
+
+async fn get_public_dropoff_snapshot(
+    State(state): State<Arc<AppState>>,
+    Path(token): Path<Uuid>,
+) -> AppResult<Json<PublicDropoffResponse<PublicDropoffSnapshot>>> {
+    let service = delivery_service(&state)?;
+    let snapshot = service.get_public_dropoff_snapshot(token).await?;
+    Ok(Json(PublicDropoffResponse { data: snapshot }))
+}
+
+async fn submit_public_dropoff(
+    State(state): State<Arc<AppState>>,
+    Path(token): Path<Uuid>,
+    Json(payload): Json<PublicDropoffPayload>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let point = LocationInput {
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+        address: payload.address.clone(),
+    };
+    let summary = service
+        .submit_public_dropoff(
+            token,
+            point,
+            payload.address.clone(),
+            payload.instructions.clone(),
+        )
+        .await?;
+    Ok(Json(json!({ "delivery_id": summary.id })))
 }
 
 #[derive(Deserialize)]

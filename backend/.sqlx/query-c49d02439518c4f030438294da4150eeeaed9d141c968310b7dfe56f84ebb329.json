@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                pl.id,\n                pl.product_nom,\n                pl.product_type,\n                pl.is_active,\n                pl.auto_deactivate_at,\n                pl.last_reactivated_at,\n                pl.reactivation_cost,\n                pl.deactivation_count,\n                s.data AS \"service_data: serde_json::Value\"\n            FROM products_lifecycle pl\n            JOIN services s ON s.id = pl.service_id\n            WHERE pl.service_id = $1\n              AND pl.product_index = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "product_nom",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "product_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "auto_deactivate_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_reactivated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "reactivation_cost",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "deactivation_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "service_data: serde_json::Value",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "c49d02439518c4f030438294da4150eeeaed9d141c968310b7dfe56f84ebb329"
+}

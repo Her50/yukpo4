@@ -1,0 +1,32 @@
+{
+    "host": "46.224.14.85",
+    "ssh_user": "root",
+    "ssh_port": 22,
+    "renderer_port": 8088,
+    "docker_image": "yukpo/video-renderer-gpu:latest",
+    "use_s3_upload": true,
+    "volumes": {
+        "jobs": "/srv/yukpo/jobs",
+        "cache": "/srv/yukpo/cache",
+        "project_root": "/srv/yukpo/video-renderer"
+    },
+    "video_renderer_env": {
+        "RENDER_SERVER": "http://46.224.14.85:8088",
+        "VIDEO_RENDERER_RPC_URL": "http://46.224.14.85:8088/render",
+        "VIDEO_RENDERER_ENABLE_GPU": "true",
+        "VIDEO_RENDERER_TIMEOUT_SECS": "900",
+        "VIDEO_RENDERER_MAX_RETRIES": "2",
+        "VIDEO_RENDERER_SHARED_VOLUME": "/srv/yukpo/jobs",
+        "VIDEO_RENDERER_PROJECT_ROOT": "/srv/yukpo/video-renderer",
+        "VIDEO_RENDERER_NODE_BIN": "/usr/local/bin/node",
+        "VIDEO_RENDERER_BROWSER_DOWNLOAD_DIR": "/srv/yukpo/cache/chromium",
+        "VIDEO_RENDERER_CHROMIUM_EXECUTABLE": "/usr/bin/chromium",
+        "VIDEO_RENDERER_RPC_TOKEN": "l-5nF6KwiPasSeCj2h_ixIevCZO2mLijLcJg6KNmP2UxAQGMSLD9RnRrBC_0mGhY",
+        "RENDERER_S3_UPLOAD": "true",
+        "S3_BUCKET": "yukpo-video-prod",
+        "S3_REGION": "eu-central-1",
+        "S3_ENDPOINT": "https://s3.eu-central-1.wasabisys.com",
+        "S3_ACCESS_KEY": "GQ12BMAZWKREAPBLAR9L",
+        "S3_SECRET_KEY": "CVoSS9FMF3RvkLo2cEgVy3DH4HtnR5ap9ygDarCn"
+    }
+}

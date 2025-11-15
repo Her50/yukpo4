@@ -24,6 +24,22 @@ pub enum DeliveryStatus {
     Cancelled,
 }
 
+/// Statut métier utilisé pour tracer la file de matching
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[sqlx(type_name = "delivery_matching_status", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum DeliveryMatchingStatus {
+    Queued,
+    Searching,
+    Assigned,
+    Rejected,
+    Failed,
+    Timeout,
+    Cancelled,
+    Fallback,
+    NoCourier,
+}
+
 /// Motif d'annulation d'une course
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "delivery_cancel_reason", rename_all = "snake_case")]
@@ -292,6 +308,97 @@ pub struct DeliverySummary {
     pub store_location: Option<GeoPoint>,
     pub shopping_required: bool,
     pub metadata: Value,
+}
+
+/// Zone opérationnelle (polygone ou centre + rayon)
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct DeliveryZone {
+    pub id: Uuid,
+    pub slug: String,
+    pub display_name: String,
+    pub description: Option<String>,
+    pub region: Option<serde_json::Value>,
+    pub center: Option<serde_json::Value>,
+    pub max_active_couriers: i32,
+    pub metadata: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Attribution d'un coursier à une zone
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct CourierZoneAssignment {
+    pub id: i64,
+    pub courier_id: Uuid,
+    pub zone_id: Uuid,
+    pub capacity_weight: i16,
+    pub is_primary: bool,
+    pub is_active: bool,
+    pub metadata: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Instantané de disponibilité coursier
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct CourierAvailabilitySnapshot {
+    pub id: i64,
+    pub courier_id: Uuid,
+    pub zone_id: Option<Uuid>,
+    pub captured_at: DateTime<Utc>,
+    pub is_online: bool,
+    pub active_deliveries: i16,
+    pub max_capacity: i16,
+    pub load_factor: BigDecimal,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub battery_level: Option<i16>,
+    pub metadata: serde_json::Value,
+}
+
+/// Candidat retourné par le moteur de matching
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct CourierMatchingCandidate {
+    pub courier_id: Uuid,
+    pub zone_id: Option<Uuid>,
+    pub active_deliveries: i16,
+    pub max_capacity: i16,
+    pub load_factor: BigDecimal,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub captured_at: DateTime<Utc>,
+    pub capacity_weight: i16,
+    pub is_primary: bool,
+    pub distance_meters: Option<f64>,
+    pub metadata: serde_json::Value,
+}
+
+/// File d'attente interne de matching
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct DeliveryMatchingQueueItem {
+    pub id: i64,
+    pub delivery_id: Uuid,
+    pub zone_id: Option<Uuid>,
+    pub status: DeliveryMatchingStatus,
+    pub priority: i16,
+    pub attempt_count: i32,
+    pub payload: serde_json::Value,
+    pub next_attempt_at: DateTime<Utc>,
+    pub enqueued_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Événement audit du matching
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct DeliveryMatchingEvent {
+    pub id: i64,
+    pub delivery_id: Uuid,
+    pub courier_id: Option<Uuid>,
+    pub status: DeliveryMatchingStatus,
+    pub score: Option<BigDecimal>,
+    pub reason: Option<String>,
+    pub metadata: serde_json::Value,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Statut commande supermarché

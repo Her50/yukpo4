@@ -13,21 +13,27 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { CreatorStudioCard } from '../../components/CreatorStudioCard';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { StudioAudioPanel } from '../../components/StudioAudioPanel';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useVideoGenerationProgress } from '../../hooks/useVideoGenerationProgress';
+import { useVoiceProfiles } from '../../hooks/useVoiceProfiles';
 import type { VideoJobStatus } from '../../services/api';
 import { apiGet, iaApi, mediaApi } from '../../services/api';
+import { studioService } from '../../services/studioService';
 import { modernColors } from '../../theme/modernTheme';
 import {
     GeneratedVideoResponse,
+    StoryTemplateSpec,
     VideoCostEstimateResponse,
     VideoCostEstimation,
     VideoGenerationPayload
 } from '../../types/VideoGeneration';
+import type { CreateVoiceProfilePayload, MusicMode } from '../../types/audio';
 
 interface WizardParams {
     serviceId: number;
@@ -47,7 +53,48 @@ type WizardStep = 1 | 2 | 3;
 
 type ModePreset = 'standard' | 'expert';
 
-type MusicMode = 'pulse' | 'lofi' | 'ambient' | 'cinematic' | 'none';
+const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
+    {
+        id: 'blog',
+        label: 'Blog / Chronicle',
+        description: 'Récit éditorial idéal pour actus et annonces.',
+        recommendedCategories: [],
+        tones: ['inspirational'],
+        ctas: ['Découvrir'],
+        defaultDurationSeconds: 30,
+        suggestedScenes: 3,
+    },
+    {
+        id: 'tutorial',
+        label: 'Tutoriel / How-to',
+        description: 'Pas-à-pas pour expliquer un service/app.',
+        recommendedCategories: [],
+        tones: ['educational'],
+        ctas: ['Essayer'],
+        defaultDurationSeconds: 36,
+        suggestedScenes: 4,
+    },
+    {
+        id: 'testimonial',
+        label: 'Témoignage client',
+        description: 'Renforce la preuve sociale en quelques secondes.',
+        recommendedCategories: [],
+        tones: ['trust'],
+        ctas: ['Réserver'],
+        defaultDurationSeconds: 28,
+        suggestedScenes: 3,
+    },
+    {
+        id: 'comparison',
+        label: 'Comparatif / Benchmark',
+        description: 'Oppose deux options pour mettre en avant Yukpo.',
+        recommendedCategories: [],
+        tones: ['bold'],
+        ctas: ['Passer à Yukpo'],
+        defaultDurationSeconds: 32,
+        suggestedScenes: 4,
+    },
+];
 
 const VideoCreationWizardScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -87,10 +134,24 @@ const VideoCreationWizardScreen: React.FC = () => {
     const [selectedStyle, setSelectedStyle] = useState('IntroPulse');
     const [musicMode, setMusicMode] = useState<MusicMode>('pulse');
     const [voiceoverEnabled, setVoiceoverEnabled] = useState(true);
-    const [voiceoverLang, setVoiceoverLang] = useState('fr');
+    const [voiceoverLang, setVoiceoverLang] = useState<'fr' | 'en'>('fr');
+    const [selectedVoiceProfileId, setSelectedVoiceProfileId] = useState<number | undefined>();
     const [publishChat, setPublishChat] = useState(true);
     const [publishCard, setPublishCard] = useState(true);
     const [publishSocial, setPublishSocial] = useState(false);
+    const [storyTemplateId, setStoryTemplateId] = useState<string>('blog');
+    const [storyTemplates, setStoryTemplates] = useState<StoryTemplateSpec[]>([]);
+    const [storyTemplatesLoading, setStoryTemplatesLoading] = useState(true);
+    const {
+        voiceProfiles,
+        loading: loadingVoiceProfiles,
+        createProfile,
+        deleteProfile,
+    } = useVoiceProfiles({ serviceId });
+
+    const templateOptions =
+        storyTemplates.length > 0 ? storyTemplates : FALLBACK_STORY_TEMPLATES;
+    const selectedStoryTemplate = templateOptions.find((spec) => spec.id === storyTemplateId);
 
     const [isGenerating, setIsGenerating] = useState(false);
     const {
@@ -166,6 +227,55 @@ const VideoCreationWizardScreen: React.FC = () => {
             resetProgress();
         }
     }, [isGenerating, step, resetProgress]);
+
+    useEffect(() => {
+        if (!voiceoverEnabled) {
+            setSelectedVoiceProfileId(undefined);
+            return;
+        }
+        if (!selectedVoiceProfileId && voiceProfiles.length > 0) {
+            setSelectedVoiceProfileId(voiceProfiles[0].id);
+        }
+    }, [selectedVoiceProfileId, voiceProfiles, voiceoverEnabled]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const loadTemplates = async () => {
+            setStoryTemplatesLoading(true);
+            try {
+                const templates = await studioService.listTemplates();
+                if (!cancelled && Array.isArray(templates)) {
+                    setStoryTemplates(templates);
+                    if (
+                        templates.length > 0 &&
+                        !templates.some((spec) => spec.id === storyTemplateId)
+                    ) {
+                        setStoryTemplateId(templates[0].id);
+                    }
+                }
+            } catch (error) {
+                console.warn('[VideoCreationWizard] templates indisponibles', error);
+            } finally {
+                if (!cancelled) {
+                    setStoryTemplatesLoading(false);
+                }
+            }
+        };
+        loadTemplates();
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        if (
+            storyTemplates.length > 0 &&
+            !storyTemplates.some((spec) => spec.id === storyTemplateId)
+        ) {
+            setStoryTemplateId(storyTemplates[0].id);
+        }
+    }, [storyTemplateId, storyTemplates]);
 
     useEffect(() => {
         stepTransition.setValue(0);
@@ -252,6 +362,34 @@ const VideoCreationWizardScreen: React.FC = () => {
         [modalScale],
     );
 
+    const handleCreateVoiceProfile = useCallback(
+        async (
+            payload: Omit<CreateVoiceProfilePayload, 'service_id'> & { sample_media_id?: number | null },
+        ) => {
+            try {
+                const profile = await createProfile(payload);
+                Alert.alert('Profil vocal', 'Profil créé avec succès.');
+                setSelectedVoiceProfileId((prev) => prev ?? profile.id);
+            } catch (error: any) {
+                Alert.alert('Profil vocal', error?.message || 'Impossible de créer le profil audio.');
+            }
+        },
+        [createProfile],
+    );
+
+    const handleDeleteVoiceProfile = useCallback(
+        async (profileId: number) => {
+            try {
+                await deleteProfile(profileId);
+                Alert.alert('Profil vocal', 'Profil supprimé.');
+                setSelectedVoiceProfileId((prev) => (prev === profileId ? undefined : prev));
+            } catch (error: any) {
+                Alert.alert('Profil vocal', error?.message || 'Suppression impossible.');
+            }
+        },
+        [deleteProfile],
+    );
+
     const handleEstimateCost = async () => {
         if (!serviceId && serviceId !== 0) {
             Alert.alert(t('videoWizard.alert.missingInfoTitle'), t('videoWizard.alert.serviceUnknown'));
@@ -267,6 +405,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 style: selectedStyle,
                 headline,
                 call_to_action: callToAction,
+                story_template_id: storyTemplateId,
                 auto_storyboard: autoStoryboard,
                 use_ai_templates: mode === 'expert',
                 use_service_mediatech: mode === 'expert',
@@ -274,6 +413,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 music_mode: musicMode !== 'none' ? musicMode : undefined,
                 voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
                 voiceover_script: voiceoverEnabled ? brief : undefined,
+                voice_profile_id: voiceoverEnabled ? selectedVoiceProfileId ?? undefined : undefined,
             };
 
             const response = await iaApi.estimateVideoCost(serviceId, productIndex, payload);
@@ -426,6 +566,7 @@ const VideoCreationWizardScreen: React.FC = () => {
             style: selectedStyle,
             headline,
             call_to_action: callToAction,
+            story_template_id: storyTemplateId,
             auto_storyboard: autoStoryboard,
             use_ai_templates: mode === 'expert',
             use_service_mediatech: mode === 'expert',
@@ -434,6 +575,7 @@ const VideoCreationWizardScreen: React.FC = () => {
             music_mode: musicMode !== 'none' ? musicMode : undefined,
             voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
             voiceover_script: voiceoverEnabled ? brief : undefined,
+            voice_profile_id: voiceoverEnabled ? selectedVoiceProfileId ?? undefined : undefined,
             distribute_channels: distributionChannels
                 .filter((item) => item.value)
                 .map((item) => item.key),
@@ -523,6 +665,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     </View>
                                 )}
                             </NativeCard>
+                            <CreatorStudioCard serviceName={serviceName} productName={productName} />
 
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>{t('videoWizard.sections.describe')}</Text>
@@ -565,6 +708,50 @@ const VideoCreationWizardScreen: React.FC = () => {
                                         </TouchableOpacity>
                                     ))}
                                 </View>
+                            </NativeCard>
+
+                            <NativeCard style={styles.sectionCard}>
+                                <Text style={styles.sectionTitle}>Templates narratifs</Text>
+                                {storyTemplatesLoading ? (
+                                    <ActivityIndicator color={modernColors.primary} />
+                                ) : (
+                                    <View style={styles.templateList}>
+                                        {templateOptions.map((spec) => {
+                                            const active = spec.id === storyTemplateId;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={spec.id}
+                                                    style={[
+                                                        styles.templateCard,
+                                                        active && styles.templateCardActive,
+                                                    ]}
+                                                    onPress={() => setStoryTemplateId(spec.id)}
+                                                >
+                                                    <Text
+                                                        style={[
+                                                            styles.templateTitle,
+                                                            active && styles.templateTitleActive,
+                                                        ]}
+                                                    >
+                                                        {spec.label}
+                                                    </Text>
+                                                    <Text style={styles.templateDescription}>
+                                                        {spec.description}
+                                                    </Text>
+                                                    <Text style={styles.templateMeta}>
+                                                        {spec.suggestedScenes} scènes · ~{spec.defaultDurationSeconds}s · CTA{' '}
+                                                        {spec.ctas[0] ?? '—'}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                )}
+                                {selectedStoryTemplate && (
+                                    <Text style={styles.templateHint}>
+                                        Template sélectionné : {selectedStoryTemplate.label}
+                                    </Text>
+                                )}
                             </NativeCard>
 
                             <NativeCard style={styles.sectionCard}>
@@ -630,44 +817,21 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 )}
                             </NativeCard>
 
-                            <NativeCard style={styles.sectionCard}>
-                                <Text style={styles.sectionTitle}>{t('videoWizard.sections.audio')}</Text>
-                                <View style={styles.inlineRow}>
-                                    <Text style={styles.inlineLabel}>{t('videoWizard.inputs.music')}</Text>
-                                    <View style={styles.pillContainer}>
-                                        {(['pulse', 'lofi', 'ambient', 'cinematic', 'none'] as MusicMode[]).map((modeKey) => (
-                                            <TouchableOpacity
-                                                key={modeKey}
-                                                style={[styles.pillSmall, musicMode === modeKey && styles.pillActive]}
-                                                onPress={() => setMusicMode(modeKey)}
-                                            >
-                                                <Text
-                                                    style={[
-                                                        styles.pillText,
-                                                        musicMode === modeKey && styles.pillTextActive,
-                                                    ]}
-                                                >
-                                                    {modeKey}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </View>
-                                <View style={styles.inlineRow}>
-                                    <Text style={styles.inlineLabel}>{t('videoWizard.inputs.voicePremium')}</Text>
-                                    <Switch
-                                        value={voiceoverEnabled}
-                                        onValueChange={setVoiceoverEnabled}
-                                    />
-                                </View>
-                                {voiceoverEnabled && (
-                                    <NativeInput
-                                        placeholder={t('videoWizard.placeholders.voiceLang')}
-                                        value={voiceoverLang}
-                                        onChangeText={setVoiceoverLang}
-                                    />
-                                )}
-                            </NativeCard>
+                            <StudioAudioPanel
+                                serviceId={serviceId}
+                                voiceoverEnabled={voiceoverEnabled}
+                                onVoiceoverToggle={setVoiceoverEnabled}
+                                voiceoverLang={voiceoverLang as 'fr' | 'en'}
+                                onVoiceoverLangChange={setVoiceoverLang}
+                                voiceProfiles={voiceProfiles}
+                                selectedVoiceProfileId={selectedVoiceProfileId}
+                                onVoiceProfileSelect={setSelectedVoiceProfileId}
+                                isLoadingProfiles={loadingVoiceProfiles}
+                                onCreateProfile={handleCreateVoiceProfile}
+                                onDeleteProfile={handleDeleteVoiceProfile}
+                                musicMode={musicMode}
+                                onMusicModeChange={setMusicMode}
+                            />
 
                             <View style={styles.navigationRow}>
                                 <NativeButton
@@ -705,6 +869,11 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 <Text style={styles.summaryText}>
                                     {t('videoWizard.summary.mode')} : {mode === 'expert' ? t('videoWizard.mode.expertTitle') : t('videoWizard.mode.standardTitle')}
                                 </Text>
+                                {selectedStoryTemplate && (
+                                    <Text style={styles.summaryText}>
+                                        Template narratif : {selectedStoryTemplate.label}
+                                    </Text>
+                                )}
                                 <Text style={styles.summaryText}>
                                     {t('videoWizard.summary.mediaSelected')} : {selectedMediaIds.length}
                                 </Text>
@@ -923,6 +1092,43 @@ const styles = StyleSheet.create({
     },
     pillTextActive: {
         color: '#FFF',
+    },
+    templateList: {
+        width: '100%',
+    },
+    templateCard: {
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 10,
+        backgroundColor: 'rgba(10,16,30,0.75)',
+    },
+    templateCardActive: {
+        borderColor: 'rgba(16,185,129,0.7)',
+        backgroundColor: 'rgba(16,185,129,0.12)',
+    },
+    templateTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    templateTitleActive: {
+        color: modernColors.success,
+    },
+    templateDescription: {
+        marginTop: 4,
+        fontSize: 13,
+        color: modernColors.textSecondary,
+    },
+    templateMeta: {
+        marginTop: 4,
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.65)',
+    },
+    templateHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
     },
     modeCard: {
         flex: 1,

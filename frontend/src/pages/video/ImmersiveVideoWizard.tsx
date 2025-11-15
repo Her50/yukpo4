@@ -4,8 +4,12 @@ import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
+import { CreatorStudioPreviewCard } from '@/components/video/CreatorStudioPreviewCard';
+import { StudioAudioPanel } from '@/components/video/StudioAudioPanel';
 import { VideoAnalyticsOverviewSection } from '@/components/video/VideoAnalyticsOverview';
 import { useVideoGenerationProgress } from '@/hooks/useVideoGenerationProgress';
+import { useVoiceProfiles } from '@/hooks/useVoiceProfiles';
+import { studioService } from '@/services/studioService';
 import {
     estimateVideoCost,
     fetchServiceDetails,
@@ -13,8 +17,10 @@ import {
     fetchVideoJobStatus,
     startVideoGeneration,
 } from '@/services/videoGeneration';
+import type { CreateVoiceProfilePayload } from '@/types/audio';
 import type {
     GeneratedVideoResponse,
+    StoryTemplateSpec,
     VideoCostEstimation,
     VideoGenerationPayload,
     VideoJobStatus,
@@ -45,6 +51,49 @@ const statusBadge = (status: string) => {
     }
 };
 
+const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
+    {
+        id: 'blog',
+        label: 'Blog / Chronicle',
+        description: 'Récit éditorial pour actus, lancements ou récap.',
+        recommendedCategories: [],
+        tones: ['inspirational'],
+        ctas: ['Découvrir'],
+        defaultDurationSeconds: 30,
+        suggestedScenes: 3,
+    },
+    {
+        id: 'tutorial',
+        label: 'Tutoriel / How-to',
+        description: 'Pas-à-pas pour guider l’utilisateur.',
+        recommendedCategories: [],
+        tones: ['educational'],
+        ctas: ['Essayer'],
+        defaultDurationSeconds: 36,
+        suggestedScenes: 4,
+    },
+    {
+        id: 'testimonial',
+        label: 'Témoignage client',
+        description: 'Renforce la preuve sociale avec une citation.',
+        recommendedCategories: [],
+        tones: ['trust'],
+        ctas: ['Réserver'],
+        defaultDurationSeconds: 28,
+        suggestedScenes: 3,
+    },
+    {
+        id: 'comparison',
+        label: 'Comparatif / Benchmark',
+        description: 'Oppose deux options pour montrer la valeur.',
+        recommendedCategories: [],
+        tones: ['bold'],
+        ctas: ['Passer à Yukpo'],
+        defaultDurationSeconds: 32,
+        suggestedScenes: 4,
+    },
+];
+
 const ImmersiveVideoWizard = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
@@ -72,6 +121,7 @@ const ImmersiveVideoWizard = () => {
     const [autoStoryboard, setAutoStoryboard] = useState(true);
     const [voiceoverEnabled, setVoiceoverEnabled] = useState(true);
     const [voiceoverLang, setVoiceoverLang] = useState<'fr' | 'en'>('fr');
+    const [selectedVoiceProfileId, setSelectedVoiceProfileId] = useState<number | undefined>();
     const [selectedStyle, setSelectedStyle] = useState('IntroPulse');
     const [selectedMediaIds, setSelectedMediaIds] = useState<number[]>([]);
     const [headline, setHeadline] = useState('');
@@ -81,6 +131,22 @@ const ImmersiveVideoWizard = () => {
     const [publishChat, setPublishChat] = useState(true);
     const [publishCard, setPublishCard] = useState(true);
     const [publishSocial, setPublishSocial] = useState(false);
+    const [storyTemplateId, setStoryTemplateId] = useState<string>('blog');
+    const [storyTemplates, setStoryTemplates] = useState<StoryTemplateSpec[]>([]);
+    const [storyTemplatesLoading, setStoryTemplatesLoading] = useState(true);
+
+    const {
+        voiceProfiles,
+        loading: loadingVoiceProfiles,
+        createProfile: createVoiceProfile,
+        deleteProfile: deleteVoiceProfile,
+    } = useVoiceProfiles({ serviceId });
+
+    useEffect(() => {
+        if (voiceoverEnabled && !selectedVoiceProfileId && voiceProfiles.length > 0) {
+            setSelectedVoiceProfileId(voiceProfiles[0].id);
+        }
+    }, [selectedVoiceProfileId, voiceProfiles, voiceoverEnabled]);
 
     const [loadingService, setLoadingService] = useState(false);
     const [loadingMedia, setLoadingMedia] = useState(false);
@@ -92,6 +158,49 @@ const ImmersiveVideoWizard = () => {
     const [jobResult, setJobResult] = useState<GeneratedVideoResponse | null>(null);
 
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+    const storyTemplateOptions =
+        storyTemplates.length > 0 ? storyTemplates : FALLBACK_STORY_TEMPLATES;
+    const selectedStoryTemplate = storyTemplateOptions.find((spec) => spec.id === storyTemplateId);
+
+    useEffect(() => {
+        let cancelled = false;
+        const loadTemplates = async () => {
+            setStoryTemplatesLoading(true);
+            try {
+                const templates = await studioService.listTemplates();
+                if (!cancelled && Array.isArray(templates)) {
+                    setStoryTemplates(templates);
+                    if (
+                        templates.length > 0 &&
+                        !templates.some((spec) => spec.id === storyTemplateId)
+                    ) {
+                        setStoryTemplateId(templates[0].id);
+                    }
+                }
+            } catch (error) {
+                console.error('[ImmersiveVideoWizard] template fetch failed', error);
+            } finally {
+                if (!cancelled) {
+                    setStoryTemplatesLoading(false);
+                }
+            }
+        };
+        loadTemplates();
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        if (
+            storyTemplates.length > 0 &&
+            !storyTemplates.some((spec) => spec.id === storyTemplateId)
+        ) {
+            setStoryTemplateId(storyTemplates[0].id);
+        }
+    }, [storyTemplateId, storyTemplates]);
 
     const localizedProgressSteps = useMemo(
         () => [
@@ -264,20 +373,69 @@ const ImmersiveVideoWizard = () => {
         );
     }, []);
 
-    const buildPayload = useCallback((): VideoGenerationPayload => ({
-        style: selectedStyle,
-        headline,
-        call_to_action: callToAction,
-        auto_storyboard: autoStoryboard,
-        use_ai_templates: mode === 'expert',
-        use_service_mediatech: mode === 'expert',
-        include_publicite_assets: mode === 'expert',
-        selected_media_ids: selectedMediaIds,
-        music_mode: musicMode !== 'none' ? musicMode : undefined,
-        voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
-        voiceover_script: voiceoverEnabled ? brief : undefined,
-        distribute_channels: distributionChannels.filter((item) => item.selected).map((item) => item.key),
-    }), [autoStoryboard, brief, callToAction, distributionChannels, headline, mode, musicMode, selectedMediaIds, selectedStyle, voiceoverEnabled, voiceoverLang]);
+    const buildPayload = useCallback(
+        (): VideoGenerationPayload => ({
+            style: selectedStyle,
+            headline,
+            call_to_action: callToAction,
+            story_template_id: storyTemplateId,
+            auto_storyboard: autoStoryboard,
+            use_ai_templates: mode === 'expert',
+            use_service_mediatech: mode === 'expert',
+            include_publicite_assets: mode === 'expert',
+            selected_media_ids: selectedMediaIds,
+            music_mode: musicMode !== 'none' ? musicMode : undefined,
+            voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
+            voiceover_script: voiceoverEnabled ? brief : undefined,
+            voice_profile_id: selectedVoiceProfileId,
+            distribute_channels: distributionChannels
+                .filter((item) => item.selected)
+                .map((item) => item.key),
+        }),
+        [
+            autoStoryboard,
+            brief,
+            callToAction,
+            distributionChannels,
+            headline,
+            mode,
+            musicMode,
+            selectedMediaIds,
+            selectedStyle,
+            storyTemplateId,
+            selectedVoiceProfileId,
+            voiceoverEnabled,
+            voiceoverLang,
+        ],
+    );
+
+    const handleCreateVoiceProfile = useCallback(
+        async (payload: Omit<CreateVoiceProfilePayload, 'service_id'>) => {
+            try {
+                const profile = await createVoiceProfile(payload);
+                toast.success('Profil vocal créé');
+                setSelectedVoiceProfileId((prev) => prev ?? profile.id);
+            } catch (error: any) {
+                console.error('[ImmersiveVideoWizard] voice profile creation error', error);
+                toast.error(error?.message || 'Impossible de créer le profil audio');
+            }
+        },
+        [createVoiceProfile],
+    );
+
+    const handleDeleteVoiceProfile = useCallback(
+        async (profileId: number) => {
+            try {
+                await deleteVoiceProfile(profileId);
+                toast.success('Profil audio supprimé');
+                setSelectedVoiceProfileId((prev) => (prev === profileId ? undefined : prev));
+            } catch (error: any) {
+                console.error('[ImmersiveVideoWizard] voice profile delete error', error);
+                toast.error(error?.message || 'Suppression impossible');
+            }
+        },
+        [deleteVoiceProfile],
+    );
 
     const handleEstimate = useCallback(async () => {
         if (!Number.isFinite(serviceId) || !Number.isFinite(productIndex)) {
@@ -406,6 +564,7 @@ const ImmersiveVideoWizard = () => {
                     >
                         {t('videoWizard.hero.subtitle')}
                     </motion.p>
+                    <CreatorStudioPreviewCard serviceName={serviceName} productName={productName} />
                 </header>
 
                 <VideoAnalyticsOverviewSection className="space-y-6" />
@@ -599,6 +758,47 @@ const ImmersiveVideoWizard = () => {
                                         </div>
                                     </div>
 
+                                    <div className="grid gap-4 rounded-2xl border border-white/5 bg-slate-900/40 p-6">
+                                        <h3 className="text-lg font-semibold text-slate-100">
+                                            Templates narratifs
+                                        </h3>
+                                        {storyTemplatesLoading ? (
+                                            <p className="text-sm text-slate-300">Chargement…</p>
+                                        ) : (
+                                            <div className="grid gap-2 md:grid-cols-2">
+                                                {storyTemplateOptions.map((spec) => {
+                                                    const selected = spec.id === storyTemplateId;
+                                                    return (
+                                                        <button
+                                                            key={spec.id}
+                                                            type="button"
+                                                            onClick={() => setStoryTemplateId(spec.id)}
+                                                            className={`rounded-2xl border px-4 py-3 text-left transition ${selected
+                                                                    ? 'border-emerald-400 bg-emerald-500/15 text-emerald-50'
+                                                                    : 'border-white/10 bg-white/5 text-slate-200 hover:border-white/30'
+                                                                }`}
+                                                        >
+                                                            <p className="text-sm font-semibold">{spec.label}</p>
+                                                            <p className="text-xs text-slate-300">{spec.description}</p>
+                                                            <p className="mt-1 text-[11px] text-slate-400">
+                                                                {spec.suggestedScenes} scènes · ~{spec.defaultDurationSeconds}s · CTA{' '}
+                                                                {spec.ctas[0] ?? '—'}
+                                                            </p>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        {selectedStoryTemplate && (
+                                            <p className="text-xs text-slate-400">
+                                                Template sélectionné :{' '}
+                                                <span className="font-semibold text-slate-200">
+                                                    {selectedStoryTemplate.label}
+                                                </span>
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div className="flex flex-col gap-4 rounded-2xl border border-white/5 bg-slate-900/40 p-6">
                                         <h3 className="text-lg font-semibold text-slate-100">{t('videoWizard.sections.audio')}</h3>
                                         <div className="flex flex-wrap gap-2" role="group" aria-label={t('videoWizard.accessibility.musicGroup')}>
@@ -700,6 +900,21 @@ const ImmersiveVideoWizard = () => {
                                             )}
                                         </div>
                                     </div>
+
+                                    <StudioAudioPanel
+                                        voiceoverEnabled={voiceoverEnabled}
+                                        onVoiceoverToggle={setVoiceoverEnabled}
+                                        voiceoverLang={voiceoverLang}
+                                        onVoiceoverLangChange={setVoiceoverLang}
+                                        voiceProfiles={voiceProfiles}
+                                        selectedVoiceProfileId={selectedVoiceProfileId}
+                                        onVoiceProfileSelect={setSelectedVoiceProfileId}
+                                        isLoadingProfiles={loadingVoiceProfiles}
+                                        onCreateProfile={handleCreateVoiceProfile}
+                                        onDeleteProfile={handleDeleteVoiceProfile}
+                                        musicMode={musicMode}
+                                        onMusicModeChange={setMusicMode}
+                                    />
 
                                     <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-6">
                                         <h3 className="mb-4 text-lg font-semibold text-slate-100">{t('videoWizard.sections.epilogue')}</h3>

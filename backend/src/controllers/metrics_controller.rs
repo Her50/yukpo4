@@ -7,7 +7,10 @@ use axum::{
 };
 
 use crate::{
-    core::types::AppResult, services::pipeline_health_service::compute_pipeline_health,
+    core::types::AppResult,
+    services::{
+        pipeline_health_service::compute_pipeline_health, preview_monitoring::PreviewMonitoring,
+    },
     state::AppState,
 };
 
@@ -112,6 +115,16 @@ pub async fn pipeline_metrics(State(state): State<Arc<AppState>>) -> AppResult<R
         StatusCode::OK,
         [("Content-Type", "text/plain; version=0.0.4")],
         metrics,
+    )
+        .into_response())
+}
+
+pub async fn preview_metrics() -> AppResult<Response> {
+    let body = PreviewMonitoring::render_prometheus();
+    Ok((
+        StatusCode::OK,
+        [("Content-Type", "text/plain; version=0.0.4")],
+        body,
     )
         .into_response())
 }

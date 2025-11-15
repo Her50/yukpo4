@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE deliveries\n            SET metadata = COALESCE(metadata, '{}'::jsonb) || $2,\n                updated_at = NOW()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "110508158f74756da1f41d83aaece9dd08e00e7ae7ec6c968c41cd2a0cbfb3cd"
+}

@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use chrono::{DateTime, Duration, Utc};
 use log::{error, info};
 use redis::AsyncCommands;
 use reqwest::Client;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -118,7 +119,62 @@ pub async fn list_social_accounts(
     Ok(records)
 }
 
-#[derive(Debug, sqlx::FromRow, serde::Serialize)]
+pub async fn list_accounts_for_platforms(
+    state: Arc<AppState>,
+    user_id: i32,
+    platforms: &[String],
+) -> AppResult<HashMap<String, SocialAccountRecord>> {
+    if platforms.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let normalized: Vec<String> = platforms.iter().map(|p| p.to_lowercase()).collect();
+
+    let rows = sqlx::query!(
+        r#"
+        SELECT id,
+               user_id,
+               platform,
+               account_handle,
+               expires_at       AS "expires_at: Option<DateTime<Utc>>",
+               scope            AS "scope: Option<String>",
+               metadata         AS "metadata: Option<serde_json::Value>",
+               created_at       AS "created_at: DateTime<Utc>",
+               updated_at       AS "updated_at: DateTime<Utc>"
+        FROM social_accounts
+        WHERE user_id = $1
+          AND lower(platform) = ANY($2)
+        "#,
+        user_id,
+        &normalized
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(AppError::from)?;
+
+    let mut map = HashMap::new();
+    for row in rows {
+        let record = SocialAccountRecord {
+            id: row.id,
+            user_id: row.user_id,
+            platform: row.platform.clone(),
+            account_handle: row.account_handle,
+            expires_at: row.expires_at.flatten(),
+            scope: row.scope.flatten(),
+            metadata: row
+                .metadata
+                .flatten()
+                .unwrap_or_else(|| serde_json::Value::Object(Default::default())),
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        };
+        map.insert(row.platform.to_lowercase(), record);
+    }
+
+    Ok(map)
+}
+
+#[derive(Debug, Clone, sqlx::FromRow, Serialize)]
 pub struct SocialAccountRecord {
     pub id: i32,
     pub user_id: i32,

@@ -23,9 +23,9 @@ pub struct SemanticCacheConfig {
 impl Default for SemanticCacheConfig {
     fn default() -> Self {
         let similarity_threshold = std::env::var("SEMANTIC_CACHE_THRESHOLD")
-            .unwrap_or_else(|_| "0.70".to_string())
+            .unwrap_or_else(|_| "0.95".to_string())
             .parse::<f64>()
-            .unwrap_or(0.70);
+            .unwrap_or(0.95);
 
         Self {
             embedding_service_url: "http://localhost:8000".to_string(),

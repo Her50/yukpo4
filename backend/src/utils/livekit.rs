@@ -43,10 +43,7 @@ impl Default for LiveKitServerVideoGrant {
     }
 }
 
-pub fn generate_server_access_token(
-    api_key: &str,
-    api_secret: &str,
-) -> Result<String, AppError> {
+pub fn generate_server_access_token(api_key: &str, api_secret: &str) -> Result<String, AppError> {
     generate_server_access_token_with_ttl(api_key, api_secret, DEFAULT_SERVER_TOKEN_TTL_SECS)
 }
 
@@ -75,4 +72,3 @@ pub fn generate_server_access_token_with_ttl(
 
     Ok(token)
 }
-

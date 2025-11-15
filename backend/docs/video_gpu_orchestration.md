@@ -121,3 +121,4 @@ Prometheus/Grafana ↔ Backend & Worker & LiveKit
 
 Cette cartographie sert de guide pour la configuration complète du rendu GPU/LiveKit : elle structure l’infrastructure, liste les variables critiques et les contrôles de monitoring afin de garantir un pipeline vidéo hautement disponible et prêt pour des milliers de rendus par minute.
 
+

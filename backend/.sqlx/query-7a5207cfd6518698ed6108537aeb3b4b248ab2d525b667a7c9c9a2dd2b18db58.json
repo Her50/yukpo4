@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE delivery_matching_queue\n            SET\n                status = $2,\n                next_attempt_at = COALESCE($3, next_attempt_at),\n                payload = COALESCE($4, payload),\n                attempt_count = attempt_count + CASE WHEN $5 THEN 1 ELSE 0 END,\n                updated_at = NOW()\n            WHERE delivery_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "delivery_matching_status",
+            "kind": {
+              "Enum": [
+                "queued",
+                "searching",
+                "assigned",
+                "rejected",
+                "failed",
+                "timeout",
+                "cancelled",
+                "fallback",
+                "no_courier"
+              ]
+            }
+          }
+        },
+        "Timestamptz",
+        "Jsonb",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7a5207cfd6518698ed6108537aeb3b4b248ab2d525b667a7c9c9a2dd2b18db58"
+}

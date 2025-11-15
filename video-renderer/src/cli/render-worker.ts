@@ -1,28 +1,33 @@
 #!/usr/bin/env node
-import { bundle } from '@remotion/bundler';
-import {
-    getCompositions,
-    renderFrames,
-    stitchFramesToVideo
-} from '@remotion/renderer';
-import { mkdirp } from 'fs-extra';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import pc from 'picocolors';
 
-import { ImmersiveTimeline, ZImmersiveTimeline } from '../types/index.js';
+import {
+    renderTimelineToVideo,
+    validateTimeline,
+} from '../core/render.js';
+import {
+    buildTimelineFromTemplate,
+    STORY_TEMPLATE_IDS,
+    type StoryBusinessContext,
+    type StoryTemplateId,
+} from '../templates/storyTemplates.js';
+import type { ImmersiveTimeline } from '../types/index.js';
 
 type RenderArgs = {
-    job: string;
+    job?: string;
     outDir?: string;
     compositionId?: string;
     overwrite?: boolean;
+    templateId?: StoryTemplateId;
+    contextPath?: string;
 };
 
 const parseArgs = (): RenderArgs => {
     const args = process.argv.slice(2);
-    const renderArgs: RenderArgs = { job: '' };
+    const renderArgs: RenderArgs = {};
 
     for (let i = 0; i < args.length; i += 1) {
         const arg = args[i];
@@ -37,6 +42,12 @@ const parseArgs = (): RenderArgs => {
             i += 1;
         } else if (arg === '--overwrite') {
             renderArgs.overwrite = true;
+        } else if (arg === '--template') {
+            renderArgs.templateId = args[i + 1] as StoryTemplateId;
+            i += 1;
+        } else if (arg === '--context') {
+            renderArgs.contextPath = args[i + 1];
+            i += 1;
         }
     }
 
@@ -46,110 +57,97 @@ const parseArgs = (): RenderArgs => {
 const loadTimeline = (jobPath: string): ImmersiveTimeline => {
     const data = fs.readFileSync(jobPath, 'utf-8');
     const json = JSON.parse(data);
-    const parsed = ZImmersiveTimeline.safeParse(json);
-
-    if (!parsed.success) {
-        console.error(pc.red('❌ Timline invalide:'), parsed.error.format());
+    try {
+        return validateTimeline(json);
+    } catch (err) {
+        console.error(pc.red('❌ Timeline invalide:'), err);
         process.exit(1);
     }
+};
 
-    return parsed.data;
+const isTemplateId = (value: unknown): value is StoryTemplateId =>
+    typeof value === 'string' && STORY_TEMPLATE_IDS.includes(value as StoryTemplateId);
+
+const loadTemplateContext = (contextPath?: string): StoryBusinessContext => {
+    if (!contextPath) {
+        return {};
+    }
+    const absolute = path.resolve(process.cwd(), contextPath);
+    if (!fs.existsSync(absolute)) {
+        console.error(pc.red(`❌ Fichier contexte introuvable: ${absolute}`));
+        process.exit(1);
+    }
+    try {
+        const data = fs.readFileSync(absolute, 'utf-8');
+        return JSON.parse(data) as StoryBusinessContext;
+    } catch (error) {
+        console.error(pc.red('❌ Impossible de lire le contexte template'), error);
+        process.exit(1);
+    }
 };
 
 const run = async () => {
-    const { job, outDir, compositionId, overwrite } = parseArgs();
+    const { job, outDir, compositionId, overwrite, templateId, contextPath } = parseArgs();
 
-    if (!job) {
-        console.error(pc.red('❌ Argument --job requis (fichier JSON timeline)'));
-        process.exit(1);
+    let timeline: ImmersiveTimeline;
+    let timelinePath: string | undefined;
+    let derivedJobId: string | undefined;
+
+    if (templateId) {
+        if (!isTemplateId(templateId)) {
+            console.error(
+                pc.red(
+                    `❌ Template "${templateId}" invalide. Options: ${STORY_TEMPLATE_IDS.join(
+                        ', '
+                    )}`
+                )
+            );
+            process.exit(1);
+        }
+        const templateContext = loadTemplateContext(contextPath);
+        timeline = buildTimelineFromTemplate(templateId, templateContext);
+        derivedJobId = `${templateId}-${Date.now()}`;
+        console.log(
+            pc.cyan(
+                `🧩 Timeline générée depuis le template ${templateId} (${timeline.scenes.length} scènes)`
+            )
+        );
+    } else {
+        if (!job) {
+            console.error(
+                pc.red('❌ Argument --job requis si aucun template story n’est fourni')
+            );
+            process.exit(1);
+        }
+        const jobPath = path.resolve(process.cwd(), job);
+        if (!fs.existsSync(jobPath)) {
+            console.error(pc.red(`❌ Fichier job non trouvé: ${jobPath}`));
+            process.exit(1);
+        }
+        timeline = loadTimeline(jobPath);
+        timelinePath = jobPath;
+        derivedJobId = path.basename(job, '.json');
     }
 
-    const jobPath = path.resolve(process.cwd(), job);
-    if (!fs.existsSync(jobPath)) {
-        console.error(pc.red(`❌ Fichier job non trouvé: ${jobPath}`));
-        process.exit(1);
-    }
-
-    const timeline = loadTimeline(jobPath);
+    const jobLabel = derivedJobId ?? randomUUID();
     const outputDir =
-        outDir ?? path.join(process.cwd(), 'renders', path.basename(job, '.json'));
-    const framesDir = path.join(outputDir, 'frames');
+        outDir ??
+        path.join(process.cwd(), 'renders', templateId ? jobLabel : path.basename(job!, '.json'));
 
-    if (!overwrite && fs.existsSync(outputDir)) {
-        console.error(
-            pc.yellow(
-                `⚠️  Le dossier ${outputDir} existe déjà. Utilise --overwrite pour forcer.`
-            )
-        );
+    try {
+        const result = await renderTimelineToVideo(timeline, {
+            jobId: jobLabel,
+            outputRoot: path.dirname(outputDir),
+            overwrite,
+            compositionId,
+            timelinePath
+        });
+
+        console.log(pc.green(`✅ Vidéo générée: ${result.masterVideo}`));
+    } catch (err) {
+        console.error(pc.red('❌ Erreur de rendu Remotion'), err);
         process.exit(1);
     }
-
-    await mkdirp(framesDir);
-
-    console.log(pc.cyan('🚀 Bundling Remotion...'));
-    const currentDir = path.dirname(fileURLToPath(import.meta.url));
-    const projectRoot = path.resolve(currentDir, '..', '..', '..');
-    const entryPoint = path.join(projectRoot, 'dist', 'src', 'index.js');
-    if (!fs.existsSync(entryPoint)) {
-        console.error(
-            pc.red(
-                `❌ Entry point introuvable (${entryPoint}). Compile avec "npm run build" auparavant.`
-            )
-        );
-        process.exit(1);
-    }
-
-    if (process.env.REMOTION_BROWSER_DOWNLOAD_DIR) {
-        process.env.REMOTION_BROWSER_DOWNLOAD_FOLDER =
-            process.env.REMOTION_BROWSER_DOWNLOAD_DIR;
-    }
-
-    const remotionBundle = await bundle(entryPoint);
-
-    const compId = compositionId ?? 'immersive-video';
-
-    const compositions = await getCompositions(remotionBundle, {
-        inputProps: timeline,
-        envVariables: {
-            TIMELINE: JSON.stringify(timeline)
-        }
-    });
-
-    const composition = compositions.find((c) => c.id === compId);
-
-    if (!composition) {
-        console.error(pc.red(`❌ Composition ${compId} introuvable`));
-        process.exit(1);
-    }
-
-    console.log(pc.cyan('🎬 Rendu des frames...'));
-    const { assetsInfo } = await renderFrames({
-        onStart: () => undefined,
-        onFrameUpdate: () => undefined,
-        composition,
-        serveUrl: remotionBundle,
-        outputDir: framesDir,
-        imageFormat: 'jpeg',
-        inputProps: timeline,
-        envVariables: {
-            TIMELINE: JSON.stringify(timeline)
-        }
-    });
-
-    const videoOut = path.join(outputDir, 'master.mp4');
-    console.log(pc.cyan('🎞️  Assemblage vidéo...'));
-    await stitchFramesToVideo({
-        assetsInfo,
-        fps: composition.fps,
-        width: composition.width,
-        height: composition.height,
-        outputLocation: videoOut,
-        codec: 'h264',
-        audioCodec: 'aac',
-        force: true
-    });
-
-    console.log(pc.green(`✅ Vidéo générée: ${videoOut}`));
 };
 
 run().catch((err) => {

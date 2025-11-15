@@ -45,6 +45,7 @@ import ShoppingBasketScreen from '../screens/delivery/ShoppingBasketScreen';
 import ShoppingBudgetScreen from '../screens/delivery/ShoppingBudgetScreen';
 import ShoppingPickupDropScreen from '../screens/delivery/ShoppingPickupDropScreen';
 import ShoppingSummaryScreen from '../screens/delivery/ShoppingSummaryScreen';
+import GlobalPromoSubmissionScreen from '../screens/promo/GlobalPromoSubmissionScreen';
 import VideoCreationIntroScreen from '../screens/video/VideoCreationIntroScreen';
 import VideoCreationWizardScreen from '../screens/video/VideoCreationWizardScreen';
 import VideoGenerationResultScreen from '../screens/video/VideoGenerationResultScreen';
@@ -76,6 +77,7 @@ const VideoAnalyticsScreenWithSafeArea = withNavigatorSafeArea(VideoAnalyticsScr
 const VideoCreationIntroScreenWithSafeArea = withNavigatorSafeArea(VideoCreationIntroScreen);
 const VideoCreationWizardScreenWithSafeArea = withNavigatorSafeArea(VideoCreationWizardScreen);
 const VideoGenerationResultScreenWithSafeArea = withNavigatorSafeArea(VideoGenerationResultScreen);
+const GlobalPromoSubmissionScreenWithSafeArea = withNavigatorSafeArea(GlobalPromoSubmissionScreen);
 const DeliveryHomeScreenWithSafeArea = withNavigatorSafeArea(DeliveryHomeScreen);
 const ShoppingBasketScreenWithSafeArea = withNavigatorSafeArea(ShoppingBasketScreen);
 const ShoppingBudgetScreenWithSafeArea = withNavigatorSafeArea(ShoppingBudgetScreen);
@@ -235,6 +237,10 @@ const SecondaryStack = () => {
         <Stack.Screen
           name="DeliveryShoppingTracking"
           component={DeliveryShoppingTrackingScreenWithSafeArea}
+        />
+        <Stack.Screen
+          name="GlobalPromoSubmission"
+          component={GlobalPromoSubmissionScreenWithSafeArea}
         />
       </Stack.Navigator>
     </DeepLinkHandler>

@@ -8,15 +8,18 @@ default-run = "yukpomnang_backend"
 [[bin]]
 name = "check_services"
 path = "check_services.rs"
+required-features = ["maintenance-tools"]
 
 [[bin]]
 name = "cleanup_ghost_embeddings"
 path = "cleanup_ghost_embeddings.rs"
+required-features = ["maintenance-tools"]
 
 [features]
 mock = []
 gpu = ["image"]
 image_search = ["image"]
+maintenance-tools = []
 
 [dependencies]
 # ðŸŒ Web / Serveur

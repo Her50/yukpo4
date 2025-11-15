@@ -138,6 +138,34 @@ impl MediaStorageService {
         })
     }
 
+    pub fn remote_location_from_path(
+        &self,
+        storage_path: String,
+        public_url: Option<String>,
+        content_length: Option<u64>,
+    ) -> StoredMediaLocation {
+        let resolved_public_url = public_url
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| self.build_public_url(&storage_path));
+
+        StoredMediaLocation {
+            storage_path,
+            public_url: resolved_public_url,
+            content_length,
+        }
+    }
+
+    pub fn remote_location_from_key(
+        &self,
+        storage_key: &str,
+        public_url: Option<String>,
+        content_length: Option<u64>,
+    ) -> StoredMediaLocation {
+        let normalized_key = storage_key.trim_start_matches('/');
+        let storage_path = self.storage_path_for(normalized_key);
+        self.remote_location_from_path(storage_path, public_url, content_length)
+    }
+
     async fn persist_local(&self, source: &Path, target: &Path) -> AppResult<()> {
         if source == target {
             return Ok(());

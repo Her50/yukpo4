@@ -16,25 +16,7 @@ mod webhook_integration_tests {
 
     // Helper function to create test app
     async fn create_test_app() -> Router {
-        // Créer un état de test minimal
-        let app_state = Arc::new(AppState {
-            pg: sqlx::PgPool::connect("postgresql://test:test@localhost:5432/test")
-                .await
-                .expect("Failed to connect to test database"),
-            mongo: mongodb::Client::with_uri_str("mongodb://localhost:27017")
-                .await
-                .expect("Failed to connect to test MongoDB"),
-            redis: redis::Client::open("redis://localhost:6379")
-                .expect("Failed to connect to test Redis"),
-            app_ia: Arc::new(yukpomnang_backend::services::app_ia::AppIA::new()),
-            massive_load_handler: Arc::new(
-                yukpomnang_backend::services::massive_load_handler::MassiveLoadHandler::new(),
-            ),
-            gpu_optimizer: Arc::new(
-                yukpomnang_backend::services::gpu_optimizer::GPUOptimizer::new(),
-            ),
-        });
-
+        let app_state = Arc::new(AppState::mock_for_tests().await);
         build_app(app_state)
     }
 

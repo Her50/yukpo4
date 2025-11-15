@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { GeneratedVideoResponse, VideoCostEstimation, VideoGenerationPayload } from '../types/VideoGeneration';
+import type { CreateVoiceProfilePayload } from '../types/audio';
 import {
   DeliveryLocationUpdatePayload,
   DeliveryRecipientPayload,
@@ -437,12 +438,60 @@ interface DeliveryListResponse {
   deliveries: any[];
 }
 
+export interface DeliveryLocationInput {
+  latitude: number;
+  longitude: number;
+  address?: string;
+}
+
+export interface DeliveryParcelInput {
+  type_id?: number;
+  weight_kg?: number;
+  volume_cm3?: number;
+  declared_value?: number;
+  notes?: string;
+  photos?: Record<string, unknown> | unknown[];
+  constraints?: Record<string, unknown>;
+}
+
+export interface CreateDeliveryRequestPayload {
+  parcel: DeliveryParcelInput;
+  pickup: DeliveryLocationInput;
+  dropoff: DeliveryLocationInput;
+  distance_meters?: number;
+  estimated_duration_seconds?: number;
+  metadata?: Record<string, unknown>;
+  initial_event_payload?: Record<string, unknown>;
+  recipient?: DeliveryRecipientPayload;
+}
+
+export interface DropoffShareResponse {
+  tracking_token: string;
+  share_url?: string | null;
+  dropoff_pending: boolean;
+}
+
 export const deliveryApi = {
   listActiveDeliveries: async () => {
     return apiCall<DeliveryListResponse>('/api/deliveries/active');
   },
   getDeliveryById: async (deliveryId: string) => {
     return apiCall(`/api/deliveries/${deliveryId}`);
+  },
+  createDeliveryRequest: async (payload: CreateDeliveryRequestPayload) => {
+    return apiCall(`/api/delivery`, {
+      method: 'POST',
+      body: JSON.stringify({
+        ...payload,
+        metadata: payload.metadata ?? {},
+        initial_event_payload: payload.initial_event_payload ?? {},
+        parcel: {
+          photos: payload.parcel.photos ?? [],
+          constraints: payload.parcel.constraints ?? {},
+          ...payload.parcel,
+        },
+      }),
+    });
   },
   getRecipientUpdates: async (deliveryId: string) => {
     return apiCall(`/api/deliveries/${deliveryId}/recipient/updates`);
@@ -486,6 +535,11 @@ export const deliveryApi = {
         rating,
         feedback,
       }),
+    });
+  },
+  shareDropoffLink: async (deliveryId: string) => {
+    return apiCall<DropoffShareResponse>(`/api/delivery/${deliveryId}/share-dropoff`, {
+      method: 'POST',
     });
   },
 };
@@ -662,6 +716,20 @@ export const mediaApi = {
   attachAudioLoop: async (loopId: string, serviceId: number) => {
     return apiCall(`/api/audio-library/${loopId}/attach/${serviceId}`, {
       method: 'POST',
+    });
+  },
+  getVoiceProfiles: async () => {
+    return apiCall('/api/audio-library/voice-profiles');
+  },
+  createVoiceProfile: async (payload: CreateVoiceProfilePayload) => {
+    return apiCall('/api/audio-library/voice-profiles', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteVoiceProfile: async (profileId: number) => {
+    return apiCall(`/api/audio-library/voice-profiles/${profileId}`, {
+      method: 'DELETE',
     });
   },
   getVideoJobStatus: async (jobId: string) => {

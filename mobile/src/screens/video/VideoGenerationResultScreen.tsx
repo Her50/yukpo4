@@ -38,6 +38,14 @@ const VideoGenerationResultScreen: React.FC = () => {
         ];
     }, [result?.progress_steps]);
 
+    const immersiveDuration = useMemo(() => {
+        const frames = result?.immersive_analytics?.estimated_frames;
+        if (typeof frames !== 'number' || frames <= 0) {
+            return null;
+        }
+        return Math.ceil(frames / 30);
+    }, [result?.immersive_analytics]);
+
     const handleOpenVideo = () => {
         if (result?.video_url) {
             Linking.openURL(result.video_url).catch(() => {
@@ -133,6 +141,16 @@ const VideoGenerationResultScreen: React.FC = () => {
                         <Text style={styles.analyticsItem}>
                             Frames estimées : {result.immersive_analytics.estimated_frames}
                         </Text>
+                        {typeof immersiveDuration === 'number' && (
+                            <Text style={styles.analyticsItem}>
+                                Durée estimée : ~{immersiveDuration}s
+                            </Text>
+                        )}
+                        {result.immersive_analytics.selected_template && (
+                            <Text style={styles.analyticsItem}>
+                                Template : {result.immersive_analytics.selected_template}
+                            </Text>
+                        )}
                     </NativeCard>
                 )}
 

@@ -655,18 +655,18 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
         // Coût utilisateur = Coût IA × 10
         let user_cost_usd = ai_cost.cost_usd * 10.0;
 
-        // Conversion en devise locale
+        // Conversion en devise locale (en sous-unités pour éviter les flottants)
         let exchange_rate = match user_currency {
-            "XAF" | "FCFA" => 600.0, // 1 USD = 600 XAF
-            "EUR" => 0.92,           // 1 USD = 0.92 EUR
+            "XAF" | "FCFA" => 600.0, // 1 USD = 600 FCFA
+            "EUR" => 92.0,           // 1 USD ≈ 0.92 EUR => 92 centimes
             "USD" => 100.0,          // Centimes
-            _ => 600.0,              // Défaut FCFA
+            _ => 600.0,
         };
 
-        let cost_in_currency = (user_cost_usd * exchange_rate) as i64;
+        let base_amount = (user_cost_usd * exchange_rate).ceil() as i64;
 
-        // Arrondir au multiple de 10
-        ((cost_in_currency + 5) / 10) * 10
+        // Arrondir systématiquement au multiple de 10 supérieur
+        ((base_amount + 9) / 10) * 10
     }
 }
 

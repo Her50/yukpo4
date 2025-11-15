@@ -65,3 +65,4 @@ Ces variables alimentent les tâches `livekit_cleanup` et `live_analytics`. Sans
 
 Avec ces variables et process, tu peux basculer LiveKit vers n’importe quel cloud tout en gardant le backend modulable : seules les valeurs d’environnement changent, pas le code.
 
+

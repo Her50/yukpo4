@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                template,\n                COUNT(*)::bigint AS \"count!: i64\",\n                COALESCE(AVG(duration_seconds)::float, 0.0) AS \"avg_duration_seconds!: f64\",\n                MAX(created_at) AS \"last_preview_at?\"\n            FROM studio_preview_events\n            WHERE session_id = $1\n            GROUP BY template\n            ORDER BY COUNT(*) DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!: i64",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "avg_duration_seconds!: f64",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_preview_at?",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "4ab021b1dfbdef2db08afab65147201fa3d81d03fdff0bc008067f7da4e4ec05"
+}

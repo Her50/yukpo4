@@ -18,10 +18,12 @@ pub mod content_engagement_controller;
 pub mod conversation_controller; // ✅ NOUVEAU: Contrôleur pour @mentions et multi-participants
 pub mod debug_controller;
 pub mod embedding_controller;
+pub mod global_promo_controller;
 pub mod health_structure_controller; // ✅ NOUVEAU: Contrôleur pour structures de santé (autocomplete)
 pub mod history_controller;
 pub mod image_search_controller; // ✅ NOUVEAU: Contrôleur pour recherche par image
 pub mod intelligent_service_controller;
+pub mod inventory_controller;
 pub mod live_ai_controller;
 pub mod live_controller;
 pub mod media_analytics_controller;
@@ -47,6 +49,7 @@ pub mod search_history_controller; // ✅ NOUVEAU: Contrôleur pour historique d
 pub mod service_team_controller; // ✅ NOUVEAU: Contrôleur pour gestion d'équipe des services
 pub mod signalement_controller; // ✅ NOUVEAU: Contrôleur pour signalements de produits/services
 pub mod social_connector_controller;
+pub mod studio_controller;
 pub mod system_health_controller;
 pub mod vehicle_model_controller; // ✅ NOUVEAU: Contrôleur pour modèles de véhicules (autocomplete)
 pub mod webhook_controller;
