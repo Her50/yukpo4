@@ -28,6 +28,8 @@ pub enum NotificationType {
     GlobalPromoLive,
     GlobalPromoEntryPublished,
     GlobalPromoEntryEnded,
+    GlobalPromoEntryApproved,
+    GlobalPromoEntryRejected,
 }
 
 impl NotificationType {
@@ -55,6 +57,8 @@ impl NotificationType {
             NotificationType::GlobalPromoLive => "global_promo_live",
             NotificationType::GlobalPromoEntryPublished => "global_promo_entry_published",
             NotificationType::GlobalPromoEntryEnded => "global_promo_entry_ended",
+            NotificationType::GlobalPromoEntryApproved => "global_promo_entry_approved",
+            NotificationType::GlobalPromoEntryRejected => "global_promo_entry_rejected",
         }
     }
 }

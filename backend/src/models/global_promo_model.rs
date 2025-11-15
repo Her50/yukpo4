@@ -126,6 +126,45 @@ pub struct GlobalPromoCatalogItem {
     pub entry: GlobalPromoEntry,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub product: Option<GlobalPromoProductSnapshot>,
+    #[serde(default)]
+    pub badges: GlobalPromoCatalogBadges,
+}
+
+#[derive(Debug, Serialize, Clone, Default)]
+pub struct GlobalPromoCatalogBadges {
+    pub event_is_live: bool,
+    pub event_is_imminent: bool,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct GlobalPromoCatalogPage {
+    pub items: Vec<GlobalPromoCatalogItem>,
+    pub page: i64,
+    pub page_size: i64,
+    pub total: i64,
+    pub has_more: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GlobalPromoCatalogQuery {
+    #[serde(default)]
+    pub page: Option<i64>,
+    #[serde(default)]
+    pub page_size: Option<i64>,
+    #[serde(default)]
+    pub highlighted_only: Option<bool>,
+    #[serde(default)]
+    pub event_slug: Option<String>,
+    #[serde(default)]
+    pub availability: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub search: Option<String>,
+    #[serde(default)]
+    pub sort: Option<String>,
+    #[serde(default)]
+    pub starts_within_minutes: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -169,4 +208,17 @@ impl<'r> FromRow<'r, PgRow> for GlobalPromoEntry {
             updated_at: row.try_get("updated_at")?,
         })
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReviewGlobalPromoEntryRequest {
+    pub status: String,
+    #[serde(default)]
+    pub message: Option<String>,
+    #[serde(default)]
+    pub highlighted: Option<bool>,
+    #[serde(default)]
+    pub priority_score: Option<i32>,
+    #[serde(default)]
+    pub metadata_patch: Option<Value>,
 }

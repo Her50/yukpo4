@@ -13,7 +13,8 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     models::global_promo_model::{
-        CreateGlobalPromoEventRequest, UpdateGlobalPromoEventRequest, UpsertGlobalPromoEntryRequest,
+        CreateGlobalPromoEventRequest, GlobalPromoCatalogQuery, ReviewGlobalPromoEntryRequest,
+        UpdateGlobalPromoEventRequest, UpsertGlobalPromoEntryRequest,
     },
     services::global_promo_service::GlobalPromoService,
     state::AppState,
@@ -53,6 +54,16 @@ where
                 .map(Authenticated)
                 .ok_or_else(|| AppError::Unauthorized("Authentification requise".into())),
         )
+    }
+}
+
+fn ensure_admin_role(user: &AuthenticatedUser) -> AppResult<()> {
+    if matches!(user.role.as_str(), "admin" | "super_admin") {
+        Ok(())
+    } else {
+        Err(AppError::Forbidden(
+            "Accès réservé aux administrateurs Global Promo.".into(),
+        ))
     }
 }
 
@@ -137,8 +148,9 @@ pub async fn regenerate_global_promo_snapshot(
 
 pub async fn list_global_promo_catalog(
     State(state): State<Arc<AppState>>,
+    Query(query): Query<GlobalPromoCatalogQuery>,
 ) -> AppResult<Json<serde_json::Value>> {
-    let catalog = GlobalPromoService::list_active_catalog(&state.pg).await?;
+    let catalog = GlobalPromoService::list_active_catalog(&state.pg, query).await?;
     Ok(Json(json!({ "success": true, "data": catalog })))
 }
 
@@ -173,5 +185,16 @@ pub async fn submit_my_global_promo_entry(
 ) -> AppResult<Json<serde_json::Value>> {
     let entry =
         GlobalPromoService::upsert_entry_for_owner(&state.pg, event_id, user.id, payload).await?;
+    Ok(Json(json!({ "success": true, "data": entry })))
+}
+
+pub async fn review_global_promo_entry(
+    State(state): State<Arc<AppState>>,
+    Path(entry_id): Path<Uuid>,
+    Authenticated(user): Authenticated,
+    Json(payload): Json<ReviewGlobalPromoEntryRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    ensure_admin_role(&user)?;
+    let entry = GlobalPromoService::review_entry(&state.pg, entry_id, user.id, payload).await?;
     Ok(Json(json!({ "success": true, "data": entry })))
 }

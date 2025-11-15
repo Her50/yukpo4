@@ -1,0 +1,63 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO service_inventory_overrides (\n                service_id,\n                product_index,\n                stock_level,\n                source,\n                note,\n                expires_at,\n                last_synced_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, NOW())\n            ON CONFLICT (service_id, product_index)\n            DO UPDATE SET\n                stock_level = EXCLUDED.stock_level,\n                source = EXCLUDED.source,\n                note = EXCLUDED.note,\n                expires_at = EXCLUDED.expires_at,\n                last_synced_at = NOW()\n            RETURNING service_id, product_index, stock_level, source, note, last_synced_at, expires_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "service_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "product_index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "stock_level",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_synced_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "expires_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Int4",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "8f8ef3dd21d041a2c5f2a81804cdeaf18119f0df0856dbbcf85e8d0204c31418"
+}

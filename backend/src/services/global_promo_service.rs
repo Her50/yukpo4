@@ -1,16 +1,18 @@
 use bigdecimal::{BigDecimal, FromPrimitive};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use log::{error, info, warn};
 use serde_json::{json, Value};
-use sqlx::{postgres::PgRow, FromRow, PgPool, Row};
+use sqlx::{postgres::PgRow, FromRow, PgPool, Postgres, QueryBuilder, Row};
 use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
     core::types::{AppError, AppResult},
     models::global_promo_model::{
-        CreateGlobalPromoEventRequest, GlobalPromoCatalogItem, GlobalPromoEntry, GlobalPromoEvent,
-        GlobalPromoProductSnapshot, UpdateGlobalPromoEventRequest, UpsertGlobalPromoEntryRequest,
+        CreateGlobalPromoEventRequest, GlobalPromoCatalogBadges, GlobalPromoCatalogItem,
+        GlobalPromoCatalogPage, GlobalPromoCatalogQuery, GlobalPromoEntry, GlobalPromoEvent,
+        GlobalPromoProductSnapshot, ReviewGlobalPromoEntryRequest, UpdateGlobalPromoEventRequest,
+        UpsertGlobalPromoEntryRequest,
     },
     services::{
         notification_service, notification_service::NotificationType, push_notification_service,
@@ -388,9 +390,32 @@ impl GlobalPromoService {
         .await
     }
 
-    pub async fn list_active_catalog(pool: &PgPool) -> AppResult<Vec<GlobalPromoCatalogItem>> {
+    pub async fn list_active_catalog(
+        pool: &PgPool,
+        query: GlobalPromoCatalogQuery,
+    ) -> AppResult<GlobalPromoCatalogPage> {
+        let GlobalPromoCatalogQuery {
+            page,
+            page_size,
+            highlighted_only,
+            event_slug,
+            availability,
+            status,
+            search,
+            sort,
+            starts_within_minutes,
+        } = query;
+
+        let page = page.unwrap_or(1).max(1);
+        let page_size = page_size.unwrap_or(24).clamp(1, 100);
+        let offset = (page - 1) * page_size;
+        let highlighted_only = highlighted_only.unwrap_or(false);
+        let start_filter_opt = starts_within_minutes;
+        let imminence_minutes = start_filter_opt.unwrap_or(180).clamp(1, 1440);
+        let sort_label = sort.unwrap_or_else(|| "priority".to_string());
+
         let now = Utc::now();
-        let rows = sqlx::query(
+        let mut builder = QueryBuilder::<Postgres>::new(
             r#"
             SELECT
                 e.*,
@@ -414,34 +439,126 @@ impl GlobalPromoService {
                 gp.priority_score AS product_priority_score,
                 gp.highlighted AS product_highlighted,
                 gp.created_at AS product_created_at,
-                gp.updated_at AS product_updated_at
+                gp.updated_at AS product_updated_at,
+                COUNT(*) OVER() AS total_count
             FROM global_promo_entries e
             JOIN global_promo_events ev ON ev.id = e.event_id
             LEFT JOIN global_promo_products gp ON gp.promo_entry_id = e.id
             WHERE
                 ev.status IN ('scheduled', 'live')
                 AND e.status IN ('approved', 'published', 'pending_review')
-                AND ev.ends_at >= $1
-            ORDER BY ev.starts_at ASC, gp.highlighted DESC, gp.priority_score DESC, e.updated_at DESC
+                AND ev.ends_at >=
             "#,
-        )
-        .bind(now)
-        .fetch_all(pool)
-        .await?;
+        );
+        builder.push_bind(now);
 
+        if highlighted_only {
+            builder.push(" AND COALESCE(gp.highlighted, FALSE) = TRUE");
+        }
+
+        if let Some(slug) = event_slug {
+            let trimmed = slug.trim().to_string();
+            if !trimmed.is_empty() {
+                builder.push(" AND ev.slug = ");
+                builder.push_bind(trimmed);
+            }
+        }
+
+        if let Some(avail) = availability {
+            validate_availability(avail.as_str())?;
+            builder.push(" AND e.availability = ");
+            builder.push_bind(avail);
+        }
+
+        if let Some(status_value) = status {
+            validate_entry_status(status_value.as_str())?;
+            builder.push(" AND e.status = ");
+            builder.push_bind(status_value);
+        }
+
+        if let Some(search_value) = search {
+            let trimmed = search_value.trim().to_string();
+            if !trimmed.is_empty() {
+                let like_pattern = format!("%{}%", trimmed);
+                builder.push(" AND (ev.display_name ILIKE ");
+                builder.push_bind(like_pattern.clone());
+                builder.push(" OR ev.theme ILIKE ");
+                builder.push_bind(like_pattern.clone());
+                builder.push(" OR gp.snapshot::text ILIKE ");
+                builder.push_bind(like_pattern);
+                if let Ok(service_id) = trimmed.parse::<i32>() {
+                    builder.push(" OR e.service_id = ");
+                    builder.push_bind(service_id);
+                }
+                builder.push(')');
+            }
+        }
+
+        if let Some(start_filter) = start_filter_opt {
+            if start_filter > 0 {
+                let horizon = now + Duration::minutes(start_filter.clamp(1, 1440));
+                builder.push(" AND ev.starts_at <= ");
+                builder.push_bind(horizon);
+            }
+        }
+
+        match sort_label.as_str() {
+            "ending_soon" => builder.push(
+                " ORDER BY ev.ends_at ASC, gp.highlighted DESC, gp.priority_score DESC, e.updated_at DESC ",
+            ),
+            "recent" => builder.push(" ORDER BY e.updated_at DESC "),
+            "newest_event" => {
+                builder.push(" ORDER BY ev.starts_at ASC, gp.priority_score DESC, e.updated_at DESC ")
+            }
+            _ => builder.push(
+                " ORDER BY gp.highlighted DESC, gp.priority_score DESC, ev.starts_at ASC, e.updated_at DESC ",
+            ),
+        };
+
+        builder.push(" LIMIT ");
+        builder.push_bind(page_size);
+        builder.push(" OFFSET ");
+        builder.push_bind(offset);
+
+        let rows = builder.build().fetch_all(pool).await?;
+        let threshold = now + Duration::minutes(imminence_minutes);
+
+        let mut total = 0_i64;
         let mut items = Vec::with_capacity(rows.len());
         for row in rows {
+            if total == 0 {
+                total = row.try_get::<i64, _>("total_count").unwrap_or(0);
+            }
+
             let event = map_event_from_row(&row)?;
             let entry = <GlobalPromoEntry as FromRow<PgRow>>::from_row(&row)?;
             let product_snapshot = map_product_from_row(&row)?;
+            let event_is_live = event.status == "live";
+            let event_is_imminent = event.status == "scheduled" && event.starts_at <= threshold;
+
             items.push(GlobalPromoCatalogItem {
                 event,
                 entry,
                 product: product_snapshot,
+                badges: GlobalPromoCatalogBadges {
+                    event_is_live,
+                    event_is_imminent,
+                },
             });
         }
 
-        Ok(items)
+        if total == 0 {
+            total = items.len() as i64;
+        }
+
+        let has_more = (page * page_size) < total;
+        Ok(GlobalPromoCatalogPage {
+            items,
+            page,
+            page_size,
+            total,
+            has_more,
+        })
     }
 
     pub async fn upsert_entry_for_owner(
@@ -461,6 +578,166 @@ impl GlobalPromoService {
         payload.status = Some("pending_review".to_string());
 
         Self::upsert_entry(pool, event_id, payload, user_id).await
+    }
+
+    pub async fn review_entry(
+        pool: &PgPool,
+        entry_id: Uuid,
+        reviewer_id: i32,
+        payload: ReviewGlobalPromoEntryRequest,
+    ) -> AppResult<GlobalPromoEntry> {
+        let ReviewGlobalPromoEntryRequest {
+            status,
+            message,
+            highlighted,
+            priority_score,
+            metadata_patch,
+        } = payload;
+
+        let decision = status.to_lowercase();
+        if decision != "approved" && decision != "rejected" {
+            return Err(AppError::BadRequest(
+                "Le workflow accepte uniquement les statuts approved ou rejected.".into(),
+            ));
+        }
+
+        let row = sqlx::query(
+            r#"
+            SELECT
+                e.status,
+                e.metadata,
+                e.submitted_by_user_id,
+                e.service_id,
+                e.availability,
+                ev.display_name AS event_display_name
+            FROM global_promo_entries e
+            JOIN global_promo_events ev ON ev.id = e.event_id
+            WHERE e.id = $1
+            "#,
+        )
+        .bind(entry_id)
+        .fetch_optional(pool)
+        .await?;
+
+        let Some(row) = row else {
+            return Err(AppError::NotFound(
+                "Entrée promotionnelle introuvable pour revue.".into(),
+            ));
+        };
+
+        let current_status: String = row.try_get("status")?;
+        if matches!(current_status.as_str(), "published" | "ended") {
+            return Err(AppError::BadRequest(
+                "Impossible de modifier une entrée déjà publiée ou terminée.".into(),
+            ));
+        }
+        if current_status == decision {
+            return Err(AppError::BadRequest(format!(
+                "L'entrée est déjà en statut {decision}."
+            )));
+        }
+
+        let mut metadata: Value = row.try_get("metadata")?;
+        if !metadata.is_object() {
+            metadata = json!({});
+        }
+        if let Some(patch) = metadata_patch {
+            merge_json(&mut metadata, patch);
+        }
+
+        let mut review_block = json!({
+            "status": decision,
+            "reviewed_by": reviewer_id,
+            "reviewed_at": Utc::now(),
+        });
+        if let Some(note) = &message {
+            review_block["message"] = Value::String(note.clone());
+        }
+        metadata
+            .as_object_mut()
+            .expect("metadata object")
+            .insert("review".to_string(), review_block);
+
+        let entry = sqlx::query_as::<_, GlobalPromoEntry>(
+            r#"
+            UPDATE global_promo_entries
+            SET status = $2,
+                metadata = $3,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(entry_id)
+        .bind(decision.as_str())
+        .bind(&metadata)
+        .fetch_one(pool)
+        .await?;
+
+        if highlighted.is_some() || priority_score.is_some() {
+            let availability: String = row.try_get("availability")?;
+            sqlx::query(
+                r#"
+                INSERT INTO global_promo_products (
+                    promo_entry_id,
+                    snapshot,
+                    availability,
+                    priority_score,
+                    highlighted
+                )
+                VALUES ($1, '{}'::jsonb, $2, COALESCE($3, 0), COALESCE($4, FALSE))
+                ON CONFLICT (promo_entry_id)
+                DO UPDATE SET
+                    priority_score = COALESCE($3, global_promo_products.priority_score),
+                    highlighted = COALESCE($4, global_promo_products.highlighted),
+                    updated_at = NOW()
+                "#,
+            )
+            .bind(entry_id)
+            .bind(&availability)
+            .bind(priority_score)
+            .bind(highlighted)
+            .execute(pool)
+            .await?;
+        }
+
+        if let Some(user_id) = row.try_get::<Option<i32>, _>("submitted_by_user_id")? {
+            let promo_info = PromoEntryInfo {
+                user_id,
+                entry_id,
+                event_name: row.try_get("event_display_name")?,
+                service_id: row.try_get("service_id")?,
+            };
+
+            let (notif_type, mut title, mut body) = if decision == "approved" {
+                (
+                    NotificationType::GlobalPromoEntryApproved,
+                    format!("✅ Promo approuvée: {}", promo_info.event_name),
+                    format!(
+                        "Votre service #{} est validé pour la campagne globale.",
+                        promo_info.service_id
+                    ),
+                )
+            } else {
+                (
+                    NotificationType::GlobalPromoEntryRejected,
+                    format!("❌ Promo refusée: {}", promo_info.event_name),
+                    format!(
+                        "Votre service #{} n'a pas été retenu pour cette campagne.",
+                        promo_info.service_id
+                    ),
+                )
+            };
+
+            if let Some(note) = &message {
+                body.push_str("\n\n");
+                body.push_str(note);
+            }
+
+            send_entry_notification(pool, &promo_info, notif_type, title, body).await;
+        }
+
+        Ok(entry)
     }
 
     pub async fn process_scheduler(state: Arc<AppState>) {
@@ -629,6 +906,23 @@ fn map_product_from_row(row: &PgRow) -> AppResult<Option<GlobalPromoProductSnaps
         created_at: row.try_get("product_created_at")?,
         updated_at: row.try_get("product_updated_at")?,
     }))
+}
+
+fn merge_json(target: &mut Value, patch: Value) {
+    match (target, patch) {
+        (Value::Object(target_map), Value::Object(patch_map)) => {
+            for (key, value) in patch_map {
+                if let Some(existing) = target_map.get_mut(&key) {
+                    merge_json(existing, value);
+                } else {
+                    target_map.insert(key, value);
+                }
+            }
+        }
+        (target_slot, patch_value) => {
+            *target_slot = patch_value;
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

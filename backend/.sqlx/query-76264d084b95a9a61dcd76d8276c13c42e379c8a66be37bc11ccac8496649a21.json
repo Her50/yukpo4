@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE services\n           SET is_active = TRUE,\n               last_reactivated_at = NOW(),\n               active_days = $4,\n               auto_deactivate_at = $3\n         WHERE id = $1\n           AND user_id = $2\n         RETURNING id,\n                   auto_deactivate_at AS \"auto_deactivate_at: Option<chrono::DateTime<Utc>>\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "auto_deactivate_at: Option<chrono::DateTime<Utc>>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Timestamptz",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "76264d084b95a9a61dcd76d8276c13c42e379c8a66be37bc11ccac8496649a21"
+}
