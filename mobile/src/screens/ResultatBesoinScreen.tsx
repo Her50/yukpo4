@@ -477,12 +477,71 @@ const ResultatBesoinScreen: React.FC = () => {
     }
   }, [location]); // ✅ CORRECTION: Ajouter location aux dependencies
 
+  // ✅ NOUVEAU : Initialiser les résultats depuis les paramètres de route (quand on vient de HomeScreen)
+  useEffect(() => {
+    try {
+      const params = route.params as any;
+      if (!params) {
+        return;
+      }
+
+      console.log('[ResultatBesoinScreen] 📥 Paramètres de route reçus:', {
+        hasResults: !!params.results,
+        resultsCount: Array.isArray(params.results) ? params.results.length : 0,
+        hasSearchQuery: !!params.searchQuery,
+        searchQuery: params.searchQuery,
+        type: params.type
+      });
+
+      // Initialiser les résultats si fournis
+      if (params.results) {
+        let extractedResults: Product[] = [];
+
+        // Si c'est déjà un tableau, l'utiliser directement
+        if (Array.isArray(params.results)) {
+          extractedResults = params.results as Product[];
+          console.log('[ResultatBesoinScreen] ✅ Résultats déjà en tableau:', extractedResults.length);
+        } else {
+          // Sinon, utiliser extractSearchResults pour parser la structure
+          extractedResults = extractSearchResults(params.results);
+          console.log('[ResultatBesoinScreen] ✅ Résultats extraits depuis structure:', extractedResults.length);
+        }
+
+        if (extractedResults.length > 0) {
+          setResults(extractedResults);
+          console.log('[ResultatBesoinScreen] ✅ Résultats initialisés:', extractedResults.length);
+        } else {
+          console.warn('[ResultatBesoinScreen] ⚠️ Aucun résultat valide trouvé dans route.params');
+        }
+
+        // Initialiser les filtres depuis la requête de recherche
+        if (params.searchQuery) {
+          const queryText = typeof params.searchQuery === 'string' ? params.searchQuery : '';
+          setSearchQuery(queryText);
+          const words = queryText.split(' ').filter(w => w.trim());
+          if (words.length > 0) {
+            setFilters(words);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[ResultatBesoinScreen] ❌ Erreur initialisation depuis route.params:', error);
+    }
+  }, [route.params]); // ✅ Exécuter une seule fois au montage ou quand les params changent
+
   // ✅ CORRECTION 2025-11-04 : Suggestions depuis autocomplete_characteristics (VRAIS produits)
   useEffect(() => {
     try {
       // ✅ PROTECTION: Vérifier que fetchSuggestions existe
       if (typeof fetchSuggestions !== 'function') {
         console.error('[ResultatBesoinScreen] ❌ fetchSuggestions n\'est pas une fonction');
+        return;
+      }
+
+      // Ne pas chercher des suggestions si on a déjà des résultats depuis route.params
+      const params = route.params as any;
+      if (params?.results && Array.isArray(params.results) && params.results.length > 0) {
+        console.log('[ResultatBesoinScreen] ⏭️ Ignorer suggestions car résultats déjà fournis');
         return;
       }
 
@@ -494,7 +553,7 @@ const ResultatBesoinScreen: React.FC = () => {
     } catch (error) {
       console.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect fetchSuggestions:', error);
     }
-  }, [searchQuery, fetchSuggestions]); // ✅ CORRECTION: Ajouter fetchSuggestions aux dependencies
+  }, [searchQuery, fetchSuggestions, route.params]); // ✅ Ajouter route.params aux dependencies
 
   // ✅ NOUVEAU : Générer filtres dynamiques depuis les résultats
   useEffect(() => {

@@ -43,11 +43,21 @@ const mapCatalogItem = (raw: any): GlobalPromoCatalogItem => ({
 });
 
 export const fetchGlobalPromoCatalog = async (): Promise<GlobalPromoCatalogItem[]> => {
-    const response = await apiGet<CatalogResponse>('/api/global-promos/catalog');
-    if (!response.success || !response.data) {
+    try {
+        const response = await apiGet<CatalogResponse>('/api/global-promos/catalog');
+        if (!response.success || !response.data) {
+            return [];
+        }
+        // Vérifier que response.data est bien un tableau
+        if (!Array.isArray(response.data)) {
+            console.warn('[fetchGlobalPromoCatalog] response.data n\'est pas un tableau:', response.data);
+            return [];
+        }
+        return response.data.map(mapCatalogItem);
+    } catch (error) {
+        console.error('[fetchGlobalPromoCatalog] Erreur lors de la récupération du catalogue:', error);
         return [];
     }
-    return response.data.map(mapCatalogItem);
 };
 
 interface MyEventsResponse {

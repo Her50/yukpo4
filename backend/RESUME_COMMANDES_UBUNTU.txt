@@ -1,0 +1,72 @@
+# ============================================
+# COMMANDES À EXÉCUTER SUR UBUNTU
+# Serveur: root@ubuntu-4gb-fsn1-13:/opt/yukpo#
+# ============================================
+
+# ============================================
+# ÉTAPE 1: Diagnostic
+# ============================================
+
+cd /opt/yukpo/backend
+chmod +x diagnose-sqlx-ubuntu.sh
+./diagnose-sqlx-ubuntu.sh
+
+# ============================================
+# ÉTAPE 2: Régénération complète du cache
+# ============================================
+
+cd /opt/yukpo/backend
+chmod +x fix-sqlx-complete-ubuntu.sh
+./fix-sqlx-complete-ubuntu.sh
+
+# OU commandes manuelles :
+
+cd /opt/yukpo/backend
+export DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+export SQLX_OFFLINE=false
+rm -rf .sqlx
+cargo sqlx prepare --workspace
+cargo sqlx prepare --all
+cargo sqlx prepare --all-features --all || true
+cargo sqlx prepare -- --lib
+
+# ============================================
+# ÉTAPE 3: Vérification
+# ============================================
+
+cd /opt/yukpo/backend
+find .sqlx -type f | wc -l
+export SQLX_OFFLINE=true
+cargo check --lib
+
+# ============================================
+# ÉTAPE 4: Committer le cache (IMPORTANT)
+# ============================================
+
+cd /opt/yukpo
+git add backend/.sqlx
+git commit -m "Fix SQLx cache - $(find backend/.sqlx -type f | wc -l) fichiers"
+
+# ============================================
+# ÉTAPE 5: Rebuild Docker
+# ============================================
+
+cd /opt/yukpo/backend
+docker build -f Dockerfile -t yukpo-backend:latest .
+
+# ============================================
+# SI LE PROBLÈME PERSISTE
+# ============================================
+
+# Vérifier que le cache est dans Git :
+cd /opt/yukpo
+git ls-files backend/.sqlx | wc -l
+# Doit être > 200
+
+# Vérifier les logs Docker pour voir si le cache est copié :
+cd /opt/yukpo/backend
+docker build -f Dockerfile -t yukpo-backend:test . 2>&1 | grep -A 5 "COPY .sqlx"
+docker build -f Dockerfile -t yukpo-backend:test . 2>&1 | grep "Nombre de fichiers"
+docker build -f Dockerfile -t yukpo-backend:test . 2>&1 | grep "SQLX_OFFLINE"
+
+

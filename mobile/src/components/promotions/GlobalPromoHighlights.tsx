@@ -2,6 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import useGlobalPromos from '../../hooks/useGlobalPromos';
 import { modernColors } from '../../theme/modernTheme';
 import { NativeButton, NativeCard } from '../NativeDesign';
@@ -32,13 +33,17 @@ const formatPrice = (value?: number | null) => {
 const GlobalPromoHighlights: React.FC = () => {
     const navigation = useNavigation<any>();
     const { catalog, loading, error, refresh } = useGlobalPromos();
-    const { isEnabled } = require('../../contexts/FeatureFlagContext') as typeof import('../../contexts/FeatureFlagContext');
+    const { isEnabled } = useFeatureFlags();
 
-    if (!isEnabled('global_promos')) {
-        return null;
-    }
+    // ✅ CORRIGÉ: Toujours afficher les promotions (le flag est activé par défaut)
+    // if (!isEnabled('global_promos')) {
+    //     return null;
+    // }
 
-    if (error && !catalog.length) {
+    // Sécurité: s'assurer que catalog est toujours un tableau
+    const safeCatalog = Array.isArray(catalog) ? catalog : [];
+
+    if (error && !safeCatalog.length) {
         return (
             <NativeCard style={styles.card}>
                 <Text style={styles.title}>🔥 Black Friday collectif</Text>
@@ -48,7 +53,7 @@ const GlobalPromoHighlights: React.FC = () => {
         );
     }
 
-    if (!catalog.length && !loading) {
+    if (!safeCatalog.length && !loading) {
         return null;
     }
 
@@ -81,7 +86,7 @@ const GlobalPromoHighlights: React.FC = () => {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.carousel}
             >
-                {catalog.map((item) => {
+                {safeCatalog.map((item) => {
                     const snapshot = item.product?.snapshot ?? {};
                     const imageUri = getSnapshotImage(snapshot);
                     const title =

@@ -945,7 +945,13 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     const labelOrder = useMemo(() => determineLabelOrder(vectorParts, sousCaracteristiques), [vectorParts, sousCaracteristiques]);
 
-    const chips = displayValue ? parseVectorToChips(displayValue, labelOrder) : [];
+    // ✅ CORRECTION: Utiliser useMemo pour que chips se mette à jour quand value change
+    const chips = useMemo(() => {
+        if (!displayValue || typeof displayValue !== 'string') {
+            return [];
+        }
+        return parseVectorToChips(displayValue, labelOrder);
+    }, [displayValue, labelOrder]);
 
     const fetchSuggestionsForQuery = useCallback(
         async (

@@ -2051,7 +2051,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                             />
                                         </View>
                                         <Text style={[styles.sectionSubtitle, { marginTop: 8 }]}>
-                                            Ciblez aussi des canaux externes à planifier (export automatique en développement) :
+                                            Ciblez aussi des canaux externes à planifier (export automatique disponible) :
                                         </Text>
                                         <View style={styles.voiceRow}>
                                             {DISTRIBUTION_OPTIONS.map((option) => {

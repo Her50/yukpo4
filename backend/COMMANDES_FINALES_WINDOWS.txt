@@ -1,0 +1,42 @@
+# Commandes Finales à Exécuter sur Windows
+
+# ============================================
+# ÉTAPE 1 : Vérifier que le cache est complet
+# ============================================
+
+cd C:\Users\23767\yukpomnang2\backend
+
+# Compter les fichiers locaux
+(Get-ChildItem -Path .sqlx -Recurse -File | Measure-Object).Count
+# Doit afficher: 212
+
+# ============================================
+# ÉTAPE 2 : Ajouter tous les fichiers à Git
+# ============================================
+
+cd C:\Users\23767\yukpomnang2
+
+# Ajouter tous les fichiers .sqlx (y compris le nouveau)
+git add backend/.sqlx/
+
+# Vérifier les changements
+git status backend/.sqlx --short
+
+# ============================================
+# ÉTAPE 3 : Commit et Push
+# ============================================
+
+# Commiter
+git commit -m "chore: update sqlx cache - add missing file (212 files total)"
+
+# Push
+git push
+
+# ============================================
+# ÉTAPE 4 : Vérifier après Push
+# ============================================
+
+# Compter les fichiers dans Git après push
+git ls-files backend/.sqlx | Measure-Object | Select-Object -ExpandProperty Count
+# Doit afficher: 212
+

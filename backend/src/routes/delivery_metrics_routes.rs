@@ -34,7 +34,8 @@ async fn delivery_metrics_handler(State(state): State<Arc<AppState>>) -> Respons
     .fetch_one(&state.pg)
     .await
     {
-        Ok(count) => count,
+        Ok(Some(count)) => count,
+        Ok(None) => 0,
         Err(err) => {
             log::warn!(
                 "[DeliveryMetrics] Impossible de récupérer la profondeur de file: {err:?}"

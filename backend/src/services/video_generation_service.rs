@@ -994,19 +994,6 @@ pub async fn generate_product_video(
                 payload.style_color_palette.as_deref(),
             );
 
-            if let Some(ref music_track_path) = music_track {
-                if let Err(err) = crate::services::audio_analysis_service::inject_synthetic_beats_for_timeline(
-                    music_track_path,
-                    &mut timeline,
-                )
-                .await
-                {
-                    warn!("[VideoGeneration] Injection des beats synthétiques échouée: {err}");
-                    orchestration_warnings
-                        .push(format!("audio_beat_analysis_failed: {err}"));
-                }
-            }
-
             immersive_timeline = Some(timeline);
 
             let sfx_root = Path::new("assets/sfx");
@@ -1152,6 +1139,19 @@ pub async fn generate_product_video(
         .await
         .ok()
     };
+
+    // Injecte les beats synthétiques dans la timeline immersive si un track musical est disponible
+    if let (Some(ref music_track_path), Some(ref mut timeline)) = (music_track.as_ref(), &mut immersive_timeline) {
+        if let Err(err) = crate::services::audio_analysis_service::inject_synthetic_beats_for_timeline(
+            music_track_path,
+            timeline,
+        )
+        .await
+        {
+            warn!("[VideoGeneration] Injection des beats synthétiques échouée: {err}");
+            orchestration_warnings.push(format!("audio_beat_analysis_failed: {err}"));
+        }
+    }
 
     let voiceover_track = if let Some(script) = voiceover_script_opt.clone() {
         let trimmed = script.trim().to_string();

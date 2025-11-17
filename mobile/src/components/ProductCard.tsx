@@ -576,16 +576,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
   ];
   const compactTopStats = topStatsData.filter((stat) => (stat.value ?? 0) > 0).slice(0, 3);
 
-  // ✅ AMÉLIORATION: Utiliser onChatPress si fourni, sinon modal local
+  // ✅ CORRIGÉ: Toujours ouvrir le modal, même si onChatPress est défini
   const handleChatPress = () => {
+    // Appeler onChatPress si fourni (pour compatibilité)
     if (onChatPress) {
       onChatPress();
+    }
+
+    // Vérifier que prestataireUserId est défini avant d'ouvrir le modal
+    if (!prestataireUserId) {
+      Alert.alert('Information manquante', 'Impossible d\'ouvrir le chat : informations du prestataire manquantes.');
       return;
     }
 
+    // Toujours ouvrir le modal local
     setChatContext({
       type: 'service',
-      targetUserId: prestataire.user_id ? Number(prestataire.user_id) : undefined,
+      targetUserId: prestataireUserId ? Number(prestataireUserId) : undefined,
       targetUserName: prestataire.nom,
       targetAvatar: prestataire.avatar_url || null,
     });
@@ -1172,8 +1179,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </NativeCard>
       </LinearGradient>
 
-      {/* ✅ CORRIGÉ: Modal Chat avec props correctes */}
-      {showChatModal && !onChatPress && activeChatPeer?.user_id && (
+      {/* ✅ CORRIGÉ: Modal Chat avec props correctes - Toujours afficher si showChatModal est true */}
+      {showChatModal && (activeChatPeer?.user_id || prestataireUserId) && (
         <ChatModalMobile
           visible={showChatModal}
           onClose={handleCloseChatModal}
@@ -1181,7 +1188,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             id: product.service_id,
             data: { titre_service: { valeur: product.nom } }
           }}
-          prestataireInfo={activeChatPeer}
+          prestataireInfo={activeChatPeer || prestataire}
           user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
           conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
           isPrivateConversation={isPrivateChat}

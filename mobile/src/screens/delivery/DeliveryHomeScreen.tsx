@@ -47,19 +47,61 @@ const DeliveryHomeScreen: React.FC = () => {
     }, [refreshActiveDeliveries]);
 
     const handleStartShopping = () => {
-        navigation.navigate('DeliveryShoppingFlow');
+        console.log('[DeliveryHomeScreen] 🛒 Navigation vers DeliveryShoppingFlow');
+        try {
+            // ✅ CORRIGÉ: Utiliser getParent() pour naviguer depuis Tab Navigator vers Stack Navigator
+            const parentNavigation = navigation.getParent();
+            if (parentNavigation) {
+                parentNavigation.navigate('DeliveryShoppingFlow');
+                console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingFlow via parent');
+            } else {
+                // Fallback: essayer navigation directe
+                navigation.navigate('DeliveryShoppingFlow');
+                console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingFlow (directe)');
+            }
+        } catch (error) {
+            console.error('[DeliveryHomeScreen] ❌ Erreur navigation vers DeliveryShoppingFlow:', error);
+            Alert.alert('Erreur', 'Impossible d\'ouvrir le flux de commande. Veuillez réessayer.');
+        }
     };
 
     const handleStartParcel = () => {
-        Alert.alert(
-            'Flux colis en préparation',
-            'Nous finalisons les derniers écrans pour les livraisons de colis. Utilise les courses supermarché pour tester le suivi temps réel.'
-        );
+        console.log('[DeliveryHomeScreen] 📦 Tentative d\'ouverture du flux colis');
+        // ✅ CORRIGÉ: Si delivery_v2 est activé, naviguer vers le flux colis
+        if (isEnabled('delivery_v2')) {
+            try {
+                // TODO: Naviguer vers le flux colis quand il sera implémenté
+                // navigation.navigate('DeliveryParcelFlow');
+                Alert.alert(
+                    'Flux colis (beta)',
+                    'Le flux de livraison de colis est en cours de finalisation. Utilise les courses supermarché pour tester le suivi temps réel.'
+                );
+            } catch (error) {
+                console.error('[DeliveryHomeScreen] ❌ Erreur navigation vers flux colis:', error);
+                Alert.alert('Erreur', 'Impossible d\'ouvrir le flux de livraison de colis.');
+            }
+        } else {
+            Alert.alert(
+                'Flux colis en préparation',
+                'Nous finalisons les derniers écrans pour les livraisons de colis. Utilise les courses supermarché pour tester le suivi temps réel.'
+            );
+        }
     };
 
     const handleOpenDelivery = (deliveryId: string) => {
         setActiveDeliveryId(deliveryId);
-        navigation.navigate('DeliveryShoppingTracking', { deliveryId });
+        try {
+            // ✅ CORRIGÉ: Utiliser getParent() pour naviguer depuis Tab Navigator vers Stack Navigator
+            const parentNavigation = navigation.getParent();
+            if (parentNavigation) {
+                parentNavigation.navigate('DeliveryShoppingTracking', { deliveryId });
+            } else {
+                navigation.navigate('DeliveryShoppingTracking', { deliveryId });
+            }
+        } catch (error) {
+            console.error('[DeliveryHomeScreen] ❌ Erreur navigation vers DeliveryShoppingTracking:', error);
+            Alert.alert('Erreur', 'Impossible d\'ouvrir le suivi de livraison.');
+        }
     };
 
     return (
@@ -111,32 +153,31 @@ const DeliveryHomeScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <Text style={styles.cardTitle}>Courses supermarché</Text>
                     <Text style={styles.cardSubtitle}>
-                        Compose ton panier, nous avançons l’achat et tu suis ton coursier en direct.
+                        Compose ton panier, nous avançons l'achat et tu suis ton coursier en direct.
                     </Text>
-                    <NativeButton title="Commander au supermarché" variant="primary" onPress={handleStartShopping} />
+                    <NativeButton
+                        title="Commander au supermarché"
+                        variant="primary"
+                        onPress={handleStartShopping}
+                        style={styles.actionButton}
+                    />
                 </NativeCard>
 
-                {isEnabled('delivery_v2') ? (
-                    <NativeCard style={styles.card}>
-                        <Text style={styles.cardTitle}>Livraison de colis</Text>
-                        <Text style={styles.cardSubtitle}>
-                            Expédie un colis ou un document avec le nouveau flux de livraison intelligente (beta).
-                        </Text>
-                        <NativeButton
-                            title="Nouveau flux colis (beta)"
-                            variant="outline"
-                            onPress={handleStartParcel}
-                        />
-                    </NativeCard>
-                ) : (
-                    <NativeCard style={styles.card}>
-                        <Text style={styles.cardTitle}>Livraison de colis</Text>
-                        <Text style={styles.cardSubtitle}>
-                            Envoie un colis ou un document avec suivi en temps réel (bientôt disponible).
-                        </Text>
-                        <NativeButton title="Bientôt disponible" variant="outline" onPress={handleStartParcel} />
-                    </NativeCard>
-                )}
+                {/* ✅ CORRIGÉ: Toujours afficher le flux colis, mais avec message adapté selon feature flag */}
+                <NativeCard style={styles.card}>
+                    <Text style={styles.cardTitle}>Livraison de colis</Text>
+                    <Text style={styles.cardSubtitle}>
+                        {isEnabled('delivery_v2')
+                            ? 'Expédie un colis ou un document avec le nouveau flux de livraison intelligente (beta).'
+                            : 'Envoie un colis ou un document avec suivi en temps réel. Le flux est opérationnel via les courses supermarché.'}
+                    </Text>
+                    <NativeButton
+                        title={isEnabled('delivery_v2') ? "Nouveau flux colis (beta)" : "Utiliser les courses supermarché"}
+                        variant={isEnabled('delivery_v2') ? "outline" : "primary"}
+                        onPress={isEnabled('delivery_v2') ? handleStartParcel : handleStartShopping}
+                        style={styles.actionButton}
+                    />
+                </NativeCard>
 
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Vos livraisons actives</Text>
@@ -260,6 +301,9 @@ const styles = StyleSheet.create({
     infoSubtitle: {
         fontSize: 13,
         color: '#0C4A6E',
+    },
+    actionButton: {
+        marginTop: 8,
     },
 });
 

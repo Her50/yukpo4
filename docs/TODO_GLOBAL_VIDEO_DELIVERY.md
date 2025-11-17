@@ -93,3 +93,4 @@
   - Coupleur ces tests avec les endpoints `/internal/metrics/pipeline` et `/metrics/delivery` pour vérifier les métriques clés (latence preview/rendu, erreurs).
 
 
+

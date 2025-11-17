@@ -210,12 +210,26 @@ const ProductDetailScreen: React.FC = () => {
                     <NativeButton
                         title="🎬 Créer une vidéo immersive"
                         onPress={() => {
-                            navigation.navigate('VideoCreationIntro' as never, {
-                                serviceId,
-                                productId,
-                                productIndex: product?._productIndex ?? 0,
-                                productName: product?.nom || product?.name || product?.title,
-                            } as never);
+                            console.log('[ProductDetailScreen] 🎬 Navigation vers VideoCreationIntro');
+                            try {
+                                const parentNavigation = (navigation as any).getParent();
+                                const params = {
+                                    serviceId,
+                                    productId,
+                                    productIndex: product?._productIndex ?? 0,
+                                    productName: product?.nom || product?.name || product?.title,
+                                };
+                                if (parentNavigation) {
+                                    parentNavigation.navigate('VideoCreationIntro', params);
+                                    console.log('[ProductDetailScreen] ✅ Navigation réussie via parent');
+                                } else {
+                                    navigation.navigate('VideoCreationIntro' as never, params as never);
+                                    console.log('[ProductDetailScreen] ✅ Navigation réussie (directe)');
+                                }
+                            } catch (error) {
+                                console.error('[ProductDetailScreen] ❌ Erreur navigation vers VideoCreationIntro:', error);
+                                Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');
+                            }
                         }}
                         variant="primary"
                         size="large"

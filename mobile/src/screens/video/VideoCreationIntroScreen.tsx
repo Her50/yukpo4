@@ -65,11 +65,41 @@ const VideoCreationIntroScreen: React.FC = () => {
     });
 
     const handleStart = () => {
-        navigation.navigate('VideoCreationWizard' as never, params as never);
+        console.log('[VideoCreationIntroScreen] 🎬 Navigation vers VideoCreationWizard', params);
+        try {
+            // ✅ CORRIGÉ: Utiliser getParent() pour naviguer depuis Tab Navigator vers Stack Navigator
+            const parentNavigation = (navigation as any).getParent();
+            if (parentNavigation) {
+                parentNavigation.navigate('VideoCreationWizard', params);
+                console.log('[VideoCreationIntroScreen] ✅ Navigation réussie via parent');
+            } else {
+                navigation.navigate('VideoCreationWizard' as never, params as never);
+                console.log('[VideoCreationIntroScreen] ✅ Navigation réussie (directe)');
+            }
+        } catch (error) {
+            console.error('[VideoCreationIntroScreen] ❌ Erreur navigation vers VideoCreationWizard:', error);
+            // Fallback: essayer navigation directe
+            try {
+                navigation.navigate('VideoCreationWizard' as never, params as never);
+            } catch (fallbackError) {
+                console.error('[VideoCreationIntroScreen] ❌ Erreur navigation fallback:', fallbackError);
+            }
+        }
     };
 
     const handleShowExample = () => {
-        navigation.navigate('VideoFeed' as never);
+        console.log('[VideoCreationIntroScreen] 📺 Navigation vers VideoFeed');
+        try {
+            const parentNavigation = (navigation as any).getParent();
+            if (parentNavigation) {
+                parentNavigation.navigate('VideoFeed');
+            } else {
+                navigation.navigate('VideoFeed' as never);
+            }
+        } catch (error) {
+            console.error('[VideoCreationIntroScreen] ❌ Erreur navigation vers VideoFeed:', error);
+            navigation.navigate('VideoFeed' as never);
+        }
     };
 
     return (

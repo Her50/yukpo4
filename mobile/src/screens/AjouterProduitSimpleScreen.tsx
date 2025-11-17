@@ -63,6 +63,39 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         return field;
     };
 
+    // ✅ FONCTION HELPER: Extraire devise depuis variante de prix (DOIT être définie avant utilisation)
+    const getCurrencyFromVariant = (variant: any): string | undefined => {
+        if (!variant) {
+            return undefined;
+        }
+
+        const modalitesSource = Array.isArray(variant?.modalites)
+            ? variant.modalites
+            : Array.isArray(variant)
+                ? variant
+                : Array.isArray(variant?.valeur?.modalites)
+                    ? variant.valeur.modalites
+                    : [];
+
+        for (const entry of modalitesSource) {
+            if (!entry || typeof entry !== 'object') {
+                continue;
+            }
+
+            const currencyRaw = typeof entry.devise === 'string' && entry.devise.trim().length > 0
+                ? entry.devise.trim()
+                : typeof entry.currency === 'string' && entry.currency.trim().length > 0
+                    ? entry.currency.trim()
+                    : undefined;
+
+            if (currencyRaw) {
+                return currencyRaw.toUpperCase();
+            }
+        }
+
+        return undefined;
+    };
+
     // ✅ Extraire données depuis suggestionIA avec fallbacks intelligents (IDENTIQUE AU GRAND FORMULAIRE)
     const suggestionData = suggestionIA?.data || suggestionIA || {};
 
@@ -184,10 +217,29 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         extractPriceVariant(prefill.produits);
 
     // ✅ Caractéristiques autocomplete (avec sous_caracteristiques)
-    const produits = extractValue(suggestionData.produits) || [];
-    const suggestionProduits = normalizeToStringArray(produits);
-    const prefillProduits = normalizeToStringArray(prefill.produits);
-    const sous_caracteristiques = suggestionData.produits?.sous_caracteristiques || null;
+    // ✅ CORRECTION: Extraire produits correctement même si c'est un objet avec valeur
+    let produits = null;
+    if (suggestionData.produits) {
+        if (typeof suggestionData.produits === 'object' && 'valeur' in suggestionData.produits) {
+            produits = suggestionData.produits.valeur;
+        } else {
+            produits = suggestionData.produits;
+        }
+    }
+    const suggestionProduits = normalizeToStringArray(produits || []);
+
+    // ✅ CORRECTION: Extraire prefill.produits correctement même si c'est un objet avec valeur
+    let prefillProduitsValue = null;
+    if (prefill.produits) {
+        if (typeof prefill.produits === 'object' && 'valeur' in prefill.produits) {
+            prefillProduitsValue = prefill.produits.valeur;
+        } else {
+            prefillProduitsValue = prefill.produits;
+        }
+    }
+    const prefillProduits = normalizeToStringArray(prefillProduitsValue || []);
+
+    const sous_caracteristiques = suggestionData.produits?.sous_caracteristiques || prefill.sous_caracteristiques || null;
 
     // ✅ Lieu produit
     const lieu_produit = extractValue(suggestionData.lieu_produit) || extractValue(suggestionData.lieu_commercial) || extractValue(suggestionData.lieu_commercialisation) || null;
@@ -227,6 +279,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         devise_produit: initialCurrency,
         variabilite_prix: initialPriceVariant,
         price_variant: initialPriceVariant,
+        // ✅ CORRECTION: S'assurer que produits est toujours un tableau de strings pour LinearAutocompleteEditor
         produits: prefillProduits.length > 0 ? prefillProduits : suggestionProduits,
         sous_caracteristiques: prefill.sous_caracteristiques ?? sous_caracteristiques,
         lieu_produit: prefill.lieu_produit ?? lieu_produit,
@@ -302,38 +355,6 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const submitLabel = loading
         ? (isEditing ? '⏳ Mise à jour...' : isDuplicate ? '⏳ Duplication...' : '⏳ Ajout en cours...')
         : (isEditing ? 'Enregistrer les modifications' : isDuplicate ? 'Dupliquer le produit' : 'Ajouter le produit');
-
-    const getCurrencyFromVariant = (variant: any): string | undefined => {
-        if (!variant) {
-            return undefined;
-        }
-
-        const modalitesSource = Array.isArray(variant?.modalites)
-            ? variant.modalites
-            : Array.isArray(variant)
-                ? variant
-                : Array.isArray(variant?.valeur?.modalites)
-                    ? variant.valeur.modalites
-                    : [];
-
-        for (const entry of modalitesSource) {
-            if (!entry || typeof entry !== 'object') {
-                continue;
-            }
-
-            const currencyRaw = typeof entry.devise === 'string' && entry.devise.trim().length > 0
-                ? entry.devise.trim()
-                : typeof entry.currency === 'string' && entry.currency.trim().length > 0
-                    ? entry.currency.trim()
-                    : undefined;
-
-            if (currencyRaw) {
-                return currencyRaw.toUpperCase();
-            }
-        }
-
-        return undefined;
-    };
 
     // Gérer changement de champ
     const handleFieldChange = (fieldName: string, value: any) => {

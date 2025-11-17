@@ -143,3 +143,4 @@ scrape_configs:
   - Configurer les alertes sur les panels critiques (latence vidéo, latence matching, erreurs WS, queue depth).
 
 
+

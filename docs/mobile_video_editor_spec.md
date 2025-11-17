@@ -73,3 +73,4 @@ Fournir un wizard de montage vidéo **mobile‑first** dans l’app Expo Yukpo, 
 4. Affiner ensuite avec : types de scène, effets, durées plus fines, et intégration avec analytics (temps de tâche utilisateur, taux d’utilisation de l’éditeur).
 
 
+

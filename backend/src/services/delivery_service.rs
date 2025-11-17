@@ -15,6 +15,7 @@ use crate::{
             NewTrackingPoint, ShoppingEstimateItem, ShoppingEstimateResult, WalletEventDirection,
         },
         phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
+        push_notification_service,
     },
     websocket::delivery_tracking::{DeliveryTrackingManager, DeliveryWsEvent},
 };
@@ -33,6 +34,33 @@ use std::sync::{
 };
 use std::{cmp::Ordering as CmpOrdering, env};
 use uuid::Uuid;
+
+/// ✅ RECOMMANDATION 2: Calculer la distance entre deux points GPS (formule de Haversine)
+fn haversine_distance(pos1: (f64, f64), pos2: (f64, f64)) -> f64 {
+    const EARTH_RADIUS_KM: f64 = 6371.0;
+    let (lat1, lon1) = (pos1.0.to_radians(), pos1.1.to_radians());
+    let (lat2, lon2) = (pos2.0.to_radians(), pos2.1.to_radians());
+
+    let dlat = lat2 - lat1;
+    let dlon = lon2 - lon1;
+
+    let a = (dlat / 2.0).sin().powi(2)
+        + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
+    let c = 2.0 * a.sqrt().asin();
+
+    EARTH_RADIUS_KM * c * 1000.0 // Retourne en mètres
+}
+
+// Extension trait pour to_radians si nécessaire
+trait ToRadians {
+    fn to_radians(self) -> f64;
+}
+
+impl ToRadians for f64 {
+    fn to_radians(self) -> f64 {
+        self * std::f64::consts::PI / 180.0
+    }
+}
 
 /// Paramètres pour créer une demande de livraison
 #[derive(Debug, Clone)]
@@ -1832,7 +1860,150 @@ impl DeliveryService {
         self.broadcast_status_update(delivery_id, status, cancel_reason)
             .await;
 
+        // ✅ RECOMMANDATION 1: Envoyer notification push au créateur et au destinataire
+        self.send_delivery_status_notifications(delivery_id, status, cancel_reason)
+            .await;
+
         Ok(())
+    }
+
+    /// ✅ RECOMMANDATION 1: Envoyer des notifications push pour les changements de statut importants
+    async fn send_delivery_status_notifications(
+        &self,
+        delivery_id: Uuid,
+        status: DeliveryStatus,
+        cancel_reason: Option<DeliveryCancelReason>,
+    ) {
+        // Récupérer les informations de la livraison
+        let summary = match self.get_delivery_summary(delivery_id).await {
+            Ok(s) => s,
+            Err(e) => {
+                log::warn!(
+                    "[DeliveryService] Impossible de récupérer la livraison pour notifications: {}",
+                    e
+                );
+                return;
+            }
+        };
+
+        // Déterminer le message selon le statut
+        let (title, body) = match status {
+            DeliveryStatus::Accepted => (
+                "📦 Coursier assigné",
+                format!(
+                    "Un coursier a été assigné à votre livraison #{}",
+                    delivery_id.to_string()[..8].to_uppercase()
+                ),
+            ),
+            DeliveryStatus::EnRoutePickup => (
+                "🚚 Coursier en route",
+                format!(
+                    "Le coursier est en route vers le point de collecte pour la livraison #{}",
+                    delivery_id.to_string()[..8].to_uppercase()
+                ),
+            ),
+            DeliveryStatus::PickedUp => (
+                "✅ Colis récupéré",
+                format!(
+                    "Le coursier a récupéré votre colis. Livraison #{}",
+                    delivery_id.to_string()[..8].to_uppercase()
+                ),
+            ),
+            DeliveryStatus::EnRouteDelivery => (
+                "🚚 En route vers vous",
+                format!(
+                    "Le coursier est en route vers vous. Livraison #{}",
+                    delivery_id.to_string()[..8].to_uppercase()
+                ),
+            ),
+            DeliveryStatus::ArrivalDestination => (
+                "📍 Arrivé dans votre quartier",
+                format!(
+                    "Le coursier arrive dans votre quartier. Livraison #{}",
+                    delivery_id.to_string()[..8].to_uppercase()
+                ),
+            ),
+            DeliveryStatus::Delivered => (
+                "✅ Livraison effectuée",
+                format!(
+                    "Votre livraison #{} a été livrée avec succès !",
+                    delivery_id.to_string()[..8].to_uppercase()
+                ),
+            ),
+            DeliveryStatus::Cancelled => {
+                let reason = match cancel_reason {
+                    Some(DeliveryCancelReason::ClientCancelled) => "annulée par le client",
+                    Some(DeliveryCancelReason::CourierCancelled) => "annulée par le coursier",
+                    Some(DeliveryCancelReason::SystemCancelled) => "annulée par le système",
+                    None => "annulée",
+                };
+                (
+                    "❌ Livraison annulée",
+                    format!(
+                        "La livraison #{} a été {}",
+                        delivery_id.to_string()[..8].to_uppercase(),
+                        reason
+                    ),
+                )
+            }
+            _ => return, // Ne pas envoyer de notification pour les autres statuts
+        };
+
+        let notification_data = json!({
+            "delivery_id": delivery_id.to_string(),
+            "status": format!("{:?}", status),
+            "type": "delivery_status_update"
+        });
+
+        // Envoyer au créateur (client qui a créé la livraison)
+        if let Some(creator_id) = summary.creator_id {
+            let pool = self.repository().pool();
+            let _ = push_notification_service::send_push_notification(
+                pool,
+                creator_id,
+                title.clone(),
+                body.clone(),
+                Some(notification_data.clone()),
+                Some("default".to_string()),
+            )
+            .await;
+        }
+
+        // Envoyer au destinataire (si différent du créateur et si enregistré)
+        if let Some(recipient) = &summary.recipient {
+            if let Some(recipient_id) = recipient.id {
+                // Ne pas envoyer si c'est le même utilisateur que le créateur
+                if Some(recipient_id) != summary.creator_id {
+                    let pool = self.repository().pool();
+                    let _ = push_notification_service::send_push_notification(
+                        pool,
+                        recipient_id,
+                        title.clone(),
+                        body.clone(),
+                        Some(notification_data.clone()),
+                        Some("default".to_string()),
+                    )
+                    .await;
+                }
+            }
+
+            // ✅ RECOMMANDATION 3: Envoyer SMS/Email pour les destinataires sans compte (lien dropoff)
+            // Si le destinataire n'a pas de compte (pas de recipient_id) mais a un téléphone/email
+            if recipient.id.is_none() {
+                let pool = self.repository().pool();
+                let delivery_id_str = delivery_id.to_string();
+                let status_str = format!("{:?}", status);
+                let _ = crate::services::delivery_notification_service::notify_delivery_status_change(
+                    pool,
+                    &delivery_id_str,
+                    &status_str,
+                    recipient.phone.as_deref(),
+                    recipient.email.as_deref(),
+                    recipient.contact_name.as_deref(),
+                )
+                .await;
+            }
+        }
     }
 
     /// Enregistre un point de tracking
@@ -1854,7 +2025,59 @@ impl DeliveryService {
 
         self.broadcast_location_update(&input).await;
 
+        // ✅ RECOMMANDATION 2: Détecter automatiquement la proximité avec pickup/dropoff
+        self.check_proximity_and_suggest_status_update(input).await;
+
         Ok(())
+    }
+
+    /// ✅ RECOMMANDATION 2: Détecter automatiquement quand le coursier est proche du pickup/dropoff
+    async fn check_proximity_and_suggest_status_update(&self, input: TrackingInput) {
+        const PROXIMITY_THRESHOLD_METERS: f64 = 50.0; // 50 mètres de rayon
+
+        // Récupérer les informations de la livraison
+        let summary = match self.get_delivery_summary(input.delivery_id).await {
+            Ok(s) => s,
+            Err(_) => return,
+        };
+
+        let courier_pos = (input.latitude, input.longitude);
+
+        // Vérifier la proximité avec le point de pickup
+        let pickup_pos = (summary.pickup.latitude, summary.pickup.longitude);
+        let distance_to_pickup = haversine_distance(courier_pos, pickup_pos);
+
+        // Vérifier la proximité avec le point de dropoff
+        let dropoff_pos = (summary.dropoff.latitude, summary.dropoff.longitude);
+        let distance_to_dropoff = haversine_distance(courier_pos, dropoff_pos);
+
+        // Vérifier si on doit suggérer un changement de statut
+        match summary.status {
+            DeliveryStatus::EnRoutePickup | DeliveryStatus::AwaitingCourierConfirmation => {
+                if distance_to_pickup <= PROXIMITY_THRESHOLD_METERS {
+                    log::info!(
+                        "[DeliveryService] 📍 Coursier proche du pickup ({}m) pour livraison {}",
+                        distance_to_pickup as i32,
+                        input.delivery_id
+                    );
+                    // Note: On pourrait créer un événement spécial "proximity_pickup" 
+                    // qui serait envoyé via WebSocket pour suggérer au coursier de changer le statut
+                    // Pour l'instant, on log juste l'information
+                }
+            }
+            DeliveryStatus::EnRouteDelivery | DeliveryStatus::PickedUp => {
+                if distance_to_dropoff <= PROXIMITY_THRESHOLD_METERS {
+                    log::info!(
+                        "[DeliveryService] 📍 Coursier proche du dropoff ({}m) pour livraison {}",
+                        distance_to_dropoff as i32,
+                        input.delivery_id
+                    );
+                    // Note: On pourrait créer un événement spécial "proximity_dropoff"
+                    // qui serait envoyé via WebSocket pour suggérer au coursier de changer le statut
+                }
+            }
+            _ => {}
+        }
     }
 
     /// Met à jour le pricing

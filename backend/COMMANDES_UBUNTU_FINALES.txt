@@ -1,0 +1,124 @@
+# Commandes Finales à Exécuter sur Ubuntu
+
+# ============================================
+# ÉTAPE 1 : Créer le script d'identification
+# ============================================
+
+cd /opt/yukpo/backend
+
+# Créer le script find-obsolete-sqlx-files.sh
+cat > find-obsolete-sqlx-files.sh << 'EOF'
+#!/bin/bash
+echo "=== Identification des fichiers .sqlx obsolètes dans Git ==="
+
+cd "$(dirname "$0")"
+
+export DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+export SQLX_OFFLINE=false
+
+echo "1. Liste des fichiers .sqlx dans Git..."
+git ls-files backend/.sqlx > git-sqlx-files.txt
+GIT_COUNT=$(wc -l < git-sqlx-files.txt | tr -d ' ')
+echo "   Fichiers dans Git: $GIT_COUNT"
+
+echo "2. Sauvegarde de l'ancien cache..."
+if [ -d ".sqlx" ]; then
+    mv .sqlx .sqlx.backup
+fi
+
+echo "3. Régénération complète du cache..."
+rm -rf .sqlx
+cargo sqlx prepare -- --lib > /dev/null 2>&1
+cargo sqlx prepare --workspace > /dev/null 2>&1
+
+echo "4. Liste des fichiers .sqlx générés..."
+find .sqlx -type f -name "*.json" | sed 's|^\.sqlx/||' | sort > newly-generated-sqlx-files.txt
+NEW_COUNT=$(wc -l < newly-generated-sqlx-files.txt | tr -d ' ')
+echo "   Fichiers générés: $NEW_COUNT"
+
+sed 's|^backend/\.sqlx/||' git-sqlx-files.txt | sort > git-sqlx-files-normalized.txt
+
+echo "5. Identification des fichiers obsolètes..."
+comm -23 git-sqlx-files-normalized.txt newly-generated-sqlx-files.txt > obsolete-files.txt
+OBSOLETE_COUNT=$(wc -l < obsolete-files.txt | tr -d ' ')
+echo "   Fichiers obsolètes dans Git: $OBSOLETE_COUNT"
+
+if [ "$OBSOLETE_COUNT" -gt 0 ]; then
+    echo ""
+    echo "=== Fichiers obsolètes (premiers 20) ==="
+    head -20 obsolete-files.txt
+fi
+
+comm -13 git-sqlx-files-normalized.txt newly-generated-sqlx-files.txt > missing-in-git.txt
+MISSING_COUNT=$(wc -l < missing-in-git.txt | tr -d ' ')
+echo ""
+echo "6. Fichiers manquants dans Git: $MISSING_COUNT"
+
+echo ""
+echo "=== Résumé ==="
+echo "Fichiers dans Git: $GIT_COUNT"
+echo "Fichiers générés: $NEW_COUNT"
+echo "Fichiers obsolètes: $OBSOLETE_COUNT"
+echo "Fichiers manquants: $MISSING_COUNT"
+
+if [ -d ".sqlx.backup" ]; then
+    rm -rf .sqlx
+    mv .sqlx.backup .sqlx
+fi
+
+echo ""
+echo "✅ Script terminé"
+echo "   - obsolete-files.txt : Liste des fichiers obsolètes"
+echo "   - missing-in-git.txt : Liste des fichiers manquants"
+EOF
+
+chmod +x find-obsolete-sqlx-files.sh
+
+# ============================================
+# ÉTAPE 2 : Exécuter le script
+# ============================================
+
+./find-obsolete-sqlx-files.sh
+
+# ============================================
+# ÉTAPE 3 : Vérifier les résultats
+# ============================================
+
+echo ""
+echo "=== Vérification ==="
+echo "Fichiers obsolètes:"
+wc -l obsolete-files.txt
+
+echo "Fichiers manquants:"
+wc -l missing-in-git.txt
+
+# ============================================
+# ÉTAPE 4 : Nettoyer et mettre à jour
+# ============================================
+
+cd /opt/yukpo
+
+# Supprimer les fichiers obsolètes
+cat backend/obsolete-files.txt | while read file; do
+    git rm "backend/.sqlx/$file" 2>/dev/null
+done
+
+# Ajouter les nouveaux fichiers générés
+git add backend/.sqlx/
+
+# Vérifier
+git status backend/.sqlx | head -20
+
+# Commiter
+git commit -m "chore: remove obsolete sqlx cache files and add missing ones"
+
+# Push
+git push
+
+# ============================================
+# ÉTAPE 5 : Build Docker
+# ============================================
+
+cd /opt/yukpo/backend
+docker build -f Dockerfile -t yukpo-backend:latest .
+

@@ -279,8 +279,8 @@ pub fn apply_style_hints_to_timeline(
     }
 
     for scene in &mut timeline.scenes {
-        if let Some(tt) = transition_hint {
-            scene.transition.r#type = tt;
+        if let Some(ref tt) = transition_hint {
+            scene.transition.r#type = tt.clone();
         }
 
         if grade_hint.is_some() || grade_intensity.is_some() {
@@ -291,11 +291,11 @@ pub fn apply_style_hints_to_timeline(
                     style: default_color_grade_style(),
                     intensity: default_color_grade_intensity(),
                 });
-            if let Some(style) = grade_hint {
-                grade.style = style;
+            if let Some(ref style) = grade_hint {
+                grade.style = style.clone();
             }
-            if let Some(intensity) = grade_intensity {
-                grade.intensity = intensity;
+            if let Some(ref intensity) = grade_intensity {
+                grade.intensity = intensity.clone();
             }
             scene.color_grade = Some(grade);
         }

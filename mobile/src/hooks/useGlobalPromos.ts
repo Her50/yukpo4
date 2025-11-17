@@ -13,10 +13,12 @@ export const useGlobalPromos = () => {
             setLoading(true);
             setError(null);
             const data = await fetchGlobalPromoCatalog();
-            setCatalog(data);
+            // Sécurité: s'assurer que data est toujours un tableau
+            setCatalog(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('[useGlobalPromos] Impossible de charger les promos globales', err);
             setError('Impossible de récupérer les promotions Black Friday.');
+            setCatalog([]); // Réinitialiser à un tableau vide en cas d'erreur
         } finally {
             setLoading(false);
         }

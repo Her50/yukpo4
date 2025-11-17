@@ -18,6 +18,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import useDeliveryTracking from '../../hooks/useDeliveryTracking';
+import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary } from '../../types/delivery';
 
@@ -57,6 +58,14 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
             pricing: summary?.pricing,
         };
     }, [delivery]);
+
+    // ✅ RECOMMANDATION 4: Vérifier si l'utilisateur actuel est le coursier
+    const isCurrentUserCourier = useMemo(() => {
+        if (!user?.id || !delivery?.courier?.id) {
+            return false;
+        }
+        return String(user.id) === String(delivery.courier.id);
+    }, [user?.id, delivery?.courier?.id]);
 
     const handleRefresh = async () => {
         if (!deliveryId) return;
@@ -111,6 +120,69 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         });
     };
 
+    // ✅ RECOMMANDATION 4: Fonctions pour changer le statut (pour le coursier)
+    const [updatingStatus, setUpdatingStatus] = useState(false);
+
+    const handleUpdateStatus = async (newStatus: string) => {
+        if (!deliveryId || updatingStatus) return;
+
+        setUpdatingStatus(true);
+        try {
+            const response = await deliveryApi.updateStatus(deliveryId, newStatus);
+            if (response.success) {
+                Alert.alert('Statut mis à jour', 'Le statut de la livraison a été mis à jour.');
+                await refresh({ force: true });
+            } else {
+                Alert.alert('Erreur', response.error ?? 'Impossible de mettre à jour le statut.');
+            }
+        } catch (error: any) {
+            console.error('[DeliveryShoppingTracking] Erreur mise à jour statut:', error);
+            Alert.alert('Erreur', error?.message ?? 'Impossible de mettre à jour le statut.');
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+
+    const getNextStatusOptions = (): Array<{ label: string; status: string; icon: string }> => {
+        const currentStatus = delivery?.status;
+        if (!currentStatus) return [];
+
+        switch (currentStatus) {
+            case 'assigned':
+            case 'awaiting_courier':
+                return [
+                    { label: 'Je pars vers le pickup', status: 'en_route_pickup', icon: '🚚' },
+                ];
+            case 'en_route_pickup':
+                return [
+                    { label: 'Je suis arrivé au pickup', status: 'shopping_pending', icon: '📍' },
+                ];
+            case 'shopping_pending':
+                return [
+                    { label: 'Courses en cours', status: 'shopping_in_progress', icon: '🛒' },
+                ];
+            case 'shopping_in_progress':
+                return [
+                    { label: 'Courses terminées', status: 'shopping_completed', icon: '✅' },
+                ];
+            case 'shopping_completed':
+            case 'picked_up':
+                return [
+                    { label: 'Colis récupéré, en route', status: 'en_route_delivery', icon: '🚚' },
+                ];
+            case 'en_route_delivery':
+                return [
+                    { label: 'Arrivé chez le client', status: 'arrival_destination', icon: '📍' },
+                ];
+            case 'arrival_destination':
+                return [
+                    { label: 'Livré', status: 'delivered', icon: '✅' },
+                ];
+            default:
+                return [];
+        }
+    };
+
     return (
         <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
             <ScrollView
@@ -136,6 +208,23 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                         ) : null}
                         <NativeButton title='Contacter' variant='outline' onPress={handleChat} />
                     </View>
+
+                    {/* ✅ RECOMMANDATION 4: Boutons de changement de statut pour le coursier */}
+                    {isCurrentUserCourier && (
+                        <View style={styles.courierActions}>
+                            <Text style={styles.courierActionsTitle}>Actions coursier</Text>
+                            {getNextStatusOptions().map((option) => (
+                                <NativeButton
+                                    key={option.status}
+                                    title={`${option.icon} ${option.label}`}
+                                    variant="primary"
+                                    onPress={() => handleUpdateStatus(option.status)}
+                                    disabled={updatingStatus}
+                                    style={styles.statusButton}
+                                />
+                            ))}
+                        </View>
+                    )}
                 </View>
 
                 <DeliveryTrackingMap
@@ -400,6 +489,24 @@ const styles = StyleSheet.create({
     separator: {
         height: 1,
         backgroundColor: modernColors.borderLight,
+    },
+    courierActions: {
+        backgroundColor: modernColors.surface,
+        borderRadius: 16,
+        padding: 16,
+        marginTop: 16,
+        gap: 12,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+    },
+    courierActionsTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    statusButton: {
+        marginTop: 4,
     },
 });
 

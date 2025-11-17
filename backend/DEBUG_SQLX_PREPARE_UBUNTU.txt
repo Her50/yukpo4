@@ -1,0 +1,60 @@
+# Commandes de Debug pour cargo sqlx prepare sur Ubuntu
+
+# ============================================
+# ÉTAPE 1 : Vérifier la connexion à la DB
+# ============================================
+
+cd /opt/yukpo/backend
+
+export DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+export SQLX_OFFLINE=false
+
+# Tester la connexion PostgreSQL
+psql "$DATABASE_URL" -c "SELECT version();" || echo "⚠️ psql n'est pas installé ou connexion échoue"
+
+# ============================================
+# ÉTAPE 2 : Vérifier les erreurs de cargo sqlx prepare
+# ============================================
+
+# Nettoyer le cache
+rm -rf .sqlx
+
+# Essayer de générer le cache avec verbose pour voir les erreurs
+echo "=== Génération du cache avec verbose ==="
+cargo sqlx prepare -- --lib 2>&1 | head -50
+
+echo ""
+echo "=== Génération du cache workspace ==="
+cargo sqlx prepare --workspace 2>&1 | head -50
+
+# ============================================
+# ÉTAPE 3 : Vérifier si cargo sqlx est installé
+# ============================================
+
+cargo sqlx --version
+
+# Si pas installé :
+# cargo install sqlx-cli --features postgres
+
+# ============================================
+# ÉTAPE 4 : Vérifier le nombre de requêtes sqlx::query!() dans le code
+# ============================================
+
+echo "=== Nombre de requêtes sqlx::query!() dans le code ==="
+grep -r "sqlx::query!" src/ | wc -l
+
+echo "=== Exemples de requêtes sqlx::query!() ==="
+grep -r "sqlx::query!" src/ | head -5
+
+# ============================================
+# ÉTAPE 5 : Vérifier si le cache local Windows existe
+# ============================================
+
+# Si le cache local Windows existe, on peut le copier depuis Git
+echo "=== Vérifier les fichiers dans Git ==="
+cd /opt/yukpo
+git ls-files backend/.sqlx | head -10
+
+# Vérifier si ces fichiers existent vraiment dans Git
+ls -la backend/.sqlx/*.json 2>/dev/null | head -10 || echo "⚠️ Aucun fichier .json dans backend/.sqlx"
+

@@ -74,7 +74,9 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
 
     const isEnabled = (flag: string) => {
         const key = flag.toLowerCase();
-        return !!flags[key];
+        // ✅ CORRIGÉ: Par défaut, tous les flags sont activés (true) pour que tout soit opérationnel
+        // Si le flag n'existe pas dans les flags, on retourne true par défaut
+        return flags[key] !== undefined ? !!flags[key] : true;
     };
 
     return (

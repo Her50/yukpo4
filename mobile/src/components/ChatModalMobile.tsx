@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -55,6 +56,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     conversationId: privateConversationId,
     isPrivateConversation = false
 }) => {
+    const navigation = useNavigation();
     const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -945,6 +947,17 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 }}
                             >
                                 <SafeIcon name="video" size={20} color={modernColors.primary} />
+                            </TouchableOpacity>
+
+                            {/* ✅ NOUVEAU: Avatar véhicule pour livraison intelligente */}
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.deliveryVehicleButton]}
+                                onPress={() => {
+                                    // Navigation vers le flux de livraison
+                                    (navigation as any).navigate('DeliveryShoppingFlow');
+                                }}
+                            >
+                                <Text style={styles.deliveryVehicleIcon}>🚚</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -2286,6 +2299,15 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '500',
         color: modernColors.textSecondary,
+    },
+    // ✅ NOUVEAU: Styles pour avatar véhicule livraison
+    deliveryVehicleButton: {
+        backgroundColor: modernColors.warning + '20',
+        borderWidth: 1,
+        borderColor: modernColors.warning,
+    },
+    deliveryVehicleIcon: {
+        fontSize: 20,
     },
 });
 

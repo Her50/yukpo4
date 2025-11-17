@@ -158,3 +158,4 @@ Pour chaque scénario et plateforme:
   - Les overlays/stickers promo/livraison/prix apparaissent automatiquement au bon moment, réduisant le besoin de micro‑édition manuelle par rapport aux concurrents.
 
 
+

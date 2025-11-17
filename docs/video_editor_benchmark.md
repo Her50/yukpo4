@@ -61,3 +61,4 @@ Pour chaque plateforme, mesurer :
 - Bloc 0.6 : IA assistive qui exploite au maximum les spécificités Yukpo (données services/delivery/promo).
 
 
+

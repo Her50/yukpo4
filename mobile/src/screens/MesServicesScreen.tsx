@@ -60,40 +60,131 @@ const MesServicesScreen: React.FC = () => {
         success: response.success
       });
 
-      if (response.success && response.data) {
-        const data = response.data;
-        console.log('[MesServicesScreen] 📦 Services reçus:', Array.isArray(data) ? data.length : 'pas un array');
+      // ✅ CORRECTION: L'API retourne directement un tableau, apiGet l'enveloppe dans { success: true, data: [...] }
+      if (response.success) {
+        let data = response.data;
 
-        // Trier les services du plus récent au plus ancien
-        const servicesTries = Array.isArray(data) ? data.sort((a: any, b: any) => {
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        }) : [];
+        // Si data est directement un tableau, l'utiliser
+        // Sinon, vérifier si c'est dans une structure imbriquée
+        if (!Array.isArray(data)) {
+          // Essayer de trouver le tableau dans différentes structures possibles
+          if (data && typeof data === 'object') {
+            if (Array.isArray(data.data)) {
+              data = data.data;
+            } else if (Array.isArray(data.services)) {
+              data = data.services;
+            } else if (Array.isArray(data.items)) {
+              data = data.items;
+            }
+          }
+        }
 
-        // Transformer les données pour correspondre à notre interface
-        const transformedServices = servicesTries.map((service: any) => ({
-          id: service.id.toString(),
-          title: service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.titre || 'Service sans titre',
-          description: service.data?.description?.valeur || service.description || 'Aucune description',
-          status: service.is_active !== undefined ? (service.is_active ? 'active' : 'inactive') :
-            service.actif !== undefined ? (service.actif ? 'active' : 'inactive') : 'inactive',
-          createdAt: service.created_at,
-          views: service.views || 0,
-          interactions: service.interactions || 0,
-          data: service.data,
-          ...service
-        }));
-        console.log('[MesServicesScreen] ✅ Services transformés:', transformedServices.length);
-        setServices(transformedServices);
+        console.log('[MesServicesScreen] 📦 Services reçus:', {
+          isArray: Array.isArray(data),
+          count: Array.isArray(data) ? data.length : 0,
+          type: typeof data,
+          sample: Array.isArray(data) && data.length > 0 ? data[0] : null
+        });
+
+        // ✅ CORRECTION IMPORTANTE: Extraire les PRODUITS depuis les services, pas les services eux-mêmes
+        const allProducts: Service[] = [];
+
+        if (Array.isArray(data)) {
+          data.forEach((service: any) => {
+            const serviceId = service.id?.toString() || String(service.id) || '';
+            const serviceTitre = service.data?.titre_service?.valeur ||
+              service.data?.titre?.valeur ||
+              service.titre ||
+              'Service sans titre';
+
+            // Extraire les produits depuis service.data.produits.valeur
+            const produits = service.data?.produits?.valeur || service.data?.produits;
+
+            if (produits && Array.isArray(produits)) {
+              produits.forEach((product: any, index: number) => {
+                const productIndex = typeof product.product_index === 'number' ? product.product_index : index;
+
+                // Créer un "Service" pour chaque produit (pour compatibilité avec l'interface existante)
+                allProducts.push({
+                  id: `${serviceId}_${productIndex}`, // ID unique produit
+                  title: product.nom ||
+                    product.titre ||
+                    product.title ||
+                    product.nom_produit?.valeur ||
+                    `Produit ${index + 1}`,
+                  description: product.description ||
+                    product.desc ||
+                    product.description_produit?.valeur ||
+                    'Aucune description',
+                  status: (() => {
+                    // Le statut du produit (is_active) ou du service
+                    if (product.is_active !== undefined) {
+                      return product.is_active ? 'active' : 'inactive';
+                    }
+                    if (service.actif !== undefined) {
+                      return service.actif ? 'active' : 'inactive';
+                    }
+                    if (service.is_active !== undefined) {
+                      return service.is_active ? 'active' : 'inactive';
+                    }
+                    return 'active';
+                  })(),
+                  createdAt: product.created_at ||
+                    service.created_at ||
+                    service.createdAt ||
+                    new Date().toISOString(),
+                  views: product.views || service.views || 0,
+                  interactions: product.interactions || service.interactions || 0,
+                  user_id: service.user_id?.toString() || '',
+                  data: {
+                    ...product,
+                    serviceId: serviceId,
+                    serviceTitre: serviceTitre,
+                    product_index: productIndex,
+                    // Conserver les données du service parent
+                    service_data: service.data
+                  },
+                  // Métadonnées supplémentaires
+                  service_id: serviceId,
+                  product_index: productIndex,
+                  service_title: serviceTitre
+                });
+              });
+            } else {
+              // Si le service n'a pas de produits, on peut l'afficher quand même (optionnel)
+              console.log('[MesServicesScreen] ⚠️ Service sans produits:', serviceId, serviceTitre);
+            }
+          });
+        }
+
+        // Trier les produits du plus récent au plus ancien
+        allProducts.sort((a: any, b: any) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+
+        console.log('[MesServicesScreen] ✅ Produits extraits:', allProducts.length);
+        if (allProducts.length > 0) {
+          console.log('[MesServicesScreen] 📋 Premier produit:', {
+            id: allProducts[0].id,
+            title: allProducts[0].title,
+            status: allProducts[0].status,
+            service_id: allProducts[0].service_id
+          });
+        }
+        setServices(allProducts);
       } else {
         console.error('[MesServicesScreen] ❌ Erreur API ou pas de données:', {
           success: response.success,
-          error: response.error
+          error: response.error,
+          data: response.data
         });
         setServices([]);
       }
     } catch (error) {
-      console.error('Erreur chargement services:', error);
-      Alert.alert('Erreur', 'Impossible de charger vos services');
+      console.error('Erreur chargement produits:', error);
+      Alert.alert('Erreur', 'Impossible de charger vos produits');
       setServices([]);
     } finally {
       setLoading(false);
@@ -510,7 +601,7 @@ const MesServicesScreen: React.FC = () => {
         {/* Bandeau d'information */}
         <NativeCard style={styles.infoBanner}>
           <Text style={styles.infoText}>
-            Vous avez <Text style={styles.infoBold}>{services.length}</Text> service(s) créé(s)
+            Vous avez <Text style={styles.infoBold}>{services.length}</Text> produit(s) créé(s)
             {refreshing && (
               <Text style={styles.refreshingText}> 🔄 Actualisation en cours...</Text>
             )}
@@ -547,12 +638,12 @@ const MesServicesScreen: React.FC = () => {
           <View style={styles.emptyContainer}>
             <SafeIcon name="briefcase" size={64} color={modernColors.textSecondary} />
             <Text style={styles.emptyTitle}>
-              {filter === 'tous' ? 'Aucun service créé' : `Aucun service ${filter}`}
+              {filter === 'tous' ? 'Aucun produit créé' : `Aucun produit ${filter}`}
             </Text>
             <Text style={styles.emptyText}>
               {filter === 'tous'
-                ? 'Créez votre premier service pour commencer à proposer vos services.'
-                : `Aucun service ${filter} pour le moment.`
+                ? 'Créez votre premier produit pour commencer à proposer vos produits.'
+                : `Aucun produit ${filter} pour le moment.`
               }
             </Text>
             <NativeButton

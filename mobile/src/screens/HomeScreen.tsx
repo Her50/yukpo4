@@ -10,10 +10,8 @@ import LanguageSelector from '../components/LanguageSelector';
 import MixedContentCarousel from '../components/MixedContentCarousel'; // ✅ NOUVEAU: Carousel mixte
 import ModernBackground from '../components/ModernBackground';
 import ModernGPSModal from '../components/ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
-import { NativeButton, NativeCard } from '../components/NativeDesign';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import GlobalPromoHighlights from '../components/promotions/GlobalPromoHighlights';
-import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
@@ -596,6 +594,26 @@ const HomeScreen: React.FC = () => {
 
                         {/* Colonne droite: Actions */}
                         <View style={styles.headerActionsCompact}>
+                            {/* ✅ NOUVEAU: Bouton création vidéo */}
+                            <TouchableOpacity
+                                style={styles.headerButtonCompact}
+                                onPress={() => {
+                                    console.log('[HomeScreen] 🎬 Navigation vers VideoCreationIntro');
+                                    try {
+                                        const parentNavigation = (navigation as any).getParent();
+                                        if (parentNavigation) {
+                                            parentNavigation.navigate('VideoCreationIntro');
+                                        } else {
+                                            (navigation as any).navigate('VideoCreationIntro');
+                                        }
+                                    } catch (error) {
+                                        console.error('[HomeScreen] ❌ Erreur navigation vers VideoCreationIntro:', error);
+                                        Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');
+                                    }
+                                }}
+                            >
+                                <Text style={styles.headerButtonIconCompact}>🎬</Text>
+                            </TouchableOpacity>
                             <TouchableOpacity
                                 style={styles.headerButtonCompact}
                                 onPress={() => setShowChatModal(true)}
@@ -669,6 +687,36 @@ const HomeScreen: React.FC = () => {
                     keyboardShouldPersistTaps="handled"
                 >
                     <View>
+                        {/* ✅ NOUVEAU: Section création vidéo rapide */}
+                        <View style={styles.quickActionsSection}>
+                            <TouchableOpacity
+                                style={styles.videoCreationCard}
+                                onPress={() => {
+                                    console.log('[HomeScreen] 🎬 Navigation vers VideoCreationIntro depuis carte');
+                                    try {
+                                        const parentNavigation = (navigation as any).getParent();
+                                        if (parentNavigation) {
+                                            parentNavigation.navigate('VideoCreationIntro');
+                                        } else {
+                                            (navigation as any).navigate('VideoCreationIntro');
+                                        }
+                                    } catch (error) {
+                                        console.error('[HomeScreen] ❌ Erreur navigation vers VideoCreationIntro:', error);
+                                        Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');
+                                    }
+                                }}
+                            >
+                                <View style={styles.videoCreationCardContent}>
+                                    <Text style={styles.videoCreationIcon}>🎬</Text>
+                                    <View style={styles.videoCreationText}>
+                                        <Text style={styles.videoCreationTitle}>Créer une vidéo immersive</Text>
+                                        <Text style={styles.videoCreationSubtitle}>Montage vidéo professionnel avec IA</Text>
+                                    </View>
+                                    <Text style={styles.videoCreationArrow}>→</Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+
                         {/* ✅ TITRE SECTION CAROUSEL */}
                         <View style={styles.carouselHeader}>
                             <Text style={styles.carouselSubtitle}>Produits et services recommandés</Text>
@@ -682,69 +730,6 @@ const HomeScreen: React.FC = () => {
                         />
 
                         <GlobalPromoHighlights />
-
-                        <View style={styles.deliverySection}>
-                            <Text style={styles.deliveryTitle}>Livraison intelligente Yukpo</Text>
-                            <Text style={styles.deliverySubtitle}>
-                                Courses supermarché, suivi en temps réel, notifications destinataire et avance de fonds sécurisée.
-                            </Text>
-
-                            <View style={styles.deliveryCards}>
-                                <NativeCard
-                                    style={styles.deliveryCard}
-                                    onPress={() => (navigation as any).navigate('DeliveryShoppingFlow')}
-                                >
-                                    <View style={styles.deliveryCardHeader}>
-                                        <View style={styles.deliveryIcon}>
-                                            <SafeIcon name="shopping-cart" size={24} color="#fff" />
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.deliveryCardTitle}>Courses supermarché</Text>
-                                            <Text style={styles.deliveryCardSubtitle}>
-                                                Compose ton panier, nous avançons l&apos;achat et tu suis ton coursier en direct.
-                                            </Text>
-                                        </View>
-                                    </View>
-                                    <NativeButton
-                                        title="Commander maintenant"
-                                        variant="primary"
-                                        onPress={() => (navigation as any).navigate('DeliveryShoppingFlow')}
-                                    />
-                                </NativeCard>
-
-                                <NativeCard
-                                    style={styles.deliveryCard}
-                                    onPress={() =>
-                                        Alert.alert(
-                                            'Flux colis en préparation',
-                                            'Le parcours complet pour livrer un colis est en finalisation. Reste connecté !'
-                                        )
-                                    }
-                                >
-                                    <View style={styles.deliveryCardHeader}>
-                                        <View style={styles.deliveryIconSecondary}>
-                                            <SafeIcon name="package" size={24} color="#fff" />
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.deliveryCardTitle}>Envoyer un colis</Text>
-                                            <Text style={styles.deliveryCardSubtitle}>
-                                                Déclare ton colis, choisis le coursier idéal et partage le suivi au destinataire.
-                                            </Text>
-                                        </View>
-                                    </View>
-                                    <NativeButton
-                                        title="Bientôt disponible"
-                                        variant="outline"
-                                        onPress={() =>
-                                            Alert.alert(
-                                                'Bientôt disponible',
-                                                'Nous finalisons les derniers écrans pour la livraison de colis.'
-                                            )
-                                        }
-                                    />
-                                </NativeCard>
-                            </View>
-                        </View>
                     </View>
                 </ScrollView>
 
@@ -1487,6 +1472,50 @@ const styles = StyleSheet.create({
         color: '#374151',
     },
     // ✅ NOUVEAU: Styles pour le header du carousel
+    // ✅ NOUVEAU: Styles pour section création vidéo
+    quickActionsSection: {
+        marginBottom: 20,
+        paddingHorizontal: 4,
+    },
+    videoCreationCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    videoCreationCardContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    videoCreationIcon: {
+        fontSize: 32,
+    },
+    videoCreationText: {
+        flex: 1,
+        gap: 4,
+    },
+    videoCreationTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
+    videoCreationSubtitle: {
+        fontSize: 13,
+        color: '#6B7280',
+    },
+    videoCreationArrow: {
+        fontSize: 20,
+        color: '#6366F1',
+        fontWeight: '600',
+    },
     carouselHeader: {
         paddingHorizontal: 20,
         paddingTop: 8,
@@ -1503,59 +1532,6 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#6B7280',
         fontWeight: '500',
-    },
-    deliverySection: {
-        marginTop: 24,
-        gap: 16,
-        paddingHorizontal: 8,
-    },
-    deliveryTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1E293B',
-    },
-    deliverySubtitle: {
-        fontSize: 13,
-        color: '#64748B',
-        lineHeight: 20,
-    },
-    deliveryCards: {
-        gap: 16,
-    },
-    deliveryCard: {
-        gap: 16,
-    },
-    deliveryCardHeader: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-    },
-    deliveryIcon: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#6366F1',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    deliveryIconSecondary: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#0EA5E9',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    deliveryCardTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#1E293B',
-        marginBottom: 6,
-    },
-    deliveryCardSubtitle: {
-        fontSize: 13,
-        color: '#475569',
-        lineHeight: 18,
     },
 });
 

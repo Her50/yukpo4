@@ -95,7 +95,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
     // ✅ Réinitialiser l'index et la pause quand le contenu change
     useEffect(() => {
-        if (content.length === 0) {
+        const safeContent = Array.isArray(content) ? content : [];
+        if (safeContent.length === 0) {
             setCurrentIndex(0);
             return;
         }
@@ -114,9 +115,10 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             return;
         }
 
-        if (content.length > 1 && currentIndex === 0 && !isPaused) {
+        const safeContent = Array.isArray(content) ? content : [];
+        if (safeContent.length > 1 && currentIndex === 0 && !isPaused) {
             const initialTimer = setTimeout(() => {
-                if (scrollViewRef.current && content.length > 1) {
+                if (scrollViewRef.current && safeContent.length > 1) {
                     console.log('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial (index 0 → 1)');
                     const offset = SCREEN_PADDING + SNAP_INTERVAL;
                     scrollViewRef.current.scrollTo({
@@ -252,7 +254,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     useEffect(() => {
         clearAutoScrollTimer();
 
-        if (content.length <= 1 || isAutoScrollDisabled) {
+        const safeContent = Array.isArray(content) ? content : [];
+        if (safeContent.length <= 1 || isAutoScrollDisabled) {
             return;
         }
 
@@ -260,7 +263,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             return;
         }
 
-        const currentItem = content[currentIndex] ?? content[0];
+        const currentItem = safeContent[currentIndex] ?? safeContent[0];
         if (!currentItem) {
             return;
         }
@@ -274,7 +277,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 return;
             }
 
-            const nextIndex = (currentIndex + 1) % content.length;
+            const safeContent = Array.isArray(content) ? content : [];
+            const nextIndex = (currentIndex + 1) % safeContent.length;
             const scrollPosition = SCREEN_PADDING + nextIndex * SNAP_INTERVAL;
 
             console.log('[MixedContentCarousel] 🎬 Auto scroll', { currentIndex, nextIndex, scrollPosition });
@@ -312,8 +316,9 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         const offsetX = event.nativeEvent.contentOffset.x;
         const adjustedOffset = Math.max(0, offsetX - SCREEN_PADDING);
         const index = Math.round(adjustedOffset / SNAP_INTERVAL);
+        const safeContent = Array.isArray(content) ? content : [];
 
-        if (index !== currentIndex && index >= 0 && index < content.length) {
+        if (index !== currentIndex && index >= 0 && index < safeContent.length) {
             console.log('[MixedContentCarousel] 👆 Scroll manuel détecté: index', index);
             setCurrentIndex(index);
 
@@ -328,7 +333,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             }
         }
 
-        const currentItem = content[index];
+        const safeContent = Array.isArray(content) ? content : [];
+        const currentItem = safeContent[index];
         if (currentItem) {
             trackVisibility(currentItem, index).catch(() => undefined);
         }
@@ -388,8 +394,11 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         );
     }
 
+    // ✅ CORRIGÉ: S'assurer que content est toujours un tableau
+    const safeContent = Array.isArray(content) ? content : [];
+
     // Empty state
-    if (content.length === 0) {
+    if (safeContent.length === 0) {
         return (
             <View style={styles.emptyContainer}>
                 <SafeIcon name="package" size={48} color="#D1D5DB" />
@@ -402,7 +411,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         <View style={styles.container}>
             {/* ✅ Barres de progression (comme Instagram Stories) */}
             <View style={styles.progressBars}>
-                {content.map((_, index) => (
+                {safeContent.map((_, index) => (
                     <View key={index} style={styles.progressBar}>
                         <View
                             style={[
@@ -438,7 +447,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 }}
                 contentOffset={{ x: SCREEN_PADDING, y: 0 }}
             >
-                {content.map((item, index) => (
+                {safeContent.map((item, index) => (
                     <TouchableOpacity
                         key={`${item.type}-${item.data.id}-${index}`}
                         style={[styles.card, { width: CARD_WIDTH, marginRight: CARD_MARGIN }]}
@@ -490,9 +499,9 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             </ScrollView>
 
             {/* ✅ Pagination dots */}
-            {content.length > 1 && (
+            {safeContent.length > 1 && (
                 <View style={styles.pagination}>
-                    {content.map((_, index) => (
+                    {safeContent.map((_, index) => (
                         <View
                             key={index}
                             style={[

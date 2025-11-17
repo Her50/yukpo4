@@ -1529,9 +1529,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         categorie_produit: duplicateProduct.type || '',
       };
 
+      // ✅ CORRECTION: Extraire produits correctement même si c'est un objet avec valeur
+      if (duplicateProduct.produits) {
+        if (typeof duplicateProduct.produits === 'object' && 'valeur' in duplicateProduct.produits) {
+          produitValues.produits = duplicateProduct.produits;
+          // S'assurer que sous_caracteristiques est aussi chargé
+          if (duplicateProduct.produits.sous_caracteristiques) {
+            produitValues.sous_caracteristiques = duplicateProduct.produits.sous_caracteristiques;
+          }
+        } else if (Array.isArray(duplicateProduct.produits)) {
+          produitValues.produits = {
+            type_donnee: 'autocomplete',
+            valeur: duplicateProduct.produits,
+            separateur: ',',
+            sous_caracteristiques: duplicateProduct.sous_caracteristiques || {},
+            identifiant_base: 'produits',
+            filtrable: true,
+            origine_champs: 'formulaire'
+          };
+        } else {
+          produitValues.produits = duplicateProduct.produits;
+        }
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ produits extrait depuis duplicateProduct:', produitValues.produits);
+      }
+
       // Ajouter tous les autres champs du produit dupliqué
       Object.keys(duplicateProduct).forEach(key => {
-        if (!['nom', 'prix', 'devise', 'description', 'type', 'id'].includes(key)) {
+        if (!['nom', 'prix', 'devise', 'description', 'type', 'id', 'produits'].includes(key)) {
           produitValues[key] = duplicateProduct[key];
         }
       });
@@ -1668,6 +1692,35 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         // ✅ NOUVEAU: Extraire les variations de prix imbriquées dans le champ produits
         const iaProduitsNode = suggestion.data.produits;
+
+        // ✅ CORRECTION: S'assurer que produits est chargé même sans variante de prix
+        if (iaProduitsNode && !initialValues.produits) {
+          // Si produits n'a pas été chargé dans la boucle précédente, le charger maintenant
+          if (typeof iaProduitsNode === 'object' && 'valeur' in iaProduitsNode) {
+            const typeDonnee = iaProduitsNode.type_donnee || 'autocomplete';
+            if (typeDonnee === 'autocomplete') {
+              initialValues.produits = {
+                type_donnee: 'autocomplete',
+                valeur: Array.isArray(iaProduitsNode.valeur) ? iaProduitsNode.valeur : [],
+                separateur: iaProduitsNode.separateur || ',',
+                sous_caracteristiques: iaProduitsNode.sous_caracteristiques || {},
+                identifiant_base: iaProduitsNode.identifiant_base || 'produits',
+                filtrable: iaProduitsNode.filtrable !== false,
+                origine_champs: iaProduitsNode.origine_champs || 'ia'
+              };
+              console.log('[FormulaireYukpoIntelligentScreen] ✅ Champ produits (autocomplete) chargé depuis iaProduitsNode:', initialValues.produits);
+            } else {
+              // Si ce n'est pas autocomplete, charger la valeur directement
+              initialValues.produits = iaProduitsNode;
+              console.log('[FormulaireYukpoIntelligentScreen] ✅ Champ produits chargé depuis iaProduitsNode (non-autocomplete):', initialValues.produits);
+            }
+          } else {
+            // Si c'est un tableau ou une string, le charger directement
+            initialValues.produits = iaProduitsNode;
+            console.log('[FormulaireYukpoIntelligentScreen] ✅ Champ produits chargé depuis iaProduitsNode (direct):', initialValues.produits);
+          }
+        }
+
         const priceVariantFromProduits = extractPriceVariant(
           iaProduitsNode,
           iaProduitsNode?.origine_champs || 'ia'
@@ -2211,7 +2264,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             onChangeText={(text) => handleFieldChange('description_produit', text)}
             multiline
             minLines={3}
-            style={[styles.fieldInput, styles.productDescriptionInput]}
+            style={[styles.fieldInput, styles.textareaInput]}
             inputStyle={styles.productDescriptionText}
           />
           {fieldErrors['description_produit'] && (
@@ -2805,7 +2858,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       case 'textarea':
         const isProductDescField = field.name === 'description_produit';
-        const linesMinimum = isProductDescField ? 8 : 3;
+        // ✅ CORRECTION: Utiliser les mêmes propriétés que le champ description générale (3 lignes au lieu de 8)
+        const linesMinimum = 3;
         const normalizedValue = formatMultilineValue(valeursFormulaire[field.name] || '');
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
@@ -2830,7 +2884,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               style={[
                 styles.fieldInput,
                 styles.textareaInput,
-                isProductDescField && styles.productDescriptionInput,
+                // ✅ CORRECTION: Utiliser textareaInput pour tous les textarea, y compris description_produit
                 dynamicTextareaHeights[field.name] ? { minHeight: dynamicTextareaHeights[field.name] } : null
               ]}
             />
@@ -5140,10 +5194,12 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   productDescriptionInput: {
-    minHeight: 300,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    borderRadius: 14,
+    // ✅ CORRECTION: Utiliser la même hauteur que textareaInput (220px au lieu de 300px)
+    minHeight: 220,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
   },
   productDescriptionText: {
     lineHeight: 24,
