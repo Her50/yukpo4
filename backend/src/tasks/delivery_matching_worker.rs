@@ -45,20 +45,24 @@ impl DeliveryMatchingWorker {
 
     /// Balayage unique de la file.
     pub async fn run_once(&self) -> AppResult<()> {
-        info!(
-            "[DeliveryMatchingWorker] Démarrage du lot (batch = {})",
-            self.config.batch_size
-        );
         match self
             .service
             .process_matching_backlog(self.config.batch_size)
             .await
         {
             Ok(processed) => {
-                info!(
-                    "[DeliveryMatchingWorker] Lot terminé, {} livraison(s) retraitées",
-                    processed
-                );
+                // Logger seulement si des livraisons ont été traitées
+                if processed > 0 {
+                    info!(
+                        "[DeliveryMatchingWorker] {} livraison(s) retraitées",
+                        processed
+                    );
+                } else {
+                    log::debug!(
+                        "[DeliveryMatchingWorker] Aucune livraison à traiter (batch = {})",
+                        self.config.batch_size
+                    );
+                }
                 Ok(())
             }
             Err(err) => {

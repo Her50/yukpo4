@@ -47,7 +47,7 @@ export const CreatorStudioPreviewCard = ({
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.35em] text-indigo-300">
-                        Studio créateur – Phase 3
+                        Studio créateur
                     </p>
                     <h2 className="text-2xl font-semibold text-white md:text-3xl">
                         Prévisualisation intelligente
@@ -107,8 +107,8 @@ export const CreatorStudioPreviewCard = ({
                                         type="button"
                                         onClick={() => actions.pickTemplate(spec.id)}
                                         className={`rounded-2xl border px-4 py-2 text-left text-sm transition ${selected
-                                                ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
-                                                : 'border-white/10 bg-indigo-950/40 text-slate-200 hover:border-white/30'
+                                            ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
+                                            : 'border-white/10 bg-indigo-950/40 text-slate-200 hover:border-white/30'
                                             }`}
                                     >
                                         <span className="font-semibold">{spec.label}</span>
@@ -319,7 +319,7 @@ export const CreatorStudioPreviewCard = ({
                             conversions.
                         </p>
                         <p className="mt-2 text-slate-400">
-                            Les métriques s’afficheront dans Analytics créateurs (plan Phase 3).
+                            Les métriques s'afficheront dans Analytics créateurs.
                         </p>
                     </div>
                 </div>

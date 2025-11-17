@@ -87,7 +87,6 @@ pub async fn cors_middleware(request: Request, next: Next) -> Response {
     // Configuration CORS corrigée pour les applications mobiles
     if let Some(origin) = origin {
         let origin_str = origin.to_str().unwrap_or("");
-        println!("[CORS DEBUG] Origin reçu: {}", origin_str);
 
         // Vérifier si l'origin est dans la liste autorisée
         if config.allowed_origins.contains(&origin_str.to_string())
@@ -112,7 +111,6 @@ pub async fn cors_middleware(request: Request, next: Next) -> Response {
     } else {
         // CORRECTION : Pour les applications mobiles sans origin header
         // Utiliser une origine spécifique au lieu de wildcard
-        println!("[CORS DEBUG] Aucun origin header - application mobile détectée");
         response.headers_mut().insert(
             "access-control-allow-origin",
             HeaderValue::from_static("https://yukpomnang.onrender.com"),

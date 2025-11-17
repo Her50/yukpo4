@@ -23,7 +23,13 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
         loop {
             ticker.tick().await;
             if let Err(err) = sync_live_analytics(worker_state.clone()).await {
-                log::warn!("Live analytics sync failed: {err:?}");
+                // Logger en DEBUG si c'est une erreur de connexion (service non disponible)
+                let err_str = format!("{err:?}");
+                if err_str.contains("Connection refused") || err_str.contains("tcp connect error") {
+                    log::debug!("Live analytics sync failed (service non disponible): {err:?}");
+                } else {
+                    log::warn!("Live analytics sync failed: {err:?}");
+                }
             }
         }
     });

@@ -129,8 +129,24 @@ export const studioService = {
         return parseJson(res);
     },
     requestShortPreview: async (sessionId: string): Promise<StudioPreviewResponse> => {
+        console.log('[studioService] requestShortPreview called with sessionId:', sessionId);
+
         const res = await apiPost(`${BASE}/sessions/${sessionId}/preview-short`, {});
-        return parseJson(res);
+        const json = await parseJson<StudioPreviewResponse>(res);
+
+        console.log('[studioService] requestShortPreview response:', {
+            success: !!json,
+            hasPreviewUrl: !!json?.preview_url,
+            previewUrl: json?.preview_url,
+        });
+
+        if (!json?.preview_url) {
+            const errorMsg = 'Erreur lors de la génération de la prévisualisation : URL manquante';
+            console.error('[studioService] Preview error details:', json);
+            throw new Error(errorMsg);
+        }
+
+        return json;
     },
     publishSession: async (sessionId: string): Promise<StudioPublishResponse> => {
         const res = await apiPost(`${BASE}/sessions/${sessionId}/publish`, {});
@@ -152,8 +168,26 @@ export const studioService = {
         sessionId: string,
         payload: StoryboardRequest
     ): Promise<Storyboard> => {
+        console.log('[studioService] generateStoryboard called with:', {
+            sessionId,
+            payload: JSON.stringify(payload, null, 2),
+            url: `${BASE}/sessions/${sessionId}/storyboard`,
+        });
+
         const res = await apiPost(`${BASE}/sessions/${sessionId}/storyboard`, payload);
         const json = await parseJson<{ storyboard: Storyboard }>(res);
+
+        console.log('[studioService] generateStoryboard response:', {
+            success: !!json,
+            hasStoryboard: !!json?.storyboard,
+            scenesCount: json?.storyboard?.scenes?.length || 0,
+        });
+
+        if (!json?.storyboard) {
+            console.error('[studioService] Storyboard manquant dans la réponse:', json);
+            throw new Error('Réponse storyboard invalide : structure de données manquante');
+        }
+
         return json.storyboard;
     }
 };

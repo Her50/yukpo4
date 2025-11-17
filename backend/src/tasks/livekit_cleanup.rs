@@ -20,7 +20,13 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
     let immediate_state = state.clone();
     tokio::spawn(async move {
         if let Err(err) = cleanup_once(immediate_state.clone()).await {
-            log::warn!("LiveKit cleanup initial failed: {err:?}");
+            // Logger en DEBUG si c'est une erreur de connexion (service non disponible)
+            let err_str = format!("{err:?}");
+            if err_str.contains("Connection refused") || err_str.contains("tcp connect error") {
+                log::debug!("LiveKit cleanup initial failed (service non disponible): {err:?}");
+            } else {
+                log::warn!("LiveKit cleanup initial failed: {err:?}");
+            }
         }
 
         let mut ticker = tokio::time::interval(Duration::from_secs(CLEANUP_INTERVAL_MINUTES * 60));
@@ -29,7 +35,13 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
         loop {
             ticker.tick().await;
             if let Err(err) = cleanup_once(immediate_state.clone()).await {
-                log::warn!("LiveKit cleanup failed: {err:?}");
+                // Logger en DEBUG si c'est une erreur de connexion (service non disponible)
+                let err_str = format!("{err:?}");
+                if err_str.contains("Connection refused") || err_str.contains("tcp connect error") {
+                    log::debug!("LiveKit cleanup failed (service non disponible): {err:?}");
+                } else {
+                    log::warn!("LiveKit cleanup failed: {err:?}");
+                }
             }
         }
     });

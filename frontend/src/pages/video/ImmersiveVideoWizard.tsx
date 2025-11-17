@@ -439,8 +439,32 @@ const ImmersiveVideoWizard = () => {
                 setStoryboardLoading(false);
                 return;
             }
+
+            // Validation UUID pour sessionId
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(sessionId)) {
+                console.error('[ImmersiveVideoWizard] Session ID invalide (pas un UUID):', sessionId);
+                toast.error(
+                    t('videoWizard.errors.storyboardInvalidSession') || 'Session Studio invalide. Veuillez réessayer.',
+                );
+                setStoryboardLoading(false);
+                return;
+            }
+
             const request = buildStoryboardRequest();
+            console.log('[ImmersiveVideoWizard] generateStoryboard called with:', {
+                sessionId,
+                payload: JSON.stringify(request, null, 2),
+                url: `/api/studio/sessions/${sessionId}/storyboard`,
+            });
+
             const result = await studioService.generateStoryboard(sessionId, request);
+
+            console.log('[ImmersiveVideoWizard] generateStoryboard response:', {
+                success: !!result,
+                hasScenes: !!result?.scenes,
+                scenesCount: result?.scenes?.length || 0,
+            });
             setStoryboard(result);
             const durationMs = performance.now() - startedAt;
             trackUxEvent('storyboard_generate_completed', {
@@ -456,9 +480,21 @@ const ImmersiveVideoWizard = () => {
             });
         } catch (error: any) {
             console.error('[ImmersiveVideoWizard] storyboard generation error', error);
-            toast.error(
-                error?.message || t('videoWizard.errors.storyboardGeneration') || 'Storyboard IA indisponible',
-            );
+            const errorMessage = error?.message || t('videoWizard.errors.storyboardGeneration') || 'Storyboard IA indisponible';
+
+            // Messages d'erreur plus spécifiques
+            let displayMessage = errorMessage;
+            if (errorMessage.includes('404')) {
+                displayMessage = 'Endpoint storyboard introuvable (404). Vérifiez que le backend est correctement configuré.';
+            } else if (errorMessage.includes('500')) {
+                displayMessage = 'Erreur serveur lors de la génération du storyboard (500). Réessayez plus tard.';
+            } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+                displayMessage = 'Le délai d\'attente a été dépassé. Réessayez.';
+            } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+                displayMessage = 'Erreur de connexion réseau. Vérifiez votre connexion.';
+            }
+
+            toast.error(displayMessage);
             const durationMs = performance.now() - startedAt;
             trackUxEvent('storyboard_generate_failed', {
                 device: 'web',
@@ -518,7 +554,16 @@ const ImmersiveVideoWizard = () => {
                 return;
             }
 
+            console.log('[ImmersiveVideoWizard] requestShortPreview called with sessionId:', sessionId);
+
             const res = await studioService.requestShortPreview(sessionId);
+
+            console.log('[ImmersiveVideoWizard] requestShortPreview response:', {
+                success: !!res,
+                hasPreviewUrl: !!res?.preview_url,
+                previewUrl: res?.preview_url,
+            });
+
             if (!res.preview_url) {
                 toast.error(
                     t('videoWizard.errors.previewNoUrl') ||
@@ -550,11 +595,21 @@ const ImmersiveVideoWizard = () => {
             });
         } catch (error: any) {
             console.error('[ImmersiveVideoWizard] short preview error', error);
-            toast.error(
-                error?.message ||
-                t('videoWizard.errors.previewFailed') ||
-                'Impossible de lancer la prévisualisation courte.',
-            );
+            const errorMessage = error?.message || t('videoWizard.errors.previewFailed') || 'Impossible de lancer la prévisualisation courte.';
+
+            // Messages d'erreur plus spécifiques
+            let displayMessage = errorMessage;
+            if (errorMessage.includes('404')) {
+                displayMessage = 'Endpoint preview introuvable (404). Vérifiez que le backend est correctement configuré.';
+            } else if (errorMessage.includes('500')) {
+                displayMessage = 'Erreur serveur lors de la génération de la prévisualisation (500). Le worker Remotion pourrait être indisponible.';
+            } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+                displayMessage = 'Le délai d\'attente a été dépassé. La génération vidéo peut prendre plus de temps.';
+            } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+                displayMessage = 'Erreur de connexion réseau. Vérifiez votre connexion.';
+            }
+
+            toast.error(displayMessage);
             const durationMs = performance.now() - startedAt;
             trackUxEvent('preview_short_failed', {
                 device: 'web',
@@ -1243,7 +1298,7 @@ const ImmersiveVideoWizard = () => {
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100" aria-busy={isGenerating}>
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 pb-24 pt-16 lg:px-10">
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 pb-32 pt-16 lg:px-10">
                 <header className="space-y-4">
                     <motion.h1
                         initial={{ opacity: 0, y: 12 }}
@@ -1386,10 +1441,13 @@ const ImmersiveVideoWizard = () => {
                                         <h3 className="text-lg font-semibold text-slate-100">
                                             {t('videoWizard.sections.describe')}
                                         </h3>
+                                        <p className="mb-2 text-xs text-slate-400">
+                                            Brief & recommandation IA : Décris ton service, ton CTA, les points clés pour générer des suggestions IA personnalisées.
+                                        </p>
                                         <textarea
                                             value={brief}
                                             onChange={(event) => setBrief(event.target.value)}
-                                            placeholder={t('videoWizard.placeholders.brief')}
+                                            placeholder={t('videoWizard.placeholders.brief') || 'Décris ton service, ton CTA, les points clés...'}
                                             aria-label={t('videoWizard.sections.describe')}
                                             className="min-h-[120px] rounded-xl border border-white/10 bg-slate-950/80 px-4 py-3 text-slate-100 focus:border-indigo-500 focus:outline-none"
                                         />
@@ -1425,73 +1483,41 @@ const ImmersiveVideoWizard = () => {
                                         <h3 className="text-lg font-semibold text-slate-100">
                                             {t('videoWizard.sections.style')}
                                         </h3>
-                                        <div className="flex flex-wrap gap-2">
+                                        <select
+                                            value={selectedStyle}
+                                            onChange={(event) => setSelectedStyle(event.target.value)}
+                                            aria-label={t('videoWizard.accessibility.templateOption', { template: selectedStyle })}
+                                            className="rounded-xl border border-white/10 bg-slate-950/80 px-4 py-2 text-slate-100 focus:border-indigo-500 focus:outline-none"
+                                        >
                                             {['IntroPulse', 'ProductShowcase', 'ARHighlight', 'GlowCTA'].map((template) => (
-                                                <button
-                                                    key={template}
-                                                    type="button"
-                                                    onClick={() => setSelectedStyle(template)}
-                                                    aria-pressed={selectedStyle === template}
-                                                    aria-label={t('videoWizard.accessibility.templateOption', { template })}
-                                                    className={`rounded-full border px-5 py-2 text-sm transition ${selectedStyle === template ? 'border-indigo-400 bg-indigo-500/20 text-indigo-100 shadow-lg shadow-indigo-500/20' : 'border-white/10 bg-white/5 text-slate-300 hover:border-indigo-400 hover:text-indigo-200'}`}
-                                                >
+                                                <option key={template} value={template}>
                                                     {template}
-                                                </button>
+                                                </option>
                                             ))}
-                                        </div>
-                                        <div className="grid gap-3 md:grid-cols-2">
-                                            {[
-                                                { key: 'standard', title: t('videoWizard.mode.standardTitle'), description: t('videoWizard.mode.standardDesc') },
-                                                { key: 'expert', title: t('videoWizard.mode.expertTitle'), description: t('videoWizard.mode.expertDesc') },
-                                            ].map((item) => (
-                                                <button
-                                                    key={item.key}
-                                                    type="button"
-                                                    onClick={() => setMode(item.key as ModePreset)}
-                                                    aria-pressed={mode === item.key}
-                                                    aria-label={t('videoWizard.accessibility.modeOption', { mode: item.title })}
-                                                    className={`rounded-2xl border px-5 py-4 text-left transition ${mode === item.key ? 'border-emerald-400 bg-emerald-500/15 text-emerald-100 shadow-lg shadow-emerald-500/25' : 'border-white/10 bg-white/3 text-slate-200 hover:border-emerald-400 hover:text-emerald-100'}`}
-                                                >
-                                                    <p className="text-base font-semibold">{item.title}</p>
-                                                    <p className="mt-1 text-sm text-slate-300">{item.description}</p>
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <div className="mt-4 grid gap-2 md:grid-cols-3">
-                                            {([
-                                                {
-                                                    key: 'pulse',
-                                                    label: 'Pulse social',
-                                                    desc: 'Transitions 3D, glow léger, musique rythmée.',
-                                                },
-                                                {
-                                                    key: 'story',
-                                                    label: 'Story éditoriale',
-                                                    desc: 'Parallax doux, cinematic, texte lisible.',
-                                                },
-                                                {
-                                                    key: 'corporate',
-                                                    label: 'Corporate clair',
-                                                    desc: 'Cuts propres, colorimétrie neutre.',
-                                                },
-                                            ] as const).map((pack) => (
-                                                <button
-                                                    key={pack.key}
-                                                    type="button"
-                                                    onClick={() => setStylePack(pack.key)}
-                                                    aria-pressed={stylePack === pack.key}
-                                                    className={`rounded-2xl border px-4 py-3 text-left text-xs transition ${stylePack === pack.key
-                                                        ? 'border-fuchsia-400 bg-fuchsia-500/15 text-fuchsia-100'
-                                                        : 'border-white/10 bg-white/5 text-slate-200 hover:border-fuchsia-300 hover:text-fuchsia-100'
-                                                        }`}
-                                                >
-                                                    <p className="text-sm font-semibold">{pack.label}</p>
-                                                    <p className="mt-1 text-[11px] text-slate-300">
-                                                        {pack.desc}
-                                                    </p>
-                                                </button>
-                                            ))}
-                                        </div>
+                                        </select>
+                                        <select
+                                            value={mode}
+                                            onChange={(event) => setMode(event.target.value as ModePreset)}
+                                            aria-label={t('videoWizard.accessibility.modeOption', { mode })}
+                                            className="rounded-xl border border-white/10 bg-slate-950/80 px-4 py-2 text-slate-100 focus:border-indigo-500 focus:outline-none"
+                                        >
+                                            <option value="standard">
+                                                {t('videoWizard.mode.standardTitle')} - {t('videoWizard.mode.standardDesc')}
+                                            </option>
+                                            <option value="expert">
+                                                {t('videoWizard.mode.expertTitle')} - {t('videoWizard.mode.expertDesc')}
+                                            </option>
+                                        </select>
+                                        <select
+                                            value={stylePack}
+                                            onChange={(event) => setStylePack(event.target.value as 'pulse' | 'story' | 'corporate')}
+                                            aria-label="Style pack"
+                                            className="rounded-xl border border-white/10 bg-slate-950/80 px-4 py-2 text-slate-100 focus:border-indigo-500 focus:outline-none"
+                                        >
+                                            <option value="pulse">Pulse social - Transitions 3D, glow léger, musique rythmée.</option>
+                                            <option value="story">Story éditoriale - Parallax doux, cinematic, texte lisible.</option>
+                                            <option value="corporate">Corporate clair - Cuts propres, colorimétrie neutre.</option>
+                                        </select>
                                     </div>
 
                                     <div className="grid gap-4 rounded-2xl border border-white/5 bg-slate-900/40 p-6">
@@ -1619,16 +1645,6 @@ const ImmersiveVideoWizard = () => {
                                         </label>
                                     </div>
 
-                                    <div className="flex justify-end">
-                                        <button
-                                            type="button"
-                                            onClick={handleEstimate}
-                                            disabled={costLoading || !serviceId || productIndex === undefined}
-                                            className="inline-flex items-center gap-2 rounded-full bg-indigo-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-indigo-500/40"
-                                        >
-                                            {costLoading ? t('videoWizard.buttons.estimating') : t('videoWizard.buttons.nextStep')}
-                                        </button>
-                                    </div>
                                 </motion.div>
                             )}
 
@@ -1737,22 +1753,6 @@ const ImmersiveVideoWizard = () => {
                                             </div>
                                         )}
 
-                                        <div className="mt-6 flex flex-wrap justify-between gap-4">
-                                            <button
-                                                type="button"
-                                                onClick={() => setStep(1)}
-                                                className="text-sm text-slate-300 underline decoration-dotted underline-offset-4 hover:text-indigo-200"
-                                            >
-                                                {t('videoWizard.buttons.prevStep', { step: 1 })}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setStep(3)}
-                                                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/20"
-                                            >
-                                                {t('videoWizard.buttons.previewTimeline')}
-                                            </button>
-                                        </div>
                                     </div>
                                 </motion.div>
                             )}
@@ -2119,33 +2119,61 @@ const ImmersiveVideoWizard = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between rounded-2xl border border-indigo-400/40 bg-indigo-500/10 p-6 text-indigo-100">
-                                        <div>
-                                            <p className="text-sm font-semibold">{t('videoWizard.summary.finalConfirm')}</p>
-                                            <p className="text-xs text-indigo-200">{t('videoWizard.summary.finalHint')}</p>
-                                        </div>
-                                        <div className="flex gap-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => setStep(2)}
-                                                className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-slate-100 transition hover:border-indigo-200"
-                                            >
-                                                {t('videoWizard.buttons.prevStep', { step: 2 })}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={handleGenerate}
-                                                disabled={isGenerating || !costEstimation}
-                                                className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-emerald-500/50"
-                                            >
-                                                {isGenerating ? t('videoWizard.buttons.rendering') : t('videoWizard.buttons.launchRender')}
-                                            </button>
-                                        </div>
-                                    </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
                     </motion.div>
+
+                    {/* Boutons de navigation fixes en bas */}
+                    <div className="sticky bottom-0 z-10 -mx-4 -mb-4 bg-slate-950/95 backdrop-blur-sm border-t border-white/10 px-4 py-4 lg:mx-0 lg:rounded-t-2xl">
+                        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 text-sm text-slate-400">
+                                <span className="font-semibold text-slate-300">Étape {step}/3</span>
+                                <span>·</span>
+                                <span>{activeStepLabel}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {step > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep((step - 1) as WizardStep)}
+                                        className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-slate-100 transition hover:border-indigo-200 hover:text-indigo-100"
+                                    >
+                                        {t('videoWizard.buttons.prevStep', { step: step - 1 })}
+                                    </button>
+                                )}
+                                {step === 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleEstimate}
+                                        disabled={costLoading || !serviceId || productIndex === undefined}
+                                        className="inline-flex items-center gap-2 rounded-full bg-indigo-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-indigo-500/40"
+                                    >
+                                        {costLoading ? t('videoWizard.buttons.estimating') : t('videoWizard.buttons.nextStep')}
+                                    </button>
+                                )}
+                                {step === 2 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep(3)}
+                                        className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/20"
+                                    >
+                                        {t('videoWizard.buttons.previewTimeline')}
+                                    </button>
+                                )}
+                                {step === 3 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleGenerate}
+                                        disabled={isGenerating || !costEstimation}
+                                        className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-emerald-500/50"
+                                    >
+                                        {isGenerating ? t('videoWizard.buttons.rendering') : t('videoWizard.buttons.launchRender')}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
 
                     <div className="flex flex-col gap-6">
                         <motion.div
