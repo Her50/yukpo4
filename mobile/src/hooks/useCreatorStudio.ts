@@ -1002,11 +1002,17 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
 
     const generateSuggestions = useCallback(async () => {
         if (!sessionId) {
+            setError('Session Studio non disponible. Veuillez patienter...');
             return;
         }
         setPreviewLoading(true);
         setError(null);
         try {
+            // TODO: Remplacer par un vrai appel backend quand l'endpoint sera créé
+            // const response = await studioService.generateSuggestions(sessionId, { brief });
+            // setAiSuggestions(response.suggestions);
+
+            // Temporaire : Suggestions hardcodées en attendant l'endpoint backend
             await new Promise((resolve) => setTimeout(resolve, 500));
             const suggestions = [
                 'Hook express avec stock limité + CTA livraison',
@@ -1018,7 +1024,9 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
                 ai_recommendations: suggestions,
             });
         } catch (err) {
-            setError((err as Error).message);
+            const message = (err as Error)?.message || 'Impossible de générer les suggestions IA.';
+            setError(message);
+            console.error('[CreatorStudio] Erreur suggestions:', err);
         } finally {
             setPreviewLoading(false);
         }

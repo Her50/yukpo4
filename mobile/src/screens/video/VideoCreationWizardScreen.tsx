@@ -7,6 +7,7 @@ import {
     FlatList,
     Linking,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Switch,
@@ -531,16 +532,26 @@ const VideoCreationWizardScreen: React.FC = () => {
                 setCostEstimation(estimation);
                 setStep(2);
             } else {
-                Alert.alert(
-                    t('videoWizard.alert.estimationFailedTitle'),
-                    response.message || t('videoWizard.alert.retrySoon'),
-                );
+                const errorMsg = response.message || t('videoWizard.alert.retrySoon') || 'Erreur lors de l\'estimation.';
+                Alert.alert(t('videoWizard.alert.estimationFailedTitle'), errorMsg);
+                console.error('[VideoCreationWizard] Estimation vide:', response);
             }
         } catch (error: any) {
-            Alert.alert(
-                t('videoWizard.alert.estimationFailedTitle'),
-                error?.message || t('videoWizard.alert.serverError'),
-            );
+            console.error('[VideoCreationWizard] Erreur estimation coût:', error);
+            let message = error?.message || t('videoWizard.alert.serverError') || 'Erreur serveur.';
+
+            // Messages d'erreur plus spécifiques
+            if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+                message = 'Erreur de connexion. Vérifiez votre accès Internet.';
+            } else if (error?.message?.includes('timeout')) {
+                message = 'Le délai d\'attente a expiré. Réessayez.';
+            } else if (error?.message?.includes('401') || error?.message?.includes('403')) {
+                message = 'Session expirée. Veuillez vous reconnecter.';
+            } else if (error?.message?.includes('500')) {
+                message = 'Erreur serveur. Réessayez dans quelques instants.';
+            }
+
+            Alert.alert(t('videoWizard.alert.estimationFailedTitle'), message);
         } finally {
             setCostLoading(false);
         }
@@ -628,13 +639,31 @@ const VideoCreationWizardScreen: React.FC = () => {
             sessionId: studioSessionId,
             step,
         });
-        const sessionId = await ensureStudioSession();
-        if (!sessionId) {
-            return;
-        }
         try {
+            const sessionId = await ensureStudioSession();
+            if (!sessionId) {
+                Alert.alert(
+                    'Erreur',
+                    'Impossible de créer ou récupérer une session Studio. Vérifiez votre connexion.',
+                );
+                return;
+            }
+
+            // Validation UUID format
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(sessionId)) {
+                console.error('[VideoCreationWizard] Session ID invalide (pas un UUID):', sessionId);
+                Alert.alert(
+                    'Erreur',
+                    'Session Studio invalide. Veuillez réessayer.',
+                );
+                return;
+            }
+
             setStoryboardLoading(true);
             const request = buildStoryboardRequest();
+            console.log('[VideoCreationWizard] Génération storyboard pour session:', sessionId);
+            console.log('[VideoCreationWizard] Payload:', JSON.stringify(request, null, 2));
             const result = await studioService.generateStoryboard(sessionId, request);
             setStoryboard(result);
             const durationMs = Date.now() - startedAt;
@@ -650,9 +679,22 @@ const VideoCreationWizardScreen: React.FC = () => {
                 },
             });
         } catch (error: any) {
+            console.error('[VideoCreationWizard] Erreur génération storyboard:', error);
             const title = t('videoWizard.alert.storyboardFailedTitle') ?? 'Storyboard IA';
             const defaultMessage = t('videoWizard.alert.storyboardFailedMessage');
-            const message = error?.message || defaultMessage || 'Impossible de générer le storyboard.';
+            let message = error?.message || defaultMessage || 'Impossible de générer le storyboard.';
+
+            // Messages d'erreur plus spécifiques
+            if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+                message = 'Erreur de connexion. Vérifiez votre accès Internet.';
+            } else if (error?.message?.includes('timeout')) {
+                message = 'Le délai d\'attente a expiré. Réessayez.';
+            } else if (error?.message?.includes('401') || error?.message?.includes('403')) {
+                message = 'Session expirée. Veuillez vous reconnecter.';
+            } else if (error?.message?.includes('500')) {
+                message = 'Erreur serveur. Réessayez dans quelques instants.';
+            }
+
             Alert.alert(title, message);
             const durationMs = Date.now() - startedAt;
             trackUxEvent('storyboard_generate_failed', {
@@ -664,6 +706,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 durationMs,
                 extra: {
                     error: error?.message ?? 'unknown',
+                    errorType: error?.name ?? 'unknown',
                 },
             });
         } finally {
@@ -1085,27 +1128,49 @@ const VideoCreationWizardScreen: React.FC = () => {
 
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>{t('videoWizard.sections.style')}</Text>
-                                <View style={styles.pillContainer}>
-                                    {['IntroPulse', 'ProductShowcase', 'ARHighlight', 'GlowCTA'].map((template) => (
-                                        <TouchableOpacity
-                                            key={template}
-                                            style={[
-                                                styles.pill,
-                                                selectedStyle === template && styles.pillActive,
-                                            ]}
-                                            onPress={() => setSelectedStyle(template)}
-                                        >
-                                            <Text
+                                {Platform.OS === 'ios' ? (
+                                    <TouchableOpacity
+                                        style={styles.pickerButton}
+                                        onPress={() => {
+                                            Alert.alert(
+                                                'Style de vidéo',
+                                                'Choisissez un style',
+                                                ['IntroPulse', 'ProductShowcase', 'ARHighlight', 'GlowCTA'].map((template) => ({
+                                                    text: template,
+                                                    onPress: () => setSelectedStyle(template),
+                                                    style: selectedStyle === template ? 'default' : undefined,
+                                                })),
+                                            );
+                                        }}
+                                    >
+                                        <Text style={styles.pickerButtonText}>
+                                            {selectedStyle}
+                                        </Text>
+                                        <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={styles.pillContainer}>
+                                        {['IntroPulse', 'ProductShowcase', 'ARHighlight', 'GlowCTA'].map((template) => (
+                                            <TouchableOpacity
+                                                key={template}
                                                 style={[
-                                                    styles.pillText,
-                                                    selectedStyle === template && styles.pillTextActive,
+                                                    styles.pill,
+                                                    selectedStyle === template && styles.pillActive,
                                                 ]}
+                                                onPress={() => setSelectedStyle(template)}
                                             >
-                                                {template}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
+                                                <Text
+                                                    style={[
+                                                        styles.pillText,
+                                                        selectedStyle === template && styles.pillTextActive,
+                                                    ]}
+                                                >
+                                                    {template}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                )}
                             </NativeCard>
 
                             <NativeCard style={styles.sectionCard}>
@@ -1188,21 +1253,47 @@ const VideoCreationWizardScreen: React.FC = () => {
 
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>{t('videoWizard.sections.mode')}</Text>
-                                <View style={styles.pillContainer}>
-                                    {[
-                                        { key: 'standard', label: t('videoWizard.mode.standardTitle'), description: t('videoWizard.mode.standardDesc') },
-                                        { key: 'expert', label: t('videoWizard.mode.expertTitle'), description: t('videoWizard.mode.expertDesc') },
-                                    ].map((item) => (
-                                        <TouchableOpacity
-                                            key={item.key}
-                                            style={[styles.modeCard, mode === item.key && styles.modeCardActive]}
-                                            onPress={() => setMode(item.key as ModePreset)}
-                                        >
-                                            <Text style={styles.modeTitle}>{item.label}</Text>
-                                            <Text style={styles.modeSubTitle}>{item.description}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
+                                {Platform.OS === 'ios' ? (
+                                    <TouchableOpacity
+                                        style={styles.pickerButton}
+                                        onPress={() => {
+                                            const modeOptions = [
+                                                { key: 'standard', label: t('videoWizard.mode.standardTitle'), description: t('videoWizard.mode.standardDesc') },
+                                                { key: 'expert', label: t('videoWizard.mode.expertTitle'), description: t('videoWizard.mode.expertDesc') },
+                                            ];
+                                            Alert.alert(
+                                                'Mode IA',
+                                                'Choisissez un mode',
+                                                modeOptions.map((item) => ({
+                                                    text: `${item.label}\n${item.description}`,
+                                                    onPress: () => setMode(item.key as ModePreset),
+                                                    style: mode === item.key ? 'default' : undefined,
+                                                })),
+                                            );
+                                        }}
+                                    >
+                                        <Text style={styles.pickerButtonText}>
+                                            {mode === 'expert' ? t('videoWizard.mode.expertTitle') : t('videoWizard.mode.standardTitle')}
+                                        </Text>
+                                        <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={styles.pillContainer}>
+                                        {[
+                                            { key: 'standard', label: t('videoWizard.mode.standardTitle'), description: t('videoWizard.mode.standardDesc') },
+                                            { key: 'expert', label: t('videoWizard.mode.expertTitle'), description: t('videoWizard.mode.expertDesc') },
+                                        ].map((item) => (
+                                            <TouchableOpacity
+                                                key={item.key}
+                                                style={[styles.modeCard, mode === item.key && styles.modeCardActive]}
+                                                onPress={() => setMode(item.key as ModePreset)}
+                                            >
+                                                <Text style={styles.modeTitle}>{item.label}</Text>
+                                                <Text style={styles.modeSubTitle}>{item.description}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                )}
                             </NativeCard>
 
                         </ScrollView>
@@ -1555,6 +1646,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 </View>
                             </NativeCard>
 
+                        </ScrollView>
+                        <View style={styles.fixedBottomButton}>
                             <View style={styles.navigationRow}>
                                 <NativeButton
                                     testID="video-next-step-button"
@@ -1570,7 +1663,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     disabled={isGenerating}
                                 />
                             </View>
-                        </ScrollView>
+                        </View>
                     </Animated.View>
                 );
             default:
@@ -1680,10 +1773,46 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: modernColors.text,
     },
+    scrollView: {
+        flex: 1,
+    },
     stepContent: {
         padding: 20,
         gap: 20,
+        paddingBottom: 100, // Espace pour le bouton fixe
+    },
+    fixedBottomButton: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 20,
         paddingBottom: 40,
+        backgroundColor: modernColors.background,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: modernColors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    pickerButton: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(148,163,184,0.3)',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        backgroundColor: modernColors.surface,
+        marginTop: 8,
+    },
+    pickerButtonText: {
+        fontSize: 15,
+        color: modernColors.text,
+        flex: 1,
     },
     sectionCard: {
         gap: 16,

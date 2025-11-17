@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Platform,
     StyleSheet,
     Switch,
     Text,
@@ -647,31 +648,56 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             <Text style={styles.sectionLabel}>Pickup & dropoff (formulaire avancé)</Text>
             <View style={styles.vehicleSelector}>
                 <Text style={styles.formKicker}>Type de véhicule</Text>
-                <View style={styles.vehicleChips}>
-                    {VEHICLE_OPTIONS.map((option) => {
-                        const active = option.id === vehicleTypeId;
-                        return (
-                            <TouchableOpacity
-                                key={option.id}
-                                style={[styles.vehicleChip, active && styles.vehicleChipActive]}
-                                onPress={() => {
-                                    setVehicleTypeId(option.id);
-                                    setCourierSuccess(null);
-                                }}
-                            >
-                                <Text
-                                    style={[
-                                        styles.vehicleChipLabel,
-                                        active && styles.vehicleChipLabelActive,
-                                    ]}
+                {Platform.OS === 'ios' ? (
+                    <TouchableOpacity
+                        style={styles.pickerButton}
+                        onPress={() => {
+                            Alert.alert(
+                                'Type de véhicule',
+                                'Choisissez un type de véhicule',
+                                VEHICLE_OPTIONS.map((option) => ({
+                                    text: `${option.label} - ${option.description}`,
+                                    onPress: () => {
+                                        setVehicleTypeId(option.id);
+                                        setCourierSuccess(null);
+                                    },
+                                    style: option.id === vehicleTypeId ? 'default' : undefined,
+                                })),
+                            );
+                        }}
+                    >
+                        <Text style={styles.pickerButtonText}>
+                            {VEHICLE_OPTIONS.find((o) => o.id === vehicleTypeId)?.label || 'Sélectionner...'}
+                        </Text>
+                        <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
+                    </TouchableOpacity>
+                ) : (
+                    <View style={styles.vehicleChips}>
+                        {VEHICLE_OPTIONS.map((option) => {
+                            const active = option.id === vehicleTypeId;
+                            return (
+                                <TouchableOpacity
+                                    key={option.id}
+                                    style={[styles.vehicleChip, active && styles.vehicleChipActive]}
+                                    onPress={() => {
+                                        setVehicleTypeId(option.id);
+                                        setCourierSuccess(null);
+                                    }}
                                 >
-                                    {option.label}
-                                </Text>
-                                <Text style={styles.vehicleChipDescription}>{option.description}</Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
+                                    <Text
+                                        style={[
+                                            styles.vehicleChipLabel,
+                                            active && styles.vehicleChipLabelActive,
+                                        ]}
+                                    >
+                                        {option.label}
+                                    </Text>
+                                    <Text style={styles.vehicleChipDescription}>{option.description}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                )}
             </View>
             <View style={styles.locationForm}>
                 <View style={styles.locationBlock}>
@@ -1030,9 +1056,9 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                 currentLocation={
                     pickupLatitudeInput && pickupLongitudeInput
                         ? {
-                              lat: parseFloat(pickupLatitudeInput) || 0,
-                              lng: parseFloat(pickupLongitudeInput) || 0,
-                          }
+                            lat: parseFloat(pickupLatitudeInput) || 0,
+                            lng: parseFloat(pickupLongitudeInput) || 0,
+                        }
                         : undefined
                 }
                 title="Sélection du point de collecte"
@@ -1057,9 +1083,9 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                 currentLocation={
                     dropoffLatitudeInput && dropoffLongitudeInput
                         ? {
-                              lat: parseFloat(dropoffLatitudeInput) || 0,
-                              lng: parseFloat(dropoffLongitudeInput) || 0,
-                          }
+                            lat: parseFloat(dropoffLatitudeInput) || 0,
+                            lng: parseFloat(dropoffLongitudeInput) || 0,
+                        }
                         : undefined
                 }
                 title="Sélection du point de livraison"
@@ -1452,6 +1478,23 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '600',
         color: modernColors.primary,
+    },
+    pickerButton: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        backgroundColor: 'rgba(15,23,42,0.4)',
+        marginTop: 8,
+    },
+    pickerButtonText: {
+        fontSize: 14,
+        color: '#fff',
+        flex: 1,
     },
     locationInput: {
         borderWidth: 1,

@@ -169,10 +169,26 @@ export const studioService = {
     },
 
     async requestShortPreview(sessionId: string): Promise<StudioPreviewResponse> {
+        console.log('[studioService] requestShortPreview called with sessionId:', sessionId);
+
         const response = await apiPost<StudioPreviewResponse>(
             `${BASE}/sessions/${sessionId}/preview-short`,
             {},
         );
+
+        console.log('[studioService] requestShortPreview response:', {
+            success: response.success,
+            hasData: !!response.data,
+            error: response.error,
+            status: (response as any).status,
+        });
+
+        if (!response.success) {
+            const errorMsg = response.error || 'Erreur lors de la génération de la prévisualisation';
+            console.error('[studioService] Preview error details:', response);
+            throw new Error(errorMsg);
+        }
+
         return ensureSuccess(response);
     },
 
@@ -215,11 +231,30 @@ export const studioService = {
         sessionId: string,
         payload: StoryboardRequest,
     ): Promise<Storyboard> {
+        console.log('[studioService] generateStoryboard called with:', {
+            sessionId,
+            payload: JSON.stringify(payload, null, 2),
+            url: `${BASE}/sessions/${sessionId}/storyboard`,
+        });
+
         const response = await apiPost<{ storyboard: Storyboard }>(
             `${BASE}/sessions/${sessionId}/storyboard`,
             payload,
         );
+
+        console.log('[studioService] generateStoryboard response:', {
+            success: response.success,
+            hasData: !!response.data,
+            error: response.error,
+        });
+
         const data = ensureSuccess(response);
+
+        if (!data?.storyboard) {
+            console.error('[studioService] Storyboard manquant dans la réponse:', data);
+            throw new Error('Réponse storyboard invalide : structure de données manquante');
+        }
+
         return data.storyboard;
     },
 };
