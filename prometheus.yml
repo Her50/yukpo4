@@ -4,27 +4,19 @@ global:
 
 scrape_configs:
   # Scrape du backend Yukpo (vidéo + delivery) via /metrics
+  # ✅ Backend déployé sur Render (cloud) en production
   - job_name: 'yukpo-backend'
     metrics_path: /metrics
+    scheme: https
     static_configs:
-      # ✅ Option A: Backend sur Hetzner via Docker Compose (réseau Docker)
       - targets:
-          - 'backend:3001'  # Hostname Docker dans le réseau yukpo-network
+          - 'yukpomnang.onrender.com'  # ✅ URL Render backend en production
         labels:
-          instance: 'yukpo-backend-docker'
+          instance: 'yukpo-backend-render'
           environment: 'production'
-      
-      # ✅ Option B: Backend déployé sur cloud (Render/etc.) - DÉCOMMENTEZ si nécessaire
-      # - targets:
-      #     - 'https://yukpo-backend.onrender.com'  # URL publique réelle
-      #   labels:
-      #     instance: 'yukpo-backend-cloud'
-      #     environment: 'production'
-      #   scheme: https
-      #   tls_config:
-      #     insecure_skip_verify: false  # Mettre true si cert auto-signé
+          deployment: 'cloud'
     
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
-        replacement: 'yukpo-backend'
+        replacement: 'yukpo-backend-render'
