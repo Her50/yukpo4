@@ -84,6 +84,34 @@ export interface TemplateRecommendationRequest {
     ai_hints?: string[];
 }
 
+export interface StoryboardRequest {
+    script_outline: string[];
+    product_name?: string;
+    headline?: string;
+    call_to_action?: string;
+    style?: string;
+    duration_seconds?: number;
+    template_id?: string | null;
+    business_context?: TemplateBusinessContextInput;
+    ai_hints?: string[];
+}
+
+export interface StoryboardScene {
+    index: number;
+    sceneType: string;
+    headline?: string;
+    body?: string;
+    durationHintSeconds: number;
+    mediaHint?: string;
+}
+
+export interface Storyboard {
+    templateId: string;
+    totalDurationSeconds: number;
+    scenes: StoryboardScene[];
+    warnings: string[];
+}
+
 export const studioService = {
     async listSessions(): Promise<StudioSession[]> {
         const response = await apiGet<StudioSession[]>(`${BASE}/sessions`);
@@ -140,6 +168,14 @@ export const studioService = {
         return ensureSuccess(response);
     },
 
+    async requestShortPreview(sessionId: string): Promise<StudioPreviewResponse> {
+        const response = await apiPost<StudioPreviewResponse>(
+            `${BASE}/sessions/${sessionId}/preview-short`,
+            {},
+        );
+        return ensureSuccess(response);
+    },
+
     async publishSession(sessionId: string): Promise<StudioPublishResponse> {
         const response = await apiPost<StudioPublishResponse>(
             `${BASE}/sessions/${sessionId}/publish`,
@@ -173,6 +209,18 @@ export const studioService = {
             `${BASE}/sessions/${sessionId}/preview-metrics`,
         );
         return ensureSuccess(response);
+    },
+
+    async generateStoryboard(
+        sessionId: string,
+        payload: StoryboardRequest,
+    ): Promise<Storyboard> {
+        const response = await apiPost<{ storyboard: Storyboard }>(
+            `${BASE}/sessions/${sessionId}/storyboard`,
+            payload,
+        );
+        const data = ensureSuccess(response);
+        return data.storyboard;
     },
 };
 

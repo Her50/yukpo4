@@ -222,3 +222,17 @@ pub struct ReviewGlobalPromoEntryRequest {
     #[serde(default)]
     pub metadata_patch: Option<Value>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct BulkReviewGlobalPromoEntryRequest {
+    pub entry_ids: Vec<Uuid>,
+    pub status: String,
+    #[serde(default)]
+    pub message: Option<String>,
+    #[serde(default)]
+    pub highlighted: Option<bool>,
+    #[serde(default)]
+    pub priority_score: Option<i32>,
+    #[serde(default)]
+    pub metadata_patch: Option<Value>,
+}

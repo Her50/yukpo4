@@ -1,9 +1,12 @@
 import type {
+    BulkReviewGlobalPromoEntryPayload,
     CreateGlobalPromoEventPayload,
     GlobalPromoCatalogItem,
+    GlobalPromoCatalogPage,
     GlobalPromoEntry,
     GlobalPromoEvent,
     GlobalPromoProductSnapshot,
+    ReviewGlobalPromoEntryPayload,
     UpdateGlobalPromoEventPayload,
     UpsertGlobalPromoEntryPayload,
 } from '@/types/globalPromo';
@@ -62,11 +65,24 @@ const mapProduct = (raw?: any): GlobalPromoProductSnapshot | undefined => {
     };
 };
 
-const mapCatalogItem = (raw: any): GlobalPromoCatalogItem => ({
-    event: mapEvent(raw.event ?? raw),
-    entry: mapEntry(raw.entry ?? raw),
-    product: mapProduct(raw.product ?? raw.product_snapshot),
-});
+const mapCatalogItem = (raw: any): GlobalPromoCatalogItem => {
+    const base: GlobalPromoCatalogItem = {
+        event: mapEvent(raw.event ?? raw),
+        entry: mapEntry(raw.entry ?? raw),
+        product: mapProduct(raw.product ?? raw.product_snapshot),
+    };
+
+    const badgesRaw = raw.badges;
+    if (!badgesRaw) return base;
+
+    return {
+        ...base,
+        badges: {
+            eventIsLive: badgesRaw.event_is_live ?? badgesRaw.eventIsLive ?? false,
+            eventIsImminent: badgesRaw.event_is_imminent ?? badgesRaw.eventIsImminent ?? false,
+        },
+    };
+};
 
 const extractData = async <T>(response: Response): Promise<T> => {
     const payload: ApiResponse<T> = await response.json();
@@ -119,10 +135,50 @@ export const upsertGlobalPromoEntry = async (
     return mapEntry(data);
 };
 
-export const fetchGlobalPromoCatalog = async (): Promise<GlobalPromoCatalogItem[]> => {
-    const response = await apiGet('/api/global-promos/catalog');
-    const data = await extractData<any[]>(response);
-    return data.map(mapCatalogItem);
+export const fetchGlobalPromoCatalog = async (
+    params?: {
+        page?: number;
+        pageSize?: number;
+        highlightedOnly?: boolean;
+        eventSlug?: string;
+        availability?: 'online' | 'live' | 'both';
+        status?: string;
+        search?: string;
+        sort?: 'priority' | 'ending_soon' | 'recent' | 'newest_event';
+        startsWithinMinutes?: number;
+    },
+): Promise<GlobalPromoCatalogPage> => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.pageSize) searchParams.set('page_size', String(params.pageSize));
+    if (params?.highlightedOnly) searchParams.set('highlighted_only', 'true');
+    if (params?.eventSlug) searchParams.set('event_slug', params.eventSlug);
+    if (params?.availability) searchParams.set('availability', params.availability);
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.sort) searchParams.set('sort', params.sort);
+    if (params?.startsWithinMinutes)
+        searchParams.set('starts_within_minutes', String(params.startsWithinMinutes));
+
+    const query = searchParams.toString();
+    const url = query ? `/api/global-promos/catalog?${query}` : '/api/global-promos/catalog';
+
+    const response = await apiGet(url);
+    const data = await extractData<any>(response);
+
+    const items = (data.items ?? []).map(mapCatalogItem);
+    const page = data.page ?? 1;
+    const pageSize = data.page_size ?? data.pageSize ?? items.length;
+    const total = data.total ?? items.length;
+    const hasMore = data.has_more ?? data.hasMore ?? false;
+
+    return {
+        items,
+        page,
+        pageSize,
+        total,
+        hasMore,
+    };
 };
 
 interface MyEventsPayload {
@@ -155,5 +211,35 @@ export const submitMyGlobalPromoEntry = async (
     const response = await apiPost(`/api/me/global-promos/events/${eventId}/entries`, payload);
     const data = await extractData<any>(response);
     return mapEntry(data);
+};
+
+export const reviewGlobalPromoEntry = async (
+    entryId: string,
+    payload: ReviewGlobalPromoEntryPayload,
+): Promise<GlobalPromoEntry> => {
+    const response = await apiPost(`/api/global-promos/entries/${entryId}/review`, {
+        status: payload.status,
+        message: payload.message,
+        highlighted: payload.highlighted,
+        priority_score: payload.priorityScore,
+        metadata_patch: payload.metadataPatch,
+    });
+    const data = await extractData<any>(response);
+    return mapEntry(data);
+};
+
+export const reviewGlobalPromoEntriesBulk = async (
+    payload: BulkReviewGlobalPromoEntryPayload,
+): Promise<GlobalPromoEntry[]> => {
+    const response = await apiPost('/api/global-promos/entries/bulk-review', {
+        entry_ids: payload.entryIds,
+        status: payload.status,
+        message: payload.message,
+        highlighted: payload.highlighted,
+        priority_score: payload.priorityScore,
+        metadata_patch: payload.metadataPatch,
+    });
+    const data = await extractData<any[]>(response);
+    return data.map(mapEntry);
 };
 

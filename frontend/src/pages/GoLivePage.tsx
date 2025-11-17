@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
+import { useFeatureFlags } from '@/context';
 import { useUser } from '@/hooks/useUser';
 import { ROUTES } from '@/routes/AppRoutesRegistry';
 import {
@@ -42,6 +43,7 @@ interface FlashSaleDraft {
 const GoLivePage: React.FC = () => {
     const navigate = useNavigate();
     const { user, isLoading } = useUser();
+    const { isEnabled } = useFeatureFlags();
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -77,8 +79,10 @@ const GoLivePage: React.FC = () => {
             }
         };
 
-        fetchServices();
-    }, [user, isLoading, navigate]);
+        if (isEnabled('connectors_livekit')) {
+            fetchServices();
+        }
+    }, [user, isLoading, navigate, isEnabled]);
 
     const availableServices = useMemo(() => {
         return services.filter((service) => {
@@ -157,6 +161,11 @@ const GoLivePage: React.FC = () => {
         event.preventDefault();
         if (!user) {
             toast.error('Vous devez être connecté pour lancer un live.');
+            return;
+        }
+
+        if (!isEnabled('connectors_livekit')) {
+            toast.error("La fonctionnalité live n'est pas disponible sur cet environnement.");
             return;
         }
 

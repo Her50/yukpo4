@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { studioService, TimelineClipInput } from '../services/studioService';
+import {
+    studioService,
+    TimelineClipInput,
+    type Storyboard,
+    type StoryboardRequest,
+} from '../services/studioService';
 import type {
     StoryTemplateSpec,
     StudioPreviewEvent,
@@ -32,6 +37,8 @@ export interface CreatorStudioState {
     previewMetrics?: StudioPreviewMetrics;
     previewMetricsLoading: boolean;
     distributionPlan: string[];
+    storyboard?: Storyboard | null;
+    storyboardLoading: boolean;
 }
 
 export interface CreatorStudioActions {
@@ -40,6 +47,7 @@ export interface CreatorStudioActions {
     pickTemplate: (template: string) => void;
     requestPreview: () => Promise<void>;
     goToStep: (step: StudioStepKey) => void;
+    generateStoryboard: () => Promise<void>;
 }
 
 const extractBrief = (value: unknown): string => {
@@ -103,7 +111,13 @@ const FALLBACK_TEMPLATES: StoryTemplateSpec[] = [
     },
 ];
 
-export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] => {
+type CreatorStudioOptions = {
+    serviceId?: number;
+};
+
+export const useCreatorStudio = (
+    options: CreatorStudioOptions = {},
+): [CreatorStudioState, CreatorStudioActions] => {
     const [currentStep, setCurrentStep] = useState<StudioStepKey>('brief');
     const [brief, setBriefState] = useState('');
     const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
@@ -126,6 +140,8 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
         scenes: 6
     });
     const [distributionPlan, setDistributionPlan] = useState<string[]>(DEFAULT_DISTRIBUTION);
+    const [storyboard, setStoryboard] = useState<Storyboard | null>(null);
+    const [storyboardLoading, setStoryboardLoading] = useState(false);
 
     const sessionId = sessionAggregate?.session.id;
     const templateOptions = templates.length > 0 ? templates : FALLBACK_TEMPLATES;
@@ -198,6 +214,7 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
                     await refreshSession(existing[0].id);
                 } else {
                     const aggregate = await studioService.createSession({
+                        service_id: options.serviceId,
                         brief: { raw: '' },
                         distribution_plan: DEFAULT_DISTRIBUTION
                     });
@@ -287,6 +304,53 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
         },
         [pickTemplateSpec],
     );
+
+    const buildStoryboardRequest = useCallback((): StoryboardRequest | null => {
+        if (!selectedStoryTemplate) {
+            return null;
+        }
+        const outlineSource =
+            aiSuggestions.length > 0
+                ? aiSuggestions
+                : brief
+                    .split(/[\n\.!?]/)
+                    .map((entry) => entry.trim())
+                    .filter((entry) => entry.length > 0);
+        const script_outline =
+            outlineSource.length > 0 ? outlineSource.slice(0, 6) : ['Concept Yukpo Studio'];
+
+        return {
+            script_outline,
+            product_name: (sessionAggregate?.session.metadata as any)?.product_name ?? 'Studio Yukpo',
+            headline: brief || undefined,
+            call_to_action: (sessionAggregate?.session.metadata as any)?.cta_label,
+            style: (sessionAggregate?.session.metadata as any)?.template_tone,
+            duration_seconds: selectedStoryTemplate.default_duration_seconds,
+            template_id: timelineDraft.template,
+            business_context: undefined,
+            ai_hints: recommendedTemplates,
+        };
+    }, [aiSuggestions, brief, recommendedTemplates, selectedStoryTemplate, sessionAggregate, timelineDraft.template]);
+
+    const generateStoryboard = useCallback(async () => {
+        if (!sessionId) {
+            return;
+        }
+        const request = buildStoryboardRequest();
+        if (!request) {
+            return;
+        }
+        setStoryboardLoading(true);
+        try {
+            const result = await studioService.generateStoryboard(sessionId, request);
+            setStoryboard(result);
+        } catch (error) {
+            console.error('[CreatorStudio] storyboard generation failed', error);
+            setSessionError((error as Error).message);
+        } finally {
+            setStoryboardLoading(false);
+        }
+    }, [buildStoryboardRequest, sessionId]);
 
     const buildTimelinePayload = useCallback((): TimelineClipInput[] => {
         const templateKey =
@@ -378,7 +442,9 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
             previewEventsLoading,
             previewMetrics,
             previewMetricsLoading,
-            distributionPlan
+            distributionPlan,
+            storyboard,
+            storyboardLoading,
         };
     }, [
         aiSuggestions,
@@ -398,7 +464,9 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
         previewMetricsLoading,
         templateOptions,
         templatesLoading,
-        timelineDraft
+        timelineDraft,
+        storyboard,
+        storyboardLoading,
     ]);
 
     const actions: CreatorStudioActions = {
@@ -406,7 +474,8 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
         generateAiSuggestions,
         pickTemplate,
         requestPreview,
-        goToStep
+        goToStep,
+        generateStoryboard,
     };
 
     return [state, actions];

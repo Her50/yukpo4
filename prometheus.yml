@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Scrape du backend Yukpo (vidéo + delivery) via /metrics
+  - job_name: 'yukpo-backend'
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'backend:3001'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'yukpo-backend'
+
+

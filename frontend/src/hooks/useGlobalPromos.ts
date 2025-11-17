@@ -4,6 +4,8 @@ import {
     createGlobalPromoEvent,
     fetchGlobalPromoEntries,
     fetchGlobalPromoEvents,
+    reviewGlobalPromoEntriesBulk,
+    reviewGlobalPromoEntry,
     upsertGlobalPromoEntry,
 } from '@/services/globalPromoApi';
 import type {
@@ -24,6 +26,24 @@ interface UseGlobalPromosResult {
     refreshEvents: () => Promise<void>;
     createEvent: (payload: CreateGlobalPromoEventPayload) => Promise<void>;
     upsertEntry: (payload: UpsertGlobalPromoEntryPayload) => Promise<void>;
+    reviewEntriesBulk: (
+        entryIds: string[],
+        payload: {
+            status: 'approved' | 'rejected';
+            message?: string;
+            highlighted?: boolean;
+            priorityScore?: number;
+        },
+    ) => Promise<void>;
+    reviewEntry: (
+        entryId: string,
+        payload: {
+            status: 'approved' | 'rejected';
+            message?: string;
+            highlighted?: boolean;
+            priorityScore?: number;
+        },
+    ) => Promise<void>;
 }
 
 export const useGlobalPromos = (): UseGlobalPromosResult => {
@@ -114,6 +134,46 @@ export const useGlobalPromos = (): UseGlobalPromosResult => {
         [loadEntries, selectedEventId],
     );
 
+    const reviewEntry = useCallback(
+        async (entryId: string, payload: { status: 'approved' | 'rejected'; message?: string; highlighted?: boolean; priorityScore?: number }) => {
+            await reviewGlobalPromoEntry(entryId, {
+                status: payload.status,
+                message: payload.message,
+                highlighted: payload.highlighted,
+                priorityScore: payload.priorityScore,
+            });
+            if (selectedEventId) {
+                await loadEntries(selectedEventId);
+            }
+        },
+        [loadEntries, selectedEventId],
+    );
+
+    const reviewEntriesBulk = useCallback(
+        async (
+            entryIds: string[],
+            payload: {
+                status: 'approved' | 'rejected';
+                message?: string;
+                highlighted?: boolean;
+                priorityScore?: number;
+            },
+        ) => {
+            if (!entryIds.length) return;
+            await reviewGlobalPromoEntriesBulk({
+                entryIds,
+                status: payload.status,
+                message: payload.message,
+                highlighted: payload.highlighted,
+                priorityScore: payload.priorityScore,
+            });
+            if (selectedEventId) {
+                await loadEntries(selectedEventId);
+            }
+        },
+        [loadEntries, selectedEventId],
+    );
+
     const selectedEvent = useMemo(
         () => events.find((event) => event.id === selectedEventId),
         [events, selectedEventId],
@@ -130,6 +190,8 @@ export const useGlobalPromos = (): UseGlobalPromosResult => {
         refreshEvents,
         createEvent,
         upsertEntry: upsertEntryHandler,
+        reviewEntry,
+        reviewEntriesBulk,
     };
 };
 

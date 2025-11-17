@@ -41,6 +41,45 @@ export interface AttachAssetInput {
     metadata?: Record<string, unknown>;
 }
 
+export interface TemplateBusinessContextInput {
+    service_category?: string;
+    tone?: string;
+    cta_label?: string;
+    delivery_sla_minutes?: number;
+    stock_level?: number;
+    promotion_active?: boolean;
+    price_label?: string;
+    target_audience?: string;
+}
+
+export interface StoryboardRequest {
+    script_outline: string[];
+    product_name?: string;
+    headline?: string;
+    call_to_action?: string;
+    style?: string;
+    duration_seconds?: number;
+    template_id?: string | null;
+    business_context?: TemplateBusinessContextInput;
+    ai_hints?: string[];
+}
+
+export interface StoryboardScene {
+    index: number;
+    sceneType: string;
+    headline?: string;
+    body?: string;
+    durationHintSeconds: number;
+    mediaHint?: string;
+}
+
+export interface Storyboard {
+    templateId: string;
+    totalDurationSeconds: number;
+    scenes: StoryboardScene[];
+    warnings: string[];
+}
+
 const parseJson = async <T>(response: Response): Promise<T> => {
     const text = await response.text();
     return text ? (JSON.parse(text) as T) : ({} as T);
@@ -89,6 +128,10 @@ export const studioService = {
         const res = await apiPost(`${BASE}/sessions/${sessionId}/preview`, {});
         return parseJson(res);
     },
+    requestShortPreview: async (sessionId: string): Promise<StudioPreviewResponse> => {
+        const res = await apiPost(`${BASE}/sessions/${sessionId}/preview-short`, {});
+        return parseJson(res);
+    },
     publishSession: async (sessionId: string): Promise<StudioPublishResponse> => {
         const res = await apiPost(`${BASE}/sessions/${sessionId}/publish`, {});
         return parseJson(res);
@@ -104,6 +147,14 @@ export const studioService = {
     getPreviewMetrics: async (sessionId: string): Promise<StudioPreviewMetrics> => {
         const res = await apiGet(`${BASE}/sessions/${sessionId}/preview-metrics`);
         return parseJson(res);
+    },
+    generateStoryboard: async (
+        sessionId: string,
+        payload: StoryboardRequest
+    ): Promise<Storyboard> => {
+        const res = await apiPost(`${BASE}/sessions/${sessionId}/storyboard`, payload);
+        const json = await parseJson<{ storyboard: Storyboard }>(res);
+        return json.storyboard;
     }
 };
 

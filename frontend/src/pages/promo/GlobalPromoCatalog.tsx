@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import AppLayout from '@/components/layout/AppLayout';
+import { useFeatureFlags } from '@/context';
 import { fetchGlobalPromoCatalog } from '@/services/globalPromoApi';
-import type { GlobalPromoCatalogItem } from '@/types/globalPromo';
+import type { GlobalPromoCatalogPage } from '@/types/globalPromo';
 
 const getSnapshotImage = (snapshot: any): string | undefined => {
     if (!snapshot) return undefined;
@@ -26,19 +27,30 @@ const formatPrice = (value?: number | null) =>
     value ? `${value.toLocaleString('fr-FR')} CFA` : 'Prix communiquée lors du live';
 
 const GlobalPromoCatalogPage: React.FC = () => {
-    const [items, setItems] = useState<GlobalPromoCatalogItem[]>([]);
+    const { isEnabled } = useFeatureFlags();
+    const [pageData, setPageData] = useState<GlobalPromoCatalogPage | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [keyword, setKeyword] = useState('');
     const [availability, setAvailability] = useState<'all' | 'online' | 'live' | 'both'>('all');
     const [minDiscount, setMinDiscount] = useState('0');
+    const [page, setPage] = useState(1);
+    const [sort, setSort] =
+        useState<'priority' | 'ending_soon' | 'recent' | 'newest_event'>('ending_soon');
 
     useEffect(() => {
         const load = async () => {
             try {
                 setLoading(true);
-                const data = await fetchGlobalPromoCatalog();
-                setItems(data);
+                const data = await fetchGlobalPromoCatalog({
+                    page,
+                    pageSize: 24,
+                    availability: availability === 'all' ? undefined : availability,
+                    search: keyword || undefined,
+                    sort,
+                    highlightedOnly: sort === 'priority',
+                });
+                setPageData(data);
             } catch (err) {
                 console.error('[GlobalPromoCatalog] Failed to load catalog', err);
                 setError("Impossible de récupérer les promotions globales. Réessayez plus tard.");
@@ -46,10 +58,13 @@ const GlobalPromoCatalogPage: React.FC = () => {
                 setLoading(false);
             }
         };
-        load();
-    }, []);
+        if (isEnabled('global_promos')) {
+            load();
+        }
+    }, [page, availability, keyword, sort, isEnabled]);
 
     const filteredItems = useMemo(() => {
+        const items = pageData?.items ?? [];
         return items.filter((item) => {
             const snapshot = item.product?.snapshot ?? {};
             const title =
@@ -67,7 +82,23 @@ const GlobalPromoCatalogPage: React.FC = () => {
 
             return matchesKeyword && matchesAvailability && matchesDiscount;
         });
-    }, [items, keyword, availability, minDiscount]);
+    }, [pageData, keyword, availability, minDiscount]);
+
+    if (!isEnabled('global_promos')) {
+        return (
+            <AppLayout>
+                <div className="mx-auto max-w-3xl px-4 py-12 space-y-6">
+                    <h1 className="text-2xl font-bold text-gray-900">
+                        Promotions globales désactivées
+                    </h1>
+                    <p className="text-gray-600">
+                        Les campagnes Global Promo ne sont pas encore disponibles sur cet environnement.
+                        Réessayez plus tard ou contactez le support si vous pensez que c&apos;est une erreur.
+                    </p>
+                </div>
+            </AppLayout>
+        );
+    }
 
     return (
         <AppLayout>
@@ -91,7 +122,7 @@ const GlobalPromoCatalogPage: React.FC = () => {
 
                 <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
                     <h2 className="text-lg font-semibold text-slate-900">Filtrer les promotions</h2>
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-4">
                         <label className="text-sm font-medium text-slate-700">
                             Recherche
                             <input
@@ -126,6 +157,22 @@ const GlobalPromoCatalogPage: React.FC = () => {
                                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                             />
                         </label>
+                        <label className="text-sm font-medium text-slate-700">
+                            Tri
+                            <select
+                                value={sort}
+                                onChange={(e) => {
+                                    setSort(e.target.value as typeof sort);
+                                    setPage(1);
+                                }}
+                                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                            >
+                                <option value="priority">En vedette</option>
+                                <option value="ending_soon">Se termine bientôt</option>
+                                <option value="recent">Récemment mis à jour</option>
+                                <option value="newest_event">Nouvelle campagne</option>
+                            </select>
+                        </label>
                     </div>
                 </section>
 
@@ -141,63 +188,99 @@ const GlobalPromoCatalogPage: React.FC = () => {
                             Aucun résultat pour ces filtres. Essayez un autre mot-clé ou réduisez le seuil de réduction.
                         </div>
                     ) : (
-                        <div className="grid gap-6 md:grid-cols-2">
-                            {filteredItems.map((item) => {
-                                const snapshot = item.product?.snapshot ?? {};
-                                const image = getSnapshotImage(snapshot);
-                                const title =
-                                    snapshot.title || snapshot.nom_service || item.entry.metadata?.title || `Service #${item.entry.serviceId}`;
-                                const description =
-                                    snapshot.description ||
-                                    snapshot.short_description ||
-                                    item.entry.metadata?.description ||
-                                    'Offre spéciale Black Friday validée par Yukpo.';
-
-                                return (
-                                    <article
-                                        key={item.entry.id}
-                                        className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                        <>
+                            <div className="flex items-center justify-between pb-3 text-xs text-slate-500">
+                                <div>
+                                    Page {pageData?.page ?? 1} /{' '}
+                                    {pageData ? Math.max(1, Math.ceil(pageData.total / pageData.pageSize)) : 1}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={!pageData || pageData.page <= 1 || loading}
+                                        onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                                        className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        {image && (
-                                            <img src={image} alt={title} className="h-48 w-full object-cover transition group-hover:scale-105" />
-                                        )}
-                                        <div className="space-y-3 p-5">
-                                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
-                                                <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">
-                                                    {item.event.displayName}
-                                                </span>
-                                                <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{item.entry.availability}</span>
-                                            </div>
-                                            <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-                                            <p className="text-sm text-slate-600 line-clamp-3">{description}</p>
-                                            <div className="flex flex-wrap items-center gap-4 text-sm">
-                                                <span className="font-semibold text-emerald-600">{formatPrice(item.entry.promoPriceCfa)}</span>
-                                                {item.entry.discountPercentage && (
-                                                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
-                                                        -{item.entry.discountPercentage}%
+                                        ← Précédent
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={!pageData || !pageData.hasMore || loading}
+                                        onClick={() => setPage((prev) => prev + 1)}
+                                        className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        Suivant →
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="grid gap-6 md:grid-cols-2">
+                                {filteredItems.map((item) => {
+                                    const snapshot = item.product?.snapshot ?? {};
+                                    const image = getSnapshotImage(snapshot);
+                                    const title =
+                                        snapshot.title || snapshot.nom_service || item.entry.metadata?.title || `Service #${item.entry.serviceId}`;
+                                    const description =
+                                        snapshot.description ||
+                                        snapshot.short_description ||
+                                        item.entry.metadata?.description ||
+                                        'Offre spéciale Black Friday validée par Yukpo.';
+
+                                    return (
+                                        <article
+                                            key={item.entry.id}
+                                            className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                                        >
+                                            {image && (
+                                                <img src={image} alt={title} className="h-48 w-full object-cover transition group-hover:scale-105" />
+                                            )}
+                                            <div className="space-y-3 p-5">
+                                                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
+                                                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">
+                                                        {item.event.displayName}
                                                     </span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center justify-between text-xs text-slate-500">
-                                                <div>
-                                                    Live {new Date(item.event.startsAt).toLocaleDateString('fr-FR')} →{' '}
-                                                    {new Date(item.event.endsAt).toLocaleDateString('fr-FR')}
+                                                    {item.badges?.eventIsLive && (
+                                                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">
+                                                            En live maintenant
+                                                        </span>
+                                                    )}
+                                                    {!item.badges?.eventIsLive && item.badges?.eventIsImminent && (
+                                                        <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">
+                                                            Live imminent
+                                                        </span>
+                                                    )}
+                                                    <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{item.entry.availability}</span>
                                                 </div>
-                                                {item.product?.highlighted && <span>✨ Coup de cœur Yukpo</span>}
+                                                <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+                                                <p className="text-sm text-slate-600 line-clamp-3">{description}</p>
+                                                <div className="flex flex-wrap items-center gap-4 text-sm">
+                                                    <span className="font-semibold text-emerald-600">{formatPrice(item.entry.promoPriceCfa)}</span>
+                                                    {item.entry.discountPercentage && (
+                                                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                                                            -{item.entry.discountPercentage}%
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center justify-between text-xs text-slate-500">
+                                                    <div>
+                                                        Live {new Date(item.event.startsAt).toLocaleDateString('fr-FR')} →{' '}
+                                                        {new Date(item.event.endsAt).toLocaleDateString('fr-FR')}
+                                                    </div>
+                                                    {item.product?.highlighted && <span>✨ Coup de cœur Yukpo</span>}
+                                                </div>
+                                                <div className="pt-3">
+                                                    <Link
+                                                        to={`/services/${item.entry.serviceId}`}
+                                                        className="inline-flex items-center text-sm font-semibold text-indigo-600 hover:text-indigo-800"
+                                                    >
+                                                        Voir le service détaillé →
+                                                    </Link>
+                                                </div>
                                             </div>
-                                            <div className="pt-3">
-                                                <Link
-                                                    to={`/services/${item.entry.serviceId}`}
-                                                    className="inline-flex items-center text-sm font-semibold text-indigo-600 hover:text-indigo-800"
-                                                >
-                                                    Voir le service détaillé →
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    </article>
-                                );
-                            })}
-                        </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        </>
                     )}
                 </section>
             </div>

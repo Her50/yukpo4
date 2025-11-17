@@ -133,6 +133,10 @@ export interface VideoGenerationPayload {
     style_overlay_tips?: string[] | null;
     style_music_hint?: string | null;
     voice_profile_id?: number | null;
+    media_scene_overrides?: Array<{
+        media_id: number;
+        scene_index: number;
+    }> | null;
 }
 
 export interface AIVideoBriefVariant {

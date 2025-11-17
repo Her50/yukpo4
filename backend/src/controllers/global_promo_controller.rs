@@ -10,11 +10,13 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
+    config::feature_flags::KnownFlag,
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     models::global_promo_model::{
-        CreateGlobalPromoEventRequest, GlobalPromoCatalogQuery, ReviewGlobalPromoEntryRequest,
-        UpdateGlobalPromoEventRequest, UpsertGlobalPromoEntryRequest,
+        BulkReviewGlobalPromoEntryRequest, CreateGlobalPromoEventRequest, GlobalPromoCatalogQuery,
+        ReviewGlobalPromoEntryRequest, UpdateGlobalPromoEventRequest,
+        UpsertGlobalPromoEntryRequest,
     },
     services::global_promo_service::GlobalPromoService,
     state::AppState,
@@ -150,6 +152,15 @@ pub async fn list_global_promo_catalog(
     State(state): State<Arc<AppState>>,
     Query(query): Query<GlobalPromoCatalogQuery>,
 ) -> AppResult<Json<serde_json::Value>> {
+    if !state.feature_flags.is_enabled(KnownFlag::GlobalPromos) {
+        return Ok(Json(json!({
+            "success": false,
+            "error": {
+                "code": "feature_disabled",
+                "message": "La fonctionnalité Global Promo est désactivée sur cet environnement."
+            }
+        })));
+    }
     let catalog = GlobalPromoService::list_active_catalog(&state.pg, query).await?;
     Ok(Json(json!({ "success": true, "data": catalog })))
 }
@@ -197,4 +208,14 @@ pub async fn review_global_promo_entry(
     ensure_admin_role(&user)?;
     let entry = GlobalPromoService::review_entry(&state.pg, entry_id, user.id, payload).await?;
     Ok(Json(json!({ "success": true, "data": entry })))
+}
+
+pub async fn review_global_promo_entries_bulk(
+    State(state): State<Arc<AppState>>,
+    Authenticated(user): Authenticated,
+    Json(payload): Json<BulkReviewGlobalPromoEntryRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    ensure_admin_role(&user)?;
+    let entries = GlobalPromoService::review_entries_bulk(&state.pg, user.id, payload).await?;
+    Ok(Json(json!({ "success": true, "data": entries })))
 }

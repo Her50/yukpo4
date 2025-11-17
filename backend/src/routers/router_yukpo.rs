@@ -72,6 +72,25 @@ use crate::{
 };
 use axum::response::IntoResponse;
 
+#[axum::debug_handler]
+async fn handle_feature_flags(State(state): State<Arc<AppState>>) -> Json<Value> {
+    let flags = &state.feature_flags;
+
+    let known = json!({
+        "gpu_worker": flags.is_enabled(crate::config::feature_flags::KnownFlag::GpuWorker),
+        "connectors_livekit": flags.is_enabled(crate::config::feature_flags::KnownFlag::ConnectorsLivekit),
+        "delivery_v2": flags.is_enabled(crate::config::feature_flags::KnownFlag::DeliveryV2),
+        "global_promos": flags.is_enabled(crate::config::feature_flags::KnownFlag::GlobalPromos),
+    });
+
+    Json(json!({
+        "success": true,
+        "data": {
+            "known": known
+        }
+    }))
+}
+
 // Routes temporairement comment?es pour ?viter les warnings
 // use crate::routes::{
 //     ia_routes,
@@ -98,6 +117,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(|| async { "Yukpomnang Backend API - Service actif" }),
         )
         .route("/api/test/ping", get(handle_ping))
+        .route("/api/meta/feature-flags", get(handle_feature_flags))
         .route("/api/geocoding/reverse", post(handle_reverse_geocode))
         .route("/api/places/autocomplete", get(autocomplete_places))
         .route(
@@ -370,6 +390,11 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(studio_controller::trigger_preview).layer(axum::middleware::from_fn(jwt_auth)),
         )
         .route(
+            "/api/studio/sessions/{session_id}/preview-short",
+            post(studio_controller::trigger_short_preview)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
             "/api/studio/sessions/{session_id}/previews",
             get(studio_controller::list_preview_events).layer(axum::middleware::from_fn(jwt_auth)),
         )
@@ -384,6 +409,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/studio/sessions/{session_id}/template-recommendations",
             post(studio_controller::recommend_templates).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/storyboard",
+            post(studio_controller::generate_storyboard).layer(axum::middleware::from_fn(jwt_auth)),
         )
         .route(
             "/api/studio/templates",

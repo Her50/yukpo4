@@ -12,13 +12,33 @@ import { StickerLayer } from './StickerLayer.js';
 
 type GlowCTAProps = {
   scene: ImmersiveScene;
+  audioCues?: LocalAudioCue[];
 };
 
-export const GlowCTAScene: React.FC<GlowCTAProps> = ({ scene }) => {
+const computeGlowBoost = (frame: number, cues?: LocalAudioCue[]) => {
+  if (!cues || cues.length === 0) return 0;
+  const WINDOW = 10;
+  const BASE = 0.5;
+  return cues
+    .filter((c) => c.cueType === 'beat' || c.cueType === 'riser')
+    .reduce((acc, cue) => {
+      const distance = Math.abs(frame - cue.frameOffset);
+      if (distance > WINDOW) return acc;
+      const strength = 1 - distance / WINDOW;
+      return acc + strength * BASE;
+    }, 0);
+};
+
+export const GlowCTAScene: React.FC<GlowCTAProps> = ({
+  scene,
+  audioCues
+}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const pulse = spring({
+  const glowBoost = computeGlowBoost(frame, audioCues);
+
+  const pulseBase = spring({
     frame,
     fps,
     config: {
@@ -28,10 +48,12 @@ export const GlowCTAScene: React.FC<GlowCTAProps> = ({ scene }) => {
     }
   });
 
+  const pulse = pulseBase + glowBoost * 0.3;
+
   const glowPulse = interpolate(
     frame,
     [0, fps * 0.5, fps, scene.durationInFrames],
-    [0.35, 0.8, 0.45, 0.6],
+    [0.35 + glowBoost * 0.4, 0.8 + glowBoost * 0.5, 0.45, 0.6],
     {
       extrapolateLeft: 'clamp',
       extrapolateRight: 'clamp'
@@ -141,7 +163,7 @@ export const GlowCTAScene: React.FC<GlowCTAProps> = ({ scene }) => {
         </div>
       </AbsoluteFill>
 
-      <StickerLayer scene={scene} />
+      <StickerLayer scene={scene} audioCues={audioCues} />
     </AbsoluteFill>
   );
 };

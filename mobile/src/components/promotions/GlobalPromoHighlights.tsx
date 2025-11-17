@@ -32,6 +32,11 @@ const formatPrice = (value?: number | null) => {
 const GlobalPromoHighlights: React.FC = () => {
     const navigation = useNavigation<any>();
     const { catalog, loading, error, refresh } = useGlobalPromos();
+    const { isEnabled } = require('../../contexts/FeatureFlagContext') as typeof import('../../contexts/FeatureFlagContext');
+
+    if (!isEnabled('global_promos')) {
+        return null;
+    }
 
     if (error && !catalog.length) {
         return (

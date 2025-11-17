@@ -1215,22 +1215,24 @@ pub async fn creer_service(
                             generate_image_signature(&image_bytes)
                         {
                             Ok(signature) => {
-                                let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| crate::services::image_search_service::ImageMetadata {
-                                    width: 0,
-                                    height: 0,
-                                    format: "jpeg".to_string(),
-                                    file_size: image_bytes.len(),
-                                    dominant_colors: vec![],
-                                    color_histogram: vec![],
-                                    edge_density: 0.0,
-                                    brightness: 0.0,
-                                    contrast: 0.0,
+                                let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| {
+                                    serde_json::json!({
+                                        "width": 0,
+                                        "height": 0,
+                                        "format": "jpeg",
+                                        "file_size": image_bytes.len(),
+                                        "dominant_colors": [],
+                                        "color_histogram": [],
+                                        "edge_density": 0.0,
+                                        "brightness": 0.0,
+                                        "contrast": 0.0,
+                                    })
                                 });
                                 let hash = format!("{:x}", md5::compute(&image_bytes));
                                 (
                                     serde_json::to_value(&signature).unwrap_or_default(),
                                     hash,
-                                    serde_json::to_value(&metadata).unwrap_or_default(),
+                                    metadata,
                                 )
                             }
                             Err(e) => {
@@ -1549,22 +1551,24 @@ pub async fn creer_service(
                                 generate_image_signature(&image_bytes)
                             {
                                 Ok(signature) => {
-                                    let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| crate::services::image_search_service::ImageMetadata {
-                                        width: 0,
-                                        height: 0,
-                                        format: "jpeg".to_string(),
-                                        file_size: image_bytes.len(),
-                                        dominant_colors: vec![],
-                                        color_histogram: vec![],
-                                        edge_density: 0.0,
-                                        brightness: 0.0,
-                                        contrast: 0.0,
+                                    let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| {
+                                        serde_json::json!({
+                                            "width": 0,
+                                            "height": 0,
+                                            "format": "jpeg",
+                                            "file_size": image_bytes.len(),
+                                            "dominant_colors": [],
+                                            "color_histogram": [],
+                                            "edge_density": 0.0,
+                                            "brightness": 0.0,
+                                            "contrast": 0.0,
+                                        })
                                     });
                                     let hash = format!("{:x}", md5::compute(&image_bytes));
                                     (
                                         serde_json::to_value(&signature).unwrap_or_default(),
                                         hash,
-                                        serde_json::to_value(&metadata).unwrap_or_default(),
+                                        metadata,
                                     )
                                 }
                                 Err(e) => {

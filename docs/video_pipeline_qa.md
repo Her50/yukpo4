@@ -47,4 +47,7 @@
 - Centraliser logs/jobs dans `docs/qa/` (CSV ou Markdown).
 - Remonter anomalies en issues (avec job_id, logs pipeline, captures).
 - Mettre à jour `pipeline_monitoring.md` si nouveaux signaux.
-- **Script rapide** : `./scripts/run_video_pipeline_qa.sh` (nécessite Remotion, Detox, Playwright configurés).
+- **Script rapide** : `./scripts/run_video_pipeline_qa.sh [--ci] [--scenarios audio-premium,fallback-local]`
+  - Produit `artifacts/video-qa/<timestamp>/qa.log` + `summary.json`
+  - Copie automatique des artefacts Remotion / Detox / Playwright
+  - Voir `docs/qa_ci_phase5.md` pour l’intégration CI et les scénarios supportés.

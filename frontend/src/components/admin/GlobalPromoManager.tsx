@@ -31,6 +31,8 @@ const GlobalPromoManager: React.FC = () => {
         selectEvent,
         createEvent,
         upsertEntry,
+        reviewEntry,
+        reviewEntriesBulk,
     } = useGlobalPromos();
 
     const [eventForm, setEventForm] = useState({
@@ -58,12 +60,26 @@ const GlobalPromoManager: React.FC = () => {
 
     const [submittingEvent, setSubmittingEvent] = useState(false);
     const [submittingEntry, setSubmittingEntry] = useState(false);
+    const [selectedEntryForDetails, setSelectedEntryForDetails] = useState<GlobalPromoEntry | null>(
+        null,
+    );
+
+    const [selectedEntryForDetails, setSelectedEntryForDetails] = useState<GlobalPromoEntry | null>(
+        null,
+    );
+    const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
+    const [statusFilter, setStatusFilter] = useState<'all' | 'pending_review' | 'approved' | 'rejected'>('all');
 
     const stats = useMemo(() => {
         const liveCount = events.filter((event) => event.status === 'live').length;
         const scheduledCount = events.filter((event) => event.status === 'scheduled').length;
         return { liveCount, scheduledCount };
     }, [events]);
+
+    const filteredEntries = useMemo(() => {
+        if (statusFilter === 'all') return entries;
+        return entries.filter((entry) => entry.status === statusFilter);
+    }, [entries, statusFilter]);
 
     const handleEventSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -293,8 +309,8 @@ const GlobalPromoManager: React.FC = () => {
                                 type="button"
                                 onClick={() => selectEvent(event.id)}
                                 className={`rounded-xl border px-4 py-3 text-left transition hover:border-indigo-300 ${event.id === selectedEvent?.id
-                                        ? 'border-indigo-500 bg-indigo-50/50'
-                                        : 'border-slate-200'
+                                    ? 'border-indigo-500 bg-indigo-50/50'
+                                    : 'border-slate-200'
                                     }`}
                             >
                                 <div className="flex items-center justify-between text-sm text-slate-500">
@@ -327,9 +343,55 @@ const GlobalPromoManager: React.FC = () => {
                     <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4">
                         <div className="text-sm text-slate-500">Campagne sélectionnée</div>
                         <div className="text-xl font-semibold text-slate-900">{selectedEvent.displayName}</div>
-                        <div className="text-sm text-slate-600">
-                            {entries.length} produit(s) participant(s) – statut{' '}
-                            <span className="font-semibold">{selectedEvent.status}</span>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
+                            <div>
+                                {entries.length} produit(s) participant(s) – statut{' '}
+                                <span className="font-semibold">{selectedEvent.status}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                                <span className="text-slate-500">Filtrer par statut :</span>
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) =>
+                                        setStatusFilter(
+                                            e.target.value as 'all' | 'pending_review' | 'approved' | 'rejected',
+                                        )
+                                    }
+                                    className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                                >
+                                    <option value="all">Tous</option>
+                                    <option value="pending_review">En revue</option>
+                                    <option value="approved">Approuvé</option>
+                                    <option value="rejected">Refusé</option>
+                                </select>
+                                {selectedEntryIds.length > 0 && (
+                                    <>
+                                        <span className="h-4 w-px bg-slate-200" />
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                try {
+                                                    await reviewEntriesBulk(selectedEntryIds, {
+                                                        status: 'approved',
+                                                    });
+                                                    setSelectedEntryIds([]);
+                                                } catch (err) {
+                                                    console.error(
+                                                        '[GlobalPromoManager] Bulk approve failed',
+                                                        err,
+                                                    );
+                                                    alert(
+                                                        "Impossible d'approuver les entrées sélectionnées.",
+                                                    );
+                                                }
+                                            }}
+                                            className="rounded-full bg-emerald-600 px-3 py-1 text-[11px] font-semibold text-white shadow-sm hover:bg-emerald-500"
+                                        >
+                                            Approuver la sélection
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -337,17 +399,51 @@ const GlobalPromoManager: React.FC = () => {
                         <table className="min-w-full divide-y divide-slate-100 text-sm">
                             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                                 <tr>
+                                    <th className="px-4 py-2">
+                                        <input
+                                            type="checkbox"
+                                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                            checked={
+                                                filteredEntries.length > 0 &&
+                                                selectedEntryIds.length === filteredEntries.length
+                                            }
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedEntryIds(filteredEntries.map((e) => e.id));
+                                                } else {
+                                                    setSelectedEntryIds([]);
+                                                }
+                                            }}
+                                        />
+                                    </th>
                                     <th className="px-4 py-2">Service</th>
                                     <th className="px-4 py-2">Prix promo</th>
                                     <th className="px-4 py-2">Réduction</th>
                                     <th className="px-4 py-2">Stock cible</th>
                                     <th className="px-4 py-2">Disponibilité</th>
                                     <th className="px-4 py-2">Statut</th>
+                                    <th className="px-4 py-2 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 bg-white">
-                                {entries.map((entry) => (
+                                {filteredEntries.map((entry) => (
                                     <tr key={entry.id}>
+                                        <td className="px-4 py-2">
+                                            <input
+                                                type="checkbox"
+                                                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                checked={selectedEntryIds.includes(entry.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedEntryIds((prev) => [...prev, entry.id]);
+                                                    } else {
+                                                        setSelectedEntryIds((prev) =>
+                                                            prev.filter((id) => id !== entry.id),
+                                                        );
+                                                    }
+                                                }}
+                                            />
+                                        </td>
                                         <td className="px-4 py-2 font-mono text-slate-700">{entry.serviceId}</td>
                                         <td className="px-4 py-2 text-slate-700">
                                             {entry.promoPriceCfa
@@ -362,9 +458,75 @@ const GlobalPromoManager: React.FC = () => {
                                         </td>
                                         <td className="px-4 py-2 capitalize text-slate-700">{entry.availability}</td>
                                         <td className="px-4 py-2">
-                                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                                                {entry.status}
+                                            <span
+                                                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${entry.status === 'pending_review'
+                                                        ? 'bg-amber-100 text-amber-800'
+                                                        : entry.status === 'approved'
+                                                            ? 'bg-emerald-100 text-emerald-800'
+                                                            : entry.status === 'rejected'
+                                                                ? 'bg-red-100 text-red-800'
+                                                                : 'bg-slate-100 text-slate-700'
+                                                    }`}
+                                            >
+                                                {entry.status === 'pending_review'
+                                                    ? 'En revue'
+                                                    : entry.status === 'approved'
+                                                        ? 'Approuvé'
+                                                        : entry.status === 'rejected'
+                                                            ? 'Refusé'
+                                                            : entry.status}
                                             </span>
+                                        </td>
+                                        <td className="px-4 py-2 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedEntryForDetails(entry)}
+                                                    className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                                                >
+                                                    Détails
+                                                </button>
+                                                {entry.status === 'pending_review' && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await reviewEntry(entry.id, {
+                                                                        status: 'approved',
+                                                                    });
+                                                                } catch (err) {
+                                                                    console.error('[GlobalPromoManager] Approve failed', err);
+                                                                    alert("Impossible d'approuver cette entrée.");
+                                                                }
+                                                            }}
+                                                            className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500"
+                                                        >
+                                                            Approuver
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={async () => {
+                                                                const message = window.prompt(
+                                                                    "Motif du refus (visible côté prestataire) :",
+                                                                );
+                                                                try {
+                                                                    await reviewEntry(entry.id, {
+                                                                        status: 'rejected',
+                                                                        message: message || undefined,
+                                                                    });
+                                                                } catch (err) {
+                                                                    console.error('[GlobalPromoManager] Reject failed', err);
+                                                                    alert("Impossible de refuser cette entrée.");
+                                                                }
+                                                            }}
+                                                            className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-red-500"
+                                                        >
+                                                            Refuser
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -381,7 +543,10 @@ const GlobalPromoManager: React.FC = () => {
                         </table>
                     </div>
 
-                    <form onSubmit={handleEntrySubmit} className="space-y-3 rounded-2xl border border-slate-100 p-4">
+                    <form
+                        onSubmit={handleEntrySubmit}
+                        className="space-y-3 rounded-2xl border border-slate-100 p-4"
+                    >
                         <h3 className="text-lg font-semibold text-slate-900">
                             Ajouter les produits des prestataires à cette campagne
                         </h3>
@@ -493,6 +658,74 @@ const GlobalPromoManager: React.FC = () => {
                             {submittingEntry ? 'Ajout en cours...' : 'Ajouter / mettre à jour ce produit'}
                         </button>
                     </form>
+
+                    {selectedEntryForDetails && (
+                        <div className="mt-4 grid gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <h4 className="text-sm font-semibold text-slate-900">
+                                        Détails de l’entrée #{selectedEntryForDetails.serviceId}
+                                    </h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedEntryForDetails(null)}
+                                        className="text-xs font-medium text-slate-500 hover:text-slate-700"
+                                    >
+                                        Fermer
+                                    </button>
+                                </div>
+                                <div className="grid gap-1 text-xs text-slate-600">
+                                    <div>
+                                        <span className="font-semibold">Statut:</span>{' '}
+                                        <span>{selectedEntryForDetails.status}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold">Disponibilité:</span>{' '}
+                                        <span>{selectedEntryForDetails.availability}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold">Prix promo:</span>{' '}
+                                        <span>
+                                            {selectedEntryForDetails.promoPriceCfa
+                                                ? `${selectedEntryForDetails.promoPriceCfa.toLocaleString(
+                                                    'fr-FR',
+                                                )} CFA`
+                                                : '—'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold">Réduction:</span>{' '}
+                                        <span>
+                                            {selectedEntryForDetails.discountPercentage
+                                                ? `${selectedEntryForDetails.discountPercentage}%`
+                                                : '—'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold">Stock cible:</span>{' '}
+                                        <span>
+                                            {selectedEntryForDetails.stockCap
+                                                ? selectedEntryForDetails.stockCap
+                                                : '—'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Métadonnées JSON soumises
+                                    </span>
+                                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-700">
+                                        readonly
+                                    </span>
+                                </div>
+                                <pre className="max-h-64 overflow-auto rounded-lg bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-50">
+                                    {JSON.stringify(selectedEntryForDetails.metadata ?? {}, null, 2)}
+                                </pre>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

@@ -4,9 +4,51 @@ use chrono::{DateTime, Utc};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicI64, AtomicU64, Ordering},
+        Arc,
+    },
+};
 use tokio::sync::{broadcast, Mutex};
 use uuid::Uuid;
+
+// Métriques WebSocket delivery (globales, en mémoire).
+static DELIVERY_WS_CONNECTIONS_CURRENT: AtomicI64 = AtomicI64::new(0);
+static DELIVERY_WS_MESSAGES_SENT_TOTAL: AtomicU64 = AtomicU64::new(0);
+static DELIVERY_WS_ERRORS_TOTAL: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct DeliveryWsMetricsSnapshot {
+    pub connections_current: i64,
+    pub messages_sent_total: u64,
+    pub errors_total: u64,
+}
+
+pub fn record_ws_connection_open() {
+    DELIVERY_WS_CONNECTIONS_CURRENT.fetch_add(1, Ordering::Relaxed);
+}
+
+pub fn record_ws_connection_close() {
+    DELIVERY_WS_CONNECTIONS_CURRENT.fetch_add(-1, Ordering::Relaxed);
+}
+
+pub fn record_ws_message_sent() {
+    DELIVERY_WS_MESSAGES_SENT_TOTAL.fetch_add(1, Ordering::Relaxed);
+}
+
+pub fn record_ws_error() {
+    DELIVERY_WS_ERRORS_TOTAL.fetch_add(1, Ordering::Relaxed);
+}
+
+pub fn get_delivery_ws_metrics_snapshot() -> DeliveryWsMetricsSnapshot {
+    DeliveryWsMetricsSnapshot {
+        connections_current: DELIVERY_WS_CONNECTIONS_CURRENT.load(Ordering::Relaxed),
+        messages_sent_total: DELIVERY_WS_MESSAGES_SENT_TOTAL.load(Ordering::Relaxed),
+        errors_total: DELIVERY_WS_ERRORS_TOTAL.load(Ordering::Relaxed),
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeliveryWsMessage {

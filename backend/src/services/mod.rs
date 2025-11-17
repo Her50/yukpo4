@@ -5,6 +5,7 @@ pub mod assistance;
 pub mod audio_library_service;
 pub mod audio_mastering_service;
 pub mod audio_pipeline;
+pub mod audio_analysis_service;
 pub mod audio_transcription_service;
 pub mod autocomplete_client_service; // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT (autocomplete_characteristics)
 pub mod autocomplete_combinations_service;

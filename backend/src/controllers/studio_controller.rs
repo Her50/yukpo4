@@ -11,7 +11,9 @@ use crate::{
     core::types::AppResult,
     middlewares::jwt::AuthenticatedUser,
     services::{
-        immersive_orchestrator::{ImmersiveOrchestrator, TimelineBusinessContext, TimelineRequest},
+        immersive_orchestrator::{
+            ImmersiveOrchestrator, Storyboard, TimelineBusinessContext, TimelineRequest,
+        },
         story_template_service::StoryTemplateSpec,
         studio_service::{
             AttachAssetPayload, CreateStudioSessionPayload, PreviewResponse, PublishResponse,
@@ -106,6 +108,18 @@ pub async fn trigger_preview(
     Ok(Json(preview))
 }
 
+pub async fn trigger_short_preview(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(session_id): Path<Uuid>,
+) -> AppResult<Json<PreviewResponse>> {
+    let preview = state
+        .studio_service
+        .trigger_short_preview(session_id, user.id)
+        .await?;
+    Ok(Json(preview))
+}
+
 pub async fn publish_session(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -182,6 +196,11 @@ pub struct TemplateRecommendationItem {
 pub struct TemplateRecommendationResponse {
     pub ordered: Vec<TemplateRecommendationItem>,
     pub best_template: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StoryboardResponse {
+    pub storyboard: Storyboard,
 }
 
 pub async fn recommend_templates(
@@ -261,6 +280,51 @@ pub async fn recommend_templates(
         ordered,
         best_template,
     }))
+}
+
+pub async fn generate_storyboard(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(session_id): Path<Uuid>,
+    Json(payload): Json<TemplateRecommendationPayload>,
+) -> AppResult<Json<StoryboardResponse>> {
+    state
+        .studio_service
+        .get_session(session_id, user.id)
+        .await?;
+
+    let script_outline = if payload.script_outline.is_empty() {
+        vec![
+            "Introduction Yukpo Studio".to_string(),
+            "Mettre en avant l'offre".to_string(),
+            "Preuve sociale rapide".to_string(),
+            "Appel à l'action".to_string(),
+        ]
+    } else {
+        payload.script_outline.clone()
+    };
+
+    let timeline_request = TimelineRequest {
+        script_outline,
+        product_name: payload
+            .product_name
+            .clone()
+            .unwrap_or_else(|| "Expérience Yukpo".to_string()),
+        headline: payload.headline.clone(),
+        call_to_action: payload.call_to_action.clone(),
+        style: payload.style.clone(),
+        duration_seconds: payload.duration_seconds.unwrap_or(28.0),
+        broll_assets: Vec::new(),
+        template_id: payload.template_id.clone(),
+        business_context: payload.business_context.clone().map(Into::into),
+        ai_template_recommendations: payload.ai_hints.clone(),
+    };
+
+    let orchestrator = ImmersiveOrchestrator::new(state.clone());
+    let timeline_result = orchestrator.generate_timeline(timeline_request.clone()).await?;
+    let storyboard = orchestrator.build_storyboard(&timeline_request, &timeline_result);
+
+    Ok(Json(StoryboardResponse { storyboard }))
 }
 
 pub async fn list_preview_events(

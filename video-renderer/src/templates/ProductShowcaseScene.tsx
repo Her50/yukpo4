@@ -14,25 +14,43 @@ import { StickerLayer } from './StickerLayer.js';
 
 type ProductShowcaseProps = {
   scene: ImmersiveScene;
+  audioCues?: LocalAudioCue[];
+};
+
+const computeImpactBoost = (frame: number, cues?: LocalAudioCue[]) => {
+  if (!cues || cues.length === 0) return 0;
+  const WINDOW = 8;
+  const BASE = 0.5;
+  return cues
+    .filter((c) => c.cueType === 'impact' || c.cueType === 'beat')
+    .reduce((acc, cue) => {
+      const distance = Math.abs(frame - cue.frameOffset);
+      if (distance > WINDOW) return acc;
+      const strength = 1 - distance / WINDOW;
+      return acc + strength * BASE;
+    }, 0);
 };
 
 export const ProductShowcaseScene: React.FC<ProductShowcaseProps> = ({
-  scene
+  scene,
+  audioCues
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
+  const impactBoost = computeImpactBoost(frame, audioCues);
+
   const heroZoom = interpolate(
     frame,
     [0, scene.durationInFrames],
-    [1.0, 1.12],
+    [1.0 + impactBoost * 0.08, 1.12 + impactBoost * 0.12],
     {
       extrapolateLeft: 'clamp',
       extrapolateRight: 'clamp'
     }
   );
 
-  const cardEntering = spring({
+  const cardEnteringBase = spring({
     frame,
     fps,
     config: {
@@ -41,6 +59,8 @@ export const ProductShowcaseScene: React.FC<ProductShowcaseProps> = ({
       stiffness: 210
     }
   });
+
+  const cardEntering = Math.min(1, cardEnteringBase + impactBoost * 0.3);
 
   const productImageUrl = scene.assets.productImageUrl;
 
@@ -170,7 +190,7 @@ export const ProductShowcaseScene: React.FC<ProductShowcaseProps> = ({
         </Sequence>
       ) : null}
 
-      <StickerLayer scene={scene} />
+      <StickerLayer scene={scene} audioCues={audioCues} />
     </AbsoluteFill>
   );
 };

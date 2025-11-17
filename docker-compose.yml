@@ -26,6 +26,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        DATABASE_URL: "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
     environment:
       - LIVEKIT_API_URL=http://livekit:7880
       - LIVEKIT_WS_URL=ws://localhost:7880
@@ -39,8 +41,8 @@ services:
       - SRS_RTMP_URL=rtmp://localhost:1935/live
       - SRS_HLS_URL=http://localhost:8080/live
       - RUST_LOG=info
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/yukpomnang
-      - JWT_SECRET=your-secret-key
+      - DATABASE_URL=postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+      - JWT_SECRET=c1daf37cdbc083d458dadf8510af6722929d17bd931e9dfda90ee4ed74d6f2b6
       - CORS_ORIGIN=*
     ports:
       - "3001:3001"
@@ -120,8 +122,44 @@ services:
     networks:
       - yukpo-network
 
+  # 📊 Prometheus pour métriques backend (vidéo + delivery)
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+    networks:
+      - yukpo-network
+
+  # 📈 Grafana pour dashboards
+  grafana:
+    image: grafana/grafana:11.0.0
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_DOMAIN=localhost
+      # Pour Hetzner, adapter le domaine public ou utiliser un reverse proxy (nginx/traefik)
+    ports:
+      - "3002:3000" # 3000 est déjà utilisé par le frontend
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - yukpo-network
+
 volumes:
   postgres_data:
+  prometheus_data:
+  grafana_data:
 
 
 networks:

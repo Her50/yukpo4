@@ -57,6 +57,18 @@ export interface GlobalPromoCatalogItem {
     event: GlobalPromoEvent;
     entry: GlobalPromoEntry;
     product?: GlobalPromoProductSnapshot;
+    badges?: {
+        eventIsLive?: boolean;
+        eventIsImminent?: boolean;
+    };
+}
+
+export interface GlobalPromoCatalogPage {
+    items: GlobalPromoCatalogItem[];
+    page: number;
+    pageSize: number;
+    total: number;
+    hasMore: boolean;
 }
 
 export interface CreateGlobalPromoEventPayload {
@@ -93,5 +105,22 @@ export interface UpsertGlobalPromoEntryPayload {
     highlighted?: boolean;
     priorityScore?: number;
     snapshot?: Record<string, any>;
+}
+
+export interface ReviewGlobalPromoEntryPayload {
+    status: 'approved' | 'rejected';
+    message?: string;
+    highlighted?: boolean;
+    priorityScore?: number;
+    metadataPatch?: Record<string, any>;
+}
+
+export interface BulkReviewGlobalPromoEntryPayload {
+    entryIds: string[];
+    status: 'approved' | 'rejected';
+    message?: string;
+    highlighted?: boolean;
+    priorityScore?: number;
+    metadataPatch?: Record<string, any>;
 }
 

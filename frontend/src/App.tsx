@@ -1,6 +1,7 @@
 // @ts-check
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 // CORRECTION CRITIQUE: Importer la configuration axios
+import { FeatureFlagProvider } from '@/context';
 import { DeliveryProvider } from '@/context/DeliveryContext';
 import { ShoppingProvider } from '@/context/ShoppingContext';
 import { Toaster } from 'react-hot-toast';
@@ -64,186 +65,187 @@ function App() {
       <ToasterProvider>
         <GlobalIAStatsProvider>
           <IntelligentLanguageProvider>
-            <ShoppingProvider>
-              <DeliveryProvider>
-                <Router>
-                  <Routes>
-                    {/* ���� Pages publiques */}
-                    <Route path={ROUTES.HOME} element={<HomePage />} />
-                    <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
-                    <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-                    <Route path={ROUTES.CONFIRMATION} element={<ConfirmationPage />} />
-                    <Route path={ROUTES.ABOUT} element={<AboutPage />} />
-                    <Route path={ROUTES.CONTACT} element={<ContactPage />} />
-                    <Route path={ROUTES.SERVICES} element={<ServicesPage />} />
-                    <Route path={ROUTES.LIVES} element={<LivesPage />} />
-                    <Route
-                      path={ROUTES.LIVE_GO_LIVE}
-                      element={
-                        <RequireAuth>
-                          <GoLivePage />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route path={ROUTES.LIVE_VIEW} element={<LiveViewerPage />} />
-                    {/* ���� Cr+�ation & recherche service */}
-                    <Route path={ROUTES.SERVICE_CREATE} element={<CreationService />} />
-                    <Route path={ROUTES.CREATION_SMART_SERVICE} element={<CreationSmartService />} />
-                    <Route path={ROUTES.RECHERCHE_BESOIN} element={<RechercheBesoin />} />
-                    <Route path={ROUTES.YUKPO_IA_HUB} element={<YukpoIaHub />} />
-                    <Route
-                      path={ROUTES.IMMERSIVE_VIDEO_WIZARD}
-                      element={
-                        <RequireAuth>
-                          <ImmersiveVideoWizard />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route path={ROUTES.CHAT_DIALOG} element={<ChatDialog />} />
-                    <Route path={ROUTES.FORMULAIRE_YUKPO_INTELLIGENT} element={<FormulaireYukpoIntelligent />} />
-                    <Route path={ROUTES.FORMULAIRE_SERVICE_MODERNE} element={<FormulaireServiceModerne />} />
-                    <Route
-                      path="/formulaire-pre-rempli/:type"
-                      element={
-                        <RequireAuth>
-                          <ServiceFormDynamic />
-                        </RequireAuth>
-                      }
-                    />
-                    {/* ԣ� Ajout de la page solde/historique IA */}
-                    <Route path={ROUTES.MON_SOLDE} element={<SoldeDetailPage />} />
+            <FeatureFlagProvider>
+              <ShoppingProvider>
+                <DeliveryProvider>
+                  <Router>
+                    <Routes>
+                      {/* ���� Pages publiques */}
+                      <Route path={ROUTES.HOME} element={<HomePage />} />
+                      <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
+                      <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+                      <Route path={ROUTES.CONFIRMATION} element={<ConfirmationPage />} />
+                      <Route path={ROUTES.ABOUT} element={<AboutPage />} />
+                      <Route path={ROUTES.CONTACT} element={<ContactPage />} />
+                      <Route path={ROUTES.SERVICES} element={<ServicesPage />} />
+                      <Route path={ROUTES.LIVES} element={<LivesPage />} />
+                      <Route
+                        path={ROUTES.LIVE_GO_LIVE}
+                        element={
+                          <RequireAuth>
+                            <GoLivePage />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route path={ROUTES.LIVE_VIEW} element={<LiveViewerPage />} />
+                      {/* ���� Cr+�ation & recherche service */}
+                      <Route path={ROUTES.SERVICE_CREATE} element={<CreationService />} />
+                      <Route path={ROUTES.CREATION_SMART_SERVICE} element={<CreationSmartService />} />
+                      <Route path={ROUTES.RECHERCHE_BESOIN} element={<RechercheBesoin />} />
+                      <Route path={ROUTES.YUKPO_IA_HUB} element={<YukpoIaHub />} />
+                      <Route
+                        path={ROUTES.IMMERSIVE_VIDEO_WIZARD}
+                        element={
+                          <RequireAuth>
+                            <ImmersiveVideoWizard />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route path={ROUTES.CHAT_DIALOG} element={<ChatDialog />} />
+                      <Route path={ROUTES.FORMULAIRE_YUKPO_INTELLIGENT} element={<FormulaireYukpoIntelligent />} />
+                      <Route path={ROUTES.FORMULAIRE_SERVICE_MODERNE} element={<FormulaireServiceModerne />} />
+                      <Route
+                        path="/formulaire-pre-rempli/:type"
+                        element={
+                          <RequireAuth>
+                            <ServiceFormDynamic />
+                          </RequireAuth>
+                        }
+                      />
+                      {/* ԣ� Ajout de la page solde/historique IA */}
+                      <Route path={ROUTES.MON_SOLDE} element={<SoldeDetailPage />} />
                 // // RechargeTokensPage temporarily disabled temporarily disabled
-                    {/* ��Ļ Dashboard routes */}
-                    <Route path={ROUTES.DASHBOARD} element={
-                      <RequireAuth>
-                        <Dashboard />
-                      </RequireAuth>
-                    } />
-                    <Route path={ROUTES.MES_SERVICES} element={
-                      <RequireAuth>
-                        <MesServices />
-                      </RequireAuth>
-                    } />
-                    <Route path="/dashboard-prestataire" element={
-                      <RequireAuth>
-                        <DashboardPrestataire />
-                      </RequireAuth>
-                    } />
-                    <Route path="/services-interagis" element={
-                      <RequireAuth>
-                        <ServicesInteragisPage />
-                      </RequireAuth>
-                    } />
-                    <Route path="/mon-compte" element={
-                      <RequireAuth>
-                        <UserSettingsPage />
-                      </RequireAuth>
-                    } />
-                    <Route path={ROUTES.RECHARGE_TOKENS} element={
-                      <RequireAuth>
-                        <RechargeTokensPage />
-                      </RequireAuth>
-                    } />
-                    <Route path="/dashboard/profil" element={
-                      <RequireAuth>
-                        <MonProfil />
-                      </RequireAuth>
-                    } />
-                    {/* 📣 Publicité routes */}
-                    <Route path="/creer-publicite" element={
-                      <RequireAuth>
-                        <CreatePublicitePage />
-                      </RequireAuth>
-                    } />
-                    <Route path="/dashboard-publicite" element={
-                      <RequireAuth>
-                        <PubliciteDashboardPage />
-                      </RequireAuth>
-                    } />
-                    {/* 🚚 Livraison & shopping */}
-                    <Route path={ROUTES.DELIVERY_HOME} element={
-                      <RequireAuth>
-                        <DeliveryHomePage />
-                      </RequireAuth>
-                    } />
-                    <Route path={ROUTES.DELIVERY_SHOPPING_BASKET} element={
-                      <RequireAuth>
-                        <ShoppingBasketPage />
-                      </RequireAuth>
-                    } />
-                    <Route path={ROUTES.DELIVERY_SHOPPING_BUDGET} element={
-                      <RequireAuth>
-                        <ShoppingBudgetPage />
-                      </RequireAuth>
-                    } />
-                    <Route path={ROUTES.DELIVERY_SHOPPING_PICKUP_DROP} element={
-                      <RequireAuth>
-                        <ShoppingPickupDropPage />
-                      </RequireAuth>
-                    } />
-                    <Route path={ROUTES.DELIVERY_SHOPPING_SUMMARY} element={
-                      <RequireAuth>
-                        <ShoppingSummaryPage />
-                      </RequireAuth>
-                    } />
-                    <Route path={ROUTES.DELIVERY_TRACKING} element={
-                      <RequireAuth>
-                        <DeliveryTrackingPage />
-                      </RequireAuth>
-                    } />
-                    <Route path={ROUTES.DELIVERY_COURIER_DASHBOARD} element={
-                      <RequireAuth>
-                        <CourierDashboardPage />
-                      </RequireAuth>
-                    } />
-                    {/*  R+sultats de recherche */}
-                    <Route path="/resultat-besoin" element={<ResultatBesoin />} />
-                    <Route path="/test-resultat-besoin" element={<TestResultatBesoin />} />
-                    <Route path="/test-location-display" element={<LocationDisplayDemo />} />
-                    {/* ��Ļ Page de visualisation de service public */}
-                    <Route path="/service/:serviceId" element={<ServiceView />} />
-                    {/* 🔗 Service partagé vers l'extérieur */}
-                    <Route path="/shared-service" element={<ExternalServiceShare />} />
-                    {/* ��Ƽ Chat entre utilisateurs */}
-                    <Route path="/chat/:prestataireId" element={
-                      <RequireAuth>
-                        <ChatDialog />
-                      </RequireAuth>
-                    } />
-                    {/* ���� Appels vid+�o */}
-                    <Route path="/video-call" element={<VideoCall />} />
-                    {/* Fallback */}
-                    <Route path="*" element={<PageNotFound />} />
-                  </Routes>
-                  {/* ���� Statut WebSocket en temps r+�el - SUPPRIM+� */}
-                  {/* <WebSocketStatusRealTime /> */}
-                </Router>
-              </DeliveryProvider>
-            </ShoppingProvider>
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-                success: {
-                  duration: 5000,
-                  iconTheme: {
-                    primary: '#4ade80',
-                    secondary: '#fff',
+                      {/* ��Ļ Dashboard routes */}
+                      <Route path={ROUTES.DASHBOARD} element={
+                        <RequireAuth>
+                          <Dashboard />
+                        </RequireAuth>
+                      } />
+                      <Route path={ROUTES.MES_SERVICES} element={
+                        <RequireAuth>
+                          <MesServices />
+                        </RequireAuth>
+                      } />
+                      <Route path="/dashboard-prestataire" element={
+                        <RequireAuth>
+                          <DashboardPrestataire />
+                        </RequireAuth>
+                      } />
+                      <Route path="/services-interagis" element={
+                        <RequireAuth>
+                          <ServicesInteragisPage />
+                        </RequireAuth>
+                      } />
+                      <Route path="/mon-compte" element={
+                        <RequireAuth>
+                          <UserSettingsPage />
+                        </RequireAuth>
+                      } />
+                      <Route path={ROUTES.RECHARGE_TOKENS} element={
+                        <RequireAuth>
+                          <RechargeTokensPage />
+                        </RequireAuth>
+                      } />
+                      <Route path="/dashboard/profil" element={
+                        <RequireAuth>
+                          <MonProfil />
+                        </RequireAuth>
+                      } />
+                      {/* 📣 Publicité routes */}
+                      <Route path="/creer-publicite" element={
+                        <RequireAuth>
+                          <CreatePublicitePage />
+                        </RequireAuth>
+                      } />
+                      <Route path="/dashboard-publicite" element={
+                        <RequireAuth>
+                          <PubliciteDashboardPage />
+                        </RequireAuth>
+                      } />
+                      {/* 🚚 Livraison & shopping */}
+                      <Route path={ROUTES.DELIVERY_HOME} element={
+                        <RequireAuth>
+                          <DeliveryHomePage />
+                        </RequireAuth>
+                      } />
+                      <Route path={ROUTES.DELIVERY_SHOPPING_BASKET} element={
+                        <RequireAuth>
+                          <ShoppingBasketPage />
+                        </RequireAuth>
+                      } />
+                      <Route path={ROUTES.DELIVERY_SHOPPING_BUDGET} element={
+                        <RequireAuth>
+                          <ShoppingBudgetPage />
+                        </RequireAuth>
+                      } />
+                      <Route path={ROUTES.DELIVERY_SHOPPING_PICKUP_DROP} element={
+                        <RequireAuth>
+                          <ShoppingPickupDropPage />
+                        </RequireAuth>
+                      } />
+                      <Route path={ROUTES.DELIVERY_SHOPPING_SUMMARY} element={
+                        <RequireAuth>
+                          <ShoppingSummaryPage />
+                        </RequireAuth>
+                      } />
+                      <Route path={ROUTES.DELIVERY_TRACKING} element={
+                        <RequireAuth>
+                          <DeliveryTrackingPage />
+                        </RequireAuth>
+                      } />
+                      <Route path={ROUTES.DELIVERY_COURIER_DASHBOARD} element={
+                        <RequireAuth>
+                          <CourierDashboardPage />
+                        </RequireAuth>
+                      } />
+                      {/*  R+sultats de recherche */}
+                      <Route path="/resultat-besoin" element={<ResultatBesoin />} />
+                      <Route path="/test-resultat-besoin" element={<TestResultatBesoin />} />
+                      <Route path="/test-location-display" element={<LocationDisplayDemo />} />
+                      {/* ��Ļ Page de visualisation de service public */}
+                      <Route path="/service/:serviceId" element={<ServiceView />} />
+                      {/* 🔗 Service partagé vers l'extérieur */}
+                      <Route path="/shared-service" element={<ExternalServiceShare />} />
+                      {/* ��Ƽ Chat entre utilisateurs */}
+                      <Route path="/chat/:prestataireId" element={
+                        <RequireAuth>
+                          <ChatDialog />
+                        </RequireAuth>
+                      } />
+                      {/* ���� Appels vid+�o */}
+                      <Route path="/video-call" element={<VideoCall />} />
+                      {/* Fallback */}
+                      <Route path="*" element={<PageNotFound />} />
+                    </Routes>
+                    {/* ���� Statut WebSocket en temps r+�el - SUPPRIM+� */}
+                    {/* <WebSocketStatusRealTime /> */}
+                  </Router>
+                </DeliveryProvider>
+              </ShoppingProvider>
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: '#363636',
+                    color: '#fff',
                   },
-                },
-                error: {
-                  duration: 5000,
-                  iconTheme: {
-                    primary: '#ef4444',
-                    secondary: '#fff',
+                  success: {
+                    duration: 5000,
+                    iconTheme: {
+                      primary: '#4ade80',
+                      secondary: '#fff',
+                    },
                   },
-                },
-              }}
-            />
+                  error: {
+                    duration: 5000,
+                    iconTheme: {
+                      primary: '#ef4444',
+                      secondary: '#fff',
+                    },
+                  },
+                }}
+              />
           </IntelligentLanguageProvider>
         </GlobalIAStatsProvider>
       </ToasterProvider>

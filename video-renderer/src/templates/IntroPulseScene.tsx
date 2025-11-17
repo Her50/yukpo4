@@ -13,6 +13,7 @@ import { StickerLayer } from './StickerLayer.js';
 
 type IntroPulseProps = {
   scene: ImmersiveScene;
+  audioCues?: LocalAudioCue[];
 };
 
 const headlineStyle: CSSProperties = {
@@ -48,7 +49,24 @@ const badgeStyle: CSSProperties = {
   fontWeight: 600
 };
 
-export const IntroPulseScene: React.FC<IntroPulseProps> = ({ scene }) => {
+const computeBeatBoost = (frame: number, cues?: LocalAudioCue[]) => {
+  if (!cues || cues.length === 0) return 0;
+  const BEAT_WINDOW = 6;
+  const BEAT_BOOST = 0.4;
+  return cues
+    .filter((c) => c.cueType === 'beat')
+    .reduce((acc, cue) => {
+      const distance = Math.abs(frame - cue.frameOffset);
+      if (distance > BEAT_WINDOW) return acc;
+      const strength = 1 - distance / BEAT_WINDOW;
+      return acc + strength * BEAT_BOOST;
+    }, 0);
+};
+
+export const IntroPulseScene: React.FC<IntroPulseProps> = ({
+  scene,
+  audioCues
+}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const headline = scene.assets.headline ?? 'Propulse ton business avec Yukpo';
@@ -56,17 +74,19 @@ export const IntroPulseScene: React.FC<IntroPulseProps> = ({ scene }) => {
     scene.assets.subheadline ??
     'Vidéo immersive générée par IA + templates premium';
 
+  const beatBoost = computeBeatBoost(frame, audioCues);
+
   const glowOpacity = interpolate(
     frame,
     [0, fps * 0.5, fps, scene.durationInFrames],
-    [0.2, 0.5, 0.25, 0.35],
+    [0.2 + beatBoost * 0.4, 0.5 + beatBoost * 0.5, 0.25, 0.35],
     {
       extrapolateLeft: 'clamp',
       extrapolateRight: 'clamp'
     }
   );
 
-  const zoom = spring({
+  const zoomBase = spring({
     fps,
     frame,
     config: {
@@ -75,6 +95,8 @@ export const IntroPulseScene: React.FC<IntroPulseProps> = ({ scene }) => {
       stiffness: 180
     }
   });
+
+  const zoom = zoomBase + beatBoost * 0.15;
 
   const gradient = scene.assets.backgroundUrl
     ? `linear-gradient(120deg, rgba(13,19,64,0.6) 0%, rgba(18,9,54,0.82) 48%, rgba(54,8,78,0.9) 100%)`
@@ -132,7 +154,7 @@ export const IntroPulseScene: React.FC<IntroPulseProps> = ({ scene }) => {
         }}
       />
 
-      <StickerLayer scene={scene} />
+      <StickerLayer scene={scene} audioCues={audioCues} />
     </AbsoluteFill>
   );
 };

@@ -66,5 +66,10 @@ export const ZImmersiveTimeline = z.object({
 
 export type ImmersiveTimeline = z.infer<typeof ZImmersiveTimeline>;
 export type ImmersiveScene = z.infer<typeof ZImmersiveScene>;
+export type AudioCue = {
+  id: string;
+  startFrame: number;
+  cueType: 'impact' | 'glitch' | 'riser' | 'beat';
+};
 
 

@@ -1,0 +1,71 @@
+# Commandes rapides pour résoudre l'authentification Git sur Ubuntu
+
+# ============================================
+# OPTION 1 : Personal Access Token (RAPIDE)
+# ============================================
+
+# 1. Créer un PAT sur GitHub :
+#    https://github.com/settings/tokens
+#    → Generate new token (classic)
+#    → Nom: yukpo-ubuntu-server
+#    → Sélectionner: repo (full control)
+#    → Generate token
+#    → COPIER LE TOKEN
+
+# 2. Configurer Git avec le PAT (remplacer YOUR_TOKEN par le token copié)
+git remote set-url origin https://YOUR_TOKEN@github.com/Her50/yukpo4.git
+
+# 3. Tester
+git fetch
+
+# 4. Push
+git push
+
+
+# ============================================
+# OPTION 2 : SSH (RECOMMANDÉ)
+# ============================================
+
+# 1. Générer une clé SSH
+ssh-keygen -t ed25519 -C "yukpo-ubuntu-server" -f ~/.ssh/yukpo_github -N ""
+
+# 2. Afficher la clé publique (COPIER CETTE SORTIE)
+cat ~/.ssh/yukpo_github.pub
+
+# 3. Ajouter la clé sur GitHub :
+#    https://github.com/settings/ssh/new
+#    → Coller la clé ci-dessus
+#    → Titre: yukpo-ubuntu-server
+#    → Add SSH key
+
+# 4. Configurer SSH
+cat >> ~/.ssh/config << 'EOF'
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/yukpo_github
+    IdentitiesOnly yes
+EOF
+
+chmod 600 ~/.ssh/config
+
+# 5. Configurer Git pour utiliser SSH
+cd /opt/yukpo
+git remote set-url origin git@github.com:Her50/yukpo4.git
+
+# 6. Tester SSH
+ssh -T git@github.com
+# Devrait afficher: "Hi Her50! You've successfully authenticated..."
+
+# 7. Push
+git push
+
+
+# ============================================
+# OU UTILISER LE SCRIPT AUTOMATIQUE
+# ============================================
+
+cd /opt/yukpo/backend
+chmod +x FIX_GIT_AUTH_UBUNTU.sh
+./FIX_GIT_AUTH_UBUNTU.sh
+

@@ -1,6 +1,7 @@
 // Module de configuration pour l'application
 pub mod broll_config;
 pub mod cloud_architecture;
+pub mod feature_flags;
 pub mod live_streaming;
 pub mod premium_audio;
 pub mod production_config;

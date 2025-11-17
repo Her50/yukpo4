@@ -9,13 +9,15 @@ interface SafeNativeViewProps {
     style?: any;
     edges?: ('top' | 'bottom' | 'left' | 'right')[];
     backgroundColor?: string;
+    testID?: string;
 }
 
 export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
     children,
     style,
     edges = ['top', 'bottom', 'left', 'right'],
-    backgroundColor = '#FFFFFF'
+    backgroundColor = '#FFFFFF',
+    testID,
 }) => {
     const getStatusBarHeight = () => {
         if (Platform.OS === 'android') {
@@ -52,7 +54,7 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
     ];
 
     return (
-        <View style={containerStyle}>
+        <View style={containerStyle} testID={testID}>
             {children}
         </View>
     );

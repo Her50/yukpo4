@@ -593,6 +593,94 @@ impl StudioService {
         })
     }
 
+    pub async fn trigger_short_preview(
+        &self,
+        session_id: Uuid,
+        user_id: i32,
+    ) -> AppResult<PreviewResponse> {
+        let preview_start = Instant::now();
+        let renderer = self
+            .video_renderer
+            .clone()
+            .ok_or_else(|| AppError::Internal("Renderer vidéo indisponible.".into()))?;
+
+        let session = self.get_session(session_id, user_id).await?;
+        if session.timeline.is_empty() {
+            return Err(AppError::BadRequest(
+                "Impossible de générer un aperçu sans timeline.".into(),
+            ));
+        }
+
+        // Ne garder que les premiers clips pour un aperçu court (max ~5s)
+        let mut accumulated = 0;
+        let mut short_clips: Vec<StudioTimelineClipRecord> = Vec::new();
+        for clip in &session.timeline {
+            if accumulated >= 5 {
+                break;
+            }
+            short_clips.push(clip.clone());
+            accumulated += clip.duration_seconds.max(1);
+            if accumulated >= 5 {
+                break;
+            }
+        }
+
+        let timeline_model = build_preview_timeline(&short_clips)?;
+        let request = RenderJobRequest {
+            job_id: None,
+            timeline: Arc::new(timeline_model.clone()),
+        };
+
+        let result = renderer.render(&request).await.map_err(|err| {
+            warn!(
+                "[StudioService] Échec génération preview courte session {}: {}",
+                session_id, err.message
+            );
+            AppError::Internal(format!(
+                "Impossible de générer l'aperçu court: {}",
+                err.message
+            ))
+        })?;
+
+        let preview_url = result
+            .public_url
+            .clone()
+            .or_else(|| result.storage_path.clone())
+            .or_else(|| result.master_video.to_str().map(|s| s.to_string()));
+        let duration_seconds =
+            (timeline_model.total_frames() as f64 / timeline_model.fps as f64).ceil() as u32;
+        let template_name = session
+            .session
+            .recommended_templates
+            .first()
+            .cloned()
+            .or_else(|| short_clips.first().and_then(|clip| clip.lane.clone()));
+
+        info!(
+            "[StudioService] Short preview session={} template={:?} clips={} duration={}s",
+            session_id,
+            template_name.as_deref().unwrap_or("n/a"),
+            short_clips.len(),
+            duration_seconds
+        );
+
+        let latency_ms = preview_start
+            .elapsed()
+            .as_millis()
+            .min(u128::from(u64::MAX)) as u64;
+        PreviewMonitoring::record_request(template_name.as_deref(), latency_ms, &result.warnings);
+
+        Ok(PreviewResponse {
+            session_id,
+            status: "ready".into(),
+            preview_url,
+            warnings: result.warnings,
+            duration_seconds,
+            template: template_name,
+            clip_count: short_clips.len(),
+        })
+    }
+
     pub async fn publish_session(
         &self,
         session_id: Uuid,

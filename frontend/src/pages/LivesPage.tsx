@@ -1,3 +1,4 @@
+import { useFeatureFlags } from '@/context';
 import { ROUTES, getLiveViewRoute } from '@/routes/AppRoutesRegistry';
 import { fetchUpcomingLives } from '@/services/liveApi';
 import type { LiveSession } from '@/types/live';
@@ -9,6 +10,7 @@ interface LiveItem extends LiveSession {
 }
 
 const LivesPage: React.FC = () => {
+    const { isEnabled } = useFeatureFlags();
     const [lives, setLives] = useState<LiveItem[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -45,12 +47,14 @@ const LivesPage: React.FC = () => {
             }
         };
 
-        loadLives();
+        if (isEnabled('connectors_livekit')) {
+            loadLives();
+        }
 
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [isEnabled]);
 
     const upcoming = useMemo(
         () => lives.filter((live) => live.status !== 'replay_ready'),
@@ -69,6 +73,18 @@ const LivesPage: React.FC = () => {
         }
         return 0;
     };
+
+    if (!isEnabled('connectors_livekit')) {
+        return (
+            <div className="max-w-3xl mx-auto px-4 py-12 space-y-4">
+                <h1 className="text-3xl font-bold text-gray-900">Lives Yukpo</h1>
+                <p className="text-gray-600">
+                    La fonctionnalité live (LiveKit / streaming) n&apos;est pas activée sur cet environnement.
+                    Activez le flag <code>connectors_livekit</code> pour accéder à cette page.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-5xl mx-auto px-4 py-12">

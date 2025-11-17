@@ -51,6 +51,7 @@ interface NativeButtonProps {
     size?: 'small' | 'medium' | 'large';
     disabled?: boolean;
     style?: any;
+    testID?: string;
 }
 
 export const NativeButton: React.FC<NativeButtonProps> = ({
@@ -59,7 +60,8 @@ export const NativeButton: React.FC<NativeButtonProps> = ({
     variant = 'primary',
     size = 'medium',
     disabled = false,
-    style
+    style,
+    testID,
 }) => {
     const buttonStyle = [
         styles.button,
@@ -82,6 +84,7 @@ export const NativeButton: React.FC<NativeButtonProps> = ({
             onPress={onPress}
             disabled={disabled}
             activeOpacity={0.8}
+            testID={testID}
         >
             <Text style={textStyle}>{title}</Text>
         </TouchableOpacity>
@@ -123,6 +126,7 @@ export interface NativeInputProps {
     autoCorrect?: boolean; // ✅ Ajout pour contrôler l'auto-correction
     minLines?: number;
     onContentSizeChange?: (width: number, height: number) => void;
+    testID?: string;
 }
 
 export const NativeInput: React.FC<NativeInputProps> = ({
@@ -137,7 +141,8 @@ export const NativeInput: React.FC<NativeInputProps> = ({
     autoCapitalize,
     autoCorrect,
     minLines = 1,
-    onContentSizeChange
+    onContentSizeChange,
+    testID
 }) => {
     const [inputHeight, setInputHeight] = React.useState<number | undefined>(undefined);
 
@@ -177,6 +182,7 @@ export const NativeInput: React.FC<NativeInputProps> = ({
     return (
         <View style={containerStyles}>
             <TextInput
+                testID={testID}
                 style={inputStyles}
                 placeholder={placeholder}
                 value={value}

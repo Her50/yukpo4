@@ -10,7 +10,7 @@ use crate::{
     services::immersive_timeline::{
         AudioCueKind, ColorGradeStyle, ImmersiveAudioCue, ImmersiveContext, ImmersivePlan,
         ImmersiveScene, ImmersiveSceneAssets, ImmersiveSceneColorGrade, ImmersiveSceneTransition,
-        ImmersiveTemplate, ImmersiveTimeline, TransitionType,
+        ImmersiveSticker, ImmersiveTemplate, ImmersiveTimeline, StickerPosition, TransitionType,
     },
     services::story_template_service::StoryTemplateSpec,
     state::AppState,
@@ -61,6 +61,26 @@ pub struct TimelineAnalytics {
     pub template_breakdown: HashMap<String, usize>,
     pub estimated_frames: u32,
     pub selected_template: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoryboardScene {
+    pub index: usize,
+    pub scene_type: String,
+    pub headline: Option<String>,
+    pub body: Option<String>,
+    pub duration_hint_seconds: f32,
+    pub media_hint: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Storyboard {
+    pub template_id: String,
+    pub total_duration_seconds: f32,
+    pub scenes: Vec<StoryboardScene>,
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -213,10 +233,12 @@ impl ImmersiveOrchestrator {
 
         let mut audio_cues: Vec<ImmersiveAudioCue> = Vec::new();
         let mut current_frame: u32 = 0;
-        for (idx, scene) in scenes.iter().enumerate() {
+        let total_scenes = scenes.len();
+
+        for (idx, scene) in scenes.iter_mut().enumerate() {
             let cue_type = if idx == 0 {
                 AudioCueKind::Riser
-            } else if idx == scenes.len() - 1 {
+            } else if idx == total_scenes - 1 {
                 AudioCueKind::Beat
             } else if plan.should_inject_broll(idx) {
                 AudioCueKind::Impact
@@ -229,6 +251,66 @@ impl ImmersiveOrchestrator {
                 start_frame: current_frame,
                 cue_type,
             });
+
+            // Injection de stickers métier basés sur le contexte business (promo / livraison / prix)
+            if let Some(ctx) = request.business_context.as_ref() {
+                let stickers = scene
+                    .assets
+                    .stickers
+                    .get_or_insert_with(Vec::new);
+
+                // Sticker promo global si une promotion est active
+                if ctx.promotion_active.unwrap_or(false) && idx > 0 && idx < total_scenes - 1 {
+                    stickers.push(ImmersiveSticker {
+                        id: format!("promo-main-{:02}", idx),
+                        src: "/assets/stickers/promo-main.png".to_string(),
+                        start_frame: current_frame.saturating_add(fps / 4),
+                        duration_in_frames: scene
+                            .duration_in_frames
+                            .saturating_sub(fps / 3),
+                        position: Some(StickerPosition {
+                            x: 900.0,
+                            y: 260.0,
+                            scale: 1.0,
+                        }),
+                    });
+                }
+
+                // Sticker livraison sur la scène CTA si SLA disponible
+                if ctx.delivery_sla_minutes.is_some() && idx == total_scenes - 1 {
+                    stickers.push(ImmersiveSticker {
+                        id: "livraison-express".to_string(),
+                        src: "/assets/stickers/delivery-fast.png".to_string(),
+                        start_frame: current_frame.saturating_add(fps / 3),
+                        duration_in_frames: scene
+                            .duration_in_frames
+                            .saturating_sub(fps / 2),
+                        position: Some(StickerPosition {
+                            x: 860.0,
+                            y: 1520.0,
+                            scale: 0.95,
+                        }),
+                    });
+                }
+
+                // Sticker prix sur les scènes produit si un label de prix est fourni
+                if ctx.price_label.is_some() && idx > 0 && idx < total_scenes - 1 {
+                    stickers.push(ImmersiveSticker {
+                        id: "price-tag".to_string(),
+                        src: "/assets/stickers/price-tag.png".to_string(),
+                        start_frame: current_frame,
+                        duration_in_frames: scene
+                            .duration_in_frames
+                            .saturating_sub(fps / 2),
+                        position: Some(StickerPosition {
+                            x: 260.0,
+                            y: 1520.0,
+                            scale: 0.9,
+                        }),
+                    });
+                }
+            }
+
             current_frame += scene.duration_in_frames;
         }
 
@@ -388,6 +470,67 @@ impl ImmersiveOrchestrator {
         }
 
         TemplateEvaluation { score, reasons }
+    }
+
+    pub fn build_storyboard(&self, request: &TimelineRequest, result: &TimelineResult) -> Storyboard {
+        let fps = result.timeline.fps.max(1);
+        let mut scenes = Vec::with_capacity(result.timeline.scenes.len());
+        let mut total_duration_seconds = 0.0_f32;
+
+        for (index, scene) in result.timeline.scenes.iter().enumerate() {
+            let duration_seconds = scene.duration_in_frames as f32 / fps as f32;
+            total_duration_seconds += duration_seconds;
+
+            let scene_type = match scene.template {
+                ImmersiveTemplate::IntroPulse => "intro",
+                ImmersiveTemplate::GlowCTA => {
+                    if let Some(ctx) = &request.business_context {
+                        if ctx.delivery_sla_minutes.is_some() {
+                            "delivery_cta"
+                        } else if ctx.promotion_active.unwrap_or(false) {
+                            "promo_cta"
+                        } else {
+                            "cta"
+                        }
+                    } else {
+                        "cta"
+                    }
+                }
+                ImmersiveTemplate::ARHighlight => "delivery",
+                ImmersiveTemplate::ProductShowcase => "benefit",
+            }
+            .to_string();
+
+            let headline = scene.assets.headline.clone();
+            let body = scene
+                .assets
+                .body
+                .clone()
+                .or_else(|| scene.assets.subheadline.clone());
+
+            let media_hint = scene
+                .assets
+                .video_url
+                .clone()
+                .or_else(|| scene.assets.product_image_url.clone())
+                .or_else(|| scene.assets.background_url.clone());
+
+            scenes.push(StoryboardScene {
+                index,
+                scene_type,
+                headline,
+                body,
+                duration_hint_seconds: duration_seconds,
+                media_hint,
+            });
+        }
+
+        Storyboard {
+            template_id: result.analytics.selected_template.clone(),
+            total_duration_seconds,
+            scenes,
+            warnings: result.warnings.clone(),
+        }
     }
 
     fn evaluate_business_context(

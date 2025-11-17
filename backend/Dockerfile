@@ -1,4 +1,4 @@
-﻿FROM rust:1.75-slim
+﻿FROM rustlang/rust:nightly
 
 WORKDIR /app
 
@@ -26,6 +26,19 @@ COPY ia_intentions_instructions.md ./
 
 # ✅ NOUVEAU 2025-11-06: Créer dossier data (pour context_enricher.rs)
 RUN mkdir -p ./data
+
+# ✅ SQLx OFFLINE : préparer le cache des requêtes à la compilation
+# On attend une variable d'environnement/argument de build DATABASE_URL pointant vers la base PostgreSQL.
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
+# Installer l'outil en ligne de commande sqlx (utilisé uniquement au build)
+RUN cargo install sqlx-cli --no-default-features --features rustls,postgres
+
+# Générer les métadonnées SQLx dans .sqlx/ en mode online,
+# puis activer le mode offline pour la compilation finale.
+RUN SQLX_OFFLINE=false cargo sqlx prepare -- --lib
+ENV SQLX_OFFLINE=true
 
 # Construire l'application
 RUN cargo build --release

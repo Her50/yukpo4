@@ -16,6 +16,7 @@ import { StickerLayer } from './StickerLayer.js';
 
 type ARHighlightProps = {
   scene: ImmersiveScene;
+  audioCues?: LocalAudioCue[];
 };
 
 const FloatingOrb: React.FC<{ frame: number; fps: number; seed: number }> = ({
@@ -45,11 +46,30 @@ const FloatingOrb: React.FC<{ frame: number; fps: number; seed: number }> = ({
   );
 };
 
-export const ARHighlightScene: React.FC<ARHighlightProps> = ({ scene }) => {
+const computeGlitchBoost = (frame: number, cues?: LocalAudioCue[]) => {
+  if (!cues || cues.length === 0) return 0;
+  const WINDOW = 8;
+  const BASE = 0.7;
+  return cues
+    .filter((c) => c.cueType === 'glitch' || c.cueType === 'impact')
+    .reduce((acc, cue) => {
+      const distance = Math.abs(frame - cue.frameOffset);
+      if (distance > WINDOW) return acc;
+      const strength = 1 - distance / WINDOW;
+      return acc + strength * BASE;
+    }, 0);
+};
+
+export const ARHighlightScene: React.FC<ARHighlightProps> = ({
+  scene,
+  audioCues
+}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const cameraZoom = spring({
+  const glitchBoost = computeGlitchBoost(frame, audioCues);
+
+  const cameraZoomBase = spring({
     frame,
     fps,
     config: {
@@ -58,6 +78,8 @@ export const ARHighlightScene: React.FC<ARHighlightProps> = ({ scene }) => {
       stiffness: 180
     }
   });
+
+  const cameraZoom = cameraZoomBase + glitchBoost * 0.4;
 
   const headline = scene.assets.headline ?? 'Révèle ton produit en AR';
   const body =
@@ -166,7 +188,7 @@ export const ARHighlightScene: React.FC<ARHighlightProps> = ({ scene }) => {
         </p>
       </AbsoluteFill>
 
-      <StickerLayer scene={scene} />
+      <StickerLayer scene={scene} audioCues={audioCues} />
     </AbsoluteFill>
   );
 };

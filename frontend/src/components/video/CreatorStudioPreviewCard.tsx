@@ -13,15 +13,17 @@ const stepLabels: Record<StudioStepKey, string> = {
 };
 
 interface CreatorStudioPreviewCardProps {
+    serviceId?: number;
     serviceName?: string;
     productName?: string;
 }
 
 export const CreatorStudioPreviewCard = ({
+    serviceId,
     serviceName,
     productName,
 }: CreatorStudioPreviewCardProps) => {
-    const [state, actions] = useCreatorStudio();
+    const [state, actions] = useCreatorStudio({ serviceId });
     const templateSpecs = state.templates;
     const metrics = state.previewMetrics;
     const totalPreviews = metrics?.totalPreviews ?? 0;
@@ -105,8 +107,8 @@ export const CreatorStudioPreviewCard = ({
                                         type="button"
                                         onClick={() => actions.pickTemplate(spec.id)}
                                         className={`rounded-2xl border px-4 py-2 text-left text-sm transition ${selected
-                                            ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
-                                            : 'border-white/10 bg-indigo-950/40 text-slate-200 hover:border-white/30'
+                                                ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
+                                                : 'border-white/10 bg-indigo-950/40 text-slate-200 hover:border-white/30'
                                             }`}
                                     >
                                         <span className="font-semibold">{spec.label}</span>
@@ -159,6 +161,26 @@ export const CreatorStudioPreviewCard = ({
                             <p className="text-xs text-slate-400">
                                 Préview low-resolution générée côté GPU pour ajuster timeline avant rendu complet.
                             </p>
+                        )}
+                        <button
+                            type="button"
+                            onClick={actions.generateStoryboard}
+                            className="w-full rounded-2xl border border-indigo-300/60 bg-indigo-950/60 px-4 py-2 text-xs font-semibold text-indigo-100 hover:border-indigo-200"
+                            disabled={state.storyboardLoading}
+                        >
+                            {state.storyboardLoading ? 'Storyboard IA…' : 'Générer un storyboard IA'}
+                        </button>
+                        {state.storyboard && state.storyboard.scenes.length > 0 && (
+                            <div className="space-y-1 text-[11px] text-slate-200">
+                                {state.storyboard.scenes.slice(0, 3).map((scene) => (
+                                    <p key={scene.index}>
+                                        <span className="font-semibold uppercase tracking-wide text-indigo-200">
+                                            {scene.sceneType}{' '}
+                                        </span>
+                                        · {scene.headline || scene.body || 'Scène'}
+                                    </p>
+                                ))}
+                            </div>
                         )}
                     </div>
                 </div>

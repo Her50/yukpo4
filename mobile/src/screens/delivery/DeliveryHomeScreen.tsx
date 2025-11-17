@@ -7,6 +7,7 @@ import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
+import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import { modernColors } from '../../theme/modernTheme';
 
 const DeliveryHomeScreen: React.FC = () => {
@@ -21,6 +22,7 @@ const DeliveryHomeScreen: React.FC = () => {
         pendingMutationCount,
         retryPendingMutations,
     } = useDeliveryContext();
+    const { isEnabled } = useFeatureFlags();
     const [refreshing, setRefreshing] = useState(false);
 
     useFocusEffect(
@@ -114,13 +116,27 @@ const DeliveryHomeScreen: React.FC = () => {
                     <NativeButton title="Commander au supermarché" variant="primary" onPress={handleStartShopping} />
                 </NativeCard>
 
-                <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Livraison de colis</Text>
-                    <Text style={styles.cardSubtitle}>
-                        Envoie un colis ou un document avec suivi en temps réel (bientôt disponible).
-                    </Text>
-                    <NativeButton title="Bientôt disponible" variant="outline" onPress={handleStartParcel} />
-                </NativeCard>
+                {isEnabled('delivery_v2') ? (
+                    <NativeCard style={styles.card}>
+                        <Text style={styles.cardTitle}>Livraison de colis</Text>
+                        <Text style={styles.cardSubtitle}>
+                            Expédie un colis ou un document avec le nouveau flux de livraison intelligente (beta).
+                        </Text>
+                        <NativeButton
+                            title="Nouveau flux colis (beta)"
+                            variant="outline"
+                            onPress={handleStartParcel}
+                        />
+                    </NativeCard>
+                ) : (
+                    <NativeCard style={styles.card}>
+                        <Text style={styles.cardTitle}>Livraison de colis</Text>
+                        <Text style={styles.cardSubtitle}>
+                            Envoie un colis ou un document avec suivi en temps réel (bientôt disponible).
+                        </Text>
+                        <NativeButton title="Bientôt disponible" variant="outline" onPress={handleStartParcel} />
+                    </NativeCard>
+                )}
 
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Vos livraisons actives</Text>

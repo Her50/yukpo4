@@ -9,10 +9,10 @@ use uuid::Uuid;
 use crate::{
     core::types::{AppError, AppResult},
     models::global_promo_model::{
-        CreateGlobalPromoEventRequest, GlobalPromoCatalogBadges, GlobalPromoCatalogItem,
-        GlobalPromoCatalogPage, GlobalPromoCatalogQuery, GlobalPromoEntry, GlobalPromoEvent,
-        GlobalPromoProductSnapshot, ReviewGlobalPromoEntryRequest, UpdateGlobalPromoEventRequest,
-        UpsertGlobalPromoEntryRequest,
+        BulkReviewGlobalPromoEntryRequest, CreateGlobalPromoEventRequest, GlobalPromoCatalogBadges,
+        GlobalPromoCatalogItem, GlobalPromoCatalogPage, GlobalPromoCatalogQuery, GlobalPromoEntry,
+        GlobalPromoEvent, GlobalPromoProductSnapshot, ReviewGlobalPromoEntryRequest,
+        UpdateGlobalPromoEventRequest, UpsertGlobalPromoEntryRequest,
     },
     services::{
         notification_service, notification_service::NotificationType, push_notification_service,
@@ -709,7 +709,7 @@ impl GlobalPromoService {
                 service_id: row.try_get("service_id")?,
             };
 
-            let (notif_type, mut title, mut body) = if decision == "approved" {
+            let (notif_type, title, mut body) = if decision == "approved" {
                 (
                     NotificationType::GlobalPromoEntryApproved,
                     format!("✅ Promo approuvée: {}", promo_info.event_name),
@@ -738,6 +738,36 @@ impl GlobalPromoService {
         }
 
         Ok(entry)
+    }
+
+    pub async fn review_entries_bulk(
+        pool: &PgPool,
+        reviewer_id: i32,
+        bulk: BulkReviewGlobalPromoEntryRequest,
+    ) -> AppResult<Vec<GlobalPromoEntry>> {
+        if bulk.entry_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut updated = Vec::with_capacity(bulk.entry_ids.len());
+        for entry_id in bulk.entry_ids {
+            let entry = Self::review_entry(
+                pool,
+                entry_id,
+                reviewer_id,
+                ReviewGlobalPromoEntryRequest {
+                    status: bulk.status.clone(),
+                    message: bulk.message.clone(),
+                    highlighted: bulk.highlighted,
+                    priority_score: bulk.priority_score,
+                    metadata_patch: bulk.metadata_patch.clone(),
+                },
+            )
+            .await?;
+            updated.push(entry);
+        }
+
+        Ok(updated)
     }
 
     pub async fn process_scheduler(state: Arc<AppState>) {

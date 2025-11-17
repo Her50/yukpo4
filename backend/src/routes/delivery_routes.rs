@@ -26,7 +26,10 @@ use crate::{
         PublicDropoffSnapshot, TrackingInput,
     },
     state::AppState,
-    websocket::delivery_tracking::DeliveryTrackingManager,
+    websocket::delivery_tracking::{
+        record_ws_connection_close, record_ws_connection_open, record_ws_error,
+        record_ws_message_sent, DeliveryTrackingManager,
+    },
 };
 
 #[derive(Deserialize)]
@@ -718,6 +721,8 @@ async fn handle_delivery_tracking_ws(
     let (mut sender, mut receiver) = socket.split();
     let mut subscription = manager.subscribe(delivery_id).await;
 
+    record_ws_connection_open();
+
     let connected = serde_json::json!({
         "event": "connected",
         "delivery_id": delivery_id,
@@ -730,7 +735,9 @@ async fn handle_delivery_tracking_ws(
         .await
         .is_err()
     {
+        record_ws_error();
         manager.cleanup(delivery_id).await;
+        record_ws_connection_close();
         return;
     }
 
@@ -739,7 +746,10 @@ async fn handle_delivery_tracking_ws(
             match serde_json::to_string(&message) {
                 Ok(payload) => {
                     if sender.send(Message::Text(payload.into())).await.is_err() {
+                        record_ws_error();
                         break;
+                    } else {
+                        record_ws_message_sent();
                     }
                 }
                 Err(err) => {
@@ -748,6 +758,7 @@ async fn handle_delivery_tracking_ws(
                         message.delivery_id,
                         err
                     );
+                    record_ws_error();
                 }
             }
         }
@@ -778,6 +789,7 @@ async fn handle_delivery_tracking_ws(
         user_id,
         delivery_id
     );
+    record_ws_connection_close();
 }
 
 impl From<LocationPayload> for LocationInput {

@@ -655,8 +655,6 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
     );
 };
 
-export default PublicitesCarousel;
-
 interface Publicite {
     id: string;
     titre: string;

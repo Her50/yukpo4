@@ -212,3 +212,93 @@ fn default_color_grade_style() -> ColorGradeStyle {
 fn default_color_grade_intensity() -> f32 {
     0.6
 }
+
+/// Applique des hints de style (effets, transitions, palette de couleurs) sur une timeline immersive.
+///
+/// L'objectif est de mapper des listes de chaînes génériques (venant du payload front) vers
+/// des `TransitionType` et `ColorGradeStyle` concrets, sans imposer une taxonomie figée au frontend.
+pub fn apply_style_hints_to_timeline(
+    timeline: &mut ImmersiveTimeline,
+    style_effects: Option<&[String]>,
+    style_transitions: Option<&[String]>,
+    style_color_palette: Option<&str>,
+) {
+    let mut transition_hint: Option<TransitionType> = None;
+    if let Some(hints) = style_transitions {
+        for hint in hints {
+            let lower = hint.to_lowercase();
+            if lower.contains("orbit") || lower.contains("3d") {
+                transition_hint = Some(TransitionType::Orbit3d);
+                break;
+            }
+            if lower.contains("parallax") {
+                transition_hint = Some(TransitionType::Parallax);
+                break;
+            }
+            if lower.contains("speed") || lower.contains("ramp") {
+                transition_hint = Some(TransitionType::SpeedRamp);
+                break;
+            }
+            if lower.contains("cut") || lower.contains("jump") {
+                transition_hint = Some(TransitionType::HardCut);
+                break;
+            }
+        }
+    }
+
+    let mut grade_hint: Option<ColorGradeStyle> = None;
+    if let Some(palette) = style_color_palette {
+        let lower = palette.to_lowercase();
+        if lower.contains("neon") || lower.contains("glow") {
+            grade_hint = Some(ColorGradeStyle::Glow);
+        } else if lower.contains("cinematic") || lower.contains("film") {
+            grade_hint = Some(ColorGradeStyle::Cinematic);
+        } else {
+            grade_hint = Some(ColorGradeStyle::None);
+        }
+    }
+
+    // Effets texte / overlays : pour l’instant, on s’en sert pour moduler l’intensité colorimétrique.
+    let mut grade_intensity: Option<f32> = None;
+    if let Some(effects) = style_effects {
+        for effect in effects {
+            let lower = effect.to_lowercase();
+            if lower.contains("subtle") || lower.contains("soft") {
+                grade_intensity = Some(0.35);
+                break;
+            }
+            if lower.contains("strong") || lower.contains("aggressive") {
+                grade_intensity = Some(0.8);
+                break;
+            }
+        }
+    }
+
+    if transition_hint.is_none() && grade_hint.is_none() && grade_intensity.is_none() {
+        return;
+    }
+
+    for scene in &mut timeline.scenes {
+        if let Some(tt) = transition_hint {
+            scene.transition.r#type = tt;
+        }
+
+        if grade_hint.is_some() || grade_intensity.is_some() {
+            let mut grade = scene
+                .color_grade
+                .clone()
+                .unwrap_or_else(|| ImmersiveSceneColorGrade {
+                    style: default_color_grade_style(),
+                    intensity: default_color_grade_intensity(),
+                });
+            if let Some(style) = grade_hint {
+                grade.style = style;
+            }
+            if let Some(intensity) = grade_intensity {
+                grade.intensity = intensity;
+            }
+            scene.color_grade = Some(grade);
+        }
+    }
+}
+

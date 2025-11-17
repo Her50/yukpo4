@@ -239,8 +239,6 @@ pub struct MultipleReactivationResult {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[tokio::test]
     async fn test_reactivation_cost() {
         // Tester que le coût est bien de 1000 FCFA par produit

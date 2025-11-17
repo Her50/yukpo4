@@ -752,6 +752,13 @@ static WALLET_REFUND_EVENTS: AtomicU64 = AtomicU64::new(0);
 static TOTAL_WALLET_DEBIT_CENTS: AtomicI64 = AtomicI64::new(0);
 static TOTAL_WALLET_REFUND_CENTS: AtomicI64 = AtomicI64::new(0);
 
+// Métriques matching (worker + auto-matching).
+static DELIVERY_MATCHING_STARTED_TOTAL: AtomicU64 = AtomicU64::new(0);
+static DELIVERY_MATCHING_SUCCESS_TOTAL: AtomicU64 = AtomicU64::new(0);
+static DELIVERY_MATCHING_FAILED_TOTAL: AtomicU64 = AtomicU64::new(0);
+static DELIVERY_MATCHING_LATENCY_TOTAL_MS: AtomicI64 = AtomicI64::new(0);
+static DELIVERY_MATCHING_LATENCY_COUNT: AtomicU64 = AtomicU64::new(0);
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct DeliveryMetricsSnapshot {
     pub recipient_dropoff_events: u64,
@@ -759,6 +766,11 @@ pub struct DeliveryMetricsSnapshot {
     pub wallet_refund_events: u64,
     pub total_wallet_debit_cents: i64,
     pub total_wallet_refund_cents: i64,
+    pub matching_started_total: u64,
+    pub matching_success_total: u64,
+    pub matching_failed_total: u64,
+    pub matching_latency_total_ms: i64,
+    pub matching_latency_count: u64,
 }
 
 fn record_recipient_dropoff_metric() {
@@ -782,6 +794,11 @@ pub fn get_delivery_metrics_snapshot() -> DeliveryMetricsSnapshot {
         wallet_refund_events: WALLET_REFUND_EVENTS.load(Ordering::Relaxed),
         total_wallet_debit_cents: TOTAL_WALLET_DEBIT_CENTS.load(Ordering::Relaxed),
         total_wallet_refund_cents: TOTAL_WALLET_REFUND_CENTS.load(Ordering::Relaxed),
+        matching_started_total: DELIVERY_MATCHING_STARTED_TOTAL.load(Ordering::Relaxed),
+        matching_success_total: DELIVERY_MATCHING_SUCCESS_TOTAL.load(Ordering::Relaxed),
+        matching_failed_total: DELIVERY_MATCHING_FAILED_TOTAL.load(Ordering::Relaxed),
+        matching_latency_total_ms: DELIVERY_MATCHING_LATENCY_TOTAL_MS.load(Ordering::Relaxed),
+        matching_latency_count: DELIVERY_MATCHING_LATENCY_COUNT.load(Ordering::Relaxed),
     }
 }
 
@@ -2232,6 +2249,9 @@ impl DeliveryService {
                 continue;
             }
 
+            let attempt_start = std::time::Instant::now();
+            DELIVERY_MATCHING_STARTED_TOTAL.fetch_add(1, Ordering::Relaxed);
+
             if let Err(err) = self.attempt_auto_matching(&summary, item.zone_id).await {
                 log::warn!(
                     "[DeliveryMatching] Tentative échouée pour {}: {}",
@@ -2247,8 +2267,18 @@ impl DeliveryService {
                         true,
                     )
                     .await?;
+
+                DELIVERY_MATCHING_FAILED_TOTAL.fetch_add(1, Ordering::Relaxed);
             } else {
                 processed += 1;
+                DELIVERY_MATCHING_SUCCESS_TOTAL.fetch_add(1, Ordering::Relaxed);
+            }
+
+            let duration_ms = attempt_start.elapsed().as_millis() as i64;
+            if duration_ms > 0 {
+                DELIVERY_MATCHING_LATENCY_TOTAL_MS
+                    .fetch_add(duration_ms, Ordering::Relaxed);
+                DELIVERY_MATCHING_LATENCY_COUNT.fetch_add(1, Ordering::Relaxed);
             }
         }
 

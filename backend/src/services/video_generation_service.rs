@@ -2,6 +2,8 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     path::{Path, PathBuf},
     sync::Arc,
+    sync::atomic::{AtomicI64, AtomicU64, Ordering},
+    time::Instant,
 };
 
 use chrono::Utc;
@@ -37,6 +39,42 @@ use crate::{
     },
     state::AppState,
 };
+
+/// Compteurs globaux pour les métriques de latence du pipeline vidéo.
+static VIDEO_LATENCY_TOTAL_MS: AtomicI64 = AtomicI64::new(0);
+static VIDEO_LATENCY_COUNT: AtomicU64 = AtomicU64::new(0);
+static VIDEO_LATENCY_IA_STORYBOARD_TOTAL_MS: AtomicI64 = AtomicI64::new(0);
+static VIDEO_LATENCY_IA_STORYBOARD_COUNT: AtomicU64 = AtomicU64::new(0);
+static VIDEO_LATENCY_RENDER_TOTAL_MS: AtomicI64 = AtomicI64::new(0);
+static VIDEO_LATENCY_RENDER_COUNT: AtomicU64 = AtomicU64::new(0);
+static VIDEO_LATENCY_UPLOAD_TOTAL_MS: AtomicI64 = AtomicI64::new(0);
+static VIDEO_LATENCY_UPLOAD_COUNT: AtomicU64 = AtomicU64::new(0);
+
+/// Instantané des métriques de latence pour exposition Prometheus.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct VideoLatencySnapshot {
+    pub total_ms: i64,
+    pub count: u64,
+    pub ia_storyboard_total_ms: i64,
+    pub ia_storyboard_count: u64,
+    pub render_total_ms: i64,
+    pub render_count: u64,
+    pub upload_total_ms: i64,
+    pub upload_count: u64,
+}
+
+pub fn get_video_latency_snapshot() -> VideoLatencySnapshot {
+    VideoLatencySnapshot {
+        total_ms: VIDEO_LATENCY_TOTAL_MS.load(Ordering::Relaxed),
+        count: VIDEO_LATENCY_COUNT.load(Ordering::Relaxed),
+        ia_storyboard_total_ms: VIDEO_LATENCY_IA_STORYBOARD_TOTAL_MS.load(Ordering::Relaxed),
+        ia_storyboard_count: VIDEO_LATENCY_IA_STORYBOARD_COUNT.load(Ordering::Relaxed),
+        render_total_ms: VIDEO_LATENCY_RENDER_TOTAL_MS.load(Ordering::Relaxed),
+        render_count: VIDEO_LATENCY_RENDER_COUNT.load(Ordering::Relaxed),
+        upload_total_ms: VIDEO_LATENCY_UPLOAD_TOTAL_MS.load(Ordering::Relaxed),
+        upload_count: VIDEO_LATENCY_UPLOAD_COUNT.load(Ordering::Relaxed),
+    }
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct VideoGenerationPayload {
@@ -297,6 +335,8 @@ pub async fn generate_product_video(
     payload: VideoGenerationPayload,
     job_id: Option<Uuid>,
 ) -> AppResult<VideoGenerationResult> {
+    let overall_start = Instant::now();
+
     let svc = sqlx::query!(
         "SELECT user_id, data AS \"data: serde_json::Value\" FROM services WHERE id = $1",
         service_id
@@ -926,7 +966,7 @@ pub async fn generate_product_video(
     match orchestrator.generate_timeline(timeline_request).await {
         Ok(result) => {
             orchestration_warnings.extend(result.warnings.clone());
-            immersive_timeline = Some(result.timeline.clone());
+            let mut timeline = result.timeline.clone();
             immersive_analytics = Some(result.analytics.clone());
             let estimated_seconds = ((result.analytics.estimated_frames as f32
                 / result.timeline.fps as f32)
@@ -945,6 +985,29 @@ pub async fn generate_product_video(
             if let Some(job_id) = job_id {
                 try_store_progress(&state, job_id, "running", &progress_steps).await;
             }
+
+            // Applique les hints de style issus du payload (transitions, effets, palette).
+            crate::services::immersive_timeline::apply_style_hints_to_timeline(
+                &mut timeline,
+                payload.style_effects.as_deref(),
+                payload.style_transitions.as_deref(),
+                payload.style_color_palette.as_deref(),
+            );
+
+            if let Some(ref music_track_path) = music_track {
+                if let Err(err) = crate::services::audio_analysis_service::inject_synthetic_beats_for_timeline(
+                    music_track_path,
+                    &mut timeline,
+                )
+                .await
+                {
+                    warn!("[VideoGeneration] Injection des beats synthétiques échouée: {err}");
+                    orchestration_warnings
+                        .push(format!("audio_beat_analysis_failed: {err}"));
+                }
+            }
+
+            immersive_timeline = Some(timeline);
 
             let sfx_root = Path::new("assets/sfx");
             if sfx_root.exists() {
@@ -1631,6 +1694,12 @@ pub async fn generate_product_video(
 
     if let Some(job_id) = job_id {
         try_store_progress(&state, job_id, "completed", &result.progress_steps).await;
+    }
+
+    let total_duration_ms = overall_start.elapsed().as_millis() as i64;
+    if total_duration_ms > 0 {
+        VIDEO_LATENCY_TOTAL_MS.fetch_add(total_duration_ms, Ordering::Relaxed);
+        VIDEO_LATENCY_COUNT.fetch_add(1, Ordering::Relaxed);
     }
 
     Ok(result)

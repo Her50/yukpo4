@@ -7,6 +7,7 @@ use sqlx::PgPool;
 use std::env;
 
 use crate::config::broll_config::BrollConfig;
+use crate::config::feature_flags::FeatureFlagService;
 use crate::config::live_streaming::LiveStreamingConfig;
 use crate::config::premium_audio::PremiumAudioConfig;
 use crate::config::storage::MediaStorageConfig;
@@ -68,6 +69,8 @@ pub struct AppState {
     pub story_templates: Arc<StoryTemplateService>,
     pub studio_service: Arc<StudioService>,
     pub inventory: Arc<InventoryService>,
+    /// Service centralisé de feature flags (GPU, connecteurs, etc.).
+    pub feature_flags: Arc<FeatureFlagService>,
 }
 
 impl AppState {
@@ -163,6 +166,8 @@ impl AppState {
             video_renderer.clone(),
         ));
 
+        let feature_flags = Arc::new(FeatureFlagService::from_env());
+
         AppState {
             pg,
             mongo,
@@ -189,6 +194,7 @@ impl AppState {
             story_templates: story_templates.clone(),
             studio_service,
             inventory,
+            feature_flags,
         }
     }
 
@@ -252,6 +258,7 @@ impl AppState {
         let story_templates = Arc::new(StoryTemplateService::new());
         let inventory = Arc::new(InventoryService::new(pg.clone()));
         let studio_service = Arc::new(StudioService::new(pg.clone(), media_storage.clone(), None));
+        let feature_flags = Arc::new(FeatureFlagService::from_env());
 
         AppState {
             pg,
@@ -279,6 +286,7 @@ impl AppState {
             story_templates,
             studio_service,
             inventory,
+            feature_flags,
         }
     }
 }

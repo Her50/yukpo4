@@ -1,4 +1,4 @@
-name: Yukpo CI
+name: Yukpo Phase 5 CI
 
 on:
   push:
@@ -6,20 +6,34 @@ on:
       - main
       - develop
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
     name: Backend (Rust)
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      SQLX_OFFLINE: "true"
+      DATABASE_URL: ${{ secrets.DATABASE_URL_OFFLINE }}
     defaults:
       run:
         working-directory: backend
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
       - name: Cache cargo artifacts
         uses: actions/cache@v4
@@ -32,25 +46,42 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Rust format check
+      - name: Cargo fmt
         run: cargo fmt -- --check
 
-      - name: Rust tests
+      - name: Cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Cargo test
         run: cargo test --all --locked
+
+      - name: SQLx prepare
+        run: cargo sqlx prepare -- --lib
+
+      - name: Cargo build release
+        run: cargo build --release --locked
+
+      - name: Upload sqlx data
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlx-data.json
+          path: backend/sqlx-data.json
+          if-no-files-found: warn
 
   frontend:
     name: Frontend (React)
-    runs-on: ubuntu-latest
     needs: backend
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: 0
     defaults:
       run:
         working-directory: frontend
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
@@ -62,19 +93,195 @@ jobs:
       - name: Lint (no fix)
         run: npm run lint:check
 
-      - name: Run Vitest suite
-        run: npm run test
+      - name: Run Vitest suite (coverage)
+        run: npm run test -- --coverage
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Install Playwright dependencies
+        run: npx playwright install --with-deps
+
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          if-no-files-found: warn
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          if-no-files-found: warn
 
   mobile:
     name: Mobile (Expo)
-    runs-on: ubuntu-latest
     needs: frontend
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_BASE_URL: ${{ secrets.EXPO_PUBLIC_API_BASE_URL }}
+      EXPO_PUBLIC_WS_BASE_URL: ${{ secrets.EXPO_PUBLIC_WS_BASE_URL }}
     defaults:
       run:
         working-directory: mobile
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests (Vitest + coverage)
+        run: npm run test -- --coverage
+
+      - name: Expo web export
+        run: npx expo export --platform web --dump-sourcemap --output-dir dist-web
+
+      - name: Upload mobile coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-coverage
+          path: mobile/coverage
+          if-no-files-found: warn
+
+      - name: Upload Expo dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-dist-web
+          path: mobile/dist-web
+          if-no-files-found: warn
+
+  video_renderer:
+    name: Video renderer (GPU worker)
+    needs: backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: video-renderer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: video-renderer/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build worker
+        run: npm run build
+
+      - name: Render sample job (CPU fallback)
+        run: npm run render:sample
+
+      - name: Upload renderer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: renderer-sample
+          path: |
+            video-renderer/renders
+            video-renderer/jobs
+          if-no-files-found: warn
+
+  qa_seed:
+    name: Seed staging data
+    needs: backend
+    runs-on: ubuntu-latest
+    env:
+      STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Seed staging baseline
+        run: bash scripts/seed_staging.sh
+
+  playwright_e2e:
+    name: Playwright E2E (staging)
+    needs: [frontend, qa_seed]
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_TEST_BASE_URL: ${{ secrets.PLAYWRIGHT_TEST_BASE_URL }}
+      API_BEARER_TOKEN: ${{ secrets.PLAYWRIGHT_API_TOKEN }}
+      PLAYWRIGHT_BROWSERS_PATH: 0
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright suite
+        run: npm run test:e2e -- --project=chromium --reporter=html
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          if-no-files-found: warn
+
+  qa_video:
+    name: QA Video Pipeline
+    needs: [backend, frontend, mobile, video_renderer]
+    runs-on: ubuntu-latest
+    env:
+      QA_ARTIFACTS_DIR: artifacts/video-qa
+      QA_MOBILE_CONFIGURATION: android.emu.debug
+      QA_PLAYWRIGHT_PROJECT: chromium
+      QA_VIDEO_SCENARIOS: audio-premium,fallback-local,livekit-mock,wasabi-storage
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgbm1 xvfb
+
+      - name: Install Detox & Playwright CLIs
+        run: |
+          npm install --global detox-cli
+          npx playwright install --with-deps
+
+      - name: Run QA pipeline script
+        run: bash scripts/run_video_pipeline_qa.sh --ci
+
+      - name: Upload QA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-pipeline-qa
+          path: artifacts/video-qa
+          if-no-files-found: warn
+
+  detox_android:
+    name: Detox Android Nightly
+    needs: mobile
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      WORKING_DIRECTORY: mobile
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -85,7 +292,14 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        working-directory: mobile
 
-      - name: Run unit tests (Vitest)
-        run: npm run test
+      - name: Detox Android suite
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          working-directory: mobile
+          script: npm run detox:test:android
 

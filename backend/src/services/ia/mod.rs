@@ -943,7 +943,6 @@ impl OptimizedIAService {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::models::input_model::MultiModalInput;
 
     #[tokio::test]
@@ -957,7 +956,7 @@ mod tests {
     #[tokio::test]
     async fn test_extract_user_text() {
         // Test de la fonction d'extraction de texte
-        let input = MultiModalInput {
+        let _input = MultiModalInput {
             texte: Some("Je vends des v?tements".to_string()),
             base64_image: None,
             audio_base64: None,

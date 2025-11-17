@@ -2,6 +2,7 @@ import ActiveDeliveryCard from '@/components/delivery/ActiveDeliveryCard';
 import DeliveryAvatar from '@/components/delivery/DeliveryAvatarBubble';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons/Button';
+import { useFeatureFlags } from '@/context';
 import { useDeliveryContext } from '@/context/DeliveryContext';
 import { AlertCircle, PackagePlus } from 'lucide-react';
 import React, { useEffect, useMemo } from 'react';
@@ -16,6 +17,7 @@ const DeliveryHomePage: React.FC = () => {
         loading,
         error,
     } = useDeliveryContext();
+    const { isEnabled } = useFeatureFlags();
 
     useEffect(() => {
         refreshActiveDeliveries({ force: true });
@@ -65,22 +67,41 @@ const DeliveryHomePage: React.FC = () => {
                         </div>
                     </article>
 
-                    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="flex items-center justify-between gap-3">
-                            <div>
-                                <h2 className="text-lg font-semibold text-slate-900">Livraison de colis</h2>
-                                <p className="text-sm text-slate-600">
-                                    Envoie de colis avec suivi temps réel — fonctionnalité en cours de finalisation web.
-                                </p>
+                    {isEnabled('delivery_v2') ? (
+                        <article className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-emerald-900">Livraison de colis (beta)</h2>
+                                    <p className="text-sm text-emerald-700">
+                                        Expédie un colis ou un document avec le nouveau flux de livraison intelligente.
+                                    </p>
+                                </div>
+                                <AlertCircle className="h-10 w-10 text-emerald-500" />
                             </div>
-                            <AlertCircle className="h-10 w-10 text-amber-500" />
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                            <Button variant="outline" onClick={handleStartParcel}>
-                                Bientôt disponible
-                            </Button>
-                        </div>
-                    </article>
+                            <div className="mt-4 flex justify-end">
+                                <Button variant="outline" onClick={handleStartParcel}>
+                                    Tester le flux colis
+                                </Button>
+                            </div>
+                        </article>
+                    ) : (
+                        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-slate-900">Livraison de colis</h2>
+                                    <p className="text-sm text-slate-600">
+                                        Envoie de colis avec suivi temps réel — fonctionnalité en cours de finalisation web.
+                                    </p>
+                                </div>
+                                <AlertCircle className="h-10 w-10 text-amber-500" />
+                            </div>
+                            <div className="mt-4 flex justify-end">
+                                <Button variant="outline" onClick={handleStartParcel}>
+                                    Bientôt disponible
+                                </Button>
+                            </div>
+                        </article>
+                    )}
                 </section>
 
                 <section className="space-y-4">
