@@ -102,6 +102,7 @@ const TabIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focused }
   const icons: { [key: string]: string } = {
     'home': '🏠',
     'delivery': '🚚',
+    'video': '🎬',
     'services': '🛍️',
     'dashboard': '📊',
     'history': '📋',
@@ -157,10 +158,10 @@ const MainStack = () => {
     >
       <Tab.Screen name="Home" component={HomeScreenWithSafeArea} options={{ tabBarLabel: 'Accueil' }} />
       <Tab.Screen
-        name="Delivery"
-        component={DeliveryHomeScreenWithSafeArea}
+        name="Video"
+        component={VideoCreationIntroScreenWithSafeArea}
         options={{
-          tabBarLabel: 'Livraison',
+          tabBarLabel: 'Vidéo',
         }}
       />
       <Tab.Screen
@@ -232,6 +233,7 @@ const SecondaryStack = () => {
         <Stack.Screen name="VideoCreationIntro" component={VideoCreationIntroScreenWithSafeArea} />
         <Stack.Screen name="VideoCreationWizard" component={VideoCreationWizardScreenWithSafeArea} />
         <Stack.Screen name="VideoGenerationResult" component={VideoGenerationResultScreenWithSafeArea} />
+        <Stack.Screen name="Delivery" component={DeliveryHomeScreenWithSafeArea} />
         <Stack.Screen name="DeliveryHome" component={DeliveryHomeScreenWithSafeArea} />
         <Stack.Screen name="DeliveryShoppingFlow" component={DeliveryShoppingFlow} />
         <Stack.Screen

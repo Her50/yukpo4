@@ -12,6 +12,7 @@ import {
 
 import { NativeCard } from './NativeDesign';
 import SafeIcon from './SafeIcon';
+import ModernGPSModal from './ModernGPSModal';
 
 import { useCreatorStudio } from '../hooks/useCreatorStudio';
 import { CreateDeliveryRequestPayload } from '../services/api';
@@ -87,6 +88,8 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
     const [vehicleInitialized, setVehicleInitialized] = useState(false);
     const [scheduledPickupEnabled, setScheduledPickupEnabled] = useState(false);
     const [scheduledPickupInput, setScheduledPickupInput] = useState('');
+    const [showPickupGPSModal, setShowPickupGPSModal] = useState(false);
+    const [showDropoffGPSModal, setShowDropoffGPSModal] = useState(false);
     const templateSpecs = state.templates;
     const billingInclusive = state.billingInclusive;
     const billingPartnerLabelValue = state.billingPartnerLabel ?? '';
@@ -357,9 +360,35 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
     }, [actions, buildCourierPayload]);
 
     const handleRefreshTracking = useCallback(() => {
-        actions.refreshDeliveryTelemetry().catch(() => {
-            setCourierError('Rafraîchissement tracking impossible pour l’instant.');
+        actions.refreshDeliveryTelemetry().catch((err: any) => {
+            const message = err?.message || 'Rafraîchissement tracking impossible pour l'instant.';
+            setCourierError(message);
+            console.error('[CreatorStudioCard] Erreur refresh tracking:', err);
         });
+    }, [actions]);
+
+    const handleGenerateSuggestions = useCallback(async () => {
+        try {
+            setCourierError(null);
+            await actions.generateSuggestions();
+        } catch (err: any) {
+            const message = err?.message || 'Impossible de générer les suggestions IA.';
+            setCourierError(message);
+            console.error('[CreatorStudioCard] Erreur suggestions:', err);
+            Alert.alert('Erreur', message);
+        }
+    }, [actions]);
+
+    const handleRequestPreview = useCallback(async () => {
+        try {
+            setCourierError(null);
+            await actions.requestPreview();
+        } catch (err: any) {
+            const message = err?.message || 'Impossible de générer la prévisualisation.';
+            setCourierError(message);
+            console.error('[CreatorStudioCard] Erreur preview:', err);
+            Alert.alert('Erreur', message);
+        }
     }, [actions]);
 
     return (
@@ -367,7 +396,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             <View style={styles.header}>
                 <View>
                     <Text style={styles.kicker}>Studio créateur Yukpo</Text>
-                    <Text style={styles.title}>Phase 3 · Preview intelligente</Text>
+                    <Text style={styles.title}>Preview intelligente</Text>
                     <Text style={styles.subtitle}>
                         {serviceName ?? 'Service'} · {productName ?? 'Produit'}
                     </Text>
@@ -408,7 +437,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                         styles.actionButton,
                         (state.previewLoading || state.sessionLoading) && styles.actionButtonDisabled,
                     ]}
-                    onPress={actions.generateSuggestions}
+                    onPress={handleGenerateSuggestions}
                     disabled={state.previewLoading || state.sessionLoading}
                 >
                     {state.previewLoading ? (
@@ -422,7 +451,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                         styles.actionButton,
                         (state.previewLoading || state.sessionLoading) && styles.actionButtonDisabled,
                     ]}
-                    onPress={actions.requestPreview}
+                    onPress={handleRequestPreview}
                     disabled={state.previewLoading || state.sessionLoading}
                 >
                     {state.previewLoading ? (
@@ -646,7 +675,16 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             </View>
             <View style={styles.locationForm}>
                 <View style={styles.locationBlock}>
-                    <Text style={styles.formKicker}>Point de collecte</Text>
+                    <View style={styles.locationHeaderRow}>
+                        <Text style={styles.formKicker}>Point de collecte</Text>
+                        <TouchableOpacity
+                            style={styles.gpsButton}
+                            onPress={() => setShowPickupGPSModal(true)}
+                        >
+                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                            <Text style={styles.gpsButtonText}>GPS</Text>
+                        </TouchableOpacity>
+                    </View>
                     <TextInput
                         style={styles.locationInput}
                         placeholder="Adresse pickup"
@@ -668,6 +706,8 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                                     setPickupLatitudeInput(value);
                                     setCourierSuccess(null);
                                 }}
+                                placeholder="Ex: 3.848"
+                                placeholderTextColor="rgba(255,255,255,0.25)"
                             />
                         </View>
                         <View style={styles.coordField}>
@@ -680,6 +720,8 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                                     setPickupLongitudeInput(value);
                                     setCourierSuccess(null);
                                 }}
+                                placeholder="Ex: 11.502"
+                                placeholderTextColor="rgba(255,255,255,0.25)"
                             />
                         </View>
                     </View>
@@ -697,7 +739,16 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                 </View>
 
                 <View style={styles.locationBlock}>
-                    <Text style={styles.formKicker}>Point de livraison</Text>
+                    <View style={styles.locationHeaderRow}>
+                        <Text style={styles.formKicker}>Point de livraison</Text>
+                        <TouchableOpacity
+                            style={styles.gpsButton}
+                            onPress={() => setShowDropoffGPSModal(true)}
+                        >
+                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                            <Text style={styles.gpsButtonText}>GPS</Text>
+                        </TouchableOpacity>
+                    </View>
                     <TextInput
                         style={styles.locationInput}
                         placeholder="Adresse dropoff"
@@ -719,6 +770,8 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                                     setDropoffLatitudeInput(value);
                                     setCourierSuccess(null);
                                 }}
+                                placeholder="Ex: 3.871"
+                                placeholderTextColor="rgba(255,255,255,0.25)"
                             />
                         </View>
                         <View style={styles.coordField}>
@@ -731,6 +784,8 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                                     setDropoffLongitudeInput(value);
                                     setCourierSuccess(null);
                                 }}
+                                placeholder="Ex: 11.518"
+                                placeholderTextColor="rgba(255,255,255,0.25)"
                             />
                         </View>
                     </View>
@@ -956,6 +1011,60 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                     )}
                 </View>
             )}
+
+            <ModernGPSModal
+                visible={showPickupGPSModal}
+                onClose={() => setShowPickupGPSModal(false)}
+                onSelect={(coordinatesString) => {
+                    const firstPoint = coordinatesString.split('|')[0].split(',');
+                    if (firstPoint.length === 2) {
+                        const lat = parseFloat(firstPoint[0]);
+                        const lng = parseFloat(firstPoint[1]);
+                        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+                            setPickupLatitudeInput(lat.toString());
+                            setPickupLongitudeInput(lng.toString());
+                        }
+                    }
+                    setShowPickupGPSModal(false);
+                }}
+                currentLocation={
+                    pickupLatitudeInput && pickupLongitudeInput
+                        ? {
+                              lat: parseFloat(pickupLatitudeInput) || 0,
+                              lng: parseFloat(pickupLongitudeInput) || 0,
+                          }
+                        : undefined
+                }
+                title="Sélection du point de collecte"
+                allowZoneSelection={false}
+            />
+
+            <ModernGPSModal
+                visible={showDropoffGPSModal}
+                onClose={() => setShowDropoffGPSModal(false)}
+                onSelect={(coordinatesString) => {
+                    const firstPoint = coordinatesString.split('|')[0].split(',');
+                    if (firstPoint.length === 2) {
+                        const lat = parseFloat(firstPoint[0]);
+                        const lng = parseFloat(firstPoint[1]);
+                        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+                            setDropoffLatitudeInput(lat.toString());
+                            setDropoffLongitudeInput(lng.toString());
+                        }
+                    }
+                    setShowDropoffGPSModal(false);
+                }}
+                currentLocation={
+                    dropoffLatitudeInput && dropoffLongitudeInput
+                        ? {
+                              lat: parseFloat(dropoffLatitudeInput) || 0,
+                              lng: parseFloat(dropoffLongitudeInput) || 0,
+                          }
+                        : undefined
+                }
+                title="Sélection du point de livraison"
+                allowZoneSelection={false}
+            />
         </NativeCard>
     );
 };
@@ -1317,11 +1426,32 @@ const styles = StyleSheet.create({
     locationBlock: {
         gap: 8,
     },
+    locationHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
     formKicker: {
         fontSize: 12,
         letterSpacing: 1,
         textTransform: 'uppercase',
         color: 'rgba(147,197,253,0.9)',
+    },
+    gpsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(99,102,241,0.5)',
+        backgroundColor: 'rgba(99,102,241,0.1)',
+    },
+    gpsButtonText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
     locationInput: {
         borderWidth: 1,

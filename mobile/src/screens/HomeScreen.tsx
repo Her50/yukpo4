@@ -594,25 +594,25 @@ const HomeScreen: React.FC = () => {
 
                         {/* Colonne droite: Actions */}
                         <View style={styles.headerActionsCompact}>
-                            {/* ✅ NOUVEAU: Bouton création vidéo */}
+                            {/* ✅ NOUVEAU: Bouton livraison (remplace vidéo) */}
                             <TouchableOpacity
                                 style={styles.headerButtonCompact}
                                 onPress={() => {
-                                    console.log('[HomeScreen] 🎬 Navigation vers VideoCreationIntro');
+                                    console.log('[HomeScreen] 🚚 Navigation vers Delivery');
                                     try {
                                         const parentNavigation = (navigation as any).getParent();
                                         if (parentNavigation) {
-                                            parentNavigation.navigate('VideoCreationIntro');
+                                            parentNavigation.navigate('Delivery');
                                         } else {
-                                            (navigation as any).navigate('VideoCreationIntro');
+                                            (navigation as any).navigate('Delivery');
                                         }
                                     } catch (error) {
-                                        console.error('[HomeScreen] ❌ Erreur navigation vers VideoCreationIntro:', error);
-                                        Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');
+                                        console.error('[HomeScreen] ❌ Erreur navigation vers Delivery:', error);
+                                        Alert.alert('Erreur', 'Impossible d\'ouvrir la livraison.');
                                     }
                                 }}
                             >
-                                <Text style={styles.headerButtonIconCompact}>🎬</Text>
+                                <Text style={styles.headerButtonIconCompact}>🚚</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={styles.headerButtonCompact}
@@ -687,36 +687,6 @@ const HomeScreen: React.FC = () => {
                     keyboardShouldPersistTaps="handled"
                 >
                     <View>
-                        {/* ✅ NOUVEAU: Section création vidéo rapide */}
-                        <View style={styles.quickActionsSection}>
-                            <TouchableOpacity
-                                style={styles.videoCreationCard}
-                                onPress={() => {
-                                    console.log('[HomeScreen] 🎬 Navigation vers VideoCreationIntro depuis carte');
-                                    try {
-                                        const parentNavigation = (navigation as any).getParent();
-                                        if (parentNavigation) {
-                                            parentNavigation.navigate('VideoCreationIntro');
-                                        } else {
-                                            (navigation as any).navigate('VideoCreationIntro');
-                                        }
-                                    } catch (error) {
-                                        console.error('[HomeScreen] ❌ Erreur navigation vers VideoCreationIntro:', error);
-                                        Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');
-                                    }
-                                }}
-                            >
-                                <View style={styles.videoCreationCardContent}>
-                                    <Text style={styles.videoCreationIcon}>🎬</Text>
-                                    <View style={styles.videoCreationText}>
-                                        <Text style={styles.videoCreationTitle}>Créer une vidéo immersive</Text>
-                                        <Text style={styles.videoCreationSubtitle}>Montage vidéo professionnel avec IA</Text>
-                                    </View>
-                                    <Text style={styles.videoCreationArrow}>→</Text>
-                                </View>
-                            </TouchableOpacity>
-                        </View>
-
                         {/* ✅ TITRE SECTION CAROUSEL */}
                         <View style={styles.carouselHeader}>
                             <Text style={styles.carouselSubtitle}>Produits et services recommandés</Text>
@@ -948,12 +918,10 @@ const styles = StyleSheet.create({
     },
     // ✅ Conteneur pour le titre PARFAITEMENT centré au milieu
     brandTitleContainer: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
+        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: -1, // ✅ En arrière-plan pour ne pas bloquer les clics
+        paddingHorizontal: 8, // ✅ Espacement pour éviter chevauchement
     },
     headerTop: {
         flexDirection: 'row',
@@ -1026,15 +994,16 @@ const styles = StyleSheet.create({
     },
     headerActionsCompact: {
         flexDirection: 'row',
-        gap: 8,
+        gap: 6, // ✅ Réduit de 8 à 6 pour plus d'espace
         flex: 1,
         justifyContent: 'flex-end', // ✅ Aligner à droite
-        minWidth: 120, // ✅ Même largeur que headerLeft pour équilibrer
+        minWidth: 110, // ✅ Réduit de 120 à 110 pour plus d'espace au centre
+        paddingLeft: 8, // ✅ Espacement à gauche pour éviter chevauchement avec titre
     },
     headerButtonCompact: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 38, // ✅ Réduit de 40 à 38 pour plus d'espace
+        height: 38, // ✅ Réduit de 40 à 38 pour plus d'espace
+        borderRadius: 19,
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
@@ -1043,7 +1012,7 @@ const styles = StyleSheet.create({
         borderColor: '#E5E7EB',
     },
     headerButtonIconCompact: {
-        fontSize: 20,
+        fontSize: 18, // ✅ Réduit de 20 à 18 pour plus d'espace
         color: '#374151',
     },
     notificationBadgeCompact: {
@@ -1112,7 +1081,7 @@ const styles = StyleSheet.create({
         textShadowRadius: 4,
     },
     brandTitleCompact: {
-        fontSize: 24, // ✅ Réduit de 28 à 24 pour éviter le retour à la ligne
+        fontSize: 22, // ✅ Réduit de 24 à 22 pour éviter chevauchement
         fontWeight: '900',
         textAlign: 'center',
         letterSpacing: -0.5, // Rapproche les lettres
@@ -1472,50 +1441,6 @@ const styles = StyleSheet.create({
         color: '#374151',
     },
     // ✅ NOUVEAU: Styles pour le header du carousel
-    // ✅ NOUVEAU: Styles pour section création vidéo
-    quickActionsSection: {
-        marginBottom: 20,
-        paddingHorizontal: 4,
-    },
-    videoCreationCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    videoCreationCardContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    videoCreationIcon: {
-        fontSize: 32,
-    },
-    videoCreationText: {
-        flex: 1,
-        gap: 4,
-    },
-    videoCreationTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#1F2937',
-    },
-    videoCreationSubtitle: {
-        fontSize: 13,
-        color: '#6B7280',
-    },
-    videoCreationArrow: {
-        fontSize: 20,
-        color: '#6366F1',
-        fontWeight: '600',
-    },
     carouselHeader: {
         paddingHorizontal: 20,
         paddingTop: 8,

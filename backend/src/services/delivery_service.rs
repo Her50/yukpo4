@@ -1956,30 +1956,28 @@ impl DeliveryService {
         });
 
         // Envoyer au créateur (client qui a créé la livraison)
-        if let Some(creator_id) = summary.creator_id {
-            let pool = self.repository().pool();
-            let _ = push_notification_service::send_push_notification(
-                pool,
-                creator_id,
-                title.clone(),
-                body.clone(),
-                Some(notification_data.clone()),
-                Some("default".to_string()),
-            )
-            .await;
-        }
+        let pool = self.repository().pool();
+        let _ = push_notification_service::send_push_notification(
+            pool,
+            summary.creator_id,
+            title.to_string(),
+            body.to_string(),
+            Some(notification_data.clone()),
+            Some("default".to_string()),
+        )
+        .await;
 
         // Envoyer au destinataire (si différent du créateur et si enregistré)
         if let Some(recipient) = &summary.recipient {
             if let Some(recipient_id) = recipient.user_id {
                 // Ne pas envoyer si c'est le même utilisateur que le créateur
-                if Some(recipient_id) != Some(summary.creator_id) {
+                if recipient_id != summary.creator_id {
                     let pool = self.repository().pool();
                     let _ = push_notification_service::send_push_notification(
                         pool,
                         recipient_id,
-                        title.clone(),
-                        body.clone(),
+                        title.to_string(),
+                        body.to_string(),
                         Some(notification_data.clone()),
                         Some("default".to_string()),
                     )

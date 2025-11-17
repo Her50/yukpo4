@@ -1034,6 +1034,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                         <ScrollView
                             contentContainerStyle={styles.stepContent}
                             showsVerticalScrollIndicator={false}
+                            style={styles.scrollView}
                         >
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>{t('videoWizard.sections.context')}</Text>
@@ -1204,16 +1205,16 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 </View>
                             </NativeCard>
 
-                            <View style={styles.navigationRow}>
-                                <NativeButton
-                                    title={costLoading ? t('videoWizard.buttons.estimating') : t('videoWizard.buttons.nextStepGeneric')}
-                                    variant="primary"
-                                    size="large"
-                                    onPress={handleEstimateCost}
-                                    disabled={costLoading}
-                                />
-                            </View>
                         </ScrollView>
+                        <View style={styles.fixedBottomButton}>
+                            <NativeButton
+                                title={costLoading ? t('videoWizard.buttons.estimating') : t('videoWizard.buttons.nextStepGeneric')}
+                                variant="primary"
+                                size="large"
+                                onPress={handleEstimateCost}
+                                disabled={costLoading}
+                            />
+                        </View>
                     </Animated.View>
                 );
             case 2:
@@ -1222,6 +1223,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                         <ScrollView
                             contentContainerStyle={styles.stepContent}
                             showsVerticalScrollIndicator={false}
+                            style={styles.scrollView}
                         >
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>
@@ -1451,6 +1453,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 onMusicModeChange={setMusicMode}
                             />
 
+                        </ScrollView>
+                        <View style={styles.fixedBottomButton}>
                             <View style={styles.navigationRow}>
                                 <NativeButton
                                     title={t('videoWizard.buttons.prevStepShort')}
@@ -1463,7 +1467,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     onPress={() => setStep(3)}
                                 />
                             </View>
-                        </ScrollView>
+                        </View>
                     </Animated.View>
                 );
             case 3:
@@ -1472,6 +1476,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                         <ScrollView
                             contentContainerStyle={styles.stepContent}
                             showsVerticalScrollIndicator={false}
+                            style={styles.scrollView}
                         >
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>{t('videoWizard.sections.summary')}</Text>
