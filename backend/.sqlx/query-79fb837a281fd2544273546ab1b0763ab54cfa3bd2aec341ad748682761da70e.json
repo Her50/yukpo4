@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id,\n               user_id,\n               platform,\n               account_handle,\n               expires_at       AS \"expires_at: Option<DateTime<Utc>>\",\n               scope            AS \"scope: Option<String>\",\n               metadata         AS \"metadata: Option<serde_json::Value>\",\n               created_at       AS \"created_at: DateTime<Utc>\",\n               updated_at       AS \"updated_at: DateTime<Utc>\"\n        FROM social_accounts\n        WHERE user_id = $1\n          AND lower(platform) = ANY($2)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "platform",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "account_handle",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "expires_at: Option<DateTime<Utc>>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "scope: Option<String>",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "metadata: Option<serde_json::Value>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "79fb837a281fd2544273546ab1b0763ab54cfa3bd2aec341ad748682761da70e"
+}

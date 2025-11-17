@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            media_id,\n            service_id,\n            COALESCE((metadata ->> 'quality_score')::float, 0.0) AS \"quality_score!: f64\",\n            occurred_at                                  AS \"occurred_at: DateTime<Utc>\"\n        FROM media_engagement\n        WHERE event_type = 'quality_score'\n        ORDER BY occurred_at DESC\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "media_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "service_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "quality_score!: f64",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "occurred_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "a4f3fa57a9f387003318bdd0bca221be23874515551856e31942fc30ef702609"
+}

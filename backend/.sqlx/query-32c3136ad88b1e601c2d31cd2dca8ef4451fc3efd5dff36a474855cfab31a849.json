@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO media_engagement (media_id, service_id, event_type, channel, user_id, session_id, metadata, occurred_at)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Jsonb",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "32c3136ad88b1e601c2d31cd2dca8ef4451fc3efd5dff36a474855cfab31a849"
+}

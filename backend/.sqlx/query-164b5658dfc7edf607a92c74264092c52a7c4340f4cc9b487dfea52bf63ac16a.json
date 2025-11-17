@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            m.path,\n            m.ai_description,\n            m.ai_tags,\n            m.ai_metadata,\n            s.data                AS \"service_data: serde_json::Value\"\n        FROM media m\n        JOIN services s ON s.id = m.service_id\n        WHERE m.id = $1\n          AND s.id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "ai_description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "ai_tags",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 3,
+        "name": "ai_metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "service_data: serde_json::Value",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "164b5658dfc7edf607a92c74264092c52a7c4340f4cc9b487dfea52bf63ac16a"
+}

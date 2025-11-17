@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1a8cf1eb8a0ebbc7996017c0ee08cd151e077e784e50eaf7da82103bbe4a189d"
+}

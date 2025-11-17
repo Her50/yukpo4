@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT is_tarissable AS \"is_tarissable: Option<bool>\" FROM services WHERE id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "is_tarissable: Option<bool>",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "078f76f8b52ac660c736d681ee099aeea7f0f8e49937c7147e282e60fc62a4c9"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            COUNT(*) FILTER (WHERE status = 'completed')                       AS \"completed!: i64\",\n            COUNT(*) FILTER (WHERE status IN ('scheduled', 'processing'))      AS \"pending!: i64\"\n        FROM media_distribution\n        WHERE updated_at >= NOW() - ($1::int * INTERVAL '1 day')\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "completed!: i64",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "pending!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "ab14425b2b5842d404f55f9f05792696f1bf451d5ad368a5a1bbf898f31128b9"
+}

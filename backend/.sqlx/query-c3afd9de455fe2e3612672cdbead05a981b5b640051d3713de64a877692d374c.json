@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT user_id AS \"user_id!\", MAX(created_at) AS last_interaction\n        FROM service_interactions_tracking\n        WHERE service_id = $1\n          AND user_id IS NOT NULL\n          AND user_id <> $2\n          AND created_at >= NOW() - ($3::int * INTERVAL '1 day')\n        GROUP BY user_id\n        ORDER BY last_interaction DESC\n        LIMIT $4\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "last_interaction",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "c3afd9de455fe2e3612672cdbead05a981b5b640051d3713de64a877692d374c"
+}
