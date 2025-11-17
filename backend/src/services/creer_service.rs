@@ -2199,8 +2199,8 @@ pub async fn creer_service(
             );
 
             // Attendre et traiter tous les résultats d'embedding en parallèle
-            let mut _successful_embeddings = 0;
-            let mut _failed_embeddings = 0;
+            let mut successful_embeddings = 0;
+            let mut failed_embeddings = 0;
 
             // Utiliser join_all pour traiter toutes les tâches en parallèle avec timeout
             let task_futures: Vec<_> = embedding_tasks.into_iter().map(|(field_name, task): (String, tokio::task::JoinHandle<Result<serde_json::Value, reqwest::Error>>)| async move {
@@ -2213,21 +2213,21 @@ pub async fn creer_service(
                     Ok(task_result) => {
                         match task_result {
                             Ok(Ok(_)) => {
-                                _successful_embeddings += 1;
+                                successful_embeddings += 1;
                                 log::info!("[PINECONE][BACKGROUND] ? Embedding réussi pour champ '{}'", field_name);
                             },
                             Ok(Err(e)) => {
-                                _failed_embeddings += 1;
+                                failed_embeddings += 1;
                                 log::error!("[PINECONE][BACKGROUND] ? Erreur embedding pour champ '{}': {:?}", field_name, e);
                             },
                             Err(e) => {
-                                _failed_embeddings += 1;
+                                failed_embeddings += 1;
                                 log::error!("[PINECONE][BACKGROUND] ? Erreur dans la tâche d'embedding pour champ '{}': {:?}", field_name, e);
                             }
                         }
                     },
                     Err(_) => {
-                        _failed_embeddings += 1;
+                        failed_embeddings += 1;
                         log::error!("[PINECONE][BACKGROUND] ? Timeout embedding pour champ '{}' (30s)", field_name);
                     }
                 }
@@ -2239,7 +2239,7 @@ pub async fn creer_service(
             let embedding_duration = start_time.elapsed();
 
             log::info!("[PINECONE][BACKGROUND] ? Embeddings terminés en {:?}: {} succès, {} échecs pour service {}", 
-                       embedding_duration, _successful_embeddings, _failed_embeddings, service_id);
+                       embedding_duration, successful_embeddings, failed_embeddings, service_id);
 
             // Optionnel : mettre à jour le statut du service une fois les embeddings terminés
             // (peut être implémenté plus tard si nécessaire)

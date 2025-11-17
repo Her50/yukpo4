@@ -51,17 +51,6 @@ fn haversine_distance(pos1: (f64, f64), pos2: (f64, f64)) -> f64 {
     EARTH_RADIUS_KM * c * 1000.0 // Retourne en mètres
 }
 
-// Extension trait pour to_radians si nécessaire
-trait ToRadians {
-    fn to_radians(self) -> f64;
-}
-
-impl ToRadians for f64 {
-    fn to_radians(self) -> f64 {
-        self * std::f64::consts::PI / 180.0
-    }
-}
-
 /// Paramètres pour créer une demande de livraison
 #[derive(Debug, Clone)]
 pub struct CreateDeliveryParams {
