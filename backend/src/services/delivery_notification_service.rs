@@ -1,6 +1,5 @@
 // ✅ RECOMMANDATION 3: Service pour notifications SMS/Email pour clients sans app
 use crate::core::types::AppResult;
-use serde_json::Value;
 use sqlx::PgPool;
 
 /// Envoyer une notification SMS (structure préparée pour intégration future)

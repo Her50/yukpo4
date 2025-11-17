@@ -1934,7 +1934,9 @@ impl DeliveryService {
                 let reason = match cancel_reason {
                     Some(DeliveryCancelReason::ClientCancelled) => "annulée par le client",
                     Some(DeliveryCancelReason::CourierCancelled) => "annulée par le coursier",
-                    Some(DeliveryCancelReason::SystemCancelled) => "annulée par le système",
+                    Some(DeliveryCancelReason::SystemFailure) => "annulée par le système",
+                    Some(DeliveryCancelReason::NoCourierAvailable) => "annulée (aucun coursier disponible)",
+                    Some(DeliveryCancelReason::ParcelIssue) => "annulée (problème avec le colis)",
                     None => "annulée",
                 };
                 (
