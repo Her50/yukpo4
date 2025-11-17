@@ -1971,9 +1971,9 @@ impl DeliveryService {
 
         // Envoyer au destinataire (si différent du créateur et si enregistré)
         if let Some(recipient) = &summary.recipient {
-            if let Some(recipient_id) = recipient.id {
+            if let Some(recipient_id) = recipient.user_id {
                 // Ne pas envoyer si c'est le même utilisateur que le créateur
-                if Some(recipient_id) != summary.creator_id {
+                if Some(recipient_id) != Some(summary.creator_id) {
                     let pool = self.repository().pool();
                     let _ = push_notification_service::send_push_notification(
                         pool,
@@ -1988,8 +1988,8 @@ impl DeliveryService {
             }
 
             // ✅ RECOMMANDATION 3: Envoyer SMS/Email pour les destinataires sans compte (lien dropoff)
-            // Si le destinataire n'a pas de compte (pas de recipient_id) mais a un téléphone/email
-            if recipient.id.is_none() {
+            // Si le destinataire n'a pas de compte (pas de user_id) mais a un téléphone
+            if recipient.user_id.is_none() {
                 let pool = self.repository().pool();
                 let delivery_id_str = delivery_id.to_string();
                 let status_str = format!("{:?}", status);
@@ -1997,8 +1997,8 @@ impl DeliveryService {
                     pool,
                     &delivery_id_str,
                     &status_str,
-                    recipient.phone.as_deref(),
-                    recipient.email.as_deref(),
+                    recipient.contact_phone.as_deref(),
+                    None, // DeliveryRecipient n'a pas de champ email
                     recipient.contact_name.as_deref(),
                 )
                 .await;
