@@ -22,23 +22,23 @@ COPY .sqlx ./.sqlx
 # Vérifier que le cache est bien présent (debug)
 RUN echo "=== Vérification du cache SQLx ===" && \
     if [ -d ".sqlx" ]; then \
-        echo "✅ Répertoire .sqlx trouvé" && \
-        echo "SQLX_OFFLINE=${SQLX_OFFLINE}" && \
-        CACHE_COUNT=$(find .sqlx -type f 2>/dev/null | wc -l || echo 0) && \
-        echo "Nombre de fichiers dans .sqlx: ${CACHE_COUNT}" && \
-        if [ "${CACHE_COUNT}" -eq 0 ]; then \
-            echo "❌ WARNING: Le cache .sqlx est vide!" && \
-            echo "   Le build Docker échouera probablement." && \
-            echo "   Veuillez exécuter 'cargo sqlx prepare --workspace' localement"; \
-        else \
-            echo "✅ Cache SQLx présent (${CACHE_COUNT} fichiers)"; \
-        fi && \
-        echo "Premiers fichiers du cache:" && \
-        ls -la .sqlx 2>/dev/null | head -5 || echo "Impossible de lister .sqlx"; \
+    echo "✅ Répertoire .sqlx trouvé" && \
+    echo "SQLX_OFFLINE=${SQLX_OFFLINE}" && \
+    CACHE_COUNT=$(find .sqlx -type f 2>/dev/null | wc -l || echo 0) && \
+    echo "Nombre de fichiers dans .sqlx: ${CACHE_COUNT}" && \
+    if [ "${CACHE_COUNT}" -eq 0 ]; then \
+    echo "❌ WARNING: Le cache .sqlx est vide!" && \
+    echo "   Le build Docker échouera probablement." && \
+    echo "   Veuillez exécuter 'cargo sqlx prepare --workspace' localement"; \
     else \
-        echo "❌ ERREUR: Répertoire .sqlx non trouvé!" && \
-        echo "   Le build Docker échouera." && \
-        echo "   Veuillez exécuter 'cargo sqlx prepare --workspace' et commiter .sqlx/"; \
+    echo "✅ Cache SQLx présent (${CACHE_COUNT} fichiers)"; \
+    fi && \
+    echo "Premiers fichiers du cache:" && \
+    ls -la .sqlx 2>/dev/null | head -5 || echo "Impossible de lister .sqlx"; \
+    else \
+    echo "❌ ERREUR: Répertoire .sqlx non trouvé!" && \
+    echo "   Le build Docker échouera." && \
+    echo "   Veuillez exécuter 'cargo sqlx prepare --workspace' et commiter .sqlx/"; \
     fi && \
     echo "==="
 
