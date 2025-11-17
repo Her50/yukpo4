@@ -2199,36 +2199,41 @@ pub async fn creer_service(
             );
 
             // Attendre et traiter tous les résultats d'embedding en parallèle
-            let mut successful_embeddings = 0;
-            let mut failed_embeddings = 0;
+            use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
+            let successful_embeddings = Arc::new(AtomicU64::new(0));
+            let failed_embeddings = Arc::new(AtomicU64::new(0));
 
             // Utiliser join_all pour traiter toutes les tâches en parallèle avec timeout
-            let task_futures: Vec<_> = embedding_tasks.into_iter().map(|(field_name, task): (String, tokio::task::JoinHandle<Result<serde_json::Value, reqwest::Error>>)| async move {
-                let result = tokio::time::timeout(
-                    std::time::Duration::from_secs(60), // Augmenté de 30s à 60s pour les embeddings
-                    task
-                ).await;
+            let task_futures: Vec<_> = embedding_tasks.into_iter().map(|(field_name, task): (String, tokio::task::JoinHandle<Result<serde_json::Value, reqwest::Error>>)| {
+                let successful = successful_embeddings.clone();
+                let failed = failed_embeddings.clone();
+                async move {
+                    let result = tokio::time::timeout(
+                        std::time::Duration::from_secs(60), // Augmenté de 30s à 60s pour les embeddings
+                        task
+                    ).await;
 
-                match result {
-                    Ok(task_result) => {
-                        match task_result {
-                            Ok(Ok(_)) => {
-                                successful_embeddings += 1;
-                                log::info!("[PINECONE][BACKGROUND] ? Embedding réussi pour champ '{}'", field_name);
-                            },
-                            Ok(Err(e)) => {
-                                failed_embeddings += 1;
-                                log::error!("[PINECONE][BACKGROUND] ? Erreur embedding pour champ '{}': {:?}", field_name, e);
-                            },
-                            Err(e) => {
-                                failed_embeddings += 1;
-                                log::error!("[PINECONE][BACKGROUND] ? Erreur dans la tâche d'embedding pour champ '{}': {:?}", field_name, e);
+                    match result {
+                        Ok(task_result) => {
+                            match task_result {
+                                Ok(Ok(_)) => {
+                                    successful.fetch_add(1, Ordering::Relaxed);
+                                    log::info!("[PINECONE][BACKGROUND] ? Embedding réussi pour champ '{}'", field_name);
+                                },
+                                Ok(Err(e)) => {
+                                    failed.fetch_add(1, Ordering::Relaxed);
+                                    log::error!("[PINECONE][BACKGROUND] ? Erreur embedding pour champ '{}': {:?}", field_name, e);
+                                },
+                                Err(e) => {
+                                    failed.fetch_add(1, Ordering::Relaxed);
+                                    log::error!("[PINECONE][BACKGROUND] ? Erreur dans la tâche d'embedding pour champ '{}': {:?}", field_name, e);
+                                }
                             }
+                        },
+                        Err(_) => {
+                            failed.fetch_add(1, Ordering::Relaxed);
+                            log::error!("[PINECONE][BACKGROUND] ? Timeout embedding pour champ '{}' (30s)", field_name);
                         }
-                    },
-                    Err(_) => {
-                        failed_embeddings += 1;
-                        log::error!("[PINECONE][BACKGROUND] ? Timeout embedding pour champ '{}' (30s)", field_name);
                     }
                 }
             }).collect();
@@ -2238,8 +2243,11 @@ pub async fn creer_service(
             futures::future::join_all(task_futures).await;
             let embedding_duration = start_time.elapsed();
 
+            let success_count = successful_embeddings.load(Ordering::Relaxed);
+            let fail_count = failed_embeddings.load(Ordering::Relaxed);
+
             log::info!("[PINECONE][BACKGROUND] ? Embeddings terminés en {:?}: {} succès, {} échecs pour service {}", 
-                       embedding_duration, successful_embeddings, failed_embeddings, service_id);
+                       embedding_duration, success_count, fail_count, service_id);
 
             // Optionnel : mettre à jour le statut du service une fois les embeddings terminés
             // (peut être implémenté plus tard si nécessaire)

@@ -15,6 +15,18 @@
 9. ✅ **Externalisation du système** (WhatsApp, Facebook)
 10. ✅ **Verrouillage confirmation livraison** (vérification solde + rechargement immédiat)
 11. ✅ **Gestion financière avancée** (réservation fonds + débit définitif + reversement)
+12. ✅ **Vidéo de preuve de livraison** (enregistrement coursier + affichage client dans timeline)
+13. ✅ **Gestion automatique du processus de livraison** (détection GPS, suggestions automatiques, changements de statut intelligents)
+14. ✅ **Notifications automatiques** (push notifications, SMS/Email pour changements de statut)
+15. ✅ **Auto-remplissage Brief IA** (depuis description produit/service)
+16. ✅ **Endpoint Suggestions IA** (génération suggestions depuis brief)
+17. ✅ **Commande depuis ProductCard** (bouton "Se faire livrer" avec modal commande)
+18. ✅ **Commande depuis ChatModal** (intégration commande dans conversation)
+19. ✅ **Amélioration affichage coûts** (produit + livraison séparés, livraison gratuite visible)
+20. ✅ **Page publique pour dropoff** (client sans compte peut fournir adresse via lien)
+21. ✅ **Sélection livreur personnel** (prestataire peut choisir son propre livreur)
+22. ✅ **Notification quand client fournit adresse** (alerte prestataire quand dropoff confirmé)
+23. ✅ **Amélioration UX dropoff pending** (meilleure gestion dropoff temporaire/optionnel)
 
 ---
 
@@ -899,6 +911,29 @@ def create_delivery_via_yukpo(
 14. ✅ Reversement prestataire (après validation coursier)
 15. ✅ Livraison offerte (débit compte prestataire)
 
+### **Phase 6 : Automatisation Intelligente**
+16. ✅ Détection automatique proximité GPS (pickup/dropoff)
+17. ✅ Suggestions automatiques changement de statut
+18. ✅ Notifications push automatiques (changements de statut)
+19. ✅ Notifications SMS/Email (clients sans app)
+20. ✅ Changements de statut semi-automatiques (avec confirmation)
+
+### **Phase 7 : Améliorations UX Studio Vidéo**
+21. ✅ Auto-remplissage Brief IA (depuis description produit/service)
+22. ✅ Endpoint Suggestions IA (génération suggestions depuis brief)
+23. ✅ Amélioration affichage coûts (produit + livraison séparés)
+
+### **Phase 8 : Points d'Entrée Commande Multiples**
+24. ✅ Commande depuis ProductCard (bouton "Se faire livrer")
+25. ✅ Commande depuis ChatModal (intégration dans conversation)
+26. ✅ Sélection multi-produits (ajouter plusieurs produits lors commande)
+
+### **Phase 9 : Fonctionnalités Avancées**
+27. ✅ Page publique dropoff (client sans compte via lien)
+28. ✅ Sélection livreur personnel (choix coursier par prestataire)
+29. ✅ Notification client fournit adresse (alerte prestataire)
+30. ✅ Amélioration UX dropoff pending (gestion dropoff temporaire)
+
 ---
 
 ## 💰 9. GESTION FINANCIÈRE ET VERROUILLAGE LIVRAISON
@@ -967,6 +1002,348 @@ Voir document complet : `ARCHITECTURE_GESTION_FINANCIERE_LIVRAISON.md`
 
 ---
 
+## 📹 10. VIDÉO DE PREUVE DE LIVRAISON
+
+### ✅ **Observation : Preuve visuelle de livraison**
+
+**Scénario** :
+- Coursier confirme livraison mais client n'est pas présent
+- Coursier enregistre vidéo de preuve (15-30 secondes)
+- Vidéo visible dans flux de suivi client
+
+### ✅ **Workflow** :
+
+```
+1. Coursier arrive → Statut "arrival_destination"
+2. Coursier clique "Livrer" → Modal choix : "Client présent" ou "Déposer sans présence"
+3. Coursier choisit "Déposer sans présence" → Modal vidéo s'ouvre
+4. Coursier enregistre vidéo (max 30s) → Aperçu affiché
+5. Coursier valide → Upload vidéo → Statut "delivered" avec payload vidéo
+6. Client reçoit notification → Ouvre flux de suivi
+7. Timeline affiche checkpoint "delivered" avec vidéo visible
+```
+
+### ✅ **Composants** :
+
+- **Backend** :
+  - Endpoint `POST /api/delivery/{delivery_id}/proof/video` (upload vidéo)
+  - Table `delivery_proof_media` (audit médias)
+  - Stockage vidéo (S3, R2, ou local)
+  - Génération thumbnails automatique
+
+- **Mobile (Coursier)** :
+  - Composant `DeliveryProofVideoRecorder` (enregistrement vidéo)
+  - Intégration dans `DeliveryShoppingTrackingScreen`
+  - Upload vidéo avec GPS et métadonnées
+
+- **Frontend/Mobile (Client)** :
+  - Affichage vidéo dans `DeliveryTimeline` / `TimelineStepper`
+  - Player vidéo intégré avec thumbnail
+  - Métadonnées : GPS, durée, date, emplacement
+
+### **Détails techniques** :
+
+Voir document complet : `ARCHITECTURE_VIDEO_PREUVE_LIVRAISON.md`
+
+**Avantages** :
+- ✅ Preuve visuelle incontestable
+- ✅ Réduction litiges
+- ✅ Transparence pour client
+- ✅ Sécurité coursier
+
+---
+
+## 🤖 11. GESTION AUTOMATIQUE DU PROCESSUS DE LIVRAISON
+
+### ✅ **Observation : Automatisation intelligente du processus**
+
+**Problème actuel** :
+- ❌ Les changements de statut sont **manuels** (coursier doit cliquer)
+- ❌ Pas de détection automatique GPS
+- ❌ Pas de suggestions intelligentes
+
+**Objectifs** :
+1. ✅ **Détection automatique GPS** : Détecter quand coursier est proche pickup/dropoff
+2. ✅ **Suggestions automatiques** : Proposer changement de statut avec confirmation
+3. ✅ **Changements semi-automatiques** : Changer statut automatiquement avec confirmation
+4. ✅ **Notifications automatiques** : Push, SMS, Email pour tous les changements
+
+---
+
+### ✅ **1. Détection Automatique de Proximité GPS**
+
+**Workflow** :
+```
+1. Coursier envoie position GPS (tracking_point)
+2. Backend calcule distance avec pickup/dropoff
+3. Si distance < 50m → Événement "proximity_pickup" ou "proximity_dropoff"
+4. WebSocket → Coursier reçoit suggestion : "Vous êtes proche du pickup, confirmer récupération ?"
+5. Coursier confirme → Statut change automatiquement
+```
+
+**Implémentation** :
+- ✅ Fonction `check_proximity_and_suggest_status_update()` (déjà implémentée)
+- ✅ Calcul distance Haversine (déjà implémenté)
+- ⚠️ **Manque** : Envoi événement WebSocket + Notification push
+- ⚠️ **Manque** : UI mobile avec bouton de confirmation
+
+---
+
+### ✅ **2. Notifications Automatiques**
+
+**Notifications Push** (déjà partiellement implémenté) :
+- ✅ `send_delivery_status_notifications()` existe
+- ⚠️ **À améliorer** : Notifications pour tous les statuts importants
+- ⚠️ **À améliorer** : Notifications de proximité GPS
+
+**Notifications SMS/Email** (structure créée) :
+- ✅ Service `delivery_notification_service` créé
+- ⚠️ **Manque** : Intégration service SMS/Email (Twilio, SendGrid)
+- ⚠️ **Manque** : Notifications pour clients sans compte Yukpo
+
+---
+
+### ✅ **3. Changements de Statut Semi-Automatiques**
+
+**Workflow** :
+```
+1. Détection proximité GPS → Suggestion envoyée
+2. Coursier reçoit notification : "Proche du pickup, confirmer récupération ?"
+3. Coursier clique "Confirmer" → Statut change automatiquement
+4. OU : Après X secondes sans réponse → Changement automatique (optionnel)
+```
+
+**Avantages** :
+- ✅ Moins d'actions manuelles pour le coursier
+- ✅ Statut toujours à jour (plus fiable)
+- ✅ Client informé automatiquement
+
+---
+
+### **Détails techniques** :
+
+**Backend** (déjà partiellement implémenté) :
+```rust
+// backend/src/services/delivery_service.rs
+// Fonction check_proximity_and_suggest_status_update() existe
+// À améliorer : Envoyer événement WebSocket + Notification push
+
+// Nouveau : Événement WebSocket pour suggestion
+DeliveryWsEvent::ProximitySuggestion {
+    location_type: "pickup" | "dropoff",
+    distance_meters: f64,
+    suggested_status: DeliveryStatus,
+    auto_confirm_after_seconds: Option<u64>,  // Changement auto après X secondes
+}
+```
+
+**Mobile** :
+```typescript
+// mobile/src/screens/delivery/DeliveryShoppingTrackingScreen.tsx
+// Écouter événement "proximity_suggestion"
+// Afficher modal : "Proche du pickup, confirmer récupération ?"
+// Bouton "Confirmer" → Change statut automatiquement
+```
+
+---
+
+## 📱 12. AUTO-REMPLISSAGE BRIEF IA + ENDPOINT SUGGESTIONS
+
+### ✅ **Observation : Auto-remplissage Brief IA depuis description produit/service**
+
+**Problème actuel** :
+- ❌ Brief IA reste vide par défaut
+- ❌ Utilisateur doit tout saisir manuellement
+- ❌ Description produit/service déjà disponible mais pas utilisée
+
+**Solution** :
+```
+Priorité 1 : Si produit spécifique (productIndex défini)
+  → Utiliser product.description si disponible
+  
+Priorité 2 : Si ≤ 2 produits
+  → Utiliser service.description
+  
+Priorité 3 : Si > 2 produits
+  → Laisser vide (service avec beaucoup de produits)
+```
+
+### ✅ **Endpoint Suggestions IA**
+
+**Problème actuel** :
+- ❌ Suggestions IA hardcodées dans le frontend
+- ❌ Pas d'appel backend
+- ❌ Pas d'utilisation de l'IA réelle
+
+**Solution** :
+- ✅ Créer endpoint `POST /api/studio/sessions/{id}/suggestions`
+- ✅ Appeler IA avec brief pour générer suggestions personnalisées
+- ✅ Remplacer code hardcodé par appel backend
+
+---
+
+### **Détails techniques** :
+
+**Frontend/Mobile - Auto-remplissage** :
+```typescript
+// frontend/src/pages/video/ImmersiveVideoWizard.tsx
+// mobile/src/screens/video/VideoCreationWizardScreen.tsx
+
+const fetchServiceData = useCallback(async () => {
+    const response = await fetchServiceDetails(serviceId!);
+    const service = response?.data ?? response;
+    
+    // ✅ NOUVEAU : Auto-remplir le brief
+    const products = service?.data?.produits?.valeur || service?.data?.produits || [];
+    if (Number.isFinite(productIndex) && products[productIndex!]) {
+        const product = products[productIndex!];
+        if (product?.description || product?.desc) {
+            const productDesc = product.description || product.desc;
+            setBrief(prev => prev || productDesc);  // Seulement si vide
+        } else if (products.length <= 2 && service?.description) {
+            setBrief(prev => prev || service.description);
+        }
+    } else if (service?.description) {
+        setBrief(prev => prev || service.description);
+    }
+}, [serviceId, productIndex]);
+```
+
+**Backend - Endpoint Suggestions** :
+```rust
+// backend/src/controllers/studio_controller.rs
+pub async fn generate_suggestions(
+    Path(session_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<GenerateSuggestionsPayload>,
+) -> AppResult<Json<Value>> {
+    // Appeler l'IA pour générer des suggestions basées sur le brief
+    let suggestions = ia_service::generate_video_suggestions(&payload.brief).await?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": { "suggestions": suggestions }
+    })))
+}
+```
+
+---
+
+## 🛒 13. COMMANDE DEPUIS PRODUCTCARD ET CHATMODAL
+
+### ✅ **Observation : Commandes depuis ProductCard et ChatModal**
+
+**Problème actuel** :
+- ❌ Pas de bouton "Se faire livrer" sur ProductCard
+- ❌ Pas de fonctionnalité commande dans ChatModal
+- ❌ Client doit passer par vidéo ou lien partagé
+
+**Solution** :
+1. ✅ **ProductCard** : Ajouter bouton "Se faire livrer"
+2. ✅ **ChatModal** : Intégrer modal de commande dans conversation
+3. ✅ **Multi-produits** : Permettre d'ajouter plusieurs produits lors commande
+4. ✅ **Affichage coûts** : Séparer prix produit | coût livraison | total
+
+---
+
+### ✅ **1. Commande depuis ProductCard**
+
+**Workflow** :
+```
+1. Client voit ProductCard → Clic "Se faire livrer"
+2. Modal s'ouvre avec :
+   - Produit sélectionné (par défaut)
+   - Bouton "Ajouter d'autres produits du prestataire"
+   - Affichage : Prix produit | Coût livraison (estimé) | Total
+   - Formulaire adresse livraison (GPS modal)
+3. Client valide → Livraison créée automatiquement
+4. Client reçoit lien de suivi
+```
+
+**Implémentation** :
+- ✅ Créer composant `OrderDeliveryModal` (mobile et web)
+- ✅ Intégrer dans `ProductCard`
+- ✅ Utiliser endpoint existant `POST /api/delivery/client-order`
+
+---
+
+### ✅ **2. Commande depuis ChatModal**
+
+**Workflow** :
+```
+1. Client dans chat avec prestataire
+2. Actions rapides : "Commander ce produit" (si produit mentionné)
+   OU Bouton "Commander avec livraison"
+3. Modal s'ouvre (même que ProductCard)
+4. Contexte conversationnel conservé
+5. Client valide → Livraison créée
+```
+
+**Implémentation** :
+- ✅ Intégrer `OrderDeliveryModal` dans `ChatModal` / `ChatModalMobile`
+- ✅ Détecter produits mentionnés dans conversation
+- ✅ Boutons d'actions rapides dans chat
+
+---
+
+### ✅ **3. Sélection Multi-Produits**
+
+**Workflow** :
+```
+1. Modal commande s'ouvre
+2. Produit initial sélectionné
+3. Bouton "Ajouter d'autres produits"
+4. Liste produits du prestataire affichée
+5. Client sélectionne plusieurs produits
+6. Affichage : 
+   - Produit 1 : 5000 FCFA
+   - Produit 2 : 3000 FCFA
+   - Livraison : 2000 FCFA
+   - TOTAL : 10000 FCFA
+7. Client valide → Livraison avec plusieurs produits
+```
+
+**Backend** (déjà supporté) :
+- ✅ Endpoint `create_shopping_order` supporte plusieurs items
+- ⚠️ **Manque** : Utiliser cet endpoint depuis ProductCard/ChatModal
+
+---
+
+### ✅ **4. Amélioration Affichage Coûts**
+
+**Règle** :
+- ✅ Toujours séparer : Prix produit(s) | Coût livraison | Total
+- ✅ Afficher clairement si livraison gratuite (`billing_mode: merchant_inclusive`)
+- ✅ Permettre livraison offerte visible pour client
+
+**Implémentation** :
+```typescript
+// Composant OrderDeliveryModal
+
+<div className="costs-breakdown">
+  <div className="cost-row">
+    <span>Produit(s)</span>
+    <span>{productTotal} FCFA</span>
+  </div>
+  <div className="cost-row">
+    <span>
+      Livraison 
+      {isDeliveryFree && <Badge>Gratuite</Badge>}
+    </span>
+    <span>
+      {isDeliveryFree ? '0' : deliveryCost} FCFA
+    </span>
+  </div>
+  <div className="cost-row total">
+    <span>Total</span>
+    <span>{totalCost} FCFA</span>
+  </div>
+</div>
+```
+
+---
+
 ## ✅ CONCLUSION
 
 **Toutes tes observations sont excellentes** et ont été intégrées dans ce plan complet :
@@ -976,6 +1353,12 @@ Voir document complet : `ARCHITECTURE_GESTION_FINANCIERE_LIVRAISON.md`
 3. ✅ **Plages horaires** : Prestataire + Client + Matching intelligent
 4. ✅ **Externalisation** : API publique pour WhatsApp/Facebook
 5. ✅ **Gestion financière** : Verrouillage solde + Réservation fonds + Reversement automatique
+6. ✅ **Vidéo de preuve** : Enregistrement coursier + Affichage client dans timeline
+7. ✅ **Automatisation** : Détection GPS + Suggestions automatiques + Changements de statut intelligents
+8. ✅ **Notifications** : Push + SMS/Email automatiques pour tous les changements de statut
+9. ✅ **Brief IA** : Auto-remplissage depuis description produit/service + Endpoint suggestions IA
+10. ✅ **Points d'entrée multiples** : Commande depuis ProductCard, ChatModal, avec multi-produits
+11. ✅ **Affichage coûts** : Prix produit + Livraison séparés + Livraison gratuite visible
 
 **Souhaites-tu que je commence l'implémentation par la Phase 1 ?**
 
