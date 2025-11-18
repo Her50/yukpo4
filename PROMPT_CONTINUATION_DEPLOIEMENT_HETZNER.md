@@ -516,6 +516,307 @@ http_requests_total
 http_request_duration_seconds
 ```
 
+#### 4. Implémenter les métriques additionnelles (À faire)
+
+**Métriques à ajouter au backend pour une observabilité complète** :
+
+##### 4.1. Métriques Black Friday / Promotions Globales
+
+**À implémenter dans** `backend/src/services/global_promo_service.rs` :
+
+```rust
+// Métriques Prometheus à exposer
+- global_promo_events_active{event_slug="black-friday-2025"}
+- global_promo_entries_total{event_slug="black-friday-2025",status="published"}
+- global_promo_entries_views_total{entry_id="..."}
+- global_promo_entries_clicks_total{entry_id="..."}
+- global_promo_catalog_page_views_total{event_slug="..."}
+- global_promo_catalog_searches_total{event_slug="..."}
+- global_promo_revenue_cents_total{event_slug="..."}
+```
+
+**Dashboards Grafana recommandés** :
+- **Panel 1** : Événements actifs (gauge)
+- **Panel 2** : Entrées publiées par événement (bar chart)
+- **Panel 3** : Vues/Clics par événement (graphique)
+- **Panel 4** : Revenus générés par événement (graphique)
+
+**Alertes** :
+```promql
+# Alerte si événement actif mais 0 vues après 1h
+global_promo_events_active == 1 AND global_promo_entries_views_total == 0
+```
+
+---
+
+##### 4.2. Métriques Scroll Automatique Produits
+
+**À implémenter dans** `frontend/src/components/PublicitesCarousel.tsx` et backend tracking :
+
+```rust
+// Métriques Prometheus à exposer
+- product_carousel_scrolls_total{carousel_id="..."}
+- product_carousel_auto_scroll_events_total{carousel_id="..."}
+- product_carousel_items_viewed_total{carousel_id="...",product_id="..."}
+- product_carousel_dwell_time_seconds_avg{carousel_id="..."}
+- product_carousel_interactions_total{carousel_id="...",action="click|view|pause"}
+- product_carousel_pause_events_total{carousel_id="..."}
+- product_carousel_resume_events_total{carousel_id="..."}
+```
+
+**Dashboards Grafana recommandés** :
+- **Panel 1** : Événements scroll automatique/seconde (graphique)
+- **Panel 2** : Produits vus par carousel (top 10)
+- **Panel 3** : Temps moyen de visualisation (gauge)
+- **Panel 4** : Taux d'interaction (clics/vues) (graphique)
+
+**Alertes** :
+```promql
+# Alerte si scroll automatique désactivé trop souvent (dégradation UX)
+rate(product_carousel_pause_events_total[5m]) > rate(product_carousel_resume_events_total[5m])
+```
+
+---
+
+##### 4.3. Métriques Scroll Automatique Vidéos
+
+**À implémenter dans** composant vidéo mobile/web et backend tracking :
+
+```rust
+// Métriques Prometheus à exposer
+- video_carousel_scrolls_total{carousel_id="..."}
+- video_carousel_auto_scroll_events_total{carousel_id="..."}
+- video_carousel_videos_viewed_total{carousel_id="...",video_id="..."}
+- video_carousel_dwell_time_seconds_avg{carousel_id="..."}
+- video_carousel_play_events_total{carousel_id="..."}
+- video_carousel_pause_events_total{carousel_id="..."}
+- video_carousel_completion_rate{carousel_id="..."}  # vidéos complétées / vues
+- video_carousel_engagement_total{carousel_id="...",action="like|share|comment"}
+```
+
+**Dashboards Grafana recommandés** :
+- **Panel 1** : Vidéos vues par carousel (graphique)
+- **Panel 2** : Taux de complétion moyen (gauge)
+- **Panel 3** : Événements play/pause (graphique)
+- **Panel 4** : Engagement total (likes, shares, comments)
+
+**Alertes** :
+```promql
+# Alerte si taux de complétion < 30% (contenu peu engageant)
+video_carousel_completion_rate < 0.3
+```
+
+---
+
+##### 4.4. Métriques Échanges Clients/Prestataires
+
+**À implémenter dans** `backend/src/services/chat_routes.rs` et `backend/src/controllers/interaction_controller.rs` :
+
+```rust
+// Métriques Prometheus à exposer
+- chat_conversations_active_total{service_id="..."}
+- chat_messages_sent_total{service_id="...",sender_type="client|provider"}
+- chat_messages_delivered_total{service_id="..."}
+- chat_messages_read_total{service_id="..."}
+- chat_response_time_seconds_avg{service_id="...",responder_type="provider|client"}
+- chat_response_time_seconds_p95{service_id="..."}
+- chat_conversations_resolved_total{service_id="..."}
+- chat_conversations_unresolved_total{service_id="..."}
+- chat_audio_messages_total{service_id="..."}
+- chat_webrtc_calls_total{service_id="..."}
+- chat_webrtc_call_duration_seconds_avg{service_id="..."}
+- chat_notifications_sent_total{service_id="..."}
+```
+
+**Dashboards Grafana recommandés** :
+- **Panel 1** : Conversations actives (gauge)
+- **Panel 2** : Messages envoyés/seconde (graphique)
+- **Panel 3** : Temps de réponse moyen (provider vs client) (graphique)
+- **Panel 4** : Taux de résolution (résolues/non résolues) (graphique)
+- **Panel 5** : Appels WebRTC (nombre, durée moyenne) (graphique)
+
+**Alertes** :
+```promql
+# Alerte si temps de réponse provider > 5 minutes
+chat_response_time_seconds_avg{responder_type="provider"} > 300
+
+# Alerte si trop de conversations non résolues
+rate(chat_conversations_unresolved_total[1h]) > rate(chat_conversations_resolved_total[1h])
+```
+
+---
+
+##### 4.5. Métriques Navigation ResultaBesoinScreen
+
+**À implémenter dans** `mobile/src/screens/ResultaBesoinScreen.tsx` et backend tracking :
+
+```rust
+// Métriques Prometheus à exposer
+- resulta_besoin_screen_views_total
+- resulta_besoin_screen_searches_total{query_type="keyword|category|location"}
+- resulta_besoin_screen_results_displayed_total{search_query="..."}
+- resulta_besoin_screen_filters_applied_total{filter_type="price|category|location|rating"}
+- resulta_besoin_screen_item_clicks_total{item_type="service|product",item_id="..."}
+- resulta_besoin_screen_time_on_screen_seconds_avg
+- resulta_besoin_screen_bounce_rate  # sorties sans clic
+- resulta_besoin_screen_searches_without_results_total
+- resulta_besoin_screen_geolocation_searches_total
+- resulta_besoin_screen_map_interactions_total{action="zoom|pan|marker_click"}
+```
+
+**Dashboards Grafana recommandés** :
+- **Panel 1** : Vues d'écran/seconde (graphique)
+- **Panel 2** : Recherches par type (keyword/category/location) (pie chart)
+- **Panel 3** : Taux de rebond (gauge)
+- **Panel 4** : Clics par type d'item (services vs produits) (bar chart)
+- **Panel 5** : Recherches sans résultats (graphique - à optimiser)
+
+**Alertes** :
+```promql
+# Alerte si taux de rebond > 70% (UX dégradée)
+resulta_besoin_screen_bounce_rate > 0.7
+
+# Alerte si trop de recherches sans résultats (> 30%)
+rate(resulta_besoin_screen_searches_without_results_total[1h]) / rate(resulta_besoin_screen_searches_total[1h]) > 0.3
+```
+
+---
+
+##### 4.6. Autres Métriques UX Importantes
+
+**À implémenter selon besoins** :
+
+```rust
+// Métriques générales UX
+- app_screen_views_total{screen="home|search|profile|...")
+- app_screen_load_time_ms_avg{screen="..."}
+- app_screen_load_time_ms_p95{screen="..."}
+- app_interactions_total{action="tap|swipe|scroll|pinch"}
+- app_errors_total{error_type="network|validation|api"}
+- app_crashes_total{platform="ios|android"}
+
+// Métriques géolocalisation
+- geolocation_requests_total
+- geolocation_success_total
+- geolocation_error_total{error_type="permission_denied|timeout|unavailable"}
+- geolocation_accuracy_meters_avg
+
+// Métriques notifications push
+- push_notifications_sent_total{type="..."}
+- push_notifications_delivered_total{type="..."}
+- push_notifications_opened_total{type="..."}
+- push_notification_open_rate{type="..."}  # opened/sent
+```
+
+---
+
+#### 5. Exemple d'Implémentation Métriques dans le Backend
+
+**Pour ajouter les métriques au backend Rust** :
+
+1. **Installer les dépendances** (déjà fait si Prometheus métriques existent) :
+```toml
+# Cargo.toml
+[dependencies]
+prometheus = "0.13"
+```
+
+2. **Créer un module métriques** `backend/src/metrics/mod.rs` :
+```rust
+use prometheus::{Counter, Histogram, Gauge, IntCounter, IntGauge, register_counter, register_histogram, register_gauge, register_int_counter, register_int_gauge};
+
+lazy_static! {
+    // Global Promo metrics
+    pub static ref GLOBAL_PROMO_EVENTS_ACTIVE: IntGauge = 
+        register_int_gauge!("global_promo_events_active", "Number of active global promo events").unwrap();
+    
+    pub static ref GLOBAL_PROMO_ENTRIES_TOTAL: IntCounter = 
+        register_int_counter!("global_promo_entries_total", "Total number of promo entries").unwrap();
+    
+    pub static ref GLOBAL_PROMO_ENTRIES_VIEWS_TOTAL: IntCounter = 
+        register_int_counter!("global_promo_entries_views_total", "Total promo entry views").unwrap();
+    
+    // Chat metrics
+    pub static ref CHAT_CONVERSATIONS_ACTIVE: IntGauge = 
+        register_int_gauge!("chat_conversations_active_total", "Active chat conversations").unwrap();
+    
+    pub static ref CHAT_MESSAGES_SENT_TOTAL: IntCounter = 
+        register_int_counter!("chat_messages_sent_total", "Total messages sent").unwrap();
+    
+    pub static ref CHAT_RESPONSE_TIME: Histogram = 
+        register_histogram!("chat_response_time_seconds", "Chat response time in seconds").unwrap();
+    
+    // Navigation metrics
+    pub static ref RESULTA_BESOIN_SCREEN_VIEWS: IntCounter = 
+        register_int_counter!("resulta_besoin_screen_views_total", "ResultaBesoinScreen views").unwrap();
+    
+    pub static ref RESULTA_BESOIN_SCREEN_SEARCHES: IntCounter = 
+        register_int_counter!("resulta_besoin_screen_searches_total", "Searches in ResultaBesoinScreen").unwrap();
+}
+```
+
+3. **Exposer les métriques dans les handlers** :
+```rust
+// Dans global_promo_service.rs
+use crate::metrics::GLOBAL_PROMO_EVENTS_ACTIVE;
+
+pub async fn create_event(...) -> AppResult<GlobalPromoEvent> {
+    // ... logique existante ...
+    
+    // Incrémenter métrique
+    GLOBAL_PROMO_EVENTS_ACTIVE.inc();
+    
+    Ok(event)
+}
+
+// Dans chat_routes.rs
+use crate::metrics::{CHAT_MESSAGES_SENT_TOTAL, CHAT_RESPONSE_TIME};
+
+pub async fn send_message(...) {
+    let start = std::time::Instant::now();
+    
+    // ... logique existante ...
+    
+    // Métriques
+    CHAT_MESSAGES_SENT_TOTAL.inc();
+    CHAT_RESPONSE_TIME.observe(start.elapsed().as_secs_f64());
+}
+```
+
+4. **Le endpoint `/metrics` existant exposera automatiquement ces nouvelles métriques**
+
+---
+
+#### 6. Dashboard Grafana Complet "UX & Engagement"
+
+**Créer un nouveau dashboard** dans Grafana :
+
+**Section 1: Promotions Globales (Black Friday, etc.)**
+- Événements actifs
+- Vues/Clics par événement
+- Revenus générés
+
+**Section 2: Scroll Automatique**
+- Produits: événements scroll, produits vus, temps moyen
+- Vidéos: vidéos vues, taux complétion, engagement
+
+**Section 3: Échanges Clients/Prestataires**
+- Conversations actives
+- Messages envoyés/seconde
+- Temps de réponse moyen
+- Taux de résolution
+
+**Section 4: Navigation**
+- ResultaBesoinScreen: vues, recherches, taux rebond
+- Géolocalisation: succès, erreurs, précision
+
+**Section 5: Performance Générale**
+- Temps de chargement écrans
+- Erreurs/Crashes
+- Taux d'engagement global
+
+---
+
 #### 4. Configurer les alertes Prometheus → Slack (optionnel mais recommandé)
 
 **📢 IMPORTANT**: Le backend envoie déjà des alertes Slack directement via `PIPELINE_ALERT_WEBHOOK` et `SLA_ALERT_WEBHOOK`. Vous pouvez aussi configurer Prometheus pour envoyer des alertes Slack via Alertmanager.
