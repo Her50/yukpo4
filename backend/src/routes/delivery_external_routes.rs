@@ -108,14 +108,19 @@ async fn create_external_delivery(
 
     // ✅ 5. Sauvegarder préférences client si fournies
     if let Some(prefs) = payload.preferences {
+        let preferred_delivery_date = prefs.preferred_delivery_date.clone();
+        let preferred_delivery_time_start = prefs.preferred_delivery_time_start.clone();
+        let preferred_delivery_time_end = prefs.preferred_delivery_time_end.clone();
+        let urgency = prefs.urgency.clone();
+        
         let prefs_input = ClientDeliveryPreferencesInput {
             delivery_id: Some(summary.id),
-            preferred_delivery_date: prefs.preferred_delivery_date,
-            preferred_delivery_time_start: prefs.preferred_delivery_time_start,
-            preferred_delivery_time_end: prefs.preferred_delivery_time_end,
+            preferred_delivery_date: preferred_delivery_date.clone(),
+            preferred_delivery_time_start: preferred_delivery_time_start.clone(),
+            preferred_delivery_time_end: preferred_delivery_time_end.clone(),
             preferred_delivery_window_hours: None,
             avoid_days: None,
-            urgency_level: prefs.urgency,
+            urgency_level: urgency.clone(),
             is_flexible: Some(true),
             flexibility_window_days: Some(3),
         };
@@ -136,16 +141,16 @@ async fn create_external_delivery(
             ON CONFLICT DO NOTHING
             "#,
             summary.id,
-            prefs.preferred_delivery_date
+            preferred_delivery_date
                 .as_ref()
                 .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
-            prefs.preferred_delivery_time_start
+            preferred_delivery_time_start
                 .as_ref()
                 .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok()),
-            prefs.preferred_delivery_time_end
+            preferred_delivery_time_end
                 .as_ref()
                 .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok()),
-            prefs.urgency.unwrap_or_else(|| "standard".to_string())
+            urgency.unwrap_or_else(|| "standard".to_string())
         )
         .execute(&state.pg)
         .await

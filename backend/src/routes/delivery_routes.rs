@@ -1186,6 +1186,7 @@ async fn update_delivery_status(
 
     // Récupérer l'ancien statut pour détecter les changements
     let old_status = summary.status.clone();
+    let payload_data = payload.payload.clone();
 
     service
         .update_delivery_status(
@@ -1193,7 +1194,7 @@ async fn update_delivery_status(
             status.clone(),
             cancel_reason,
             Some(user.id),
-            payload.payload,
+            payload_data.clone(),
         )
         .await?;
 
@@ -1221,7 +1222,7 @@ async fn update_delivery_status(
             // ✅ IMPORTANT : Vérifier si le produit a été rejeté avant de reverser
             if old_status != crate::models::delivery_model::DeliveryStatus::Delivered {
                 // Vérifier dans le payload si le produit a été rejeté
-                let product_rejected = payload.payload.as_ref()
+                let product_rejected = payload_data.as_ref()
                     .and_then(|p| p.get("product_rejected"))
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);

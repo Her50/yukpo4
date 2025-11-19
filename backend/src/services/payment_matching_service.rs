@@ -355,7 +355,7 @@ impl PaymentMatchingService {
         .await?;
 
         if let Some(record) = row {
-            Ok(record.payment_method.unwrap_or_else(|| json!({"type": "wallet"})))
+            Ok(record.payment_method.unwrap_or(json!({"type": "wallet"})))
         } else {
             // Pas de transaction trouvée → par défaut wallet
             Ok(json!({"type": "wallet"}))

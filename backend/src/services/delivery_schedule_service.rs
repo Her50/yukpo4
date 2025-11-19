@@ -41,10 +41,13 @@ impl DeliveryScheduleService {
 
         // Si client a spécifié une préférence de livraison
         if let Some(prefs) = client_preferences {
-            if let Some(delivery_date) = prefs.preferred_delivery_date {
+            let preferred_delivery_date = prefs.preferred_delivery_date;
+            let preferred_delivery_time_start = prefs.preferred_delivery_time_start;
+            let preferred_delivery_window_hours = prefs.preferred_delivery_window_hours;
+            
+            if let Some(delivery_date) = preferred_delivery_date {
                 // Calculer quand récupérer pour livrer à cette date/heure
-                let delivery_time_start = prefs
-                    .preferred_delivery_time_start
+                let delivery_time_start = preferred_delivery_time_start
                     .unwrap_or_else(|| NaiveTime::from_hms_opt(14, 0, 0).unwrap());
                 
                 let delivery_datetime = NaiveDateTime::new(delivery_date, delivery_time_start);
@@ -64,7 +67,7 @@ impl DeliveryScheduleService {
                     )? {
                         let pickup_end = pickup_datetime + Duration::hours(1); // Fenêtre de 1h
                         let delivery_end = delivery_datetime_utc
-                            + Duration::hours(prefs.preferred_delivery_window_hours as i64);
+                            + Duration::hours(preferred_delivery_window_hours as i64);
 
                         return Ok(AcceptableTimeSlot {
                             pickup_slot: TimeSlot {
@@ -199,13 +202,11 @@ impl DeliveryScheduleService {
                                     let slot_start = current
                                         .date_naive()
                                         .and_time(start_time)
-                                        .and_utc()
-                                        .unwrap_or(current);
+                                        .and_utc();
                                     let slot_end = current
                                         .date_naive()
                                         .and_time(end_time)
-                                        .and_utc()
-                                        .unwrap_or(current);
+                                        .and_utc();
 
                                     if slot_start > current {
                                         return Ok(AcceptableTimeSlot {
@@ -229,7 +230,7 @@ impl DeliveryScheduleService {
 
             // Passer au jour suivant
             current = current + Duration::days(1);
-            current = current.date_naive().and_hms_opt(8, 0, 0).unwrap().and_utc().unwrap_or(current);
+            current = current.date_naive().and_hms_opt(8, 0, 0).unwrap().and_utc();
         }
 
         // Si aucun créneau trouvé, retourner pickup immédiat

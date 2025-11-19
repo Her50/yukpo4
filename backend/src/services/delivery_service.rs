@@ -3415,6 +3415,8 @@ impl DeliveryService {
                                 summary.id,
                                 DeliveryStatus::AwaitingCourierConfirmation,
                                 None,
+                                None,
+                                serde_json::json!({}),
                             )
                             .await?;
 

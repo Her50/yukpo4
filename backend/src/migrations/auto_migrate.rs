@@ -4842,10 +4842,11 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto external_delivery_providers: {}", e),
     }
 
-    match ensure_public_tracking_tokens_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: public_tracking_tokens OK"),
-        Err(e) => error!("❌ Erreur migration auto public_tracking_tokens: {}", e),
-    }
+    // TODO: Fonction ensure_public_tracking_tokens_table à implémenter
+    // match ensure_public_tracking_tokens_table(pool).await {
+    //     Ok(_) => info!("✅ Migration auto: public_tracking_tokens OK"),
+    //     Err(e) => error!("❌ Erreur migration auto public_tracking_tokens: {}", e),
+    // }
 
     match ensure_delivery_payment_reservations_table(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_payment_reservations OK"),
