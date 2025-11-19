@@ -119,7 +119,7 @@ struct ClientOrderPayload {
     // Optionnel : métadonnées additionnelles
     metadata: Option<Value>,
     // ✅ NOUVEAU : ID de la conversation pour prix négociés
-    conversation_id: Option<i32>,
+    conversation_id: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -1292,7 +1292,7 @@ struct EstimateCostsPayload {
     product_index: Option<i32>,
     dropoff: Option<LocationInput>,
     // ✅ NOUVEAU : ID de la conversation et client pour prix négociés
-    conversation_id: Option<i32>,
+    conversation_id: Option<String>,
     client_user_id: Option<i32>,
 }
 

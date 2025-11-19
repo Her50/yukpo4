@@ -112,10 +112,11 @@ async fn get_pending_offer(
     Query(params): Query<GetPendingOfferQuery>,
 ) -> AppResult<Json<Option<NegotiatedPriceOffer>>> {
     // Vérifier que l'utilisateur participe à la conversation
+    let conversation_id = params.conversation_id.clone();
     let conversation_row = sqlx::query(
         "SELECT client_id, prestataire_id FROM conversations WHERE id = $1"
     )
-    .bind(params.conversation_id)
+    .bind(&conversation_id)
     .fetch_optional(&state.pg)
     .await?;
 
@@ -139,7 +140,7 @@ async fn get_pending_offer(
     let service = NegotiatedPriceService::new(state.pg.clone());
     let offer = service
         .get_pending_offer(
-            params.conversation_id,
+            conversation_id,
             params.service_id,
             params.product_index,
             client_user_id,
