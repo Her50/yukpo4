@@ -634,6 +634,13 @@ const MesServices = () => {
               >
                 📈 Dashboard Global
               </Button>
+              {/* ✅ Phase 9 - Amélioration 32 : Lien vers la gestion des lieux de stock */}
+              <Button
+                onClick={() => navigate('/delivery/storage-locations')}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                📦 Gérer les lieux de stock
+              </Button>
             </div>
             <div className="flex justify-center">
               <Button

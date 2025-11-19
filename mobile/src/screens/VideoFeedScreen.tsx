@@ -30,6 +30,7 @@ import VideoCommentsModal from '../components/VideoCommentsModal';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPost } from '../services/api';
 import liveStreamingService from '../services/liveStreamingService';
+import { studioService } from '../services/studioService';
 import userBehaviorService from '../services/userBehaviorService';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
@@ -340,6 +341,7 @@ interface FeedItem {
     likesCount?: number;
     savesCount?: number;
     audioLabel?: string;
+    sessionId?: string; // ✅ Phase 9 - Amélioration 31 : ID de session pour chaînage vidéos
 }
 
 interface LiveSession {
@@ -385,7 +387,11 @@ const VideoFeedScreen: React.FC = () => {
     const sessionIdRef = useRef(
         `video_feed_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     );
+    // ✅ Phase 9 - Amélioration 31 : Navigation automatique vers vidéo suivante
+    const nextVideoNavigationRef = useRef<Map<string, string>>(new Map()); // sessionId -> nextSessionId
+    const isNavigatingRef = useRef(false);
     const flatListRef = useRef<FlatList<FeedItem>>(null);
+    const feedRef = useRef<FeedItem[]>([]);
     const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
     const [savedMap, setSavedMap] = useState<Record<string, boolean>>({});
     const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
@@ -551,6 +557,8 @@ const VideoFeedScreen: React.FC = () => {
                         : item?.is_paid
                             ? 'Audio sponsorisé'
                             : 'Audio IA Yukpo',
+                    // ✅ Phase 9 - Amélioration 31 : Extraire sessionId pour chaînage vidéos
+                    sessionId: item?.data?.studio_session_id ?? item?.data?.session_id ?? undefined,
                 } as FeedItem;
             })
             .filter(Boolean) as FeedItem[];
@@ -677,17 +685,20 @@ const VideoFeedScreen: React.FC = () => {
                 setForYouSource(parsed);
                 const ordered = reorderFeed(parsed);
                 setFeed(ordered);
+                feedRef.current = ordered; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
                 if (isFollowingLane) {
                     setActiveLane('foryou');
                 }
             } else {
                 setForYouSource([]);
                 setFeed([]);
+                feedRef.current = []; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
             }
         } catch (error) {
             console.error('[VideoFeedScreen] loadFeed error', error);
             setForYouSource([]);
             setFeed([]);
+            feedRef.current = []; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
         } finally {
             setLoading(false);
         }
@@ -734,19 +745,23 @@ const VideoFeedScreen: React.FC = () => {
                     })
                     .filter(Boolean) as FeedItem[];
 
+                const ordered = reorderFeed(mapped);
                 setForYouSource(mapped);
-                setFeed(reorderFeed(mapped));
+                setFeed(ordered);
+                feedRef.current = ordered; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
                 if (isFollowingLane) {
                     setActiveLane('foryou');
                 }
             } else {
                 setForYouSource([]);
                 setFeed([]);
+                feedRef.current = []; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
             }
         } catch (error) {
             console.error('[VideoFeedScreen] searchFeed error', error);
             setForYouSource([]);
             setFeed([]);
+            feedRef.current = []; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
         } finally {
             setIsSearching(false);
         }
@@ -758,8 +773,10 @@ const VideoFeedScreen: React.FC = () => {
 
     useEffect(() => {
         if (feed.length === 0) {
+            feedRef.current = []; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
             return;
         }
+        feedRef.current = feed; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
         currentIndexRef.current = 0;
         setCurrentIndex(0);
         currentStartTimeRef.current = Date.now();
@@ -1391,9 +1408,61 @@ const VideoFeedScreen: React.FC = () => {
                         style={styles.video}
                         resizeMode={ResizeMode.COVER}
                         shouldPlay={isActive && !isPaused}
-                        isLooping
+                        isLooping={!item.sessionId} // ✅ Phase 9 - Amélioration 31 : Ne pas boucler si sessionId existe (pour navigation automatique)
                         useNativeControls={false}
                         isMuted={false}
+                        onPlaybackStatusUpdate={async (status) => {
+                            // ✅ Phase 9 - Amélioration 31 : Navigation automatique vers vidéo suivante
+                            if (
+                                status.isLoaded &&
+                                status.didJustFinish &&
+                                !status.isLooping &&
+                                item.sessionId &&
+                                !isNavigatingRef.current
+                            ) {
+                                isNavigatingRef.current = true;
+                                try {
+                                    // Vérifier si on a déjà la vidéo suivante en cache
+                                    let nextSessionId = nextVideoNavigationRef.current.get(item.sessionId);
+
+                                    if (!nextSessionId) {
+                                        // Récupérer la vidéo suivante depuis l'API
+                                        const nextVideo = await studioService.getNextVideo(item.sessionId);
+                                        if (nextVideo.next_session_id) {
+                                            nextSessionId = nextVideo.next_session_id;
+                                            nextVideoNavigationRef.current.set(item.sessionId, nextSessionId);
+                                        }
+                                    }
+
+                                    if (nextSessionId) {
+                                        // Chercher la vidéo suivante dans le feed
+                                        const currentFeed = feedRef.current; // ✅ Phase 9 - Amélioration 31 : Utiliser la ref du feed
+                                        const currentIdx = currentIndexRef.current; // Utiliser la ref pour éviter les problèmes de closure
+                                        const nextIndex = currentFeed.findIndex((f) => f.sessionId === nextSessionId);
+                                        if (nextIndex !== -1 && nextIndex !== currentIdx) {
+                                            // Naviguer vers la vidéo suivante
+                                            flatListRef.current?.scrollToIndex({
+                                                index: nextIndex,
+                                                animated: true,
+                                            });
+                                            currentIndexRef.current = nextIndex;
+                                            setCurrentIndex(nextIndex);
+                                        } else {
+                                            // Si la vidéo suivante n'est pas dans le feed, la charger
+                                            // TODO: Implémenter le chargement de la vidéo suivante depuis l'API
+                                            console.log('[VideoFeedScreen] Vidéo suivante non trouvée dans le feed:', nextSessionId);
+                                        }
+                                    }
+                                } catch (error) {
+                                    console.error('[VideoFeedScreen] Erreur navigation vidéo suivante:', error);
+                                } finally {
+                                    // Réinitialiser après un court délai pour permettre la navigation
+                                    setTimeout(() => {
+                                        isNavigatingRef.current = false;
+                                    }, 1000);
+                                }
+                            }
+                        }}
                     />
 
                     <LinearGradientOverlay />

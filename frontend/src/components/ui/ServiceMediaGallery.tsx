@@ -340,6 +340,24 @@ export default function ServiceMediaGallery({
                   controls
                   className="max-w-full max-h-[80vh] rounded-lg"
                   autoPlay
+                  onEnded={async () => {
+                    // ✅ Phase 9 - Amélioration 31 : Navigation automatique vers vidéo suivante
+                    // Si cette vidéo a une session_id dans ses métadonnées, vérifier s'il y a une vidéo suivante
+                    const sessionId = (selectedMedia as any).sessionId;
+                    if (sessionId) {
+                      try {
+                        const { studioService } = await import('@/services/studioService');
+                        const next = await studioService.getNextVideo(sessionId);
+                        if (next.next_session_id) {
+                          // Naviguer vers la vidéo suivante (à implémenter selon le contexte)
+                          console.log('[ServiceMediaGallery] Vidéo suivante:', next.next_session_id);
+                          // TODO: Implémenter la navigation vers la vidéo suivante
+                        }
+                      } catch (error) {
+                        console.error('[ServiceMediaGallery] Erreur récupération vidéo suivante:', error);
+                      }
+                    }
+                  }}
                 >
                   Votre navigateur ne supporte pas la lecture de vidéos.
                 </video>

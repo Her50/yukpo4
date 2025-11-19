@@ -20,17 +20,23 @@ use uuid::Uuid;
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::{jwt_auth, AuthenticatedUser},
+    models::delivery_model::{ClientDeliveryPreferencesInput, MerchantStorageLocationInput, ProductDeliveryConfigInput},
+    services::cache_service::{cache_keys, CacheService}, // ✅ Phase 10 - Cache Redis
+    services::delivery_payment_service::DeliveryPaymentService,
     services::delivery_service::{
         CourierApplicationInput, CourierAssetInput, CreateDeliveryParams, DeliveryRecipientInput,
         DeliveryService, LocationInput, NewDeliveryParcelInput, PricingInput,
         PublicDropoffSnapshot, TrackingInput,
     },
+    services::product_price_service::ProductPriceService, // ✅ NOUVEAU : Service pour prix avec promotions
+    services::product_validation_service::{notify_missing_delivery_config, validate_product_for_activation},
     state::AppState,
     websocket::delivery_tracking::{
         record_ws_connection_close, record_ws_connection_open, record_ws_error,
         record_ws_message_sent, DeliveryTrackingManager,
     },
 };
+use std::time::Duration;
 
 #[derive(Deserialize)]
 struct CreateDeliveryPayload {
@@ -99,6 +105,21 @@ struct PublicDropoffPayload {
     instructions: Option<String>,
 }
 
+/// Payload pour commande client directe
+#[derive(Deserialize)]
+struct ClientOrderPayload {
+    service_id: i32,
+    product_index: Option<i32>,
+    // Optionnel : si non fourni, utilise GPS utilisateur ou adresse par défaut
+    dropoff: Option<LocationPayload>,
+    // Optionnel : notes pour la livraison
+    notes: Option<String>,
+    // Optionnel : métadonnées additionnelles
+    metadata: Option<Value>,
+    // ✅ NOUVEAU : ID de la conversation pour prix négociés
+    conversation_id: Option<i32>,
+}
+
 #[derive(Serialize)]
 struct PublicDropoffResponse<T> {
     data: T,
@@ -107,9 +128,27 @@ struct PublicDropoffResponse<T> {
 pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/delivery/parcel-types", get(list_parcel_types))
+        .route("/delivery/product-config", post(save_product_delivery_config))
+        .route("/delivery/product-config/{service_id}/{product_index}", get(get_product_delivery_config))
+        // ✅ Phase 9 - Amélioration : Routes pour gérer les zones de livraison des produits
+        .route("/products/{service_id}/{product_index}/zones", get(get_product_zones).post(save_product_zones))
+        // ✅ Phase 9 - Amélioration 32 : Routes pour gérer les lieux de stock
+        .route("/delivery/storage-locations", get(list_storage_locations).post(create_storage_location))
+        .route("/delivery/storage-locations/{id}", get(get_storage_location).put(update_storage_location).delete(delete_storage_location))
+        // ✅ Phase 9 - Amélioration : Route pour lister les zones de livraison
+        .route("/delivery/zones", get(list_delivery_zones))
+        // ✅ Phase 9 - Amélioration : Routes pour les médias de preuve de livraison
+        .route("/delivery/{id}/proof-media", get(list_proof_media).post(upload_proof_media))
+        .route("/delivery/{id}/proof-media/{media_id}", delete(delete_proof_media))
+        .route("/delivery/product-validation/{service_id}/{product_index}", get(validate_product))
+        .route("/delivery/preferences", post(save_client_delivery_preferences))
+        .route("/delivery/preferences/{delivery_id}", get(get_client_delivery_preferences))
         .route("/delivery", post(create_delivery))
+        .route("/delivery/client-order", post(create_client_order))
+        .route("/delivery/estimate-costs", post(estimate_delivery_costs)) // ✅ Phase 7 - Amélioration 23
         .route("/delivery/{id}", get(get_delivery_summary))
         .route("/delivery/{id}/status", post(update_delivery_status))
+        .route("/delivery/{id}/confirm-proximity", post(confirm_proximity_suggestion)) // ✅ Phase 6 - Amélioration 20
         .route("/delivery/{id}/pricing", post(upsert_pricing))
         .route("/delivery/{id}/tracking", post(add_tracking_point))
         .route("/delivery/{id}/rate-courier", post(rate_courier))
@@ -123,6 +162,10 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/delivery/{id}/recipient/location",
             post(update_recipient_location),
         )
+        .route(
+            "/delivery/{id}/pickup-location",
+            post(update_pickup_location),
+        )
         .route("/delivery/{id}/share-dropoff", post(share_dropoff_link))
         .route("/deliveries/active", get(list_frontend_deliveries))
         .route("/deliveries/{id}", get(get_frontend_delivery))
@@ -134,6 +177,8 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/wallet/refund", post(refund_wallet_for_delivery))
         .route("/courier/applications", post(submit_courier_application))
         .route("/courier/{id}/assets", post(upsert_courier_asset))
+        .route("/delivery/{id}/assign-courier", post(assign_courier)) // ✅ Phase 9 - Amélioration 28
+        .route("/couriers/available", get(list_available_couriers)) // ✅ Phase 9 - Amélioration 28
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }
@@ -152,6 +197,387 @@ async fn list_parcel_types(State(state): State<Arc<AppState>>) -> AppResult<Json
     let service = delivery_service(&state)?;
     let types = service.list_parcel_types().await?;
     Ok(Json(serde_json::json!({ "parcel_types": types })))
+}
+
+/// POST /api/delivery/product-config - Sauvegarder la configuration de livraison d'un produit
+async fn save_product_delivery_config(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<ProductDeliveryConfigInput>,
+) -> AppResult<Json<Value>> {
+    // ✅ 1. Vérifier que l'utilisateur est propriétaire du service
+    let service = sqlx::query!(
+        "SELECT user_id FROM services WHERE id = $1",
+        payload.service_id
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let service_owner = service.ok_or_else(|| {
+        AppError::NotFound("Service non trouvé".into())
+    })?;
+
+    if service_owner.user_id != user.id {
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas le propriétaire de ce service".into(),
+        ));
+    }
+
+    // ✅ 2. Vérifier que le produit existe
+    let service_data = sqlx::query!(
+        "SELECT data FROM services WHERE id = $1",
+        payload.service_id
+    )
+    .fetch_optional(&state.pg)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
+
+    let products = service_data.data
+        .get("produits")
+        .and_then(|p| p.get("valeur"))
+        .and_then(|v| v.as_array());
+
+    let product = products
+        .and_then(|arr| arr.get(payload.product_index as usize))
+        .ok_or_else(|| {
+            AppError::BadRequest("Produit non trouvé".into())
+        })?;
+
+    // ✅ 3. Valider les champs obligatoires
+    if payload.pickup_address.trim().is_empty() {
+        return Err(AppError::BadRequest("L'adresse de départ est obligatoire".into()));
+    }
+
+    // ✅ 4. Vérifier si la configuration est complète (tous les champs requis présents)
+    let schedule = payload.pickup_availability_schedule.as_object();
+    let has_schedule = schedule.map(|s| !s.is_empty()).unwrap_or(false);
+    let is_complete = !payload.pickup_address.trim().is_empty()
+        && payload.required_vehicle_type_id > 0
+        && has_schedule;
+
+    // ✅ 5. Créer ou mettre à jour la configuration
+    let config = sqlx::query!(
+        r#"
+        INSERT INTO product_delivery_config (
+            service_id, product_index,
+            pickup_address, pickup_latitude, pickup_longitude,
+            storage_location_id, -- ✅ Phase 9 - Amélioration 32
+            required_vehicle_type_id, weight_kg, volume_cm3,
+            requires_isothermal, requires_fragile_handling,
+            pickup_availability_schedule,
+            pickup_instructions, billing_mode, billing_partner_label,
+            is_configured, configured_at, configured_by
+        )
+        VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 
+            CASE WHEN $16 THEN NOW() ELSE NULL END, 
+            CASE WHEN $16 THEN $17 ELSE NULL END
+        )
+        ON CONFLICT (service_id, product_index)
+        DO UPDATE SET
+            pickup_address = EXCLUDED.pickup_address,
+            pickup_latitude = EXCLUDED.pickup_latitude,
+            pickup_longitude = EXCLUDED.pickup_longitude,
+            storage_location_id = EXCLUDED.storage_location_id, -- ✅ Phase 9 - Amélioration 32
+            required_vehicle_type_id = EXCLUDED.required_vehicle_type_id,
+            weight_kg = EXCLUDED.weight_kg,
+            volume_cm3 = EXCLUDED.volume_cm3,
+            requires_isothermal = EXCLUDED.requires_isothermal,
+            requires_fragile_handling = EXCLUDED.requires_fragile_handling,
+            pickup_availability_schedule = EXCLUDED.pickup_availability_schedule,
+            pickup_instructions = EXCLUDED.pickup_instructions,
+            billing_mode = EXCLUDED.billing_mode,
+            billing_partner_label = EXCLUDED.billing_partner_label,
+            is_configured = EXCLUDED.is_configured,
+            configured_at = CASE WHEN EXCLUDED.is_configured THEN NOW() ELSE configured_at END,
+            configured_by = CASE WHEN EXCLUDED.is_configured THEN EXCLUDED.configured_by ELSE configured_by END,
+            updated_at = NOW()
+        RETURNING id, is_configured
+        "#,
+        payload.service_id,
+        payload.product_index,
+        payload.pickup_address,
+        payload.pickup_latitude,
+        payload.pickup_longitude,
+        payload.storage_location_id, // ✅ Phase 9 - Amélioration 32
+        payload.required_vehicle_type_id,
+        payload.weight_kg,
+        payload.volume_cm3,
+        payload.requires_isothermal.unwrap_or(false),
+        payload.requires_fragile_handling.unwrap_or(false),
+        payload.pickup_availability_schedule,
+        payload.pickup_instructions,
+        payload.billing_mode.unwrap_or_else(|| "standard".to_string()),
+        payload.billing_partner_label,
+        is_complete,
+        user.id
+    )
+    .fetch_one(&state.pg)
+    .await?;
+
+    // ✅ Phase 2 - Amélioration 6 : Vérifier si la configuration est complète et notifier si nécessaire
+    if !config.is_configured {
+        // Configuration incomplète, envoyer notification
+        if let Err(e) = notify_missing_delivery_config(&state.pg, payload.service_id, payload.product_index).await {
+            log::error!("Erreur envoi notification configuration manquante: {:?}", e);
+            // Ne pas faire échouer la sauvegarde si la notification échoue
+        }
+    }
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "config_id": config.id,
+        "is_configured": config.is_configured,
+        "message": if config.is_configured {
+            "Configuration de livraison sauvegardée avec succès"
+        } else {
+            "Configuration partiellement sauvegardée. Veuillez compléter tous les champs requis pour activer le produit."
+        }
+    })))
+}
+
+/// ✅ Phase 2 - Amélioration 6 : GET /api/delivery/product-validation/{service_id}/{product_index} - Vérifier validation produit
+async fn validate_product(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((service_id, product_index)): Path<(i32, i32)>,
+) -> AppResult<Json<Value>> {
+    // Vérifier propriétaire
+    let service = sqlx::query!(
+        "SELECT user_id FROM services WHERE id = $1",
+        service_id
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let service_owner = service.ok_or_else(|| {
+        AppError::NotFound("Service non trouvé".into())
+    })?;
+
+    if service_owner.user_id != user.id {
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas le propriétaire de ce service".into(),
+        ));
+    }
+
+    let validation = validate_product_for_activation(&state.pg, service_id, product_index).await?;
+
+    Ok(Json(serde_json::json!({
+        "is_valid": validation.is_valid,
+        "errors": validation.errors,
+        "missing_fields": validation.missing_fields
+    })))
+}
+
+/// ✅ Phase 3 - Amélioration 7 : POST /api/delivery/preferences - Sauvegarder les préférences de livraison client
+async fn save_client_delivery_preferences(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<ClientDeliveryPreferencesInput>,
+) -> AppResult<Json<Value>> {
+    // Parser les dates et heures
+    let preferred_delivery_date = payload.preferred_delivery_date
+        .as_ref()
+        .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok());
+    
+    let preferred_delivery_time_start = payload.preferred_delivery_time_start
+        .as_ref()
+        .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok());
+    
+    let preferred_delivery_time_end = payload.preferred_delivery_time_end
+        .as_ref()
+        .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok());
+
+    // Si delivery_id est fourni, vérifier que l'utilisateur a accès à cette livraison
+    if let Some(delivery_id) = payload.delivery_id {
+        let service = delivery_service(&state)?;
+        let summary = service.get_delivery_summary(delivery_id).await?;
+        enforce_delivery_access(&service, &summary, user.id).await?;
+    }
+
+    let preferences = sqlx::query!(
+        r#"
+        INSERT INTO client_delivery_preferences (
+            user_id, delivery_id,
+            preferred_delivery_date, preferred_delivery_time_start, preferred_delivery_time_end,
+            preferred_delivery_window_hours, avoid_days, urgency_level,
+            is_flexible, flexibility_window_days
+        )
+        VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        )
+        ON CONFLICT (user_id, delivery_id)
+        DO UPDATE SET
+            preferred_delivery_date = EXCLUDED.preferred_delivery_date,
+            preferred_delivery_time_start = EXCLUDED.preferred_delivery_time_start,
+            preferred_delivery_time_end = EXCLUDED.preferred_delivery_time_end,
+            preferred_delivery_window_hours = EXCLUDED.preferred_delivery_window_hours,
+            avoid_days = EXCLUDED.avoid_days,
+            urgency_level = EXCLUDED.urgency_level,
+            is_flexible = EXCLUDED.is_flexible,
+            flexibility_window_days = EXCLUDED.flexibility_window_days,
+            updated_at = NOW()
+        RETURNING id, user_id, delivery_id,
+                  preferred_delivery_date, preferred_delivery_time_start, preferred_delivery_time_end,
+                  preferred_delivery_window_hours, avoid_days, urgency_level,
+                  is_flexible, flexibility_window_days,
+                  created_at, updated_at
+        "#,
+        user.id,
+        payload.delivery_id,
+        preferred_delivery_date,
+        preferred_delivery_time_start,
+        preferred_delivery_time_end,
+        payload.preferred_delivery_window_hours.unwrap_or(2),
+        payload.avoid_days.as_deref(),
+        payload.urgency_level.unwrap_or_else(|| "standard".to_string()),
+        payload.is_flexible.unwrap_or(true),
+        payload.flexibility_window_days.unwrap_or(3)
+    )
+    .fetch_one(&state.pg)
+    .await?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "preferences": {
+            "id": preferences.id,
+            "user_id": preferences.user_id,
+            "delivery_id": preferences.delivery_id,
+            "preferred_delivery_date": preferences.preferred_delivery_date,
+            "preferred_delivery_time_start": preferences.preferred_delivery_time_start,
+            "preferred_delivery_time_end": preferences.preferred_delivery_time_end,
+            "preferred_delivery_window_hours": preferences.preferred_delivery_window_hours,
+            "avoid_days": preferences.avoid_days,
+            "urgency_level": preferences.urgency_level,
+            "is_flexible": preferences.is_flexible,
+            "flexibility_window_days": preferences.flexibility_window_days,
+        }
+    })))
+}
+
+/// ✅ Phase 3 - Amélioration 7 : GET /api/delivery/preferences/{delivery_id} - Récupérer les préférences
+async fn get_client_delivery_preferences(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur a accès à cette livraison
+    let service = delivery_service(&state)?;
+    let summary = service.get_delivery_summary(delivery_id).await?;
+    enforce_delivery_access(&service, &summary, user.id).await?;
+
+    let preferences = sqlx::query!(
+        r#"
+        SELECT id, user_id, delivery_id,
+               preferred_delivery_date, preferred_delivery_time_start, preferred_delivery_time_end,
+               preferred_delivery_window_hours, avoid_days, urgency_level,
+               is_flexible, flexibility_window_days,
+               created_at, updated_at
+        FROM client_delivery_preferences
+        WHERE delivery_id = $1 AND user_id = $2
+        "#,
+        delivery_id,
+        user.id
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    if let Some(prefs) = preferences {
+        Ok(Json(serde_json::json!({
+            "preferences": {
+                "id": prefs.id,
+                "user_id": prefs.user_id,
+                "delivery_id": prefs.delivery_id,
+                "preferred_delivery_date": prefs.preferred_delivery_date,
+                "preferred_delivery_time_start": prefs.preferred_delivery_time_start,
+                "preferred_delivery_time_end": prefs.preferred_delivery_time_end,
+                "preferred_delivery_window_hours": prefs.preferred_delivery_window_hours,
+                "avoid_days": prefs.avoid_days,
+                "urgency_level": prefs.urgency_level,
+                "is_flexible": prefs.is_flexible,
+                "flexibility_window_days": prefs.flexibility_window_days,
+            }
+        })))
+    } else {
+        Ok(Json(serde_json::json!({
+            "preferences": null
+        })))
+    }
+}
+
+/// GET /api/delivery/product-config/{service_id}/{product_index} - Récupérer la configuration
+async fn get_product_delivery_config(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((service_id, product_index)): Path<(i32, i32)>,
+) -> AppResult<Json<Value>> {
+    // Vérifier propriétaire
+    let service = sqlx::query!(
+        "SELECT user_id FROM services WHERE id = $1",
+        service_id
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let service_owner = service.ok_or_else(|| {
+        AppError::NotFound("Service non trouvé".into())
+    })?;
+
+    if service_owner.user_id != user.id {
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas le propriétaire de ce service".into(),
+        ));
+    }
+
+    let config = sqlx::query!(
+        r#"
+        SELECT 
+            id, service_id, product_index,
+            pickup_address, pickup_latitude, pickup_longitude,
+            storage_location_id, -- ✅ Phase 9 - Amélioration 32
+            required_vehicle_type_id, weight_kg, volume_cm3,
+            requires_isothermal, requires_fragile_handling,
+            pickup_availability_schedule,
+            pickup_instructions, billing_mode, billing_partner_label,
+            is_configured, configured_at, configured_by,
+            created_at, updated_at
+        FROM product_delivery_config
+        WHERE service_id = $1 AND product_index = $2
+        "#,
+        service_id,
+        product_index
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    if let Some(config) = config {
+        Ok(Json(serde_json::json!({
+            "config": {
+                "id": config.id,
+                "storage_location_id": config.storage_location_id, // ✅ Phase 9 - Amélioration 32
+                "service_id": config.service_id,
+                "product_index": config.product_index,
+                "pickup_address": config.pickup_address,
+                "pickup_latitude": config.pickup_latitude,
+                "pickup_longitude": config.pickup_longitude,
+                "required_vehicle_type_id": config.required_vehicle_type_id,
+                "weight_kg": config.weight_kg,
+                "volume_cm3": config.volume_cm3,
+                "requires_isothermal": config.requires_isothermal,
+                "requires_fragile_handling": config.requires_fragile_handling,
+                "pickup_availability_schedule": config.pickup_availability_schedule,
+                "pickup_instructions": config.pickup_instructions,
+                "billing_mode": config.billing_mode,
+                "billing_partner_label": config.billing_partner_label,
+                "is_configured": config.is_configured,
+                "configured_at": config.configured_at,
+            }
+        })))
+    } else {
+        Ok(Json(serde_json::json!({
+            "config": null
+        })))
+    }
 }
 
 async fn create_delivery(
@@ -191,6 +617,300 @@ async fn create_delivery(
 
     let summary = service.create_delivery_request(params).await?;
     Ok(Json(serde_json::json!({ "delivery": summary })))
+}
+
+/// POST /api/delivery/client-order - Commande client directe avec auto-remplissage
+async fn create_client_order(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<ClientOrderPayload>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+
+    // ✅ 1. Récupérer la configuration de livraison du produit
+    let delivery_config = if let Some(product_index) = payload.product_index {
+        sqlx::query!(
+            "SELECT pickup_address, pickup_latitude, pickup_longitude, 
+                    required_vehicle_type_id, weight_kg, volume_cm3,
+                    requires_isothermal, requires_fragile_handling, is_configured,
+                    billing_mode
+             FROM product_delivery_config 
+             WHERE service_id = $1 AND product_index = $2",
+            payload.service_id,
+            product_index
+        )
+        .fetch_optional(&state.pg)
+        .await?
+    } else {
+        None
+    };
+
+    // ✅ 2. Vérifier si configuration complète
+    if let Some(config) = &delivery_config {
+        if !config.is_configured {
+            return Err(crate::core::types::AppError::BadRequest(
+                "Configuration de livraison incomplète pour ce produit. Le prestataire doit compléter la configuration.".into(),
+            ));
+        }
+    }
+
+    // ✅ 3. Auto-remplir pickup depuis product_delivery_config
+    let pickup = if let Some(config) = &delivery_config {
+        LocationInput {
+            latitude: config.pickup_latitude,
+            longitude: config.pickup_longitude,
+            address: Some(config.pickup_address.clone()),
+        }
+    } else {
+        // Fallback : récupérer depuis le service
+        let service_data = sqlx::query!(
+            "SELECT data, gps FROM services WHERE id = $1",
+            payload.service_id
+        )
+        .fetch_optional(&state.pg)
+        .await?
+        .ok_or_else(|| crate::core::types::AppError::NotFound("Service non trouvé".into()))?;
+
+        // Extraire GPS du service
+        let (lat, lng) = if let Some(gps_str) = service_data.gps {
+            let parts: Vec<&str> = gps_str.split(',').collect();
+            if parts.len() == 2 {
+                if let (Ok(lng), Ok(lat)) = (parts[0].trim().parse::<f64>(), parts[1].trim().parse::<f64>()) {
+                    (lat, lng)
+                } else {
+                    return Err(crate::core::types::AppError::BadRequest("GPS invalide dans le service".into()));
+                }
+            } else {
+                return Err(crate::core::types::AppError::BadRequest("Format GPS invalide".into()));
+            }
+        } else {
+            return Err(crate::core::types::AppError::BadRequest("Aucune adresse de départ disponible".into()));
+        };
+
+        LocationInput {
+            latitude: lat,
+            longitude: lng,
+            address: None,
+        }
+    };
+
+    // ✅ 4. Auto-remplir dropoff depuis GPS utilisateur ou payload
+    let dropoff = if let Some(dropoff_payload) = payload.dropoff {
+        dropoff_payload
+    } else {
+        // Récupérer GPS utilisateur
+        let user_data = sqlx::query!(
+            "SELECT gps, nom_complet FROM users WHERE id = $1",
+            user.id
+        )
+        .fetch_optional(&state.pg)
+        .await?;
+
+        if let Some(user_row) = user_data {
+            if let Some(gps_str) = user_row.gps {
+                let parts: Vec<&str> = gps_str.split(',').collect();
+                if parts.len() == 2 {
+                    if let (Ok(lng), Ok(lat)) = (parts[0].trim().parse::<f64>(), parts[1].trim().parse::<f64>()) {
+                        LocationInput {
+                            latitude: lat,
+                            longitude: lng,
+                            address: None,
+                        }
+                    } else {
+                        return Err(crate::core::types::AppError::BadRequest("GPS utilisateur invalide".into()));
+                    }
+                } else {
+                    return Err(crate::core::types::AppError::BadRequest("Format GPS utilisateur invalide".into()));
+                }
+            } else {
+                return Err(crate::core::types::AppError::BadRequest("Aucune adresse de livraison fournie et GPS utilisateur non disponible".into()));
+            }
+        } else {
+            return Err(crate::core::types::AppError::BadRequest("Utilisateur non trouvé".into()));
+        }
+    };
+
+    // ✅ 5. Créer le colis depuis la configuration
+    let parcel = if let Some(config) = &delivery_config {
+        NewDeliveryParcelInput {
+            type_id: Some(config.required_vehicle_type_id),
+            weight_kg: config.weight_kg.map(dec),
+            volume_cm3: config.volume_cm3.map(dec),
+            declared_value: None,
+            notes: payload.notes.clone(),
+            photos: serde_json::json!([]),
+            constraints: serde_json::json!({
+                "requires_isothermal": config.requires_isothermal,
+                "requires_fragile_handling": config.requires_fragile_handling,
+            }),
+        }
+    } else {
+        NewDeliveryParcelInput {
+            type_id: None,
+            weight_kg: None,
+            volume_cm3: None,
+            declared_value: None,
+            notes: payload.notes.clone(),
+            photos: serde_json::json!([]),
+            constraints: serde_json::json!({}),
+        }
+    };
+
+    // ✅ 6. Créer métadonnées avec service_id et product_index
+    let mut metadata = payload.metadata.unwrap_or_else(|| serde_json::json!({}));
+    metadata["service_id"] = serde_json::json!(payload.service_id);
+    if let Some(product_index) = payload.product_index {
+        metadata["product_index"] = serde_json::json!(product_index);
+    }
+    metadata["order_source"] = serde_json::json!("client_direct");
+
+    // ✅ 7. Créer la livraison
+    let params = CreateDeliveryParams {
+        creator_id: user.id,
+        parcel,
+        pickup,
+        dropoff,
+        recipient: Some(DeliveryRecipientInput {
+            user_id: Some(user.id),
+            contact_name: None,
+            contact_phone: None,
+            notes: payload.notes,
+            chat_thread_id: None,
+            dropoff_override: None,
+            dropoff_address: None,
+            country_code: None,
+            allow_tracking: Some(true),
+            allow_contact: Some(true),
+            consent_granted: Some(true),
+            preferred_language: None,
+        }),
+        distance_meters: None,
+        estimated_duration_seconds: None,
+        metadata,
+        initial_event_payload: serde_json::json!({
+            "source": "client_order",
+            "created_at": chrono::Utc::now().to_rfc3339(),
+        }),
+    };
+
+    let summary = service.create_delivery_request(params).await?;
+
+    // ✅ Phase 5 - Amélioration 10 : Réservation de paiement AVANT matching
+    // Récupérer le prix du produit et le coût de livraison
+    let (product_price_cents, delivery_cost_cents, billing_mode) = if let Some(product_index) = payload.product_index {
+        // Récupérer le prix du produit
+        let product_data = sqlx::query!(
+            "SELECT price, data FROM services WHERE id = $1",
+            payload.service_id
+        )
+        .fetch_optional(&state.pg)
+        .await?;
+
+        let product_price_cents = if let Some(service_row) = product_data {
+            if let Some(products) = service_row.data.get("products").and_then(|v| v.as_array()) {
+                if let Some(product) = products.get(product_index as usize) {
+                    // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
+                    ProductPriceService::get_real_product_price_cents(
+                        &state.pg,
+                        payload.service_id,
+                        product,
+                        Some(product_index),
+                        payload.conversation_id,  // ✅ NOUVEAU : Pour prix négociés
+                        Some(user.id),  // ✅ NOUVEAU : client_user_id = user.id dans create_client_order
+                    )
+                    .await
+                    .unwrap_or_else(|_| {
+                        // Fallback : prix de base si erreur
+                        product.get("price").and_then(|v| v.as_f64()).map(|p| (p * 100.0) as i64).unwrap_or(0)
+                    })
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        // Récupérer le coût de livraison depuis le pricing de la livraison
+        let delivery_cost_cents = if let Some(pricing) = &summary.pricing {
+            (pricing.total_cost_cents as i64)
+        } else {
+            0
+        };
+
+        // Récupérer le billing_mode depuis product_delivery_config
+        let billing_mode = if let Some(config) = &delivery_config {
+            config.billing_mode.as_deref().unwrap_or("standard").to_string()
+        } else {
+            "standard".to_string()
+        };
+
+        (product_price_cents, delivery_cost_cents, billing_mode)
+    } else {
+        // Pas de produit spécifique, utiliser les valeurs par défaut
+        (0, 0, "standard".to_string())
+    };
+
+    // Créer le service de paiement et réserver le paiement
+    if product_price_cents > 0 || delivery_cost_cents > 0 {
+        let payment_service = DeliveryPaymentService::new(state.pg.clone())
+            .with_delivery_service(service.clone());
+        
+        // ✅ Phase 5 - Matching Intelligent : Récupérer le mode de paiement client
+        // Pour l'instant, on utilise "wallet" par défaut, mais cela peut être enrichi
+        // depuis payment_transactions si le client a déjà effectué un paiement
+        let client_payment_method = serde_json::json!({
+            "type": "wallet" // Par défaut, sera enrichi depuis payment_transactions lors du reversement
+        });
+        
+        match payment_service.reserve_payment(
+            summary.id,
+            user.id,
+            product_price_cents,
+            delivery_cost_cents,
+            &billing_mode,
+            Some(client_payment_method), // ✅ NOUVEAU: Mode de paiement client
+        ).await {
+            Ok(_) => {
+                log::info!("✅ Réservation de paiement créée pour livraison {}", summary.id);
+            }
+            Err(e) => {
+                // Si la réservation échoue (solde insuffisant), on retourne une erreur
+                // Le frontend pourra afficher un modal de rechargement
+                return Err(e);
+            }
+        }
+    }
+
+    // ✅ 8. Assigner automatiquement le destinataire (le client)
+    // Cela déclenchera automatiquement le matching grâce à la modification Phase 1 - Amélioration 2
+    let recipient = service
+        .assign_delivery_recipient(
+            summary.id,
+            DeliveryRecipientInput {
+                user_id: Some(user.id),
+                contact_name: None,
+                contact_phone: None,
+                notes: None,
+                chat_thread_id: None,
+                dropoff_override: None,
+                dropoff_address: None,
+                country_code: None,
+                allow_tracking: Some(true),
+                allow_contact: Some(true),
+                consent_granted: Some(true),
+                preferred_language: None,
+            },
+        )
+        .await?;
+
+    Ok(Json(serde_json::json!({
+        "delivery": summary,
+        "recipient": recipient,
+        "message": "Commande créée avec succès. Le matching des coursiers est en cours."
+    })))
 }
 
 async fn assign_delivery_recipient(
@@ -270,6 +990,33 @@ async fn update_recipient_location(
         .await?;
 
     Ok(Json(json!({ "recipient": updated })))
+}
+
+/// ✅ Phase 2 - Amélioration 5 : Modifier l'adresse de pickup à tout moment
+async fn update_pickup_location(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+    Json(payload): Json<RecipientLocationPayload>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let summary = service.get_delivery_summary(delivery_id).await?;
+    enforce_delivery_access(&service, &summary, user.id).await?;
+
+    let updated = service
+        .update_pickup_location(
+            delivery_id,
+            LocationInput {
+                latitude: payload.latitude,
+                longitude: payload.longitude,
+                address: payload.address.clone(),
+            },
+            payload.address,
+            Some(user.id),
+        )
+        .await?;
+
+    Ok(Json(json!({ "delivery": updated })))
 }
 
 async fn share_dropoff_link(
@@ -431,17 +1178,279 @@ async fn update_delivery_status(
     let summary = service.get_delivery_summary(delivery_id).await?;
     enforce_delivery_access(&service, &summary, user.id).await?;
 
+    // ✅ Phase 5 - Amélioration 11 : Gestion paiement selon changement de statut
+    let payment_service = DeliveryPaymentService::new(state.pg.clone())
+        .with_delivery_service(service.clone());
+
+    // Récupérer l'ancien statut pour détecter les changements
+    let old_status = summary.status.clone();
+
     service
         .update_delivery_status(
             delivery_id,
-            status,
+            status.clone(),
             cancel_reason,
             Some(user.id),
             payload.payload,
         )
         .await?;
 
+    // ✅ Gérer les paiements selon le nouveau statut
+    match status {
+        crate::models::delivery_model::DeliveryStatus::Accepted => {
+            // Coursier accepte -> Confirmer le paiement (débit définitif)
+            if old_status != crate::models::delivery_model::DeliveryStatus::Accepted {
+                if let Err(e) = payment_service.confirm_payment(delivery_id).await {
+                    log::error!("Erreur confirmation paiement pour livraison {}: {:?}", delivery_id, e);
+                    // Ne pas faire échouer la requête, juste logger l'erreur
+                }
+            }
+        }
+        crate::models::delivery_model::DeliveryStatus::Cancelled => {
+            // Livraison annulée -> Libérer la réservation (rembourser)
+            if old_status != crate::models::delivery_model::DeliveryStatus::Cancelled {
+                if let Err(e) = payment_service.release_reservation(delivery_id).await {
+                    log::error!("Erreur libération réservation pour livraison {}: {:?}", delivery_id, e);
+                }
+            }
+        }
+        crate::models::delivery_model::DeliveryStatus::Delivered => {
+            // Livraison validée -> Reverser au prestataire
+            // ✅ IMPORTANT : Vérifier si le produit a été rejeté avant de reverser
+            if old_status != crate::models::delivery_model::DeliveryStatus::Delivered {
+                // Vérifier dans le payload si le produit a été rejeté
+                let product_rejected = payload.payload.as_ref()
+                    .and_then(|p| p.get("product_rejected"))
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+
+                if product_rejected {
+                    // ✅ Produit rejeté : Pas de commission, pas de reversement
+                    // Rembourser le client via handle_product_rejection
+                    if let Err(e) = payment_service.handle_product_rejection(delivery_id, user.id).await {
+                        log::error!("Erreur gestion rejet produit pour livraison {}: {:?}", delivery_id, e);
+                    }
+                } else {
+                    // Produit accepté : Reverser au prestataire avec commission
+                    let merchant_user_id = summary.creator_id;
+                    if let Err(e) = payment_service.payout_merchant(delivery_id, merchant_user_id).await {
+                        log::error!("Erreur reversement prestataire pour livraison {}: {:?}", delivery_id, e);
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+
     Ok(Json(serde_json::json!({ "status": "ok" })))
+}
+
+/// ✅ Phase 6 - Amélioration 20 : POST /api/delivery/{id}/confirm-proximity
+/// Confirme une suggestion de proximité et change automatiquement le statut
+async fn confirm_proximity_suggestion(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+    Json(payload): Json<serde_json::Value>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    
+    // Vérifier que l'utilisateur a accès à cette livraison
+    let summary = service.get_delivery_summary(delivery_id).await?;
+    enforce_delivery_access(&service, &summary, user.id).await?;
+    
+    // Récupérer le statut suggéré depuis le payload
+    let suggested_status_str = payload
+        .get("suggested_status")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AppError::BadRequest("suggested_status manquant".into()))?;
+    
+    let suggested_status = serde_json::from_str::<crate::models::delivery_model::DeliveryStatus>(suggested_status_str)
+        .map_err(|_| AppError::BadRequest("Statut suggéré invalide".into()))?;
+    
+    // Changer le statut automatiquement
+    service
+        .update_delivery_status(
+            delivery_id,
+            suggested_status,
+            None, // Pas de raison d'annulation
+            Some(user.id),
+            Some(payload), // Passer le payload complet
+        )
+        .await?;
+    
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Statut confirmé et mis à jour automatiquement"
+    })))
+}
+
+/// ✅ Phase 7 - Amélioration 23 : POST /api/delivery/estimate-costs
+/// Estime les coûts (prix produit + livraison) avant création de commande
+#[derive(Deserialize)]
+struct EstimateCostsPayload {
+    service_id: i32,
+    product_index: Option<i32>,
+    dropoff: Option<LocationInput>,
+    // ✅ NOUVEAU : ID de la conversation et client pour prix négociés
+    conversation_id: Option<i32>,
+    client_user_id: Option<i32>,
+}
+
+#[derive(Serialize)]
+struct EstimateCostsResponse {
+    product_price_cents: i64,
+    delivery_cost_cents: i64,
+    total_cents: i64,
+    billing_mode: String,
+    is_delivery_free: bool,
+}
+
+async fn estimate_delivery_costs(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<EstimateCostsPayload>,
+) -> AppResult<Json<EstimateCostsResponse>> {
+    let service = delivery_service(&state)?;
+
+    // 1. Récupérer le prix du produit (✅ avec promotions)
+    let product_price_cents = if let Some(product_index) = payload.product_index {
+        let product_data = sqlx::query!(
+            "SELECT data FROM services WHERE id = $1",
+            payload.service_id
+        )
+        .fetch_optional(&state.pg)
+        .await?;
+
+        if let Some(service_row) = product_data {
+            if let Some(products) = service_row.data.get("products").and_then(|v| v.as_array()) {
+                if let Some(product) = products.get(product_index as usize) {
+                    // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
+                    ProductPriceService::get_real_product_price_cents(
+                        &state.pg,
+                        payload.service_id,
+                        product,
+                        Some(product_index),
+                        payload.conversation_id,  // ✅ NOUVEAU : Pour prix négociés
+                        payload.client_user_id.or(Some(user.id)),  // ✅ NOUVEAU : Pour prix négociés
+                    )
+                    .await
+                    .unwrap_or_else(|_| {
+                        // Fallback : prix de base si erreur
+                        product.get("price").and_then(|v| v.as_f64()).map(|p| (p * 100.0) as i64).unwrap_or(0)
+                    })
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+    } else {
+        0
+    };
+
+    // 2. Récupérer le billing_mode depuis product_delivery_config
+    let (billing_mode, is_delivery_free) = if let Some(product_index) = payload.product_index {
+        let config = sqlx::query!(
+            "SELECT billing_mode FROM product_delivery_config 
+             WHERE service_id = $1 AND product_index = $2",
+            payload.service_id,
+            product_index
+        )
+        .fetch_optional(&state.pg)
+        .await?;
+
+        let mode = config
+            .and_then(|c| c.billing_mode)
+            .unwrap_or_else(|| "standard".to_string());
+        let is_free = mode == "merchant_inclusive";
+        (mode, is_free)
+    } else {
+        ("standard".to_string(), false)
+    };
+
+    // 3. Calculer le coût de livraison si dropoff fourni
+    let delivery_cost_cents = if let Some(dropoff) = payload.dropoff {
+        // Récupérer la configuration de livraison pour obtenir le pickup
+        let pickup = if let Some(product_index) = payload.product_index {
+            let config = sqlx::query!(
+                "SELECT pickup_latitude, pickup_longitude FROM product_delivery_config 
+                 WHERE service_id = $1 AND product_index = $2",
+                payload.service_id,
+                product_index
+            )
+            .fetch_optional(&state.pg)
+            .await?;
+
+            if let Some(c) = config {
+                LocationInput {
+                    latitude: c.pickup_latitude,
+                    longitude: c.pickup_longitude,
+                    address: None,
+                }
+            } else {
+                // Fallback : récupérer depuis le service
+                let service_data = sqlx::query!(
+                    "SELECT gps FROM services WHERE id = $1",
+                    payload.service_id
+                )
+                .fetch_optional(&state.pg)
+                .await?;
+
+                if let Some(service_row) = service_data {
+                    if let Some(gps_str) = service_row.gps {
+                        let parts: Vec<&str> = gps_str.split(',').collect();
+                        if parts.len() == 2 {
+                            if let (Ok(lng), Ok(lat)) = (parts[0].trim().parse::<f64>(), parts[1].trim().parse::<f64>()) {
+                                LocationInput {
+                                    latitude: lat,
+                                    longitude: lng,
+                                    address: None,
+                                }
+                            } else {
+                                return Err(crate::core::types::AppError::BadRequest("GPS invalide dans le service".into()));
+                            }
+                        } else {
+                            return Err(crate::core::types::AppError::BadRequest("Format GPS invalide".into()));
+                        }
+                    } else {
+                        return Err(crate::core::types::AppError::BadRequest("Aucune adresse de départ disponible".into()));
+                    }
+                } else {
+                    return Err(crate::core::types::AppError::NotFound("Service non trouvé".into()));
+                }
+            }
+        } else {
+            return Err(crate::core::types::AppError::BadRequest("product_index requis pour calculer le coût de livraison".into()));
+        };
+
+        // Calculer la distance et estimer le coût
+        // Pour l'instant, on utilise une estimation basique
+        // TODO: Utiliser le service de pricing réel
+        let distance_km = crate::services::delivery_service::haversine_distance(
+            (pickup.latitude, pickup.longitude),
+            (dropoff.latitude, dropoff.longitude),
+        ) / 1000.0; // Convertir en km
+
+        // Estimation basique : 500 FCFA par km (minimum 1000 FCFA)
+        let estimated_cost = (distance_km * 500.0).max(1000.0);
+        (estimated_cost * 100.0) as i64 // Convertir en centimes
+    } else {
+        0
+    };
+
+    let total_cents = product_price_cents + if is_delivery_free { 0 } else { delivery_cost_cents };
+
+    Ok(Json(EstimateCostsResponse {
+        product_price_cents,
+        delivery_cost_cents,
+        total_cents,
+        billing_mode,
+        is_delivery_free,
+    }))
 }
 
 #[derive(Deserialize)]
@@ -825,6 +1834,488 @@ impl From<&RecipientPayload> for DeliveryRecipientInput {
     }
 }
 
+// ✅ Phase 9 - Amélioration 28 : Assigner un coursier manuellement
+#[derive(Deserialize)]
+struct AssignCourierPayload {
+    courier_id: Uuid,
+}
+
+async fn assign_courier(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+    Json(payload): Json<AssignCourierPayload>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let summary = service
+        .get_delivery_summary(delivery_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Livraison introuvable".into()))?;
+    
+    // Vérifier que l'utilisateur est le créateur de la livraison
+    if summary.creator_id != user.id {
+        return Err(AppError::Forbidden(
+            "Seul le créateur de la livraison peut assigner un coursier".into(),
+        ));
+    }
+
+    // Vérifier que le coursier existe et est actif
+    let courier = service
+        .repository()
+        .find_courier_by_id(payload.courier_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Coursier introuvable".into()))?;
+
+    if courier.status != crate::models::delivery_model::DeliveryCourierStatus::Approved {
+        return Err(AppError::BadRequest(
+            "Le coursier sélectionné n'est pas actif".into(),
+        ));
+    }
+
+    // Mettre à jour preferred_courier_id dans la base de données
+    sqlx::query!(
+        "UPDATE deliveries SET preferred_courier_id = $1, updated_at = NOW() WHERE id = $2",
+        payload.courier_id,
+        delivery_id
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur mise à jour preferred_courier_id: {}", e)))?;
+
+    // Si la livraison n'a pas encore de coursier assigné, déclencher le matching
+    if summary.courier_id.is_none() {
+        let updated_summary = service.get_delivery_summary(delivery_id).await?;
+        if let Some(updated) = updated_summary {
+            // Re-déclencher le matching qui va maintenant prioriser le preferred_courier_id
+            service.enqueue_delivery_matching(&updated).await?;
+        }
+    } else {
+        // Si un coursier est déjà assigné, on peut soit le remplacer, soit juste mettre à jour preferred_courier_id
+        // Pour l'instant, on met juste à jour preferred_courier_id
+        log::info!(
+            "[assign_courier] Livraison {} a déjà un coursier assigné, preferred_courier_id mis à jour",
+            delivery_id
+        );
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Coursier assigné avec succès",
+        "courier_id": payload.courier_id,
+        "delivery_id": delivery_id,
+    })))
+}
+
+// ✅ Phase 9 - Amélioration 28 : Lister les coursiers disponibles
+async fn list_available_couriers(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Query(params): Query<serde_json::Value>,
+) -> AppResult<Json<Value>> {
+    let service_id: Option<i32> = params
+        .get("service_id")
+        .and_then(|v| v.as_i64())
+        .map(|i| i as i32);
+
+    // Récupérer les coursiers actifs avec leurs stats
+    let couriers = sqlx::query!(
+        r#"
+        SELECT 
+            c.id,
+            c.user_id,
+            c.status AS "status: crate::models::delivery_model::DeliveryCourierStatus",
+            c.rating_average,
+            c.rating_count,
+            c.bio,
+            u.nom_complet,
+            u.avatar_url,
+            u.email,
+            -- Stats de livraison
+            COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS completed_deliveries,
+            COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'cancelled') AS cancelled_deliveries,
+            AVG(EXTRACT(EPOCH FROM (d.delivered_at - d.picked_up_at)) / 60.0) 
+                FILTER (WHERE d.status = 'delivered' AND d.delivered_at IS NOT NULL AND d.picked_up_at IS NOT NULL) 
+                AS avg_delivery_time_minutes
+        FROM couriers c
+        JOIN users u ON u.id = c.user_id
+        LEFT JOIN deliveries d ON d.courier_id = c.id
+        WHERE c.status = 'approved'
+        GROUP BY c.id, c.user_id, c.status, c.rating_average, c.rating_count, c.bio, 
+                 u.nom_complet, u.avatar_url, u.email
+        ORDER BY c.rating_average DESC NULLS LAST, completed_deliveries DESC
+        LIMIT 50
+        "#
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération coursiers: {}", e)))?;
+
+    let couriers_list: Vec<Value> = couriers
+        .into_iter()
+        .map(|row| {
+            // Calculer le success_rate avant le json!
+            let completed = row.completed_deliveries.unwrap_or(0) as f64;
+            let cancelled = row.cancelled_deliveries.unwrap_or(0) as f64;
+            let total = completed + cancelled;
+            let success_rate = if total > 0.0 {
+                (completed / total * 100.0).round() as i32
+            } else {
+                100
+            };
+
+            json!({
+                "id": row.id,
+                "user_id": row.user_id,
+                "name": row.nom_complet,
+                "email": row.email,
+                "avatar_url": row.avatar_url,
+                "rating_average": row.rating_average.map(|r| r.to_string().parse::<f64>().unwrap_or(0.0)),
+                "rating_count": row.rating_count.unwrap_or(0),
+                "bio": row.bio,
+                "stats": {
+                    "completed_deliveries": row.completed_deliveries.unwrap_or(0),
+                    "cancelled_deliveries": row.cancelled_deliveries.unwrap_or(0),
+                    "avg_delivery_time_minutes": row.avg_delivery_time_minutes.map(|t| t as f64),
+                    "success_rate": success_rate
+                }
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "couriers": couriers_list,
+        "total": couriers_list.len(),
+    })))
+}
+
+// ✅ Phase 9 - Amélioration 32 : Handlers pour gérer les lieux de stock
+async fn list_storage_locations(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<Value>> {
+    let locations = sqlx::query_as::<_, crate::models::delivery_model::MerchantStorageLocation>(
+        r#"
+        SELECT id, merchant_user_id, name, address, latitude, longitude, zone_id, is_active, created_at, updated_at
+        FROM merchant_storage_locations
+        WHERE merchant_user_id = $1
+        ORDER BY is_active DESC, name ASC
+        "#
+    )
+    .bind(user.id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération lieux de stock: {}", e)))?;
+
+    Ok(Json(json!({
+        "locations": locations,
+        "total": locations.len(),
+    })))
+}
+
+async fn get_storage_location(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(id): Path<i32>,
+) -> AppResult<Json<Value>> {
+    let location = sqlx::query_as::<_, crate::models::delivery_model::MerchantStorageLocation>(
+        r#"
+        SELECT id, merchant_user_id, name, address, latitude, longitude, zone_id, is_active, created_at, updated_at
+        FROM merchant_storage_locations
+        WHERE id = $1 AND merchant_user_id = $2
+        "#
+    )
+    .bind(id)
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération lieu de stock: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Lieu de stock introuvable".into()))?;
+
+    Ok(Json(json!(location)))
+}
+
+async fn create_storage_location(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<MerchantStorageLocationInput>,
+) -> AppResult<Json<Value>> {
+    let location = sqlx::query_as::<_, crate::models::delivery_model::MerchantStorageLocation>(
+        r#"
+        INSERT INTO merchant_storage_locations (merchant_user_id, name, address, latitude, longitude, zone_id, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, merchant_user_id, name, address, latitude, longitude, zone_id, is_active, created_at, updated_at
+        "#
+    )
+    .bind(user.id)
+    .bind(&payload.name)
+    .bind(&payload.address)
+    .bind(payload.latitude)
+    .bind(payload.longitude)
+    .bind(payload.zone_id)
+    .bind(payload.is_active.unwrap_or(true))
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur création lieu de stock: {}", e)))?;
+
+    Ok(Json(json!(location)))
+}
+
+async fn update_storage_location(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(id): Path<i32>,
+    Json(payload): Json<MerchantStorageLocationInput>,
+) -> AppResult<Json<Value>> {
+    let location = sqlx::query_as::<_, crate::models::delivery_model::MerchantStorageLocation>(
+        r#"
+        UPDATE merchant_storage_locations
+        SET name = $1, address = $2, latitude = $3, longitude = $4, 
+            zone_id = $5, is_active = COALESCE($6, is_active), updated_at = NOW()
+        WHERE id = $7 AND merchant_user_id = $8
+        RETURNING id, merchant_user_id, name, address, latitude, longitude, zone_id, is_active, created_at, updated_at
+        "#
+    )
+    .bind(&payload.name)
+    .bind(&payload.address)
+    .bind(payload.latitude)
+    .bind(payload.longitude)
+    .bind(payload.zone_id)
+    .bind(payload.is_active)
+    .bind(id)
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur mise à jour lieu de stock: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Lieu de stock introuvable".into()))?;
+
+    Ok(Json(json!(location)))
+}
+
+async fn delete_storage_location(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(id): Path<i32>,
+) -> AppResult<Json<Value>> {
+    let deleted = sqlx::query!(
+        r#"
+        DELETE FROM merchant_storage_locations
+        WHERE id = $1 AND merchant_user_id = $2
+        RETURNING id
+        "#
+    )
+    .bind(id)
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur suppression lieu de stock: {}", e)))?;
+
+    if deleted.is_none() {
+        return Err(AppError::NotFound("Lieu de stock introuvable".into()));
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Lieu de stock supprimé avec succès",
+    })))
+}
+
+// ✅ Phase 9 - Amélioration : Lister les zones de livraison disponibles
+// ✅ Phase 10 - Cache Redis : Liste des zones de livraison avec cache
+async fn list_delivery_zones(
+    State(state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<Value>> {
+    let cache_key = cache_keys::DELIVERY_ZONES;
+    let pg_pool = state.pg.clone();
+    
+    // Essayer de récupérer depuis le cache
+    let zones_list: Vec<Value> = state.cache_service
+        .get_or_compute_with_ttl(
+            cache_key,
+            Duration::from_secs(300), // Cache 5 minutes
+            move || {
+                let pg = pg_pool.clone();
+                async move {
+                    let zones = sqlx::query!(
+                        r#"
+                        SELECT id, slug, display_name, description
+                        FROM delivery_zones
+                        WHERE is_active = TRUE
+                        ORDER BY display_name ASC
+                        "#
+                    )
+                    .fetch_all(&pg)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Erreur récupération zones: {}", e)))?;
+
+                    let zones_list: Vec<Value> = zones
+                        .into_iter()
+                        .map(|row| {
+                            json!({
+                                "id": row.id,
+                                "name": row.display_name,
+                                "description": row.description,
+                                "is_active": true,
+                            })
+                        })
+                        .collect();
+
+                    Ok(zones_list)
+                }
+            },
+        )
+        .await?;
+
+    Ok(Json(json!(zones_list)))
+}
+
+// ✅ Phase 9 - Amélioration : Handlers pour les médias de preuve de livraison
+async fn list_proof_media(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let summary = service
+        .get_delivery_summary(delivery_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Livraison introuvable".into()))?;
+    
+    // Vérifier que l'utilisateur a accès à cette livraison
+    enforce_delivery_access(&service, &summary, user.id).await?;
+
+    let media = sqlx::query_as::<_, crate::models::delivery_model::DeliveryProofMedia>(
+        r#"
+        SELECT id, delivery_id, media_type, media_url, proof_type, uploaded_by, uploaded_at, metadata, created_at
+        FROM delivery_proof_media
+        WHERE delivery_id = $1
+        ORDER BY proof_type ASC, uploaded_at DESC
+        "#
+    )
+    .bind(delivery_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération médias: {}", e)))?;
+
+    Ok(Json(json!({
+        "media": media,
+        "total": media.len(),
+    })))
+}
+
+async fn upload_proof_media(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+    Json(payload): Json<crate::models::delivery_model::DeliveryProofMediaInput>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let summary = service
+        .get_delivery_summary(delivery_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Livraison introuvable".into()))?;
+    
+    // Vérifier que l'utilisateur est le coursier assigné
+    // Le courier_id est un UUID, on doit vérifier via la table couriers
+    let courier = service.repository().find_courier_by_user(user.id).await?;
+    let courier_id = courier.map(|c| c.id);
+    
+    if summary.courier_id.is_none() || summary.courier_id != courier_id {
+        return Err(AppError::Forbidden(
+            "Seul le coursier assigné peut ajouter des médias de preuve".into(),
+        ));
+    }
+
+    // Valider le proof_type selon le statut de la livraison
+    if payload.proof_type == "pickup" {
+        if summary.status != crate::models::delivery_model::DeliveryStatus::EnRoutePickup
+            && summary.status != crate::models::delivery_model::DeliveryStatus::ShoppingCompleted
+        {
+            return Err(AppError::BadRequest(
+                "Les médias de pickup ne peuvent être ajoutés qu'après la récupération".into(),
+            ));
+        }
+    } else if payload.proof_type == "delivery" {
+        if summary.status != crate::models::delivery_model::DeliveryStatus::EnRouteDelivery
+            && summary.status != crate::models::delivery_model::DeliveryStatus::Delivered
+        {
+            return Err(AppError::BadRequest(
+                "Les médias de delivery ne peuvent être ajoutés qu'après la livraison".into(),
+            ));
+        }
+    } else {
+        return Err(AppError::BadRequest("proof_type doit être 'pickup' ou 'delivery'".into()));
+    }
+
+    // Valider le media_type
+    if payload.media_type != "image" && payload.media_type != "video" {
+        return Err(AppError::BadRequest("media_type doit être 'image' ou 'video'".into()));
+    }
+
+    let media = sqlx::query_as::<_, crate::models::delivery_model::DeliveryProofMedia>(
+        r#"
+        INSERT INTO delivery_proof_media (delivery_id, media_type, media_url, proof_type, uploaded_by, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, delivery_id, media_type, media_url, proof_type, uploaded_by, uploaded_at, metadata, created_at
+        "#
+    )
+    .bind(delivery_id)
+    .bind(&payload.media_type)
+    .bind(&payload.media_url)
+    .bind(&payload.proof_type)
+    .bind(user.id)
+    .bind(payload.metadata.unwrap_or_else(|| json!({})))
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur upload média: {}", e)))?;
+
+    Ok(Json(json!(media)))
+}
+
+async fn delete_proof_media(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((delivery_id, media_id)): Path<(Uuid, i32)>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let summary = service
+        .get_delivery_summary(delivery_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Livraison introuvable".into()))?;
+    
+    // Vérifier que l'utilisateur est le coursier assigné ou le créateur
+    let courier = service.repository().find_courier_by_user(user.id).await?;
+    let courier_id = courier.map(|c| c.id);
+    let can_delete = summary.courier_id == courier_id || summary.creator_id == user.id;
+    if !can_delete {
+        return Err(AppError::Forbidden(
+            "Vous n'avez pas la permission de supprimer ce média".into(),
+        ));
+    }
+
+    let deleted = sqlx::query!(
+        r#"
+        DELETE FROM delivery_proof_media
+        WHERE id = $1 AND delivery_id = $2
+        RETURNING id
+        "#
+    )
+    .bind(media_id)
+    .bind(delivery_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur suppression média: {}", e)))?;
+
+    if deleted.is_none() {
+        return Err(AppError::NotFound("Média introuvable".into()));
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Média supprimé avec succès",
+    })))
+}
+
 fn delivery_service(state: &AppState) -> AppResult<Arc<DeliveryService>> {
     Ok(state.delivery_service.clone())
 }
@@ -853,6 +2344,167 @@ async fn enforce_delivery_access(
             "Accès réservé au client ou au coursier assigné".into(),
         ))
     }
+}
+
+// ✅ Phase 9 - Amélioration : Récupérer les zones de livraison associées à un produit
+// ✅ Phase 10 - Cache Redis : Cache des zones de produit
+async fn get_product_zones(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((service_id, product_index)): Path<(i32, i32)>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est propriétaire du service
+    let service = sqlx::query!(
+        "SELECT user_id FROM services WHERE id = $1",
+        service_id
+    )
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification service: {}", e)))?;
+
+    let service = service.ok_or_else(|| AppError::NotFound("Service introuvable".into()))?;
+    
+    if service.user_id != user.id {
+        return Err(AppError::Forbidden(
+            "Vous n'avez pas accès à ce service".into(),
+        ));
+    }
+
+    // Clé de cache spécifique au produit
+    let cache_key = CacheService::build_key(
+        cache_keys::PRODUCT_ZONES,
+        &[&service_id.to_string(), &product_index.to_string()],
+    );
+    let pg_pool = state.pg.clone();
+    let sid = service_id;
+    let pidx = product_index;
+
+    // Récupérer depuis le cache ou la base de données
+    let zone_ids: Vec<String> = state.cache_service
+        .get_or_compute_with_ttl(
+            &cache_key,
+            Duration::from_secs(600), // Cache 10 minutes
+            move || {
+                let pg = pg_pool.clone();
+                let s_id = sid;
+                let p_idx = pidx;
+                async move {
+                    let zones = sqlx::query!(
+                        r#"
+                        SELECT zone_id
+                        FROM product_delivery_zones
+                        WHERE service_id = $1 AND product_index = $2
+                        ORDER BY created_at
+                        "#,
+                        s_id,
+                        p_idx
+                    )
+                    .fetch_all(&pg)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Erreur récupération zones: {}", e)))?;
+
+                    let zone_ids: Vec<String> = zones.iter().map(|z| z.zone_id.to_string()).collect();
+                    Ok(zone_ids)
+                }
+            },
+        )
+        .await?;
+
+    Ok(Json(json!({
+        "service_id": service_id,
+        "product_index": product_index,
+        "zone_ids": zone_ids,
+    })))
+}
+
+// ✅ Phase 9 - Amélioration : Sauvegarder les zones de livraison associées à un produit
+#[derive(Deserialize)]
+struct SaveProductZonesPayload {
+    zone_ids: Vec<String>,
+}
+
+async fn save_product_zones(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((service_id, product_index)): Path<(i32, i32)>,
+    Json(payload): Json<SaveProductZonesPayload>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est propriétaire du service
+    let service = sqlx::query!(
+        "SELECT user_id FROM services WHERE id = $1",
+        service_id
+    )
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification service: {}", e)))?;
+
+    let service = service.ok_or_else(|| AppError::NotFound("Service introuvable".into()))?;
+    
+    if service.user_id != user.id {
+        return Err(AppError::Forbidden(
+            "Vous n'avez pas accès à ce service".into(),
+        ));
+    }
+
+    // Valider que toutes les zones existent
+    for zone_id_str in &payload.zone_ids {
+        let zone_id = Uuid::parse_str(zone_id_str)
+            .map_err(|_| AppError::BadRequest(format!("Zone ID invalide: {}", zone_id_str)))?;
+        
+        let zone_exists = sqlx::query!(
+            "SELECT id FROM delivery_zones WHERE id = $1 AND is_active = TRUE",
+            zone_id
+        )
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur vérification zone: {}", e)))?;
+
+        if zone_exists.is_none() {
+            return Err(AppError::BadRequest(format!("Zone introuvable ou inactive: {}", zone_id_str)));
+        }
+    }
+
+    // Supprimer les associations existantes
+    sqlx::query!(
+        "DELETE FROM product_delivery_zones WHERE service_id = $1 AND product_index = $2",
+        service_id,
+        product_index
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur suppression zones: {}", e)))?;
+
+    // Insérer les nouvelles associations
+    for zone_id_str in &payload.zone_ids {
+        let zone_id = Uuid::parse_str(zone_id_str).unwrap(); // Déjà validé
+        
+        sqlx::query!(
+            r#"
+            INSERT INTO product_delivery_zones (service_id, product_index, zone_id)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (service_id, product_index, zone_id) DO NOTHING
+            "#,
+            service_id,
+            product_index,
+            zone_id
+        )
+        .execute(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur insertion zone: {}", e)))?;
+    }
+
+    // ✅ Phase 10 - Cache Redis : Invalider le cache pour ce produit
+    let cache_key = CacheService::build_key(
+        cache_keys::PRODUCT_ZONES,
+        &[&service_id.to_string(), &product_index.to_string()],
+    );
+    let _ = state.cache_service.delete(&cache_key).await;
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Zones de livraison sauvegardées avec succès",
+        "zone_ids": payload.zone_ids,
+    })))
 }
 
 fn dec(value: f64) -> Decimal {

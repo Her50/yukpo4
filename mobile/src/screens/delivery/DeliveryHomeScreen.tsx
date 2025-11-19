@@ -1,17 +1,18 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import ActiveDeliveryCard from '../../components/delivery/ActiveDeliveryCard';
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import { modernColors } from '../../theme/modernTheme';
 
 const DeliveryHomeScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation();
     const {
         deliveries,
         refreshActiveDeliveries,
@@ -24,6 +25,7 @@ const DeliveryHomeScreen: React.FC = () => {
     } = useDeliveryContext();
     const { isEnabled } = useFeatureFlags();
     const [refreshing, setRefreshing] = useState(false);
+    const [navigating, setNavigating] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -46,63 +48,74 @@ const DeliveryHomeScreen: React.FC = () => {
         setRefreshing(false);
     }, [refreshActiveDeliveries]);
 
-    const handleStartShopping = () => {
+    // ✅ CORRIGÉ: Navigation simplifiée et robuste
+    const handleStartShopping = useCallback(() => {
+        if (navigating) return;
+        
         console.log('[DeliveryHomeScreen] 🛒 Navigation vers DeliveryShoppingFlow');
+        setNavigating(true);
+        
         try {
-            // ✅ CORRIGÉ: Utiliser getParent() pour naviguer depuis Tab Navigator vers Stack Navigator
-            const parentNavigation = navigation.getParent();
-            if (parentNavigation) {
-                parentNavigation.navigate('DeliveryShoppingFlow');
-                console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingFlow via parent');
-            } else {
-                // Fallback: essayer navigation directe
-                navigation.navigate('DeliveryShoppingFlow');
-                console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingFlow (directe)');
-            }
-        } catch (error) {
-            console.error('[DeliveryHomeScreen] ❌ Erreur navigation vers DeliveryShoppingFlow:', error);
-            Alert.alert('Erreur', 'Impossible d\'ouvrir le flux de commande. Veuillez réessayer.');
-        }
-    };
-
-    const handleStartParcel = () => {
-        console.log('[DeliveryHomeScreen] 📦 Tentative d\'ouverture du flux colis');
-        // ✅ CORRIGÉ: Si delivery_v2 est activé, naviguer vers le flux colis
-        if (isEnabled('delivery_v2')) {
-            try {
-                // TODO: Naviguer vers le flux colis quand il sera implémenté
-                // navigation.navigate('DeliveryParcelFlow');
-                Alert.alert(
-                    'Flux colis (beta)',
-                    'Le flux de livraison de colis est en cours de finalisation. Utilise les courses supermarché pour tester le suivi temps réel.'
-                );
-            } catch (error) {
-                console.error('[DeliveryHomeScreen] ❌ Erreur navigation vers flux colis:', error);
-                Alert.alert('Erreur', 'Impossible d\'ouvrir le flux de livraison de colis.');
-            }
-        } else {
+            // DeliveryHomeScreen est dans SecondaryStack, donc navigation directe fonctionne
+            navigation.navigate('DeliveryShoppingFlow');
+            console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingFlow');
+        } catch (error: any) {
+            console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
             Alert.alert(
-                'Flux colis en préparation',
-                'Nous finalisons les derniers écrans pour les livraisons de colis. Utilise les courses supermarché pour tester le suivi temps réel.'
+                'Erreur',
+                'Impossible d\'ouvrir le flux de commande. Veuillez réessayer.',
+                [{ text: 'OK', onPress: () => setNavigating(false) }]
             );
         }
-    };
+    }, [navigation, navigating]);
 
-    const handleOpenDelivery = (deliveryId: string) => {
-        setActiveDeliveryId(deliveryId);
-        try {
-            // ✅ CORRIGÉ: Utiliser getParent() pour naviguer depuis Tab Navigator vers Stack Navigator
-            const parentNavigation = navigation.getParent();
-            if (parentNavigation) {
-                parentNavigation.navigate('DeliveryShoppingTracking', { deliveryId });
-            } else {
-                navigation.navigate('DeliveryShoppingTracking', { deliveryId });
-            }
-        } catch (error) {
-            console.error('[DeliveryHomeScreen] ❌ Erreur navigation vers DeliveryShoppingTracking:', error);
-            Alert.alert('Erreur', 'Impossible d\'ouvrir le suivi de livraison.');
+    const handleStartParcel = useCallback(() => {
+        if (navigating) return;
+        
+        console.log('[DeliveryHomeScreen] 📦 Tentative d\'ouverture du flux colis');
+        setNavigating(true);
+        
+        // Pour l'instant, rediriger vers le flux shopping (même logique)
+        // TODO: Implémenter DeliveryParcelFlow quand il sera prêt
+        if (isEnabled('delivery_v2')) {
+            // Utiliser le flux shopping en attendant
+            handleStartShopping();
+        } else {
+            // Rediriger vers shopping avec message informatif
+            Alert.alert(
+                'Flux colis en préparation',
+                'Le flux de livraison de colis est en cours de finalisation. Vous pouvez utiliser les courses supermarché pour tester le suivi temps réel.',
+                [
+                    { text: 'Annuler', style: 'cancel', onPress: () => setNavigating(false) },
+                    { text: 'Utiliser les courses', onPress: () => {
+                        setNavigating(false);
+                        handleStartShopping();
+                    }}
+                ]
+            );
         }
-    };
+    }, [isEnabled, navigating, handleStartShopping]);
+
+    const handleOpenDelivery = useCallback((deliveryId: string) => {
+        if (navigating) return;
+        
+        console.log('[DeliveryHomeScreen] 📍 Ouverture livraison:', deliveryId);
+        setNavigating(true);
+        setActiveDeliveryId(deliveryId);
+        
+        try {
+            // Navigation directe vers le tracking
+            navigation.navigate('DeliveryShoppingTracking', { deliveryId });
+            console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingTracking');
+        } catch (error: any) {
+            console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
+            Alert.alert(
+                'Erreur',
+                'Impossible d\'ouvrir le suivi de livraison.',
+                [{ text: 'OK', onPress: () => setNavigating(false) }]
+            );
+        }
+    }, [navigation, setActiveDeliveryId, navigating]);
 
     return (
         <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
@@ -129,8 +142,12 @@ const DeliveryHomeScreen: React.FC = () => {
                         <NativeButton
                             title='Retenter la synchronisation'
                             variant='outline'
-                            onPress={retryPendingMutations}
+                            onPress={() => {
+                                console.log('[DeliveryHomeScreen] 🔄 Tentative de reconnexion...');
+                                retryPendingMutations();
+                            }}
                             size='small'
+                            disabled={!isNetworkOnline}
                         />
                     </NativeCard>
                 )}
@@ -144,8 +161,12 @@ const DeliveryHomeScreen: React.FC = () => {
                         <NativeButton
                             title='Forcer la synchronisation'
                             variant='ghost'
-                            onPress={retryPendingMutations}
+                            onPress={() => {
+                                console.log('[DeliveryHomeScreen] 🔄 Forçage synchronisation...');
+                                retryPendingMutations();
+                            }}
                             size='small'
+                            disabled={!isNetworkOnline}
                         />
                     </NativeCard>
                 )}
@@ -159,6 +180,7 @@ const DeliveryHomeScreen: React.FC = () => {
                         title="Commander au supermarché"
                         variant="primary"
                         onPress={handleStartShopping}
+                        disabled={navigating}
                         style={styles.actionButton}
                     />
                 </NativeCard>
@@ -175,19 +197,30 @@ const DeliveryHomeScreen: React.FC = () => {
                         title={isEnabled('delivery_v2') ? "Nouveau flux colis (beta)" : "Utiliser les courses supermarché"}
                         variant={isEnabled('delivery_v2') ? "outline" : "primary"}
                         onPress={isEnabled('delivery_v2') ? handleStartParcel : handleStartShopping}
+                        disabled={navigating}
                         style={styles.actionButton}
                     />
                 </NativeCard>
 
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Vos livraisons actives</Text>
-                    <NativeButton
-                        title="Actualiser"
-                        size="small"
-                        variant="ghost"
+                    <TouchableOpacity
                         onPress={handleRefresh}
                         disabled={loading || refreshing}
-                    />
+                        style={[styles.refreshButton, (loading || refreshing) && styles.refreshButtonDisabled]}
+                    >
+                        <SafeIcon 
+                            name="refresh" 
+                            size={16} 
+                            color={(loading || refreshing) ? modernColors.textSecondary : modernColors.primary} 
+                        />
+                        <Text style={[
+                            styles.refreshButtonText,
+                            (loading || refreshing) && styles.refreshButtonTextDisabled
+                        ]}>
+                            Actualiser
+                        </Text>
+                    </TouchableOpacity>
                 </View>
 
                 {loading && activeDeliveries.length === 0 ? (
@@ -197,16 +230,30 @@ const DeliveryHomeScreen: React.FC = () => {
                     </View>
                 ) : activeDeliveries.length === 0 ? (
                     <View style={styles.emptyState}>
+                        <View style={styles.emptyIconContainer}>
+                            <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
+                        </View>
                         <Text style={styles.emptyTitle}>Aucune livraison en cours</Text>
                         <Text style={styles.emptySubtitle}>
                             Lance une commande supermarché pour suivre ton coursier en temps réel.
                         </Text>
-                        <NativeButton title="Nouvelle commande" onPress={handleStartShopping} />
+                        <NativeButton 
+                            title="Nouvelle commande" 
+                            onPress={handleStartShopping}
+                            disabled={navigating}
+                            style={styles.emptyStateButton}
+                        />
                     </View>
                 ) : (
-                    activeDeliveries.map(delivery => (
-                        <ActiveDeliveryCard key={delivery.id} delivery={delivery} onPress={handleOpenDelivery} />
-                    ))
+                    <View style={styles.deliveriesList}>
+                        {activeDeliveries.map(delivery => (
+                            <ActiveDeliveryCard 
+                                key={delivery.id} 
+                                delivery={delivery} 
+                                onPress={handleOpenDelivery} 
+                            />
+                        ))}
+                    </View>
                 )}
             </ScrollView>
         </SafeNativeView>
@@ -304,6 +351,40 @@ const styles = StyleSheet.create({
     },
     actionButton: {
         marginTop: 8,
+    },
+    refreshButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    refreshButtonDisabled: {
+        opacity: 0.5,
+    },
+    refreshButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    refreshButtonTextDisabled: {
+        color: modernColors.textSecondary,
+    },
+    emptyIconContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: modernColors.surfaceVariant,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    emptyStateButton: {
+        marginTop: 8,
+    },
+    deliveriesList: {
+        gap: 16,
     },
 });
 

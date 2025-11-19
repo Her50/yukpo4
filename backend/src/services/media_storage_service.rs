@@ -78,6 +78,49 @@ impl MediaStorageService {
         self.client.is_some()
     }
 
+    /// ✅ Phase 9 - Amélioration : Uploader directement depuis des bytes
+    /// Écrit les bytes dans un fichier temporaire puis utilise store_file
+    pub async fn store_bytes(
+        &self,
+        data: &[u8],
+        storage_key: &str,
+        content_type: Option<&str>,
+    ) -> AppResult<StoredMediaLocation> {
+        use uuid::Uuid;
+
+        // Créer un nom de fichier temporaire unique
+        let temp_filename = format!("temp_{}", Uuid::new_v4());
+        let temp_path = self.upload_root().join(&temp_filename);
+
+        // S'assurer que le répertoire existe
+        if let Some(parent) = temp_path.parent() {
+            fs::create_dir_all(parent).await.map_err(|e| {
+                AppError::Internal(format!("Erreur création répertoire temporaire: {}", e))
+            })?;
+        }
+
+        // Écrire les bytes dans le fichier temporaire
+        fs::write(&temp_path, data).await.map_err(|e| {
+            AppError::Internal(format!("Erreur écriture données temporaires: {}", e))
+        })?;
+
+        // Utiliser store_file avec le fichier temporaire
+        let result = self.store_file(&temp_path, storage_key, content_type).await;
+
+        // Nettoyer le fichier temporaire s'il existe encore
+        // (store_file peut le déplacer ou le supprimer selon la config)
+        if temp_path.exists() {
+            if let Err(err) = fs::remove_file(&temp_path).await {
+                warn!(
+                    "[MediaStorage] Impossible de supprimer le fichier temporaire ({:?}): {err}",
+                    temp_path
+                );
+            }
+        }
+
+        result
+    }
+
     pub async fn store_file<P: AsRef<Path>>(
         &self,
         local_path: P,

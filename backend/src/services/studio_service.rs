@@ -894,3 +894,149 @@ fn extend_preview_history(metadata: Value, entry: Value) -> Value {
         }
     }
 }
+
+// ✅ Phase 9 - Amélioration 31 : Structures pour chaînage vidéos
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VideoDependency {
+    pub id: i32,
+    pub parent_session_id: Uuid,
+    pub child_session_id: Uuid,
+    pub order_index: Option<i32>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SetDependenciesPayload {
+    pub child_session_ids: Vec<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NextVideoResponse {
+    pub next_session_id: Option<Uuid>,
+    pub order_index: Option<i32>,
+}
+
+impl StudioService {
+    /// ✅ Phase 9 - Amélioration 31 : Définir les dépendances (vidéos suivantes) pour une session
+    pub async fn set_dependencies(
+        &self,
+        parent_session_id: Uuid,
+        user_id: i32,
+        payload: SetDependenciesPayload,
+    ) -> AppResult<Vec<VideoDependency>> {
+        // Vérifier que la session parent appartient à l'utilisateur
+        let parent = sqlx::query_as::<_, StudioSessionRecord>(
+            "SELECT * FROM studio_sessions WHERE id = $1 AND user_id = $2",
+        )
+        .bind(parent_session_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if parent.is_none() {
+            return Err(AppError::NotFound("Session parent introuvable".to_string()));
+        }
+
+        // Vérifier que toutes les sessions enfants appartiennent à l'utilisateur
+        for child_id in &payload.child_session_ids {
+            let child = sqlx::query_as::<_, StudioSessionRecord>(
+                "SELECT * FROM studio_sessions WHERE id = $1 AND user_id = $2",
+            )
+            .bind(child_id)
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+            if child.is_none() {
+                return Err(AppError::BadRequest(format!(
+                    "Session enfant {} introuvable",
+                    child_id
+                )));
+            }
+
+            // Empêcher les références circulaires
+            if *child_id == parent_session_id {
+                return Err(AppError::BadRequest(
+                    "Une session ne peut pas dépendre d'elle-même".to_string(),
+                ));
+            }
+        }
+
+        // Supprimer les anciennes dépendances
+        sqlx::query("DELETE FROM video_dependencies WHERE parent_session_id = $1")
+            .bind(parent_session_id)
+            .execute(&self.pool)
+            .await?;
+
+        // Insérer les nouvelles dépendances avec order_index
+        let mut dependencies = Vec::new();
+        for (index, child_id) in payload.child_session_ids.iter().enumerate() {
+            let dep = sqlx::query_as::<_, VideoDependency>(
+                r#"
+                INSERT INTO video_dependencies (parent_session_id, child_session_id, order_index)
+                VALUES ($1, $2, $3)
+                RETURNING id, parent_session_id, child_session_id, order_index, created_at
+                "#,
+            )
+            .bind(parent_session_id)
+            .bind(child_id)
+            .bind(index as i32)
+            .fetch_one(&self.pool)
+            .await?;
+            dependencies.push(dep);
+        }
+
+        Ok(dependencies)
+    }
+
+    /// ✅ Phase 9 - Amélioration 31 : Récupérer la vidéo suivante dans la chaîne
+    pub async fn get_next_video(
+        &self,
+        session_id: Uuid,
+    ) -> AppResult<NextVideoResponse> {
+        let next = sqlx::query_as::<_, (Option<Uuid>, Option<i32>)>(
+            r#"
+            SELECT child_session_id, order_index
+            FROM video_dependencies
+            WHERE parent_session_id = $1
+            ORDER BY order_index ASC
+            LIMIT 1
+            "#,
+        )
+        .bind(session_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some((next_id, order)) = next {
+            Ok(NextVideoResponse {
+                next_session_id: next_id,
+                order_index: order,
+            })
+        } else {
+            Ok(NextVideoResponse {
+                next_session_id: None,
+                order_index: None,
+            })
+        }
+    }
+
+    /// ✅ Phase 9 - Amélioration 31 : Récupérer toutes les dépendances d'une session
+    pub async fn get_dependencies(
+        &self,
+        session_id: Uuid,
+    ) -> AppResult<Vec<VideoDependency>> {
+        let deps = sqlx::query_as::<_, VideoDependency>(
+            r#"
+            SELECT id, parent_session_id, child_session_id, order_index, created_at
+            FROM video_dependencies
+            WHERE parent_session_id = $1
+            ORDER BY order_index ASC
+            "#,
+        )
+        .bind(session_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(deps)
+    }
+}

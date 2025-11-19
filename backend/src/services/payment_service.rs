@@ -231,22 +231,61 @@ impl PaymentService {
         country_code: &str,
         amount: f64,
     ) -> Result<(PaymentStatus, Option<serde_json::Value>), String> {
-        // TODO: Intégration avec l'API Orange Money
-        // Pour l'instant, simulation
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-
-        // Simuler une réponse de l'API Orange Money
-        let gateway_response = serde_json::json!({
-            "provider": "orange_money",
-            "transaction_reference": format!("OM_{}", transaction_id),
-            "status": "success",
-            "phone_number": phone_number,
-            "country_code": country_code,
-            "amount": amount,
-            "timestamp": chrono::Utc::now()
-        });
-
-        Ok((PaymentStatus::Completed, Some(gateway_response)))
+        // ✅ Phase 10 - Utiliser le service Mobile Money
+        use crate::services::mobile_money_service::{MobileMoneyService, MobileMoneyProvider, MobileMoneyPaymentRequest};
+        
+        let mobile_money_service = MobileMoneyService::new();
+        
+        let request = MobileMoneyPaymentRequest {
+            provider: MobileMoneyProvider::Orange,
+            phone_number: format!("{}{}", country_code, phone_number),
+            amount,
+            currency: "XAF".to_string(),
+            transaction_reference: transaction_id.to_string(),
+            description: Some("Paiement Yukpomnang".to_string()),
+            callback_url: None,
+        };
+        
+        match mobile_money_service.initiate_payment(request).await {
+            Ok(response) => {
+                let gateway_response = serde_json::json!({
+                    "provider": "orange_money",
+                    "transaction_reference": format!("OM_{}", transaction_id),
+                    "provider_transaction_id": response.provider_transaction_id,
+                    "status": format!("{:?}", response.status),
+                    "phone_number": phone_number,
+                    "country_code": country_code,
+                    "amount": amount,
+                    "instructions": response.instructions,
+                    "timestamp": chrono::Utc::now()
+                });
+                
+                let status = match response.status {
+                    crate::services::mobile_money_service::PaymentStatus::Completed => PaymentStatus::Completed,
+                    crate::services::mobile_money_service::PaymentStatus::Pending => PaymentStatus::Pending,
+                    crate::services::mobile_money_service::PaymentStatus::Processing => PaymentStatus::Processing,
+                    crate::services::mobile_money_service::PaymentStatus::Failed => PaymentStatus::Failed,
+                    crate::services::mobile_money_service::PaymentStatus::Cancelled => PaymentStatus::Cancelled,
+                };
+                
+                Ok((status, Some(gateway_response)))
+            }
+            Err(e) => {
+                log::error!("[PaymentService] Erreur Orange Money: {}", e);
+                // Fallback: simulation
+                let gateway_response = serde_json::json!({
+                    "provider": "orange_money",
+                    "transaction_reference": format!("OM_{}", transaction_id),
+                    "status": "pending",
+                    "phone_number": phone_number,
+                    "country_code": country_code,
+                    "amount": amount,
+                    "error": e.to_string(),
+                    "timestamp": chrono::Utc::now()
+                });
+                Ok((PaymentStatus::Pending, Some(gateway_response)))
+            }
+        }
     }
 
     /// Traiter un paiement MTN Money
@@ -257,22 +296,61 @@ impl PaymentService {
         country_code: &str,
         amount: f64,
     ) -> Result<(PaymentStatus, Option<serde_json::Value>), String> {
-        // TODO: Intégration avec l'API MTN Money
-        // Pour l'instant, simulation
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-
-        // Simuler une réponse de l'API MTN Money
-        let gateway_response = serde_json::json!({
-            "provider": "mtn_money",
-            "transaction_reference": format!("MTN_{}", transaction_id),
-            "status": "success",
-            "phone_number": phone_number,
-            "country_code": country_code,
-            "amount": amount,
-            "timestamp": chrono::Utc::now()
-        });
-
-        Ok((PaymentStatus::Completed, Some(gateway_response)))
+        // ✅ Phase 10 - Utiliser le service Mobile Money
+        use crate::services::mobile_money_service::{MobileMoneyService, MobileMoneyProvider, MobileMoneyPaymentRequest};
+        
+        let mobile_money_service = MobileMoneyService::new();
+        
+        let request = MobileMoneyPaymentRequest {
+            provider: MobileMoneyProvider::MTN,
+            phone_number: format!("{}{}", country_code, phone_number),
+            amount,
+            currency: "XAF".to_string(),
+            transaction_reference: transaction_id.to_string(),
+            description: Some("Paiement Yukpomnang".to_string()),
+            callback_url: None,
+        };
+        
+        match mobile_money_service.initiate_payment(request).await {
+            Ok(response) => {
+                let gateway_response = serde_json::json!({
+                    "provider": "mtn_money",
+                    "transaction_reference": format!("MTN_{}", transaction_id),
+                    "provider_transaction_id": response.provider_transaction_id,
+                    "status": format!("{:?}", response.status),
+                    "phone_number": phone_number,
+                    "country_code": country_code,
+                    "amount": amount,
+                    "instructions": response.instructions,
+                    "timestamp": chrono::Utc::now()
+                });
+                
+                let status = match response.status {
+                    crate::services::mobile_money_service::PaymentStatus::Completed => PaymentStatus::Completed,
+                    crate::services::mobile_money_service::PaymentStatus::Pending => PaymentStatus::Pending,
+                    crate::services::mobile_money_service::PaymentStatus::Processing => PaymentStatus::Processing,
+                    crate::services::mobile_money_service::PaymentStatus::Failed => PaymentStatus::Failed,
+                    crate::services::mobile_money_service::PaymentStatus::Cancelled => PaymentStatus::Cancelled,
+                };
+                
+                Ok((status, Some(gateway_response)))
+            }
+            Err(e) => {
+                log::error!("[PaymentService] Erreur MTN Money: {}", e);
+                // Fallback: simulation
+                let gateway_response = serde_json::json!({
+                    "provider": "mtn_money",
+                    "transaction_reference": format!("MTN_{}", transaction_id),
+                    "status": "pending",
+                    "phone_number": phone_number,
+                    "country_code": country_code,
+                    "amount": amount,
+                    "error": e.to_string(),
+                    "timestamp": chrono::Utc::now()
+                });
+                Ok((PaymentStatus::Pending, Some(gateway_response)))
+            }
+        }
     }
 
     /// Traiter un paiement Visa

@@ -26,7 +26,7 @@ import { useVideoGenerationProgress } from '../../hooks/useVideoGenerationProgre
 import { useVoiceProfiles } from '../../hooks/useVoiceProfiles';
 import type { VideoJobStatus } from '../../services/api';
 import { apiGet, iaApi, mediaApi } from '../../services/api';
-import { studioService } from '../../services/studioService';
+import { studioService, type VideoDependency } from '../../services/studioService';
 import { trackUxEvent } from '../../services/uxMetrics';
 import { modernColors } from '../../theme/modernTheme';
 import {
@@ -162,6 +162,10 @@ const VideoCreationWizardScreen: React.FC = () => {
     const [storyboardLoading, setStoryboardLoading] = useState(false);
     const [studioSessionId, setStudioSessionId] = useState<string | undefined>();
     const [prewarmedShortPreviewUrl, setPrewarmedShortPreviewUrl] = useState<string | undefined>();
+    // ✅ Phase 9 - Amélioration 31 : Chaînage vidéos
+    const [availableSessions, setAvailableSessions] = useState<Array<{ id: string; title?: string }>>([]);
+    const [selectedLinkedSessions, setSelectedLinkedSessions] = useState<string[]>([]);
+    const [dependencies, setDependencies] = useState<VideoDependency[]>([]);
 
     const templateOptions =
         storyTemplates.length > 0 ? storyTemplates : FALLBACK_STORY_TEMPLATES;
@@ -181,6 +185,43 @@ const VideoCreationWizardScreen: React.FC = () => {
             step,
         });
     }, [productIndex, serviceId, step]);
+
+    // ✅ Phase 9 - Amélioration 31 : Charger les sessions disponibles pour le chaînage
+    useEffect(() => {
+        const loadAvailableSessions = async () => {
+            try {
+                const sessions = await studioService.listSessions();
+                setAvailableSessions(sessions.map((s) => ({
+                    id: s.id,
+                    title: (typeof s.brief === 'object' && s.brief !== null && 'title' in s.brief)
+                        ? String(s.brief.title)
+                        : undefined
+                })));
+            } catch (error) {
+                console.error('[VideoCreationWizardScreen] Erreur chargement sessions:', error);
+            }
+        };
+        if (step === 3) {
+            loadAvailableSessions();
+        }
+    }, [step]);
+
+    // ✅ Phase 9 - Amélioration 31 : Charger les dépendances existantes
+    useEffect(() => {
+        const loadDependencies = async () => {
+            if (!studioSessionId) return;
+            try {
+                const deps = await studioService.getDependencies(studioSessionId);
+                setDependencies(deps);
+                setSelectedLinkedSessions(deps.map((d) => d.child_session_id));
+            } catch (error) {
+                console.error('[VideoCreationWizardScreen] Erreur chargement dépendances:', error);
+            }
+        };
+        if (studioSessionId && step === 3) {
+            loadDependencies();
+        }
+    }, [studioSessionId, step]);
 
     // Auto-assign de médias par défaut aux scènes (réduction de gestes)
     useEffect(() => {
@@ -285,9 +326,23 @@ const VideoCreationWizardScreen: React.FC = () => {
                 const service = response.data;
                 setServiceName(service.titre || service.name || `Service #${serviceId}`);
                 const produits = service.data?.produits?.valeur || service.data?.produits || [];
+
+                // ✅ Phase 7 - Amélioration 21 : Auto-remplissage Brief IA depuis description produit/service
                 if (typeof productIndex === 'number' && produits[productIndex]) {
                     const p = produits[productIndex];
                     setProductName(p.nom || p.name || p.title || t('videoWizard.defaultProduct'));
+
+                    // Priorité 1 : Description du produit si disponible
+                    const productDesc = p.description || p.desc;
+                    if (productDesc && !brief) {
+                        setBrief(productDesc);
+                    } else if (produits.length <= 2 && service.description && !brief) {
+                        // Priorité 2 : Description du service si ≤ 2 produits
+                        setBrief(service.description);
+                    }
+                } else if (service.description && !brief) {
+                    // Si pas de produit spécifique, utiliser description service
+                    setBrief(service.description);
                 }
             }
         } catch (error) {
@@ -295,7 +350,7 @@ const VideoCreationWizardScreen: React.FC = () => {
         } finally {
             setLoadingService(false);
         }
-    }, [serviceId, productIndex, t]);
+    }, [serviceId, productIndex, t, brief]);
 
     const fetchServiceMedia = useCallback(async () => {
         if (!serviceId) {
@@ -1614,6 +1669,83 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     </View>
                                 )}
                             </NativeCard>
+
+                            {/* ✅ Phase 9 - Amélioration 31 : Sélection de vidéos liées */}
+                            {studioSessionId && (
+                                <NativeCard style={styles.sectionCard}>
+                                    <Text style={styles.sectionTitle}>Vidéos liées (chaînage)</Text>
+                                    <Text style={styles.sectionSubTitle}>
+                                        Sélectionne les vidéos qui suivront celle-ci dans une séquence
+                                    </Text>
+                                    {availableSessions.length > 0 ? (
+                                        <FlatList
+                                            data={availableSessions.filter((s) => s.id !== studioSessionId)}
+                                            keyExtractor={(item) => item.id}
+                                            renderItem={({ item }) => {
+                                                const isSelected = selectedLinkedSessions.includes(item.id);
+                                                return (
+                                                    <TouchableOpacity
+                                                        style={[
+                                                            styles.sceneMediaRow,
+                                                            isSelected && styles.sceneMediaRowActive,
+                                                        ]}
+                                                        onPress={() => {
+                                                            if (isSelected) {
+                                                                setSelectedLinkedSessions(
+                                                                    selectedLinkedSessions.filter((id) => id !== item.id)
+                                                                );
+                                                            } else {
+                                                                setSelectedLinkedSessions([...selectedLinkedSessions, item.id]);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <SafeIcon
+                                                            name={isSelected ? 'check-circle' : 'circle'}
+                                                            size={18}
+                                                            color={isSelected ? modernColors.success : modernColors.textSecondary}
+                                                        />
+                                                        <Text style={styles.sceneMediaRowLabel}>
+                                                            {item.title || `Session ${item.id.slice(0, 8)}`}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            }}
+                                            scrollEnabled={false}
+                                        />
+                                    ) : (
+                                        <Text style={styles.summaryText}>Aucune autre session disponible</Text>
+                                    )}
+                                    {selectedLinkedSessions.length > 0 && (
+                                        <NativeButton
+                                            title="Enregistrer les liens"
+                                            variant="primary"
+                                            size="small"
+                                            onPress={async () => {
+                                                if (!studioSessionId) return;
+                                                try {
+                                                    await studioService.setDependencies(studioSessionId, selectedLinkedSessions);
+                                                    Alert.alert('Succès', 'Vidéos liées enregistrées');
+                                                    const deps = await studioService.getDependencies(studioSessionId);
+                                                    setDependencies(deps);
+                                                } catch (error: any) {
+                                                    Alert.alert('Erreur', error.message || 'Erreur lors de l\'enregistrement');
+                                                }
+                                            }}
+                                            style={{ marginTop: 12 }}
+                                        />
+                                    )}
+                                    {dependencies.length > 0 && (
+                                        <View style={{ marginTop: 12 }}>
+                                            <Text style={styles.sectionSubTitle}>Vidéos liées :</Text>
+                                            {dependencies.map((dep, idx) => (
+                                                <Text key={dep.id} style={styles.summaryText}>
+                                                    {idx + 1}. Session {dep.child_session_id.slice(0, 8)}
+                                                </Text>
+                                            ))}
+                                        </View>
+                                    )}
+                                </NativeCard>
+                            )}
 
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>{t('videoWizard.sections.publication')}</Text>

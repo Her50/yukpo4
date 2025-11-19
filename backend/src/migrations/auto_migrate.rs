@@ -3955,6 +3955,13 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recipient_dropoff_updated_at TIMESTAMPTZ",
     )
     .await?;
+    // ✅ Phase 9 - Amélioration 28 : Ajouter preferred_courier_id pour sélection livreur
+    run_delivery_step(
+        pool,
+        "Add deliveries.preferred_courier_id column",
+        "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS preferred_courier_id UUID REFERENCES couriers(id) ON DELETE SET NULL",
+    )
+    .await?;
     run_delivery_step(
         pool,
         "Add deliveries.recipient_chat_thread_id column",
@@ -4818,6 +4825,83 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_global_promo_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: global promo tables OK"),
         Err(e) => error!("❌ Erreur migration auto global promo tables: {}", e),
+    }
+
+    match ensure_product_delivery_config_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: product_delivery_config OK"),
+        Err(e) => error!("❌ Erreur migration auto product_delivery_config: {}", e),
+    }
+
+    match ensure_client_delivery_preferences_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: client_delivery_preferences OK"),
+        Err(e) => error!("❌ Erreur migration auto client_delivery_preferences: {}", e),
+    }
+
+    match ensure_external_delivery_providers_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: external_delivery_providers OK"),
+        Err(e) => error!("❌ Erreur migration auto external_delivery_providers: {}", e),
+    }
+
+    match ensure_public_tracking_tokens_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: public_tracking_tokens OK"),
+        Err(e) => error!("❌ Erreur migration auto public_tracking_tokens: {}", e),
+    }
+
+    match ensure_delivery_payment_reservations_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery_payment_reservations OK"),
+        Err(e) => error!("❌ Erreur migration auto delivery_payment_reservations: {}", e),
+    }
+
+    match ensure_payment_methods_matching_columns(pool).await {
+        Ok(_) => info!("✅ Migration auto: payment_methods_matching OK"),
+        Err(e) => error!("❌ Erreur migration auto payment_methods_matching: {}", e),
+    }
+
+    // ✅ NOUVEAU : Table delivery_proximity_suggestions
+    match ensure_delivery_proximity_suggestions_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery_proximity_suggestions OK"),
+        Err(e) => error!("❌ Erreur migration auto delivery_proximity_suggestions: {}", e),
+    }
+
+    // ✅ NOUVEAU : Table negotiated_prices
+    match ensure_negotiated_prices_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: negotiated_prices OK"),
+        Err(e) => error!("❌ Erreur migration auto negotiated_prices: {}", e),
+    }
+
+    // ✅ Phase 9 - Amélioration 31 : Table video_dependencies
+    match ensure_video_dependencies_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: video_dependencies OK"),
+        Err(e) => error!("❌ Erreur migration auto video_dependencies: {}", e),
+    }
+
+    // ✅ Phase 9 - Amélioration 32 : Table merchant_storage_locations
+    match ensure_merchant_storage_locations_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: merchant_storage_locations OK"),
+        Err(e) => error!("❌ Erreur migration auto merchant_storage_locations: {}", e),
+    }
+
+    // ✅ Phase 9 - Amélioration : Raisons de refus de colis
+    match ensure_parcel_rejection_reason_type(pool).await {
+        Ok(_) => info!("✅ Migration auto: parcel_rejection_reason OK"),
+        Err(e) => error!("❌ Erreur migration auto parcel_rejection_reason: {}", e),
+    }
+
+    match ensure_delivery_proof_media_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery_proof_media OK"),
+        Err(e) => error!("❌ Erreur migration auto delivery_proof_media: {}", e),
+    }
+
+    // ✅ Phase 9 - Amélioration : Table product_delivery_zones
+    match ensure_product_delivery_zones_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: product_delivery_zones OK"),
+        Err(e) => error!("❌ Erreur migration auto product_delivery_zones: {}", e),
+    }
+
+    // ✅ Phase 10 - Optimisations : Index géographiques pour améliorer les performances des requêtes GPS
+    match ensure_geographic_indexes(pool).await {
+        Ok(_) => info!("✅ Migration auto: geographic indexes OK"),
+        Err(e) => error!("❌ Erreur migration auto geographic indexes: {}", e),
     }
 
     match ensure_live_streaming_tables(pool).await {
@@ -6037,5 +6121,658 @@ pub async fn ensure_social_connectors_tables(pool: &PgPool) -> Result<(), sqlx::
     .execute(pool)
     .await?;
 
+    Ok(())
+}
+
+/// Vérifie et crée la table product_delivery_config si elle n'existe pas
+pub async fn ensure_product_delivery_config_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table product_delivery_config...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS product_delivery_config (
+            id SERIAL PRIMARY KEY,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            product_index INTEGER NOT NULL,
+            
+            -- Pickup (obligatoire)
+            pickup_address TEXT NOT NULL,
+            pickup_latitude DOUBLE PRECISION NOT NULL,
+            pickup_longitude DOUBLE PRECISION NOT NULL,
+            
+            -- Type véhicule (obligatoire)
+            required_vehicle_type_id INTEGER NOT NULL REFERENCES parcel_types(id),
+            weight_kg DOUBLE PRECISION,
+            volume_cm3 DOUBLE PRECISION,
+            requires_isothermal BOOLEAN DEFAULT FALSE,
+            requires_fragile_handling BOOLEAN DEFAULT FALSE,
+            
+            -- Plages horaires de récupération (obligatoire)
+            pickup_availability_schedule JSONB NOT NULL,
+            
+            -- Informations additionnelles
+            pickup_instructions TEXT,
+            billing_mode VARCHAR(50) DEFAULT 'standard',
+            billing_partner_label TEXT,
+            
+            -- Statut
+            is_configured BOOLEAN DEFAULT FALSE,
+            configured_at TIMESTAMPTZ,
+            configured_by INTEGER REFERENCES users(id),
+            
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            
+            UNIQUE(service_id, product_index)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_delivery_config_service ON product_delivery_config(service_id, product_index)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_delivery_config_active ON product_delivery_config(is_configured) WHERE is_configured = TRUE",
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// ✅ Phase 3 - Amélioration 7 : Vérifie et crée la table client_delivery_preferences si elle n'existe pas
+pub async fn ensure_client_delivery_preferences_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table client_delivery_preferences...");
+    
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS client_delivery_preferences (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            delivery_id UUID REFERENCES deliveries(id) ON DELETE SET NULL,
+            
+            -- Préférences de livraison
+            preferred_delivery_date DATE,
+            preferred_delivery_time_start TIME,
+            preferred_delivery_time_end TIME,
+            preferred_delivery_window_hours INTEGER DEFAULT 2,
+            
+            -- Contraintes
+            avoid_days INTEGER[],
+            urgency_level VARCHAR(50) DEFAULT 'standard',
+            
+            -- Flexibilité
+            is_flexible BOOLEAN DEFAULT TRUE,
+            flexibility_window_days INTEGER DEFAULT 3,
+            
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            
+            UNIQUE(user_id, delivery_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_client_delivery_preferences_user ON client_delivery_preferences(user_id)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_client_delivery_preferences_delivery ON client_delivery_preferences(delivery_id)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_client_delivery_preferences_date ON client_delivery_preferences(preferred_delivery_date)",
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
+/// ✅ Phase 4 - Amélioration 8 : Vérifie et crée la table external_delivery_providers si elle n'existe pas
+pub async fn ensure_external_delivery_providers_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table external_delivery_providers...");
+    
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS external_delivery_providers (
+            id SERIAL PRIMARY KEY,
+            provider_name VARCHAR(255) NOT NULL,
+            api_key VARCHAR(255) UNIQUE NOT NULL,
+            api_secret VARCHAR(255) NOT NULL,
+            contact_email VARCHAR(255),
+            contact_phone VARCHAR(255),
+            webhook_url TEXT,
+            allowed_ips INET[],
+            rate_limit_per_hour INTEGER DEFAULT 100,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_used_at TIMESTAMPTZ,
+            total_deliveries INTEGER DEFAULT 0,
+            metadata JSONB DEFAULT '{}'::jsonb
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_external_providers_api_key ON external_delivery_providers(api_key)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_external_providers_active ON external_delivery_providers(is_active) WHERE is_active = TRUE",
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
+/// ✅ Phase 5 - Améliorations 10-15 : Crée la table delivery_payment_reservations
+pub async fn ensure_delivery_payment_reservations_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table delivery_payment_reservations...");
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_payment_reservations (
+            id SERIAL PRIMARY KEY,
+            delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            
+            -- Montants
+            product_price_cents BIGINT NOT NULL,
+            delivery_cost_cents BIGINT NOT NULL,
+            total_amount_cents BIGINT NOT NULL,
+            
+            -- Mode de facturation
+            billing_mode VARCHAR(50) DEFAULT 'standard',
+            merchant_pays_delivery BOOLEAN DEFAULT FALSE,
+            
+            -- Statut de la réservation
+            reservation_status VARCHAR(50) DEFAULT 'reserved',
+            
+            -- Informations de débit
+            reserved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            debited_at TIMESTAMPTZ,
+            released_at TIMESTAMPTZ,
+            refunded_at TIMESTAMPTZ,
+            
+            -- Informations de reversement prestataire
+            merchant_payout_cents BIGINT,
+            commission_cents BIGINT,
+            commission_rate DECIMAL(5,4) DEFAULT 0.05,
+            merchant_paid_at TIMESTAMPTZ,
+            
+            -- Métadonnées
+            metadata JSONB DEFAULT '{}'::jsonb,
+            
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            
+            UNIQUE(delivery_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_delivery ON delivery_payment_reservations(delivery_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_user ON delivery_payment_reservations(user_id)",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_status ON delivery_payment_reservations(reservation_status)",
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// ✅ Phase 5 - Matching Intelligent : Ajoute les colonnes pour matching modes de paiement
+pub async fn ensure_payment_methods_matching_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des colonnes payment_methods_matching...");
+    
+    // Ajouter colonne payment_methods dans users
+    sqlx::query(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_methods JSONB DEFAULT '{}'::jsonb"
+    )
+    .execute(pool)
+    .await?;
+    
+    // Ajouter colonnes dans delivery_payment_reservations
+    sqlx::query(
+        "ALTER TABLE delivery_payment_reservations ADD COLUMN IF NOT EXISTS client_payment_method JSONB"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "ALTER TABLE delivery_payment_reservations ADD COLUMN IF NOT EXISTS merchant_payment_method JSONB"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "ALTER TABLE delivery_payment_reservations ADD COLUMN IF NOT EXISTS payout_method_used VARCHAR(50)"
+    )
+    .execute(pool)
+    .await?;
+    
+    // Créer index pour users.payment_methods
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_users_payment_methods ON users USING GIN (payment_methods) WHERE payment_methods != '{}'::jsonb"
+    )
+    .execute(pool)
+    .await?;
+    
+    // Créer index pour delivery_payment_reservations.payout_method_used
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_payout_method ON delivery_payment_reservations(payout_method_used)"
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
+/// ✅ NOUVEAU : Crée la table delivery_proximity_suggestions pour stocker les suggestions de proximité
+pub async fn ensure_delivery_proximity_suggestions_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table delivery_proximity_suggestions...");
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_proximity_suggestions (
+            id SERIAL PRIMARY KEY,
+            delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            suggested_status TEXT NOT NULL,
+            location_type TEXT NOT NULL, -- "pickup" ou "dropoff"
+            distance_meters FLOAT,
+            auto_confirm_after_seconds INTEGER,
+            status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'confirmed', 'auto_confirmed', 'cancelled'
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            confirmed_at TIMESTAMPTZ,
+            courier_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            metadata JSONB DEFAULT '{}'::jsonb
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_proximity_suggestions_delivery ON delivery_proximity_suggestions(delivery_id)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_proximity_suggestions_status ON delivery_proximity_suggestions(status) WHERE status = 'pending'",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_proximity_suggestions_created ON delivery_proximity_suggestions(created_at)",
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
+/// ✅ NOUVEAU : Crée la table negotiated_prices pour stocker les prix négociés entre prestataire et client
+pub async fn ensure_negotiated_prices_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table negotiated_prices...");
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS negotiated_prices (
+            id SERIAL PRIMARY KEY,
+            conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            product_index INTEGER, -- NULL si prix global pour le service
+            merchant_user_id INTEGER NOT NULL REFERENCES users(id),
+            client_user_id INTEGER NOT NULL REFERENCES users(id),
+            original_price_cents BIGINT NOT NULL,
+            negotiated_price_cents BIGINT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'accepted', 'rejected', 'expired'
+            expires_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            accepted_at TIMESTAMPTZ,
+            metadata JSONB DEFAULT '{}'::jsonb,
+            UNIQUE(conversation_id, service_id, product_index, client_user_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_negotiated_prices_conversation ON negotiated_prices(conversation_id)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_negotiated_prices_service ON negotiated_prices(service_id)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_negotiated_prices_status ON negotiated_prices(status) WHERE status = 'pending'",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_negotiated_prices_client ON negotiated_prices(client_user_id, status) WHERE status = 'accepted'",
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
+/// ✅ Phase 9 - Amélioration 31 : Crée la table video_dependencies pour chaînage vidéos
+pub async fn ensure_video_dependencies_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table video_dependencies...");
+    
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS video_dependencies (
+            id SERIAL PRIMARY KEY,
+            parent_session_id UUID NOT NULL REFERENCES studio_sessions(id) ON DELETE CASCADE,
+            child_session_id UUID NOT NULL REFERENCES studio_sessions(id) ON DELETE CASCADE,
+            order_index INTEGER,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(parent_session_id, child_session_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_video_dependencies_parent ON video_dependencies(parent_session_id, order_index)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_video_dependencies_child ON video_dependencies(child_session_id)",
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
+/// ✅ Phase 9 - Amélioration 32 : Crée la table merchant_storage_locations pour plusieurs lieux de stock
+pub async fn ensure_merchant_storage_locations_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table merchant_storage_locations...");
+    
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS merchant_storage_locations (
+                id SERIAL PRIMARY KEY,
+                merchant_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                address TEXT NOT NULL,
+                latitude DOUBLE PRECISION NOT NULL,
+                longitude DOUBLE PRECISION NOT NULL,
+                zone_id UUID REFERENCES delivery_zones(id) ON DELETE SET NULL,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            "#,
+        )
+        .execute(pool)
+        .await?;
+    
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_merchant_storage_locations_merchant ON merchant_storage_locations(merchant_user_id, is_active) WHERE is_active = TRUE",
+        )
+        .execute(pool)
+        .await?;
+        
+        // ✅ Phase 9 - Amélioration : Index pour zone_id
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_merchant_storage_locations_zone ON merchant_storage_locations(zone_id) WHERE zone_id IS NOT NULL",
+        )
+        .execute(pool)
+        .await?;
+    
+    // ✅ Phase 9 - Amélioration 32 : Ajouter storage_location_id à product_delivery_config
+    sqlx::query(
+        r#"
+        ALTER TABLE product_delivery_config 
+        ADD COLUMN IF NOT EXISTS storage_location_id INTEGER REFERENCES merchant_storage_locations(id) ON DELETE SET NULL
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_delivery_config_storage_location ON product_delivery_config(storage_location_id) WHERE storage_location_id IS NOT NULL",
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
+/// ✅ Phase 9 - Amélioration : Crée la table product_delivery_zones pour associer des zones de livraison aux produits
+pub async fn ensure_product_delivery_zones_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table product_delivery_zones...");
+    
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS product_delivery_zones (
+            id SERIAL PRIMARY KEY,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            product_index INTEGER NOT NULL,
+            zone_id UUID NOT NULL REFERENCES delivery_zones(id) ON DELETE CASCADE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(service_id, product_index, zone_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_delivery_zones_service ON product_delivery_zones(service_id, product_index)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_delivery_zones_zone ON product_delivery_zones(zone_id)",
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
+/// ✅ Phase 10 - Optimisations : Crée les index géographiques pour optimiser les requêtes GPS
+pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des index géographiques...");
+    
+    // 1. Index GIST pour services.gps (TEXT format "latitude,longitude")
+    // Créer un index fonctionnel qui convertit le TEXT en GEOGRAPHY Point
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_services_gps_gist 
+        ON services 
+        USING GIST (
+            ST_GeogFromText(
+                'POINT(' || 
+                SPLIT_PART(gps, ',', 2) || ' ' || 
+                SPLIT_PART(gps, ',', 1) || 
+                ')'
+            )
+        )
+        WHERE gps IS NOT NULL 
+          AND gps != '' 
+          AND gps ~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    // 2. Index GIST pour merchant_storage_locations (latitude, longitude)
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_merchant_storage_locations_location_gist 
+        ON merchant_storage_locations 
+        USING GIST (
+            ST_Point(longitude, latitude)::geography
+        )
+        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    // 3. Index GIST pour african_locations (latitude, longitude)
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_african_locations_location_gist 
+        ON african_locations 
+        USING GIST (
+            ST_Point(longitude::double precision, latitude::double precision)::geography
+        )
+        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    // 4. Index B-tree pour services.gps (pour recherches exactes et LIKE)
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_services_gps_btree 
+        ON services (gps) 
+        WHERE gps IS NOT NULL AND gps != ''
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    // 5. Index composite pour merchant_storage_locations (merchant + location)
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_merchant_storage_locations_merchant_location 
+        ON merchant_storage_locations (merchant_user_id, is_active) 
+        WHERE is_active = TRUE AND latitude IS NOT NULL AND longitude IS NOT NULL
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Index géographiques créés avec succès");
+    Ok(())
+}
+
+/// ✅ Phase 9 - Amélioration : Crée le type enum pour les raisons de refus de colis
+pub async fn ensure_parcel_rejection_reason_type(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification du type parcel_rejection_reason...");
+    
+    sqlx::query(
+        r#"
+        DO $$ BEGIN
+            CREATE TYPE parcel_rejection_reason AS ENUM (
+                'damaged',
+                'wrong_item',
+                'expired',
+                'wrong_quantity',
+                'wrong_size',
+                'wrong_color',
+                'quality_issue',
+                'not_ordered',
+                'duplicate',
+                'other'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // ✅ Phase 9 - Amélioration : Ajouter rejection_reason à shopping_order_items
+    sqlx::query(
+        r#"
+        ALTER TABLE shopping_order_items 
+        ADD COLUMN IF NOT EXISTS rejection_reason parcel_rejection_reason
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_shopping_order_items_rejection_reason ON shopping_order_items(rejection_reason) WHERE rejection_reason IS NOT NULL",
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
+/// ✅ Phase 9 - Amélioration : Crée la table delivery_proof_media pour stocker les médias de preuve (pickup/delivery)
+pub async fn ensure_delivery_proof_media_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table delivery_proof_media...");
+    
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_proof_media (
+            id SERIAL PRIMARY KEY,
+            delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video')),
+            media_url TEXT NOT NULL,
+            proof_type TEXT NOT NULL CHECK (proof_type IN ('pickup', 'delivery')),
+            uploaded_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            uploaded_at TIMESTAMPTZ DEFAULT NOW(),
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_proof_media_delivery ON delivery_proof_media(delivery_id, proof_type)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_proof_media_uploaded_by ON delivery_proof_media(uploaded_by)",
+    )
+    .execute(pool)
+    .await?;
+    
     Ok(())
 }

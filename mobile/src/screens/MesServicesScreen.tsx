@@ -573,11 +573,11 @@ const MesServicesScreen: React.FC = () => {
                 <Text style={styles.headerButtonText}>Actualiser</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.headerButton, styles.dashboardButton]}
-                onPress={() => (navigation as any).navigate('Dashboard')}
+                style={[styles.headerButton, styles.analyticsButton]}
+                onPress={() => (navigation as any).navigate('AnalyticsDashboard')}
               >
-                <SafeIcon name="bar-chart" size={20} color="#fff" />
-                <Text style={styles.headerButtonText}>Dashboard</Text>
+                <SafeIcon name="bar-chart-3" size={20} color="#fff" />
+                <Text style={styles.headerButtonText}>Analytics</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.headerButton, styles.publiciteButton]}
@@ -676,9 +676,16 @@ const MesServicesScreen: React.FC = () => {
         {/* Boutons de navigation */}
         <View style={styles.footerContainer}>
           <NativeButton
+            title="📊 Analytics Dashboard"
+            onPress={() => (navigation as any).navigate('AnalyticsDashboard')}
+            variant="primary"
+            size="large"
+            style={styles.analyticsFooterButton}
+          />
+          <NativeButton
             title="📦 Gérer mes produits"
             onPress={() => navigation.navigate('MesProduits' as never)}
-            variant="primary"
+            variant="outline"
             size="large"
             style={styles.productsButton}
           />
@@ -778,8 +785,8 @@ const styles = StyleSheet.create({
     borderRadius: modernStyles.borderRadius.medium,
     gap: 6,
   },
-  dashboardButton: {
-    backgroundColor: 'rgba(16, 185, 129, 0.3)', // Vert pour Dashboard
+  analyticsButton: {
+    backgroundColor: 'rgba(99, 102, 241, 0.3)', // Indigo pour Analytics
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
@@ -860,6 +867,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: modernColors.border,
     gap: 12,
+  },
+  analyticsFooterButton: {
+    alignSelf: 'stretch',
+    marginBottom: 8,
   },
   productsButton: {
     alignSelf: 'stretch',

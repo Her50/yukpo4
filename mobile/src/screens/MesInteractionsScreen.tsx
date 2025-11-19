@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { NativeCard } from '../components/NativeDesign';
+import { NativeButton, NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
@@ -521,6 +521,17 @@ const MesInteractionsScreen: React.FC = () => {
             ))
           )}
         </View>
+
+        {/* ✅ Bouton Dashboard Client/Utilisateur */}
+        <View style={styles.dashboardSection}>
+          <NativeButton
+            title="📊 Dashboard Complet"
+            onPress={() => (navigation as any).navigate('Dashboard')}
+            variant="primary"
+            size="large"
+            style={styles.dashboardButton}
+          />
+        </View>
       </ScrollView>
     </View>
   );
@@ -833,6 +844,9 @@ const styles = StyleSheet.create({
     color: modernColors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  dashboardButton: {
+    alignSelf: 'stretch',
   },
 });
 

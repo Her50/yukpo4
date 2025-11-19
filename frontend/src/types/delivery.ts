@@ -67,6 +67,19 @@ export interface DeliveryCheckpoint {
     location?: DeliveryLocation | null;
 }
 
+// ✅ Phase 9 - Amélioration : Raisons de refus de colis
+export type ParcelRejectionReason =
+    | 'damaged'
+    | 'wrong_item'
+    | 'expired'
+    | 'wrong_quantity'
+    | 'wrong_size'
+    | 'wrong_color'
+    | 'quality_issue'
+    | 'not_ordered'
+    | 'duplicate'
+    | 'other';
+
 export interface ShoppingBasketItem {
     id: string;
     productName: string;
@@ -75,6 +88,7 @@ export interface ShoppingBasketItem {
     estimatedPriceCents?: number | null;
     actualPriceCents?: number | null;
     status?: string;
+    rejection_reason?: ParcelRejectionReason | null; // ✅ Phase 9 - Amélioration
     note?: string | null;
 }
 
@@ -86,14 +100,29 @@ export interface ShoppingSummary {
     comment?: string | null;
 }
 
+// ✅ Phase 9 - Amélioration : Média de preuve de livraison
+export interface DeliveryProofMedia {
+    id: number;
+    delivery_id: string;
+    media_type: 'image' | 'video';
+    media_url: string;
+    proof_type: 'pickup' | 'delivery';
+    uploaded_by: number;
+    uploaded_at: string;
+    metadata?: Record<string, unknown>;
+    created_at: string;
+}
+
 export interface DeliverySummary {
     id: string;
     orderId?: string;
     kind: DeliveryKind;
     status: DeliveryStatus;
+    creator_id?: number; // ✅ Phase 9 - Amélioration 28
     clientId?: string;
     courier?: DeliveryCourier | null;
     recipient?: DeliveryRecipient | null;
+    proof_media?: DeliveryProofMedia[]; // ✅ Phase 9 - Amélioration : Médias de preuve
     pickup: {
         label?: string | null;
         address?: string | null;
@@ -122,7 +151,8 @@ export type DeliveryRealtimeEventType =
     | 'shopping_update'
     | 'recipient_dropoff'
     | 'wallet_update'
-    | 'delivery_error';
+    | 'delivery_error'
+    | 'dropoff_address_provided'; // ✅ Phase 9 - Amélioration 29
 
 export interface DeliveryRealtimeEvent<TPayload = any> {
     type: DeliveryRealtimeEventType;
@@ -138,6 +168,7 @@ export interface DeliveryLocationUpdatePayload {
     heading?: number | null;
     speed?: number | null;
     source?: 'client' | 'courier' | 'recipient';
+    address?: string | null; // ✅ Phase 9 - Amélioration 30 : Adresse optionnelle
 }
 
 export interface DeliveryRecipientPayload {

@@ -67,6 +67,19 @@ export interface DeliveryCheckpoint {
     location?: DeliveryLocation;
 }
 
+// ✅ Phase 9 - Amélioration : Raisons de refus de colis
+export type ParcelRejectionReason =
+    | 'damaged'
+    | 'wrong_item'
+    | 'expired'
+    | 'wrong_quantity'
+    | 'wrong_size'
+    | 'wrong_color'
+    | 'quality_issue'
+    | 'not_ordered'
+    | 'duplicate'
+    | 'other';
+
 export interface ShoppingBasketItem {
     id: string;
     label: string;
@@ -76,6 +89,8 @@ export interface ShoppingBasketItem {
     estimatedTotal?: number | null;
     actualPrice?: number | null;
     actualTotal?: number | null;
+    status?: string;
+    rejection_reason?: ParcelRejectionReason | null; // ✅ Phase 9 - Amélioration
     note?: string;
     isSubstitution?: boolean;
     imageUrl?: string;
@@ -110,6 +125,7 @@ export interface DeliverySummary {
     orderId?: string;
     kind: DeliveryKind;
     status: DeliveryStatus;
+    creator_id?: number; // ✅ Phase 9 - Amélioration 28
     etaIso?: string | null;
     checkpoints: DeliveryCheckpoint[];
     pricing: DeliveryPricingBreakdown | null;
@@ -146,7 +162,8 @@ export type DeliveryRealtimeEventType =
     | 'shopping_update'
     | 'recipient_dropoff'
     | 'wallet_update'
-    | 'delivery_error';
+    | 'delivery_error'
+    | 'dropoff_address_provided'; // ✅ Phase 9 - Amélioration 29
 
 export interface DeliveryRealtimeEvent<TPayload = any> {
     type: DeliveryRealtimeEventType;
@@ -198,6 +215,19 @@ export interface ShoppingOrderPayload {
     currency: string;
     comment?: string;
     recipient?: DeliveryRecipientPayload;
+}
+
+// ✅ Phase 9 - Amélioration : Média de preuve de livraison
+export interface DeliveryProofMedia {
+    id: number;
+    delivery_id: string;
+    media_type: 'image' | 'video';
+    media_url: string;
+    proof_type: 'pickup' | 'delivery';
+    uploaded_by: number;
+    uploaded_at: string;
+    metadata?: Record<string, any> | null;
+    created_at: string;
 }
 
 

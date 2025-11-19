@@ -2,11 +2,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/buttons/Button';
 import { useToast } from '@/components/ui/use-toast';
 import { apiGet, apiPost } from '@/lib/api';
+import { trackChatEvent } from '@/services/metricsTracking';
 import { Service } from '@/types/service';
 import {
   Image,
   Images,
   Mic,
+  Package,
   Paperclip,
   Phone,
   Smile,
@@ -20,7 +22,9 @@ import {
   X
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
+import OrderDeliveryModal from '../delivery/OrderDeliveryModal'; // ✅ Phase 8 - Amélioration 25
 import UserMentionPicker from '../ui/UserMentionPicker';
+import NegotiatedPriceModal from './NegotiatedPriceModal'; // ✅ NOUVEAU : Prix négociés
 
 // Fonction utilitaire pour extraire la valeur d'un champ de service
 const getServiceFieldValue = (field: any): string => {
@@ -108,6 +112,14 @@ const ChatModal: React.FC<ChatModalProps> = ({
   // ✅ NOUVEAU: État pour le système de réponse/citation
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
 
+  // ✅ Phase 8 - Amélioration 25 : États pour commande depuis chat
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedProductForOrder, setSelectedProductForOrder] = useState<{ index?: number, name?: string } | null>(null);
+
+  // ✅ NOUVEAU : États pour prix négociés
+  const [showNegotiatedPriceModal, setShowNegotiatedPriceModal] = useState(false);
+  const [selectedProductForNegotiation, setSelectedProductForNegotiation] = useState<{ index?: number, name?: string, price?: number } | null>(null);
+
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -153,10 +165,21 @@ const ChatModal: React.FC<ChatModalProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // ✅ NOUVEAU: Charger les participants au montage
+  // ✅ NOUVEAU : État pour l'ID réel de la conversation
+  const [realConversationId, setRealConversationId] = useState<number | null>(null);
+
+  // ✅ NOUVEAU: Charger les participants au montage et récupérer l'ID réel de la conversation
   useEffect(() => {
     loadParticipants();
-  }, [service.id]);
+    loadRealConversationId();
+    // ✅ Tracking métriques : Ouverture conversation
+    trackChatEvent('conversation_opened');
+
+    return () => {
+      // ✅ Tracking métriques : Fermeture conversation
+      trackChatEvent('conversation_closed');
+    };
+  }, [service.id, user?.id, service.user_id]);
 
   const loadParticipants = async () => {
     if (!service?.id) return;
@@ -169,6 +192,39 @@ const ChatModal: React.FC<ChatModalProps> = ({
       }
     } catch (error) {
       console.error('[ChatModal] Erreur chargement participants:', error);
+    }
+  };
+
+  // ✅ NOUVEAU : Récupérer l'ID réel de la conversation (privée ou liée au service)
+  const loadRealConversationId = async () => {
+    if (!service?.id || !user?.id || !service.user_id) return;
+
+    try {
+      // Essayer de récupérer une conversation privée entre le client et le prestataire
+      const targetUserId = user.id === service.user_id ? null : service.user_id;
+      if (targetUserId) {
+        try {
+          const privateConvResponse = await apiGet(`/api/conversations/private/${targetUserId}`);
+          if (privateConvResponse.ok) {
+            const privateConv = await privateConvResponse.json();
+            if (privateConv?.id) {
+              setRealConversationId(privateConv.id);
+              console.log('[ChatModal] Conversation privée trouvée:', privateConv.id);
+              return;
+            }
+          }
+        } catch (error) {
+          // Pas de conversation privée, continuer avec service.id
+          console.log('[ChatModal] Pas de conversation privée, utilisation de service.id');
+        }
+      }
+
+      // Fallback : utiliser service.id comme conversation_id (conversation liée au service)
+      setRealConversationId(service.id);
+    } catch (error) {
+      console.error('[ChatModal] Erreur chargement conversation ID:', error);
+      // Fallback : utiliser service.id
+      setRealConversationId(service.id);
     }
   };
 
@@ -260,6 +316,9 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
   const handleSendMessage = () => {
     if (!newMessage.trim()) return;
+
+    // ✅ Tracking métriques : Message envoyé
+    trackChatEvent('message_sent');
 
     const message = {
       id: Date.now().toString(),
@@ -921,6 +980,37 @@ const ChatModal: React.FC<ChatModalProps> = ({
             </div>
           )}
 
+          {/* ✅ Phase 8 - Amélioration 25 : Boutons d'actions rapides pour commande */}
+          <div className="mb-3 flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedProductForOrder(null);
+                setShowOrderModal(true);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Package className="w-4 h-4" />
+              Commander avec livraison
+            </Button>
+            {/* ✅ NOUVEAU : Bouton pour négocier un prix */}
+            {user?.id === service.user_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // TODO: Récupérer le produit sélectionné depuis le chat ou un sélecteur
+                  setSelectedProductForNegotiation({ index: 0, name: 'Produit', price: 0 });
+                  setShowNegotiatedPriceModal(true);
+                }}
+                className="flex items-center gap-2"
+              >
+                💰 Négocier un prix
+              </Button>
+            )}
+          </div>
+
           <div className="flex items-end gap-3">
             {/* Boutons d'attachement */}
             <div className="flex gap-2">
@@ -1175,6 +1265,65 @@ const ChatModal: React.FC<ChatModalProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ✅ Phase 8 - Amélioration 25 : Modal de commande depuis chat */}
+      <OrderDeliveryModal
+        isOpen={showOrderModal}
+        onClose={() => {
+          setShowOrderModal(false);
+          setSelectedProductForOrder(null);
+        }}
+        serviceId={service.id}
+        productIndex={selectedProductForOrder?.index}
+        productName={selectedProductForOrder?.name}
+        conversationId={realConversationId || service.id} // ✅ NOUVEAU : ID réel de la conversation (ou service.id en fallback)
+        clientUserId={user?.id} // ✅ NOUVEAU : ID du client
+        onSuccess={(deliveryId) => {
+          // Optionnel : Envoyer un message dans le chat avec le lien de suivi
+          const message = {
+            id: Date.now().toString(),
+            from: 'client',
+            content: `✅ Commande créée ! Suivez votre livraison : /delivery/${deliveryId}`,
+            timestamp: new Date(),
+            status: 'sent',
+            type: 'text',
+            editable: true,
+          };
+          setChatMessages(prev => [...prev, message]);
+          setShowOrderModal(false);
+          setSelectedProductForOrder(null);
+        }}
+      />
+
+      {/* ✅ NOUVEAU : Modal de négociation de prix */}
+      {showNegotiatedPriceModal && selectedProductForNegotiation && (
+        <NegotiatedPriceModal
+          isOpen={showNegotiatedPriceModal}
+          onClose={() => {
+            setShowNegotiatedPriceModal(false);
+            setSelectedProductForNegotiation(null);
+          }}
+          conversationId={realConversationId || service.id} // ✅ ID réel de la conversation (ou service.id en fallback)
+          serviceId={service.id}
+          productIndex={selectedProductForNegotiation.index}
+          originalPrice={selectedProductForNegotiation.price || 0}
+          merchantUserId={service.user_id}
+          clientUserId={user?.id || 0}
+          onPriceNegotiated={() => {
+            // Optionnel : Envoyer un message dans le chat
+            const message = {
+              id: Date.now().toString(),
+              from: 'prestataire',
+              content: `💰 Nouvelle offre de prix négocié proposée !`,
+              timestamp: new Date(),
+              status: 'sent',
+              type: 'text',
+              editable: false,
+            };
+            setChatMessages(prev => [...prev, message]);
+          }}
+        />
       )}
     </div>
   );

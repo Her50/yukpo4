@@ -2030,3 +2030,169 @@ VALUES
     ('medical', 'Médical', 'Colis médicaux sensibles', 10, 20000, TRUE, TRUE, TRUE, FALSE),
     ('document', 'Document', 'Documents importants/confidentiels', 5, 5000, TRUE, FALSE, TRUE, TRUE)
 ON CONFLICT (slug) DO NOTHING;
+
+-- Product delivery configuration table
+-- Migration: 20250127000001_create_product_delivery_config.sql
+CREATE TABLE IF NOT EXISTS product_delivery_config (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    product_index INTEGER NOT NULL,
+    
+    -- Pickup (obligatoire)
+    pickup_address TEXT NOT NULL,
+    pickup_latitude DOUBLE PRECISION NOT NULL,
+    pickup_longitude DOUBLE PRECISION NOT NULL,
+    
+    -- Type véhicule (obligatoire)
+    required_vehicle_type_id INTEGER NOT NULL REFERENCES parcel_types(id),
+    weight_kg DOUBLE PRECISION,
+    volume_cm3 DOUBLE PRECISION,
+    requires_isothermal BOOLEAN DEFAULT FALSE,
+    requires_fragile_handling BOOLEAN DEFAULT FALSE,
+    
+    -- Plages horaires de récupération (obligatoire)
+    pickup_availability_schedule JSONB NOT NULL,
+    
+    -- Informations additionnelles
+    pickup_instructions TEXT,
+    billing_mode VARCHAR(50) DEFAULT 'standard',
+    billing_partner_label TEXT,
+    
+    -- Statut
+    is_configured BOOLEAN DEFAULT FALSE,
+    configured_at TIMESTAMPTZ,
+    configured_by INTEGER REFERENCES users(id),
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    
+    UNIQUE(service_id, product_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_delivery_config_service ON product_delivery_config(service_id, product_index);
+CREATE INDEX IF NOT EXISTS idx_product_delivery_config_active ON product_delivery_config(is_configured) WHERE is_configured = TRUE;
+
+-- Client delivery preferences table
+-- Migration: 20250127000002_create_client_delivery_preferences.sql
+CREATE TABLE IF NOT EXISTS client_delivery_preferences (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    delivery_id UUID REFERENCES deliveries(id) ON DELETE SET NULL,
+    
+    -- Préférences de livraison
+    preferred_delivery_date DATE,
+    preferred_delivery_time_start TIME,  -- Ex: 14:00
+    preferred_delivery_time_end TIME,    -- Ex: 18:00
+    preferred_delivery_window_hours INTEGER DEFAULT 2,  -- Fenêtre de 2h par défaut
+    
+    -- Contraintes
+    avoid_days INTEGER[],  -- Jours à éviter (1=Lundi, 7=Dimanche)
+    urgency_level VARCHAR(50) DEFAULT 'standard',  -- 'standard', 'urgent', 'scheduled'
+    
+    -- Flexibilité
+    is_flexible BOOLEAN DEFAULT TRUE,  -- Accepte d'autres créneaux si indisponible
+    flexibility_window_days INTEGER DEFAULT 3,  -- Flexibilité sur 3 jours
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    
+    UNIQUE(user_id, delivery_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_client_delivery_preferences_user ON client_delivery_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_client_delivery_preferences_delivery ON client_delivery_preferences(delivery_id);
+CREATE INDEX IF NOT EXISTS idx_client_delivery_preferences_date ON client_delivery_preferences(preferred_delivery_date);
+
+-- External delivery providers table
+-- Migration: 20250127000003_create_external_delivery_providers.sql
+CREATE TABLE IF NOT EXISTS external_delivery_providers (
+    id SERIAL PRIMARY KEY,
+    provider_name VARCHAR(255) NOT NULL,
+    api_key VARCHAR(255) UNIQUE NOT NULL,
+    api_secret VARCHAR(255) NOT NULL,
+    contact_email VARCHAR(255),
+    contact_phone VARCHAR(255),
+    webhook_url TEXT,
+    allowed_ips INET[],
+    rate_limit_per_hour INTEGER DEFAULT 100,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_used_at TIMESTAMPTZ,
+    total_deliveries INTEGER DEFAULT 0,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_external_providers_api_key ON external_delivery_providers(api_key);
+CREATE INDEX IF NOT EXISTS idx_external_providers_active ON external_delivery_providers(is_active) WHERE is_active = TRUE;
+
+-- Public tracking tokens table
+-- Migration: 20250127000004_create_public_tracking_tokens.sql
+CREATE TABLE IF NOT EXISTS public_tracking_tokens (
+    id SERIAL PRIMARY KEY,
+    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    tracking_token VARCHAR(255) UNIQUE NOT NULL,
+    provider_id INTEGER REFERENCES external_delivery_providers(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    
+    UNIQUE(delivery_id, tracking_token)
+);
+
+CREATE INDEX IF NOT EXISTS idx_public_tracking_tokens_token ON public_tracking_tokens(tracking_token);
+CREATE INDEX IF NOT EXISTS idx_public_tracking_tokens_delivery ON public_tracking_tokens(delivery_id);
+
+-- Delivery payment reservations table
+-- Migration: 20250127000005_create_delivery_payment_reservations.sql
+CREATE TABLE IF NOT EXISTS delivery_payment_reservations (
+    id SERIAL PRIMARY KEY,
+    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    
+    -- Montants
+    product_price_cents BIGINT NOT NULL,
+    delivery_cost_cents BIGINT NOT NULL,
+    total_amount_cents BIGINT NOT NULL,
+    
+    -- Mode de facturation
+    billing_mode VARCHAR(50) DEFAULT 'standard',
+    merchant_pays_delivery BOOLEAN DEFAULT FALSE,
+    
+    -- Statut de la réservation
+    reservation_status VARCHAR(50) DEFAULT 'reserved',
+    
+    -- Informations de débit
+    reserved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    debited_at TIMESTAMPTZ,
+    released_at TIMESTAMPTZ,
+    refunded_at TIMESTAMPTZ,
+    
+    -- Informations de reversement prestataire
+    merchant_payout_cents BIGINT,
+    commission_cents BIGINT,
+    commission_rate DECIMAL(5,4) DEFAULT 0.05,
+    merchant_paid_at TIMESTAMPTZ,
+    
+    -- Métadonnées
+    metadata JSONB DEFAULT '{}'::jsonb,
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    
+    UNIQUE(delivery_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_delivery ON delivery_payment_reservations(delivery_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_user ON delivery_payment_reservations(user_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_status ON delivery_payment_reservations(reservation_status);
+
+-- Colonnes pour matching intelligent modes de paiement (Phase 5)
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS payment_methods JSONB DEFAULT '{}'::jsonb;
+
+ALTER TABLE delivery_payment_reservations
+ADD COLUMN IF NOT EXISTS client_payment_method JSONB,
+ADD COLUMN IF NOT EXISTS merchant_payment_method JSONB,
+ADD COLUMN IF NOT EXISTS payout_method_used VARCHAR(50);
+
+CREATE INDEX IF NOT EXISTS idx_users_payment_methods ON users USING GIN (payment_methods) WHERE payment_methods != '{}'::jsonb;
+CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_payout_method ON delivery_payment_reservations(payout_method_used);

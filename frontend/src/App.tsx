@@ -30,6 +30,7 @@ import ShoppingBasketPage from '@/pages/delivery/ShoppingBasketPage';
 import ShoppingBudgetPage from '@/pages/delivery/ShoppingBudgetPage';
 import ShoppingPickupDropPage from '@/pages/delivery/ShoppingPickupDropPage';
 import ShoppingSummaryPage from '@/pages/delivery/ShoppingSummaryPage';
+import StorageLocationsPage from '@/pages/delivery/StorageLocationsPage';
 import FormulaireServiceModerne from '@/pages/FormulaireServiceModerne';
 import FormulaireYukpoIntelligent from '@/pages/FormulaireYukpoIntelligent';
 import RechercheBesoin from '@/pages/RechercheBesoin';
@@ -198,6 +199,11 @@ function App() {
                           <CourierDashboardPage />
                         </RequireAuth>
                       } />
+                      <Route path={ROUTES.DELIVERY_STORAGE_LOCATIONS} element={
+                        <RequireAuth>
+                          <StorageLocationsPage />
+                        </RequireAuth>
+                      } />
                       {/*  R+sultats de recherche */}
                       <Route path="/resultat-besoin" element={<ResultatBesoin />} />
                       <Route path="/test-resultat-besoin" element={<TestResultatBesoin />} />
@@ -246,6 +252,7 @@ function App() {
                   },
                 }}
               />
+            </FeatureFlagProvider>
           </IntelligentLanguageProvider>
         </GlobalIAStatsProvider>
       </ToasterProvider>

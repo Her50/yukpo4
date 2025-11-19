@@ -542,6 +542,103 @@ export const deliveryApi = {
       method: 'POST',
     });
   },
+  // ✅ Phase 9 - Amélioration 28 : Assigner un coursier manuellement
+  assignCourier: async (deliveryId: string, courierId: string) => {
+    return apiCall(`/api/delivery/${deliveryId}/assign-courier`, {
+      method: 'POST',
+      body: JSON.stringify({ courier_id: courierId }),
+    });
+  },
+  // ✅ Phase 9 - Amélioration 28 : Lister les coursiers disponibles
+  listAvailableCouriers: async (serviceId?: number) => {
+    const params = serviceId ? `?service_id=${serviceId}` : '';
+    return apiCall(`/api/couriers/available${params}`);
+  },
+  // ✅ Phase 9 - Amélioration 32 : Gestion des lieux de stock
+  listStorageLocations: async () => {
+    return apiCall('/api/delivery/storage-locations');
+  },
+  getStorageLocation: async (id: number) => {
+    return apiCall(`/api/delivery/storage-locations/${id}`);
+  },
+  createStorageLocation: async (payload: {
+    name: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    zone_id?: string | null; // ✅ Phase 9 - Amélioration : Zone géographique
+    is_active?: boolean;
+  }) => {
+    return apiCall('/api/delivery/storage-locations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateStorageLocation: async (id: number, payload: {
+    name: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    zone_id?: string | null; // ✅ Phase 9 - Amélioration : Zone géographique
+    is_active?: boolean;
+  }) => {
+    return apiCall(`/api/delivery/storage-locations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteStorageLocation: async (id: number) => {
+    return apiCall(`/api/delivery/storage-locations/${id}`, {
+      method: 'DELETE',
+    });
+  },
+  // ✅ Phase 9 - Amélioration : Lister les zones de livraison disponibles
+  listDeliveryZones: async (): Promise<Array<{ id: string; name: string; description?: string | null; is_active: boolean }>> => {
+    const response = await apiCall('/api/delivery/zones');
+    // La réponse peut être directement un tableau ou dans response.data
+    if (response && typeof response === 'object') {
+      if (response.success && response.data) {
+        return Array.isArray(response.data) ? response.data : (response.data as any)?.zones || [];
+      }
+      if (Array.isArray(response)) {
+        return response;
+      }
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+    }
+    return [];
+  },
+  // ✅ Phase 9 - Amélioration : Gestion des médias de preuve de livraison
+  listProofMedia: async (deliveryId: string) => {
+    return apiCall(`/api/delivery/${deliveryId}/proof-media`);
+  },
+  uploadProofMedia: async (deliveryId: string, payload: {
+    media_type: 'image' | 'video';
+    media_url: string;
+    proof_type: 'pickup' | 'delivery';
+    metadata?: Record<string, unknown>;
+  }) => {
+    return apiCall(`/api/delivery/${deliveryId}/proof-media`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteProofMedia: async (deliveryId: string, mediaId: number) => {
+    return apiCall(`/api/delivery/${deliveryId}/proof-media/${mediaId}`, {
+      method: 'DELETE',
+    });
+  },
+  // ✅ Phase 9 - Amélioration : Gestion des zones de livraison des produits
+  getProductZones: async (serviceId: number, productIndex: number) => {
+    return apiCall(`/api/products/${serviceId}/${productIndex}/zones`);
+  },
+  saveProductZones: async (serviceId: number, productIndex: number, zoneIds: string[]) => {
+    return apiCall(`/api/products/${serviceId}/${productIndex}/zones`, {
+      method: 'POST',
+      body: JSON.stringify({ zone_ids: zoneIds }),
+    });
+  },
 };
 
 export const shoppingApi = {
@@ -560,11 +657,22 @@ export const shoppingApi = {
       note?: string;
       is_substitution?: boolean;
       status?: string;
+      rejection_reason?: string; // ✅ Phase 9 - Amélioration : Raison de refus
     }
   ) => {
     return apiCall(`/api/shopping/orders/${orderId}/items/${itemId}`, {
-      method: 'PATCH',
+      method: 'POST', // Le backend utilise POST, pas PATCH
       body: JSON.stringify(payload),
+    });
+  },
+  // ✅ Phase 9 - Amélioration : Rejeter un produit avec raison
+  rejectItem: async (orderId: string, itemId: string, reason: string) => {
+    return apiCall(`/api/shopping/orders/${orderId}/items/${itemId}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        status: 'rejected',
+        rejection_reason: reason,
+      }),
     });
   },
   markShoppingStatus: async (
@@ -933,7 +1041,10 @@ export const userApi = {
     return apiCall('/api/user/previous-contacts');
   },
   saveContact: async (contact: any) => {
-    return apiCall('/api/user/contacts', 'POST', contact);
+    return apiCall('/api/user/contacts', {
+      method: 'POST',
+      body: JSON.stringify(contact),
+    });
   },
   getCreditHistory: async (userId: string, period: string = '30d') => {
     return apiCall(`/api/users/consumption-history?period=${period}`);
@@ -942,13 +1053,21 @@ export const userApi = {
     return apiCall(`/api/users/payment-history?period=${period}`);
   },
   toggleServiceStatus: async (serviceId: number, isActive: boolean) => {
-    return apiCall(`/api/services/${serviceId}/toggle-status`, 'PATCH', { actif: isActive });
+    return apiCall(`/api/services/${serviceId}/toggle-status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ actif: isActive }),
+    });
   },
   deleteService: async (serviceId: number) => {
-    return apiCall(`/api/services/${serviceId}/delete`, 'DELETE');
+    return apiCall(`/api/services/${serviceId}/delete`, {
+      method: 'DELETE',
+    });
   },
   updateServicePromotion: async (serviceId: number, promotionData: any) => {
-    return apiCall(`/api/services/${serviceId}/promotion`, 'PATCH', promotionData);
+    return apiCall(`/api/services/${serviceId}/promotion`, {
+      method: 'PATCH',
+      body: JSON.stringify(promotionData),
+    });
   },
 
   // Obtenir les services de l'utilisateur (prestataire)

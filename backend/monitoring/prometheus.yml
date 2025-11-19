@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  # Configuration AlertManager
+  external_labels:
+    cluster: 'yukpo-production'
+    environment: 'production'
+
+# Règles d'alertes
+rule_files:
+  - '/etc/prometheus/alerts.yml'
+
+# Configuration AlertManager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'
+
+scrape_configs:
+  # Scrape du backend Yukpo (vidéo + delivery) via /metrics
+  # ✅ Backend déployé sur Render (cloud) en production
+  - job_name: 'yukpo-backend'
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets:
+          - 'yukpomnang.onrender.com'  # ✅ URL Render backend en production
+        labels:
+          instance: 'yukpo-backend-render'
+          environment: 'production'
+          deployment: 'cloud'
+    
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'yukpo-backend-render'
+

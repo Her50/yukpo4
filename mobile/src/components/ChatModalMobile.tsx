@@ -25,6 +25,8 @@ import InAppCallModal from './InAppCallModal';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
+import NegotiatedPriceModal from './chat/NegotiatedPriceModal'; // ✅ NOUVEAU : Prix négociés
+import OrderDeliveryModal from './delivery/OrderDeliveryModal'; // ✅ Phase 8 - Amélioration 25
 
 interface ChatModalMobileProps {
     visible: boolean;
@@ -91,6 +93,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [callType, setCallType] = useState<'audio' | 'video'>('audio');
     const [showContactSheet, setShowContactSheet] = useState(false);
 
+    // ✅ Phase 8 - Amélioration 25 : États pour commande depuis chat
+    const [showOrderModal, setShowOrderModal] = useState(false);
+    const [selectedProductForOrder, setSelectedProductForOrder] = useState<{ index?: number, name?: string } | null>(null);
+
+    // ✅ NOUVEAU : États pour prix négociés
+    const [showNegotiatedPriceModal, setShowNegotiatedPriceModal] = useState(false);
+    const [selectedProductForNegotiation, setSelectedProductForNegotiation] = useState<{ index?: number, name?: string, price?: number } | null>(null);
+
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -99,6 +109,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const effectiveServiceId = isPrivateConversation && !Number.isNaN(parsedConversationId)
         ? parsedConversationId
         : (service?.id || 0);
+
+    // ✅ NOUVEAU : ID réel de la conversation pour les prix négociés (utilise effectiveServiceId)
+    const realConversationId = effectiveServiceId;
 
     const prestataireUserId = Number(
         prestataireInfo?.user_id ?? prestataireInfo?.userId ?? 0,
@@ -1232,6 +1245,34 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </ScrollView>
                     )}
 
+                    {/* ✅ Phase 8 - Amélioration 25 : Boutons d'actions rapides pour commande */}
+                    <View style={styles.quickActionsRow}>
+                        <TouchableOpacity
+                            style={styles.quickActionButton}
+                            onPress={() => {
+                                setSelectedProductForOrder(null);
+                                setShowOrderModal(true);
+                            }}
+                        >
+                            <SafeIcon name="package" size={18} color={modernColors.primary} />
+                            <Text style={styles.quickActionText}>Commander avec livraison</Text>
+                        </TouchableOpacity>
+                        {/* ✅ NOUVEAU : Bouton pour négocier un prix */}
+                        {user?.id === service?.user_id && (
+                            <TouchableOpacity
+                                style={styles.quickActionButton}
+                                onPress={() => {
+                                    // TODO: Récupérer le produit sélectionné depuis le chat ou un sélecteur
+                                    setSelectedProductForNegotiation({ index: 0, name: 'Produit', price: 0 });
+                                    setShowNegotiatedPriceModal(true);
+                                }}
+                            >
+                                <SafeIcon name="dollar-sign" size={18} color={modernColors.primary} />
+                                <Text style={styles.quickActionText}>💰 Négocier un prix</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
                     {/* Boutons d'actions média */}
                     <View style={styles.mediaActionsRow}>
                         <TouchableOpacity style={styles.mediaButton} onPress={pickImage}>
@@ -1438,6 +1479,47 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 onSelectUser={insertMention}
                 currentQuery={mentionQuery}
             />
+
+            {/* ✅ Phase 8 - Amélioration 25 : Modal de commande depuis chat */}
+            <OrderDeliveryModal
+                visible={showOrderModal}
+                onClose={() => {
+                    setShowOrderModal(false);
+                    setSelectedProductForOrder(null);
+                }}
+                serviceId={service?.id || 0}
+                productIndex={selectedProductForOrder?.index}
+                productName={selectedProductForOrder?.name}
+                conversationId={realConversationId || service?.id} // ✅ NOUVEAU : ID réel de la conversation (ou service.id en fallback)
+                clientUserId={user?.id} // ✅ NOUVEAU : ID du client
+                onSuccess={(deliveryId) => {
+                    // Optionnel : Envoyer un message dans le chat avec le lien de suivi
+                    sendMessage(`✅ Commande créée ! Suivez votre livraison : /delivery/${deliveryId}`, 'text');
+                    setShowOrderModal(false);
+                    setSelectedProductForOrder(null);
+                }}
+            />
+
+            {/* ✅ NOUVEAU : Modal de négociation de prix */}
+            {showNegotiatedPriceModal && selectedProductForNegotiation && (
+                <NegotiatedPriceModal
+                    visible={showNegotiatedPriceModal}
+                    onClose={() => {
+                        setShowNegotiatedPriceModal(false);
+                        setSelectedProductForNegotiation(null);
+                    }}
+                    conversationId={realConversationId || service?.id || 0} // ✅ ID réel de la conversation (ou service.id en fallback)
+                    serviceId={service?.id || 0}
+                    productIndex={selectedProductForNegotiation.index}
+                    originalPrice={selectedProductForNegotiation.price || 0}
+                    merchantUserId={service?.user_id || 0}
+                    clientUserId={user?.id || 0}
+                    onPriceNegotiated={() => {
+                        // Optionnel : Envoyer un message dans le chat
+                        sendMessage(`💰 Nouvelle offre de prix négocié proposée !`, 'text');
+                    }}
+                />
+            )}
 
             {/* ✅ NOUVEAU: Modal liste des participants */}
             <Modal
@@ -2030,6 +2112,30 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    // ✅ Phase 8 - Amélioration 25 : Styles pour boutons d'actions rapides
+    quickActionsRow: {
+        paddingVertical: 8,
+        paddingHorizontal: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    quickActionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: modernColors.primary + '15',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: modernColors.primary + '30',
+    },
+    quickActionText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.primary,
     },
     mediaActionsRow: {
         flexDirection: 'row',

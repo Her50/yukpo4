@@ -901,6 +901,7 @@ export default function FormulaireDemandeOuService() {
                     products={products}
                     onProductsChange={setProducts}
                     readonly={mode === 'readonly'}
+                    serviceId={serviceId ? parseInt(serviceId) : undefined}
                   />
                 </div>
               </div>

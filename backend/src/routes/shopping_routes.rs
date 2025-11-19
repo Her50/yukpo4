@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::{jwt_auth, AuthenticatedUser},
-    models::delivery_model::{ShoppingItemStatus, ShoppingStatus},
+    models::delivery_model::{ParcelRejectionReason, ShoppingItemStatus, ShoppingStatus},
     services::delivery_service::{
         CreateShoppingOrderParams, DeliveryRecipientInput, LocationInput, ShoppingBasketItemInput,
         ShoppingCheckoutInput, ShoppingEstimateInput, ShoppingItemUpdateInput,
@@ -138,6 +138,9 @@ struct ShoppingItemUpdatePayload {
     status: String,
     #[serde(default)]
     actual_price_cents: Option<i32>,
+    // ✅ Phase 9 - Amélioration : Raison de refus du produit
+    #[serde(default)]
+    rejection_reason: Option<String>,
     #[serde(default)]
     metadata: Option<Value>,
 }
@@ -258,6 +261,20 @@ async fn update_shopping_item(
     let status = serde_json::from_str::<ShoppingItemStatus>(&format!("\"{}\"", payload.status))
         .map_err(|_| AppError::BadRequest("Statut article invalide".into()))?;
 
+    // ✅ Phase 9 - Amélioration : Parser la raison de refus si fournie
+    let rejection_reason = if let Some(reason_str) = payload.rejection_reason {
+        if status == ShoppingItemStatus::Rejected {
+            Some(
+                serde_json::from_str::<ParcelRejectionReason>(&format!("\"{}\"", reason_str))
+                    .map_err(|_| AppError::BadRequest("Raison de refus invalide".into()))?,
+            )
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     service
         .update_shopping_item(
             user.id,
@@ -266,6 +283,7 @@ async fn update_shopping_item(
                 item_id,
                 status,
                 actual_price_cents: payload.actual_price_cents,
+                rejection_reason,
                 metadata: payload.metadata,
             },
         )

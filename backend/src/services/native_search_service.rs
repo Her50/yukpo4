@@ -4,6 +4,7 @@ use crate::services::scheduling_search_service::SchedulingSearchService;
 use crate::utils::log::{log_error, log_info};
 use serde_json::Value;
 use sqlx::{PgPool, Row};
+use std::sync::Arc;
 
 /// Résultat de recherche avec score détaillé
 #[derive(Debug, Clone)]
@@ -17,22 +18,49 @@ pub struct SearchResult {
     pub category_score: f32,
     pub search_method: String,
     pub matched_fields: Vec<String>,
+    /// ✅ Phase 10 - Distance en km (calculée avec PostgreSQL ST_Distance ou enrichie avec Google Maps)
+    pub distance_km: Option<f64>,
+    /// ✅ Phase 10 - Coordonnées GPS du service (pour enrichissement Google Maps)
+    pub gps_coords: Option<(f64, f64)>,
 }
 
 /// Service de recherche native PostgreSQL intelligente
 pub struct NativeSearchService {
     pool: PgPool,
     config: SearchConfig,
+    /// ✅ Phase 10 - Service de matching géographique pour enrichir les distances
+    geographic_matching: Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
 }
 
 impl NativeSearchService {
     pub fn new(pool: PgPool) -> Self {
         let config = SearchConfig::default();
-        Self { pool, config }
+        Self { 
+            pool, 
+            config,
+            geographic_matching: None,
+        }
     }
 
     pub fn with_config(pool: PgPool, config: SearchConfig) -> Self {
-        Self { pool, config }
+        Self { 
+            pool, 
+            config,
+            geographic_matching: None,
+        }
+    }
+
+    /// ✅ Phase 10 - Constructeur avec service de matching géographique
+    pub fn with_geographic_matching(
+        pool: PgPool,
+        geographic_matching: Arc<crate::services::geographic_matching_service::GeographicMatchingService>,
+    ) -> Self {
+        let config = SearchConfig::default();
+        Self {
+            pool,
+            config,
+            geographic_matching: Some(geographic_matching),
+        }
     }
 
     /// Charger la configuration depuis un fichier et les variables d'environnement
@@ -308,7 +336,7 @@ impl NativeSearchService {
                 .map_err(|e| format!("Erreur recherche planifications: {}", e))?;
 
             // Convertir en SearchResult
-            let results: Vec<SearchResult> = scheduling_results
+            let mut results: Vec<SearchResult> = scheduling_results
                 .into_iter()
                 .map(|r| SearchResult {
                     service_id: r.service_id,
@@ -320,8 +348,23 @@ impl NativeSearchService {
                     category_score: 0.0,
                     search_method: "scheduling_search".to_string(),
                     matched_fields: vec!["planification".to_string(), "disponibilité".to_string()],
+                    distance_km: r.distance_km,
+                    gps_coords: None, // Sera enrichi si nécessaire
                 })
                 .collect();
+            
+            // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
+            if let Some(gps_zone) = gps_zone {
+                if let Some((lat_str, lng_str)) = gps_zone.split_once(',') {
+                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                        SearchResult::enrich_with_google_maps(
+                            &mut results,
+                            Some((user_lat, user_lng)),
+                            self.geographic_matching.as_ref(),
+                        ).await;
+                    }
+                }
+            }
 
             log_info(&format!(
                 "[NativeSearch] {} résultats avec planifications trouvés",
@@ -383,6 +426,15 @@ impl NativeSearchService {
                     .map(|row| row.get::<Value, _>("data"))
                     .unwrap_or_else(|_| serde_json::json!({}));
 
+                // ✅ Phase 10 - Extraire les coordonnées GPS pour enrichissement Google Maps
+                let gps_coords = _gps_coords.as_ref()
+                    .and_then(|coords| {
+                        coords.split(',')
+                            .map(|s| s.trim().parse::<f64>().ok())
+                            .collect::<Option<Vec<_>>>()
+                            .and_then(|v| if v.len() == 2 { Some((v[0], v[1])) } else { None })
+                    });
+
                 search_results.push(SearchResult {
                     service_id,
                     data: service_data,
@@ -393,6 +445,8 @@ impl NativeSearchService {
                     category_score: 0.0,
                     search_method: "gps_optimized".to_string(),
                     matched_fields: vec!["gps".to_string()],
+                    distance_km: _distance_km,
+                    gps_coords,
                 });
 
                 log_info(&format!(
@@ -407,6 +461,20 @@ impl NativeSearchService {
                 "[NativeSearch] Recherche GPS optimisée: {} résultats trouvés",
                 search_results.len()
             ));
+            
+            // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
+            if let Some(gps_zone) = gps_zone {
+                if let Some((lat_str, lng_str)) = gps_zone.split_once(',') {
+                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                        SearchResult::enrich_with_google_maps(
+                            &mut search_results,
+                            Some((user_lat, user_lng)),
+                            self.geographic_matching.as_ref(),
+                        ).await;
+                    }
+                }
+            }
+            
             return Ok(search_results);
         }
 
@@ -727,6 +795,8 @@ SELECT DISTINCT
                 category_score: 0.0,
                 search_method: "fulltext".to_string(),
                 matched_fields: vec!["fulltext".to_string()],
+                distance_km: None,
+                gps_coords: None,
             });
         }
 
@@ -812,6 +882,15 @@ SELECT DISTINCT
                     .map(|row| row.get::<Value, _>("data"))
                     .unwrap_or_else(|_| serde_json::json!({}));
 
+                // ✅ Phase 10 - Extraire les coordonnées GPS
+                let gps_coords = _gps_coords.as_ref()
+                    .and_then(|coords| {
+                        coords.split(',')
+                            .map(|s| s.trim().parse::<f64>().ok())
+                            .collect::<Option<Vec<_>>>()
+                            .and_then(|v| if v.len() == 2 { Some((v[0], v[1])) } else { None })
+                    });
+
                 search_results.push(SearchResult {
                     service_id,
                     data: service_data,
@@ -822,7 +901,22 @@ SELECT DISTINCT
                     category_score: 0.0,
                     search_method: "trigram_gps_optimized".to_string(),
                     matched_fields: vec!["trigram".to_string(), "gps".to_string()],
+                    distance_km: _distance_km,
+                    gps_coords,
                 });
+            }
+
+            // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
+            if let Some(gps_zone) = gps_zone {
+                if let Some((lat_str, lng_str)) = gps_zone.split_once(',') {
+                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                        SearchResult::enrich_with_google_maps(
+                            &mut search_results,
+                            Some((user_lat, user_lng)),
+                            self.geographic_matching.as_ref(),
+                        ).await;
+                    }
+                }
             }
 
             return Ok(search_results);
@@ -910,6 +1004,8 @@ SELECT DISTINCT
                 category_score: 0.0,
                 search_method: "trigram".to_string(),
                 matched_fields: vec!["trigram".to_string()],
+                distance_km: None,
+                gps_coords: None,
             });
         }
 
@@ -995,6 +1091,15 @@ SELECT DISTINCT
                     .map(|row| row.get::<Value, _>("data"))
                     .unwrap_or_else(|_| serde_json::json!({}));
 
+                // ✅ Phase 10 - Extraire les coordonnées GPS pour enrichissement Google Maps
+                let gps_coords = _gps_coords.as_ref()
+                    .and_then(|coords| {
+                        coords.split(',')
+                            .map(|s| s.trim().parse::<f64>().ok())
+                            .collect::<Option<Vec<_>>>()
+                            .and_then(|v| if v.len() == 2 { Some((v[0], v[1])) } else { None })
+                    });
+
                 search_results.push(SearchResult {
                     service_id,
                     data: service_data,
@@ -1005,7 +1110,22 @@ SELECT DISTINCT
                     category_score: relevance_score,
                     search_method: "keywords_gps_optimized".to_string(),
                     matched_fields: vec!["keywords".to_string(), "gps".to_string()],
+                    distance_km: _distance_km,
+                    gps_coords,
                 });
+            }
+
+            // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
+            if let Some(gps_zone) = gps_zone {
+                if let Some((lat_str, lng_str)) = gps_zone.split_once(',') {
+                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                        SearchResult::enrich_with_google_maps(
+                            &mut search_results,
+                            Some((user_lat, user_lng)),
+                            self.geographic_matching.as_ref(),
+                        ).await;
+                    }
+                }
             }
 
             return Ok(search_results);
@@ -1143,6 +1263,8 @@ SELECT DISTINCT
                 category_score: keyword_score,
                 search_method: "keywords".to_string(),
                 matched_fields: vec!["keywords".to_string()],
+                distance_km: None,
+                gps_coords: None,
             });
         }
 
@@ -1331,6 +1453,8 @@ SELECT DISTINCT
                 category_score: 1.0,
                 search_method: "category".to_string(),
                 matched_fields: vec!["category".to_string()],
+                distance_km: None,
+                gps_coords: None,
             });
         }
 
@@ -1465,6 +1589,8 @@ SELECT DISTINCT
                 category_score: 0.0,
                 search_method: "geospatial".to_string(),
                 matched_fields: vec!["geospatial".to_string()],
+                distance_km: None,
+                gps_coords: None,
             });
         }
 
@@ -1474,6 +1600,99 @@ SELECT DISTINCT
 
 /// Conversion des résultats de recherche en format JSON pour l'API
 impl SearchResult {
+    /// ✅ Phase 10 - Enrichit les distances avec Google Maps si disponible, fallback Haversine
+    pub async fn enrich_with_google_maps(
+        results: &mut [SearchResult],
+        user_location: Option<(f64, f64)>,
+        geographic_matching: Option<&Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
+    ) {
+        if let (Some(user_loc), Some(geo_service)) = (user_location, geographic_matching) {
+            for result in results.iter_mut() {
+                // Enrichir seulement si on a des coordonnées GPS
+                if let Some(service_coords) = result.gps_coords {
+                    // Enrichir si pas de distance ou si c'est une recherche GPS (pour améliorer la précision)
+                    if result.distance_km.is_none() || result.search_method.contains("gps") {
+                        // calculate_distance utilise Google Maps avec fallback Haversine automatique
+                        match geo_service
+                            .calculate_distance(user_loc, service_coords)
+                            .await
+                        {
+                            Ok(distance_result) => {
+                                let distance_km = distance_result.distance_meters / 1000.0;
+                                
+                                // Prioriser Google Maps si disponible, sinon utiliser Haversine
+                                match distance_result.source {
+                                    crate::services::geographic_matching_service::DistanceSource::GoogleMaps => {
+                                        // Toujours utiliser Google Maps (meilleure précision)
+                                        result.distance_km = Some(distance_km);
+                                        log::debug!(
+                                            "[NativeSearch] ✅ Distance enrichie Google Maps pour service {}: {:.2}km",
+                                            result.service_id,
+                                            distance_km
+                                        );
+                                    }
+                                    crate::services::geographic_matching_service::DistanceSource::Haversine => {
+                                        // Utiliser Haversine seulement si on n'a pas déjà de distance PostgreSQL
+                                        // (PostgreSQL ST_Distance est généralement plus précis que Haversine simple)
+                                        if result.distance_km.is_none() {
+                                            result.distance_km = Some(distance_km);
+                                            log::debug!(
+                                                "[NativeSearch] ⚠️ Distance calculée Haversine (fallback) pour service {}: {:.2}km",
+                                                result.service_id,
+                                                distance_km
+                                            );
+                                        } else {
+                                            // Garder la distance PostgreSQL existante (plus précise que Haversine)
+                                            log::debug!(
+                                                "[NativeSearch] ℹ️ Distance PostgreSQL conservée pour service {}: {:.2}km (Google Maps indisponible)",
+                                                result.service_id,
+                                                result.distance_km.unwrap()
+                                            );
+                                        }
+                                    }
+                                    crate::services::geographic_matching_service::DistanceSource::Cache => {
+                                        // Le cache retourne le résultat original avec sa source (GoogleMaps ou Haversine)
+                                        // Ce cas ne devrait normalement pas être atteint, mais on le gère pour sécurité
+                                        if result.distance_km.is_none() {
+                                            result.distance_km = Some(distance_km);
+                                            log::debug!(
+                                                "[NativeSearch] ℹ️ Distance depuis cache pour service {}: {:.2}km",
+                                                result.service_id,
+                                                distance_km
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                // En cas d'erreur, garder la distance PostgreSQL existante ou utiliser Haversine local
+                                if result.distance_km.is_none() {
+                                    // Fallback ultime : calcul Haversine local
+                                    use crate::services::delivery_service::haversine_distance;
+                                    let haversine_km = haversine_distance(user_loc, service_coords);
+                                    result.distance_km = Some(haversine_km);
+                                    log::warn!(
+                                        "[NativeSearch] ⚠️ Erreur calcul distance pour service {}: {:?}, utilisation Haversine local: {:.2}km",
+                                        result.service_id,
+                                        e,
+                                        haversine_km
+                                    );
+                                } else {
+                                    log::warn!(
+                                        "[NativeSearch] ⚠️ Erreur enrichissement distance pour service {}: {:?}, conservation distance PostgreSQL: {:.2}km",
+                                        result.service_id,
+                                        e,
+                                        result.distance_km.unwrap()
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub fn to_json(&self) -> Value {
         serde_json::json!({
             "service_id": self.service_id,
@@ -1482,6 +1701,7 @@ impl SearchResult {
             "semantic_score": self.total_score, // Compatibilité avec l'ancien format
             "interaction_score": 0.0,
             "gps": self.data.get("gps").and_then(|v| v.as_str()),
+            "distance_km": self.distance_km, // ✅ Phase 10 - Distance enrichie
             "search_metadata": {
                 "method": self.search_method,
                 "fulltext_score": self.fulltext_score,

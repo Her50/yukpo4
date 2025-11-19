@@ -52,6 +52,23 @@ pub enum DeliveryCancelReason {
     SystemFailure,
 }
 
+/// ✅ Phase 9 - Amélioration : Raisons de refus d'un colis/produit par le client
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[sqlx(type_name = "parcel_rejection_reason", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum ParcelRejectionReason {
+    Damaged,              // Produit endommagé
+    WrongItem,            // Mauvais produit
+    Expired,              // Produit périmé
+    WrongQuantity,        // Mauvaise quantité
+    WrongSize,            // Mauvaise taille
+    WrongColor,           // Mauvaise couleur
+    QualityIssue,         // Problème de qualité
+    NotOrdered,           // Non commandé
+    Duplicate,            // Doublon
+    Other,                // Autre raison
+}
+
 /// Type d'engin disponible pour un coursier
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "delivery_engine_type", rename_all = "snake_case")]
@@ -294,6 +311,8 @@ pub struct DeliverySummary {
     pub status: DeliveryStatus,
     pub creator_id: i32,
     pub courier_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preferred_courier_id: Option<Uuid>, // ✅ Phase 9 - Amélioration 28
     pub pickup: GeoPoint,
     pub dropoff: GeoPoint,
     pub dropoff_address: Option<String>,
@@ -456,7 +475,236 @@ pub struct ShoppingOrderItem {
     pub estimated_price_cents: i32,
     pub actual_price_cents: Option<i32>,
     pub status: ShoppingItemStatus,
+    // ✅ Phase 9 - Amélioration : Raison de refus du produit
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rejection_reason: Option<ParcelRejectionReason>,
     pub metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+/// Configuration de livraison pour un produit
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ProductDeliveryConfig {
+    pub id: i32,
+    pub service_id: i32,
+    pub product_index: i32,
+    
+    // Pickup (obligatoire)
+    pub pickup_address: String,
+    pub pickup_latitude: f64,
+    pub pickup_longitude: f64,
+    
+    // ✅ Phase 9 - Amélioration 32 : Référence vers un lieu de stock
+    pub storage_location_id: Option<i32>,
+    
+    // Type véhicule (obligatoire)
+    pub required_vehicle_type_id: i32,
+    pub weight_kg: Option<f64>,
+    pub volume_cm3: Option<f64>,
+    pub requires_isothermal: bool,
+    pub requires_fragile_handling: bool,
+    
+    // Plages horaires de récupération (obligatoire)
+    pub pickup_availability_schedule: Value,
+    
+    // Informations additionnelles
+    pub pickup_instructions: Option<String>,
+    pub billing_mode: String,
+    pub billing_partner_label: Option<String>,
+    
+    // Statut
+    pub is_configured: bool,
+    pub configured_at: Option<DateTime<Utc>>,
+    pub configured_by: Option<i32>,
+    
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Input pour créer/mettre à jour une configuration de livraison produit
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProductDeliveryConfigInput {
+    pub service_id: i32,
+    pub product_index: i32,
+    
+    // Pickup
+    pub pickup_address: String,
+    pub pickup_latitude: f64,
+    pub pickup_longitude: f64,
+    
+    // ✅ Phase 9 - Amélioration 32 : Référence vers un lieu de stock
+    pub storage_location_id: Option<i32>,
+    
+    // Type véhicule
+    pub required_vehicle_type_id: i32,
+    pub weight_kg: Option<f64>,
+    pub volume_cm3: Option<f64>,
+    pub requires_isothermal: Option<bool>,
+    pub requires_fragile_handling: Option<bool>,
+    
+    // Plages horaires
+    pub pickup_availability_schedule: Value,
+    
+    // Informations additionnelles
+    pub pickup_instructions: Option<String>,
+    pub billing_mode: Option<String>,
+    pub billing_partner_label: Option<String>,
+}
+
+/// ✅ Phase 9 - Amélioration 32 : Lieu de stock d'un marchand
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MerchantStorageLocation {
+    pub id: i32,
+    pub merchant_user_id: i32,
+    pub name: String,
+    pub address: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    // ✅ Phase 9 - Amélioration : Zone géographique associée (optionnel)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub zone_id: Option<Uuid>,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// ✅ Phase 9 - Amélioration 32 : Input pour créer/modifier un lieu de stock
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MerchantStorageLocationInput {
+    pub name: String,
+    pub address: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    // ✅ Phase 9 - Amélioration : Zone géographique associée (optionnel)
+    pub zone_id: Option<Uuid>,
+    pub is_active: Option<bool>,
+}
+
+/// ✅ Phase 9 - Amélioration : Média de preuve de livraison (pickup ou delivery)
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct DeliveryProofMedia {
+    pub id: i32,
+    pub delivery_id: Uuid,
+    pub media_type: String, // 'image' ou 'video'
+    pub media_url: String,
+    pub proof_type: String, // 'pickup' ou 'delivery'
+    pub uploaded_by: i32,
+    pub uploaded_at: DateTime<Utc>,
+    pub metadata: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+}
+
+/// ✅ Phase 9 - Amélioration : Input pour uploader un média de preuve
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeliveryProofMediaInput {
+    pub media_type: String, // 'image' ou 'video'
+    pub media_url: String,
+    pub proof_type: String, // 'pickup' ou 'delivery'
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// ✅ Phase 3 - Amélioration 7 : Préférences de livraison du client
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ClientDeliveryPreferences {
+    pub id: i32,
+    pub user_id: i32,
+    pub delivery_id: Option<Uuid>,
+    
+    // Préférences de livraison
+    pub preferred_delivery_date: Option<chrono::NaiveDate>,
+    pub preferred_delivery_time_start: Option<chrono::NaiveTime>,
+    pub preferred_delivery_time_end: Option<chrono::NaiveTime>,
+    pub preferred_delivery_window_hours: i32,
+    
+    // Contraintes
+    pub avoid_days: Option<Vec<i32>>,  // Jours à éviter (1=Lundi, 7=Dimanche)
+    pub urgency_level: String,  // 'standard', 'urgent', 'scheduled'
+    
+    // Flexibilité
+    pub is_flexible: bool,
+    pub flexibility_window_days: i32,
+    
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Input pour créer/mettre à jour les préférences de livraison client
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClientDeliveryPreferencesInput {
+    pub delivery_id: Option<Uuid>,
+    pub preferred_delivery_date: Option<String>,  // Format: "YYYY-MM-DD"
+    pub preferred_delivery_time_start: Option<String>,  // Format: "HH:MM"
+    pub preferred_delivery_time_end: Option<String>,  // Format: "HH:MM"
+    pub preferred_delivery_window_hours: Option<i32>,
+    pub avoid_days: Option<Vec<i32>>,
+    pub urgency_level: Option<String>,
+    pub is_flexible: Option<bool>,
+    pub flexibility_window_days: Option<i32>,
+}
+
+/// ✅ Phase 4 - Amélioration 8 : Prestataire externe (WhatsApp, Facebook, etc.)
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ExternalDeliveryProvider {
+    pub id: i32,
+    pub provider_name: String,
+    pub api_key: String,
+    pub api_secret: String,
+    pub contact_email: Option<String>,
+    pub contact_phone: Option<String>,
+    pub webhook_url: Option<String>,
+    pub allowed_ips: Option<Vec<String>>,
+    pub rate_limit_per_hour: i32,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub total_deliveries: i32,
+    pub metadata: Value,
+}
+
+/// Input pour créer un prestataire externe
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExternalDeliveryProviderInput {
+    pub provider_name: String,
+    pub contact_email: Option<String>,
+    pub contact_phone: Option<String>,
+    pub webhook_url: Option<String>,
+    pub allowed_ips: Option<Vec<String>>,
+    pub rate_limit_per_hour: Option<i32>,
+}
+
+/// Input pour requête de livraison externe
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExternalDeliveryRequest {
+    pub api_key: String,
+    pub service_name: String,
+    pub pickup: LocationInput,
+    pub dropoff: LocationInput,
+    pub parcel: ExternalParcelInput,
+    pub client_info: ExternalClientInfo,
+    pub preferences: Option<ExternalDeliveryPreferences>,
+    pub metadata: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExternalParcelInput {
+    pub vehicle_type: String,  // "moto", "tricycle", "fourgonnette", etc.
+    pub weight_kg: Option<f64>,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExternalClientInfo {
+    pub name: String,
+    pub phone: String,
+    pub email: Option<String>,
+    pub address: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExternalDeliveryPreferences {
+    pub preferred_delivery_date: Option<String>,
+    pub preferred_delivery_time_start: Option<String>,
+    pub preferred_delivery_time_end: Option<String>,
+    pub urgency: Option<String>,
 }

@@ -1,10 +1,10 @@
 use crate::{
     core::types::{AppError, AppResult},
     models::delivery_model::{
-        Courier, CourierApplication, CourierAsset, CourierMatchingCandidate, DeliveryCancelReason,
+        ClientDeliveryPreferences, Courier, CourierApplication, CourierAsset, CourierMatchingCandidate, DeliveryCancelReason,
         DeliveryMatchingStatus, DeliveryPricing, DeliveryRecipient, DeliveryRecipientUpdate,
         DeliveryStatus, DeliveryStatusEvent, DeliverySummary, GeoPoint, ParcelType,
-        ShoppingItemStatus, ShoppingOrder, ShoppingOrderItem, ShoppingStatus,
+        ProductDeliveryConfig, ShoppingItemStatus, ShoppingOrder, ShoppingOrderItem, ShoppingStatus,
     },
     services::{
         delivery_repository::{
@@ -14,6 +14,7 @@ use crate::{
             NewDeliveryRequest, NewShoppingOrder, NewShoppingOrderItem, NewStatusEvent,
             NewTrackingPoint, ShoppingEstimateItem, ShoppingEstimateResult, WalletEventDirection,
         },
+        delivery_schedule_service::DeliveryScheduleService,
         phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
         push_notification_service,
     },
@@ -36,7 +37,7 @@ use std::{cmp::Ordering as CmpOrdering, env};
 use uuid::Uuid;
 
 /// ✅ RECOMMANDATION 2: Calculer la distance entre deux points GPS (formule de Haversine)
-fn haversine_distance(pos1: (f64, f64), pos2: (f64, f64)) -> f64 {
+pub fn haversine_distance(pos1: (f64, f64), pos2: (f64, f64)) -> f64 {
     const EARTH_RADIUS_KM: f64 = 6371.0;
     let (lat1, lon1) = (pos1.0.to_radians(), pos1.1.to_radians());
     let (lat2, lon2) = (pos2.0.to_radians(), pos2.1.to_radians());
@@ -659,6 +660,8 @@ pub struct ShoppingItemUpdateInput {
     pub item_id: Uuid,
     pub status: ShoppingItemStatus,
     pub actual_price_cents: Option<i32>,
+    // ✅ Phase 9 - Amélioration : Raison de refus du produit
+    pub rejection_reason: Option<crate::models::delivery_model::ParcelRejectionReason>,
     pub metadata: Option<Value>,
 }
 
@@ -761,6 +764,8 @@ pub struct CourierAssetInput {
 pub struct DeliveryService {
     repository: Arc<DeliveryRepository>,
     tracking_manager: Arc<DeliveryTrackingManager>,
+    /// ✅ Phase 10 - Service de matching géographique optimisé
+    geographic_matching: Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
 }
 
 static RECIPIENT_DROPOFF_EVENTS: AtomicU64 = AtomicU64::new(0);
@@ -836,6 +841,20 @@ impl DeliveryService {
         Self {
             repository,
             tracking_manager,
+            geographic_matching: None,
+        }
+    }
+
+    /// ✅ Phase 10 - Constructeur avec service de matching géographique
+    pub fn with_geographic_matching(
+        repository: Arc<DeliveryRepository>,
+        tracking_manager: Arc<DeliveryTrackingManager>,
+        geographic_matching: Arc<crate::services::geographic_matching_service::GeographicMatchingService>,
+    ) -> Self {
+        Self {
+            repository,
+            tracking_manager,
+            geographic_matching: Some(geographic_matching),
         }
     }
 
@@ -1265,13 +1284,16 @@ impl DeliveryService {
         self.broadcast_status_update(summary.id, DeliveryStatus::Requested, None)
             .await;
 
-        if let Err(err) = self.enqueue_delivery_matching(&summary).await {
-            log::error!(
-                "[DeliveryMatching] Enfilement impossible pour la livraison {}: {:?}",
-                summary.id,
-                err
-            );
-        }
+        // ⚠️ MODIFICATION Phase 1 - Amélioration 2 : 
+        // Ne plus déclencher le matching immédiatement à la création
+        // Le matching sera déclenché seulement après assign_delivery_recipient
+        // if let Err(err) = self.enqueue_delivery_matching(&summary).await {
+        //     log::error!(
+        //         "[DeliveryMatching] Enfilement impossible pour la livraison {}: {:?}",
+        //         summary.id,
+        //         err
+        //     );
+        // }
 
         Ok(summary)
     }
@@ -1405,10 +1427,29 @@ impl DeliveryService {
             );
         }
 
+        // ✅ Phase 1 - Amélioration 2 : Déclencher le matching APRÈS assignation du destinataire
+        // Récupérer le résumé de la livraison pour le matching
+        if let Ok(summary) = self.get_delivery_summary(delivery_id).await {
+            if let Err(err) = self.enqueue_delivery_matching(&summary).await {
+                log::error!(
+                    "[DeliveryMatching] Enfilement impossible pour la livraison {} après assignation destinataire: {:?}",
+                    delivery_id,
+                    err
+                );
+            } else {
+                log::info!(
+                    "[DeliveryService] Matching déclenché pour la livraison {} après assignation destinataire",
+                    delivery_id
+                );
+            }
+        }
+
         Ok(updated)
     }
 
     /// Met à jour en temps réel la position communiquée par le destinataire
+    /// ✅ Phase 9 - Amélioration 30 : Permet modification dropoff même après Requested, recalcule distance et pricing
+    /// ✅ Phase 9 - Amélioration 29 : Notifie le prestataire si dropoff était pending
     pub async fn update_recipient_dropoff(
         &self,
         delivery_id: Uuid,
@@ -1416,6 +1457,14 @@ impl DeliveryService {
         address: Option<String>,
         submitted_by: Option<i32>,
     ) -> AppResult<DeliveryRecipient> {
+        // Vérifier si dropoff était pending avant la mise à jour
+        let summary_before = self.get_delivery_summary(delivery_id).await?;
+        let was_pending = summary_before
+            .metadata
+            .get("dropoff_pending")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
         let updated = self
             .repository
             .update_recipient_dropoff(
@@ -1437,9 +1486,162 @@ impl DeliveryService {
                     },
                 )
                 .await;
+
+            // ✅ Phase 9 - Amélioration 29 : Notifier le prestataire si dropoff était pending
+            if was_pending {
+                self.tracking_manager
+                    .broadcast_event(
+                        delivery_id,
+                        DeliveryWsEvent::DropoffAddressProvided {
+                            latitude: point.latitude,
+                            longitude: point.longitude,
+                            address: updated.dropoff_address.clone(),
+                        },
+                    )
+                    .await;
+
+                // Envoyer notification push au prestataire
+                let _ = push_notification_service::send_push_notification(
+                    &self.repository.pool,
+                    summary_before.creator_id,
+                    "📍 Adresse de livraison confirmée".to_string(),
+                    format!(
+                        "Le client a fourni son adresse de livraison{}",
+                        updated.dropoff_address.as_ref()
+                            .map(|a| format!(" : {}", if a.len() > 50 { &a[..50] } else { a }))
+                            .unwrap_or_default()
+                    ),
+                    Some(json!({
+                        "type": "dropoff_address_provided",
+                        "delivery_id": delivery_id,
+                        "latitude": point.latitude,
+                        "longitude": point.longitude,
+                        "address": updated.dropoff_address,
+                    })),
+                    None,
+                )
+                .await;
+            }
+
+            // ✅ Phase 9 - Amélioration 30 : Recalculer la distance si pickup existe
+            // ✅ Phase 10 - Utiliser le service de matching géographique optimisé
+            let summary = self.get_delivery_summary(delivery_id).await?;
+            
+            if let Some(pickup) = &summary.pickup {
+                let distance = if let Some(geo_service) = &self.geographic_matching {
+                    geo_service
+                        .calculate_distance(
+                            (pickup.latitude, pickup.longitude),
+                            (point.latitude, point.longitude),
+                        )
+                        .await?
+                        .distance_meters as i32
+                } else {
+                    haversine_distance(
+                        (pickup.latitude, pickup.longitude),
+                        (point.latitude, point.longitude),
+                    ) as i32
+                };
+                
+                // Mettre à jour la distance dans la base
+                sqlx::query!(
+                    "UPDATE deliveries SET distance_meters = $1, updated_at = NOW() WHERE id = $2",
+                    distance,
+                    delivery_id
+                )
+                .execute(&self.repository.pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur mise à jour distance: {}", e)))?;
+
+                // ✅ Phase 9 - Amélioration 30 : Recalculer et mettre à jour le pricing si nécessaire
+                // Calculer le nouveau coût de livraison basé sur la distance
+                let distance_km = distance as f64 / 1000.0;
+                let estimated_cost = (distance_km * 500.0).max(1000.0);
+                let distance_price_cents = (estimated_cost * 100.0) as i32;
+
+                // Récupérer le pricing actuel pour préserver les autres valeurs
+                if let Some(existing_pricing) = self.repository.find_delivery_pricing(delivery_id).await? {
+                    self.upsert_pricing(PricingInput {
+                        delivery_id,
+                        base_price_cents: existing_pricing.base_price_cents,
+                        distance_price_cents,
+                        surcharge_cents: existing_pricing.surcharge_cents,
+                        discount_cents: existing_pricing.discount_cents,
+                        currency: existing_pricing.currency,
+                        details: existing_pricing.details,
+                        shopping_cost_cents: existing_pricing.shopping_cost_cents.unwrap_or(0),
+                        shopping_discount_cents: existing_pricing.shopping_discount_cents.unwrap_or(0),
+                    })
+                    .await?;
+                }
+            }
         }
 
         Ok(updated)
+    }
+
+    /// Met à jour l'adresse de pickup d'une livraison
+    pub async fn update_pickup_location(
+        &self,
+        delivery_id: Uuid,
+        point: LocationInput,
+        address: Option<String>,
+        updated_by: Option<i32>,
+    ) -> AppResult<DeliverySummary> {
+        self.repository
+            .update_pickup_location(
+                delivery_id,
+                point.into(),
+                address.clone(),
+                updated_by,
+            )
+            .await?;
+
+        // Diffuser l'événement de mise à jour pickup
+        self.tracking_manager
+            .broadcast_event(
+                delivery_id,
+                DeliveryWsEvent::PickupLocationUpdated {
+                    latitude: point.latitude,
+                    longitude: point.longitude,
+                    address: address.clone(),
+                },
+            )
+            .await;
+
+        // Recalculer la distance si nécessaire
+        let summary = self.get_delivery_summary(delivery_id).await?;
+        
+        // Si dropoff existe, recalculer distance
+        // ✅ Phase 10 - Utiliser le service de matching géographique optimisé
+        if let Some(dropoff) = &summary.dropoff {
+            let distance = if let Some(geo_service) = &self.geographic_matching {
+                geo_service
+                    .calculate_distance(
+                        (point.latitude, point.longitude),
+                        (dropoff.latitude, dropoff.longitude),
+                    )
+                    .await?
+                    .distance_meters as i32
+            } else {
+                haversine_distance(
+                    (point.latitude, point.longitude),
+                    (dropoff.latitude, dropoff.longitude),
+                ) as i32
+            };
+            
+            // Mettre à jour la distance dans la base
+            sqlx::query!(
+                "UPDATE deliveries SET distance_meters = $1, updated_at = NOW() WHERE id = $2",
+                distance,
+                delivery_id
+            )
+            .execute(&self.repository.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur mise à jour distance: {}", e)))?;
+        }
+
+        Ok(self.get_delivery_summary(delivery_id).await?)
     }
 
     pub async fn share_dropoff_link(
@@ -1553,7 +1755,15 @@ impl DeliveryService {
             .await?
             .ok_or_else(|| AppError::NotFound("Lien de livraison invalide ou expiré.".into()))?;
 
-        self.update_recipient_dropoff(delivery_id, point, address, None)
+        // Vérifier si dropoff était pending avant la mise à jour
+        let summary_before = self.get_delivery_summary(delivery_id).await?;
+        let was_pending = summary_before
+            .metadata
+            .get("dropoff_pending")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        self.update_recipient_dropoff(delivery_id, point.clone(), address.clone(), None)
             .await?;
 
         let now = Utc::now().to_rfc3339();
@@ -1570,6 +1780,44 @@ impl DeliveryService {
             .await?;
 
         let summary = self.get_delivery_summary(delivery_id).await?;
+        
+        // ✅ Phase 9 - Amélioration 29 : Notifier le prestataire si dropoff était pending
+        if was_pending {
+            // Envoyer événement WebSocket au prestataire
+            self.tracking_manager
+                .broadcast_event(
+                    delivery_id,
+                    DeliveryWsEvent::DropoffAddressProvided {
+                        latitude: point.latitude,
+                        longitude: point.longitude,
+                        address: address.clone(),
+                    },
+                )
+                .await;
+
+            // Envoyer notification push au prestataire
+            let _ = push_notification_service::send_push_notification(
+                &self.repository.pool,
+                summary.creator_id,
+                "📍 Adresse de livraison confirmée".to_string(),
+                format!(
+                    "Le client a fourni son adresse de livraison{}",
+                    address.as_ref()
+                        .map(|a| format!(" : {}", if a.len() > 50 { &a[..50] } else { a }))
+                        .unwrap_or_default()
+                ),
+                Some(json!({
+                    "type": "dropoff_address_provided",
+                    "delivery_id": delivery_id,
+                    "latitude": point.latitude,
+                    "longitude": point.longitude,
+                    "address": address,
+                })),
+                None,
+            )
+            .await;
+        }
+
         self.enqueue_delivery_matching(&summary).await?;
 
         Ok(summary)
@@ -1937,6 +2185,35 @@ impl DeliveryService {
                     ),
                 )
             }
+            // ✅ Phase 6 - Amélioration 18 : Notifications pour tous les statuts importants
+            DeliveryStatus::Requested => (
+                "📦 Nouvelle livraison",
+                format!(
+                    "Une nouvelle livraison #{} a été créée",
+                    delivery_id.to_string()[..8].to_uppercase()
+                ),
+            ),
+            DeliveryStatus::ShoppingInProgress => (
+                "🛒 Courses en cours",
+                format!(
+                    "Le coursier effectue les courses pour la livraison #{}",
+                    delivery_id.to_string()[..8].to_uppercase()
+                ),
+            ),
+            DeliveryStatus::ShoppingCompleted => (
+                "✅ Courses terminées",
+                format!(
+                    "Les courses sont terminées. Livraison #{}",
+                    delivery_id.to_string()[..8].to_uppercase()
+                ),
+            ),
+            DeliveryStatus::Completed => (
+                "✅ Livraison complétée",
+                format!(
+                    "La livraison #{} est complétée",
+                    delivery_id.to_string()[..8].to_uppercase()
+                ),
+            ),
             _ => return, // Ne pas envoyer de notification pour les autres statuts
         };
 
@@ -1976,22 +2253,36 @@ impl DeliveryService {
                 }
             }
 
-            // ✅ RECOMMANDATION 3: Envoyer SMS/Email pour les destinataires sans compte (lien dropoff)
-            // Si le destinataire n'a pas de compte (pas de user_id) mais a un téléphone
-            if recipient.user_id.is_none() {
-                let pool = self.repository().pool();
-                let delivery_id_str = delivery_id.to_string();
-                let status_str = format!("{:?}", status);
-                let _ = crate::services::delivery_notification_service::notify_delivery_status_change(
-                    pool,
-                    &delivery_id_str,
-                    &status_str,
-                    recipient.contact_phone.as_deref(),
-                    None, // DeliveryRecipient n'a pas de champ email
-                    recipient.contact_name.as_deref(),
+            // ✅ Phase 10 - Envoyer notifications (interne + SMS/Email) pour tous les destinataires
+            let pool = self.repository().pool();
+            let delivery_id_str = delivery_id.to_string();
+            let status_str = format!("{:?}", status);
+            
+            // Récupérer l'email du destinataire depuis la base si user_id existe
+            let recipient_email = if let Some(user_id) = recipient.user_id {
+                // Récupérer l'email depuis la table users
+                sqlx::query_scalar::<_, Option<String>>(
+                    "SELECT email FROM users WHERE id = $1"
                 )
-                .await;
-            }
+                .bind(user_id)
+                .fetch_optional(pool)
+                .await
+                .ok()
+                .flatten()
+            } else {
+                None
+            };
+            
+            let _ = crate::services::delivery_notification_service::notify_delivery_status_change(
+                pool,
+                &delivery_id_str,
+                &status_str,
+                recipient.user_id, // ✅ Phase 10 - ID utilisateur pour notification interne
+                recipient.contact_phone.as_deref(),
+                recipient_email.as_deref(),
+                recipient.contact_name.as_deref(),
+            )
+            .await;
         }
     }
 
@@ -2032,15 +2323,32 @@ impl DeliveryService {
 
         let courier_pos = (input.latitude, input.longitude);
 
+        // ✅ Phase 10 - Utiliser le service de matching géographique optimisé
         // Vérifier la proximité avec le point de pickup
         let pickup_pos = (summary.pickup.latitude, summary.pickup.longitude);
-        let distance_to_pickup = haversine_distance(courier_pos, pickup_pos);
+        let distance_to_pickup = if let Some(geo_service) = &self.geographic_matching {
+            geo_service
+                .calculate_distance(courier_pos, pickup_pos)
+                .await
+                .map(|r| r.distance_meters)
+                .unwrap_or_else(|_| haversine_distance(courier_pos, pickup_pos))
+        } else {
+            haversine_distance(courier_pos, pickup_pos)
+        };
 
         // Vérifier la proximité avec le point de dropoff
         let dropoff_pos = (summary.dropoff.latitude, summary.dropoff.longitude);
-        let distance_to_dropoff = haversine_distance(courier_pos, dropoff_pos);
+        let distance_to_dropoff = if let Some(geo_service) = &self.geographic_matching {
+            geo_service
+                .calculate_distance(courier_pos, dropoff_pos)
+                .await
+                .map(|r| r.distance_meters)
+                .unwrap_or_else(|_| haversine_distance(courier_pos, dropoff_pos))
+        } else {
+            haversine_distance(courier_pos, dropoff_pos)
+        };
 
-        // Vérifier si on doit suggérer un changement de statut
+        // ✅ Phase 6 - Amélioration 16-17 : Vérifier si on doit suggérer un changement de statut
         match summary.status {
             DeliveryStatus::EnRoutePickup | DeliveryStatus::AwaitingCourierConfirmation => {
                 if distance_to_pickup <= PROXIMITY_THRESHOLD_METERS {
@@ -2049,9 +2357,62 @@ impl DeliveryService {
                         distance_to_pickup as i32,
                         input.delivery_id
                     );
-                    // Note: On pourrait créer un événement spécial "proximity_pickup" 
-                    // qui serait envoyé via WebSocket pour suggérer au coursier de changer le statut
-                    // Pour l'instant, on log juste l'information
+                    
+                    // ✅ Envoyer événement WebSocket de suggestion
+                    self.tracking_manager
+                        .broadcast_event(
+                            input.delivery_id,
+                            DeliveryWsEvent::ProximitySuggestion {
+                                location_type: "pickup".to_string(),
+                                distance_meters: distance_to_pickup,
+                                suggested_status: DeliveryStatus::ArrivalPickup,
+                                auto_confirm_after_seconds: Some(30), // Auto-confirmation après 30 secondes
+                            },
+                        )
+                        .await;
+                    
+                    // ✅ NOUVEAU : Stocker la suggestion dans la table pour auto-confirmation
+                    if let Some(courier_id) = summary.courier.as_ref().and_then(|c| c.user_id) {
+                        let _ = sqlx::query(
+                            r#"
+                            INSERT INTO delivery_proximity_suggestions (
+                                delivery_id, suggested_status, location_type, distance_meters,
+                                auto_confirm_after_seconds, courier_user_id
+                            )
+                            VALUES ($1, $2, $3, $4, $5, $6)
+                            ON CONFLICT DO NOTHING
+                            "#,
+                        )
+                        .bind(input.delivery_id)
+                        .bind("arrival_pickup")
+                        .bind("pickup")
+                        .bind(distance_to_pickup)
+                        .bind(30i32)
+                        .bind(courier_id)
+                        .execute(self.repository.pool())
+                        .await;
+                    }
+                    
+                    // ✅ Envoyer notification push au coursier
+                    if let Some(courier_id) = summary.courier.as_ref().and_then(|c| c.user_id) {
+                        let _ = push_notification_service::send_push_notification(
+                            self.repository.pool(),
+                            courier_id,
+                            "📍 Proche du point de collecte".to_string(),
+                            format!(
+                                "Vous êtes à {}m du point de collecte. Confirmer votre arrivée ?",
+                                distance_to_pickup as i32
+                            ),
+                            Some(json!({
+                                "delivery_id": input.delivery_id.to_string(),
+                                "type": "proximity_suggestion",
+                                "location_type": "pickup",
+                                "suggested_status": "ArrivalPickup"
+                            })),
+                            Some("default".to_string()),
+                        )
+                        .await;
+                    }
                 }
             }
             DeliveryStatus::EnRouteDelivery | DeliveryStatus::PickedUp => {
@@ -2061,8 +2422,62 @@ impl DeliveryService {
                         distance_to_dropoff as i32,
                         input.delivery_id
                     );
-                    // Note: On pourrait créer un événement spécial "proximity_dropoff"
-                    // qui serait envoyé via WebSocket pour suggérer au coursier de changer le statut
+                    
+                    // ✅ Envoyer événement WebSocket de suggestion
+                    self.tracking_manager
+                        .broadcast_event(
+                            input.delivery_id,
+                            DeliveryWsEvent::ProximitySuggestion {
+                                location_type: "dropoff".to_string(),
+                                distance_meters: distance_to_dropoff,
+                                suggested_status: DeliveryStatus::ArrivalDestination,
+                                auto_confirm_after_seconds: Some(30), // Auto-confirmation après 30 secondes
+                            },
+                        )
+                        .await;
+                    
+                    // ✅ NOUVEAU : Stocker la suggestion dans la table pour auto-confirmation
+                    if let Some(courier_id) = summary.courier.as_ref().and_then(|c| c.user_id) {
+                        let _ = sqlx::query(
+                            r#"
+                            INSERT INTO delivery_proximity_suggestions (
+                                delivery_id, suggested_status, location_type, distance_meters,
+                                auto_confirm_after_seconds, courier_user_id
+                            )
+                            VALUES ($1, $2, $3, $4, $5, $6)
+                            ON CONFLICT DO NOTHING
+                            "#,
+                        )
+                        .bind(input.delivery_id)
+                        .bind("arrival_destination")
+                        .bind("dropoff")
+                        .bind(distance_to_dropoff)
+                        .bind(30i32)
+                        .bind(courier_id)
+                        .execute(self.repository.pool())
+                        .await;
+                    }
+                    
+                    // ✅ Envoyer notification push au coursier
+                    if let Some(courier_id) = summary.courier.as_ref().and_then(|c| c.user_id) {
+                        let _ = push_notification_service::send_push_notification(
+                            self.repository.pool(),
+                            courier_id,
+                            "📍 Proche de la destination".to_string(),
+                            format!(
+                                "Vous êtes à {}m de la destination. Confirmer votre arrivée ?",
+                                distance_to_dropoff as i32
+                            ),
+                            Some(json!({
+                                "delivery_id": input.delivery_id.to_string(),
+                                "type": "proximity_suggestion",
+                                "location_type": "dropoff",
+                                "suggested_status": "ArrivalDestination"
+                            })),
+                            Some("default".to_string()),
+                        )
+                        .await;
+                    }
                 }
             }
             _ => {}
@@ -2102,6 +2517,7 @@ impl DeliveryService {
                 input.item_id,
                 input.status,
                 input.actual_price_cents,
+                input.rejection_reason,
                 input.metadata,
             )
             .await?;
@@ -2715,13 +3131,182 @@ impl DeliveryService {
 
     /// Enfile immédiatement la livraison dans la file de matching et tente un dispatch express
     async fn enqueue_delivery_matching(&self, summary: &DeliverySummary) -> AppResult<()> {
-        let zone_id = Self::extract_zone_from_metadata(&summary.metadata);
-        let scheduled_pickup_at = summary
-            .metadata
-            .get("scheduled_pickup_at")
-            .and_then(|value| value.as_str())
-            .and_then(|raw| DateTime::parse_from_rfc3339(raw).ok())
-            .map(|dt| dt.with_timezone(&Utc));
+        let mut zone_id = Self::extract_zone_from_metadata(&summary.metadata);
+        
+        // ✅ Phase 3 - Amélioration 7 : Récupérer les préférences client et configuration produit
+        let client_preferences = if let Some(recipient_user_id) = summary.recipient.as_ref().and_then(|r| r.user_id) {
+            sqlx::query_as::<_, ClientDeliveryPreferences>(
+                "SELECT * FROM client_delivery_preferences WHERE delivery_id = $1 AND user_id = $2"
+            )
+            .bind(summary.id)
+            .bind(recipient_user_id)
+            .fetch_optional(&self.repository.pool)
+            .await
+            .ok()
+            .flatten()
+        } else {
+            None
+        };
+
+        let product_config = {
+            let service_id = summary.metadata.get("service_id").and_then(|v| v.as_i64()).map(|i| i as i32);
+            let product_index = summary.metadata.get("product_index").and_then(|v| v.as_i64()).map(|i| i as i32);
+            
+            if let (Some(sid), Some(pidx)) = (service_id, product_index) {
+                sqlx::query_as::<_, ProductDeliveryConfig>(
+                    "SELECT id, service_id, product_index, pickup_address, pickup_latitude, pickup_longitude, storage_location_id, required_vehicle_type_id, weight_kg, volume_cm3, requires_isothermal, requires_fragile_handling, pickup_availability_schedule, pickup_instructions, billing_mode, billing_partner_label, is_configured, configured_at, configured_by, created_at, updated_at FROM product_delivery_config WHERE service_id = $1 AND product_index = $2 AND is_configured = TRUE"
+                )
+                .bind(sid)
+                .bind(pidx)
+                .fetch_optional(&self.repository.pool)
+                .await
+                .ok()
+                .flatten()
+            } else {
+                None
+            }
+        };
+
+        // ✅ Phase 9 - Amélioration 32 : Si storage_location_id est défini, utiliser ce lieu de stock
+        // Sinon, si plusieurs lieux de stock existent, choisir le plus proche du dropoff
+        let (final_pickup_lat, final_pickup_lng, final_pickup_address, storage_zone_id) = if let Some(config) = &product_config {
+            if let Some(storage_location_id) = config.storage_location_id {
+                // Utiliser le lieu de stock spécifié
+                if let Ok(Some(storage)) = sqlx::query_as::<_, crate::models::delivery_model::MerchantStorageLocation>(
+                    "SELECT id, merchant_user_id, name, address, latitude, longitude, zone_id, is_active, created_at, updated_at FROM merchant_storage_locations WHERE id = $1 AND is_active = TRUE"
+                )
+                .bind(storage_location_id)
+                .fetch_optional(&self.repository.pool)
+                .await {
+                    // ✅ Phase 9 - Amélioration : Utiliser la zone du lieu de stock si elle existe
+                    let storage_zone = storage.zone_id;
+                    (storage.latitude, storage.longitude, storage.address, storage_zone)
+                } else {
+                    // Fallback sur les coordonnées du product_delivery_config
+                    (config.pickup_latitude, config.pickup_longitude, config.pickup_address.clone(), None)
+                }
+            } else {
+                // Pas de storage_location_id spécifié, chercher le lieu de stock le plus proche du dropoff
+                let dropoff_lat = summary.dropoff.latitude;
+                let dropoff_lng = summary.dropoff.longitude;
+                
+                // Récupérer le merchant_user_id depuis le service
+                if let Ok(Some(service)) = sqlx::query!(
+                    "SELECT user_id FROM services WHERE id = $1",
+                    config.service_id
+                )
+                .fetch_optional(&self.repository.pool)
+                .await {
+                    // Trouver le lieu de stock le plus proche du dropoff
+                    if let Ok(Some(closest_storage)) = sqlx::query_as::<_, crate::models::delivery_model::MerchantStorageLocation>(
+                        r#"
+                        SELECT id, merchant_user_id, name, address, latitude, longitude, zone_id, is_active, created_at, updated_at
+                        FROM merchant_storage_locations
+                        WHERE merchant_user_id = $1 AND is_active = TRUE
+                        ORDER BY (
+                            6371000 * acos(
+                                cos(radians($2)) * cos(radians(latitude)) *
+                                cos(radians(longitude) - radians($3)) +
+                                sin(radians($2)) * sin(radians(latitude))
+                            )
+                        ) ASC
+                        LIMIT 1
+                        "#
+                    )
+                    .bind(service.user_id)
+                    .bind(dropoff_lat)
+                    .bind(dropoff_lng)
+                    .fetch_optional(&self.repository.pool)
+                    .await {
+                        // ✅ Phase 9 - Amélioration : Utiliser la zone du lieu de stock si elle existe
+                        let storage_zone = closest_storage.zone_id;
+                        (closest_storage.latitude, closest_storage.longitude, closest_storage.address, storage_zone)
+                    } else {
+                        // Aucun lieu de stock actif, utiliser les coordonnées du product_delivery_config
+                        (config.pickup_latitude, config.pickup_longitude, config.pickup_address.clone(), None)
+                    }
+                } else {
+                    // Service introuvable, utiliser les coordonnées du product_delivery_config
+                    (config.pickup_latitude, config.pickup_longitude, config.pickup_address.clone(), None)
+                }
+            }
+        } else {
+            // Pas de product_config, utiliser les coordonnées du summary
+            (summary.pickup.latitude, summary.pickup.longitude, "Point de retrait".to_string(), None)
+        };
+        
+        // ✅ Phase 9 - Amélioration : Utiliser la zone du lieu de stock si elle existe, sinon celle des métadonnées
+        if storage_zone_id.is_some() {
+            zone_id = storage_zone_id;
+        }
+
+        // ✅ Phase 9 - Amélioration 32 : Recalculer la distance avec le lieu de stock choisi
+        // ✅ Phase 10 - Utiliser le service de matching géographique optimisé
+        let final_distance = if let Some(geo_service) = &self.geographic_matching {
+            geo_service
+                .calculate_distance(
+                    (final_pickup_lat, final_pickup_lng),
+                    (summary.dropoff.latitude, summary.dropoff.longitude),
+                )
+                .await
+                .map(|r| r.distance_meters as i32)
+                .unwrap_or_else(|_| haversine_distance(
+                    (final_pickup_lat, final_pickup_lng),
+                    (summary.dropoff.latitude, summary.dropoff.longitude),
+                ) as i32)
+        } else {
+            haversine_distance(
+                (final_pickup_lat, final_pickup_lng),
+                (summary.dropoff.latitude, summary.dropoff.longitude),
+            ) as i32
+        };
+
+        // ✅ Phase 3 - Amélioration 7 : Calculer créneau acceptable avec contraintes horaires
+        let schedule_service = DeliveryScheduleService::new(self.repository.pool.clone());
+        let estimated_transit_hours = if let Some(distance_m) = summary.distance_meters {
+            // Estimer ~30 km/h en moyenne
+            (distance_m as f64 / 1000.0 / 30.0).max(0.5)
+        } else {
+            2.0 // Par défaut 2h
+        };
+
+        let acceptable_slot = schedule_service
+            .calculate_acceptable_pickup_slot(
+                product_config.as_ref(),
+                client_preferences.as_ref(),
+                estimated_transit_hours,
+            )
+            .await
+            .unwrap_or_else(|_| {
+                // En cas d'erreur, utiliser pickup immédiat
+                crate::services::delivery_schedule_service::AcceptableTimeSlot {
+                    pickup_slot: crate::services::delivery_schedule_service::TimeSlot {
+                        start: Utc::now(),
+                        end: Utc::now() + Duration::hours(1),
+                    },
+                    delivery_slot: None,
+                    is_flexible: true,
+                }
+            });
+
+        // ✅ Phase 9 - Amélioration 32 : Mettre à jour les coordonnées pickup dans la livraison si nécessaire
+        if (final_pickup_lat - summary.pickup.latitude).abs() > 0.0001 || 
+           (final_pickup_lng - summary.pickup.longitude).abs() > 0.0001 {
+            // Mettre à jour les coordonnées pickup dans la base de données
+            sqlx::query!(
+                "UPDATE deliveries SET pickup_latitude = $1, pickup_longitude = $2, pickup_address = $3, distance_meters = $4, updated_at = NOW() WHERE id = $5",
+                final_pickup_lat,
+                final_pickup_lng,
+                final_pickup_address,
+                final_distance,
+                summary.id
+            )
+            .execute(&self.repository.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur mise à jour pickup: {}", e)))?;
+        }
+
+        let scheduled_pickup_at = Some(acceptable_slot.pickup_slot.start);
         let should_delay_matching = scheduled_pickup_at
             .map(|ts| ts > Utc::now() + Duration::minutes(2))
             .unwrap_or(false);
@@ -2734,18 +3319,28 @@ impl DeliveryService {
         let scheduled_pickup_value = scheduled_pickup_at.map(|ts| ts.to_rfc3339());
         let payload = json!({
             "pickup": {
-                "lat": summary.pickup.latitude,
-                "lng": summary.pickup.longitude,
+                "lat": final_pickup_lat, // ✅ Phase 9 - Amélioration 32 : Utiliser le lieu de stock choisi
+                "lng": final_pickup_lng,
+                "address": final_pickup_address,
             },
             "dropoff": {
                 "lat": summary.dropoff.latitude,
                 "lng": summary.dropoff.longitude,
             },
             "shopping_required": summary.shopping_required,
-            "distance_meters": summary.distance_meters,
+            "distance_meters": final_distance, // ✅ Phase 9 - Amélioration 32 : Utiliser la distance recalculée
             "metadata": summary.metadata,
             "scheduled_pickup_at": scheduled_pickup_value,
             "dropoff_pending": dropoff_pending,
+            "acceptable_pickup_slot": {
+                "start": acceptable_slot.pickup_slot.start.to_rfc3339(),
+                "end": acceptable_slot.pickup_slot.end.to_rfc3339(),
+            },
+            "acceptable_delivery_slot": acceptable_slot.delivery_slot.map(|slot| json!({
+                "start": slot.start.to_rfc3339(),
+                "end": slot.end.to_rfc3339(),
+            })),
+            "is_flexible": acceptable_slot.is_flexible,
         });
 
         self.repository
@@ -2779,6 +3374,76 @@ impl DeliveryService {
         if should_delay_matching {
             // Attendre la fenêtre programmée avant de chercher un coursier.
             return Ok(());
+        }
+
+        // ✅ Phase 9 - Amélioration 28 : Prioriser preferred_courier_id s'il est défini
+        if let Some(preferred_courier_id) = summary.preferred_courier_id {
+            // Vérifier que le coursier préféré est disponible et éligible
+            if let Ok(Some(courier)) = self.repository.find_courier_by_id(preferred_courier_id).await {
+                // Vérifier que le coursier est actif
+                if courier.status == crate::models::delivery_model::DeliveryCourierStatus::Approved {
+                    // Assigner directement le coursier préféré
+                    match self.repository.assign_delivery_courier(summary.id, preferred_courier_id).await {
+                        Ok(_) => {
+                            self.repository
+                                .update_matching_queue_status(
+                                    summary.id,
+                                    DeliveryMatchingStatus::Assigned,
+                                    None,
+                                    Some(json!({
+                                        "courier_id": preferred_courier_id,
+                                        "reason": "preferred_courier",
+                                    })),
+                                    false,
+                                )
+                                .await?;
+
+                            self.repository
+                                .insert_matching_event(NewDeliveryMatchingEvent {
+                                    delivery_id: summary.id,
+                                    courier_id: Some(preferred_courier_id),
+                                    status: DeliveryMatchingStatus::Assigned,
+                                    score: None,
+                                    reason: Some("preferred_courier_assigned".into()),
+                                    metadata: json!({
+                                        "preferred_courier_id": preferred_courier_id,
+                                    }),
+                                })
+                                .await?;
+
+                            self.update_delivery_status(
+                                summary.id,
+                                DeliveryStatus::AwaitingCourierConfirmation,
+                                None,
+                            )
+                            .await?;
+
+                            return Ok(());
+                        }
+                        Err(e) => {
+                            log::warn!(
+                                "[DeliveryService] Erreur assignation coursier préféré {}: {:?}",
+                                preferred_courier_id,
+                                e
+                            );
+                            // Continuer avec le matching automatique en cas d'erreur
+                        }
+                    }
+                } else {
+                    log::warn!(
+                        "[DeliveryService] Coursier préféré {} n'est pas actif (status: {:?})",
+                        preferred_courier_id,
+                        courier.status
+                    );
+                    // Continuer avec le matching automatique
+                }
+            } else {
+                log::warn!(
+                    "[DeliveryService] Coursier préféré {} introuvable",
+                    preferred_courier_id
+                );
+                // Continuer avec le matching automatique
+            }
         }
 
         self.attempt_auto_matching(summary, zone_id).await?;

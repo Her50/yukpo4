@@ -1,4 +1,5 @@
 pub mod ai_chat_routes;
+pub mod analytics_routes; // ✅ Phase 10 - Routes d'analytics pour prestataires
 pub mod appliance_model_routes; // ✅ Routes pour modèles d'appareils électroménagers
 pub mod auth_routes;
 pub mod autocomplete_routes; // ✅ NOUVEAU: Routes pour autocomplete characteristics
@@ -7,9 +8,12 @@ pub mod combination_routes; // ✅ NOUVEAU 2025-11-03: Routes pour progression g
 pub mod content_routes; // ✅ NOUVEAU: Routes pour engagement contenu mixte
 pub mod conversation_routes; // ✅ NOUVEAU: Routes pour @mentions et multi-participants
 pub mod debug_routes;
+pub mod delivery_external_routes; // ✅ Phase 4 - Amélioration 8: Routes API publiques pour prestataires externes
 pub mod delivery_metrics_routes;
 pub mod delivery_public_routes;
 pub mod delivery_routes;
+pub mod media_upload_routes;
+pub mod negotiated_price_routes; // ✅ NOUVEAU : Routes prix négociés
 pub mod diagnostic_routes; // ✅ NOUVEAU 2025-11-04: Routes de diagnostic de la base de données
 pub mod echange_routes;
 pub mod embedding_routes; // ✅ Routes pour embeddings
@@ -23,6 +27,7 @@ pub mod live_ai_routes;
 pub mod live_routes;
 pub mod media_routes;
 pub mod metrics_routes;
+pub mod metrics_tracking_routes;
 pub mod nearby_services_routes;
 pub mod notification_routes; // ✅ Routes de notifications
 pub mod payment_routes;
@@ -43,6 +48,7 @@ pub mod service_team_routes; // ✅ NOUVEAU: Routes pour gestion d'équipe des s
 pub mod shopping_routes;
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
 pub mod system_health_routes;
+pub mod health_routes; // ✅ Phase 10 - Routes de santé et vérification services
 pub mod token_pack_routes;
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens
 pub mod user_routes;

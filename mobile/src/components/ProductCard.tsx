@@ -23,6 +23,7 @@ import { config } from '../config/environment';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
+import OrderDeliveryModal from './delivery/OrderDeliveryModal';
 import { NativeButton, NativeCard } from './NativeDesign';
 import ProductCommentsSection from './ProductCommentsSection';
 import ProductMediaCarousel from './ProductMediaCarousel';
@@ -188,6 +189,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const navigation = useNavigation();
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
   // ✅ NOUVEAU : États pour contact privé
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
@@ -475,6 +477,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
     product.product_id ||
     product.id ||
     (serviceId ? `${serviceId}_${productIndex}` : null);
+
+  // ✅ Vérifier si c'est un produit (pas une prestation de service)
+  // Par défaut, si le type n'est pas défini, on considère que c'est un produit
+  const isProduct = product.type !== 'prestation_service';
 
   // Prix
   const displayPrice = hasVariant && variants.length > 0
@@ -1086,6 +1092,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
               {/* Actions */}
               <View style={styles.actions}>
+                {/* ✅ NOUVEAU: Bouton "Se faire livrer" - Uniquement pour les produits (pas les prestations) */}
+                {serviceId && isProduct && (
+                  <NativeButton
+                    title="🚚 Se faire livrer"
+                    variant="primary"
+                    onPress={() => setShowOrderModal(true)}
+                    style={[styles.actionButton, { backgroundColor: modernColors.success }]}
+                  />
+                )}
+
                 <NativeButton
                   title="💬 Chat"
                   variant="primary"
@@ -1207,6 +1223,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
             data: service?.data || {},
           }}
           onClose={() => setShowGallery(false)}
+        />
+      )}
+
+      {/* ✅ Modal commande livraison - Uniquement pour les produits */}
+      {serviceId && isProduct && (
+        <OrderDeliveryModal
+          visible={showOrderModal}
+          onClose={() => setShowOrderModal(false)}
+          serviceId={serviceId}
+          productIndex={productIndex}
+          productName={product.nom || product.name || 'Produit'}
+          onSuccess={(deliveryId) => {
+            console.log('Commande créée:', deliveryId);
+            // Optionnel : rediriger vers la page de suivi
+          }}
         />
       )}
     </>

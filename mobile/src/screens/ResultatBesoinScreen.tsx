@@ -30,6 +30,7 @@ import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
 import { useLocation } from '../contexts/LocationContext';
 import { apiPost } from '../services/api';
+import { trackNavigation } from '../services/metricsTracking';
 import { modernColors } from '../theme/modernTheme';
 
 interface CombinationSuggestion {
@@ -379,6 +380,10 @@ const ResultatBesoinScreen: React.FC = () => {
 
     setSearchGPSString(coordinatesString);
     setShowGPSModal(false);
+    // ✅ Tracking métriques : Recherche géolocalisée
+    trackNavigation('geolocation_search', {
+      queryType: 'location',
+    });
   }, []);
 
   const clearSearchGPS = useCallback(() => {
@@ -476,6 +481,11 @@ const ResultatBesoinScreen: React.FC = () => {
       setDynamicPlaceholder(null);
     }
   }, [location]); // ✅ CORRECTION: Ajouter location aux dependencies
+
+  // ✅ Tracking métriques : Vue de l'écran
+  useEffect(() => {
+    trackNavigation('view');
+  }, []);
 
   // ✅ NOUVEAU : Initialiser les résultats depuis les paramètres de route (quand on vient de HomeScreen)
   useEffect(() => {
@@ -613,6 +623,13 @@ const ResultatBesoinScreen: React.FC = () => {
         console.error('[ResultatBesoinScreen] ❌ results n\'est pas un array');
         setFilteredResults([]);
         return;
+      }
+
+      // ✅ Tracking métriques : Filtre appliqué
+      if (filterCategory !== 'all' || Object.keys(selectedFilters).length > 0 || priceFilter.min !== null || priceFilter.max !== null) {
+        trackNavigation('filter', {
+          filterType: filterCategory === 'nearby' ? 'location' : filterCategory === 'with_stock' ? 'category' : 'price',
+        });
       }
 
       let filtered = [...results];
@@ -787,9 +804,20 @@ const ResultatBesoinScreen: React.FC = () => {
       if (extractedResults.length > 0) {
         console.log('[ResultatBesoinScreen] ✅ Résultats trouvés:', extractedResults.length);
         setResults(extractedResults);
+        // ✅ Tracking métriques : Recherche avec résultats
+        trackNavigation('search', {
+          queryType: searchGPSString ? 'location' : 'keyword',
+          resultsCount: extractedResults.length,
+          hasResults: true,
+        });
       } else {
         console.log('[ResultatBesoinScreen] ⚠️ Aucun résultat trouvé');
         setResults([]);
+        // ✅ Tracking métriques : Recherche sans résultats
+        trackNavigation('search', {
+          queryType: searchGPSString ? 'location' : 'keyword',
+          hasResults: false,
+        });
       }
     } catch (error: any) {
       console.error('[ResultatBesoinScreen] ❌ Erreur recherche:', error);
@@ -1428,10 +1456,21 @@ const ResultatBesoinScreen: React.FC = () => {
         data={listData}
         keyExtractor={(item) => `${item.service_id}`}
         renderItem={({ item }) => (
-          <ProductCard
-            product={item}
-            service={item as any}
-          />
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              // ✅ Tracking métriques : Clic sur produit
+              trackNavigation('click', {
+                itemType: 'product',
+                itemId: item.service_id?.toString(),
+              });
+            }}
+          >
+            <ProductCard
+              product={item}
+              service={item as any}
+            />
+          </TouchableOpacity>
         )}
         ListHeaderComponent={listHeaderComponent}
         ListFooterComponent={renderListFooter}
@@ -1449,7 +1488,17 @@ const ResultatBesoinScreen: React.FC = () => {
         }
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
+          {
+            useNativeDriver: true,
+            listener: (event: any) => {
+              // ✅ Tracking métriques : Scroll (avec throttling via scrollEventThrottle)
+              // Le scroll est déjà throttlé à 16ms, on track seulement les scrolls significatifs
+              const scrollY = event.nativeEvent.contentOffset.y;
+              if (scrollY > 0 && scrollY % 500 < 16) { // Track tous les 500px
+                trackNavigation('view', {}); // Utiliser 'view' pour scroll
+              }
+            }
+          }
         )}
         scrollEventThrottle={16}
       />

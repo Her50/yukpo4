@@ -44,6 +44,16 @@ pub struct ProductionConfig {
 
 impl Default for ProductionConfig {
     fn default() -> Self {
+        // Détection GPU via variables d'environnement
+        let gpu_enabled = std::env::var("GPU_AVAILABLE")
+            .unwrap_or_else(|_| "false".to_string())
+            .parse::<bool>()
+            .unwrap_or_else(|_| {
+                // Fallback: vérifier CUDA_VISIBLE_DEVICES ou NVIDIA_VISIBLE_DEVICES
+                std::env::var("CUDA_VISIBLE_DEVICES").is_ok()
+                    || std::env::var("NVIDIA_VISIBLE_DEVICES").is_ok()
+            });
+        
         Self {
             database_url: std::env::var("DATABASE_URL").unwrap_or_default(),
             redis_url: std::env::var("REDIS_URL").unwrap_or_default(),
@@ -51,7 +61,7 @@ impl Default for ProductionConfig {
             openai_api_key: std::env::var("OPENAI_API_KEY").unwrap_or_default(),
             environment: std::env::var("ENVIRONMENT").unwrap_or_else(|_| "production".to_string()),
             log_level: std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()),
-            gpu_enabled: true,
+            gpu_enabled,
             image_optimization: ImageOptimizationConfig::default(),
             api_timeouts: ApiTimeoutsConfig::default(),
         }

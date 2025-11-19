@@ -85,6 +85,7 @@ export interface ShoppingOrderResponse {
 export interface ShoppingItemUpdateRequest {
     status: string;
     actual_price_cents?: number;
+    rejection_reason?: string; // ✅ Phase 9 - Amélioration : Raison de refus
     metadata?: unknown;
 }
 

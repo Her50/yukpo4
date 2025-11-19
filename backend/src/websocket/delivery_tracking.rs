@@ -90,10 +90,30 @@ pub enum DeliveryWsEvent {
         #[serde(skip_serializing_if = "Option::is_none")]
         address: Option<String>,
     },
+    PickupLocationUpdated {
+        latitude: f64,
+        longitude: f64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        address: Option<String>,
+    },
     WalletUpdate {
         balance_cents: i64,
         #[serde(skip_serializing_if = "Option::is_none")]
         reason: Option<String>,
+    },
+    // ✅ Phase 6 - Amélioration 16-17 : Suggestion automatique de changement de statut basée sur proximité GPS
+    ProximitySuggestion {
+        location_type: String, // "pickup" ou "dropoff"
+        distance_meters: f64,
+        suggested_status: DeliveryStatus,
+        auto_confirm_after_seconds: Option<u64>, // Changement automatique après X secondes (optionnel)
+    },
+    // ✅ Phase 9 - Amélioration 29 : Notification prestataire quand client fournit adresse
+    DropoffAddressProvided {
+        latitude: f64,
+        longitude: f64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        address: Option<String>,
     },
 }
 

@@ -1,0 +1,80 @@
+# Script complet pour corriger et appliquer les migrations
+$DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL = $DATABASE_URL
+
+Write-Host "=== CORRECTION ET APPLICATION DES MIGRATIONS ===" -ForegroundColor Cyan
+
+# Étape 1: Calculer le nouveau checksum de la migration 0
+Write-Host "`n1️⃣ Calcul du checksum de la migration 0..." -ForegroundColor Yellow
+$migrationFile = "migrations\0000_create_all_tables.sql"
+if (-not (Test-Path $migrationFile)) {
+    Write-Host "❌ Fichier migration 0 non trouvé" -ForegroundColor Red
+    exit 1
+}
+
+# Lire le contenu et calculer le hash SHA256
+$content = Get-Content $migrationFile -Raw -Encoding UTF8
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+$hashBytes = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($content))
+$checksumHex = ($hashBytes | ForEach-Object { $_.ToString("x2") }) -join ""
+
+Write-Host "Checksum calculé: $checksumHex" -ForegroundColor Green
+
+# Étape 2: Mettre à jour le checksum dans la base
+Write-Host "`n2️⃣ Mise à jour du checksum dans _sqlx_migrations..." -ForegroundColor Yellow
+
+# Vérifier que psql est disponible ou utiliser sqlx-cli
+$psqlCheck = Get-Command psql -ErrorAction SilentlyContinue
+if ($psqlCheck) {
+    $updateQuery = "UPDATE _sqlx_migrations SET checksum = decode('$checksumHex', 'hex') WHERE version = 0;"
+    $result = & psql "$DATABASE_URL" -c $updateQuery 2>&1
+    
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✅ Checksum mis à jour avec succès" -ForegroundColor Green
+    } else {
+        Write-Host "❌ Erreur lors de la mise à jour: $result" -ForegroundColor Red
+        Write-Host "`nTentative avec sqlx-cli..." -ForegroundColor Yellow
+        # Alternative: utiliser sqlx-cli pour corriger
+    }
+} else {
+    Write-Host "⚠️  psql non trouvé, utilisation de sqlx-cli..." -ForegroundColor Yellow
+    # Utiliser une requête SQL via cargo sqlx
+    Write-Host "   Exécutez manuellement: UPDATE _sqlx_migrations SET checksum = decode('$checksumHex', 'hex') WHERE version = 0;" -ForegroundColor Cyan
+}
+
+# Étape 3: Appliquer les migrations en attente
+Write-Host "`n3️⃣ Application des migrations en attente..." -ForegroundColor Yellow
+$migrateResult = cargo sqlx migrate run 2>&1
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "✅ Migrations appliquées avec succès" -ForegroundColor Green
+} else {
+    if ($migrateResult -match "migration 0 was previously applied but has been modified") {
+        Write-Host "❌ Le checksum n'a pas été corrigé correctement" -ForegroundColor Red
+        Write-Host "   Veuillez exécuter manuellement dans la base:" -ForegroundColor Yellow
+        Write-Host "   UPDATE _sqlx_migrations SET checksum = decode('$checksumHex', 'hex') WHERE version = 0;" -ForegroundColor Cyan
+        Write-Host "`n   Puis relancez: cargo sqlx migrate run" -ForegroundColor Yellow
+        exit 1
+    } else {
+        Write-Host "❌ Erreur lors de l'application des migrations:" -ForegroundColor Red
+        Write-Host $migrateResult
+        exit 1
+    }
+}
+
+# Étape 4: Vérifier l'état final
+Write-Host "`n4️⃣ Vérification de l'état final..." -ForegroundColor Yellow
+cargo sqlx migrate info
+
+# Étape 5: Régénérer le cache sqlx
+Write-Host "`n5️⃣ Régénération du cache sqlx..." -ForegroundColor Yellow
+cargo sqlx prepare --workspace --database-url $DATABASE_URL
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "✅ Cache sqlx régénéré avec succès" -ForegroundColor Green
+} else {
+    Write-Host "⚠️  Erreur lors de la régénération du cache (peut être ignoré si .sqlx existe déjà)" -ForegroundColor Yellow
+}
+
+Write-Host "`n=== TERMINÉ ===" -ForegroundColor Green
+

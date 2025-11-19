@@ -86,6 +86,13 @@ impl GlobalPromoService {
         .fetch_one(pool)
         .await?;
 
+        // Incrémenter métrique événements actifs si l'événement est actif
+        if event.status == "active" || event.status == "scheduled" {
+            crate::metrics::GLOBAL_PROMO_METRICS
+                .events_active
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+
         Ok(event)
     }
 
@@ -248,6 +255,11 @@ impl GlobalPromoService {
             )
             .await?;
         }
+
+        // Incrémenter métrique entrées totales
+        crate::metrics::GLOBAL_PROMO_METRICS
+            .entries_total
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         Ok(entry)
     }
@@ -552,6 +564,18 @@ impl GlobalPromoService {
         }
 
         let has_more = (page * page_size) < total;
+        // Incrémenter métriques catalogue
+        crate::metrics::GLOBAL_PROMO_METRICS
+            .catalog_page_views_total
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        
+        // Si une recherche a été effectuée
+        if search.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false) {
+            crate::metrics::GLOBAL_PROMO_METRICS
+                .catalog_searches_total
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+
         Ok(GlobalPromoCatalogPage {
             items,
             page,
@@ -803,6 +827,59 @@ impl GlobalPromoService {
         notify_ended_entries(pool, ended_entries).await;
 
         Ok(())
+    }
+
+    /// ✅ NOUVEAU : Récupère le prix réel d'un produit en tenant compte des promotions globales actives
+    /// Utilisé par le système de livraison pour calculer les prix avec promotions
+    pub async fn get_real_product_price(
+        pool: &PgPool,
+        service_id: i32,
+        _product_index: Option<i32>, // Réservé pour usage futur (promotions par produit)
+        base_price: f64,
+    ) -> AppResult<f64> {
+        let now = Utc::now();
+        
+        // Chercher une promotion active pour ce service
+        let promo_entry = sqlx::query_as::<_, GlobalPromoEntry>(
+            r#"
+            SELECT e.*
+            FROM global_promo_entries e
+            JOIN global_promo_events ev ON ev.id = e.event_id
+            WHERE e.service_id = $1
+                AND e.status IN ('approved', 'published')
+                AND ev.status IN ('scheduled', 'live')
+                AND ev.starts_at <= $2
+                AND ev.ends_at >= $2
+            ORDER BY ev.starts_at DESC, e.created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(service_id)
+        .bind(now)
+        .fetch_optional(pool)
+        .await?;
+
+        if let Some(entry) = promo_entry {
+            // Priorité 1 : Prix promotionnel fixe
+            if let Some(promo_price) = entry.promo_price_cfa {
+                if promo_price > 0.0 && promo_price < base_price {
+                    return Ok(promo_price);
+                }
+            }
+            
+            // Priorité 2 : Pourcentage de réduction
+            if let Some(discount_pct) = entry.discount_percentage {
+                if discount_pct > 0.0 && discount_pct <= 100.0 {
+                    let discounted = base_price * (1.0 - discount_pct / 100.0);
+                    if discounted > 0.0 {
+                        return Ok(discounted);
+                    }
+                }
+            }
+        }
+
+        // Pas de promotion active : retourner le prix de base
+        Ok(base_price)
     }
 }
 

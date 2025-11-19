@@ -189,6 +189,35 @@ export const studioService = {
         }
 
         return json.storyboard;
-    }
+    },
+    // ✅ Phase 9 - Amélioration 31 : Chaînage vidéos
+    setDependencies: async (sessionId: string, childSessionIds: string[]): Promise<VideoDependency[]> => {
+        const res = await apiPost(`${BASE}/sessions/${sessionId}/dependencies`, {
+            child_session_ids: childSessionIds,
+        });
+        return parseJson(res);
+    },
+    getDependencies: async (sessionId: string): Promise<VideoDependency[]> => {
+        const res = await apiGet(`${BASE}/sessions/${sessionId}/dependencies`);
+        return parseJson(res);
+    },
+    getNextVideo: async (sessionId: string): Promise<NextVideoResponse> => {
+        const res = await apiGet(`${BASE}/sessions/${sessionId}/next`);
+        return parseJson(res);
+    },
 };
+
+// ✅ Phase 9 - Amélioration 31 : Types pour chaînage vidéos
+export interface VideoDependency {
+    id: number;
+    parent_session_id: string;
+    child_session_id: string;
+    order_index: number | null;
+    created_at: string;
+}
+
+export interface NextVideoResponse {
+    next_session_id: string | null;
+    order_index: number | null;
+}
 

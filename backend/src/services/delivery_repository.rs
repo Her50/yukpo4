@@ -6,7 +6,7 @@ use crate::{
         DeliveryEngineType, DeliveryMatchingEvent, DeliveryMatchingQueueItem,
         DeliveryMatchingStatus, DeliveryParcel, DeliveryPricing, DeliveryRecipient,
         DeliveryRecipientUpdate, DeliveryStatus, DeliveryStatusEvent, DeliverySummary,
-        DeliveryTrackingPoint, GeoPoint, ParcelType, ShoppingItemStatus, ShoppingOrder,
+        DeliveryTrackingPoint, GeoPoint, ParcelRejectionReason, ParcelType, ShoppingItemStatus, ShoppingOrder,
         ShoppingOrderItem, ShoppingStatus,
     },
 };
@@ -1129,6 +1129,58 @@ impl DeliveryRepository {
         })
     }
 
+    /// Met à jour l'adresse de pickup d'une livraison
+    pub async fn update_pickup_location(
+        &self,
+        delivery_id: Uuid,
+        point: GeoPoint,
+        address: Option<String>,
+        updated_by: Option<i32>,
+    ) -> AppResult<()> {
+        sqlx::query!(
+            r#"
+            UPDATE deliveries
+            SET
+                pickup_location = ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
+                pickup_address = $4,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+            delivery_id,
+            point.longitude,
+            point.latitude,
+            address
+        )
+        .execute(&self.pool)
+        .await?;
+
+        // Enregistrer l'historique de modification si nécessaire
+        if let Some(user_id) = updated_by {
+            sqlx::query!(
+                r#"
+                INSERT INTO delivery_recipient_updates (
+                    delivery_id,
+                    submitted_by,
+                    latitude,
+                    longitude,
+                    address
+                )
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT DO NOTHING
+                "#,
+                delivery_id,
+                user_id,
+                point.latitude,
+                point.longitude,
+                address
+            )
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(())
+    }
+
     /// Affecte un tarif à une livraison
     pub async fn upsert_pricing(&self, payload: NewDeliveryPricing) -> AppResult<DeliveryPricing> {
         let row = sqlx::query!(
@@ -1250,6 +1302,7 @@ impl DeliveryRepository {
                 status AS "status: DeliveryStatus",
                 creator_id,
                 courier_id,
+                preferred_courier_id AS "preferred_courier_id?: uuid::Uuid", -- ✅ Phase 9 - Amélioration 28
                 ST_Y(pickup_location::geometry) AS "pickup_lat!: f64",
                 ST_X(pickup_location::geometry) AS "pickup_lng!: f64",
                 ST_Y(dropoff_location::geometry) AS "dropoff_lat!: f64",
@@ -1349,6 +1402,7 @@ impl DeliveryRepository {
                 status: row.status,
                 creator_id: row.creator_id,
                 courier_id: row.courier_id,
+                preferred_courier_id: row.preferred_courier_id, // ✅ Phase 9 - Amélioration 28
                 pickup: GeoPoint {
                     latitude: row.pickup_lat,
                     longitude: row.pickup_lng,
@@ -1752,22 +1806,26 @@ impl DeliveryRepository {
         item_id: Uuid,
         status: ShoppingItemStatus,
         actual_price_cents: Option<i32>,
+        // ✅ Phase 9 - Amélioration : Raison de refus du produit
+        rejection_reason: Option<crate::models::delivery_model::ParcelRejectionReason>,
         metadata: Option<Value>,
     ) -> AppResult<()> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE shopping_order_items
             SET status = $2,
                 actual_price_cents = COALESCE($3, actual_price_cents),
-                metadata = COALESCE($4, metadata),
+                rejection_reason = $4,
+                metadata = COALESCE($5, metadata),
                 updated_at = NOW()
             WHERE id = $1
             "#,
-            item_id,
-            status as ShoppingItemStatus,
-            actual_price_cents,
-            metadata
         )
+        .bind(item_id)
+        .bind(status as ShoppingItemStatus)
+        .bind(actual_price_cents)
+        .bind(rejection_reason.map(|r| r as ParcelRejectionReason))
+        .bind(metadata)
         .execute(&self.pool)
         .await?;
 

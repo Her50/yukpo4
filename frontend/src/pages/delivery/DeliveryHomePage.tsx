@@ -4,8 +4,9 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons/Button';
 import { useFeatureFlags } from '@/context';
 import { useDeliveryContext } from '@/context/DeliveryContext';
-import { AlertCircle, PackagePlus } from 'lucide-react';
-import React, { useEffect, useMemo } from 'react';
+import { AlertCircle, PackagePlus, RefreshCw } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
 const DeliveryHomePage: React.FC = () => {
@@ -18,6 +19,8 @@ const DeliveryHomePage: React.FC = () => {
         error,
     } = useDeliveryContext();
     const { isEnabled } = useFeatureFlags();
+    const [refreshing, setRefreshing] = useState(false);
+    const [navigating, setNavigating] = useState(false);
 
     useEffect(() => {
         refreshActiveDeliveries({ force: true });
@@ -33,18 +36,102 @@ const DeliveryHomePage: React.FC = () => {
         [deliveries],
     );
 
-    const handleStartShopping = () => navigate('/delivery/shopping/basket');
+    // ✅ CORRIGÉ: Navigation robuste avec gestion d'erreur
+    const handleStartShopping = useCallback(() => {
+        if (navigating) return;
 
-    const handleStartParcel = () => {
-        alert(
-            "Le parcours colis web arrive bientôt. Utilisez l'option courses supermarché pour tester le suivi en temps réel.",
-        );
-    };
+        console.log('[DeliveryHomePage] 🛒 Navigation vers /delivery/shopping/basket');
+        setNavigating(true);
 
-    const handleOpenDelivery = (deliveryId: string) => {
+        try {
+            navigate('/delivery/shopping/basket');
+            console.log('[DeliveryHomePage] ✅ Navigation réussie');
+        } catch (error: any) {
+            console.error('[DeliveryHomePage] ❌ Erreur navigation:', error);
+            toast.error('Impossible d\'ouvrir le flux de commande. Veuillez réessayer.');
+            setNavigating(false);
+        }
+    }, [navigate, navigating]);
+
+    const handleStartParcel = useCallback(() => {
+        if (navigating) return;
+
+        console.log('[DeliveryHomePage] 📦 Tentative d\'ouverture du flux colis');
+        setNavigating(true);
+
+        // Pour l'instant, rediriger vers le flux shopping (même logique)
+        // TODO: Implémenter le flux colis web quand il sera prêt
+        if (isEnabled('delivery_v2')) {
+            // Utiliser le flux shopping en attendant
+            handleStartShopping();
+        } else {
+            // Afficher un toast informatif et rediriger vers shopping
+            toast(
+                (t) => (
+                    <div className="space-y-2">
+                        <p className="font-semibold">Flux colis en préparation</p>
+                        <p className="text-sm">
+                            Le flux de livraison de colis est en cours de finalisation. Vous pouvez utiliser les courses supermarché pour tester le suivi en temps réel.
+                        </p>
+                        <div className="flex gap-2 mt-2">
+                            <button
+                                onClick={() => {
+                                    toast.dismiss(t.id);
+                                    setNavigating(false);
+                                    handleStartShopping();
+                                }}
+                                className="px-3 py-1 bg-primary text-white rounded text-sm font-medium"
+                            >
+                                Utiliser les courses
+                            </button>
+                            <button
+                                onClick={() => {
+                                    toast.dismiss(t.id);
+                                    setNavigating(false);
+                                }}
+                                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm"
+                            >
+                                Annuler
+                            </button>
+                        </div>
+                    </div>
+                ),
+                { duration: 5000 }
+            );
+        }
+    }, [isEnabled, navigating, handleStartShopping]);
+
+    const handleOpenDelivery = useCallback((deliveryId: string) => {
+        if (navigating) return;
+
+        console.log('[DeliveryHomePage] 📍 Ouverture livraison:', deliveryId);
+        setNavigating(true);
         setActiveDeliveryId(deliveryId);
-        navigate(`/delivery/${deliveryId}/tracking`);
-    };
+
+        try {
+            navigate(`/delivery/${deliveryId}/tracking`);
+            console.log('[DeliveryHomePage] ✅ Navigation réussie vers tracking');
+        } catch (error: any) {
+            console.error('[DeliveryHomePage] ❌ Erreur navigation:', error);
+            toast.error('Impossible d\'ouvrir le suivi de livraison.');
+            setNavigating(false);
+        }
+    }, [navigate, setActiveDeliveryId, navigating]);
+
+    const handleRefresh = useCallback(async () => {
+        if (refreshing || loading) return;
+
+        setRefreshing(true);
+        try {
+            await refreshActiveDeliveries({ force: true });
+            toast.success('Livraisons actualisées');
+        } catch (error: any) {
+            console.error('[DeliveryHomePage] Erreur actualisation:', error);
+            toast.error('Erreur lors de l\'actualisation');
+        } finally {
+            setRefreshing(false);
+        }
+    }, [refreshActiveDeliveries, refreshing, loading]);
 
     return (
         <AppLayout>
@@ -63,7 +150,13 @@ const DeliveryHomePage: React.FC = () => {
                             <PackagePlus className="h-10 w-10 text-primary" />
                         </div>
                         <div className="mt-4 flex justify-end">
-                            <Button onClick={handleStartShopping}>Commander au supermarché</Button>
+                            <Button
+                                onClick={handleStartShopping}
+                                disabled={navigating}
+                                className="min-w-[200px]"
+                            >
+                                {navigating ? 'Chargement...' : 'Commander au supermarché'}
+                            </Button>
                         </div>
                     </article>
 
@@ -79,8 +172,13 @@ const DeliveryHomePage: React.FC = () => {
                                 <AlertCircle className="h-10 w-10 text-emerald-500" />
                             </div>
                             <div className="mt-4 flex justify-end">
-                                <Button variant="outline" onClick={handleStartParcel}>
-                                    Tester le flux colis
+                                <Button
+                                    variant="outline"
+                                    onClick={handleStartParcel}
+                                    disabled={navigating}
+                                    className="min-w-[200px]"
+                                >
+                                    {navigating ? 'Chargement...' : 'Tester le flux colis'}
                                 </Button>
                             </div>
                         </article>
@@ -96,8 +194,13 @@ const DeliveryHomePage: React.FC = () => {
                                 <AlertCircle className="h-10 w-10 text-amber-500" />
                             </div>
                             <div className="mt-4 flex justify-end">
-                                <Button variant="outline" onClick={handleStartParcel}>
-                                    Bientôt disponible
+                                <Button
+                                    variant="outline"
+                                    onClick={handleStartParcel}
+                                    disabled={navigating}
+                                    className="min-w-[200px]"
+                                >
+                                    {navigating ? 'Chargement...' : 'Bientôt disponible'}
                                 </Button>
                             </div>
                         </article>
@@ -107,7 +210,14 @@ const DeliveryHomePage: React.FC = () => {
                 <section className="space-y-4">
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-semibold text-slate-900">Vos livraisons actives</h2>
-                        <Button size="sm" variant="ghost" onClick={() => refreshActiveDeliveries({ force: true })}>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleRefresh}
+                            disabled={refreshing || loading}
+                            className="flex items-center gap-2"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                             Actualiser
                         </Button>
                     </div>
@@ -125,8 +235,23 @@ const DeliveryHomePage: React.FC = () => {
                     ) : null}
 
                     {!loading && activeDeliveries.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                            Aucune livraison active pour le moment. Lancez une commande supermarché pour démarrer.
+                        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+                                <PackagePlus className="h-8 w-8 text-slate-400" />
+                            </div>
+                            <h3 className="mb-2 text-base font-semibold text-slate-700">
+                                Aucune livraison active
+                            </h3>
+                            <p className="mb-4 text-sm text-slate-500">
+                                Lancez une commande supermarché pour suivre votre coursier en temps réel.
+                            </p>
+                            <Button
+                                onClick={handleStartShopping}
+                                disabled={navigating}
+                                className="mx-auto"
+                            >
+                                {navigating ? 'Chargement...' : 'Nouvelle commande'}
+                            </Button>
                         </div>
                     ) : null}
 

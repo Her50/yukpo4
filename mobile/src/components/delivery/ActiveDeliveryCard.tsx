@@ -68,6 +68,9 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
         ? new Date(delivery.lastEventAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : null;
 
+    // ✅ Phase 9 - Amélioration 30 : Vérifier si dropoff est pending
+    const dropoffPending = delivery.metadata?.dropoff_pending === true;
+
     return (
         <NativeCard style={styles.card}>
             <View style={styles.header}>
@@ -88,8 +91,29 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
                     <Text style={styles.locationText}>{delivery.pickup?.label ?? 'Supermarché'}</Text>
                 </View>
                 <View style={styles.row}>
-                    <SafeIcon name="navigation" size={16} color={modernColors.textSecondary} />
-                    <Text style={styles.locationText}>{delivery.dropoff?.label ?? 'Destinataire'}</Text>
+                    <SafeIcon
+                        name="navigation"
+                        size={16}
+                        color={dropoffPending ? modernColors.warning : modernColors.textSecondary}
+                    />
+                    <View style={styles.dropoffContainer}>
+                        <View style={styles.dropoffHeader}>
+                            <Text style={styles.locationText}>{delivery.dropoff?.label ?? 'Destinataire'}</Text>
+                            {/* ✅ Phase 9 - Amélioration 30 : Badge "Adresse à confirmer" si dropoff pending */}
+                            {dropoffPending && (
+                                <NativeBadge
+                                    text="Adresse à confirmer"
+                                    variant="warning"
+                                    size="small"
+                                />
+                            )}
+                        </View>
+                        {delivery.dropoff?.address && (
+                            <Text style={[styles.dropoffAddress, dropoffPending && styles.dropoffAddressPending]}>
+                                {delivery.dropoff.address}
+                            </Text>
+                        )}
+                    </View>
                 </View>
                 {delivery.recipient?.name ? (
                     <View style={styles.row}>
@@ -110,12 +134,22 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
                     <Text style={styles.footerLabel}>Dernière mise à jour</Text>
                     <Text style={styles.footerValue}>{lastUpdate ?? 'En attente'}</Text>
                 </View>
-                <NativeButton
-                    title="Suivre"
-                    variant="primary"
-                    size="small"
-                    onPress={() => onPress(delivery.id)}
-                />
+                <View style={styles.footerButtons}>
+                    {/* ✅ Phase 9 - Amélioration 30 : Bouton "Modifier l'adresse" toujours visible */}
+                    <NativeButton
+                        title="Modifier"
+                        variant="outline"
+                        size="small"
+                        onPress={() => onPress(delivery.id)}
+                        style={styles.modifyButton}
+                    />
+                    <NativeButton
+                        title="Suivre"
+                        variant="primary"
+                        size="small"
+                        onPress={() => onPress(delivery.id)}
+                    />
+                </View>
             </View>
         </NativeCard>
     );
@@ -183,6 +217,31 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
+    },
+    footerButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    modifyButton: {
+        marginRight: 0,
+    },
+    dropoffContainer: {
+        flex: 1,
+    },
+    dropoffHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 4,
+    },
+    dropoffAddress: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        fontStyle: 'normal',
+    },
+    dropoffAddressPending: {
+        color: modernColors.warning,
+        fontStyle: 'italic',
     },
 });
 

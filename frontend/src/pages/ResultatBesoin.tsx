@@ -27,6 +27,7 @@ import ProductCard from '@/components/products/ProductCard';
 
 // Hooks et services
 import { usePrestataireInfo } from '@/hooks/usePrestataireInfo';
+import { trackNavigation } from '@/services/metricsTracking';
 
 // Configuration intelligente des catégories
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '@/config/categoryConfig';
@@ -103,9 +104,11 @@ export const ResultatBesoin: React.FC = () => {
   // ✅ NOUVEAU: Filtrage et tri intelligent des produits
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = [...products];
+    let filtersApplied = false;
 
     // 1. Appliquer les filtres de catégorie spécifiques
     if (Object.keys(categoryFilters).length > 0) {
+      filtersApplied = true;
       filtered = filtered.filter(product => {
         for (const [key, value] of Object.entries(categoryFilters)) {
           if (value === null || value === undefined || value === '') continue;
@@ -133,12 +136,20 @@ export const ResultatBesoin: React.FC = () => {
 
     // 2. Appliquer le filtre par prix
     if (priceFilter.min !== null || priceFilter.max !== null) {
+      filtersApplied = true;
       filtered = filtered.filter(product => {
         const price = parseFloat(product.prix || product.price);
         if (isNaN(price)) return false;
         if (priceFilter.min !== null && price < priceFilter.min) return false;
         if (priceFilter.max !== null && price > priceFilter.max) return false;
         return true;
+      });
+    }
+
+    // ✅ Tracking métriques : Filtre appliqué
+    if (filtersApplied) {
+      trackNavigation('filter', {
+        filterType: priceFilter.min !== null || priceFilter.max !== null ? 'price' : 'category',
       });
     }
 
@@ -202,6 +213,11 @@ export const ResultatBesoin: React.FC = () => {
       setPrestatairesLoaded(true);
     }
   }, [prestataires.size, prestatairesLoading]);
+
+  // ✅ Tracking métriques : Vue de l'écran
+  useEffect(() => {
+    trackNavigation('view');
+  }, []);
 
   // Initialiser le suivi GPS automatique
   useEffect(() => {
@@ -380,8 +396,19 @@ export const ResultatBesoin: React.FC = () => {
 
         if (serviceIds.length > 0) {
           fetchServicesByIds(serviceIds, sortedResults);
+          // ✅ Tracking métriques : Recherche avec résultats
+          trackNavigation('search', {
+            queryType: 'keyword',
+            resultsCount: sortedResults.length,
+            hasResults: true,
+          });
         } else {
           setLoading(false);
+          // ✅ Tracking métriques : Recherche sans résultats
+          trackNavigation('search', {
+            queryType: 'keyword',
+            hasResults: false,
+          });
         }
       } else {
         setLoading(false);
@@ -675,6 +702,10 @@ export const ResultatBesoin: React.FC = () => {
   const handleGeolocation = async () => {
     const userLocation = await getUserLocation();
     if (userLocation) {
+      // ✅ Tracking métriques : Recherche géolocalisée
+      trackNavigation('geolocation_search', {
+        queryType: 'location',
+      });
       toast({
         title: "Géolocalisation activée",
         description: `Position: ${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)}`,
@@ -1032,14 +1063,24 @@ export const ResultatBesoin: React.FC = () => {
               {/* Affichage des produits filtrés et triés intelligemment */}
               {filteredAndSortedProducts.length > 0 ? (
                 filteredAndSortedProducts.map((product, index) => (
-                  <ProductCard
+                  <div
                     key={`product-${index}-${product.nom}`}
-                    product={product}
-                    service={product._service}
-                    prestataire={product._prestataire}
-                    onChatPress={() => handleChat(product._service)}
-                    onCallPress={() => handleContact(product._service)}
-                  />
+                    onClick={() => {
+                      // ✅ Tracking métriques : Clic sur produit
+                      trackNavigation('click', {
+                        itemType: 'product',
+                        itemId: product.service_id?.toString(),
+                      });
+                    }}
+                  >
+                    <ProductCard
+                      product={product}
+                      service={product._service}
+                      prestataire={product._prestataire}
+                      onChatPress={() => handleChat(product._service)}
+                      onCallPress={() => handleContact(product._service)}
+                    />
+                  </div>
                 ))
               ) : (
                 <div className="col-span-full text-center py-12">

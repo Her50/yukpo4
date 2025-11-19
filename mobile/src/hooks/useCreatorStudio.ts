@@ -259,6 +259,18 @@ const normalizeDeliveryWsMessage = (message: any): DeliveryRealtimeEvent | null 
                     reason: payload.reason,
                 },
             };
+        // ✅ Phase 9 - Amélioration 29 : Notification prestataire quand client fournit adresse
+        case 'dropoff_address_provided':
+            return {
+                type: 'dropoff_address_provided',
+                deliveryId,
+                timestamp,
+                payload: {
+                    latitude: payload.latitude,
+                    longitude: payload.longitude,
+                    address: payload.address,
+                },
+            };
         default:
             return null;
     }
@@ -373,6 +385,36 @@ const applyRealtimeEventToSummary = (
             return {
                 ...summary,
                 status: event.payload?.status ?? summary.status,
+                checkpoints,
+                lastEventAt: event.timestamp,
+            };
+        }
+        // ✅ Phase 9 - Amélioration 29 : Notification prestataire quand client fournit adresse
+        case 'dropoff_address_provided': {
+            const checkpoints: DeliveryCheckpoint[] = [
+                ...(summary.checkpoints ?? []),
+                {
+                    status: summary.status,
+                    timestamp: event.timestamp,
+                    note: 'Adresse de livraison confirmée par le client',
+                    actor: 'recipient',
+                },
+            ];
+            return {
+                ...summary,
+                dropoff: {
+                    ...summary.dropoff,
+                    location: {
+                        lat: event.payload?.latitude ?? summary.dropoff.location?.lat ?? 0,
+                        lng: event.payload?.longitude ?? summary.dropoff.location?.lng ?? 0,
+                    },
+                    address: event.payload?.address ?? summary.dropoff.address,
+                },
+                metadata: {
+                    ...summary.metadata,
+                    dropoff_pending: false,
+                    dropoff_confirmed_at: event.timestamp,
+                },
                 checkpoints,
                 lastEventAt: event.timestamp,
             };
@@ -582,6 +624,16 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
                         setDeliverySummary((prev) =>
                             prev ? applyRealtimeEventToSummary(prev, normalized) : prev,
                         );
+
+                        // ✅ Phase 9 - Amélioration 29 : Notification toast quand adresse confirmée
+                        if (normalized.type === 'dropoff_address_provided') {
+                            const { Alert } = require('react-native');
+                            Alert.alert(
+                                '📍 Adresse de livraison confirmée',
+                                'Le client a fourni son adresse de livraison. La livraison peut maintenant être assignée à un coursier.',
+                                [{ text: 'OK' }]
+                            );
+                        }
                     } catch (parseError) {
                         console.warn('[CreatorStudio] Invalid delivery WS message', parseError);
                         setDeliveryRealtimeError('Message temps réel livraison invalide.');

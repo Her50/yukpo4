@@ -332,9 +332,28 @@ pub async fn rechercher_besoin_direct(
     .await
     .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur connexion base: {}", e)))?;
 
-    // Configuration de la recherche native
-    let config = crate::config::search_config::SearchConfig::default();
-    let native_search = NativeSearchService::with_config(pool.clone(), config);
+    // ✅ Phase 10 - Initialiser le service de matching géographique pour enrichir les distances
+    use crate::services::cache_service::CacheService;
+    use crate::services::geocoding_service::GeocodingService;
+    use std::sync::Arc;
+    
+    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
+    let redis_client = redis::Client::open(redis_url).ok();
+    let cache_service = Arc::new(CacheService::new(redis_client.clone()));
+    let geocoding_service = GeocodingService::with_cache(redis_client.clone());
+    let geographic_matching = Arc::new(
+        crate::services::geographic_matching_service::GeographicMatchingService::new(
+            pool.clone(),
+            cache_service,
+            geocoding_service,
+        ),
+    );
+    
+    // Configuration de la recherche native avec service de matching géographique
+    let native_search = NativeSearchService::with_geographic_matching(
+        pool.clone(),
+        geographic_matching,
+    );
 
     // ✅ NOUVEAU 2025-11-04 : PRÉ-FILTRE INTELLIGENT PAR LIEU BIDIRECTIONNEL
     // Passer l'INPUT COMPLET (pas un lieu détecté) pour matching flexible
@@ -963,9 +982,28 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
     let category_filter = extract_category_from_ia_json(&data_with_media);
     let location_filter = extract_location_from_ia_json(&data_with_media);
 
-    // Configuration de la recherche native
-    let config = crate::config::search_config::SearchConfig::default();
-    let native_search = NativeSearchService::with_config(pool.clone(), config);
+    // ✅ Phase 10 - Initialiser le service de matching géographique pour enrichir les distances
+    use crate::services::cache_service::CacheService;
+    use crate::services::geocoding_service::GeocodingService;
+    use std::sync::Arc;
+    
+    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
+    let redis_client = redis::Client::open(redis_url).ok();
+    let cache_service = Arc::new(CacheService::new(redis_client.clone()));
+    let geocoding_service = GeocodingService::with_cache(redis_client.clone());
+    let geographic_matching = Arc::new(
+        crate::services::geographic_matching_service::GeographicMatchingService::new(
+            pool.clone(),
+            cache_service,
+            geocoding_service,
+        ),
+    );
+    
+    // Configuration de la recherche native avec service de matching géographique
+    let native_search = NativeSearchService::with_geographic_matching(
+        pool.clone(),
+        geographic_matching,
+    );
 
     // Recherche native intelligente
     let native_results = match native_search

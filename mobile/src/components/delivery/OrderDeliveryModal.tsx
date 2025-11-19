@@ -1,0 +1,1137 @@
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
+import React, { useEffect, useState } from 'react';
+import {
+    Alert,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { apiPost } from '../../services/api';
+import { modernColors } from '../../theme/modernTheme';
+import SafeIcon from '../SafeIcon';
+
+interface OrderDeliveryModalProps {
+    visible: boolean;
+    onClose: () => void;
+    serviceId: number;
+    productIndex?: number;
+    productName?: string;
+    onSuccess?: (deliveryId: string) => void;
+    // ✅ NOUVEAU : Pour prix négociés
+    conversationId?: number;
+    clientUserId?: number;
+}
+
+interface Location {
+    latitude: number;
+    longitude: number;
+    address?: string;
+}
+
+const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
+    visible,
+    onClose,
+    serviceId,
+    productIndex,
+    productName,
+    onSuccess,
+    conversationId, // ✅ NOUVEAU
+    clientUserId, // ✅ NOUVEAU
+}) => {
+    const [loading, setLoading] = useState(false);
+    const [pickupLocation, setPickupLocation] = useState<Location | null>(null);
+    const [dropoffLocation, setDropoffLocation] = useState<Location | null>(null);
+    const [notes, setNotes] = useState('');
+    const [userGPS, setUserGPS] = useState<Location | null>(null);
+
+    // ✅ Phase 3 - Amélioration 7 : Préférences de livraison
+    const [preferredDeliveryDate, setPreferredDeliveryDate] = useState<string>('');
+    const [preferredDeliveryTimeStart, setPreferredDeliveryTimeStart] = useState<string>('');
+    const [preferredDeliveryTimeEnd, setPreferredDeliveryTimeEnd] = useState<string>('');
+    const [isFlexible, setIsFlexible] = useState<boolean>(true);
+    const [flexibilityWindowDays, setFlexibilityWindowDays] = useState<number>(3);
+    const [urgencyLevel, setUrgencyLevel] = useState<'standard' | 'urgent' | 'scheduled'>('standard');
+
+    // ✅ Phase 7 - Amélioration 23 : Coûts de livraison
+    const [productPrice, setProductPrice] = useState<number | null>(null);
+    const [deliveryCost, setDeliveryCost] = useState<number | null>(null);
+    const [isDeliveryFree, setIsDeliveryFree] = useState<boolean>(false);
+    const [loadingCosts, setLoadingCosts] = useState(false);
+
+    // ✅ Phase 8 - Amélioration 26 : Sélection multi-produits
+    const [selectedProducts, setSelectedProducts] = useState<number[]>(() =>
+        productIndex !== undefined ? [productIndex] : []
+    );
+    const [availableProducts, setAvailableProducts] = useState<Array<{ index: number, name: string, price: number }>>([]);
+    const [loadingProducts, setLoadingProducts] = useState(false);
+    const [showProductSelector, setShowProductSelector] = useState(false);
+
+    // Charger GPS utilisateur au montage et récupérer les coûts
+    useEffect(() => {
+        if (visible) {
+            loadUserGPS();
+            loadAvailableProducts();
+            if (productIndex !== undefined) {
+                setSelectedProducts([productIndex]);
+            }
+        }
+    }, [visible, serviceId, productIndex]);
+
+    // Recalculer les coûts quand les produits sélectionnés ou dropoff changent
+    useEffect(() => {
+        if (visible && selectedProducts.length > 0 && dropoffLocation) {
+            loadCosts();
+        }
+    }, [visible, selectedProducts, dropoffLocation]);
+
+    const loadUserGPS = async () => {
+        try {
+            const response = await apiPost('/api/user/me', {});
+            if (response.success && response.data?.gps) {
+                const [lng, lat] = response.data.gps.split(',').map(parseFloat);
+                const location = { latitude: lat, longitude: lng };
+                setUserGPS(location);
+                setDropoffLocation(location);
+            }
+        } catch (error) {
+            console.error('Erreur chargement GPS utilisateur:', error);
+        }
+    };
+
+    // ✅ Phase 8 - Amélioration 26 : Charger les produits disponibles du service
+    const loadAvailableProducts = async () => {
+        if (!serviceId) return;
+
+        setLoadingProducts(true);
+        try {
+            const response = await apiPost(`/api/services/${serviceId}`, {});
+            if (response.success && response.data) {
+                const service = response.data;
+                const products = service.data?.produits?.valeur || service.data?.produits || [];
+
+                // ✅ Fonction helper pour obtenir le prix réel avec promotions
+                const getRealPrice = (product: any): number => {
+                    // 1. Vérifier promotion produit active
+                    if (product.promotionActive) {
+                        const now = new Date();
+                        const endDate = product.promotionDateFin ? new Date(product.promotionDateFin) : null;
+
+                        if (!endDate || now <= endDate) {
+                            const valeur = product.promotionValeur;
+                            if (valeur) {
+                                const valeurStr = String(valeur).trim();
+                                const basePrice = product.price || 0;
+
+                                // Pourcentage
+                                if (valeurStr.endsWith('%')) {
+                                    const pct = parseFloat(valeurStr.replace('%', ''));
+                                    if (!isNaN(pct)) return basePrice * (1 - pct / 100);
+                                }
+                                // Réduction fixe
+                                if (valeurStr.startsWith('-')) {
+                                    const reduction = parseFloat(valeurStr.replace('-', '').split(' ')[0]);
+                                    if (!isNaN(reduction)) return Math.max(0, basePrice - reduction);
+                                }
+                                // Prix fixe
+                                const fixedPrice = parseFloat(valeurStr.split(' ')[0]);
+                                if (!isNaN(fixedPrice) && fixedPrice < basePrice) return fixedPrice;
+                            }
+                        }
+                    }
+
+                    // 2. Vérifier prix réduit/discounted
+                    if (product.discounted_price && product.discounted_price < (product.price || 0)) {
+                        return product.discounted_price;
+                    }
+
+                    // 3. Prix de base
+                    return product.price || 0;
+                };
+
+                const productList = products
+                    .map((p: any, index: number) => {
+                        const basePrice = p.price || 0;
+                        const realPrice = getRealPrice(p);
+                        const hasPromotion = realPrice < basePrice && basePrice > 0;
+
+                        return {
+                            index,
+                            name: p.nom || p.name || p.title || `Produit ${index + 1}`,
+                            price: realPrice,
+                            originalPrice: basePrice,
+                            hasPromotion,
+                            promotionType: p.promotionType,
+                            promotionValeur: p.promotionValeur,
+                        };
+                    })
+                    .filter((p: any) => p.name && p.price > 0); // Filtrer les produits valides
+
+                setAvailableProducts(productList);
+            }
+        } catch (error) {
+            console.error('Erreur chargement produits:', error);
+        } finally {
+            setLoadingProducts(false);
+        }
+    };
+
+    // ✅ Phase 7 - Amélioration 23 : Charger les coûts estimés (adapté pour multi-produits)
+    // ✅ IMPORTANT : Le coût de livraison est indépendant du nombre de produits
+    const loadCosts = async () => {
+        if (!serviceId || selectedProducts.length === 0 || !dropoffLocation) {
+            return;
+        }
+
+        setLoadingCosts(true);
+        try {
+            // ✅ Calculer le prix total de tous les produits sélectionnés (indépendant de la livraison)
+            let totalProductPrice = 0;
+            selectedProducts.forEach((idx) => {
+                const product = availableProducts.find(p => p.index === idx);
+                if (product) {
+                    totalProductPrice += product.price;
+                }
+            });
+            setProductPrice(totalProductPrice);
+
+            // ✅ Le coût de livraison est calculé UNE SEULE FOIS, indépendamment du nombre de produits
+            // On utilise le premier produit uniquement pour obtenir la configuration de livraison (pickup, billing_mode)
+            const firstProductIndex = selectedProducts[0];
+
+            const payload = {
+                service_id: serviceId,
+                product_index: firstProductIndex,
+                dropoff: dropoffLocation,
+                // ✅ NOUVEAU : Pour prix négociés
+                conversation_id: conversationId,
+                client_user_id: clientUserId,
+            };
+
+            const response = await apiPost('/api/delivery/estimate-costs', payload);
+            if (response.success && response.data) {
+                const data = response.data;
+
+                // ✅ Le coût de livraison ne change PAS selon le nombre de produits
+                // Il est basé uniquement sur la distance pickup -> dropoff
+                if (data.delivery_cost_cents !== undefined) {
+                    setDeliveryCost(data.delivery_cost_cents / 100); // Convertir centimes en FCFA
+                }
+                if (data.is_delivery_free !== undefined) {
+                    setIsDeliveryFree(data.is_delivery_free);
+                }
+            }
+        } catch (error) {
+            console.error('Erreur chargement coûts:', error);
+            // Ne pas bloquer l'utilisateur si les coûts ne peuvent pas être chargés
+        } finally {
+            setLoadingCosts(false);
+        }
+    };
+
+    // ✅ Phase 8 - Amélioration 26 : Toggle sélection produit
+    const toggleProductSelection = (productIdx: number) => {
+        setSelectedProducts(prev => {
+            if (prev.includes(productIdx)) {
+                // Désélectionner (mais garder au moins un produit)
+                if (prev.length > 1) {
+                    return prev.filter(idx => idx !== productIdx);
+                }
+                return prev;
+            } else {
+                // Sélectionner
+                return [...prev, productIdx];
+            }
+        });
+    };
+
+    const handleUseCurrentLocation = async () => {
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert(
+                    'Permission requise',
+                    'L\'accès à la localisation est nécessaire pour utiliser votre position actuelle.'
+                );
+                return;
+            }
+
+            const location = await Location.getCurrentPositionAsync({});
+            const coords = {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+            };
+            setDropoffLocation(coords);
+            setUserGPS(coords);
+        } catch (error) {
+            console.error('Erreur géolocalisation:', error);
+            Alert.alert('Erreur', 'Impossible d\'obtenir votre position');
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (!dropoffLocation) {
+            Alert.alert('Adresse requise', 'Veuillez fournir une adresse de livraison');
+            return;
+        }
+
+        if (selectedProducts.length === 0) {
+            Alert.alert('Produit requis', 'Veuillez sélectionner au moins un produit');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // ✅ Phase 8 - Amélioration 26 : Si plusieurs produits, créer plusieurs commandes
+            if (selectedProducts.length > 1) {
+                const responses = await Promise.all(
+                    selectedProducts.map(idx =>
+                        apiPost('/api/delivery/client-order', {
+                            service_id: serviceId,
+                            product_index: idx,
+                            dropoff: dropoffLocation,
+                            notes: notes || undefined,
+                            // ✅ NOUVEAU : Pour prix négociés
+                            conversation_id: conversationId,
+                        })
+                    )
+                );
+
+                const firstResponse = responses[0];
+
+                // Sauvegarder les préférences pour la première livraison
+                if (firstResponse.success && firstResponse.data?.delivery?.id) {
+                    if (preferredDeliveryDate || preferredDeliveryTimeStart) {
+                        try {
+                            const preferencesPayload = {
+                                delivery_id: firstResponse.data.delivery.id,
+                                preferred_delivery_date: preferredDeliveryDate || undefined,
+                                preferred_delivery_time_start: preferredDeliveryTimeStart || undefined,
+                                preferred_delivery_time_end: preferredDeliveryTimeEnd || undefined,
+                                is_flexible: isFlexible,
+                                flexibility_window_days: flexibilityWindowDays,
+                                urgency_level: urgencyLevel,
+                            };
+                            await apiPost('/api/delivery/preferences', preferencesPayload);
+                        } catch (prefError) {
+                            console.error('Erreur sauvegarde préférences:', prefError);
+                        }
+                    }
+                }
+
+                Alert.alert(
+                    'Commandes créées',
+                    `${selectedProducts.length} commande(s) créée(s) avec succès. Le matching des coursiers est en cours.`
+                );
+
+                if (firstResponse.success && firstResponse.data?.delivery?.id && onSuccess) {
+                    onSuccess(firstResponse.data.delivery.id);
+                }
+            } else {
+                // Un seul produit : utiliser le flux normal
+                const payload = {
+                    service_id: serviceId,
+                    product_index: selectedProducts[0],
+                    dropoff: dropoffLocation,
+                    notes: notes || undefined,
+                    // ✅ NOUVEAU : Pour prix négociés
+                    conversation_id: conversationId,
+                };
+
+                const response = await apiPost('/api/delivery/client-order', payload);
+
+                // ✅ Phase 3 - Amélioration 7 : Sauvegarder les préférences de livraison si fournies
+                if (response.success && response.data?.delivery?.id) {
+                    if (preferredDeliveryDate || preferredDeliveryTimeStart) {
+                        try {
+                            const preferencesPayload = {
+                                delivery_id: response.data.delivery.id,
+                                preferred_delivery_date: preferredDeliveryDate || undefined,
+                                preferred_delivery_time_start: preferredDeliveryTimeStart || undefined,
+                                preferred_delivery_time_end: preferredDeliveryTimeEnd || undefined,
+                                is_flexible: isFlexible,
+                                flexibility_window_days: flexibilityWindowDays,
+                                urgency_level: urgencyLevel,
+                            };
+                            await apiPost('/api/delivery/preferences', preferencesPayload);
+                        } catch (prefError) {
+                            console.error('Erreur sauvegarde préférences:', prefError);
+                            // Ne pas bloquer la commande si les préférences échouent
+                        }
+                    }
+                }
+
+                if (response.success) {
+                    Alert.alert(
+                        'Commande créée',
+                        'Votre commande a été créée avec succès. Le matching des coursiers est en cours.',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => {
+                                    if (onSuccess && response.data?.delivery?.id) {
+                                        onSuccess(response.data.delivery.id);
+                                    }
+                                    onClose();
+                                },
+                            },
+                        ]
+                    );
+                } else {
+                    Alert.alert('Erreur', response.error || 'Impossible de créer la commande');
+                }
+            }
+        } catch (error: any) {
+            console.error('Erreur création commande:', error);
+            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Modal
+            visible={visible}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={onClose}
+        >
+            <View style={styles.container}>
+                {/* Header */}
+                <LinearGradient
+                    colors={['#3B82F6', '#2563EB']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.header}
+                >
+                    <View style={styles.headerContent}>
+                        <SafeIcon name="package" size={24} color="#FFFFFF" />
+                        <View style={styles.headerText}>
+                            <Text style={styles.headerTitle}>Commander la livraison</Text>
+                            {productName && (
+                                <Text style={styles.headerSubtitle}>{productName}</Text>
+                            )}
+                        </View>
+                    </View>
+                    <TouchableOpacity
+                        onPress={onClose}
+                        style={styles.closeButton}
+                        disabled={loading}
+                    >
+                        <SafeIcon name="x" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                </LinearGradient>
+
+                {/* Content */}
+                <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                    {/* ✅ Phase 8 - Amélioration 26 : Sélection multi-produits */}
+                    {availableProducts.length > 1 && (
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <SafeIcon name="package" size={18} color={modernColors.purple || '#9333EA'} />
+                                <Text style={styles.sectionTitle}>Produits à commander</Text>
+                                {!showProductSelector && (
+                                    <TouchableOpacity
+                                        onPress={() => setShowProductSelector(true)}
+                                        style={styles.addProductButton}
+                                    >
+                                        <Text style={styles.addProductButtonText}>Ajouter</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            {showProductSelector ? (
+                                <View style={styles.productSelectorContainer}>
+                                    <View style={styles.productSelectorHeader}>
+                                        <Text style={styles.productSelectorTitle}>
+                                            Sélectionnez les produits ({selectedProducts.length} sélectionné{selectedProducts.length > 1 ? 's' : ''})
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => setShowProductSelector(false)}
+                                            style={styles.closeSelectorButton}
+                                        >
+                                            <Text style={styles.closeSelectorButtonText}>Fermer</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    <ScrollView style={styles.productList} nestedScrollEnabled>
+                                        {availableProducts.map((product) => (
+                                            <TouchableOpacity
+                                                key={product.index}
+                                                onPress={() => toggleProductSelection(product.index)}
+                                                style={[
+                                                    styles.productItem,
+                                                    selectedProducts.includes(product.index) && styles.productItemSelected,
+                                                ]}
+                                            >
+                                                <View style={styles.checkboxContainer}>
+                                                    <View
+                                                        style={[
+                                                            styles.checkbox,
+                                                            selectedProducts.includes(product.index) && styles.checkboxChecked,
+                                                        ]}
+                                                    >
+                                                        {selectedProducts.includes(product.index) && (
+                                                            <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                        )}
+                                                    </View>
+                                                </View>
+                                                <View style={styles.productInfo}>
+                                                    <View style={styles.productNameRow}>
+                                                        <Text style={styles.productName}>{product.name}</Text>
+                                                        {product.hasPromotion && (
+                                                            <View style={styles.promoBadge}>
+                                                                <Text style={styles.promoBadgeText}>PROMO</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                    <View style={styles.productPriceRow}>
+                                                        {product.hasPromotion && product.originalPrice && (
+                                                            <Text style={styles.productOriginalPrice}>
+                                                                {product.originalPrice.toLocaleString('fr-FR')} FCFA
+                                                            </Text>
+                                                        )}
+                                                        <Text style={[
+                                                            styles.productPrice,
+                                                            product.hasPromotion && styles.productPricePromo
+                                                        ]}>
+                                                            {product.price.toLocaleString('fr-FR')} FCFA
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            ) : (
+                                <View style={styles.selectedProductsList}>
+                                    {selectedProducts.map((idx) => {
+                                        const product = availableProducts.find(p => p.index === idx);
+                                        return product ? (
+                                            <View key={idx} style={styles.selectedProductCard}>
+                                                <View style={styles.selectedProductInfo}>
+                                                    <View style={styles.productNameRow}>
+                                                        <Text style={styles.selectedProductName}>{product.name}</Text>
+                                                        {product.hasPromotion && (
+                                                            <View style={styles.promoBadgeSmall}>
+                                                                <Text style={styles.promoBadgeTextSmall}>PROMO</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                    <View style={styles.productPriceRow}>
+                                                        {product.hasPromotion && product.originalPrice && (
+                                                            <Text style={styles.productOriginalPrice}>
+                                                                {product.originalPrice.toLocaleString('fr-FR')} FCFA
+                                                            </Text>
+                                                        )}
+                                                        <Text style={[
+                                                            styles.selectedProductPrice,
+                                                            product.hasPromotion && styles.productPricePromo
+                                                        ]}>
+                                                            {product.price.toLocaleString('fr-FR')} FCFA
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                                {selectedProducts.length > 1 && (
+                                                    <TouchableOpacity
+                                                        onPress={() => toggleProductSelection(idx)}
+                                                        style={styles.removeProductButton}
+                                                    >
+                                                        <SafeIcon name="x" size={16} color="#DC2626" />
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+                                        ) : null;
+                                    })}
+                                </View>
+                            )}
+                        </View>
+                    )}
+
+                    {/* Point de départ */}
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={18} color={modernColors.success} />
+                            <Text style={styles.sectionTitle}>Point de départ</Text>
+                        </View>
+                        {pickupLocation ? (
+                            <View style={styles.locationCard}>
+                                <Text style={styles.locationText}>
+                                    {pickupLocation.address ||
+                                        `${pickupLocation.latitude.toFixed(6)}, ${pickupLocation.longitude.toFixed(6)}`}
+                                </Text>
+                            </View>
+                        ) : (
+                            <View style={styles.locationCardPlaceholder}>
+                                <Text style={styles.placeholderText}>
+                                    Adresse de collecte automatique (depuis la configuration du produit)
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Point de livraison */}
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Adresse de livraison *</Text>
+                        </View>
+
+                        {dropoffLocation ? (
+                            <View style={styles.locationCard}>
+                                <Text style={styles.locationText}>
+                                    {dropoffLocation.address ||
+                                        `${dropoffLocation.latitude.toFixed(6)}, ${dropoffLocation.longitude.toFixed(6)}`}
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.modifyButton}
+                                    onPress={() => setDropoffLocation(null)}
+                                >
+                                    <Text style={styles.modifyButtonText}>Modifier l'adresse</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <View style={styles.locationActions}>
+                                <TouchableOpacity
+                                    style={styles.locationButton}
+                                    onPress={handleUseCurrentLocation}
+                                >
+                                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                                    <Text style={styles.locationButtonText}>
+                                        Utiliser ma position actuelle
+                                    </Text>
+                                </TouchableOpacity>
+                                <Text style={styles.hintText}>
+                                    Ou sélectionnez une adresse sur la carte
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Notes */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Instructions de livraison (optionnel)</Text>
+                        <TextInput
+                            value={notes}
+                            onChangeText={setNotes}
+                            placeholder="Ex: Sonner deux fois, laisser devant la porte..."
+                            style={styles.notesInput}
+                            multiline
+                            numberOfLines={3}
+                            textAlignVertical="top"
+                        />
+                    </View>
+
+                    {/* ✅ Phase 3 - Amélioration 7 : Préférences de livraison */}
+                    <View style={[styles.section, { borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 24 }]}>
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="clock" size={18} color={modernColors.accent} />
+                            <Text style={styles.sectionTitle}>Préférences de livraison (optionnel)</Text>
+                        </View>
+
+                        <View style={styles.preferencesGrid}>
+                            {/* Date de livraison */}
+                            <View style={styles.preferenceItem}>
+                                <Text style={styles.preferenceLabel}>Date de livraison</Text>
+                                <TextInput
+                                    style={styles.preferenceInput}
+                                    placeholder="YYYY-MM-DD"
+                                    value={preferredDeliveryDate}
+                                    onChangeText={setPreferredDeliveryDate}
+                                />
+                            </View>
+
+                            {/* Niveau d'urgence */}
+                            <View style={styles.preferenceItem}>
+                                <Text style={styles.preferenceLabel}>Niveau d'urgence</Text>
+                                <View style={styles.pickerContainer}>
+                                    <TouchableOpacity
+                                        style={styles.pickerButton}
+                                        onPress={() => {
+                                            Alert.alert(
+                                                'Niveau d\'urgence',
+                                                'Choisissez le niveau d\'urgence',
+                                                [
+                                                    { text: 'Standard', onPress: () => setUrgencyLevel('standard') },
+                                                    { text: 'Urgent', onPress: () => setUrgencyLevel('urgent') },
+                                                    { text: 'Programmé', onPress: () => setUrgencyLevel('scheduled') },
+                                                ]
+                                            );
+                                        }}
+                                    >
+                                        <Text style={styles.pickerText}>
+                                            {urgencyLevel === 'standard' ? 'Standard' : urgencyLevel === 'urgent' ? 'Urgent' : 'Programmé'}
+                                        </Text>
+                                        <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Heures de livraison */}
+                        {preferredDeliveryDate && (
+                            <View style={styles.preferencesGrid}>
+                                <View style={styles.preferenceItem}>
+                                    <Text style={styles.preferenceLabel}>Heure de début</Text>
+                                    <TextInput
+                                        style={styles.preferenceInput}
+                                        placeholder="HH:MM"
+                                        value={preferredDeliveryTimeStart}
+                                        onChangeText={setPreferredDeliveryTimeStart}
+                                    />
+                                </View>
+                                <View style={styles.preferenceItem}>
+                                    <Text style={styles.preferenceLabel}>Heure de fin</Text>
+                                    <TextInput
+                                        style={styles.preferenceInput}
+                                        placeholder="HH:MM"
+                                        value={preferredDeliveryTimeEnd}
+                                        onChangeText={setPreferredDeliveryTimeEnd}
+                                    />
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Flexibilité */}
+                        <View style={styles.flexibilitySection}>
+                            <TouchableOpacity
+                                style={styles.checkboxRow}
+                                onPress={() => setIsFlexible(!isFlexible)}
+                            >
+                                <View style={[styles.checkbox, isFlexible && styles.checkboxChecked]}>
+                                    {isFlexible && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>
+                                    Accepter d'autres créneaux si indisponible
+                                </Text>
+                            </TouchableOpacity>
+
+                            {isFlexible && (
+                                <View style={styles.flexibilityInput}>
+                                    <Text style={styles.preferenceLabel}>Fenêtre de flexibilité (jours)</Text>
+                                    <TextInput
+                                        style={styles.preferenceInput}
+                                        keyboardType="numeric"
+                                        value={flexibilityWindowDays.toString()}
+                                        onChangeText={(text) => setFlexibilityWindowDays(parseInt(text) || 3)}
+                                    />
+                                    <Text style={styles.hintText}>
+                                        Rechercher un créneau disponible dans les {flexibilityWindowDays} prochains jours
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                    {/* ✅ Phase 7 - Amélioration 23 : Affichage coûts (produit + livraison séparés) */}
+                    {(productPrice !== null || deliveryCost !== null) && (
+                        <View style={styles.costsSection}>
+                            <Text style={styles.costsTitle}>Récapitulatif des coûts</Text>
+                            <View style={styles.costsCard}>
+                                {/* ✅ Phase 8 - Amélioration 26 : Détail par produit si plusieurs */}
+                                {selectedProducts.length > 1 ? (
+                                    <View style={styles.productsDetail}>
+                                        {selectedProducts.map((idx) => {
+                                            const product = availableProducts.find(p => p.index === idx);
+                                            return product ? (
+                                                <View key={idx} style={styles.costRow}>
+                                                    <View style={styles.costLabelContainer}>
+                                                        <Text style={styles.costLabel}>{product.name}</Text>
+                                                        {product.hasPromotion && (
+                                                            <View style={styles.promoBadgeSmall}>
+                                                                <Text style={styles.promoBadgeTextSmall}>PROMO</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                    <View style={styles.costValueContainer}>
+                                                        {product.hasPromotion && product.originalPrice && (
+                                                            <Text style={styles.costOriginalPrice}>
+                                                                {product.originalPrice.toLocaleString('fr-FR')}
+                                                            </Text>
+                                                        )}
+                                                        <Text style={[
+                                                            styles.costValue,
+                                                            product.hasPromotion && styles.costValuePromo
+                                                        ]}>
+                                                            {product.price.toLocaleString('fr-FR')} FCFA
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            ) : null;
+                                        })}
+                                        <View style={[styles.costRow, styles.subtotalRow]}>
+                                            <Text style={styles.subtotalLabel}>Sous-total produits</Text>
+                                            <Text style={styles.costValue}>{productPrice?.toLocaleString('fr-FR')} FCFA</Text>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    /* Prix produit(s) - Affichage simple si un seul produit */
+                                    productPrice !== null && (
+                                        <View style={styles.costRow}>
+                                            <Text style={styles.costLabel}>Produit(s)</Text>
+                                            <Text style={styles.costValue}>{productPrice.toLocaleString('fr-FR')} FCFA</Text>
+                                        </View>
+                                    )
+                                )}
+
+                                {/* Coût livraison */}
+                                {deliveryCost !== null && (
+                                    <View style={styles.costRow}>
+                                        <View style={styles.costLabelContainer}>
+                                            <Text style={styles.costLabel}>Livraison</Text>
+                                            {isDeliveryFree && (
+                                                <View style={styles.freeBadge}>
+                                                    <Text style={styles.freeBadgeText}>Gratuite</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                        <Text style={styles.costValue}>
+                                            {isDeliveryFree ? '0' : deliveryCost.toLocaleString('fr-FR')} FCFA
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {/* Total */}
+                                {(productPrice !== null || deliveryCost !== null) && (
+                                    <View style={[styles.costRow, styles.totalRow]}>
+                                        <Text style={styles.totalLabel}>Total</Text>
+                                        <Text style={styles.totalValue}>
+                                            {((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0))).toLocaleString('fr-FR')} FCFA
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+                    )}
+                </ScrollView>
+
+                {/* Footer */}
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        style={[styles.button, styles.cancelButton]}
+                        onPress={onClose}
+                        disabled={loading}
+                    >
+                        <Text style={styles.cancelButtonText}>Annuler</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.button,
+                            styles.submitButton,
+                            (!dropoffLocation || loading) && styles.submitButtonDisabled,
+                        ]}
+                        onPress={handleSubmit}
+                        disabled={loading || !dropoffLocation}
+                    >
+                        <Text style={styles.submitButtonText}>
+                            {loading ? 'Création...' : 'Confirmer la commande'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    header: {
+        paddingTop: 50,
+        paddingBottom: 20,
+        paddingHorizontal: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    headerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        gap: 12,
+    },
+    headerText: {
+        flex: 1,
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+    },
+    headerSubtitle: {
+        fontSize: 14,
+        color: '#E0E7FF',
+        marginTop: 2,
+    },
+    closeButton: {
+        padding: 8,
+    },
+    content: {
+        flex: 1,
+        padding: 20,
+    },
+    section: {
+        marginBottom: 24,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    locationCard: {
+        padding: 16,
+        backgroundColor: '#EFF6FF',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        borderRadius: 12,
+    },
+    locationCardPlaceholder: {
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+    },
+    locationText: {
+        fontSize: 14,
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    placeholderText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+    },
+    modifyButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+    },
+    modifyButtonText: {
+        fontSize: 14,
+        color: modernColors.primary,
+        fontWeight: '500',
+    },
+    locationActions: {
+        gap: 12,
+    },
+    locationButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+    },
+    locationButtonText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: modernColors.primary,
+    },
+    hintText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+    },
+    notesInput: {
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        fontSize: 14,
+        color: modernColors.text,
+        minHeight: 80,
+    },
+    footer: {
+        flexDirection: 'row',
+        gap: 12,
+        padding: 20,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+        backgroundColor: '#F9FAFB',
+    },
+    button: {
+        flex: 1,
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cancelButton: {
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    cancelButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    submitButton: {
+        backgroundColor: modernColors.primary,
+    },
+    submitButtonDisabled: {
+        backgroundColor: '#9CA3AF',
+        opacity: 0.6,
+    },
+    submitButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    preferencesGrid: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 16,
+    },
+    preferenceItem: {
+        flex: 1,
+    },
+    preferenceLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    preferenceInput: {
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        fontSize: 14,
+        color: modernColors.text,
+    },
+    pickerContainer: {
+        marginTop: 0,
+    },
+    pickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+    },
+    pickerText: {
+        fontSize: 14,
+        color: modernColors.text,
+    },
+    flexibilitySection: {
+        marginTop: 8,
+    },
+    checkboxRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 12,
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderWidth: 2,
+        borderColor: '#D1D5DB',
+        borderRadius: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    checkboxLabel: {
+        fontSize: 14,
+        color: modernColors.text,
+        flex: 1,
+    },
+    flexibilityInput: {
+        marginLeft: 32,
+    },
+    // ✅ Styles pour affichage promotions
+    productNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 4,
+    },
+    promoBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        backgroundColor: '#FEE2E2',
+        borderRadius: 4,
+    },
+    promoBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#DC2626',
+    },
+    promoBadgeSmall: {
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        backgroundColor: '#FEE2E2',
+        borderRadius: 3,
+        marginLeft: 4,
+    },
+    promoBadgeTextSmall: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#DC2626',
+    },
+    productPriceRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    productOriginalPrice: {
+        fontSize: 11,
+        color: '#9CA3AF',
+        textDecorationLine: 'line-through',
+    },
+    productPricePromo: {
+        color: '#16A34A',
+        fontWeight: '600',
+    },
+    costLabelContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    costValueContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    costOriginalPrice: {
+        fontSize: 11,
+        color: '#9CA3AF',
+        textDecorationLine: 'line-through',
+    },
+    costValuePromo: {
+        color: '#16A34A',
+        fontWeight: '600',
+    },
+});
+
+export default OrderDeliveryModal;
+

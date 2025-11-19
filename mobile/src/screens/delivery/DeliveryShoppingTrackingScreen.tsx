@@ -11,16 +11,20 @@ import {
     View,
 } from 'react-native';
 
+import CourierSelectionModal from '../../components/delivery/CourierSelectionModal';
 import DeliveryTrackingMap from '../../components/delivery/DeliveryTrackingMap';
+import ParcelRejectionModal from '../../components/delivery/ParcelRejectionModal';
+import ProofMediaUpload from '../../components/delivery/ProofMediaUpload';
 import TimelineStepper from '../../components/delivery/TimelineStepper';
 import { NativeButton } from '../../components/NativeDesign';
+import { SafeIcon } from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import useDeliveryTracking from '../../hooks/useDeliveryTracking';
-import { deliveryApi } from '../../services/api';
+import { deliveryApi, shoppingApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { DeliverySummary } from '../../types/delivery';
+import { DeliverySummary, ParcelRejectionReason, ShoppingBasketItem } from '../../types/delivery';
 
 type TrackingTab = 'timeline' | 'basket' | 'courier';
 
@@ -29,13 +33,19 @@ interface RouteParams {
 }
 
 const DeliveryShoppingTrackingScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation();
     const route = useRoute();
     const { deliveryId } = (route.params as RouteParams) ?? { deliveryId: null };
-    const [activeTab, setActiveTab] = useState<TrackingTab>('timeline');
+    const [activeTab, setActiveTab] = useState('timeline' as TrackingTab);
     const { delivery, timeline, refresh, loading } = useDeliveryTracking(deliveryId || null);
     const { refreshDelivery, updateRecipientLocation, setActiveDeliveryId } = useDeliveryContext();
     const { user } = useAuth();
+    const [showCourierModal, setShowCourierModal] = useState(false);
+    const [rejectingItem, setRejectingItem] = useState<ShoppingBasketItem | null>(null);
+
+    // ✅ Phase 9 - Amélioration 28 : Vérifier si l'utilisateur est le créateur
+    const isCreator = user && delivery && delivery.creator_id && String(delivery.creator_id) === String(user.id);
+    const canAssignCourier = isCreator && !delivery?.courier && (delivery?.status === 'pending' || delivery?.status === 'awaiting_courier');
 
     useEffect(() => {
         if (!deliveryId) return;
@@ -67,6 +77,19 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         return String(user.id) === String(delivery.courier.id);
     }, [user?.id, delivery?.courier?.id]);
 
+    // ✅ Phase 9 - Amélioration : Déterminer si on peut ajouter des médias
+    const canAddPickupMedia = isCurrentUserCourier && (
+        delivery?.status === 'en_route_pickup' ||
+        delivery?.status === 'shopping_completed' ||
+        delivery?.status === 'en_route_delivery' ||
+        delivery?.status === 'delivered'
+    );
+
+    const canAddDeliveryMedia = isCurrentUserCourier && (
+        delivery?.status === 'en_route_delivery' ||
+        delivery?.status === 'delivered'
+    );
+
     const handleRefresh = async () => {
         if (!deliveryId) return;
         await refresh({ force: true });
@@ -74,7 +97,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
     const canShareLocation =
         !!deliveryId &&
-        !!delivery?.recipient?.allowTracking &&
+        !!delivery?.recipient?.canShareLocation &&
         (!!delivery?.recipient?.id
             ? String(delivery.recipient.id) === String(user?.id)
             : true);
@@ -151,11 +174,11 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
             case 'assigned':
             case 'awaiting_courier':
                 return [
-                    { label: 'Je pars vers le pickup', status: 'en_route_pickup', icon: '🚚' },
+                    { label: 'Je pars vers le point de départ', status: 'en_route_pickup', icon: '🚚' },
                 ];
             case 'en_route_pickup':
                 return [
-                    { label: 'Je suis arrivé au pickup', status: 'shopping_pending', icon: '📍' },
+                    { label: 'Je suis arrivé au point de départ', status: 'shopping_pending', icon: '📍' },
                 ];
             case 'shopping_pending':
                 return [
@@ -166,15 +189,10 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                     { label: 'Courses terminées', status: 'shopping_completed', icon: '✅' },
                 ];
             case 'shopping_completed':
-            case 'picked_up':
                 return [
                     { label: 'Colis récupéré, en route', status: 'en_route_delivery', icon: '🚚' },
                 ];
             case 'en_route_delivery':
-                return [
-                    { label: 'Arrivé chez le client', status: 'arrival_destination', icon: '📍' },
-                ];
-            case 'arrival_destination':
                 return [
                     { label: 'Livré', status: 'delivered', icon: '✅' },
                 ];
@@ -265,29 +283,138 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
                 {activeTab === 'basket' ? (
                     <View style={styles.card}>
-                        {shoppingItems.map(item => (
-                            <View key={item.id} style={styles.itemRow}>
-                                <Text style={styles.itemLabel}>{item.label}</Text>
-                                <Text style={styles.itemMeta}>
-                                    {item.quantity} {item.unit || 'unités'}
-                                    {item.actualTotal
-                                        ? ` • ${item.actualTotal.toFixed(0)} ${delivery?.pricing?.currency ?? 'XAF'}`
-                                        : item.estimatedTotal
-                                            ? ` • ~${item.estimatedTotal.toFixed(0)} ${delivery?.pricing?.currency ?? 'XAF'}`
-                                            : ''}
-                                </Text>
-                                {item.note ? <Text style={styles.itemNote}>{item.note}</Text> : null}
-                            </View>
-                        ))}
+                        {shoppingItems.map(item => {
+                            const isRejected = item.status === 'rejected';
+                            const canReject = !isRejected &&
+                                (delivery?.status === 'shopping_completed' ||
+                                    delivery?.status === 'en_route_delivery' ||
+                                    delivery?.status === 'delivered');
+
+                            return (
+                                <View
+                                    key={item.id}
+                                    style={[
+                                        styles.itemRow,
+                                        isRejected && styles.itemRowRejected
+                                    ]}
+                                >
+                                    <View style={styles.itemContent}>
+                                        <View style={styles.itemHeader}>
+                                            <Text style={styles.itemLabel}>{item.label}</Text>
+                                            {isRejected && (
+                                                <View style={styles.rejectedBadge}>
+                                                    <SafeIcon name="x-circle" size={16} color={modernColors.error} />
+                                                    <Text style={styles.rejectedText}>Refusé</Text>
+                                                </View>
+                                            )}
+                                            {item.status === 'accepted' && (
+                                                <View style={styles.acceptedBadge}>
+                                                    <SafeIcon name="check-circle" size={16} color={modernColors.success} />
+                                                    <Text style={styles.acceptedText}>Accepté</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                        <Text style={styles.itemMeta}>
+                                            {item.quantity} {item.unit || 'unités'}
+                                            {item.actualTotal
+                                                ? ` • ${item.actualTotal.toFixed(0)} ${delivery?.pricing?.currency ?? 'XAF'}`
+                                                : item.estimatedTotal
+                                                    ? ` • ~${item.estimatedTotal.toFixed(0)} ${delivery?.pricing?.currency ?? 'XAF'}`
+                                                    : ''}
+                                        </Text>
+                                        {isRejected && item.rejection_reason && (
+                                            <Text style={styles.rejectionReason}>
+                                                Raison : {getRejectionReasonLabel(item.rejection_reason)}
+                                            </Text>
+                                        )}
+                                        {item.note ? <Text style={styles.itemNote}>{item.note}</Text> : null}
+                                    </View>
+                                    {canReject && (
+                                        <NativeButton
+                                            title="Refuser"
+                                            variant="secondary"
+                                            size="small"
+                                            onPress={() => setRejectingItem(item)}
+                                            style={styles.rejectButton}
+                                        />
+                                    )}
+                                </View>
+                            );
+                        })}
                     </View>
                 ) : null}
 
                 {activeTab === 'courier' ? (
                     <View style={styles.card}>
+                        {/* ✅ Phase 9 - Amélioration 28 : Bouton pour choisir un livreur */}
+                        {canAssignCourier && (
+                            <View style={styles.assignCourierSection}>
+                                <NativeButton
+                                    title="Choisir un livreur"
+                                    variant="primary"
+                                    onPress={() => setShowCourierModal(true)}
+                                />
+                            </View>
+                        )}
+
+                        {/* ✅ Phase 9 - Amélioration : Médias de preuve de récupération et livraison */}
+                        {isCurrentUserCourier && (canAddPickupMedia || canAddDeliveryMedia) && (
+                            <View style={{ marginTop: 16, gap: 16 }}>
+                                {canAddPickupMedia && (
+                                    <ProofMediaUpload
+                                        deliveryId={deliveryId!}
+                                        proofType="pickup"
+                                        isCourier={true}
+                                        onMediaUpdated={() => refresh({ force: true })}
+                                    />
+                                )}
+                                {canAddDeliveryMedia && (
+                                    <ProofMediaUpload
+                                        deliveryId={deliveryId!}
+                                        proofType="delivery"
+                                        isCourier={true}
+                                        onMediaUpdated={() => refresh({ force: true })}
+                                    />
+                                )}
+                            </View>
+                        )}
+
+                        {/* ✅ Phase 9 - Amélioration : Affichage des médias pour le client/créateur */}
+                        {!isCurrentUserCourier && deliveryId && (
+                            <View style={{ marginTop: 16, gap: 16 }}>
+                                <ProofMediaUpload
+                                    deliveryId={deliveryId}
+                                    proofType="pickup"
+                                    isCourier={false}
+                                    onMediaUpdated={() => refresh({ force: true })}
+                                />
+                                <ProofMediaUpload
+                                    deliveryId={deliveryId}
+                                    proofType="delivery"
+                                    isCourier={false}
+                                    onMediaUpdated={() => refresh({ force: true })}
+                                />
+                            </View>
+                        )}
+                        {/* ✅ Phase 9 - Amélioration 30 : Badge et bouton pour dropoff pending */}
+                        {delivery?.metadata?.dropoff_pending === true && (
+                            <View style={styles.pendingAddressSection}>
+                                <View style={styles.pendingBadge}>
+                                    <SafeIcon name="alert-circle" size={16} color={modernColors.warning} />
+                                    <Text style={styles.pendingBadgeText}>Adresse à confirmer</Text>
+                                </View>
+                                <NativeButton
+                                    title="Modifier l'adresse"
+                                    variant="secondary"
+                                    onPress={shareRecipientLocation}
+                                    style={styles.modifyAddressButton}
+                                />
+                            </View>
+                        )}
                         <View style={styles.infoRow}>
                             <Text style={styles.detailLabel}>Coursier</Text>
                             <Text style={styles.detailValue}>
-                                {courierInfo.courier?.name ?? 'En cours d’assignation'}
+                                {courierInfo.courier?.name ?? "En cours d'assignation"}
                             </Text>
                         </View>
                         <View style={styles.infoRow}>
@@ -337,9 +464,52 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                     </View>
                 ) : null}
             </ScrollView>
+
+            {/* ✅ Phase 9 - Amélioration 28 : Modal de sélection de coursier */}
+            {deliveryId && (
+                <CourierSelectionModal
+                    visible={showCourierModal}
+                    onClose={() => setShowCourierModal(false)}
+                    deliveryId={deliveryId}
+                    onSuccess={() => {
+                        refresh({ force: true }).catch(console.error);
+                    }}
+                />
+            )}
+
+            {/* ✅ Phase 9 - Amélioration : Modal de refus de produit */}
+            {rejectingItem && delivery?.orderId && (
+                <ParcelRejectionModal
+                    visible={!!rejectingItem}
+                    onClose={() => setRejectingItem(null)}
+                    productName={rejectingItem.label}
+                    onConfirm={async (reason: ParcelRejectionReason) => {
+                        await shoppingApi.rejectItem(delivery.orderId!, rejectingItem.id, reason);
+                        setRejectingItem(null);
+                        await refresh({ force: true });
+                    }}
+                />
+            )}
         </SafeNativeView>
     );
 };
+
+// Fonction helper pour obtenir le label d'une raison de refus
+function getRejectionReasonLabel(reason: ParcelRejectionReason): string {
+    const labels: Record<ParcelRejectionReason, string> = {
+        damaged: 'Produit endommagé',
+        wrong_item: 'Mauvais produit',
+        expired: 'Produit périmé',
+        wrong_quantity: 'Mauvaise quantité',
+        wrong_size: 'Mauvaise taille',
+        wrong_color: 'Mauvaise couleur',
+        quality_issue: 'Problème de qualité',
+        not_ordered: 'Non commandé',
+        duplicate: 'Doublon',
+        other: 'Autre raison',
+    };
+    return labels[reason] || reason;
+}
 
 const renderTabButton = (
     tab: TrackingTab,
@@ -455,15 +625,72 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     itemRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
         gap: 4,
         paddingVertical: 8,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: modernColors.borderLight,
     },
+    itemRowRejected: {
+        backgroundColor: modernColors.error + '10',
+        borderLeftWidth: 3,
+        borderLeftColor: modernColors.error,
+        paddingLeft: 12,
+    },
+    itemContent: {
+        flex: 1,
+    },
+    itemHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 4,
+        flexWrap: 'wrap',
+    },
     itemLabel: {
         fontSize: 15,
         fontWeight: '600',
         color: modernColors.text,
+    },
+    rejectedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: modernColors.error + '20',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+    },
+    rejectedText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.error,
+    },
+    acceptedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: modernColors.success + '20',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+    },
+    acceptedText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.success,
+    },
+    rejectionReason: {
+        fontSize: 12,
+        color: modernColors.error,
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    rejectButton: {
+        marginLeft: 12,
+        minWidth: 80,
     },
     itemMeta: {
         fontSize: 12,
@@ -498,6 +725,34 @@ const styles = StyleSheet.create({
         gap: 12,
         borderWidth: 2,
         borderColor: modernColors.primary,
+    },
+    assignCourierSection: {
+        marginBottom: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.borderLight,
+    },
+    pendingAddressSection: {
+        marginBottom: 16,
+        padding: 12,
+        backgroundColor: modernColors.warning + '10',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.warning + '30',
+    },
+    pendingBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 8,
+    },
+    pendingBadgeText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.warning,
+    },
+    modifyAddressButton: {
+        marginTop: 4,
     },
     courierActionsTitle: {
         fontSize: 16,

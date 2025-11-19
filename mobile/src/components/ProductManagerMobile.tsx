@@ -13,13 +13,14 @@ import {
     View
 } from 'react-native';
 import ProductDuplicationModal from './ProductDuplicationModal';
+import ProductDeliveryConfigModal from './delivery/ProductDeliveryConfigModal';
 // Code corrigé (remplace @ts-ignore)
 // Code corrigé (remplace @ts-ignore)
 // Code corrigé (remplace @ts-ignore)
 // Code corrigé (remplace @ts-ignore)
 // Code corrigé (remplace @ts-ignore)
 import { modernColors } from '../theme/modernTheme';
-import { NativeInput } from './NativeDesign';
+import { NativeButton, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 // Code corrigé (remplace @ts-ignore)
 // Code corrigé (remplace @ts-ignore)
@@ -1870,6 +1871,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     const navigation = useNavigation(); // ✅ Navigation pour modifier/ajouter produit
     const [showDuplicationModal, setShowDuplicationModal] = useState(false);
     const [productToDuplicate, setProductToDuplicate] = useState<Product | null>(null);
+    const [showDeliveryConfigModal, setShowDeliveryConfigModal] = useState(false);
+    const [configProductIndex, setConfigProductIndex] = useState<number | null>(null);
 
     // ✅ NOUVEAU 2025-11-01: Gérer la duplication automatique d'un produit
     // Navigation vers FormulaireYukpoIntelligent avec mode='add_product'
@@ -2222,109 +2225,138 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     </View>
                 </View>
             ) : (
-                <ScrollView style={styles.productsList} showsVerticalScrollIndicator={false}>
-                    {products.map((product) => {
-                        const typeInfo = getProductTypeInfo(product.type);
-                        return (
-                            <View key={product.id} style={styles.productCard}>
-                                <View style={styles.productContent}>
-                                    {product.images && product.images.length > 0 && (
-                                        <Image
-                                            source={{ uri: product.images[0] }}
-                                            style={styles.productImage}
-                                            resizeMode="cover"
-                                        />
-                                    )}
-                                    <View style={styles.productInfo}>
-                                        <View style={styles.productHeader}>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.productBadge} numberOfLines={1}>
-                                                    {typeInfo.icon} {typeInfo.label}
-                                                </Text>
-                                                <Text style={styles.productName} numberOfLines={2} ellipsizeMode="tail">
-                                                    {product.nom}
-                                                </Text>
-                                                {/* ✅ NOUVEAU 2025-11-01: Badge désactivé */}
-                                                {product.actif === false && (
-                                                    <View style={styles.deactivatedBadge}>
-                                                        <Text style={styles.deactivatedText}>🔒 Désactivé</Text>
+                <>
+                    {/* ✅ NOUVEAU: Bouton configuration livraison transversale */}
+                    {!readonly && serviceId && products.filter(p => p.type !== 'prestation_service').length > 0 && (
+                        <View style={{ padding: 16, paddingBottom: 8 }}>
+                            <NativeButton
+                                title="🚚 Configurer livraison pour tous les produits"
+                                variant="secondary"
+                                onPress={() => {
+                                    setConfigProductIndex(-1); // -1 = mode transversal
+                                    setShowDeliveryConfigModal(true);
+                                }}
+                                style={{ backgroundColor: modernColors.success }}
+                            />
+                        </View>
+                    )}
+                    <ScrollView style={styles.productsList} showsVerticalScrollIndicator={false}>
+                        {products.map((product) => {
+                            const typeInfo = getProductTypeInfo(product.type);
+                            return (
+                                <View key={product.id} style={styles.productCard}>
+                                    <View style={styles.productContent}>
+                                        {product.images && product.images.length > 0 && (
+                                            <Image
+                                                source={{ uri: product.images[0] }}
+                                                style={styles.productImage}
+                                                resizeMode="cover"
+                                            />
+                                        )}
+                                        <View style={styles.productInfo}>
+                                            <View style={styles.productHeader}>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.productBadge} numberOfLines={1}>
+                                                        {typeInfo.icon} {typeInfo.label}
+                                                    </Text>
+                                                    <Text style={styles.productName} numberOfLines={2} ellipsizeMode="tail">
+                                                        {product.nom}
+                                                    </Text>
+                                                    {/* ✅ NOUVEAU 2025-11-01: Badge désactivé */}
+                                                    {product.actif === false && (
+                                                        <View style={styles.deactivatedBadge}>
+                                                            <Text style={styles.deactivatedText}>🔒 Désactivé</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                {!readonly && (
+                                                    <View style={styles.productActions}>
+                                                        {/* ✅ NOUVEAU 2025-11-01: Boutons selon état du produit */}
+                                                        {product.actif === false ? (
+                                                            // Produit désactivé → Bouton Réactiver uniquement
+                                                            <TouchableOpacity
+                                                                style={[styles.actionButton, styles.reactivateButton]}
+                                                                onPress={() => {
+                                                                    const index = products.findIndex(p => p.id === product.id);
+                                                                    handleReactivateProduct(product.id, index);
+                                                                }}
+                                                            >
+                                                                <SafeIcon name="eye" size={16} color="#FFFFFF" />
+                                                                <Text style={styles.reactivateText}>Réactiver</Text>
+                                                            </TouchableOpacity>
+                                                        ) : (
+                                                            // Produit actif → Boutons normaux + Désactiver
+                                                            <>
+                                                                {/* ✅ NOUVEAU: Bouton configuration livraison (uniquement pour produits, pas prestations) */}
+                                                                {serviceId && product.type !== 'prestation_service' && (
+                                                                    <TouchableOpacity
+                                                                        style={styles.actionButton}
+                                                                        onPress={() => {
+                                                                            const index = products.findIndex(p => p.id === product.id);
+                                                                            setConfigProductIndex(index);
+                                                                            setShowDeliveryConfigModal(true);
+                                                                        }}
+                                                                    >
+                                                                        <SafeIcon name="truck" size={16} color={modernColors.success} />
+                                                                    </TouchableOpacity>
+                                                                )}
+                                                                <TouchableOpacity
+                                                                    style={styles.actionButton}
+                                                                    onPress={() => handleEditProduct(product)}
+                                                                >
+                                                                    <SafeIcon name="edit-2" size={16} color={modernColors.primary} />
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity
+                                                                    style={styles.actionButton}
+                                                                    onPress={() => handleDuplicateProduct(product)}
+                                                                >
+                                                                    <SafeIcon name="copy" size={16} color={modernColors.success} />
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity
+                                                                    style={styles.actionButton}
+                                                                    onPress={() => handleDeleteProduct(product.id)}
+                                                                >
+                                                                    <SafeIcon name="trash-2" size={16} color={modernColors.error} />
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity
+                                                                    style={styles.actionButton}
+                                                                    onPress={() => {
+                                                                        const index = products.findIndex(p => p.id === product.id);
+                                                                        handleDeactivateProduct(product.id, index);
+                                                                    }}
+                                                                >
+                                                                    <SafeIcon name="eye-off" size={16} color={modernColors.warning} />
+                                                                </TouchableOpacity>
+                                                            </>
+                                                        )}
                                                     </View>
                                                 )}
                                             </View>
-                                            {!readonly && (
-                                                <View style={styles.productActions}>
-                                                    {/* ✅ NOUVEAU 2025-11-01: Boutons selon état du produit */}
-                                                    {product.actif === false ? (
-                                                        // Produit désactivé → Bouton Réactiver uniquement
-                                                        <TouchableOpacity
-                                                            style={[styles.actionButton, styles.reactivateButton]}
-                                                            onPress={() => {
-                                                                const index = products.findIndex(p => p.id === product.id);
-                                                                handleReactivateProduct(product.id, index);
-                                                            }}
-                                                        >
-                                                            <SafeIcon name="eye" size={16} color="#FFFFFF" />
-                                                            <Text style={styles.reactivateText}>Réactiver</Text>
-                                                        </TouchableOpacity>
-                                                    ) : (
-                                                        // Produit actif → Boutons normaux + Désactiver
-                                                        <>
-                                                            <TouchableOpacity
-                                                                style={styles.actionButton}
-                                                                onPress={() => handleEditProduct(product)}
-                                                            >
-                                                                <SafeIcon name="edit-2" size={16} color={modernColors.primary} />
-                                                            </TouchableOpacity>
-                                                            <TouchableOpacity
-                                                                style={styles.actionButton}
-                                                                onPress={() => handleDuplicateProduct(product)}
-                                                            >
-                                                                <SafeIcon name="copy" size={16} color={modernColors.success} />
-                                                            </TouchableOpacity>
-                                                            <TouchableOpacity
-                                                                style={styles.actionButton}
-                                                                onPress={() => handleDeleteProduct(product.id)}
-                                                            >
-                                                                <SafeIcon name="trash-2" size={16} color={modernColors.error} />
-                                                            </TouchableOpacity>
-                                                            <TouchableOpacity
-                                                                style={styles.actionButton}
-                                                                onPress={() => {
-                                                                    const index = products.findIndex(p => p.id === product.id);
-                                                                    handleDeactivateProduct(product.id, index);
-                                                                }}
-                                                            >
-                                                                <SafeIcon name="eye-off" size={16} color={modernColors.warning} />
-                                                            </TouchableOpacity>
-                                                        </>
-                                                    )}
-                                                </View>
+                                            <Text style={styles.productPrice}>
+                                                {product.prix} {product.devise}
+                                            </Text>
+                                            {product.description && (
+                                                <Text style={styles.productDescription} numberOfLines={2}>
+                                                    {product.description}
+                                                </Text>
+                                            )}
+                                            {product.images && product.images.length > 1 && (
+                                                <Text style={styles.productMediaCount}>
+                                                    📷 {product.images.length} image(s)
+                                                </Text>
+                                            )}
+                                            {product.videos && product.videos.length > 0 && (
+                                                <Text style={styles.productMediaCount}>
+                                                    🎥 {product.videos.length} vidéo(s)
+                                                </Text>
                                             )}
                                         </View>
-                                        <Text style={styles.productPrice}>
-                                            {product.prix} {product.devise}
-                                        </Text>
-                                        {product.description && (
-                                            <Text style={styles.productDescription} numberOfLines={2}>
-                                                {product.description}
-                                            </Text>
-                                        )}
-                                        {product.images && product.images.length > 1 && (
-                                            <Text style={styles.productMediaCount}>
-                                                📷 {product.images.length} image(s)
-                                            </Text>
-                                        )}
-                                        {product.videos && product.videos.length > 0 && (
-                                            <Text style={styles.productMediaCount}>
-                                                🎥 {product.videos.length} vidéo(s)
-                                            </Text>
-                                        )}
                                     </View>
                                 </View>
-                            </View>
-                        );
-                    })}
-                </ScrollView>
+                            );
+                        })}
+                    </ScrollView>
+                </>
             )}
 
             {/* Bouton d'ajout de produit */}
@@ -2360,6 +2392,39 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 product={productToDuplicate}
                 onDuplicate={handleConfirmDuplication}
             />
+
+            {/* ✅ Modal configuration livraison */}
+            {serviceId && configProductIndex !== null && (
+                <ProductDeliveryConfigModal
+                    visible={showDeliveryConfigModal}
+                    onClose={() => {
+                        setShowDeliveryConfigModal(false);
+                        setConfigProductIndex(null);
+                    }}
+                    serviceId={serviceId}
+                    productIndex={configProductIndex}
+                    productName={
+                        configProductIndex === -1
+                            ? 'Tous les produits'
+                            : (products[configProductIndex]?.nom || 'Produit')
+                    }
+                    allProducts={
+                        configProductIndex === -1
+                            ? products
+                                .map((p, idx) => ({ index: idx, name: p.nom || 'Produit' }))
+                                .filter((_, idx) => products[idx].type !== 'prestation_service')
+                            : []
+                    }
+                    onSuccess={() => {
+                        Alert.alert(
+                            'Succès',
+                            configProductIndex === -1
+                                ? 'La configuration de livraison a été appliquée à tous les produits'
+                                : 'La configuration de livraison a été enregistrée avec succès'
+                        );
+                    }}
+                />
+            )}
         </View>
     );
 };

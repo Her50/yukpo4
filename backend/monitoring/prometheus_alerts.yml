@@ -1,0 +1,140 @@
+groups:
+  - name: yukpo_pipeline
+    interval: 30s
+    rules:
+      # Pipeline vidéo en état critique
+      - alert: PipelineCritical
+        expr: pipeline_status == 2
+        for: 5m
+        labels:
+          severity: critical
+          service: video_pipeline
+        annotations:
+          summary: "Pipeline vidéo en état CRITICAL"
+          description: "Le pipeline vidéo est en état critique depuis {{ $for }}. Jobs en file: {{ $value }}"
+
+      # Pipeline vidéo dégradé
+      - alert: PipelineDegraded
+        expr: pipeline_status == 1
+        for: 10m
+        labels:
+          severity: warning
+          service: video_pipeline
+        annotations:
+          summary: "Pipeline vidéo dégradé"
+          description: "Le pipeline vidéo est dégradé depuis {{ $for }}. Vérifier les jobs en attente."
+
+      # Trop de jobs en file d'attente
+      - alert: VideoJobsQueueHigh
+        expr: video_jobs_queued > 50
+        for: 5m
+        labels:
+          severity: warning
+          service: video_pipeline
+        annotations:
+          summary: "File d'attente vidéo saturée"
+          description: "{{ $value }} jobs en file d'attente (seuil: 50)"
+
+      # Taux d'échec élevé
+      - alert: VideoJobsFailureRateHigh
+        expr: rate(video_jobs_failed_last_24h[1h]) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          service: video_pipeline
+        annotations:
+          summary: "Taux d'échec vidéo élevé"
+          description: "Taux d'échec: {{ $value | humanizePercentage }}"
+
+  - name: yukpo_delivery
+    interval: 30s
+    rules:
+      # Matching delivery dégradé
+      - alert: DeliveryMatchingDegraded
+        expr: rate(delivery_matching_success_total[5m]) / rate(delivery_matching_started_total[5m]) < 0.7
+        for: 10m
+        labels:
+          severity: warning
+          service: delivery
+        annotations:
+          summary: "Taux de succès matching delivery faible"
+          description: "Taux de succès: {{ $value | humanizePercentage }} (objectif: 70%)"
+
+  - name: yukpo_chat_metrics
+    interval: 1m
+    rules:
+      # Alertes métriques chat
+      - alert: ChatMetricsAlert
+        expr: rate(chat_messages_sent_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: info
+          service: chat
+          metric_name: chat_messages_sent_total
+        annotations:
+          summary: "Volume de messages chat élevé"
+          description: "{{ $value }} messages/min (seuil: 100/min)"
+
+      - alert: ChatConversationsHigh
+        expr: chat_conversations_active_total > 500
+        for: 5m
+        labels:
+          severity: info
+          service: chat
+        annotations:
+          summary: "Nombre élevé de conversations actives"
+          description: "{{ $value }} conversations actives (seuil: 500)"
+
+  - name: yukpo_ux_metrics
+    interval: 1m
+    rules:
+      # Métriques scroll produits
+      - alert: ProductScrollMetricsAlert
+        expr: rate(product_carousel_scrolls_total[5m]) > 50
+        for: 5m
+        labels:
+          severity: info
+          service: ux
+          metric_name: product_carousel_scrolls_total
+          threshold: "50/min"
+        annotations:
+          summary: "Volume élevé de scroll produits"
+          description: "{{ $value }} scrolls/min sur les carrousels produits"
+
+      # Métriques scroll vidéos
+      - alert: VideoScrollMetricsAlert
+        expr: rate(video_carousel_scrolls_total[5m]) > 30
+        for: 5m
+        labels:
+          severity: info
+          service: ux
+          metric_name: video_carousel_scrolls_total
+          threshold: "30/min"
+        annotations:
+          summary: "Volume élevé de scroll vidéos"
+          description: "{{ $value }} scrolls/min sur les carrousels vidéos"
+
+      # Métriques navigation ResultatBesoinScreen
+      - alert: NavigationMetricsAlert
+        expr: rate(resulta_besoin_screen_searches_total[5m]) > 20
+        for: 5m
+        labels:
+          severity: info
+          service: ux
+          metric_name: resulta_besoin_screen_searches_total
+          threshold: "20/min"
+        annotations:
+          summary: "Volume élevé de recherches"
+          description: "{{ $value }} recherches/min sur ResultatBesoinScreen"
+
+      # Recherches sans résultats
+      - alert: NavigationNoResultsHigh
+        expr: rate(resulta_besoin_screen_searches_without_results_total[5m]) / rate(resulta_besoin_screen_searches_total[5m]) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          service: ux
+        annotations:
+          summary: "Taux élevé de recherches sans résultats"
+          description: "{{ $value | humanizePercentage }} des recherches n'ont pas de résultats"
+

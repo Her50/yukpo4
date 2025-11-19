@@ -30,6 +30,12 @@ pub enum NotificationType {
     GlobalPromoEntryEnded,
     GlobalPromoEntryApproved,
     GlobalPromoEntryRejected,
+    // ✅ Phase 10 - Notifications de livraison
+    DeliveryAccepted,
+    DeliveryPickedUp,
+    DeliveryInTransit,
+    DeliveryDelivered,
+    DeliveryCancelled,
 }
 
 impl NotificationType {
@@ -59,6 +65,13 @@ impl NotificationType {
             NotificationType::GlobalPromoEntryEnded => "global_promo_entry_ended",
             NotificationType::GlobalPromoEntryApproved => "global_promo_entry_approved",
             NotificationType::GlobalPromoEntryRejected => "global_promo_entry_rejected",
+            NotificationType::ProductDeliveryConfigMissing => "product_delivery_config_missing",
+            // ✅ Phase 10 - Notifications de livraison
+            NotificationType::DeliveryAccepted => "delivery_accepted",
+            NotificationType::DeliveryPickedUp => "delivery_picked_up",
+            NotificationType::DeliveryInTransit => "delivery_in_transit",
+            NotificationType::DeliveryDelivered => "delivery_delivered",
+            NotificationType::DeliveryCancelled => "delivery_cancelled",
         }
     }
 }

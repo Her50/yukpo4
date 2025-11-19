@@ -1,6 +1,9 @@
 # 🚀 Dockerfile optimisé pour l'architecture cloud massive
 FROM rust:1.75-slim as builder
 
+# ✅ SQLx OFFLINE : Activer le mode offline SQLx dès le début
+ENV SQLX_OFFLINE=true
+
 # Installer les dépendances système
 RUN apt-get update && apt-get install -y \
     pkg-config \
@@ -16,13 +19,39 @@ RUN apt-get update && apt-get install -y \
 
 # Copier les fichiers de configuration
 COPY Cargo.toml Cargo.lock ./
+
+# ✅ SQLx OFFLINE : copier le cache SQLx AVANT le code source
+COPY .sqlx ./.sqlx
+
+# Vérifier que le cache est bien présent
+RUN echo "=== Vérification du cache SQLx ===" && \
+    if [ -d ".sqlx" ]; then \
+    echo "✅ Répertoire .sqlx trouvé" && \
+    echo "SQLX_OFFLINE=${SQLX_OFFLINE}" && \
+    CACHE_COUNT=$(find .sqlx -type f 2>/dev/null | wc -l || echo 0) && \
+    echo "Nombre de fichiers dans .sqlx: ${CACHE_COUNT}" && \
+    if [ "${CACHE_COUNT}" -eq 0 ]; then \
+    echo "❌ WARNING: Le cache .sqlx est vide!" && \
+    echo "   Le build Docker échouera probablement." && \
+    echo "   Veuillez exécuter 'cargo sqlx prepare --workspace' localement"; \
+    else \
+    echo "✅ Cache SQLx présent (${CACHE_COUNT} fichiers)"; \
+    fi && \
+    echo "==="; \
+    else \
+    echo "❌ ERREUR: Répertoire .sqlx non trouvé!" && \
+    echo "   Le build Docker échouera." && \
+    echo "   Veuillez exécuter 'cargo sqlx prepare --workspace' et commiter .sqlx/"; \
+    fi
+
+# Copier le code source (APRÈS le cache)
 COPY src ./src
 COPY config ./config
 COPY migrations ./migrations
 COPY ia_prompts ./ia_prompts
 COPY ia_intentions_instructions.md ./
 
-# Construire avec optimisations pour la production
+# Construire avec optimisations pour la production (SQLX_OFFLINE=true est déjà défini)
 RUN cargo build --release --features gpu
 
 # 🐳 Image finale optimisée

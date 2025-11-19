@@ -18,7 +18,7 @@ import { VideoAnalyticsOverviewSection } from '@/components/video/VideoAnalytics
 import { useFeatureFlags } from '@/context';
 import { useVideoGenerationProgress } from '@/hooks/useVideoGenerationProgress';
 import { useVoiceProfiles } from '@/hooks/useVoiceProfiles';
-import { studioService, type Storyboard, type StoryboardRequest } from '@/services/studioService';
+import { studioService, type Storyboard, type StoryboardRequest, type VideoDependency } from '@/services/studioService';
 import { trackUxEvent } from '@/services/uxMetrics';
 import {
     estimateVideoCost,
@@ -266,6 +266,10 @@ const ImmersiveVideoWizard = () => {
     const [studioSessionId, setStudioSessionId] = useState<string | null>(null);
     const [prewarmedShortPreviewUrl, setPrewarmedShortPreviewUrl] = useState<string | null>(null);
     const [shortPreviewLoading, setShortPreviewLoading] = useState(false);
+    // ✅ Phase 9 - Amélioration 31 : Chaînage vidéos
+    const [availableSessions, setAvailableSessions] = useState<Array<{ id: string; title?: string }>>([]);
+    const [selectedLinkedSessions, setSelectedLinkedSessions] = useState<string[]>([]);
+    const [dependencies, setDependencies] = useState<VideoDependency[]>([]);
 
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
     const uxWizardOpenedRef = useRef(false);
@@ -294,6 +298,43 @@ const ImmersiveVideoWizard = () => {
             step,
         });
     }, [productIndex, serviceId, step]);
+
+    // ✅ Phase 9 - Amélioration 31 : Charger les sessions disponibles pour le chaînage
+    useEffect(() => {
+        const loadAvailableSessions = async () => {
+            try {
+                const sessions = await studioService.listSessions();
+                setAvailableSessions(sessions.map((s) => ({
+                    id: s.id,
+                    title: (typeof s.brief === 'object' && s.brief !== null && 'title' in s.brief)
+                        ? String(s.brief.title)
+                        : undefined
+                })));
+            } catch (error) {
+                console.error('[ImmersiveVideoWizard] Erreur chargement sessions:', error);
+            }
+        };
+        if (step === 3) {
+            loadAvailableSessions();
+        }
+    }, [step]);
+
+    // ✅ Phase 9 - Amélioration 31 : Charger les dépendances existantes
+    useEffect(() => {
+        const loadDependencies = async () => {
+            if (!studioSessionId) return;
+            try {
+                const deps = await studioService.getDependencies(studioSessionId);
+                setDependencies(deps);
+                setSelectedLinkedSessions(deps.map((d) => d.child_session_id));
+            } catch (error) {
+                console.error('[ImmersiveVideoWizard] Erreur chargement dépendances:', error);
+            }
+        };
+        if (studioSessionId && step === 3) {
+            loadDependencies();
+        }
+    }, [studioSessionId, step]);
 
     // Auto-assign de médias par défaut aux scènes (réduction de gestes)
     useEffect(() => {
@@ -911,6 +952,8 @@ const ImmersiveVideoWizard = () => {
             const service = response?.data ?? response;
             setServiceName(service?.titre || service?.name || `Service #${serviceId}`);
             const produits = service?.data?.produits?.valeur || service?.data?.produits || [];
+
+            // ✅ Phase 7 - Amélioration 21 : Auto-remplissage Brief IA depuis description produit/service
             if (Array.isArray(produits) && produits[productIndex!]) {
                 const product = produits[productIndex!];
                 const resolvedName = product?.nom || product?.name || product?.title;
@@ -918,6 +961,18 @@ const ImmersiveVideoWizard = () => {
                     productNameLoadedRef.current = true;
                     setProductName(resolvedName);
                 }
+
+                // Priorité 1 : Description du produit si disponible
+                const productDesc = product?.description || product?.desc;
+                if (productDesc && !brief) {
+                    setBrief(productDesc);
+                } else if (produits.length <= 2 && service?.description && !brief) {
+                    // Priorité 2 : Description du service si ≤ 2 produits
+                    setBrief(service.description);
+                }
+            } else if (service?.description && !brief) {
+                // Si pas de produit spécifique, utiliser description service
+                setBrief(service.description);
             }
         } catch (error) {
             console.error('[ImmersiveVideoWizard] Service fetch error', error);
@@ -930,7 +985,7 @@ const ImmersiveVideoWizard = () => {
             }, [t]);
             setLoadingService(false);
         }
-    }, [productIndex, serviceId, t]);
+    }, [productIndex, serviceId, t, brief]);
 
     const fetchMedia = useCallback(async () => {
         if (!Number.isFinite(serviceId)) return;
@@ -1801,6 +1856,78 @@ const ImmersiveVideoWizard = () => {
                                                             multiplier: costEstimation.margin_multiplier,
                                                         })}
                                                     </p>
+                                                </div>
+                                            )}
+                                            {/* ✅ Phase 9 - Amélioration 31 : Sélection de vidéos liées */}
+                                            {studioSessionId && (
+                                                <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
+                                                    <h4 className="mb-3 text-sm font-semibold text-slate-100">
+                                                        Vidéos liées (chaînage)
+                                                    </h4>
+                                                    <p className="mb-3 text-xs text-slate-400">
+                                                        Sélectionne les vidéos qui suivront celle-ci dans une séquence
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        {availableSessions.length > 0 ? (
+                                                            availableSessions
+                                                                .filter((s) => s.id !== studioSessionId)
+                                                                .map((session) => (
+                                                                    <label
+                                                                        key={session.id}
+                                                                        className="flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900/40 p-2 hover:bg-slate-900/60"
+                                                                    >
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={selectedLinkedSessions.includes(session.id)}
+                                                                            onChange={(e) => {
+                                                                                if (e.target.checked) {
+                                                                                    setSelectedLinkedSessions([...selectedLinkedSessions, session.id]);
+                                                                                } else {
+                                                                                    setSelectedLinkedSessions(selectedLinkedSessions.filter((id) => id !== session.id));
+                                                                                }
+                                                                            }}
+                                                                            className="h-4 w-4 rounded border border-white/30 bg-slate-800 accent-indigo-500"
+                                                                        />
+                                                                        <span className="text-sm text-slate-200">
+                                                                            {session.title || `Session ${session.id.slice(0, 8)}`}
+                                                                        </span>
+                                                                    </label>
+                                                                ))
+                                                        ) : (
+                                                            <p className="text-xs text-slate-500">
+                                                                Aucune autre session disponible
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    {selectedLinkedSessions.length > 0 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={async () => {
+                                                                if (!studioSessionId) return;
+                                                                try {
+                                                                    await studioService.setDependencies(studioSessionId, selectedLinkedSessions);
+                                                                    toast.success('Vidéos liées enregistrées');
+                                                                    const deps = await studioService.getDependencies(studioSessionId);
+                                                                    setDependencies(deps);
+                                                                } catch (error: any) {
+                                                                    toast.error(error.message || 'Erreur lors de l\'enregistrement');
+                                                                }
+                                                            }}
+                                                            className="mt-3 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400"
+                                                        >
+                                                            Enregistrer les liens
+                                                        </button>
+                                                    )}
+                                                    {dependencies.length > 0 && (
+                                                        <div className="mt-3 space-y-1">
+                                                            <p className="text-xs font-semibold text-slate-300">Vidéos liées :</p>
+                                                            {dependencies.map((dep, idx) => (
+                                                                <p key={dep.id} className="text-xs text-slate-400">
+                                                                    {idx + 1}. Session {dep.child_session_id.slice(0, 8)}
+                                                                </p>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                             {effectiveScenesCount > 0 && (

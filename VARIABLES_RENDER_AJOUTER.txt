@@ -1,0 +1,18 @@
+Variables à ajouter sur Render (Service: yukpomnang → Environment)
+
+1. PIPELINE_ALERT_WEBHOOK
+   Valeur: YOUR_SLACK_WEBHOOK_URL
+   Secret: Oui
+
+2. GPU_AVAILABLE
+   Valeur: true
+   Secret: Non
+
+3. GPU_TYPE
+   Valeur: nvidia
+   Secret: Non
+
+4. GPU_MEMORY_GB
+   Valeur: 16
+   Secret: Non
+

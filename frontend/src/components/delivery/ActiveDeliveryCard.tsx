@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { DeliverySummary } from '@/types/delivery';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { MapPin, Navigation2, Package, ShoppingCart, User } from 'lucide-react';
+import { AlertCircle, MapPin, Navigation2, Package, ShoppingCart, User } from 'lucide-react';
 import React from 'react';
 
 const statusConfig: Record<
@@ -72,6 +72,9 @@ export const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery
         ? formatDistanceToNow(new Date(updatedAt), { addSuffix: true, locale: fr })
         : 'Jamais';
 
+    // ✅ Phase 9 - Amélioration 30 : Vérifier si dropoff est pending
+    const dropoffPending = delivery.metadata?.dropoff_pending === true;
+
     return (
         <Card className="flex flex-col gap-4 border border-slate-200 p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
@@ -96,12 +99,23 @@ export const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery
                 </div>
 
                 <div className="flex items-start gap-2">
-                    <MapPin className="mt-1 h-4 w-4 text-slate-400" />
-                    <div>
-                        <p className="font-medium text-slate-800">
-                            {delivery.dropoff?.label ?? 'Destinataire'}
+                    <MapPin className={cn("mt-1 h-4 w-4", dropoffPending ? "text-amber-500" : "text-slate-400")} />
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-slate-800">
+                                {delivery.dropoff?.label ?? 'Destinataire'}
+                            </p>
+                            {/* ✅ Phase 9 - Amélioration 30 : Badge "Adresse à confirmer" si dropoff pending */}
+                            {dropoffPending && (
+                                <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                    Adresse à confirmer
+                                </Badge>
+                            )}
+                        </div>
+                        <p className={cn("text-sm", dropoffPending ? "text-amber-600 italic" : "text-slate-500")}>
+                            {delivery.dropoff?.address ?? 'Adresse non renseignée'}
                         </p>
-                        <p className="text-slate-500">{delivery.dropoff?.address ?? 'Adresse non renseignée'}</p>
                     </div>
                 </div>
 
@@ -118,7 +132,17 @@ export const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery
                 <span className="font-medium text-slate-700">{relativeTime}</span>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-between gap-2">
+                {/* ✅ Phase 9 - Amélioration 30 : Bouton "Modifier l'adresse" toujours visible */}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onClick(delivery.id)}
+                    className="flex-1"
+                >
+                    <MapPin className="w-4 h-4 mr-1" />
+                    Modifier l'adresse
+                </Button>
                 <Button variant="default" size="sm" onClick={() => onClick(delivery.id)}>
                     Suivre
                 </Button>

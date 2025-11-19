@@ -39,6 +39,7 @@ export const ROUTES = {
   LIVE_VIEW: "/live/:sessionId",
   DASHBOARD_ADMIN_AUDIT: "/admin/audit",
   MES_SERVICES: "/dashboard/mes-services", // ✅ Correction : route complète pour correspondre à la configuration imbriquée
+  ANALYTICS_DASHBOARD: "/dashboard/analytics", // ✅ Phase 10 - Analytics Dashboard
   DASHBOARD: "/dashboard",
   DASHBOARD_ADMIN_API: "/admin/api",
   PLANS: "/plans",
@@ -49,4 +50,5 @@ export const ROUTES = {
   DELIVERY_SHOPPING_SUMMARY: "/delivery/shopping/summary",
   DELIVERY_TRACKING: "/delivery/:deliveryId/tracking",
   DELIVERY_COURIER_DASHBOARD: "/delivery/:deliveryId/courier",
+  DELIVERY_STORAGE_LOCATIONS: "/delivery/storage-locations", // ✅ Phase 9 - Amélioration 32
 } as const;

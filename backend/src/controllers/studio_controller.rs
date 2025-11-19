@@ -17,9 +17,10 @@ use crate::{
         story_template_service::StoryTemplateSpec,
         studio_service::{
             AttachAssetPayload, CreateStudioSessionPayload, PreviewResponse, PublishResponse,
-            StudioDynamicAssetRecord, StudioPreviewEventRecord, StudioPreviewMetrics,
-            StudioSessionAggregate, StudioSessionRecord, StudioTimelineClipRecord,
-            TimelineClipPayload, UpdateStudioSessionPayload,
+            SetDependenciesPayload, StudioDynamicAssetRecord, StudioPreviewEventRecord,
+            StudioPreviewMetrics, StudioSessionAggregate, StudioSessionRecord,
+            StudioTimelineClipRecord, TimelineClipPayload, UpdateStudioSessionPayload,
+            VideoDependency,
         },
     },
     state::AppState,
@@ -282,6 +283,178 @@ pub async fn recommend_templates(
     }))
 }
 
+/// ✅ Phase 7 - Amélioration 22 : POST /api/studio/sessions/{session_id}/suggestions
+/// Génère des suggestions IA basées sur le brief
+#[derive(Deserialize)]
+pub struct GenerateSuggestionsPayload {
+    pub brief: String,
+    #[serde(default)]
+    pub product_name: Option<String>,
+    #[serde(default)]
+    pub service_name: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct SuggestionsResponse {
+    pub suggestions: Vec<String>,
+}
+
+pub async fn generate_suggestions(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(session_id): Path<Uuid>,
+    Json(payload): Json<GenerateSuggestionsPayload>,
+) -> AppResult<Json<SuggestionsResponse>> {
+    // Vérifier que la session existe et appartient à l'utilisateur
+    state
+        .studio_service
+        .get_session(session_id, user.id)
+        .await?;
+
+    // ✅ Phase 7 - Amélioration 22 : Générer des suggestions basées sur le brief avec IA
+    let suggestions = if payload.brief.trim().is_empty() {
+        // Si brief vide, suggestions par défaut
+        vec![
+            "Introduction accrocheuse du produit".to_string(),
+            "Mise en avant des avantages principaux".to_string(),
+            "Preuve sociale et témoignages".to_string(),
+            "Appel à l'action clair et incitatif".to_string(),
+        ]
+    } else {
+        // ✅ Intégration IA pour générer des suggestions intelligentes
+        let product_name = payload.product_name.as_deref().unwrap_or("produit");
+        let service_name = payload.service_name.as_deref().unwrap_or("service");
+        
+        let prompt = format!(
+            "Tu es un expert en marketing vidéo pour Yukpomnang. Analyse ce brief et génère 4-5 suggestions concises (une phrase chacune) pour améliorer la vidéo promotionnelle.\n\nBrief : {}\nProduit : {}\nService : {}\n\nFormat de réponse (JSON strict) :\n{{\n  \"suggestions\": [\n    \"Suggestion 1\",\n    \"Suggestion 2\",\n    \"Suggestion 3\",\n    \"Suggestion 4\"\n  ]\n}}\n\nLes suggestions doivent être :\n- Concrètes et actionnables\n- Adaptées au contexte du brief\n- Orientées vers l'engagement et la conversion\n- Maximum 15 mots chacune",
+            payload.brief,
+            product_name,
+            service_name
+        );
+
+        // Appeler l'IA pour générer des suggestions
+        match state.ia.predict(&prompt).await {
+            Ok((_, response, _)) => {
+                // Extraire le JSON de la réponse
+                let json_block = extract_json_from_text(&response);
+                if let Some(json_str) = json_block {
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                        if let Some(suggestions_array) = parsed.get("suggestions").and_then(|v| v.as_array()) {
+                            let ai_suggestions: Vec<String> = suggestions_array
+                                .iter()
+                                .filter_map(|v| v.as_str().map(|s| s.trim().to_string()))
+                                .filter(|s| !s.is_empty())
+                                .take(5)
+                                .collect();
+                            
+                            if !ai_suggestions.is_empty() {
+                                return Ok(Json(SuggestionsResponse { suggestions: ai_suggestions }));
+                            }
+                        }
+                    }
+                }
+                
+                // Fallback si parsing JSON échoue : extraire les suggestions du texte
+                let fallback_suggestions = extract_suggestions_from_text(&response);
+                if !fallback_suggestions.is_empty() {
+                    return Ok(Json(SuggestionsResponse { suggestions: fallback_suggestions }));
+                }
+                
+                // Dernier fallback : suggestions basiques
+                generate_fallback_suggestions(&payload.brief)
+            }
+            Err(e) => {
+                log::warn!("Erreur IA pour suggestions: {}. Utilisation de fallback.", e);
+                generate_fallback_suggestions(&payload.brief)
+            }
+        }
+    };
+
+    Ok(Json(SuggestionsResponse { suggestions }))
+}
+
+/// Fonction helper pour extraire un bloc JSON depuis un texte
+fn extract_json_from_text(text: &str) -> Option<String> {
+    // Chercher un bloc JSON entre accolades
+    let start = text.find('{')?;
+    let mut depth = 0;
+    let mut end = start;
+    
+    for (i, ch) in text[start..].char_indices() {
+        match ch {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    end = start + i + 1;
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    
+    if depth == 0 {
+        Some(text[start..end].to_string())
+    } else {
+        None
+    }
+}
+
+/// Fonction helper pour extraire des suggestions depuis un texte (fallback)
+fn extract_suggestions_from_text(text: &str) -> Vec<String> {
+    let lines: Vec<&str> = text.lines().collect();
+    let mut suggestions = Vec::new();
+    
+    for line in lines {
+        let trimmed = line.trim();
+        // Chercher des lignes qui commencent par des numéros, tirets, ou puces
+        if trimmed.starts_with(|c: char| c.is_ascii_digit() || c == '-' || c == '•' || c == '*') {
+            let cleaned = trimmed
+                .trim_start_matches(|c: char| c.is_ascii_digit() || c == '-' || c == '•' || c == '*' || c == '.' || c == ' ')
+                .trim()
+                .to_string();
+            if !cleaned.is_empty() && cleaned.len() <= 100 {
+                suggestions.push(cleaned);
+            }
+        }
+    }
+    
+    suggestions.truncate(5);
+    suggestions
+}
+
+/// Fonction helper pour générer des suggestions de fallback basées sur le brief
+fn generate_fallback_suggestions(brief: &str) -> Vec<String> {
+    let brief_lower = brief.to_lowercase();
+    let mut suggestions = Vec::new();
+
+    // Suggestions contextuelles basées sur le contenu du brief
+    if brief_lower.contains("prix") || brief_lower.contains("coût") || brief_lower.contains("tarif") {
+        suggestions.push("Mettre en avant le rapport qualité/prix".to_string());
+    }
+    if brief_lower.contains("livraison") || brief_lower.contains("rapide") {
+        suggestions.push("Souligner la rapidité de livraison".to_string());
+    }
+    if brief_lower.contains("qualité") || brief_lower.contains("premium") {
+        suggestions.push("Mettre en avant la qualité premium".to_string());
+    }
+    if brief_lower.contains("promo") || brief_lower.contains("réduction") || brief_lower.contains("offre") {
+        suggestions.push("Mettre en avant l'offre promotionnelle".to_string());
+    }
+
+    // Suggestions génériques si pas assez de suggestions contextuelles
+    if suggestions.len() < 3 {
+        suggestions.push("Introduction accrocheuse du produit".to_string());
+        suggestions.push("Mise en avant des avantages principaux".to_string());
+        suggestions.push("Appel à l'action clair et incitatif".to_string());
+    }
+
+    // Limiter à 4-5 suggestions
+    suggestions.truncate(5);
+    suggestions
+}
+
 pub async fn generate_storyboard(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -349,4 +522,38 @@ pub async fn preview_metrics(
         .preview_metrics(session_id, user.id)
         .await?;
     Ok(Json(metrics))
+}
+
+// ✅ Phase 9 - Amélioration 31 : Définir les dépendances (vidéos suivantes) pour une session
+pub async fn set_dependencies(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(session_id): Path<Uuid>,
+    Json(payload): Json<SetDependenciesPayload>,
+) -> AppResult<Json<Vec<VideoDependency>>> {
+    let deps = state
+        .studio_service
+        .set_dependencies(session_id, user.id, payload)
+        .await?;
+    Ok(Json(deps))
+}
+
+// ✅ Phase 9 - Amélioration 31 : Récupérer la vidéo suivante dans la chaîne
+pub async fn get_next_video(
+    State(state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+    Path(session_id): Path<Uuid>,
+) -> AppResult<Json<crate::services::studio_service::NextVideoResponse>> {
+    let next = state.studio_service.get_next_video(session_id).await?;
+    Ok(Json(next))
+}
+
+// ✅ Phase 9 - Amélioration 31 : Récupérer toutes les dépendances d'une session
+pub async fn get_dependencies(
+    State(state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+    Path(session_id): Path<Uuid>,
+) -> AppResult<Json<Vec<VideoDependency>>> {
+    let deps = state.studio_service.get_dependencies(session_id).await?;
+    Ok(Json(deps))
 }

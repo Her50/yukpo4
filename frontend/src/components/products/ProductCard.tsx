@@ -14,9 +14,11 @@ import {
     Phone,
     PlayCircle,
     Tag,
+    Truck,
     User
 } from 'lucide-react';
 import React, { useState } from 'react';
+import OrderDeliveryModal from '../delivery/OrderDeliveryModal';
 
 interface ProductCardProps {
     product: any;
@@ -36,6 +38,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
     onGalleryPress
 }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [showOrderModal, setShowOrderModal] = useState(false);
+
+    // Obtenir service_id et product_index
+    const serviceId = service?.id;
+    const productIndex = product.product_index ?? product.index ??
+        (service?.data?.produits?.valeur ?
+            service.data.produits.valeur.findIndex((p: any) => p === product || p.nom === product.nom) :
+            undefined);
+    const productName = product.nom || product.name || 'Produit';
+
+    // ✅ Vérifier si c'est un produit (pas une prestation de service)
+    // Par défaut, si le type n'est pas défini, on considère que c'est un produit
+    const isProduct = product.type !== 'prestation_service';
 
     // Extraire les images et vidéos
     const images = product.images || product.imagesRealisations || [];
@@ -867,6 +882,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
                     {/* Actions */}
                     <div className="flex flex-col gap-2 mt-4">
+                        {/* ✅ NOUVEAU: Bouton "Se faire livrer" - Uniquement pour les produits (pas les prestations) */}
+                        {serviceId && isProduct && (
+                            <Button
+                                onClick={() => setShowOrderModal(true)}
+                                className="w-full bg-green-600 hover:bg-green-700"
+                            >
+                                <Truck className="w-4 h-4 mr-2" />
+                                Se faire livrer
+                            </Button>
+                        )}
+
                         {/* Bouton principal - Chat */}
                         <Button
                             onClick={onChatPress}
@@ -924,6 +950,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </div>
                 </CardContent>
             </div>
+
+            {/* ✅ Modal commande livraison - Uniquement pour les produits */}
+            {serviceId && isProduct && (
+                <OrderDeliveryModal
+                    isOpen={showOrderModal}
+                    onClose={() => setShowOrderModal(false)}
+                    serviceId={serviceId}
+                    productIndex={productIndex}
+                    productName={productName}
+                    onSuccess={(deliveryId) => {
+                        console.log('Commande créée:', deliveryId);
+                        // Optionnel : rediriger vers la page de suivi
+                    }}
+                />
+            )}
         </Card>
     );
 };

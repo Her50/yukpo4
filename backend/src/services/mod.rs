@@ -1,6 +1,8 @@
 pub mod african_locations_service; // ✅ NOUVEAU 2025-11-06: Base locale africaine pour enfants géographiques
 pub mod alert_service;
+pub mod analytics_service; // ✅ Phase 10 - Service d'analytics pour prestataires
 pub mod app_ia;
+pub mod email_service; // ✅ Phase 10 - Service Email avec SendGrid
 pub mod assistance;
 pub mod audio_library_service;
 pub mod audio_mastering_service;
@@ -14,6 +16,7 @@ pub mod autocomplete_search_service; // ✅ NOUVEAU 2025-11-04: Recherche par ve
 pub mod background_combination_generator;
 pub mod besoin_service;
 pub mod broll_service;
+pub mod cache_service; // ✅ Phase 10 - Service de cache générique centralisé
 pub mod commerce_connector_service;
 pub mod content_engagement_service;
 pub mod context_enricher;
@@ -21,7 +24,11 @@ pub mod cost_service;
 pub mod creer_service;
 pub mod db_optimizer;
 pub mod delivery_notification_service; // ✅ RECOMMANDATION 3: Notifications SMS/Email pour clients sans app
+pub mod delivery_payment_service; // ✅ Phase 5 - Améliorations 10-15: Gestion financière avancée
 pub mod delivery_repository;
+pub mod payment_matching_service; // ✅ Phase 5 - Matching intelligent modes de paiement (MTN/Orange Money)
+pub mod negotiated_price_service; // ✅ NOUVEAU : Service pour gérer les prix négociés entre prestataire et client
+pub mod delivery_schedule_service; // ✅ Phase 3 - Amélioration 7: Gestion contraintes horaires
 pub mod delivery_service;
 pub mod distribution_automation_service;
 pub mod embedding_client;
@@ -32,6 +39,7 @@ pub mod file_extractor;
 pub mod fournitures_service;
 pub mod geocoding_service;
 pub mod geonames_service; // ✅ NOUVEAU: Service GeoNames pour hiérarchie géographique
+pub mod geographic_matching_service; // ✅ Phase 10 - Service de matching géographique optimisé
 pub mod global_promo_service;
 pub mod google_places_service; // ✅ NOUVEAU 2025-11-06: Service Google Places pour hiérarchie bidirectionnelle
 pub mod gpu_detector;
@@ -58,6 +66,7 @@ pub mod local_ai_ultra_fast;
 pub mod massive_load_handler;
 pub mod matching_pipeline;
 pub mod media_storage_service;
+pub mod mobile_money_service; // ✅ Phase 10 - Service Mobile Money (MTN/Orange Money)
 pub mod mongo_history_service;
 pub mod multimodal_enricher;
 pub mod multimodal_optimizer;
@@ -69,6 +78,8 @@ pub mod orchestration_ia;
 pub mod orchestration_ia_optimized;
 pub mod payment_service;
 pub mod phone_validation_service;
+pub mod product_validation_service;
+pub mod product_price_service; // ✅ NOUVEAU : Service pour calculer les prix réels avec promotions
 pub mod pipeline_health_service;
 pub mod popular_products_service;
 pub mod prestataire_service;
@@ -82,6 +93,7 @@ pub mod remotion_renderer_service;
 pub mod scheduling_search_service;
 pub mod scoring_service;
 pub mod search_history_service;
+pub mod sms_service; // ✅ Phase 10 - Service SMS avec Twilio
 pub mod security_service;
 pub mod semantic_cache;
 pub mod semantic_cache_pro;

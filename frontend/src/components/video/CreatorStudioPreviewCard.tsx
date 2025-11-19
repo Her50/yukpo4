@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 
 import type { StudioStepKey } from '@/hooks/useCreatorStudio';
 import { useCreatorStudio } from '@/hooks/useCreatorStudio';
+import { studioService, type VideoDependency } from '@/services/studioService';
+import { useEffect, useState } from 'react';
 
 const stepLabels: Record<StudioStepKey, string> = {
     brief: 'Brief & IA',
@@ -36,6 +38,22 @@ export const CreatorStudioPreviewCard = ({
         day: '2-digit',
         month: 'short'
     });
+    // ✅ Phase 9 - Amélioration 31 : Charger les dépendances pour affichage
+    const [dependencies, setDependencies] = useState<VideoDependency[]>([]);
+    useEffect(() => {
+        const loadDeps = async () => {
+            const sessionId = state.sessionAggregate?.session.id;
+            if (sessionId) {
+                try {
+                    const deps = await studioService.getDependencies(sessionId);
+                    setDependencies(deps);
+                } catch (error) {
+                    console.error('[CreatorStudioPreviewCard] Erreur chargement dépendances:', error);
+                }
+            }
+        };
+        loadDeps();
+    }, [state.sessionAggregate?.session.id]);
 
     return (
         <motion.div
@@ -178,6 +196,19 @@ export const CreatorStudioPreviewCard = ({
                                             {scene.sceneType}{' '}
                                         </span>
                                         · {scene.headline || scene.body || 'Scène'}
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+                        {/* ✅ Phase 9 - Amélioration 31 : Affichage des vidéos liées */}
+                        {dependencies.length > 0 && (
+                            <div className="mt-3 space-y-1 border-t border-white/10 pt-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-200">
+                                    Vidéos suivantes
+                                </p>
+                                {dependencies.map((dep, idx) => (
+                                    <p key={dep.id} className="text-[11px] text-slate-300">
+                                        {idx + 1}. Session {dep.child_session_id.slice(0, 8)}
                                     </p>
                                 ))}
                             </div>

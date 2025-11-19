@@ -1,0 +1,26 @@
+# Fichiers à exclure du build Docker
+target/
+*.log
+*.tmp
+.env
+.env.local
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode/
+.idea/
+*.md
+*.txt
+*.ps1
+*.sh
+!README.md
+!MIGRATION_STATUS_REPORT.md
+migrations_old/
+*.backup
+logs/
+data/
+
+# Mais inclure .sqlx pour SQLx offline
+!.sqlx/
+

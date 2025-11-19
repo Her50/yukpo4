@@ -74,7 +74,10 @@ interface DeliveryContextValue {
 const DeliveryContext = createContext<DeliveryContextValue | undefined>(undefined);
 
 const buildEvent = (message: any): DeliveryRealtimeEvent | null => {
-    if (!message?.type) {
+    // Le backend envoie DeliveryWsMessage avec un champ "event" (flatten)
+    // Le type d'événement peut être dans "event" ou "type"
+    const eventType = message.event || message.type;
+    if (!eventType) {
         return null;
     }
 
@@ -94,11 +97,21 @@ const buildEvent = (message: any): DeliveryRealtimeEvent | null => {
         message?.payload?.timestamp ||
         new Date().toISOString();
 
+    // Extraire le payload depuis les champs de l'événement (latitude, longitude, address, etc.)
+    const payload = message.payload ?? message.data ?? {
+        ...message,
+        delivery_id: undefined,
+        deliveryId: undefined,
+        timestamp: undefined,
+        event: undefined,
+        type: undefined,
+    };
+
     return {
-        type: message.type,
+        type: eventType,
         deliveryId: String(deliveryId),
         timestamp,
-        payload: message.payload ?? message.data ?? message,
+        payload,
     };
 };
 
@@ -654,6 +667,31 @@ const applyEventToDelivery = (delivery: DeliverySummary, event: DeliveryRealtime
             return {
                 ...delivery,
                 status: checkpoint.status,
+                checkpoints: [...delivery.checkpoints, checkpoint],
+                lastEventAt: event.timestamp,
+            };
+        }
+        // ✅ Phase 9 - Amélioration 29 : Notification prestataire quand client fournit adresse
+        case 'dropoff_address_provided': {
+            const checkpoint: DeliveryCheckpoint = {
+                status: delivery.status,
+                timestamp: event.timestamp,
+                note: 'Adresse de livraison confirmée par le client',
+                actor: 'recipient',
+            };
+            return {
+                ...delivery,
+                dropoff: {
+                    ...delivery.dropoff,
+                    latitude: event.payload?.latitude ?? delivery.dropoff.latitude ?? null,
+                    longitude: event.payload?.longitude ?? delivery.dropoff.longitude ?? null,
+                    address: event.payload?.address ?? delivery.dropoff.address ?? null,
+                },
+                metadata: {
+                    ...delivery.metadata,
+                    dropoff_pending: false,
+                    dropoff_confirmed_at: event.timestamp,
+                },
                 checkpoints: [...delivery.checkpoints, checkpoint],
                 lastEventAt: event.timestamp,
             };

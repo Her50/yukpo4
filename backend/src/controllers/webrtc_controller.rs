@@ -40,6 +40,12 @@ pub async fn notify_incoming_call(
                 "[WebRTCController] ✅ {} push notifications envoyées",
                 count
             );
+            
+            // Incrémenter métriques WebRTC
+            crate::metrics::CHAT_METRICS
+                .webrtc_calls_total
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            
             Ok(Json(json!({
                 "success": true,
                 "notifications_sent": count,

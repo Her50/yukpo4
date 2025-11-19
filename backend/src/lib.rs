@@ -3,6 +3,7 @@ pub mod controllers;
 pub mod core;
 pub mod database_setup;
 pub mod ia;
+pub mod metrics;
 pub mod middlewares;
 pub mod migrations;
 pub mod modalities;
@@ -38,6 +39,7 @@ use crate::routes::echange_routes;
 #[cfg(feature = "image_search")]
 use crate::routes::image_search_routes::image_search_routes;
 use crate::routes::{
+    analytics_routes::analytics_routes, // ✅ Phase 10 - Routes d'analytics pour prestataires
     auth_routes::auth_routes,
     autocomplete_routes::autocomplete_routes, // ✅ NOUVEAU: Routes autocomplete
     chat_routes::chat_routes,                 // ✅ NOUVEAU : Routes de chat
@@ -45,7 +47,9 @@ use crate::routes::{
     content_routes::content_routes,         // ✅ NOUVEAU: Routes engagement contenu
     debug_routes::debug_routes,             // ✅ NOUVEAU 2025-11-06: Routes debug tables
     delivery_metrics_routes::delivery_metrics_routes,
+    delivery_external_routes::delivery_external_routes, // ✅ Phase 4 - Amélioration 8
     delivery_routes::{delivery_public_routes, delivery_routes},
+    negotiated_price_routes::negotiated_price_routes, // ✅ NOUVEAU : Routes prix négociés
     global_promo_routes::global_promo_routes,
     history_routes::history_routes,
     ia_routes::ia_routes,
@@ -53,6 +57,7 @@ use crate::routes::{
     live_routes::live_routes,
     media_routes::media_routes,
     metrics_routes::metrics_routes,
+    metrics_tracking_routes::metrics_tracking_routes,
     notification_routes::notification_routes, // ✅ NOUVEAU : Routes de notifications
     payment_routes::payment_routes,
     prestataire_routes::prestataire_routes,
@@ -63,6 +68,7 @@ use crate::routes::{
     service_routes::service_routes,
     shopping_routes::shopping_routes,
     system_health_routes::system_health_routes,
+    health_routes::health_routes, // ✅ Phase 10 - Routes de santé
     user_routes::user_routes,
     webhook_routes::webhook_routes,
     webrtc_routes::webrtc_routes, // ✅ NOUVEAU : Routes WebRTC
@@ -203,6 +209,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let product_lifecycle = product_lifecycle_routes(state.clone());
     let delivery = delivery_routes(state.clone());
     let delivery_public = delivery_public_routes(state.clone());
+    let delivery_external = delivery_external_routes(state.clone()); // ✅ Phase 4 - Amélioration 8
     let delivery_metrics = delivery_metrics_routes(state.clone());
     let shopping = shopping_routes(state.clone());
 
@@ -219,7 +226,12 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
 
     // ✅ Healthcheck système
     let system_health = system_health_routes(state.clone());
+    let health = health_routes(state.clone()); // ✅ Phase 10 - Routes de santé
     let metrics = metrics_routes(state.clone());
+    let metrics_tracking = metrics_tracking_routes(state.clone());
+    
+    // ✅ Phase 10 - Routes d'analytics pour prestataires
+    let analytics = analytics_routes(state.clone());
 
     // ✅ NOUVEAU 2025-11-06: Routes debug pour vérification des tables
     let debug = debug_routes(state.clone());
@@ -262,7 +274,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(product_lifecycle) // ✅ Routes de gestion du cycle de vie des produits
         .merge(delivery)
         .merge(delivery_public)
+        .merge(delivery_external) // ✅ Phase 4 - Amélioration 8: Routes API externes
         .merge(delivery_metrics)
+        .merge(negotiated_price_routes(state.clone())) // ✅ NOUVEAU : Routes prix négociés
         .merge(shopping)
         .merge(autocomplete) // ✅ NOUVEAU : Routes autocomplete
         .merge(search_history) // ✅ NOUVEAU : Routes historique recherche
@@ -273,7 +287,10 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(live)
         .merge(live_ai)
         .merge(system_health)
+        .merge(health) // ✅ Phase 10 - Routes de santé et vérification services
         .merge(metrics)
+        .merge(analytics) // ✅ Phase 10 - Routes d'analytics pour prestataires
+        .merge(metrics_tracking) // ✅ Routes de tracking métriques frontend
         .nest_service("/uploads", uploads_service)
         // .merge(modalities)  // ✅ Routes des modalités personnalisées (déjà dans router_yukpo)
         .nest("/api", recommendation_routes()) // ✅ NOUVEAU : Routes recommandations

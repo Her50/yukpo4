@@ -1,3 +1,4 @@
+import ProductDeliveryConfigModal from '@/components/delivery/ProductDeliveryConfigModal';
 import { Badge } from '@/components/ui/badge';
 import BusSeatSelector from '@/components/ui/BusSeatSelector';
 import { Button } from '@/components/ui/buttons';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import MapModal from '@/components/ui/MapModal';
 import { useToast } from '@/components/ui/use-toast';
-import { Check, Download, Edit2, FileText, MapPin, Plus, Trash2, Upload, Video, X } from 'lucide-react';
+import { Check, Download, Edit2, FileText, MapPin, Plus, Settings, Trash2, Truck, Upload, Video, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 
 // ✅ Fonction de normalisation sans accents pour la recherche
@@ -184,6 +185,7 @@ interface ProductManagerProps {
     readonly?: boolean;
     titreService?: string;
     descriptionService?: string;
+    serviceId?: number; // ✅ NOUVEAU: Pour la configuration de livraison
 }
 
 const PRODUCT_TYPES = [
@@ -327,7 +329,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({
     onProductsChange,
     readonly = false,
     titreService,
-    descriptionService
+    descriptionService,
+    serviceId
 }) => {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [selectedType, setSelectedType] = useState<ProductType>('autre');
@@ -338,6 +341,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({
     const [searchQuery, setSearchQuery] = useState(''); // Recherche textuelle pour types
     const [showSeatSelector, setShowSeatSelector] = useState(false);
     const [selectedGPSLocation, setSelectedGPSLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [showDeliveryConfigModal, setShowDeliveryConfigModal] = useState(false);
+    const [configProductIndex, setConfigProductIndex] = useState<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
@@ -533,16 +538,33 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                         <p className="text-sm text-gray-600">Gérez les produits de votre service</p>
                     </div>
                 </div>
-                {!readonly && (
-                    <Button
-                        onClick={handleAddProduct}
-                        size="default"
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-sm"
-                    >
-                        <Plus className="w-5 h-5 mr-2" />
-                        <span className="text-white">Ajouter un produit</span>
-                    </Button>
-                )}
+                <div className="flex flex-col gap-2">
+                    {!readonly && (
+                        <Button
+                            onClick={handleAddProduct}
+                            size="default"
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-sm"
+                        >
+                            <Plus className="w-5 h-5 mr-2" />
+                            <span className="text-white">Ajouter un produit</span>
+                        </Button>
+                    )}
+                    {/* ✅ NOUVEAU: Bouton configuration livraison transversale */}
+                    {!readonly && serviceId && products.filter(p => p.type !== 'prestation_service').length > 0 && (
+                        <Button
+                            onClick={() => {
+                                setConfigProductIndex(-1); // -1 = mode transversal
+                                setShowDeliveryConfigModal(true);
+                            }}
+                            size="default"
+                            variant="outline"
+                            className="w-full border-green-600 text-green-700 hover:bg-green-50"
+                        >
+                            <Truck className="w-5 h-5 mr-2" />
+                            <span>Configurer la livraison pour tous les produits</span>
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Liste des produits */}
@@ -588,6 +610,21 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                         </div>
                                         {!readonly && (
                                             <div className="flex items-center gap-2">
+                                                {/* ✅ NOUVEAU: Bouton configuration livraison (uniquement pour produits, pas prestations) */}
+                                                {serviceId && product.type !== 'prestation_service' && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const index = products.findIndex(p => p.id === product.id);
+                                                            setConfigProductIndex(index);
+                                                            setShowDeliveryConfigModal(true);
+                                                        }}
+                                                        title="Configurer la livraison"
+                                                    >
+                                                        <Truck className="w-4 h-4" />
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -1991,6 +2028,53 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                         )}
                                     </div>
 
+                                    {/* ✅ NOUVEAU: Section Configuration Livraison (uniquement pour produits, pas prestations) */}
+                                    {serviceId && selectedType !== 'prestation_service' && (
+                                        <div className="border-t pt-4 mt-6">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div>
+                                                    <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                                        <Truck className="w-4 h-4" />
+                                                        Configuration de livraison
+                                                    </h4>
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        {products.findIndex(p => p.id === editingProduct.id) >= 0
+                                                            ? "Configurez les paramètres de livraison pour ce produit"
+                                                            : "Sauvegardez d'abord le produit pour configurer la livraison"}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={products.findIndex(p => p.id === editingProduct.id) < 0}
+                                                    onClick={() => {
+                                                        // Trouver l'index du produit en cours d'édition
+                                                        const existingIndex = products.findIndex(p => p.id === editingProduct.id);
+                                                        if (existingIndex >= 0) {
+                                                            setConfigProductIndex(existingIndex);
+                                                            setShowDeliveryConfigModal(true);
+                                                        } else {
+                                                            toast({
+                                                                title: "Information",
+                                                                description: "Veuillez d'abord sauvegarder le produit avant de configurer la livraison",
+                                                            });
+                                                        }
+                                                    }}
+                                                >
+                                                    <Settings className="w-4 h-4 mr-2" />
+                                                    Configurer
+                                                </Button>
+                                            </div>
+                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                                <p className="text-xs text-blue-800">
+                                                    💡 <strong>Astuce :</strong> {products.findIndex(p => p.id === editingProduct.id) >= 0
+                                                        ? "Configurez l'adresse de départ, le type de véhicule requis et les plages horaires de départ pour permettre aux clients de commander directement ce produit avec livraison."
+                                                        : "Après avoir sauvegardé le produit, vous pourrez configurer la livraison en cliquant sur le bouton 'Configurer' ci-dessus ou depuis la liste des produits."}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Actions - TOUJOURS VISIBLES */}
                                     <div className="sticky bottom-0 bg-white pt-4 border-t mt-6 flex justify-end gap-2 z-10">
                                         <Button
@@ -2046,6 +2130,39 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                     setShowSeatSelector(false);
                 }}
             />
+
+            {/* ✅ Modal configuration livraison */}
+            {serviceId && configProductIndex !== null && (
+                <ProductDeliveryConfigModal
+                    isOpen={showDeliveryConfigModal}
+                    onClose={() => {
+                        setShowDeliveryConfigModal(false);
+                        setConfigProductIndex(null);
+                    }}
+                    serviceId={serviceId}
+                    productIndex={configProductIndex}
+                    productName={
+                        configProductIndex === -1
+                            ? 'Tous les produits'
+                            : (editingProduct?.name || products[configProductIndex]?.name || 'Produit')
+                    }
+                    allProducts={
+                        configProductIndex === -1
+                            ? products
+                                .map((p, idx) => ({ index: idx, name: p.name }))
+                                .filter((_, idx) => products[idx].type !== 'prestation_service')
+                            : []
+                    }
+                    onSuccess={() => {
+                        toast({
+                            title: "Configuration sauvegardée",
+                            description: configProductIndex === -1
+                                ? "La configuration de livraison a été appliquée à tous les produits"
+                                : "La configuration de livraison a été enregistrée avec succès",
+                        });
+                    }}
+                />
+            )}
         </div>
     );
 };

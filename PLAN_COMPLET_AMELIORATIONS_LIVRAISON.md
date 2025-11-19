@@ -27,6 +27,10 @@
 21. ✅ **Sélection livreur personnel** (prestataire peut choisir son propre livreur)
 22. ✅ **Notification quand client fournit adresse** (alerte prestataire quand dropoff confirmé)
 23. ✅ **Amélioration UX dropoff pending** (meilleure gestion dropoff temporaire/optionnel)
+24. ✅ **Chaînage vidéos lors création** (définir vidéos liées pendant création vidéo)
+25. ✅ **Plusieurs lieux de stock** (prestataire peut avoir plusieurs points de départ, matching choisit le plus proche)
+26. ✅ **Matching géographique GPS** (utilisation coordonnées GPS + formule Haversine pour distances réelles)
+27. ✅ **Renommage termes pickup/dropoff** (remplacer par termes plus naturels : "départ" et "destination")
 
 ---
 
@@ -933,6 +937,9 @@ def create_delivery_via_yukpo(
 28. ✅ Sélection livreur personnel (choix coursier par prestataire)
 29. ✅ Notification client fournit adresse (alerte prestataire)
 30. ✅ Amélioration UX dropoff pending (gestion dropoff temporaire)
+31. ✅ Chaînage vidéos lors création (définir dépendances pendant création)
+32. ✅ Plusieurs lieux de stock (points de départ multiples, matching choisit plus proche)
+33. ✅ Renommage pickup/dropoff (termes plus naturels : "départ" / "destination")
 
 ---
 
@@ -953,8 +960,12 @@ def create_delivery_via_yukpo(
 1. Client commande → Vérification solde → Réservation fonds (avant matching)
 2. Matching coursier → Coursier accepte → Débit définitif
 3. Coursier refuse → Libération réservation (remboursement)
-4. Livraison validée → Reversement prestataire (prix produit - commission)
-5. Client rejette produit → Remboursement prix produit + Coût livraison NON remboursé
+4. Livraison validée → Reversement prestataire (prix produit - commission Yukpo 5%)
+5. Client rejette produit :
+   - Prix produit → REMBOURSÉ au client
+   - Coût livraison :
+     * Si client payait : NON REMBOURSÉ (reste débité chez client)
+     * Si prestataire avait offert : PRÉLEVÉ chez le client (non remboursable)
 ```
 
 ### ✅ **Moment du débit**
@@ -970,16 +981,47 @@ def create_delivery_via_yukpo(
 
 **Règle** :
 - Prix produit → REMBOURSÉ au client
-- Coût livraison → NON REMBOURSÉ (reste débité)
 - Prestataire → NON CRÉDITÉ (produit rejeté)
-- Si livraison offerte : Coût livraison reste débité sur compte prestataire
+
+**Coût livraison selon qui l'a pris en charge** :
+- **Si client a payé la livraison** (`billing_mode: 'standard'`) :
+  - Coût livraison → NON REMBOURSÉ (reste débité chez le client)
+  
+- **Si prestataire avait offert la livraison** (`billing_mode: 'merchant_inclusive'`) :
+  - Coût livraison → PRÉLEVÉ chez le client (non remboursable)
+  - ⚠️ **Logique** : Le prestataire avait offert, donc pas de pénalité pour lui en cas de rejet
+  - Le client doit assumer les frais de transport même si le produit est refusé
 
 ### ✅ **Reversement prestataire**
 
 **Règle** :
 - Reversement seulement après validation livraison par coursier
 - Montant = Prix produit - Commission Yukpo
-- Commission = 5% (configurable)
+- **Commission Yukpo** : Variable d'environnement `YUKPO_COMMISSION_RATE` (par défaut : 5%)
+- **Configuration** : Facilement modifiable via variable d'environnement (pas codé en dur)
+- Commission calculée : `prix_produit * commission_rate`
+- Montant reversé : `prix_produit - commission_yukpo`
+
+**Configuration** :
+- Variable d'environnement : `YUKPO_COMMISSION_RATE=0.05` (5%)
+- Valeur par défaut : 5% si variable non définie
+- Exemple : `YUKPO_COMMISSION_RATE=0.10` pour 10%
+
+**Exemple** (avec commission par défaut 5%) :
+```
+Prix produit : 10 000 FCFA
+Commission Yukpo (5%) : 500 FCFA
+Montant reversé au prestataire : 9 500 FCFA
+```
+
+**Implémentation** :
+```rust
+// backend/src/services/delivery_payment_service.rs
+let commission_rate = std::env::var("YUKPO_COMMISSION_RATE")
+    .ok()
+    .and_then(|v| v.parse::<f64>().ok())
+    .unwrap_or(0.05);  // Par défaut 5% si variable non définie
+```
 
 ### ✅ **Mécanisme rechargement immédiat**
 
@@ -1344,6 +1386,1018 @@ pub async fn generate_suggestions(
 
 ---
 
+## 🌐 14. PAGE PUBLIQUE POUR DROPOFF (CLIENT SANS COMPTE)
+
+### ✅ **Observation : Client sans compte doit pouvoir fournir adresse**
+
+**Problème actuel** :
+- ❌ Client doit avoir un compte Yukpo pour fournir son adresse
+- ❌ Pas de page publique accessible via lien partagé
+- ❌ Le prestataire doit partager un lien, mais la page n'existe pas
+
+**Solution** :
+- ✅ Créer page publique `/delivery/public/:token`
+- ✅ Accessible sans compte Yukpo
+- ✅ Client peut entrer son adresse, GPS, téléphone, nom
+- ✅ Après validation → Dropoff mis à jour + Matching déclenché
+- ✅ Notification prestataire quand client fournit adresse
+
+---
+
+### ✅ **Workflow** :
+
+```
+1. Prestataire crée livraison SANS dropoff
+   → dropoff_pending = true
+   → Token généré : abc123xyz
+
+2. Prestataire partage lien : https://yukpo.com/delivery/public/abc123xyz
+   → Via WhatsApp, SMS, Email
+
+3. Client clique lien (sans compte Yukpo)
+   → Page publique s'ouvre
+   → Affiche : "Livraison #XYZ789 - Entrez votre adresse"
+
+4. Client remplit :
+   - Nom complet
+   - Téléphone
+   - Adresse complète
+   - GPS (via carte interactive)
+   - Instructions de livraison (optionnel)
+
+5. Client valide
+   → Backend met à jour dropoff
+   → dropoff_pending = false
+   → Matching déclenché automatiquement
+   → Notification push/SMS au prestataire : "Client a fourni son adresse"
+
+6. Prestataire reçoit notification
+   → Voir que livraison peut maintenant être livrée
+```
+
+---
+
+### **Détails techniques** :
+
+**Backend - Endpoint page publique** :
+```rust
+// backend/src/routes/delivery_routes.rs
+
+#[derive(Serialize)]
+struct PublicDropoffPageResponse {
+    delivery_id: Uuid,
+    pickup_address: String,
+    service_name: String,
+    token_valid: bool,
+    dropoff_pending: bool,
+}
+
+// GET /api/delivery/public/:token
+async fn get_public_dropoff_page(
+    State(state): State<Arc<AppState>>,
+    Path(token): Path<String>,
+) -> AppResult<Json<PublicDropoffPageResponse>> {
+    // Vérifier token
+    let delivery = delivery_service(&state)?
+        .get_delivery_by_public_token(&token)
+        .await?;
+    
+    Ok(Json(PublicDropoffPageResponse {
+        delivery_id: delivery.id,
+        pickup_address: delivery.pickup.address,
+        service_name: delivery.metadata.get("service_name").as_str(),
+        token_valid: true,
+        dropoff_pending: delivery.dropoff_pending,
+    }))
+}
+
+// POST /api/delivery/public/:token/dropoff
+async fn submit_public_dropoff(
+    State(state): State<Arc<AppState>>,
+    Path(token): Path<String>,
+    Json(payload): Json<PublicDropoffInput>,
+) -> AppResult<Json<Value>> {
+    // Vérifier token
+    let delivery = delivery_service(&state)?
+        .get_delivery_by_public_token(&token)
+        .await?;
+    
+    // Mettre à jour dropoff
+    let service = delivery_service(&state)?;
+    let recipient = service.assign_delivery_recipient(
+        delivery.id,
+        DeliveryRecipientInput {
+            user_id: None,  // Client sans compte
+            contact_name: Some(payload.name),
+            contact_phone: Some(payload.phone),
+            contact_email: payload.email,
+            dropoff_address: payload.address,
+            dropoff_latitude: payload.latitude,
+            dropoff_longitude: payload.longitude,
+            notes: payload.instructions,
+            allow_contact: Some(true),
+            allow_tracking: Some(true),
+            consent_granted: Some(true),
+            country_code: None,
+            preferred_language: Some("fr".into()),
+        }
+    ).await?;
+    
+    // ✅ Notification prestataire
+    notification_service::send_notification(
+        delivery.creator_id,
+        NotificationType::DeliveryDropoffConfirmed,
+        format!("Client a fourni son adresse pour la livraison #{}", delivery.id),
+    ).await?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "delivery_id": delivery.id,
+        "tracking_url": format!("/delivery/track/{}", delivery.id),
+    })))
+}
+```
+
+**Frontend/Mobile - Page publique** :
+```typescript
+// frontend/src/pages/delivery/PublicDropoffPage.tsx
+// mobile/src/screens/delivery/PublicDropoffScreen.tsx
+
+const PublicDropoffPage: React.FC<{ token: string }> = ({ token }) => {
+    const [delivery, setDelivery] = useState(null);
+    const [loading, setLoading] = useState(true);
+    
+    // Charger infos livraison
+    useEffect(() => {
+        fetchPublicDropoffInfo(token).then(setDelivery);
+        setLoading(false);
+    }, [token]);
+    
+    const handleSubmit = async (dropoffData) => {
+        await submitPublicDropoff(token, dropoffData);
+        // Rediriger vers page de suivi
+        navigate(`/delivery/track/${delivery.delivery_id}`);
+    };
+    
+    return (
+        <div>
+            <h1>Livraison #{delivery?.delivery_id?.slice(-6)}</h1>
+            <p>Entrez votre adresse de livraison</p>
+            
+            <ModernGPSModal
+                onSubmit={handleSubmit}
+                initialAddress={null}
+            />
+        </div>
+    );
+};
+```
+
+---
+
+## 👤 15. SÉLECTION LIVREUR PERSONNEL
+
+### ✅ **Observation : Prestataire veut choisir son propre livreur**
+
+**Problème actuel** :
+- ❌ Matching automatique seulement
+- ❌ Prestataire ne peut pas choisir un coursier spécifique
+- ❌ Si prestataire a son propre livreur, il ne peut pas l'assigner
+
+**Solution** :
+- ✅ Ajouter champ `courier_id` optionnel dans payload livraison
+- ✅ Si `courier_id` fourni → Assignation directe (pas de matching)
+- ✅ Si `courier_id` vide → Matching automatique comme actuellement
+- ✅ Interface : Liste coursiers disponibles → Sélection optionnelle
+
+---
+
+### ✅ **Workflow** :
+
+```
+1. Prestataire crée livraison
+   → Options : "Matching automatique" OU "Choisir coursier"
+
+2. Prestataire choisit "Choisir coursier"
+   → Liste coursiers disponibles affichée
+   → Coursiers filtrés par :
+     - Zone géographique
+     - Type véhicule requis
+     - Disponibilité
+     - Note/rating
+
+3. Prestataire sélectionne coursier
+   → courier_id = X envoyé dans payload
+
+4. Backend assigne directement
+   → Pas de matching
+   → Statut : "assigned"
+   → Coursier reçoit notification
+```
+
+---
+
+### **Détails techniques** :
+
+**Backend - Support courier_id optionnel** :
+```rust
+// backend/src/services/delivery_service.rs
+
+pub async fn create_delivery_request(
+    &self,
+    params: CreateDeliveryParams,
+) -> AppResult<DeliverySummary> {
+    // ...
+    
+    // ✅ NOUVEAU : Si courier_id fourni, assigner directement
+    if let Some(courier_id) = params.courier_id {
+        // Vérifier que le coursier existe et est disponible
+        let courier = self.repository.find_courier_by_id(courier_id).await?;
+        if courier.is_none() {
+            return Err(AppError::BadRequest("Coursier non trouvé".into()));
+        }
+        
+        // Assigner directement
+        self.assign_courier_to_delivery(summary.id, courier_id).await?;
+        
+        // Pas de matching nécessaire
+        log::info!("[DeliveryService] Coursier {} assigné directement à livraison {}", courier_id, summary.id);
+    } else {
+        // Matching automatique comme avant
+        if should_trigger_matching {
+            self.enqueue_delivery_matching(&summary).await?;
+        }
+    }
+    
+    Ok(summary)
+}
+```
+
+**Frontend/Mobile - Sélection coursier** :
+```typescript
+// mobile/src/components/CreatorStudioCard.tsx
+// frontend/src/components/video/CreatorStudioPreviewCard.tsx
+
+const [matchingMode, setMatchingMode] = useState<'auto' | 'manual'>('auto');
+const [selectedCourierId, setSelectedCourierId] = useState<string | null>(null);
+const [availableCouriers, setAvailableCouriers] = useState([]);
+
+const loadAvailableCouriers = async () => {
+    const response = await deliveryApi.getAvailableCouriers({
+        zone_id: pickupZoneId,
+        vehicle_type: requiredVehicleType,
+    });
+    setAvailableCouriers(response.couriers);
+};
+
+const buildCourierPayload = (): CreateDeliveryRequestPayload => {
+    return {
+        // ...
+        courier_id: matchingMode === 'manual' ? selectedCourierId : undefined,
+        // ...
+    };
+};
+
+// UI
+<View>
+    <Text>Mode d'assignation</Text>
+    <RadioButton.Group
+        value={matchingMode}
+        onValueChange={setMatchingMode}
+    >
+        <RadioButton.Item label="Matching automatique" value="auto" />
+        <RadioButton.Item label="Choisir coursier" value="manual" />
+    </RadioButton.Group>
+    
+    {matchingMode === 'manual' && (
+        <View>
+            <Button title="Charger coursiers disponibles" onPress={loadAvailableCouriers} />
+            <FlatList
+                data={availableCouriers}
+                renderItem={({ item }) => (
+                    <TouchableOpacity onPress={() => setSelectedCourierId(item.id)}>
+                        <Text>{item.name}</Text>
+                        <Text>{item.phone}</Text>
+                        <Text>Note: {item.rating}</Text>
+                        <Text>Véhicule: {item.vehicle_type}</Text>
+                    </TouchableOpacity>
+                )}
+            />
+        </View>
+    )}
+</View>
+```
+
+---
+
+## 📢 16. NOTIFICATION QUAND CLIENT FOURNIT ADRESSE
+
+### ✅ **Observation : Prestataire doit être notifié quand client fournit son adresse**
+
+**Problème actuel** :
+- ❌ Pas de notification quand client fournit adresse via lien public
+- ❌ Prestataire doit vérifier manuellement si dropoff confirmé
+- ❌ Matching peut démarrer sans que prestataire le sache
+
+**Solution** :
+- ✅ Notification push automatique quand dropoff confirmé
+- ✅ Notification SMS optionnelle
+- ✅ Mise à jour en temps réel via WebSocket
+- ✅ Badge notification dans app
+
+---
+
+### ✅ **Workflow** :
+
+```
+1. Client fournit adresse via page publique
+   → POST /api/delivery/public/:token/dropoff
+
+2. Backend met à jour dropoff
+   → dropoff_pending = false
+
+3. Backend envoie notification
+   → Notification push au prestataire
+   → SMS optionnel (si configuré)
+   → WebSocket event : "dropoff_confirmed"
+
+4. Prestataire reçoit notification
+   → "Client a fourni son adresse pour la livraison #XYZ789"
+   → "Matching coursier démarré"
+
+5. Prestataire ouvre app
+   → Voir livraison avec dropoff confirmé
+   → Suivi matching en temps réel
+```
+
+---
+
+### **Détails techniques** :
+
+**Backend - Notification automatique** :
+```rust
+// backend/src/services/delivery_service.rs
+
+pub async fn assign_delivery_recipient(
+    &self,
+    delivery_id: Uuid,
+    recipient: DeliveryRecipientInput,
+) -> AppResult<DeliveryRecipient> {
+    // ... assignation ...
+    
+    // ✅ NOUVEAU : Notification prestataire si dropoff était pending
+    let summary = self.get_delivery_summary(delivery_id).await?;
+    if summary.dropoff_pending {
+        // Envoyer notification
+        self.notification_service.send_notification(
+            summary.creator_id,
+            NotificationType::DeliveryDropoffConfirmed,
+            format!(
+                "✅ Client a fourni son adresse pour la livraison #{}\n\nAdresse : {}\nMatching coursier démarré.",
+                delivery_id.to_string()[..8].to_uppercase(),
+                recipient.dropoff_address.as_ref().unwrap_or(&"Non spécifié".to_string())
+            ),
+        ).await?;
+        
+        // WebSocket event
+        self.tracking_manager.broadcast_event(
+            delivery_id,
+            DeliveryWsEvent::DropoffConfirmed {
+                address: recipient.dropoff_address.clone(),
+                latitude: recipient.dropoff_latitude,
+                longitude: recipient.dropoff_longitude,
+            }
+        ).await;
+    }
+    
+    Ok(updated_recipient)
+}
+```
+
+---
+
+## 🔄 17. AMÉLIORATION UX DROPOFF PENDING
+
+### ✅ **Observation : Meilleure gestion du dropoff temporaire/optionnel**
+
+**Problème actuel** :
+- ⚠️ Code actuel exige adresse dropoff pour créer livraison
+- ⚠️ Pas de gestion claire du statut "dropoff_pending"
+- ⚠️ UX confuse pour prestataire (ne sait pas si doit attendre client)
+
+**Solution** :
+- ✅ Permettre création livraison SANS dropoff
+- ✅ Statut clair : "En attente adresse client"
+- ✅ Bouton "Partager lien" visible et fonctionnel
+- ✅ Indicateur visuel : "Adresse client requise"
+- ✅ Auto-détection quand client fournit adresse
+
+---
+
+### ✅ **Workflow amélioré** :
+
+```
+1. Prestataire crée livraison
+   → Dropoff optionnel (peut être vide)
+   → Si vide : dropoff_pending = true
+
+2. UI affiche clairement
+   → Badge : "En attente adresse client"
+   → Bouton : "Partager lien avec client"
+   → Message : "Le client doit fournir son adresse pour démarrer la livraison"
+
+3. Prestataire partage lien
+   → Lien généré automatiquement
+   → Copie facile (bouton "Copier lien")
+
+4. Client fournit adresse
+   → dropoff_pending = false
+   → Badge change : "Adresse confirmée"
+   → Matching démarre automatiquement
+   → Notification prestataire
+```
+
+---
+
+### **Détails techniques** :
+
+**Frontend/Mobile - Gestion dropoff pending** :
+```typescript
+// mobile/src/components/CreatorStudioCard.tsx
+
+const [dropoffPending, setDropoffPending] = useState(false);
+const [dropoffShareLink, setDropoffShareLink] = useState<string | null>(null);
+
+// Création livraison avec dropoff optionnel
+const buildCourierPayload = (): CreateDeliveryRequestPayload => {
+    const dropoff = dropoffAddressInput?.trim() && dropoffLatitudeInput && dropoffLongitudeInput
+        ? {
+            latitude: parseFloat(dropoffLatitudeInput),
+            longitude: parseFloat(dropoffLongitudeInput),
+            address: dropoffAddressInput,
+        }
+        : null;  // ✅ Permettre null
+    
+    return {
+        // ...
+        dropoff: dropoff || undefined,  // Optionnel
+        // ...
+    };
+};
+
+// UI : Affichage statut dropoff
+{delivery?.dropoff_pending && (
+    <View style={styles.pendingBadge}>
+        <Badge variant="warning">⏳ En attente adresse client</Badge>
+        <Button
+            title="📤 Partager lien avec client"
+            onPress={handleShareDropoffLink}
+        />
+        {dropoffShareLink && (
+            <View style={styles.linkContainer}>
+                <Text style={styles.linkText}>{dropoffShareLink}</Text>
+                <Button
+                    title="📋 Copier"
+                    onPress={() => Clipboard.setString(dropoffShareLink)}
+                />
+            </View>
+        )}
+    </View>
+)}
+
+{!delivery?.dropoff_pending && delivery?.dropoff?.address && (
+    <View style={styles.confirmedBadge}>
+        <Badge variant="success">✅ Adresse confirmée</Badge>
+        <Text>{delivery.dropoff.address}</Text>
+    </View>
+)}
+```
+
+---
+
+## 🎬 18. CHAÎNAGE VIDÉOS LORS DE LA CRÉATION
+
+### ✅ **Observation : Définir dépendances vidéos pendant la création**
+
+**Problème actuel** :
+- ❌ Chaînage vidéos mentionné mais pas intégré dans le studio de création
+- ❌ Prestataire ne peut pas définir les vidéos liées directement pendant la création
+- ❌ Doit créer les vidéos puis les lier après
+
+**Solution** :
+- ✅ Intégrer panneau "Vidéos liées" dans le studio de création
+- ✅ Permettre sélection de vidéos existantes pendant la création
+- ✅ Définir types de liens : tutorial, mode d'emploi, vidéo détaillée, etc.
+- ✅ Définir niveau d'accès : public, authentifié, clients uniquement
+
+---
+
+### ✅ **Workflow** :
+
+```
+1. Prestataire crée vidéo dans VideoCreationWizard
+   → Studio affiche panneau "Vidéos associées"
+
+2. Prestataire peut :
+   - Sélectionner vidéos existantes à lier
+   - OU Créer nouvelle vidéo liée (workflow imbriqué)
+   - Définir type de lien : "Mode d'emploi", "Tutoriel", "Vidéo détaillée"
+   - Définir accès : Public / Authentifié / Clients uniquement
+
+3. Lors de la sauvegarde/génération vidéo
+   → Création automatique des liens via table video_links
+   → Vidéos liées visibles dans VideoLinksPanel
+
+4. Client regarde vidéo principale
+   → Voit section "Vidéos associées" en bas
+   → Peut naviguer vers vidéos liées (selon accès)
+```
+
+---
+
+### **Détails techniques** :
+
+**Frontend/Mobile - Intégration studio** :
+```typescript
+// mobile/src/screens/video/VideoCreationWizardScreen.tsx
+// frontend/src/pages/video/ImmersiveVideoWizard.tsx
+
+const [linkedVideos, setLinkedVideos] = useState<VideoLink[]>([]);
+
+// Composant intégré dans le studio
+<VideoLinksManager
+    serviceId={serviceId}
+    productIndex={productIndex}
+    currentVideoId={sessionId}
+    linkedVideos={linkedVideos}
+    onLinkedVideosChange={setLinkedVideos}
+/>
+
+// Lors de la génération/sauvegarde
+const handleGenerateVideo = async () => {
+    // ... génération vidéo ...
+    
+    // Créer les liens vidéos
+    for (const link of linkedVideos) {
+        await apiPost(`/api/videos/links`, {
+            source_video_id: generatedVideoId,
+            target_video_id: link.target_video_id,
+            link_type: link.link_type,
+            link_label: link.label,
+            access_level: link.access_level,
+            service_id: serviceId,
+            product_index: productIndex,
+        });
+    }
+};
+```
+
+---
+
+## 📦 19. PLUSIEURS LIEUX DE STOCK POUR PRESTATAIRE
+
+### ✅ **Observation : Prestataire peut avoir plusieurs points de stock**
+
+**Problème actuel** :
+- ❌ Un seul point de pickup par produit/service
+- ❌ Prestataire avec plusieurs magasins/entrepôts ne peut pas les gérer
+- ❌ Matching ne peut pas choisir le point de stock le plus proche
+
+**Solution** :
+- ✅ Table `prestataire_stock_locations` pour plusieurs lieux de stock
+- ✅ Lors de la création livraison, matching calcule distance depuis TOUS les points de stock
+- ✅ Choix automatique du point le plus proche du client ET du coursier
+- ✅ Interface pour gérer plusieurs lieux de stock
+
+---
+
+### ✅ **Workflow** :
+
+```
+1. Prestataire configure plusieurs lieux de stock
+   → Entrepôt 1 : Douala, PK8
+   → Entrepôt 2 : Douala, Bonanjo
+   → Boutique 1 : Yaoundé, Centre-ville
+
+2. Client commande produit
+   → Backend récupère TOUS les lieux de stock où le produit est disponible
+   → Calcule distance depuis chaque point vers :
+     - Destination client (dropoff)
+     - Position coursier disponible
+
+3. Matching choisit automatiquement :
+   - Lieu de stock le plus proche de la destination
+   - OU Lieu le plus proche d'un coursier disponible
+   - En fonction du score de matching global
+
+4. Livraison créée avec point de départ optimal
+   → Coursier va au bon lieu de stock
+   → Distance minimisée
+```
+
+---
+
+### **Détails techniques** :
+
+**Backend - Table lieux de stock** :
+```sql
+CREATE TABLE prestataire_stock_locations (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    service_id INTEGER REFERENCES services(id),  -- Optionnel : spécifique au service
+    product_index INTEGER,  -- Optionnel : spécifique au produit
+    
+    -- Identifiant du lieu
+    location_name VARCHAR(255) NOT NULL,  -- Ex: "Entrepôt principal", "Boutique Yaoundé"
+    location_code VARCHAR(50),  -- Ex: "STOCK-001"
+    
+    -- Coordonnées GPS
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    address TEXT NOT NULL,
+    
+    -- Disponibilité
+    is_active BOOLEAN DEFAULT TRUE,
+    availability_schedule JSONB,  -- Même format que pickup_availability_schedule
+    capacity_limits JSONB,  -- Limites de stock par produit (optionnel)
+    
+    -- Métadonnées
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    
+    UNIQUE(user_id, location_code)
+);
+
+CREATE INDEX idx_stock_locations_user ON prestataire_stock_locations(user_id);
+CREATE INDEX idx_stock_locations_service ON prestataire_stock_locations(service_id, product_index);
+CREATE INDEX idx_stock_locations_gps ON prestataire_stock_locations USING GIST (
+    ll_to_earth(latitude, longitude)
+);
+```
+
+**Backend - Matching avec plusieurs points** :
+```rust
+// backend/src/services/delivery_service.rs
+
+pub async fn find_optimal_stock_location(
+    &self,
+    service_id: i32,
+    product_index: Option<i32>,
+    dropoff_lat: f64,
+    dropoff_lng: f64,
+    courier_lat: Option<f64>,
+    courier_lng: Option<f64>,
+) -> AppResult<Option<StockLocation>> {
+    // Récupérer tous les lieux de stock disponibles
+    let stock_locations = sqlx::query_as!(
+        StockLocationRow,
+        r#"
+        SELECT 
+            id, user_id, service_id, product_index,
+            location_name, location_code,
+            latitude, longitude, address,
+            is_active, availability_schedule, capacity_limits,
+            metadata
+        FROM prestataire_stock_locations
+        WHERE user_id = (
+            SELECT user_id FROM services WHERE id = $1
+        )
+        AND (service_id IS NULL OR service_id = $1)
+        AND (product_index IS NULL OR product_index = $2)
+        AND is_active = TRUE
+        "#,
+        service_id,
+        product_index
+    )
+    .fetch_all(&self.pool)
+    .await?;
+    
+    if stock_locations.is_empty() {
+        // Fallback : GPS fixe du service
+        return self.get_service_default_location(service_id).await;
+    }
+    
+    // Calculer score pour chaque lieu de stock
+    let mut scored_locations: Vec<(StockLocation, f64)> = stock_locations
+        .into_iter()
+        .map(|loc| {
+            let stock_pos = (loc.latitude, loc.longitude);
+            let dropoff_pos = (dropoff_lat, dropoff_lng);
+            
+            // Distance stock → dropoff (priorité principale)
+            let distance_to_dropoff = haversine_distance(stock_pos, dropoff_pos);
+            
+            // Score : plus proche = meilleur (distance en km, inverse)
+            let mut score = 1000.0 / (1.0 + distance_to_dropoff / 1000.0);
+            
+            // Bonus si coursier est proche du stock aussi
+            if let (Some(clat), Some(clng)) = (courier_lat, courier_lng) {
+                let courier_pos = (clat, clng);
+                let distance_stock_courier = haversine_distance(stock_pos, courier_pos);
+                score += 500.0 / (1.0 + distance_stock_courier / 1000.0);
+            }
+            
+            (loc, score)
+        })
+        .collect();
+    
+    // Trier par score décroissant
+    scored_locations.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+    
+    // Retourner le meilleur
+    scored_locations.into_iter().next().map(|(loc, _)| loc.into())
+}
+```
+
+**Frontend/Mobile - Gestion lieux de stock** :
+```typescript
+// mobile/src/screens/stock/StockLocationsScreen.tsx
+
+const StockLocationsScreen: React.FC = () => {
+    const [locations, setLocations] = useState<StockLocation[]>([]);
+    
+    return (
+        <View>
+            <Text>Mes lieux de stock</Text>
+            <Button
+                title="+ Ajouter un lieu de stock"
+                onPress={() => navigation.navigate('AddStockLocation')}
+            />
+            <FlatList
+                data={locations}
+                renderItem={({ item }) => (
+                    <View>
+                        <Text>{item.location_name}</Text>
+                        <Text>{item.address}</Text>
+                        <Text>📍 {item.latitude}, {item.longitude}</Text>
+                        <Button
+                            title="Modifier"
+                            onPress={() => editLocation(item.id)}
+                        />
+                    </View>
+                )}
+            />
+        </View>
+    );
+};
+```
+
+---
+
+## 📍 20. MATCHING GÉOGRAPHIQUE GPS (DÉTAILS TECHNIQUES)
+
+### ✅ **Observation : Comment fonctionne le matching géographique ?**
+
+**Réponse** : Le matching utilise les **coordonnées GPS** et la **formule de Haversine** pour calculer les distances réelles.
+
+---
+
+### ✅ **Fonctionnement détaillé** :
+
+**1. Formule de Haversine** :
+```rust
+// backend/src/services/delivery_service.rs:38-52
+
+fn haversine_distance(pos1: (f64, f64), pos2: (f64, f64)) -> f64 {
+    const EARTH_RADIUS_KM: f64 = 6371.0;  // Rayon de la Terre en km
+    let (lat1, lon1) = (pos1.0.to_radians(), pos1.1.to_radians());
+    let (lat2, lon2) = (pos2.0.to_radians(), pos2.1.to_radians());
+
+    let dlat = lat2 - lat1;
+    let dlon = lon2 - lon1;
+
+    let a = (dlat / 2.0).sin().powi(2)
+        + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
+    let c = 2.0 * a.sqrt().asin();
+
+    EARTH_RADIUS_KM * c * 1000.0  // Retourne en mètres
+}
+```
+
+**2. Calcul distances dans le matching** :
+```rust
+// Exemple : Matching coursier
+
+// Position dropoff (destination client)
+let dropoff_pos = (summary.dropoff.latitude, summary.dropoff.longitude);
+
+// Position de chaque coursier disponible
+for courier in available_couriers {
+    let courier_pos = (courier.current_latitude, courier.current_longitude);
+    
+    // Distance coursier → dropoff (en mètres)
+    let distance_meters = haversine_distance(courier_pos, dropoff_pos);
+    
+    // Score de matching (plus proche = meilleur)
+    let score = 1000.0 / (1.0 + distance_meters / 1000.0);
+    
+    // Ajouter autres critères (note, disponibilité, etc.)
+    total_score = score + courier.rating_score + courier.availability_bonus;
+}
+```
+
+**3. Avec plusieurs lieux de stock** :
+```rust
+// Pour chaque lieu de stock disponible
+for stock_location in stock_locations {
+    let stock_pos = (stock_location.latitude, stock_location.longitude);
+    
+    // Distance stock → dropoff
+    let distance_stock_dropoff = haversine_distance(stock_pos, dropoff_pos);
+    
+    // Distance coursier → stock (si coursier disponible)
+    let distance_courier_stock = if let Some(courier_pos) = courier_current_position {
+        haversine_distance(courier_pos, stock_pos)
+    } else {
+        0.0
+    };
+    
+    // Distance totale estimée
+    let total_distance = distance_courier_stock + distance_stock_dropoff;
+    
+    // Score : minimiser la distance totale
+    let score = 1000.0 / (1.0 + total_distance / 1000.0);
+    
+    // Choisir le lieu de stock qui minimise la distance totale
+}
+```
+
+**4. Optimisation avec index géospatial PostgreSQL** :
+```sql
+-- Index GIST pour recherches géospatiales rapides
+CREATE INDEX idx_stock_locations_gps ON prestataire_stock_locations 
+USING GIST (ll_to_earth(latitude, longitude));
+
+-- Fonction PostgreSQL pour recherche dans un rayon
+SELECT *,
+    earth_distance(
+        ll_to_earth(latitude, longitude),
+        ll_to_earth($1, $2)  -- Position de référence
+    ) / 1000.0 AS distance_km
+FROM prestataire_stock_locations
+WHERE earth_distance(
+    ll_to_earth(latitude, longitude),
+    ll_to_earth($1, $2)
+) < $3 * 1000  -- Rayon en mètres
+ORDER BY distance_km ASC;
+```
+
+---
+
+### ✅ **Avantages de la formule Haversine** :
+
+1. ✅ **Précision** : Calcule la distance réelle sur la surface courbe de la Terre
+2. ✅ **Efficacité** : Calcul rapide, pas besoin de routes réelles
+3. ✅ **Fiabilité** : Formule mathématique standard pour distances géographiques
+4. ✅ **Cohérence** : Même calcul partout dans l'application
+
+**Limitation** :
+- ⚠️ Distance "à vol d'oiseau" (ne tient pas compte des routes réelles)
+- ✅ **Solution** : Ajuster avec coefficient multiplicateur (ex: 1.3x) pour routes réelles
+- ✅ **Alternative future** : Intégrer API de routing (OSRM, Google Maps) pour distances réelles
+
+---
+
+## 🏷️ 21. RENOMMAGE PICKUP/DROPOFF (TERMES PLUS NATURELS)
+
+### ✅ **Observation : Termes pickup/dropoff pas très compréhensibles**
+
+**Problème actuel** :
+- ❌ "Pickup" et "dropoff" sont des termes techniques anglo-saxons
+- ❌ Pas intuitifs pour utilisateurs francophones
+- ❌ Besoin de termes plus naturels et compréhensibles
+
+**Solution proposée** :
+- ✅ **Pickup** → **"Départ"** ou **"Point de départ"** ou **"Lieu de départ"**
+- ✅ **Dropoff** → **"Destination"** ou **"Point de livraison"** ou **"Adresse de livraison"**
+
+**Variantes selon contexte** :
+- Dans formulaire : "Lieu de départ" / "Adresse de livraison"
+- Dans liste/affichage : "Départ" / "Destination"
+- Dans notifications : "Point de départ" / "Point de livraison"
+
+---
+
+### ✅ **Plan de migration** :
+
+**1. Ajout de labels traduits dans le frontend** :
+```typescript
+// frontend/src/i18n/locales/fr.ts
+// mobile/src/i18n/locales/fr.ts
+
+export const deliveryTerms = {
+    pickup: {
+        label: "Départ",
+        fullLabel: "Point de départ",
+        description: "Lieu où le colis sera récupéré",
+        placeholder: "Adresse de départ",
+    },
+    dropoff: {
+        label: "Destination",
+        fullLabel: "Point de livraison",
+        description: "Adresse où le colis sera livré",
+        placeholder: "Adresse de livraison",
+    },
+    // Variantes selon contexte
+    pickupLocation: "Lieu de départ",
+    dropoffLocation: "Adresse de livraison",
+    departurePoint: "Point de départ",
+    deliveryPoint: "Point de livraison",
+};
+```
+
+**2. Utilisation dans les composants** :
+```typescript
+// mobile/src/components/CreatorStudioCard.tsx
+
+// AVANT
+<Text>Point de pickup</Text>
+<Text>Point de dropoff</Text>
+
+// APRÈS
+<Text>{deliveryTerms.pickup.fullLabel}</Text>
+<Text>{deliveryTerms.dropoff.fullLabel}</Text>
+
+// Ou plus simple selon contexte
+<Text>{deliveryTerms.pickup.label}</Text>  // "Départ"
+<Text>{deliveryTerms.dropoff.label}</Text>  // "Destination"
+```
+
+**3. Backend : Garder noms techniques internes** :
+```rust
+// backend/src/services/delivery_service.rs
+
+// ✅ GARDER les noms techniques en backend
+pub struct LocationInput {
+    pub latitude: f64,
+    pub longitude: f64,
+    pub address: String,
+}
+
+pub struct CreateDeliveryParams {
+    pub pickup: LocationInput,  // ✅ Garder "pickup" en interne
+    pub dropoff: LocationInput,  // ✅ Garder "dropoff" en interne
+}
+
+// ✅ Mais renommer dans les réponses API pour le frontend
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrontendDeliveryLocation {
+    #[serde(rename = "departure")]  // ✅ Renommer en "departure" dans JSON
+    pub pickup: LocationInput,
+    
+    #[serde(rename = "destination")]  // ✅ Renommer en "destination" dans JSON
+    pub dropoff: LocationInput,
+}
+```
+
+**4. Migration progressive** :
+- ✅ Phase 1 : Ajouter labels traduits dans frontend/mobile (pas de changement backend)
+- ✅ Phase 2 : Mettre à jour toutes les interfaces utilisateur
+- ✅ Phase 3 : Renommer dans les réponses API (optionnel, pour cohérence)
+- ✅ Phase 4 : Mettre à jour documentation et messages d'aide
+
+---
+
+### **Exemples d'utilisation** :
+
+**Formulaire** :
+```
+┌─────────────────────────────────────┐
+│ Livraison                           │
+├─────────────────────────────────────┤
+│ Point de départ                     │
+│ [📍 Sélectionner sur la carte]      │
+│ Adresse : 123 Rue...                │
+│                                     │
+│ Adresse de livraison                 │
+│ [📍 Sélectionner sur la carte]      │
+│ Adresse : 456 Avenue...             │
+└─────────────────────────────────────┘
+```
+
+**Notifications** :
+```
+✅ Livraison créée
+Départ : Pharmacie Centrale, Douala
+Destination : Quartier Makepe, Douala
+```
+
+**Timeline** :
+```
+1. ✅ Départ confirmé
+   📍 Pharmacie Centrale, Douala
+
+2. 🚚 En route vers la destination
+   ETA : 15 minutes
+
+3. 📍 Arrivé à destination
+   Quartier Makepe, Douala
+```
+
+---
+
 ## ✅ CONCLUSION
 
 **Toutes tes observations sont excellentes** et ont été intégrées dans ce plan complet :
@@ -1359,6 +2413,14 @@ pub async fn generate_suggestions(
 9. ✅ **Brief IA** : Auto-remplissage depuis description produit/service + Endpoint suggestions IA
 10. ✅ **Points d'entrée multiples** : Commande depuis ProductCard, ChatModal, avec multi-produits
 11. ✅ **Affichage coûts** : Prix produit + Livraison séparés + Livraison gratuite visible
+12. ✅ **Page publique dropoff** : Client sans compte peut fournir adresse via lien partagé
+13. ✅ **Sélection livreur personnel** : Prestataire peut choisir son propre coursier
+14. ✅ **Notification client fournit adresse** : Alerte automatique au prestataire
+15. ✅ **UX dropoff pending** : Gestion claire du dropoff temporaire/optionnel avec badges et indicateurs visuels
+16. ✅ **Chaînage vidéos lors création** : Définir dépendances vidéos directement dans le studio
+17. ✅ **Plusieurs lieux de stock** : Prestataire gère plusieurs points de départ, matching choisit le plus proche
+18. ✅ **Matching géographique GPS** : Utilisation coordonnées GPS + formule Haversine pour distances réelles précises
+19. ✅ **Renommage pickup/dropoff** : Termes plus naturels "Départ" / "Destination" pour meilleure compréhension
 
 **Souhaites-tu que je commence l'implémentation par la Phase 1 ?**
 

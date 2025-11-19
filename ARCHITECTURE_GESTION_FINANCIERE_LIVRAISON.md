@@ -72,35 +72,59 @@ Client commande → Vérification solde → Réservation fonds → Matching cour
 
 ### **3. Gestion Rejet Produit** ❌
 
-**Règle** : Si le client rejette le produit, le coût de livraison doit être systématiquement prélevé.
+**Règle** : Si le client rejette le produit, le coût de livraison doit être systématiquement prélevé selon qui l'avait pris en charge.
 
 **Scénarios** :
 
-1. **Client rejette produit** :
-   - ✅ Coût livraison → DÉBITÉ (non remboursable)
+1. **Client payait la livraison + Client rejette produit** (`billing_mode: 'standard'`) :
    - ✅ Prix produit → REMBOURSÉ au client
-   - ✅ Coût livraison → CRÉDITÉ au prestataire (sauf si livraison offerte)
+   - ✅ Coût livraison → NON REMBOURSÉ (reste débité chez le client)
+   - ✅ Prestataire → NON CRÉDITÉ (produit rejeté)
 
-2. **Livraison offerte + Client rejette** :
-   - ✅ Coût livraison → DÉBITÉ sur compte prestataire (non remboursable)
+2. **Livraison offerte par prestataire + Client rejette** (`billing_mode: 'merchant_inclusive'`) :
    - ✅ Prix produit → REMBOURSÉ au client
+   - ✅ Coût livraison → PRÉLEVÉ chez le client (non remboursable)
+   - ✅ Prestataire → NON CRÉDITÉ (produit rejeté)
+   - ⚠️ **Logique** : Le prestataire avait offert la livraison, donc pas de pénalité pour lui en cas de rejet. Le client doit assumer les frais de transport même si le produit est refusé.
 
 ---
 
 ### **4. Reversement au Prestataire** 💵
 
-**Règle** : Le prestataire doit être crédité (prix produit + commission) seulement après validation livraison par le coursier.
+**Règle** : Le prestataire doit être crédité (prix produit - commission Yukpo) seulement après validation livraison par le coursier.
+
+**Commission Yukpo** :
+- **Taux** : Variable d'environnement `YUKPO_COMMISSION_RATE` (par défaut : 5%)
+- **Configuration** : Facilement modifiable via variable d'environnement
+- **Calcul** : `commission = prix_produit * commission_rate`
+- **Montant reversé** : `prix_produit - commission_yukpo`
+- **Exemple** : `YUKPO_COMMISSION_RATE=0.05` pour 5%, `YUKPO_COMMISSION_RATE=0.10` pour 10%
 
 **Scénarios** :
 
 1. **Livraison validée par coursier** :
    - ✅ Prix produit → CRÉDITÉ au prestataire
-   - ✅ Commission Yukpo → PRÉLEVÉE
+   - ✅ **Commission Yukpo (5%)** → SYSTÉMATIQUEMENT PRÉLEVÉE
+   - ✅ Montant reversé = Prix produit - Commission
    - ✅ Coût livraison → Si livraison offerte, débité sur compte prestataire
+   
+   **Exemple** (avec commission par défaut 5%) :
+   ```
+   Prix produit : 10 000 FCFA
+   Commission Yukpo (5%) : 500 FCFA
+   Montant reversé au prestataire : 9 500 FCFA
+   ```
+   
+   **Configuration** :
+   - Variable d'environnement : `YUKPO_COMMISSION_RATE=0.05` (5%)
+   - Valeur par défaut : 5% si variable non définie
+   - Modifiable facilement sans recompiler le code
 
 2. **Client rejette produit** :
    - ✅ Prix produit → NON CRÉDITÉ au prestataire
-   - ✅ Coût livraison → DÉBITÉ sur compte client (ou prestataire si offerte)
+   - ✅ Coût livraison :
+     * Si client payait : NON REMBOURSÉ (reste débité chez client)
+     * Si prestataire avait offert : PRÉLEVÉ chez le client (non remboursable)
 
 ---
 
@@ -408,7 +432,7 @@ impl DeliveryPaymentService {
         
         if product_rejected {
             // Client rejette produit
-            // Règle : Coût livraison NON remboursé, Prix produit remboursé
+            // Règle : Prix produit remboursé, Coût livraison selon qui l'avait pris en charge
             
             // 1. Rembourser prix produit au client
             self.apply_wallet_mutation(
@@ -421,8 +445,23 @@ impl DeliveryPaymentService {
             )
             .await?;
             
-            // 2. Coût livraison reste débité (non remboursable)
-            // Si livraison offerte, coût reste débité sur compte prestataire
+            // 2. Gestion coût livraison selon billing_mode
+            if reservation.billing_mode == "merchant_inclusive" {
+                // Livraison offerte par prestataire → Prélever chez le client
+                // Le prestataire avait offert, donc pas de pénalité pour lui
+                self.apply_wallet_mutation(
+                    reservation.user_id,
+                    reservation.delivery_id,
+                    reservation.delivery_cost_cents,
+                    WalletEventDirection::Debit,
+                    Some("frais_transport_rejet_produit_offert".to_string()),
+                    None,
+                )
+                .await?;
+            } else {
+                // Client payait la livraison → Coût reste débité (non remboursable)
+                // Rien à faire, le coût est déjà débité
+            }
             
             // 3. Pas de reversement au prestataire (produit rejeté)
             
@@ -434,10 +473,15 @@ impl DeliveryPaymentService {
             })
         } else {
             // Livraison validée → Reversement au prestataire
-            // 1. Calculer commission Yukpo (ex: 5%)
-            let commission_rate = 0.05;  // 5%
+            // 1. Calculer commission Yukpo (taux configurable via variable d'environnement)
+            let commission_rate = std::env::var("YUKPO_COMMISSION_RATE")
+                .ok()
+                .and_then(|v| v.parse::<f64>().ok())
+                .unwrap_or(0.05);  // Par défaut 5% si variable non définie
             let commission_cents = (reservation.product_price_cents as f64 * commission_rate) as i64;
             let merchant_credit = reservation.product_price_cents - commission_cents;
+            
+            // Commission toujours prélevée sur chaque reversement (taux configurable)
             
             // 2. Créditer le prestataire
             let merchant_id = self.get_delivery_creator(delivery_id).await?;
@@ -854,7 +898,9 @@ export const DeliveryPaymentScreen: React.FC<{ navigation: any; route: any }> = 
    
 3. Traitement rejet
    → Prix produit → REMBOURSÉ au client
-   → Coût livraison → NON REMBOURSÉ (reste débité)
+   → Coût livraison :
+     * Si client payait : NON REMBOURSÉ (reste débité chez client)
+     * Si prestataire avait offert : PRÉLEVÉ chez le client (non remboursable)
    → Prestataire → NON CRÉDITÉ (produit rejeté)
    
 4. Si livraison offerte

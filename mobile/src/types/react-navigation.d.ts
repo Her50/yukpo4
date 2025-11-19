@@ -2,7 +2,7 @@
 declare module '@react-navigation/native' {
     export function useNavigation(): any;
     export function useRoute(): any;
-    export function useFocusEffect(): any;
+    export function useFocusEffect(callback: () => void | (() => void)): void;
     export function useIsFocused(): boolean;
 }
 

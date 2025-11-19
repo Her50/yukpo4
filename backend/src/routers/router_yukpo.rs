@@ -59,6 +59,7 @@ use crate::{
         appliance_model_routes::appliance_model_routes,
         diagnostic_routes::diagnostic_routes,
         health_structure_routes::health_structure_routes,
+        media_upload_routes::{serve_proof_media_file, upload_proof_media_file},
         nearby_services_routes::nearby_services_routes,
         phone_model_routes::phone_model_routes,
         places_routes::{autocomplete_places, fetch_place_photo},
@@ -394,6 +395,18 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(studio_controller::trigger_short_preview)
                 .layer(axum::middleware::from_fn(jwt_auth)),
         )
+        // ✅ Phase 9 - Amélioration 31 : Routes pour chaînage vidéos
+        .route(
+            "/api/studio/sessions/{session_id}/dependencies",
+            post(studio_controller::set_dependencies)
+                .get(studio_controller::get_dependencies)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/next",
+            get(studio_controller::get_next_video)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
         .route(
             "/api/studio/sessions/{session_id}/previews",
             get(studio_controller::list_preview_events).layer(axum::middleware::from_fn(jwt_auth)),
@@ -413,6 +426,22 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/studio/sessions/{session_id}/storyboard",
             post(studio_controller::generate_storyboard).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        // ✅ Phase 7 - Amélioration 22 : Endpoint suggestions IA
+        .route(
+            "/api/studio/sessions/{session_id}/suggestions",
+            post(studio_controller::generate_suggestions).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        // ✅ Phase 9 - Amélioration 31 : Endpoints pour chaînage vidéos
+        .route(
+            "/api/studio/sessions/{session_id}/dependencies",
+            post(studio_controller::set_dependencies)
+                .get(studio_controller::get_dependencies)
+                .layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/studio/sessions/{session_id}/next",
+            get(studio_controller::get_next_video).layer(axum::middleware::from_fn(jwt_auth)),
         )
         .route(
             "/api/studio/templates",
@@ -582,6 +611,15 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/media/set-main/{media_id}",
             post(media_product_controller::set_main_image),
+        )
+        // ✅ Phase 9 - Amélioration : Routes pour upload de médias de preuve de livraison
+        .route(
+            "/api/media/upload-proof",
+            post(upload_proof_media_file).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/media/proof/{filename:.*}",
+            get(serve_proof_media_file),
         );
     // Routes pour product_modalities (modalités réutilisables)
     let modality_routes = router_modalities::modality_routes(state.clone());

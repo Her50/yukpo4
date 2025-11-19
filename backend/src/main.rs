@@ -139,6 +139,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tasks::delivery_matching_worker::start_delivery_matching_worker(app_state.clone());
     // ✅ Surveillance SLA
     tasks::delivery_sla_monitor::start_delivery_sla_monitor(app_state.clone());
+    // ✅ Monitor des timeouts de validation d'étapes
+    tasks::delivery_timeout_monitor::start_delivery_timeout_monitor(app_state.clone());
 
     // Construction de l'application avec Extension
     let app = build_app(app_state.clone())

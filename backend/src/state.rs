@@ -17,7 +17,9 @@ use crate::services::app_ia::AppIA;
 use crate::services::mongo_history_service::MongoHistoryService;
 use crate::websocket::delivery_tracking::DeliveryTrackingManager;
 // Imports d'optimisation
+use crate::services::cache_service::CacheService; // ✅ Phase 10 - Service de cache générique
 use crate::services::commerce_connector_service::CommerceConnectorService;
+use crate::services::geocoding_service::GeocodingService; // ✅ Phase 10 - Pour matching géographique
 use crate::services::inventory_service::InventoryService;
 use crate::services::media_storage_service::MediaStorageService;
 use crate::services::prompt_optimizer_pro::PromptOptimizerPro;
@@ -71,6 +73,10 @@ pub struct AppState {
     pub inventory: Arc<InventoryService>,
     /// Service centralisé de feature flags (GPU, connecteurs, etc.).
     pub feature_flags: Arc<FeatureFlagService>,
+    /// ✅ Phase 10 - Service de cache générique pour Redis
+    pub cache_service: Arc<CacheService>,
+    /// ✅ Phase 10 - Service de matching géographique pour optimiser les calculs de distance
+    pub geographic_matching: Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
 }
 
 impl AppState {
@@ -102,10 +108,27 @@ impl AppState {
             Arc::new(crate::services::delivery_repository::DeliveryRepository::new(pg.clone()));
         let delivery_ws_manager =
             Arc::new(DeliveryTrackingManager::new(64, Some(redis_client.clone())));
-        let delivery_service = Arc::new(crate::services::delivery_service::DeliveryService::new(
-            delivery_repo.clone(),
-            delivery_ws_manager.clone(),
-        ));
+        
+        // ✅ Phase 10 - Initialiser le cache service d'abord
+        let cache_service = Arc::new(CacheService::new(Some(redis_client.clone())));
+        
+        // ✅ Phase 10 - Initialiser le service de matching géographique
+        let geocoding_service = GeocodingService::with_cache(Some(redis_client.clone()));
+        let geographic_matching_service = Arc::new(
+            crate::services::geographic_matching_service::GeographicMatchingService::new(
+                pg.clone(),
+                cache_service.clone(),
+                geocoding_service,
+            ),
+        );
+        
+        let delivery_service = Arc::new(
+            crate::services::delivery_service::DeliveryService::with_geographic_matching(
+                delivery_repo.clone(),
+                delivery_ws_manager.clone(),
+                geographic_matching_service.clone(),
+            ),
+        );
 
         let renderer_config = VideoRendererConfig::from_env();
         let storage_config = MediaStorageConfig::from_env();
@@ -167,6 +190,7 @@ impl AppState {
         ));
 
         let feature_flags = Arc::new(FeatureFlagService::from_env());
+        let cache_service = Arc::new(CacheService::new(Some(redis_client.clone())));
 
         AppState {
             pg,
@@ -195,6 +219,8 @@ impl AppState {
             studio_service,
             inventory,
             feature_flags,
+            cache_service,
+            geographic_matching: Some(geographic_matching_service),
         }
     }
 
@@ -259,6 +285,17 @@ impl AppState {
         let inventory = Arc::new(InventoryService::new(pg.clone()));
         let studio_service = Arc::new(StudioService::new(pg.clone(), media_storage.clone(), None));
         let feature_flags = Arc::new(FeatureFlagService::from_env());
+        let cache_service = Arc::new(CacheService::new(Some(redis_client.clone())));
+        
+        // ✅ Phase 10 - Initialiser le service de matching géographique pour les tests
+        let geocoding_service = GeocodingService::with_cache(Some(redis_client.clone()));
+        let geographic_matching_service = Arc::new(
+            crate::services::geographic_matching_service::GeographicMatchingService::new(
+                pg.clone(),
+                cache_service.clone(),
+                geocoding_service,
+            ),
+        );
 
         AppState {
             pg,
@@ -287,6 +324,8 @@ impl AppState {
             studio_service,
             inventory,
             feature_flags,
+            cache_service,
+            geographic_matching: Some(geographic_matching_service),
         }
     }
 }

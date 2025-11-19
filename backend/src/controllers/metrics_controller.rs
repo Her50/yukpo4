@@ -316,6 +316,10 @@ pub async fn global_metrics(State(state): State<Arc<AppState>>) -> AppResult<Res
         ));
     }
 
+    // 🔹 Métriques additionnelles (Promotions, Carrousels, Chat, Navigation)
+    metrics.push_str("\n# === Additional Metrics ===\n");
+    metrics.push_str(&crate::metrics::format_all_additional_metrics());
+
     Ok((
         StatusCode::OK,
         [("Content-Type", "text/plain; version=0.0.4")],

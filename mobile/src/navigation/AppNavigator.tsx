@@ -39,12 +39,16 @@ import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import VideoAnalyticsScreen from '../screens/VideoAnalyticsScreen';
 import VideoFeedScreen from '../screens/VideoFeedScreen';
 import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
+import AnalyticsDashboardScreen from '../screens/dashboard/AnalyticsDashboardScreen'; // ✅ Phase 10 - Analytics Dashboard
+import DashboardScreen from '../screens/DashboardScreen'; // ✅ Ancien Dashboard
+import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen'; // ✅ Dashboard Prestataire
 import DeliveryHomeScreen from '../screens/delivery/DeliveryHomeScreen';
 import DeliveryShoppingTrackingScreen from '../screens/delivery/DeliveryShoppingTrackingScreen';
 import ShoppingBasketScreen from '../screens/delivery/ShoppingBasketScreen';
 import ShoppingBudgetScreen from '../screens/delivery/ShoppingBudgetScreen';
 import ShoppingPickupDropScreen from '../screens/delivery/ShoppingPickupDropScreen';
 import ShoppingSummaryScreen from '../screens/delivery/ShoppingSummaryScreen';
+import StorageLocationsScreen from '../screens/delivery/StorageLocationsScreen';
 import GlobalPromoSubmissionScreen from '../screens/promo/GlobalPromoSubmissionScreen';
 import VideoCreationIntroScreen from '../screens/video/VideoCreationIntroScreen';
 import VideoCreationWizardScreen from '../screens/video/VideoCreationWizardScreen';
@@ -84,6 +88,9 @@ const ShoppingBudgetScreenWithSafeArea = withNavigatorSafeArea(ShoppingBudgetScr
 const ShoppingPickupDropScreenWithSafeArea = withNavigatorSafeArea(ShoppingPickupDropScreen);
 const ShoppingSummaryScreenWithSafeArea = withNavigatorSafeArea(ShoppingSummaryScreen);
 const DeliveryShoppingTrackingScreenWithSafeArea = withNavigatorSafeArea(DeliveryShoppingTrackingScreen);
+const StorageLocationsScreenWithSafeArea = withNavigatorSafeArea(StorageLocationsScreen);
+const DashboardScreenWithSafeArea = withNavigatorSafeArea(DashboardScreen);
+const DashboardPrestataireScreenWithSafeArea = withNavigatorSafeArea(DashboardPrestataireScreen);
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -241,8 +248,24 @@ const SecondaryStack = () => {
           component={DeliveryShoppingTrackingScreenWithSafeArea}
         />
         <Stack.Screen
+          name="StorageLocations"
+          component={StorageLocationsScreenWithSafeArea}
+        />
+        <Stack.Screen
           name="GlobalPromoSubmission"
           component={GlobalPromoSubmissionScreenWithSafeArea}
+        />
+        <Stack.Screen
+          name="AnalyticsDashboard"
+          component={withNavigatorSafeArea(AnalyticsDashboardScreen)}
+        />
+        <Stack.Screen
+          name="Dashboard"
+          component={DashboardScreenWithSafeArea}
+        />
+        <Stack.Screen
+          name="DashboardPrestataire"
+          component={DashboardPrestataireScreenWithSafeArea}
         />
       </Stack.Navigator>
     </DeepLinkHandler>

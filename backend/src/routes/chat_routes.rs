@@ -89,6 +89,15 @@ pub async fn notify_new_message(
     {
         Ok(count) => {
             log::info!("[ChatController] ✅ {} push notifications envoyées", count);
+            
+            // Incrémenter métriques chat
+            crate::metrics::CHAT_METRICS
+                .messages_sent_total
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            crate::metrics::CHAT_METRICS
+                .notifications_sent_total
+                .fetch_add(count as u64, std::sync::atomic::Ordering::Relaxed);
+            
             Ok(Json(json!({
                 "success": true,
                 "notifications_sent": count
@@ -412,6 +421,18 @@ pub async fn send_message(
         message_id,
         conversation_id
     );
+
+    // Incrémenter métriques chat
+    crate::metrics::CHAT_METRICS
+        .messages_sent_total
+        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    
+    // Si message audio
+    if message_type == "audio" {
+        crate::metrics::CHAT_METRICS
+            .audio_messages_total
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
 
     Ok(Json(json!({
         "success": true,
