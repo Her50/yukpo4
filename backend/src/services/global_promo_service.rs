@@ -488,7 +488,7 @@ impl GlobalPromoService {
             builder.push_bind(status_value);
         }
 
-        if let Some(search_value) = search {
+        if let Some(ref search_value) = search {
             let trimmed = search_value.trim().to_string();
             if !trimmed.is_empty() {
                 let like_pattern = format!("%{}%", trimmed);

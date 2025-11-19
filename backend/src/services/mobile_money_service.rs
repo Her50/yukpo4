@@ -168,8 +168,8 @@ impl MobileMoneyService {
         }
 
         let api_key = self.config.mtn_api_key.as_ref().unwrap();
-        let api_secret = self.config.mtn_api_secret.as_ref().unwrap();
-        let merchant_id = self.config.mtn_merchant_id.as_ref().unwrap();
+        let _api_secret = self.config.mtn_api_secret.as_ref().unwrap();
+        let _merchant_id = self.config.mtn_merchant_id.as_ref().unwrap();
 
         // URL de l'API MTN (exemple - à adapter selon la vraie API)
         let base_url = if self.config.mtn_environment == "production" {
@@ -313,8 +313,8 @@ impl MobileMoneyService {
         }
 
         let api_key = self.config.orange_api_key.as_ref().unwrap();
-        let api_secret = self.config.orange_api_secret.as_ref().unwrap();
-        let merchant_id = self.config.orange_merchant_id.as_ref().unwrap();
+        let _api_secret = self.config.orange_api_secret.as_ref().unwrap();
+        let _merchant_id = self.config.orange_merchant_id.as_ref().unwrap();
 
         // URL de l'API Orange Money (exemple - à adapter selon la vraie API)
         let base_url = if self.config.orange_environment == "production" {
@@ -442,8 +442,8 @@ impl MobileMoneyService {
     /// Vérifie le statut d'un paiement
     pub async fn check_payment_status(
         &self,
-        provider: MobileMoneyProvider,
-        transaction_id: &str,
+        _provider: MobileMoneyProvider,
+        _transaction_id: &str,
     ) -> AppResult<PaymentStatus> {
         // TODO: Implémenter la vérification du statut via API
         // Pour l'instant, retourner Pending
