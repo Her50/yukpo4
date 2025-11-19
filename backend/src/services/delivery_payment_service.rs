@@ -106,6 +106,7 @@ impl DeliveryPaymentService {
             .fetch_optional(&self.pool)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur récupération solde: {}", e)))?
+            .flatten()
             .unwrap_or(0)
         };
 

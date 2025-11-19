@@ -257,8 +257,8 @@ impl PaymentMatchingService {
     #[allow(dead_code)]
     async fn transfer_mtn_money(
         &self,
-        phone: &str,
-        amount_cents: i64,
+        _phone: &str,
+        _amount_cents: i64,
     ) -> AppResult<String> {
         // TODO: Implémenter appel API MTN Money
         // Exemple de structure:
@@ -299,8 +299,8 @@ impl PaymentMatchingService {
     #[allow(dead_code)]
     async fn transfer_orange_money(
         &self,
-        phone: &str,
-        amount_cents: i64,
+        _phone: &str,
+        _amount_cents: i64,
     ) -> AppResult<String> {
         // TODO: Implémenter appel API Orange Money
         // Exemple de structure:

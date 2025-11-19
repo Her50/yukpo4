@@ -2275,6 +2275,7 @@ impl DeliveryService {
                 .await
                 .ok()
                 .flatten()
+                .flatten()
             } else {
                 None
             };
