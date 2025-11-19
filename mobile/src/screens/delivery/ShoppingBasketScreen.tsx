@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Alert, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
 import ShoppingBasketCard from '../../components/delivery/ShoppingBasketCard';
@@ -14,6 +14,19 @@ import { modernColors } from '../../theme/modernTheme';
 const ShoppingBasketScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const { items, estimateBasket, loadingEstimate } = useShoppingBasket();
+
+    // ✅ CORRIGÉ: Gestion du bouton retour Android
+    useEffect(() => {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+            if (navigation.canGoBack()) {
+                navigation.goBack();
+                return true;
+            }
+            return false;
+        });
+
+        return () => backHandler.remove();
+    }, [navigation]);
 
     const handleContinue = async () => {
         if (items.length === 0) {

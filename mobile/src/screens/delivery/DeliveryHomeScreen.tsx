@@ -1,6 +1,6 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, BackHandler, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import ActiveDeliveryCard from '../../components/delivery/ActiveDeliveryCard';
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
@@ -33,6 +33,20 @@ const DeliveryHomeScreen: React.FC = () => {
         }, [refreshActiveDeliveries])
     );
 
+    // ✅ CORRIGÉ: Gestion du bouton retour Android
+    useEffect(() => {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+            // Permettre de revenir en arrière normalement
+            if (navigation.canGoBack()) {
+                navigation.goBack();
+                return true;
+            }
+            return false;
+        });
+
+        return () => backHandler.remove();
+    }, [navigation]);
+
     const activeDeliveries = useMemo(() => {
         return Object.values(deliveries)
             .sort((a, b) => {
@@ -51,10 +65,10 @@ const DeliveryHomeScreen: React.FC = () => {
     // ✅ CORRIGÉ: Navigation simplifiée et robuste
     const handleStartShopping = useCallback(() => {
         if (navigating) return;
-        
+
         console.log('[DeliveryHomeScreen] 🛒 Navigation vers DeliveryShoppingFlow');
         setNavigating(true);
-        
+
         try {
             // DeliveryHomeScreen est dans SecondaryStack, donc navigation directe fonctionne
             navigation.navigate('DeliveryShoppingFlow');
@@ -71,10 +85,10 @@ const DeliveryHomeScreen: React.FC = () => {
 
     const handleStartParcel = useCallback(() => {
         if (navigating) return;
-        
+
         console.log('[DeliveryHomeScreen] 📦 Tentative d\'ouverture du flux colis');
         setNavigating(true);
-        
+
         // Pour l'instant, rediriger vers le flux shopping (même logique)
         // TODO: Implémenter DeliveryParcelFlow quand il sera prêt
         if (isEnabled('delivery_v2')) {
@@ -87,10 +101,12 @@ const DeliveryHomeScreen: React.FC = () => {
                 'Le flux de livraison de colis est en cours de finalisation. Vous pouvez utiliser les courses supermarché pour tester le suivi temps réel.',
                 [
                     { text: 'Annuler', style: 'cancel', onPress: () => setNavigating(false) },
-                    { text: 'Utiliser les courses', onPress: () => {
-                        setNavigating(false);
-                        handleStartShopping();
-                    }}
+                    {
+                        text: 'Utiliser les courses', onPress: () => {
+                            setNavigating(false);
+                            handleStartShopping();
+                        }
+                    }
                 ]
             );
         }
@@ -98,11 +114,11 @@ const DeliveryHomeScreen: React.FC = () => {
 
     const handleOpenDelivery = useCallback((deliveryId: string) => {
         if (navigating) return;
-        
+
         console.log('[DeliveryHomeScreen] 📍 Ouverture livraison:', deliveryId);
         setNavigating(true);
         setActiveDeliveryId(deliveryId);
-        
+
         try {
             // Navigation directe vers le tracking
             navigation.navigate('DeliveryShoppingTracking', { deliveryId });
@@ -133,14 +149,16 @@ const DeliveryHomeScreen: React.FC = () => {
 
                 {(!isNetworkOnline || !isWebSocketConnected) && (
                     <NativeCard style={[styles.card, styles.warningCard]}>
-                        <Text style={styles.warningTitle}>Connexion limitée</Text>
+                        <Text style={styles.warningTitle}>
+                            {!isNetworkOnline ? 'Connexion réseau indisponible' : 'Connexion WebSocket limitée'}
+                        </Text>
                         <Text style={styles.warningSubtitle}>
-                            {isNetworkOnline
-                                ? 'Reconnexion au canal temps réel en cours. Les données se resynchroniseront automatiquement.'
-                                : 'Connexion réseau indisponible. Les actions seront synchronisées dès le retour en ligne.'}
+                            {!isNetworkOnline
+                                ? 'Votre connexion internet est indisponible. Les actions seront synchronisées automatiquement dès le retour en ligne.'
+                                : 'La connexion WebSocket pour le suivi en temps réel est limitée. Les données se resynchroniseront automatiquement une fois la connexion rétablie.'}
                         </Text>
                         <NativeButton
-                            title='Retenter la synchronisation'
+                            title={!isNetworkOnline ? 'Vérifier la connexion' : 'Retenter la synchronisation'}
                             variant='outline'
                             onPress={() => {
                                 console.log('[DeliveryHomeScreen] 🔄 Tentative de reconnexion...');
@@ -209,10 +227,10 @@ const DeliveryHomeScreen: React.FC = () => {
                         disabled={loading || refreshing}
                         style={[styles.refreshButton, (loading || refreshing) && styles.refreshButtonDisabled]}
                     >
-                        <SafeIcon 
-                            name="refresh" 
-                            size={16} 
-                            color={(loading || refreshing) ? modernColors.textSecondary : modernColors.primary} 
+                        <SafeIcon
+                            name="refresh"
+                            size={16}
+                            color={(loading || refreshing) ? modernColors.textSecondary : modernColors.primary}
                         />
                         <Text style={[
                             styles.refreshButtonText,
@@ -237,8 +255,8 @@ const DeliveryHomeScreen: React.FC = () => {
                         <Text style={styles.emptySubtitle}>
                             Lance une commande supermarché pour suivre ton coursier en temps réel.
                         </Text>
-                        <NativeButton 
-                            title="Nouvelle commande" 
+                        <NativeButton
+                            title="Nouvelle commande"
                             onPress={handleStartShopping}
                             disabled={navigating}
                             style={styles.emptyStateButton}
@@ -247,10 +265,10 @@ const DeliveryHomeScreen: React.FC = () => {
                 ) : (
                     <View style={styles.deliveriesList}>
                         {activeDeliveries.map(delivery => (
-                            <ActiveDeliveryCard 
-                                key={delivery.id} 
-                                delivery={delivery} 
-                                onPress={handleOpenDelivery} 
+                            <ActiveDeliveryCard
+                                key={delivery.id}
+                                delivery={delivery}
+                                onPress={handleOpenDelivery}
                             />
                         ))}
                     </View>

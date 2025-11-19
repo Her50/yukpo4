@@ -27,7 +27,7 @@ use crate::{
 pub fn delivery_external_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/api/external/delivery", post(create_external_delivery))
-        .route("/api/external/track/:token", get(get_delivery_status_by_token))
+        .route("/api/external/track/{token}", get(get_delivery_status_by_token))
         .with_state(state)
 }
 

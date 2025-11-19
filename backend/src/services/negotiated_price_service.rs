@@ -22,12 +22,12 @@ pub struct NegotiatedPriceOffer {
 
 /// ✅ NOUVEAU : Service pour gérer les prix négociés entre prestataire et client
 pub struct NegotiatedPriceService {
-    pool: PgPool,
+    _pool: PgPool,
 }
 
 impl NegotiatedPriceService {
     pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self { _pool: pool }
     }
 
     /// Crée une offre de prix négocié

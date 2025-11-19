@@ -22,12 +22,12 @@ pub struct AcceptableTimeSlot {
 
 /// Service pour gérer les contraintes horaires
 pub struct DeliveryScheduleService {
-    pool: PgPool,
+    _pool: PgPool,
 }
 
 impl DeliveryScheduleService {
     pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self { _pool: pool }
     }
 
     /// ✅ Phase 3 - Amélioration 7 : Calcule un créneau de pickup acceptable en tenant compte des contraintes

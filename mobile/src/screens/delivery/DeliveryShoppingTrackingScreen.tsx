@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
+    BackHandler,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -57,6 +58,20 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
             setActiveDeliveryId(null);
         };
     }, [deliveryId, refreshDelivery, setActiveDeliveryId]);
+
+    // ✅ CORRIGÉ: Gestion du bouton retour Android
+    useEffect(() => {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+            // Permettre de revenir en arrière normalement
+            if (navigation.canGoBack()) {
+                navigation.goBack();
+                return true;
+            }
+            return false;
+        });
+
+        return () => backHandler.remove();
+    }, [navigation]);
 
     const shoppingItems = useMemo(() => delivery?.shopping?.items ?? [], [delivery?.shopping?.items]);
 

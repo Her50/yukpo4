@@ -494,6 +494,7 @@ impl DeliveryPaymentService {
     }
 
     /// Crédite le wallet d'un utilisateur (pour reversement prestataire)
+    #[allow(dead_code)]
     async fn credit_user_wallet(
         &self,
         user_id: i32,

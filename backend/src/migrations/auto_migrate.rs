@@ -4382,13 +4382,29 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
 
     run_delivery_step(
         pool,
-        "Create courier_availability_snapshots indexes",
-        r#"
-        CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_courier ON courier_availability_snapshots(courier_id);
-        CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_zone ON courier_availability_snapshots(zone_id);
-        CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_capture ON courier_availability_snapshots(courier_id, captured_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_location ON courier_availability_snapshots USING GIST (location);
-        "#,
+        "Create courier_availability_snapshots courier index",
+        "CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_courier ON courier_availability_snapshots(courier_id)",
+    )
+    .await?;
+
+    run_delivery_step(
+        pool,
+        "Create courier_availability_snapshots zone index",
+        "CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_zone ON courier_availability_snapshots(zone_id)",
+    )
+    .await?;
+
+    run_delivery_step(
+        pool,
+        "Create courier_availability_snapshots capture index",
+        "CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_capture ON courier_availability_snapshots(courier_id, captured_at DESC)",
+    )
+    .await?;
+
+    run_delivery_step(
+        pool,
+        "Create courier_availability_snapshots location index",
+        "CREATE INDEX IF NOT EXISTS idx_courier_availability_snapshots_location ON courier_availability_snapshots USING GIST (location)",
     )
     .await?;
 

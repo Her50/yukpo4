@@ -212,7 +212,7 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'button.save': 'Enregistrer',
         'button.cancel': 'Annuler',
         'video.intro.title': 'Vidéo immersive Yukpo',
-        'video.intro.subtitle': "Transforme ton service en spot viral en moins de 5 minutes grâce à l'IA.",
+        'video.intro.subtitle': "Transforme ton service en spot viral en moins de 5 minutes grâce à Yukpo.",
         'video.intro.heroTitle': 'Création assistée',
         'video.intro.heroDescription': 'Templates TikTok-ready, b-roll IA, mastering audio premium — tout en un.',
         'video.intro.benefit.timeline': 'Timeline Remotion 9:16 ultra fluide',

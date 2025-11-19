@@ -315,8 +315,19 @@ const VideoCreationWizardScreen: React.FC = () => {
     } = useVoiceProfiles({ serviceId });
 
     const fetchServiceDetails = useCallback(async () => {
-        if (!serviceId) {
+        if (!serviceId && serviceId !== 0) {
             setLoadingService(false);
+            // ✅ CORRIGÉ: Afficher un message d'erreur si serviceId est manquant
+            Alert.alert(
+                'Service manquant',
+                'Aucun service n\'a été sélectionné. Veuillez créer un service avant de créer une vidéo.',
+                [
+                    {
+                        text: 'Retour',
+                        onPress: () => navigation.goBack(),
+                    },
+                ]
+            );
             return;
         }
         try {
@@ -344,13 +355,36 @@ const VideoCreationWizardScreen: React.FC = () => {
                     // Si pas de produit spécifique, utiliser description service
                     setBrief(service.description);
                 }
+            } else {
+                // ✅ CORRIGÉ: Afficher un message d'erreur si le service n'est pas trouvé
+                Alert.alert(
+                    'Service introuvable',
+                    'Le service sélectionné n\'a pas pu être chargé. Veuillez réessayer.',
+                    [
+                        {
+                            text: 'Retour',
+                            onPress: () => navigation.goBack(),
+                        },
+                    ]
+                );
             }
         } catch (error) {
             console.warn('[VideoCreationWizard] Service introuvable', error);
+            // ✅ CORRIGÉ: Afficher un message d'erreur en cas d'erreur
+            Alert.alert(
+                'Erreur',
+                'Une erreur est survenue lors du chargement du service. Veuillez réessayer.',
+                [
+                    {
+                        text: 'Retour',
+                        onPress: () => navigation.goBack(),
+                    },
+                ]
+            );
         } finally {
             setLoadingService(false);
         }
-    }, [serviceId, productIndex, t, brief]);
+    }, [serviceId, productIndex, t, brief, navigation]);
 
     const fetchServiceMedia = useCallback(async () => {
         if (!serviceId) {

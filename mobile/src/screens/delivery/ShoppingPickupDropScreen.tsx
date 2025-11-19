@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
 import ModernGPSModal from '../../components/ModernGPSModal';
@@ -39,6 +39,24 @@ const ShoppingPickupDropScreen: React.FC = () => {
         () => (dropoff?.latitude && dropoff?.longitude ? { lat: dropoff.latitude, lng: dropoff.longitude } : null),
         [dropoff?.latitude, dropoff?.longitude]
     );
+
+    // ✅ CORRIGÉ: Gestion du bouton retour Android
+    useEffect(() => {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+            if (modalType) {
+                // Si un modal est ouvert, fermer le modal au lieu de naviguer
+                setModalType(null);
+                return true;
+            }
+            if (navigation.canGoBack()) {
+                navigation.goBack();
+                return true;
+            }
+            return false;
+        });
+
+        return () => backHandler.remove();
+    }, [navigation, modalType]);
 
     const handleOpenModal = (type: ModalType) => setModalType(type);
 

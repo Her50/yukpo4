@@ -15,7 +15,7 @@ use crate::state::AppState;
 struct ExpiredSuggestion {
     delivery_id: Uuid,
     suggested_status: String,
-    created_at: DateTime<Utc>,
+    _created_at: DateTime<Utc>,
     auto_confirm_after_seconds: Option<i32>,
 }
 
@@ -23,7 +23,7 @@ struct ExpiredSuggestion {
 struct PendingDelivery {
     id: Uuid,
     status: String,
-    updated_at: DateTime<Utc>,
+    _updated_at: DateTime<Utc>,
     creator_id: Option<i32>,
     recipient_user_id: Option<i32>,
     courier_user_id: Option<i32>,

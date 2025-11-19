@@ -31,7 +31,7 @@ pub enum DistanceSource {
 pub struct GeographicMatchingService {
     pool: PgPool,
     cache_service: Arc<CacheService>,
-    geocoding_service: GeocodingService,
+    _geocoding_service: GeocodingService,
     use_google_maps: bool,
 }
 
@@ -50,7 +50,7 @@ impl GeographicMatchingService {
         Self {
             pool,
             cache_service,
-            geocoding_service,
+            _geocoding_service: geocoding_service,
             use_google_maps,
         }
     }

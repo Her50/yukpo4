@@ -1,6 +1,6 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, Image, StyleSheet, Text, View } from 'react-native';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
@@ -88,17 +88,30 @@ const VideoCreationIntroScreen: React.FC = () => {
     };
 
     const handleShowExample = () => {
-        console.log('[VideoCreationIntroScreen] 📺 Navigation vers VideoFeed');
+        console.log('[VideoCreationIntroScreen] 📺 Affichage d\'un exemple de vidéo');
+        // ✅ CORRIGÉ: Afficher un exemple réel en ouvrant une vidéo exemple ou en naviguant vers une vidéo spécifique
         try {
             const parentNavigation = (navigation as any).getParent();
             if (parentNavigation) {
-                parentNavigation.navigate('VideoFeed');
+                // Naviguer vers VideoFeed avec un paramètre pour afficher un exemple
+                parentNavigation.navigate('VideoFeed', {
+                    showExample: true,
+                    exampleVideoId: 'example' // Indicateur pour afficher un exemple
+                });
             } else {
-                navigation.navigate('VideoFeed' as never);
+                navigation.navigate('VideoFeed' as never, {
+                    showExample: true,
+                    exampleVideoId: 'example'
+                } as never);
             }
         } catch (error) {
             console.error('[VideoCreationIntroScreen] ❌ Erreur navigation vers VideoFeed:', error);
-            navigation.navigate('VideoFeed' as never);
+            // Fallback: Afficher une alerte avec un lien vers un exemple
+            Alert.alert(
+                'Exemple de vidéo',
+                'Pour voir un exemple de vidéo immersive créée avec Yukpo, consultez la section Vidéo dans l\'application.',
+                [{ text: 'OK' }]
+            );
         }
     };
 
@@ -168,11 +181,13 @@ const styles = StyleSheet.create({
     header: {
         marginBottom: 16,
         gap: 12,
+        paddingHorizontal: 4, // ✅ Ajout de padding pour éviter le débordement
     },
     title: {
         fontSize: 28,
         fontWeight: '700',
         color: modernColors.text,
+        paddingRight: 8, // ✅ Ajout de padding à droite pour éviter le débordement
     },
     subtitle: {
         fontSize: 15,

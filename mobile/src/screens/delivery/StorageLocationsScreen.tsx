@@ -2,6 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    BackHandler,
     FlatList,
     Modal,
     ScrollView,
@@ -56,6 +57,24 @@ const StorageLocationsScreen: React.FC = () => {
         loadLocations();
         loadZones();
     }, []);
+
+    // ✅ CORRIGÉ: Gestion du bouton retour Android
+    useEffect(() => {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+            if (showModal) {
+                // Si un modal est ouvert, fermer le modal au lieu de naviguer
+                setShowModal(false);
+                return true;
+            }
+            if (navigation.canGoBack()) {
+                navigation.goBack();
+                return true;
+            }
+            return false;
+        });
+
+        return () => backHandler.remove();
+    }, [navigation, showModal]);
 
     const loadZones = async () => {
         setLoadingZones(true);
