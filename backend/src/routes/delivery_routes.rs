@@ -328,9 +328,9 @@ async fn save_product_delivery_config(
 
     Ok(Json(serde_json::json!({
         "success": true,
-        "config_id": config.id,
-        "is_configured": config.is_configured,
-        "message": if config.is_configured {
+        "config_id": config_id,
+        "is_configured": config_is_configured,
+        "message": if config_is_configured {
             "Configuration de livraison sauvegardée avec succès"
         } else {
             "Configuration partiellement sauvegardée. Veuillez compléter tous les champs requis pour activer le produit."

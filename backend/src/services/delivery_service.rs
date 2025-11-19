@@ -3315,7 +3315,7 @@ impl DeliveryService {
             )
             .bind(final_pickup_lng)
             .bind(final_pickup_lat)
-            .bind(final_pickup_address)
+            .bind(&final_pickup_address)
             .bind(final_distance)
             .bind(summary.id)
             .execute(self.repository.pool())

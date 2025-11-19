@@ -469,7 +469,7 @@ impl DeliveryPaymentService {
         // TODO: Créer les migrations pour ces tables
         // Pour l'instant, utiliser le service DeliveryService si disponible
         if let Some(ref delivery_service) = self.delivery_service {
-            delivery_service.debit_wallet_for_delivery(user_id, delivery_id, amount_cents, reason.as_deref().unwrap_or("Débit livraison")).await?;
+            delivery_service.debit_wallet_for_delivery(user_id, delivery_id, amount_cents, reason.clone()).await?;
         }
 
         Ok(())
@@ -487,7 +487,7 @@ impl DeliveryPaymentService {
         // TODO: Créer les migrations pour ces tables
         // Pour l'instant, utiliser le service DeliveryService si disponible
         if let Some(ref delivery_service) = self.delivery_service {
-            delivery_service.refund_wallet_for_delivery(user_id, delivery_id, amount_cents, reason.as_deref().unwrap_or("Remboursement livraison")).await?;
+            delivery_service.refund_wallet_for_delivery(user_id, delivery_id, amount_cents, reason.clone()).await?;
         }
 
         Ok(())

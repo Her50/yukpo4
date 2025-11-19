@@ -792,7 +792,7 @@ impl DeliveryRepository {
             status: delivery_row.status,
             creator_id: delivery_row.creator_id,
             courier_id: delivery_row.courier_id,
-            preferred_courier_id: delivery_row.preferred_courier_id,
+            preferred_courier_id: None, // Note: preferred_courier_id n'existe pas dans deliveries
             pickup: GeoPoint {
                 latitude: delivery_row.pickup_lat,
                 longitude: delivery_row.pickup_lng,
@@ -1602,7 +1602,7 @@ impl DeliveryRepository {
                 estimated_price_cents: row.estimated_price_cents,
                 actual_price_cents: row.actual_price_cents,
                 status: row.status,
-                rejection_reason: row.rejection_reason,
+                rejection_reason: None, // Note: rejection_reason n'existe pas dans shopping_order_items
                 metadata: row.metadata,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
@@ -1743,7 +1743,7 @@ impl DeliveryRepository {
                 estimated_price_cents,
                 actual_price_cents,
                 status: inserted.status,
-                rejection_reason: inserted.rejection_reason,
+                rejection_reason: None, // Note: rejection_reason n'existe pas dans shopping_order_items
                 metadata,
                 created_at,
                 updated_at,
