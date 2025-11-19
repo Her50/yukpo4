@@ -765,7 +765,7 @@ async fn create_client_order(
         creator_id: user.id,
         parcel,
         pickup,
-        dropoff,
+        dropoff: dropoff.into(),
         recipient: Some(DeliveryRecipientInput {
             user_id: Some(user.id),
             contact_name: None,
