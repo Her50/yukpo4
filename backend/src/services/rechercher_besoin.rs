@@ -411,8 +411,6 @@ pub async fn rechercher_besoin_direct(
                     gps_coords: None,
                     search_method: "fallback".to_string(),
                     matched_fields: vec![],
-                    search_method: "fallback".to_string(),
-                    matched_fields: vec![],
                 })
                 .collect()
         }
@@ -1053,8 +1051,6 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
                     category_score: 0.0,
                     distance_km: None,
                     gps_coords: None,
-                    search_method: "fallback".to_string(),
-                    matched_fields: vec![],
                     search_method: "fallback".to_string(),
                     matched_fields: vec![],
                 })

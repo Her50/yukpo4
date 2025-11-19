@@ -141,7 +141,7 @@ async fn check_expired_proximity_suggestions(
 /// Vérifie les livraisons en attente de confirmation depuis trop longtemps
 async fn check_pending_confirmations(
     pool: &PgPool,
-    service: &DeliveryService,
+    _service: &DeliveryService,
 ) -> AppResult<()> {
     // Statuts qui nécessitent une confirmation rapide
     let statuses_requiring_confirmation = vec![
