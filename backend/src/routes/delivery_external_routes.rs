@@ -1,6 +1,6 @@
 // ✅ Phase 4 - Amélioration 8 : Routes API publiques pour prestataires externes
 use axum::{
-    extract::State,
+    extract::{Path, State},
     response::Json,
     routing::{get, post},
     Router,

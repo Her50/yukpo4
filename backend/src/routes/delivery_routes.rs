@@ -1307,7 +1307,7 @@ struct EstimateCostsResponse {
 
 async fn estimate_delivery_costs(
     State(state): State<Arc<AppState>>,
-    Extension(_user): Extension<AuthenticatedUser>,
+    Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<EstimateCostsPayload>,
 ) -> AppResult<Json<EstimateCostsResponse>> {
     let _service = delivery_service(&state)?;
