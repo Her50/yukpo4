@@ -1976,7 +1976,7 @@ async fn list_available_couriers(
                 "stats": {
                     "completed_deliveries": row.completed_deliveries.unwrap_or(0),
                     "cancelled_deliveries": row.cancelled_deliveries.unwrap_or(0),
-                    "avg_delivery_time_minutes": row.avg_delivery_time_minutes.map(|t| t as f64),
+                    "avg_delivery_time_minutes": row.avg_delivery_time_minutes.and_then(|t| t.to_f64()),
                     "success_rate": success_rate
                 }
             })

@@ -337,7 +337,7 @@ impl DeliveryPaymentService {
         };
 
         // ✅ Mettre à jour la réservation avec les informations de matching
-        let commission_rate_decimal = Decimal::from_f64(commission_rate).unwrap_or(Decimal::new(5, 2)); // 0.05
+        let commission_rate_decimal = Decimal::try_from(commission_rate).unwrap_or_else(|_| Decimal::new(5, 2)); // 0.05
         sqlx::query!(
             r#"
             UPDATE delivery_payment_reservations
