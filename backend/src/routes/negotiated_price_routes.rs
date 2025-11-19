@@ -15,7 +15,7 @@ use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 struct CreateNegotiatedPriceRequest {
-    conversation_id: i32,
+    conversation_id: String,
     service_id: i32,
     product_index: Option<i32>,
     original_price_cents: i64,
@@ -31,7 +31,7 @@ struct CreateNegotiatedPriceResponse {
 
 #[derive(Debug, Deserialize)]
 struct GetPendingOfferQuery {
-    conversation_id: i32,
+    conversation_id: String,
     service_id: i32,
     product_index: Option<i32>,
 }

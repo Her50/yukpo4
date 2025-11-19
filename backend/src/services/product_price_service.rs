@@ -22,7 +22,7 @@ impl ProductPriceService {
         service_id: i32,
         product: &Value,
         product_index: Option<i32>,
-        conversation_id: Option<i32>,
+        conversation_id: Option<String>,
         client_user_id: Option<i32>,
     ) -> AppResult<f64> {
         // 1. Récupérer le prix de base
@@ -39,7 +39,7 @@ impl ProductPriceService {
         if let (Some(conv_id), Some(client_id)) = (conversation_id, client_user_id) {
             let negotiated_service = NegotiatedPriceService::new(pool.clone());
             if let Ok(Some(negotiated_price_cents)) = negotiated_service
-                .get_active_negotiated_price(conv_id, service_id, product_index, client_id)
+                .get_active_negotiated_price(conv_id.clone(), service_id, product_index, client_id)
                 .await
             {
                 let negotiated_price = (negotiated_price_cents as f64) / 100.0;
@@ -88,7 +88,7 @@ impl ProductPriceService {
         service_id: i32,
         product: &Value,
         product_index: Option<i32>,
-        conversation_id: Option<i32>,
+        conversation_id: Option<String>,
         client_user_id: Option<i32>,
     ) -> AppResult<i64> {
         let real_price = Self::get_real_product_price(
