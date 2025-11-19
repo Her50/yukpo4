@@ -250,3 +250,4 @@
 
 **Souhaitez-vous que je commence l'implémentation du cache Redis ?**
 
+

@@ -173,3 +173,4 @@ Les pages de livraison (mobile et frontend) sont maintenant :
 **Phase** : Optimisation UX Livraison  
 **Status** : ✅ **TERMINÉ**
 
+

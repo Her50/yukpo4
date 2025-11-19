@@ -896,7 +896,7 @@ fn extend_preview_history(metadata: Value, entry: Value) -> Value {
 }
 
 // ✅ Phase 9 - Amélioration 31 : Structures pour chaînage vidéos
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct VideoDependency {
     pub id: i32,
     pub parent_session_id: Uuid,

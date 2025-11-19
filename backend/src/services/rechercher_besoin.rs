@@ -407,6 +407,10 @@ pub async fn rechercher_besoin_direct(
                     trigram_score: 0.0,
                     recency_score: 0.0,
                     category_score: 0.0,
+                    distance_km: None,
+                    gps_coords: None,
+                    search_method: "fallback".to_string(),
+                    matched_fields: vec![],
                     search_method: "fallback".to_string(),
                     matched_fields: vec![],
                 })
@@ -1047,6 +1051,10 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
                     trigram_score: 0.0,
                     recency_score: 0.0,
                     category_score: 0.0,
+                    distance_km: None,
+                    gps_coords: None,
+                    search_method: "fallback".to_string(),
+                    matched_fields: vec![],
                     search_method: "fallback".to_string(),
                     matched_fields: vec![],
                 })

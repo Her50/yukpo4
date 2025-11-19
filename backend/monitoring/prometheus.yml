@@ -36,3 +36,4 @@ scrape_configs:
         target_label: instance
         replacement: 'yukpo-backend-render'
 
+

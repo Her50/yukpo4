@@ -65,7 +65,7 @@ pub async fn validate_product_for_activation(
         .map(|s| !s.trim().is_empty())
         .unwrap_or(false);
     
-    let errors = vec![
+    let errors: Vec<String> = vec![
         (!has_name, "Nom du produit requis".into()),
         (!has_price, "Prix du produit requis".into()),
         (!is_delivery_configured, "Configuration livraison requise".into()),

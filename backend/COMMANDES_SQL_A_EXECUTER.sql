@@ -16,3 +16,4 @@ WHERE version = 0;
 -- cargo sqlx migrate run
 -- ============================================
 
+

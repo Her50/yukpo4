@@ -559,7 +559,7 @@ pub struct NewDeliveryParcelInput {
 }
 
 /// Localisation simple
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocationInput {
     pub latitude: f64,
     pub longitude: f64,
@@ -1570,8 +1570,8 @@ impl DeliveryService {
                         discount_cents: existing_pricing.discount_cents,
                         currency: existing_pricing.currency,
                         details: existing_pricing.details,
-                        shopping_cost_cents: existing_pricing.shopping_cost_cents.unwrap_or(0),
-                        shopping_discount_cents: existing_pricing.shopping_discount_cents.unwrap_or(0),
+                        shopping_cost_cents: existing_pricing.shopping_cost_cents,
+                        shopping_discount_cents: existing_pricing.shopping_discount_cents,
                     })
                     .await?;
                 }
@@ -1589,6 +1589,10 @@ impl DeliveryService {
         address: Option<String>,
         updated_by: Option<i32>,
     ) -> AppResult<DeliverySummary> {
+        // Sauvegarder les coordonnées avant de déplacer point
+        let latitude = point.latitude;
+        let longitude = point.longitude;
+        
         self.repository
             .update_pickup_location(
                 delivery_id,
@@ -1603,8 +1607,8 @@ impl DeliveryService {
             .broadcast_event(
                 delivery_id,
                 DeliveryWsEvent::PickupLocationUpdated {
-                    latitude: point.latitude,
-                    longitude: point.longitude,
+                    latitude,
+                    longitude,
                     address: address.clone(),
                 },
             )
@@ -1620,14 +1624,14 @@ impl DeliveryService {
             let distance = if let Some(geo_service) = &self.geographic_matching {
                 geo_service
                     .calculate_distance(
-                        (point.latitude, point.longitude),
+                        (latitude, longitude),
                         (dropoff.latitude, dropoff.longitude),
                     )
                     .await?
                     .distance_meters as i32
             } else {
                 haversine_distance(
-                    (point.latitude, point.longitude),
+                    (latitude, longitude),
                     (dropoff.latitude, dropoff.longitude),
                 ) as i32
             };
@@ -1799,7 +1803,7 @@ impl DeliveryService {
 
             // Envoyer notification push au prestataire
             let _ = push_notification_service::send_push_notification(
-                &self.repository.pool,
+                self.repository.pool(),
                 summary.creator_id,
                 "📍 Adresse de livraison confirmée".to_string(),
                 format!(
@@ -3303,7 +3307,7 @@ impl DeliveryService {
                 final_distance,
                 summary.id
             )
-            .execute(&self.repository.pool)
+            .execute(self.repository.pool())
             .await
             .map_err(|e| AppError::Internal(format!("Erreur mise à jour pickup: {}", e)))?;
         }

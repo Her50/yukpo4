@@ -270,16 +270,17 @@ impl MobileMoneyService {
                 );
 
                 // Fallback: instructions manuelles
+                let transaction_ref = request.transaction_reference.clone();
                 Ok(MobileMoneyPaymentResponse {
                     success: false,
-                    transaction_id: Some(request.transaction_reference),
+                    transaction_id: Some(transaction_ref.clone()),
                     provider_transaction_id: None,
                     status: PaymentStatus::Pending,
                     message: "Mode manuel activé".to_string(),
                     instructions: Some(format!(
                         "Composez *126# > Envoyer de l'argent > Marchand > Code: YUKPO > Montant: {} FCFA\n\nRéférence: {}",
                         request.amount,
-                        request.transaction_reference
+                        transaction_ref
                     )),
                     error: Some(format!("Erreur API: {}", e)),
                 })
@@ -419,9 +420,10 @@ impl MobileMoneyService {
                 );
 
                 // Fallback: instructions manuelles
+                let transaction_ref = request.transaction_reference.clone();
                 Ok(MobileMoneyPaymentResponse {
                     success: false,
-                    transaction_id: Some(request.transaction_reference),
+                    transaction_id: Some(transaction_ref.clone()),
                     provider_transaction_id: None,
                     status: PaymentStatus::Pending,
                     message: "Mode manuel activé".to_string(),
@@ -429,7 +431,7 @@ impl MobileMoneyService {
                         "Composez #144*4*4*{}*{}# et suivez les instructions\n\nRéférence: {}",
                         request.amount,
                         request.phone_number,
-                        request.transaction_reference
+                        transaction_ref
                     )),
                     error: Some(format!("Erreur API: {}", e)),
                 })

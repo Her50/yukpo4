@@ -174,3 +174,4 @@ ON delivery_zones USING GIST (boundary);
 **Phase** : 10 - Optimisations géographiques et cache
 **Status** : ✅ Partiellement complété (80%)
 
+

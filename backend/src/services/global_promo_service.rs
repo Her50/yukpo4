@@ -570,7 +570,8 @@ impl GlobalPromoService {
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         
         // Si une recherche a été effectuée
-        if search.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false) {
+        let search_was_performed = search.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false);
+        if search_was_performed {
             crate::metrics::GLOBAL_PROMO_METRICS
                 .catalog_searches_total
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);

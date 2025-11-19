@@ -73,3 +73,4 @@ WHERE version = 0;
 - **Username:** `yukpo_db_user`
 - Le serveur est sur Render, donc il faut une connexion internet
 
+

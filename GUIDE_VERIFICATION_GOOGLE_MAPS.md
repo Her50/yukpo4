@@ -193,3 +193,4 @@ Le système utilise automatiquement **Haversine** si :
 
 **Aucune action requise** - le système fonctionne toujours, mais avec moins de précision.
 
+

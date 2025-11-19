@@ -103,7 +103,7 @@ async fn create_external_delivery(
     };
 
     // ✅ 4. Créer livraison
-    let service = delivery_service(&state)?;
+    let service = delivery_service(&state);
     let summary = service.create_delivery_request(internal_params).await?;
 
     // ✅ 5. Sauvegarder préférences client si fournies
@@ -208,7 +208,7 @@ async fn get_delivery_status_by_token(
     // Récupérer livraison depuis token public
     let delivery_id = get_delivery_id_from_token(&state, &token).await?;
 
-    let service = delivery_service(&state)?;
+    let service = delivery_service(&state);
     let summary = service.get_delivery_summary(delivery_id).await?;
 
     // Retourner infos publiques (pas de données sensibles)
@@ -389,10 +389,7 @@ async fn get_or_create_external_system_user(
 }
 
 /// Helper pour obtenir le service de livraison
-fn delivery_service(state: &Arc<AppState>) -> AppResult<Arc<DeliveryService>> {
-    state
-        .delivery_service
-        .clone()
-        .ok_or_else(|| AppError::Internal("Delivery service non disponible".into()))
+fn delivery_service(state: &Arc<AppState>) -> Arc<DeliveryService> {
+    state.delivery_service.clone()
 }
 

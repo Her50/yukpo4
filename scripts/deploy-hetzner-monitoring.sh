@@ -170,3 +170,4 @@ echo "   3. Accéder à Grafana et vérifier le dashboard 'Métriques UX'"
 echo "   4. Tester une alerte pour vérifier Slack"
 echo ""
 
+

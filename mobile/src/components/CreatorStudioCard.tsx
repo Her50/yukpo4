@@ -11,9 +11,9 @@ import {
     View,
 } from 'react-native';
 
+import ModernGPSModal from './ModernGPSModal';
 import { NativeCard } from './NativeDesign';
 import SafeIcon from './SafeIcon';
-import ModernGPSModal from './ModernGPSModal';
 
 import { useCreatorStudio } from '../hooks/useCreatorStudio';
 import { CreateDeliveryRequestPayload } from '../services/api';
@@ -362,7 +362,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
 
     const handleRefreshTracking = useCallback(() => {
         actions.refreshDeliveryTelemetry().catch((err: any) => {
-            const message = err?.message || 'Rafraîchissement tracking impossible pour l'instant.';
+            const message = err?.message || "Rafraîchissement tracking impossible pour le moment.";
             setCourierError(message);
             console.error('[CreatorStudioCard] Erreur refresh tracking:', err);
         });

@@ -49,7 +49,7 @@ pub async fn start_delivery_timeout_monitor(state: Arc<AppState>) {
 /// Vérifie les livraisons en attente de confirmation et auto-confirme si nécessaire
 async fn check_delivery_timeouts(state: Arc<AppState>) -> AppResult<()> {
     let pool = &state.pg;
-    let service = DeliveryService::new(pool.clone());
+    let service = state.delivery_service.clone();
 
     // ✅ 1. Vérifier les suggestions de proximité expirées (auto-confirmation)
     check_expired_proximity_suggestions(pool, &service).await?;
