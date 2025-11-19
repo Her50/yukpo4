@@ -607,7 +607,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(upload_proof_media_file).layer(axum::middleware::from_fn(jwt_auth)),
         )
         .route(
-            "/api/media/proof/{filename:.*}",
+            "/api/media/proof/{*filename}",
             get(serve_proof_media_file),
         );
     // Routes pour product_modalities (modalités réutilisables)

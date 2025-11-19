@@ -1,14 +1,12 @@
 // ✅ Phase 4 - Amélioration 8 : Routes API publiques pour prestataires externes
 use axum::{
-    extract::{Path, State},
-    http::StatusCode,
+    extract::State,
     response::Json,
     routing::{get, post},
     Router,
 };
 use chrono::Utc;
 use rust_decimal::prelude::FromPrimitive;
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -16,12 +14,11 @@ use uuid::Uuid;
 use crate::{
     core::types::{AppError, AppResult},
     models::delivery_model::{
-        ClientDeliveryPreferencesInput, ExternalClientInfo, ExternalDeliveryPreferences,
-        ExternalDeliveryProvider, ExternalDeliveryProviderInput, ExternalDeliveryRequest,
-        ExternalParcelInput,
+        ClientDeliveryPreferencesInput,
+        ExternalDeliveryProvider, ExternalDeliveryRequest,
     },
     services::delivery_service::{
-        CreateDeliveryParams, DeliveryRecipientInput, DeliveryService, LocationInput, NewDeliveryParcelInput,
+        CreateDeliveryParams, DeliveryRecipientInput, DeliveryService, NewDeliveryParcelInput,
     },
     state::AppState,
 };
@@ -113,7 +110,7 @@ async fn create_external_delivery(
         let preferred_delivery_time_end = prefs.preferred_delivery_time_end.clone();
         let urgency = prefs.urgency.clone();
         
-        let prefs_input = ClientDeliveryPreferencesInput {
+        let _prefs_input = ClientDeliveryPreferencesInput {
             delivery_id: Some(summary.id),
             preferred_delivery_date: preferred_delivery_date.clone(),
             preferred_delivery_time_start: preferred_delivery_time_start.clone(),
@@ -241,8 +238,8 @@ async fn validate_api_key(
 
 /// Vérifie le rate limit pour un provider
 async fn check_rate_limit(
-    state: &Arc<AppState>,
-    provider: &ExternalDeliveryProvider,
+    _state: &Arc<AppState>,
+    _provider: &ExternalDeliveryProvider,
 ) -> AppResult<()> {
     // TODO: Implémenter vérification rate limit basée sur last_used_at et rate_limit_per_hour
     // Pour l'instant, on accepte toutes les requêtes

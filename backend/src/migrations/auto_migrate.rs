@@ -4345,11 +4345,15 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
 
     run_delivery_step(
         pool,
-        "Create courier_zone_assignments indexes",
-        r#"
-        CREATE INDEX IF NOT EXISTS idx_courier_zone_assignments_zone ON courier_zone_assignments(zone_id);
-        CREATE INDEX IF NOT EXISTS idx_courier_zone_assignments_active ON courier_zone_assignments(is_active);
-        "#,
+        "Create courier_zone_assignments zone index",
+        "CREATE INDEX IF NOT EXISTS idx_courier_zone_assignments_zone ON courier_zone_assignments(zone_id)",
+    )
+    .await?;
+
+    run_delivery_step(
+        pool,
+        "Create courier_zone_assignments active index",
+        "CREATE INDEX IF NOT EXISTS idx_courier_zone_assignments_active ON courier_zone_assignments(is_active)",
     )
     .await?;
 
@@ -6454,7 +6458,7 @@ pub async fn ensure_negotiated_prices_table(pool: &PgPool) -> Result<(), sqlx::E
         r#"
         CREATE TABLE IF NOT EXISTS negotiated_prices (
             id SERIAL PRIMARY KEY,
-            conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
             service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
             product_index INTEGER, -- NULL si prix global pour le service
             merchant_user_id INTEGER NOT NULL REFERENCES users(id),
@@ -6655,7 +6659,7 @@ pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error>
         CREATE INDEX IF NOT EXISTS idx_merchant_storage_locations_location_gist 
         ON merchant_storage_locations 
         USING GIST (
-            ST_Point(longitude, latitude)::geography
+            ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
         )
         WHERE latitude IS NOT NULL AND longitude IS NOT NULL
         "#,
@@ -6669,7 +6673,7 @@ pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error>
         CREATE INDEX IF NOT EXISTS idx_african_locations_location_gist 
         ON african_locations 
         USING GIST (
-            ST_Point(longitude::double precision, latitude::double precision)::geography
+            ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)::geography
         )
         WHERE latitude IS NOT NULL AND longitude IS NOT NULL
         "#,

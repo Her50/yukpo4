@@ -1,13 +1,10 @@
 // ✅ Phase 9 - Amélioration : Routes pour l'upload de médias de preuve de livraison
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::models::delivery_model::DeliveryProofMediaInput;
-use crate::services::delivery_service::DeliveryService;
 use crate::AppState;
 use axum::{
     body::Body,
     extract::{Multipart, Path, State},
-    http::StatusCode,
     response::{Json, Response},
     Extension,
 };

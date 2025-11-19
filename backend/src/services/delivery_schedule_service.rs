@@ -1,7 +1,7 @@
 // ✅ Phase 3 - Amélioration 7 : Service pour gérer les contraintes horaires de livraison
 use crate::core::types::{AppError, AppResult};
 use crate::models::delivery_model::{ClientDeliveryPreferences, ProductDeliveryConfig};
-use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, Utc, Weekday};
+use chrono::{DateTime, Datelike, Duration, NaiveDateTime, NaiveTime, Utc, Weekday};
 use serde_json::Value;
 use sqlx::PgPool;
 

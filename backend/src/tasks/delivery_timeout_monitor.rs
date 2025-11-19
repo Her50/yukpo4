@@ -1,5 +1,5 @@
-use chrono::{DateTime, Duration, Utc};
-use log::{error, info, warn};
+use chrono::{DateTime, Utc};
+use log::{error, info};
 use sqlx::{FromRow, PgPool};
 use std::sync::Arc;
 use tokio::time::{interval, Duration as TokioDuration};
@@ -8,7 +8,6 @@ use uuid::Uuid;
 use crate::core::types::AppResult;
 use crate::models::delivery_model::DeliveryStatus;
 use crate::services::delivery_service::DeliveryService;
-use crate::services::delivery_notification_service;
 use crate::services::push_notification_service;
 use crate::state::AppState;
 

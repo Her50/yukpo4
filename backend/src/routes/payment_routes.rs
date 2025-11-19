@@ -11,8 +11,7 @@ use crate::controllers::payment_controller::validate_phone_number;
 use crate::services::payment_service::{
     PaymentMethod, PaymentReceipt, PaymentRequest, PaymentResponse, PaymentService, PaymentStatus,
 };
-use crate::services::mobile_money_service::{MobileMoneyService, MobileMoneyProvider, MobileMoneyWebhook};
-use crate::core::types::AppResult;
+use crate::services::mobile_money_service::{MobileMoneyService, MobileMoneyWebhook};
 use axum::response::IntoResponse;
 use serde_json::json;
 

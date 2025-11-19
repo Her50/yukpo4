@@ -16,7 +16,7 @@ pub fn health_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
 
 /// ✅ Phase 10 - Vérifie automatiquement le support Google Maps Distance Matrix API
 async fn check_google_maps_support(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY").ok();
     

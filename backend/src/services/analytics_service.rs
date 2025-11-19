@@ -5,9 +5,7 @@ use crate::core::types::AppError;
 use crate::core::types::AppResult;
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use sqlx::{PgPool, Row};
-use std::sync::Arc;
 
 /// Statistiques de livraisons pour un prestataire
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -241,9 +239,9 @@ impl AnalyticsService {
     /// Récupère les statistiques de revenus
     pub async fn get_revenue_stats(
         &self,
-        provider_user_id: i32,
-        period_start: DateTime<Utc>,
-        period_end: DateTime<Utc>,
+        _provider_user_id: i32,
+        _period_start: DateTime<Utc>,
+        _period_end: DateTime<Utc>,
     ) -> AppResult<RevenueStats> {
         // Note: total_cost n'existe pas dans deliveries, utiliser 0.0 pour l'instant
         let revenue_this_month = 0.0;

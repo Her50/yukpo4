@@ -4,7 +4,6 @@
 use crate::core::types::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::HashMap;
 
 /// Configuration du service Mobile Money
 #[derive(Debug, Clone)]

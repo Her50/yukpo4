@@ -3,7 +3,7 @@ use log::debug;
 use serde_json::Value;
 use sqlx::PgPool;
 
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use crate::services::global_promo_service::GlobalPromoService;
 use crate::services::negotiated_price_service::NegotiatedPriceService;
 

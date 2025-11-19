@@ -239,7 +239,7 @@ async fn save_product_delivery_config(
         .and_then(|p| p.get("valeur"))
         .and_then(|v| v.as_array());
 
-    let product = products
+    let _product = products
         .and_then(|arr| arr.get(payload.product_index as usize))
         .ok_or_else(|| {
             AppError::BadRequest("Produit non trouvé".into())
@@ -1307,10 +1307,10 @@ struct EstimateCostsResponse {
 
 async fn estimate_delivery_costs(
     State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
+    Extension(_user): Extension<AuthenticatedUser>,
     Json(payload): Json<EstimateCostsPayload>,
 ) -> AppResult<Json<EstimateCostsResponse>> {
-    let service = delivery_service(&state)?;
+    let _service = delivery_service(&state)?;
 
     // 1. Récupérer le prix du produit (✅ avec promotions)
     let product_price_cents = if let Some(product_index) = payload.product_index {
@@ -1904,10 +1904,10 @@ async fn assign_courier(
 // ✅ Phase 9 - Amélioration 28 : Lister les coursiers disponibles
 async fn list_available_couriers(
     State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
+    Extension(_user): Extension<AuthenticatedUser>,
     Query(params): Query<serde_json::Value>,
 ) -> AppResult<Json<Value>> {
-    let service_id: Option<i32> = params
+    let _service_id: Option<i32> = params
         .get("service_id")
         .and_then(|v| v.as_i64())
         .map(|i| i as i32);
@@ -2088,8 +2088,8 @@ async fn update_storage_location(
 
 async fn delete_storage_location(
     State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
-    Path(id): Path<i32>,
+    Extension(_user): Extension<AuthenticatedUser>,
+    Path(_id): Path<i32>,
 ) -> AppResult<Json<Value>> {
     // Note: merchant_storage_locations table n'existe pas encore dans les migrations
     // TODO: Créer la migration pour cette table

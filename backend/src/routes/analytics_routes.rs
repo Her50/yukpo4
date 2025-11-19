@@ -1,12 +1,11 @@
 // ✅ Phase 10 - Routes d'analytics pour prestataires
 
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Query, State},
     response::IntoResponse,
     Json,
 };
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::middlewares::jwt::{AuthenticatedUser, jwt_auth};

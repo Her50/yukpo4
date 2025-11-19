@@ -3,7 +3,6 @@
 
 use crate::core::types::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 /// Configuration du service SMS
 #[derive(Debug, Clone)]
