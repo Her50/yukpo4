@@ -7,7 +7,7 @@ use axum::{
         Extension, Path, Query, State,
     },
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
 use chrono::{DateTime, Utc};

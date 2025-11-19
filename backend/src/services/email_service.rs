@@ -147,7 +147,8 @@ impl EmailService {
 
         // Ajouter le contenu (text et/ou html)
         let mut content_array = vec![];
-        if let Some(text) = content.text {
+        let text_content = content.text.clone();
+        if let Some(text) = &text_content {
             content_array.push(json!({
                 "type": "text/plain",
                 "value": text
@@ -158,11 +159,11 @@ impl EmailService {
                 "type": "text/html",
                 "value": html
             }));
-        } else if content.text.is_some() {
+        } else if let Some(text) = &text_content {
             // Si pas de HTML mais du texte, convertir le texte en HTML simple
             content_array.push(json!({
                 "type": "text/html",
-                "value": format!("<p>{}</p>", content.text.as_ref().unwrap().replace("\n", "<br>"))
+                "value": format!("<p>{}</p>", text.replace("\n", "<br>"))
             }));
         }
 

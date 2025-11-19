@@ -136,7 +136,7 @@ impl AnalyticsService {
     }
 
     /// Récupère les statistiques de livraisons
-    async fn get_delivery_stats(
+    pub async fn get_delivery_stats(
         &self,
         provider_user_id: i32,
         period_start: DateTime<Utc>,
@@ -235,7 +235,7 @@ impl AnalyticsService {
     }
 
     /// Récupère les statistiques de revenus
-    async fn get_revenue_stats(
+    pub async fn get_revenue_stats(
         &self,
         provider_user_id: i32,
         period_start: DateTime<Utc>,
@@ -320,7 +320,7 @@ impl AnalyticsService {
     }
 
     /// Récupère les top produits/services
-    async fn get_top_products(
+    pub async fn get_top_products(
         &self,
         provider_user_id: i32,
         period_start: DateTime<Utc>,
@@ -404,7 +404,7 @@ impl AnalyticsService {
     }
 
     /// Récupère les top zones de livraison
-    async fn get_top_delivery_zones(
+    pub async fn get_top_delivery_zones(
         &self,
         provider_user_id: i32,
         period_start: DateTime<Utc>,
@@ -457,7 +457,7 @@ impl AnalyticsService {
     }
 
     /// Récupère les données de performance sur le temps (par jour)
-    async fn get_performance_over_time(
+    pub async fn get_performance_over_time(
         &self,
         provider_user_id: i32,
         period_start: DateTime<Utc>,

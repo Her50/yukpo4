@@ -151,8 +151,9 @@ impl CacheService {
 
         match client.get_multiplexed_async_connection().await {
             Ok(mut conn) => {
-                match redis::cmd("KEYS").arg(pattern).query_async::<_, Vec<String>>(&mut conn).await {
+                match redis::cmd("KEYS").arg(pattern).query_async(&mut conn).await {
                     Ok(keys) => {
+                        let keys: Vec<String> = keys;
                         if keys.is_empty() {
                             return Ok(0);
                         }

@@ -678,8 +678,8 @@ pub struct ExternalDeliveryProviderInput {
 pub struct ExternalDeliveryRequest {
     pub api_key: String,
     pub service_name: String,
-    pub pickup: LocationInput,
-    pub dropoff: LocationInput,
+    pub pickup: crate::services::delivery_service::LocationInput,
+    pub dropoff: crate::services::delivery_service::LocationInput,
     pub parcel: ExternalParcelInput,
     pub client_info: ExternalClientInfo,
     pub preferences: Option<ExternalDeliveryPreferences>,

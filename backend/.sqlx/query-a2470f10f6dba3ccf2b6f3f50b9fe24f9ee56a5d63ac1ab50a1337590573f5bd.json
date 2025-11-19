@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO client_delivery_preferences (\n                user_id, delivery_id,\n                preferred_delivery_date, preferred_delivery_time_start, preferred_delivery_time_end,\n                preferred_delivery_window_hours, urgency_level,\n                is_flexible, flexibility_window_days\n            )\n            VALUES (\n                0, $1, $2, $3, $4, 2, $5, TRUE, 3\n            )\n            ON CONFLICT DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date",
+        "Time",
+        "Time",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a2470f10f6dba3ccf2b6f3f50b9fe24f9ee56a5d63ac1ab50a1337590573f5bd"
+}

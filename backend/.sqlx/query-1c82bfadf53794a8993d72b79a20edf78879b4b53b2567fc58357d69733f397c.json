@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT product_price_cents, delivery_cost_cents, billing_mode, merchant_pays_delivery\n            FROM delivery_payment_reservations\n            WHERE delivery_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "product_price_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "delivery_cost_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "billing_mode",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "merchant_pays_delivery",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "1c82bfadf53794a8993d72b79a20edf78879b4b53b2567fc58357d69733f397c"
+}

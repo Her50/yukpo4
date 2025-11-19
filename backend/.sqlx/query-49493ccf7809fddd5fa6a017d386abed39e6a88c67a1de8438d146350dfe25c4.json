@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO delivery_recipient_updates (\n                    delivery_id,\n                    submitted_by,\n                    latitude,\n                    longitude,\n                    address\n                )\n                VALUES ($1, $2, $3, $4, $5)\n                ON CONFLICT DO NOTHING\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Float8",
+        "Float8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "49493ccf7809fddd5fa6a017d386abed39e6a88c67a1de8438d146350dfe25c4"
+}

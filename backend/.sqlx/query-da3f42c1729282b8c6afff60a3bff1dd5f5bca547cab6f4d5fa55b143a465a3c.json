@@ -1,0 +1,103 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO client_delivery_preferences (\n            user_id, delivery_id,\n            preferred_delivery_date, preferred_delivery_time_start, preferred_delivery_time_end,\n            preferred_delivery_window_hours, avoid_days, urgency_level,\n            is_flexible, flexibility_window_days\n        )\n        VALUES (\n            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10\n        )\n        ON CONFLICT (user_id, delivery_id)\n        DO UPDATE SET\n            preferred_delivery_date = EXCLUDED.preferred_delivery_date,\n            preferred_delivery_time_start = EXCLUDED.preferred_delivery_time_start,\n            preferred_delivery_time_end = EXCLUDED.preferred_delivery_time_end,\n            preferred_delivery_window_hours = EXCLUDED.preferred_delivery_window_hours,\n            avoid_days = EXCLUDED.avoid_days,\n            urgency_level = EXCLUDED.urgency_level,\n            is_flexible = EXCLUDED.is_flexible,\n            flexibility_window_days = EXCLUDED.flexibility_window_days,\n            updated_at = NOW()\n        RETURNING id, user_id, delivery_id,\n                  preferred_delivery_date, preferred_delivery_time_start, preferred_delivery_time_end,\n                  preferred_delivery_window_hours, avoid_days, urgency_level,\n                  is_flexible, flexibility_window_days,\n                  created_at, updated_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "delivery_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "preferred_delivery_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 4,
+        "name": "preferred_delivery_time_start",
+        "type_info": "Time"
+      },
+      {
+        "ordinal": 5,
+        "name": "preferred_delivery_time_end",
+        "type_info": "Time"
+      },
+      {
+        "ordinal": 6,
+        "name": "preferred_delivery_window_hours",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "avoid_days",
+        "type_info": "Int4Array"
+      },
+      {
+        "ordinal": 8,
+        "name": "urgency_level",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "is_flexible",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "flexibility_window_days",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Uuid",
+        "Date",
+        "Time",
+        "Time",
+        "Int4",
+        "Int4Array",
+        "Varchar",
+        "Bool",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "da3f42c1729282b8c6afff60a3bff1dd5f5bca547cab6f4d5fa55b143a465a3c"
+}

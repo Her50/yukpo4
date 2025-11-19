@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT gps, nom_complet FROM users WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "gps",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "nom_complet",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "0f59aad5dcbf176518bec7db8bd6a38613d882c06d8ef8b2c0e1978fd57a38f1"
+}

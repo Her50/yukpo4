@@ -18,10 +18,10 @@ use crate::{
     models::delivery_model::{
         ClientDeliveryPreferencesInput, ExternalClientInfo, ExternalDeliveryPreferences,
         ExternalDeliveryProvider, ExternalDeliveryProviderInput, ExternalDeliveryRequest,
-        ExternalParcelInput, LocationInput,
+        ExternalParcelInput,
     },
     services::delivery_service::{
-        CreateDeliveryParams, DeliveryRecipientInput, DeliveryService, NewDeliveryParcelInput,
+        CreateDeliveryParams, DeliveryRecipientInput, DeliveryService, LocationInput, NewDeliveryParcelInput,
     },
     state::AppState,
 };

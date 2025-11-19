@@ -1,6 +1,6 @@
 // ✅ Phase 9 - Amélioration : Routes pour l'upload de médias de preuve de livraison
 use crate::core::types::{AppError, AppResult};
-use crate::middleware::auth::AuthenticatedUser;
+use crate::middlewares::jwt::AuthenticatedUser;
 use crate::models::delivery_model::DeliveryProofMediaInput;
 use crate::services::delivery_service::DeliveryService;
 use crate::AppState;

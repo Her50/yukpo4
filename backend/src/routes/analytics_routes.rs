@@ -10,7 +10,7 @@ use serde_json::Value;
 use std::sync::Arc;
 
 use crate::middlewares::jwt::{AuthenticatedUser, jwt_auth};
-use crate::middlewares::jwt::Extension;
+use axum::Extension;
 use crate::services::analytics_service::AnalyticsService;
 use crate::state::AppState;
 
@@ -79,7 +79,7 @@ async fn get_provider_analytics(
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<AnalyticsQuery>,
 ) -> impl IntoResponse {
-    let analytics_service = AnalyticsService::new((*state.pg).clone());
+    let analytics_service = AnalyticsService::new(state.pg.clone());
 
     match analytics_service
         .get_provider_analytics(user.id, params.days)
@@ -113,7 +113,7 @@ async fn get_delivery_stats(
     let period_start = Utc::now() - Duration::days(days as i64);
     let period_end = Utc::now();
 
-    let analytics_service = AnalyticsService::new((*state.pg).clone());
+    let analytics_service = AnalyticsService::new(state.pg.clone());
 
     match analytics_service
         .get_delivery_stats(user.id, period_start, period_end)
@@ -147,7 +147,7 @@ async fn get_revenue_stats(
     let period_start = Utc::now() - Duration::days(days as i64);
     let period_end = Utc::now();
 
-    let analytics_service = AnalyticsService::new((*state.pg).clone());
+    let analytics_service = AnalyticsService::new(state.pg.clone());
 
     match analytics_service
         .get_revenue_stats(user.id, period_start, period_end)
@@ -182,7 +182,7 @@ async fn get_top_products(
     let period_start = Utc::now() - Duration::days(days as i64);
     let period_end = Utc::now();
 
-    let analytics_service = AnalyticsService::new((*state.pg).clone());
+    let analytics_service = AnalyticsService::new(state.pg.clone());
 
     match analytics_service
         .get_top_products(user.id, period_start, period_end, limit)
@@ -217,7 +217,7 @@ async fn get_top_zones(
     let period_start = Utc::now() - Duration::days(days as i64);
     let period_end = Utc::now();
 
-    let analytics_service = AnalyticsService::new((*state.pg).clone());
+    let analytics_service = AnalyticsService::new(state.pg.clone());
 
     match analytics_service
         .get_top_delivery_zones(user.id, period_start, period_end, limit)
@@ -251,7 +251,7 @@ async fn get_performance_over_time(
     let period_start = Utc::now() - Duration::days(days as i64);
     let period_end = Utc::now();
 
-    let analytics_service = AnalyticsService::new((*state.pg).clone());
+    let analytics_service = AnalyticsService::new(state.pg.clone());
 
     match analytics_service
         .get_performance_over_time(user.id, period_start, period_end)

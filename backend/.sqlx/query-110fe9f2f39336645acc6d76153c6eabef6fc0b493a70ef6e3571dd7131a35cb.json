@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE delivery_payment_reservations\n            SET\n                reservation_status = 'debited',\n                debited_at = NOW(),\n                updated_at = NOW()\n            WHERE delivery_id = $1 AND reservation_status = 'reserved'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "110fe9f2f39336645acc6d76153c6eabef6fc0b493a70ef6e3571dd7131a35cb"
+}
