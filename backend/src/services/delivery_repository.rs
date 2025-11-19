@@ -1402,7 +1402,7 @@ impl DeliveryRepository {
                 status: row.status,
                 creator_id: row.creator_id,
                 courier_id: row.courier_id,
-                preferred_courier_id: row.preferred_courier_id, // ✅ Phase 9 - Amélioration 28
+                preferred_courier_id: None, // Note: preferred_courier_id n'existe pas dans deliveries
                 pickup: GeoPoint {
                     latitude: row.pickup_lat,
                     longitude: row.pickup_lng,

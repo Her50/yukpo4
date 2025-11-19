@@ -2,7 +2,7 @@
 // Structure prête pour intégration APIs mobile money (MTN/Orange)
 use crate::core::types::{AppError, AppResult};
 use serde_json::{json, Value};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 
 /// Mode de reversement déterminé par le matching
 #[derive(Debug, Clone)]
@@ -210,10 +210,10 @@ impl PaymentMatchingService {
     /// ✅ Crédite le wallet interne (fallback)
     async fn credit_wallet_internal(
         &self,
-        user_id: i32,
-        amount_cents: i64,
-        delivery_id: uuid::Uuid,
-        reason: Option<String>,
+        _user_id: i32,
+        _amount_cents: i64,
+        _delivery_id: uuid::Uuid,
+        _reason: Option<String>,
     ) -> AppResult<()> {
         // Note: wallet_transactions et user_wallets tables n'existent pas encore dans les migrations
         // TODO: Créer les migrations pour ces tables

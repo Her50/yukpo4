@@ -7,7 +7,7 @@ use bigdecimal::BigDecimal;
 use rust_decimal::Decimal;
 use std::str::FromStr;
 use serde_json::{json, Value};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -497,9 +497,9 @@ impl DeliveryPaymentService {
     async fn credit_user_wallet(
         &self,
         user_id: i32,
-        delivery_id: Uuid,
-        amount_cents: i64,
-        reason: Option<String>,
+        _delivery_id: Uuid,
+        _amount_cents: i64,
+        _reason: Option<String>,
     ) -> AppResult<()> {
         // Note: wallet_transactions et user_wallets tables n'existent pas encore dans les migrations
         // TODO: Créer les migrations pour ces tables

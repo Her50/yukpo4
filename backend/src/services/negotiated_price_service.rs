@@ -2,7 +2,7 @@ use chrono::{Duration, Utc};
 use log::{error, info, warn};
 use serde::Serialize;
 use serde_json::Value;
-use sqlx::{FromRow, PgPool, Row};
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::core::types::{AppError, AppResult};
@@ -35,11 +35,11 @@ impl NegotiatedPriceService {
     /// Crée une offre de prix négocié
     pub async fn create_negotiated_price(
         &self,
-        conversation_id: i32,
-        service_id: i32,
-        product_index: Option<i32>,
-        merchant_user_id: i32,
-        client_user_id: i32,
+        _conversation_id: i32,
+        _service_id: i32,
+        _product_index: Option<i32>,
+        _merchant_user_id: i32,
+        _client_user_id: i32,
         original_price_cents: i64,
         negotiated_price_cents: i64,
         expires_in_hours: Option<i32>,
@@ -52,7 +52,7 @@ impl NegotiatedPriceService {
         }
 
         // Calculer la date d'expiration
-        let expires_at = expires_in_hours.map(|hours| {
+        let _expires_at = expires_in_hours.map(|hours| {
             Utc::now() + Duration::hours(hours as i64)
         });
 
@@ -67,7 +67,7 @@ impl NegotiatedPriceService {
 
         info!(
             "✅ Offre de prix négocié créée: conversation={}, service={}, produit={:?}, prix={} -> {}",
-            conversation_id, service_id, product_index, original_price_cents, negotiated_price_cents
+            _conversation_id, _service_id, _product_index, original_price_cents, negotiated_price_cents
         );
 
         Ok(id)
@@ -76,10 +76,10 @@ impl NegotiatedPriceService {
     /// Récupère le prix négocié actif pour une conversation/service/produit
     pub async fn get_active_negotiated_price(
         &self,
-        conversation_id: i32,
-        service_id: i32,
-        product_index: Option<i32>,
-        client_user_id: i32,
+        _conversation_id: i32,
+        _service_id: i32,
+        _product_index: Option<i32>,
+        _client_user_id: i32,
     ) -> AppResult<Option<i64>> {
         // Note: negotiated_prices table n'existe pas encore dans les migrations
         // TODO: Créer la migration pour cette table
@@ -90,10 +90,10 @@ impl NegotiatedPriceService {
     /// Récupère l'offre en attente pour une conversation/service/produit
     pub async fn get_pending_offer(
         &self,
-        conversation_id: i32,
-        service_id: i32,
-        product_index: Option<i32>,
-        client_user_id: i32,
+        _conversation_id: i32,
+        _service_id: i32,
+        _product_index: Option<i32>,
+        _client_user_id: i32,
     ) -> AppResult<Option<NegotiatedPriceOffer>> {
         // Note: negotiated_prices table n'existe pas encore dans les migrations
         // TODO: Créer la migration pour cette table
@@ -102,7 +102,7 @@ impl NegotiatedPriceService {
     }
 
     /// Accepte une offre de prix négocié
-    pub async fn accept_offer(&self, offer_id: i32, client_user_id: i32) -> AppResult<()> {
+    pub async fn accept_offer(&self, _offer_id: i32, _client_user_id: i32) -> AppResult<()> {
         // Note: negotiated_prices table n'existe pas encore dans les migrations
         // TODO: Créer la migration pour cette table
         // Pour l'instant, retourner une erreur
@@ -110,7 +110,7 @@ impl NegotiatedPriceService {
     }
 
     /// Rejette une offre de prix négocié
-    pub async fn reject_offer(&self, offer_id: i32, client_user_id: i32) -> AppResult<()> {
+    pub async fn reject_offer(&self, _offer_id: i32, _client_user_id: i32) -> AppResult<()> {
         // Note: negotiated_prices table n'existe pas encore dans les migrations
         // TODO: Créer la migration pour cette table
         // Pour l'instant, retourner une erreur

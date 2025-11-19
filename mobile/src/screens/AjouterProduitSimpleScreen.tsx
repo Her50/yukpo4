@@ -251,7 +251,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         prix_produit,
         devise_produit,
         variabilite_prix: iaPriceVariant ? 'OUI' : 'NON',
-        produits: produits.length || 0,
+        produits: (produits && Array.isArray(produits) ? produits.length : 0) || (Array.isArray(suggestionProduits) ? suggestionProduits.length : 0),
         lieu_produit: lieu_produit ? 'OUI' : 'NON'
     });
 

@@ -922,6 +922,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 8, // ✅ Espacement pour éviter chevauchement
+        marginLeft: -8, // ✅ Décalage léger à gauche pour équilibrer
     },
     headerTop: {
         flexDirection: 'row',
@@ -1081,10 +1082,10 @@ const styles = StyleSheet.create({
         textShadowRadius: 4,
     },
     brandTitleCompact: {
-        fontSize: 22, // ✅ Réduit de 24 à 22 pour éviter chevauchement
+        fontSize: 20, // ✅ Réduit de 22 à 20 pour mieux s'adapter à l'espace
         fontWeight: '900',
         textAlign: 'center',
-        letterSpacing: -0.5, // Rapproche les lettres
+        letterSpacing: -0.3, // ✅ Ajusté pour meilleur équilibre visuel
     },
     brandYuk: {
         color: '#EAB308', // text-yellow-500 du frontend
