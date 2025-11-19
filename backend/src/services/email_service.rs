@@ -27,10 +27,12 @@ impl EmailConfig {
 
         let sendgrid_api_key = std::env::var("SENDGRID_API_KEY").ok();
         let sendgrid_from_email = std::env::var("SENDGRID_FROM_EMAIL")
-            .or_else(|_| std::env::var("EMAIL_FROM").ok());
+            .or_else(|_| std::env::var("EMAIL_FROM"))
+            .ok();
         let sendgrid_from_name = std::env::var("SENDGRID_FROM_NAME")
-            .or_else(|_| std::env::var("EMAIL_FROM_NAME").ok())
-            .or_else(|| Some("Yukpomnang".to_string()));
+            .or_else(|_| std::env::var("EMAIL_FROM_NAME"))
+            .ok()
+            .or(Some("Yukpomnang".to_string()));
 
         Self {
             enabled,
