@@ -4467,10 +4467,18 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
 
     run_delivery_step(
         pool,
-        "Create delivery_matching_events indexes",
+        "Create delivery_matching_events delivery index",
         r#"
-        CREATE INDEX IF NOT EXISTS idx_delivery_matching_events_delivery ON delivery_matching_events(delivery_id);
-        CREATE INDEX IF NOT EXISTS idx_delivery_matching_events_courier ON delivery_matching_events(courier_id);
+        CREATE INDEX IF NOT EXISTS idx_delivery_matching_events_delivery ON delivery_matching_events(delivery_id)
+        "#,
+    )
+    .await?;
+
+    run_delivery_step(
+        pool,
+        "Create delivery_matching_events courier index",
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_delivery_matching_events_courier ON delivery_matching_events(courier_id)
         "#,
     )
     .await?;

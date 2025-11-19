@@ -163,8 +163,7 @@ async fn check_pending_confirmations(
                 d.recipient_user_id,
                 c.user_id as courier_user_id
             FROM deliveries d
-            LEFT JOIN delivery_couriers dc ON dc.delivery_id = d.id AND dc.status = 'assigned'
-            LEFT JOIN courier_profiles c ON c.id = dc.courier_id
+            LEFT JOIN couriers c ON c.id = d.courier_id
             WHERE 
                 d.status::text = $1
                 AND d.updated_at < NOW() - ($2 || ' minutes')::interval
