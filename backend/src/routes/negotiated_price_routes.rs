@@ -186,8 +186,8 @@ pub fn negotiated_price_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/negotiated-prices", post(create_negotiated_price))
         .route("/negotiated-prices/pending", get(get_pending_offer))
-        .route("/negotiated-prices/:id/accept", post(accept_offer))
-        .route("/negotiated-prices/:id/reject", post(reject_offer))
+        .route("/negotiated-prices/{id}/accept", post(accept_offer))
+        .route("/negotiated-prices/{id}/reject", post(reject_offer))
         .with_state(state)
 }
 

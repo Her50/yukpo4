@@ -4431,10 +4431,18 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
 
     run_delivery_step(
         pool,
-        "Create delivery_matching_queue indexes",
+        "Create delivery_matching_queue status index",
         r#"
-        CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_status ON delivery_matching_queue(status, next_attempt_at);
-        CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_zone ON delivery_matching_queue(zone_id);
+        CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_status ON delivery_matching_queue(status, next_attempt_at)
+        "#,
+    )
+    .await?;
+
+    run_delivery_step(
+        pool,
+        "Create delivery_matching_queue zone index",
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_zone ON delivery_matching_queue(zone_id)
         "#,
     )
     .await?;
@@ -6675,7 +6683,7 @@ pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error>
         CREATE INDEX IF NOT EXISTS idx_merchant_storage_locations_location_gist 
         ON merchant_storage_locations 
         USING GIST (
-            ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
+            CAST(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) AS geography)
         )
         WHERE latitude IS NOT NULL AND longitude IS NOT NULL
         "#,
@@ -6689,7 +6697,7 @@ pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error>
         CREATE INDEX IF NOT EXISTS idx_african_locations_location_gist 
         ON african_locations 
         USING GIST (
-            ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)::geography
+            CAST(ST_SetSRID(ST_MakePoint(CAST(longitude AS double precision), CAST(latitude AS double precision)), 4326) AS geography)
         )
         WHERE latitude IS NOT NULL AND longitude IS NOT NULL
         "#,
