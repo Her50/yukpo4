@@ -3300,14 +3300,24 @@ impl DeliveryService {
         if (final_pickup_lat - summary.pickup.latitude).abs() > 0.0001 || 
            (final_pickup_lng - summary.pickup.longitude).abs() > 0.0001 {
             // Mettre à jour les coordonnées pickup dans la base de données
-            sqlx::query!(
-                "UPDATE deliveries SET pickup_latitude = $1, pickup_longitude = $2, pickup_address = $3, distance_meters = $4, updated_at = NOW() WHERE id = $5",
-                final_pickup_lat,
-                final_pickup_lng,
-                final_pickup_address,
-                final_distance,
-                summary.id
+            // Note: pickup_latitude et pickup_longitude n'existent pas dans deliveries
+            // Les coordonnées sont stockées dans pickup_location (geography)
+            // Mettre à jour pickup_location avec les nouvelles coordonnées
+            sqlx::query(
+                r#"
+                UPDATE deliveries 
+                SET pickup_location = ST_SetSRID(ST_MakePoint($1::double precision, $2::double precision), 4326)::geography,
+                    pickup_address = $3,
+                    distance_meters = $4,
+                    updated_at = NOW()
+                WHERE id = $5
+                "#
             )
+            .bind(final_pickup_lng)
+            .bind(final_pickup_lat)
+            .bind(final_pickup_address)
+            .bind(final_distance)
+            .bind(summary.id)
             .execute(self.repository.pool())
             .await
             .map_err(|e| AppError::Internal(format!("Erreur mise à jour pickup: {}", e)))?;

@@ -6,6 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::Row;
 use std::sync::Arc;
 
 use crate::core::types::{AppError, AppResult};
@@ -44,35 +45,40 @@ async fn create_negotiated_price(
     Json(payload): Json<CreateNegotiatedPriceRequest>,
 ) -> AppResult<Json<CreateNegotiatedPriceResponse>> {
     // Vérifier que l'utilisateur est le prestataire du service
-    let service = sqlx::query!(
-        "SELECT creator_id FROM services WHERE id = $1",
-        payload.service_id
+    let service_row = sqlx::query(
+        "SELECT user_id FROM services WHERE id = $1"
     )
+    .bind(payload.service_id)
     .fetch_optional(&state.pg)
     .await?;
 
-    let service_row = service.ok_or_else(|| AppError::NotFound("Service introuvable".into()))?;
+    let service_owner_id: i32 = service_row
+        .ok_or_else(|| AppError::NotFound("Service introuvable".into()))?
+        .try_get("user_id")?;
     
-    if service_row.creator_id != user.id {
+    if service_owner_id != user.id {
         return Err(AppError::Forbidden(
             "Seul le prestataire peut créer une offre de prix négocié".into(),
         ));
     }
 
     // Récupérer le client de la conversation
-    let conversation = sqlx::query!(
-        "SELECT user1_id, user2_id FROM conversations WHERE id = $1",
-        payload.conversation_id
+    let conversation_row = sqlx::query(
+        "SELECT client_id, prestataire_id FROM conversations WHERE id = $1"
     )
+    .bind(&payload.conversation_id)
     .fetch_optional(&state.pg)
     .await?;
 
-    let conv = conversation.ok_or_else(|| AppError::NotFound("Conversation introuvable".into()))?;
+    let conv_row = conversation_row.ok_or_else(|| AppError::NotFound("Conversation introuvable".into()))?;
     
-    let client_user_id = if conv.user1_id == user.id {
-        conv.user2_id
-    } else if conv.user2_id == user.id {
-        conv.user1_id
+    let client_id: i32 = conv_row.try_get("client_id")?;
+    let prestataire_id: i32 = conv_row.try_get("prestataire_id")?;
+    
+    let client_user_id = if prestataire_id == user.id {
+        client_id
+    } else if client_id == user.id {
+        prestataire_id
     } else {
         return Err(AppError::Forbidden(
             "Vous n'êtes pas participant à cette conversation".into(),
@@ -107,25 +113,28 @@ async fn get_pending_offer(
     Query(params): Query<GetPendingOfferQuery>,
 ) -> AppResult<Json<Option<NegotiatedPriceOffer>>> {
     // Vérifier que l'utilisateur participe à la conversation
-    let conversation = sqlx::query!(
-        "SELECT user1_id, user2_id FROM conversations WHERE id = $1",
-        params.conversation_id
+    let conversation_row = sqlx::query(
+        "SELECT client_id, prestataire_id FROM conversations WHERE id = $1"
     )
+    .bind(params.conversation_id)
     .fetch_optional(&state.pg)
     .await?;
 
-    let conv = conversation.ok_or_else(|| AppError::NotFound("Conversation introuvable".into()))?;
+    let conv_row = conversation_row.ok_or_else(|| AppError::NotFound("Conversation introuvable".into()))?;
     
-    if conv.user1_id != user.id && conv.user2_id != user.id {
+    let client_id: i32 = conv_row.try_get("client_id")?;
+    let prestataire_id: i32 = conv_row.try_get("prestataire_id")?;
+    
+    if prestataire_id != user.id && client_id != user.id {
         return Err(AppError::Forbidden(
             "Vous n'êtes pas participant à cette conversation".into(),
         ));
     }
 
-    let client_user_id = if conv.user1_id == user.id {
-        conv.user2_id
+    let client_user_id = if prestataire_id == user.id {
+        client_id
     } else {
-        conv.user1_id
+        prestataire_id
     };
 
     let service = NegotiatedPriceService::new(state.pg.clone());

@@ -714,7 +714,6 @@ impl DeliveryRepository {
                 status                     AS "status: DeliveryStatus",
                 creator_id,
                 courier_id,
-                preferred_courier_id       AS "preferred_courier_id?: Uuid",
                 ST_Y(pickup_location::geometry)  AS "pickup_lat!: f64",
                 ST_X(pickup_location::geometry)  AS "pickup_lng!: f64",
                 ST_Y(dropoff_location::geometry) AS "dropoff_lat!: f64",
@@ -1304,7 +1303,6 @@ impl DeliveryRepository {
                 status AS "status: DeliveryStatus",
                 creator_id,
                 courier_id,
-                preferred_courier_id AS "preferred_courier_id?: uuid::Uuid", -- ✅ Phase 9 - Amélioration 28
                 ST_Y(pickup_location::geometry) AS "pickup_lat!: f64",
                 ST_X(pickup_location::geometry) AS "pickup_lng!: f64",
                 ST_Y(dropoff_location::geometry) AS "dropoff_lat!: f64",
@@ -1579,7 +1577,6 @@ impl DeliveryRepository {
                 estimated_price_cents  AS "estimated_price_cents!: i32",
                  actual_price_cents     AS "actual_price_cents?: i32",
                 status                 AS "status: ShoppingItemStatus",
-                rejection_reason       AS "rejection_reason?: ParcelRejectionReason",
                 COALESCE(metadata, '{}'::jsonb) AS "metadata!: serde_json::Value",
                 created_at             AS "created_at!: chrono::DateTime<Utc>",
                 updated_at             AS "updated_at!: chrono::DateTime<Utc>"
@@ -1709,7 +1706,6 @@ impl DeliveryRepository {
                     estimated_price_cents AS "estimated_price_cents!: i32",
                     actual_price_cents     AS "actual_price_cents?: i32",
                     status AS "status: ShoppingItemStatus",
-                    rejection_reason       AS "rejection_reason?: ParcelRejectionReason",
                     metadata AS "metadata!: serde_json::Value",
                     created_at AS "created_at!: chrono::DateTime<Utc>",
                     updated_at AS "updated_at!: chrono::DateTime<Utc>"
