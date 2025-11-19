@@ -213,7 +213,7 @@ async fn get_delivery_status_by_token(
         "estimated_pickup_time": summary.metadata.get("estimated_pickup_time"),
         "estimated_delivery_time": summary.metadata.get("estimated_delivery_time"),
         "courier_assigned": summary.courier_id.is_some(),
-        "last_update": summary.updated_at,
+        "last_update": summary.delivered_at.or(Some(summary.requested_at)),
     })))
 }
 

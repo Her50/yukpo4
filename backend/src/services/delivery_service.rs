@@ -1502,7 +1502,7 @@ impl DeliveryService {
 
                 // Envoyer notification push au prestataire
                 let _ = push_notification_service::send_push_notification(
-                    &self.repository.pool,
+                    self.repository.pool(),
                     summary_before.creator_id,
                     "📍 Adresse de livraison confirmée".to_string(),
                     format!(
@@ -1549,7 +1549,7 @@ impl DeliveryService {
                     distance,
                     delivery_id
                 )
-                .execute(&self.repository.pool)
+                .execute(self.repository.pool())
                 .await
                 .map_err(|e| AppError::Internal(format!("Erreur mise à jour distance: {}", e)))?;
 
@@ -1560,7 +1560,7 @@ impl DeliveryService {
                 let distance_price_cents = (estimated_cost * 100.0) as i32;
 
                 // Récupérer le pricing actuel pour préserver les autres valeurs
-                if let Some(existing_pricing) = self.repository.find_delivery_pricing(delivery_id).await? {
+                if let Some(existing_pricing) = self.repository.get_pricing_by_delivery(delivery_id).await? {
                     self.upsert_pricing(PricingInput {
                         delivery_id,
                         base_price_cents: existing_pricing.base_price_cents,
@@ -3130,7 +3130,7 @@ impl DeliveryService {
     }
 
     /// Enfile immédiatement la livraison dans la file de matching et tente un dispatch express
-    async fn enqueue_delivery_matching(&self, summary: &DeliverySummary) -> AppResult<()> {
+    pub async fn enqueue_delivery_matching(&self, summary: &DeliverySummary) -> AppResult<()> {
         let mut zone_id = Self::extract_zone_from_metadata(&summary.metadata);
         
         // ✅ Phase 3 - Amélioration 7 : Récupérer les préférences client et configuration produit
@@ -3140,7 +3140,7 @@ impl DeliveryService {
             )
             .bind(summary.id)
             .bind(recipient_user_id)
-            .fetch_optional(&self.repository.pool)
+            .fetch_optional(self.repository.pool())
             .await
             .ok()
             .flatten()
@@ -3158,7 +3158,7 @@ impl DeliveryService {
                 )
                 .bind(sid)
                 .bind(pidx)
-                .fetch_optional(&self.repository.pool)
+                .fetch_optional(self.repository.pool())
                 .await
                 .ok()
                 .flatten()
@@ -3176,7 +3176,7 @@ impl DeliveryService {
                     "SELECT id, merchant_user_id, name, address, latitude, longitude, zone_id, is_active, created_at, updated_at FROM merchant_storage_locations WHERE id = $1 AND is_active = TRUE"
                 )
                 .bind(storage_location_id)
-                .fetch_optional(&self.repository.pool)
+                .fetch_optional(self.repository.pool())
                 .await {
                     // ✅ Phase 9 - Amélioration : Utiliser la zone du lieu de stock si elle existe
                     let storage_zone = storage.zone_id;
@@ -3195,7 +3195,7 @@ impl DeliveryService {
                     "SELECT user_id FROM services WHERE id = $1",
                     config.service_id
                 )
-                .fetch_optional(&self.repository.pool)
+                .fetch_optional(self.repository.pool())
                 .await {
                     // Trouver le lieu de stock le plus proche du dropoff
                     if let Ok(Some(closest_storage)) = sqlx::query_as::<_, crate::models::delivery_model::MerchantStorageLocation>(
@@ -3216,7 +3216,7 @@ impl DeliveryService {
                     .bind(service.user_id)
                     .bind(dropoff_lat)
                     .bind(dropoff_lng)
-                    .fetch_optional(&self.repository.pool)
+                    .fetch_optional(self.repository.pool())
                     .await {
                         // ✅ Phase 9 - Amélioration : Utiliser la zone du lieu de stock si elle existe
                         let storage_zone = closest_storage.zone_id;
@@ -3262,7 +3262,7 @@ impl DeliveryService {
         };
 
         // ✅ Phase 3 - Amélioration 7 : Calculer créneau acceptable avec contraintes horaires
-        let schedule_service = DeliveryScheduleService::new(self.repository.pool.clone());
+        let schedule_service = DeliveryScheduleService::new(self.repository.pool().clone());
         let estimated_transit_hours = if let Some(distance_m) = summary.distance_meters {
             // Estimer ~30 km/h en moyenne
             (distance_m as f64 / 1000.0 / 30.0).max(0.5)

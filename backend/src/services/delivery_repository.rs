@@ -792,6 +792,7 @@ impl DeliveryRepository {
             status: delivery_row.status,
             creator_id: delivery_row.creator_id,
             courier_id: delivery_row.courier_id,
+            preferred_courier_id: delivery_row.preferred_courier_id,
             pickup: GeoPoint {
                 latitude: delivery_row.pickup_lat,
                 longitude: delivery_row.pickup_lng,

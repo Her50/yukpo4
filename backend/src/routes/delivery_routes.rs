@@ -647,7 +647,7 @@ async fn create_client_order(
 
     // ✅ 2. Vérifier si configuration complète
     if let Some(config) = &delivery_config {
-        if !config.is_configured {
+        if !config.is_configured.unwrap_or(false) {
             return Err(crate::core::types::AppError::BadRequest(
                 "Configuration de livraison incomplète pour ce produit. Le prestataire doit compléter la configuration.".into(),
             ));
@@ -834,11 +834,12 @@ async fn create_client_order(
         };
 
         // Récupérer le coût de livraison depuis le pricing de la livraison
-        let delivery_cost_cents = if let Some(pricing) = &summary.pricing {
-            (pricing.total_cost_cents as i64)
-        } else {
-            0
-        };
+        // Note: Le pricing n'est pas dans DeliverySummary, on le récupère depuis metadata ou on utilise 0
+        let delivery_cost_cents = summary.metadata
+            .get("pricing")
+            .and_then(|p| p.get("total_cost_cents"))
+            .and_then(|c| c.as_i64())
+            .unwrap_or(0);
 
         // Récupérer le billing_mode depuis product_delivery_config
         let billing_mode = if let Some(config) = &delivery_config {
