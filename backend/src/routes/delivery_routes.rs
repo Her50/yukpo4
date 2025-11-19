@@ -720,7 +720,7 @@ async fn create_client_order(
         let lat = parts[1].trim().parse::<f64>()
             .map_err(|_| crate::core::types::AppError::BadRequest("GPS utilisateur invalide".into()))?;
         
-        LocationInput {
+        LocationPayload {
             latitude: lat,
             longitude: lng,
             address: None,

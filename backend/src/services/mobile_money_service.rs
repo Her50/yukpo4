@@ -314,7 +314,7 @@ impl MobileMoneyService {
 
         let api_key = self.config.orange_api_key.as_ref().unwrap();
         let _api_secret = self.config.orange_api_secret.as_ref().unwrap();
-        let _merchant_id = self.config.orange_merchant_id.as_ref().unwrap();
+        let merchant_id = self.config.orange_merchant_id.as_ref().unwrap();
 
         // URL de l'API Orange Money (exemple - à adapter selon la vraie API)
         let base_url = if self.config.orange_environment == "production" {
