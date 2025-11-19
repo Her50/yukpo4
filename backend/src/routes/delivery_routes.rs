@@ -12,6 +12,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use futures::{SinkExt, StreamExt};
+use bigdecimal::ToPrimitive;
 use rust_decimal::{prelude::FromPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -1850,8 +1851,7 @@ async fn assign_courier(
     let service = delivery_service(&state)?;
     let summary = service
         .get_delivery_summary(delivery_id)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Livraison introuvable".into()))?;
+        .await?;
     
     // Vérifier que l'utilisateur est le créateur de la livraison
     if summary.creator_id != user.id {
@@ -1976,7 +1976,7 @@ async fn list_available_couriers(
                 "stats": {
                     "completed_deliveries": row.completed_deliveries.unwrap_or(0),
                     "cancelled_deliveries": row.cancelled_deliveries.unwrap_or(0),
-                    "avg_delivery_time_minutes": row.avg_delivery_time_minutes.and_then(|t| t.to_f64()),
+                    "avg_delivery_time_minutes": row.avg_delivery_time_minutes.and_then(|t| ToPrimitive::to_f64(&t)),
                     "success_rate": success_rate
                 }
             })
@@ -2179,8 +2179,7 @@ async fn list_proof_media(
     let service = delivery_service(&state)?;
     let summary = service
         .get_delivery_summary(delivery_id)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Livraison introuvable".into()))?;
+        .await?;
     
     // Vérifier que l'utilisateur a accès à cette livraison
     enforce_delivery_access(&service, &summary, user.id).await?;
@@ -2213,8 +2212,7 @@ async fn upload_proof_media(
     let service = delivery_service(&state)?;
     let summary = service
         .get_delivery_summary(delivery_id)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Livraison introuvable".into()))?;
+        .await?;
     
     // Vérifier que l'utilisateur est le coursier assigné
     // Le courier_id est un UUID, on doit vérifier via la table couriers
@@ -2281,8 +2279,7 @@ async fn delete_proof_media(
     let service = delivery_service(&state)?;
     let summary = service
         .get_delivery_summary(delivery_id)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Livraison introuvable".into()))?;
+        .await?;
     
     // Vérifier que l'utilisateur est le coursier assigné ou le créateur
     let courier = service.repository().find_courier_by_user(user.id).await?;

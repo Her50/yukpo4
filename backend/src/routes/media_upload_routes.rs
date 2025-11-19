@@ -140,8 +140,7 @@ pub async fn upload_proof_media_file(
     let service = state.delivery_service.clone();
     let summary = service
         .get_delivery_summary(delivery_uuid)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Livraison introuvable".into()))?;
+        .await?;
     
     // Vérifier que l'utilisateur est le coursier assigné
     let courier = service.repository().find_courier_by_user(user.id).await?;

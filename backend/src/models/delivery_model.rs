@@ -442,6 +442,7 @@ pub enum ShoppingItemStatus {
     Purchased,
     Missing,
     Replaced,
+    Rejected,
 }
 
 /// Commande supermarché associée à une livraison

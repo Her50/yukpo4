@@ -312,7 +312,7 @@ async fn update_provider_stats(
 /// Déclenche un webhook pour notifier le provider externe
 async fn trigger_webhook(
     webhook_url: &str,
-    summary: &crate::services::delivery_service::DeliverySummary,
+    summary: &crate::models::delivery_model::DeliverySummary,
     tracking_token: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
