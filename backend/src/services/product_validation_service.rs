@@ -51,7 +51,7 @@ pub async fn validate_product_for_activation(
     .await?;
     
     let is_delivery_configured = delivery_config
-        .map(|c| c.is_configured)
+        .and_then(|c| c.is_configured)
         .unwrap_or(false);
     
     // 3. Vérifier autres champs obligatoires
@@ -144,7 +144,7 @@ pub async fn has_delivery_config(
     .fetch_optional(pool)
     .await?;
     
-    Ok(config.map(|c| c.is_configured).unwrap_or(false))
+    Ok(config.and_then(|c| c.is_configured).unwrap_or(false))
 }
 
 /// ✅ Phase 2 - Amélioration 6 : Envoie une notification au prestataire si la configuration livraison est incomplète

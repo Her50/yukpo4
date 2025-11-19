@@ -1527,7 +1527,8 @@ impl DeliveryService {
             // ✅ Phase 10 - Utiliser le service de matching géographique optimisé
             let summary = self.get_delivery_summary(delivery_id).await?;
             
-            if let Some(pickup) = &summary.pickup {
+            {
+                let pickup = &summary.pickup;
                 let distance = if let Some(geo_service) = &self.geographic_matching {
                     geo_service
                         .calculate_distance(
@@ -1614,7 +1615,8 @@ impl DeliveryService {
         
         // Si dropoff existe, recalculer distance
         // ✅ Phase 10 - Utiliser le service de matching géographique optimisé
-        if let Some(dropoff) = &summary.dropoff {
+        {
+            let dropoff = &summary.dropoff;
             let distance = if let Some(geo_service) = &self.geographic_matching {
                 geo_service
                     .calculate_distance(
@@ -1636,7 +1638,7 @@ impl DeliveryService {
                 distance,
                 delivery_id
             )
-            .execute(&self.repository.pool)
+            .execute(self.repository.pool())
             .await
             .map_err(|e| AppError::Internal(format!("Erreur mise à jour distance: {}", e)))?;
         }
@@ -2372,32 +2374,31 @@ impl DeliveryService {
                         .await;
                     
                     // ✅ NOUVEAU : Stocker la suggestion dans la table pour auto-confirmation
-                    if let Some(courier_id) = summary.courier.as_ref().and_then(|c| c.user_id) {
-                        let _ = sqlx::query(
-                            r#"
-                            INSERT INTO delivery_proximity_suggestions (
-                                delivery_id, suggested_status, location_type, distance_meters,
-                                auto_confirm_after_seconds, courier_user_id
+                    if let Some(courier_uuid) = summary.courier_id {
+                        if let Ok(Some(courier)) = self.repository.find_courier_by_id(courier_uuid).await {
+                            let _ = sqlx::query(
+                                r#"
+                                INSERT INTO delivery_proximity_suggestions (
+                                    delivery_id, suggested_status, location_type, distance_meters,
+                                    auto_confirm_after_seconds, courier_user_id
+                                )
+                                VALUES ($1, $2, $3, $4, $5, $6)
+                                ON CONFLICT DO NOTHING
+                                "#,
                             )
-                            VALUES ($1, $2, $3, $4, $5, $6)
-                            ON CONFLICT DO NOTHING
-                            "#,
-                        )
-                        .bind(input.delivery_id)
-                        .bind("arrival_pickup")
-                        .bind("pickup")
-                        .bind(distance_to_pickup)
-                        .bind(30i32)
-                        .bind(courier_id)
-                        .execute(self.repository.pool())
-                        .await;
-                    }
-                    
-                    // ✅ Envoyer notification push au coursier
-                    if let Some(courier_id) = summary.courier.as_ref().and_then(|c| c.user_id) {
-                        let _ = push_notification_service::send_push_notification(
-                            self.repository.pool(),
-                            courier_id,
+                            .bind(input.delivery_id)
+                            .bind("arrival_pickup")
+                            .bind("pickup")
+                            .bind(distance_to_pickup)
+                            .bind(30i32)
+                            .bind(courier.user_id)
+                            .execute(self.repository.pool())
+                            .await;
+                            
+                            // ✅ Envoyer notification push au coursier
+                            let _ = push_notification_service::send_push_notification(
+                                self.repository.pool(),
+                                courier.user_id,
                             "📍 Proche du point de collecte".to_string(),
                             format!(
                                 "Vous êtes à {}m du point de collecte. Confirmer votre arrivée ?",
@@ -2412,6 +2413,7 @@ impl DeliveryService {
                             Some("default".to_string()),
                         )
                         .await;
+                        }
                     }
                 }
             }
@@ -2437,32 +2439,31 @@ impl DeliveryService {
                         .await;
                     
                     // ✅ NOUVEAU : Stocker la suggestion dans la table pour auto-confirmation
-                    if let Some(courier_id) = summary.courier.as_ref().and_then(|c| c.user_id) {
-                        let _ = sqlx::query(
-                            r#"
-                            INSERT INTO delivery_proximity_suggestions (
-                                delivery_id, suggested_status, location_type, distance_meters,
-                                auto_confirm_after_seconds, courier_user_id
+                    if let Some(courier_uuid) = summary.courier_id {
+                        if let Ok(Some(courier)) = self.repository.find_courier_by_id(courier_uuid).await {
+                            let _ = sqlx::query(
+                                r#"
+                                INSERT INTO delivery_proximity_suggestions (
+                                    delivery_id, suggested_status, location_type, distance_meters,
+                                    auto_confirm_after_seconds, courier_user_id
+                                )
+                                VALUES ($1, $2, $3, $4, $5, $6)
+                                ON CONFLICT DO NOTHING
+                                "#,
                             )
-                            VALUES ($1, $2, $3, $4, $5, $6)
-                            ON CONFLICT DO NOTHING
-                            "#,
-                        )
-                        .bind(input.delivery_id)
-                        .bind("arrival_destination")
-                        .bind("dropoff")
-                        .bind(distance_to_dropoff)
-                        .bind(30i32)
-                        .bind(courier_id)
-                        .execute(self.repository.pool())
-                        .await;
-                    }
-                    
-                    // ✅ Envoyer notification push au coursier
-                    if let Some(courier_id) = summary.courier.as_ref().and_then(|c| c.user_id) {
-                        let _ = push_notification_service::send_push_notification(
-                            self.repository.pool(),
-                            courier_id,
+                            .bind(input.delivery_id)
+                            .bind("arrival_destination")
+                            .bind("dropoff")
+                            .bind(distance_to_dropoff)
+                            .bind(30i32)
+                            .bind(courier.user_id)
+                            .execute(self.repository.pool())
+                            .await;
+                            
+                            // ✅ Envoyer notification push au coursier
+                            let _ = push_notification_service::send_push_notification(
+                                self.repository.pool(),
+                                courier.user_id,
                             "📍 Proche de la destination".to_string(),
                             format!(
                                 "Vous êtes à {}m de la destination. Confirmer votre arrivée ?",
@@ -2477,6 +2478,7 @@ impl DeliveryService {
                             Some("default".to_string()),
                         )
                         .await;
+                        }
                     }
                 }
             }
@@ -3416,7 +3418,7 @@ impl DeliveryService {
                                 DeliveryStatus::AwaitingCourierConfirmation,
                                 None,
                                 None,
-                                serde_json::json!({}),
+                                Some(serde_json::json!({})),
                             )
                             .await?;
 

@@ -707,27 +707,23 @@ async fn create_client_order(
         .fetch_optional(&state.pg)
         .await?;
 
-        if let Some(user_row) = user_data {
-            if let Some(gps_str) = user_row.gps {
-                let parts: Vec<&str> = gps_str.split(',').collect();
-                if parts.len() == 2 {
-                    if let (Ok(lng), Ok(lat)) = (parts[0].trim().parse::<f64>(), parts[1].trim().parse::<f64>()) {
-                        LocationInput {
-                            latitude: lat,
-                            longitude: lng,
-                            address: None,
-                        }
-                    } else {
-                        return Err(crate::core::types::AppError::BadRequest("GPS utilisateur invalide".into()));
-                    }
-                } else {
-                    return Err(crate::core::types::AppError::BadRequest("Format GPS utilisateur invalide".into()));
-                }
-            } else {
-                return Err(crate::core::types::AppError::BadRequest("Aucune adresse de livraison fournie et GPS utilisateur non disponible".into()));
-            }
-        } else {
-            return Err(crate::core::types::AppError::BadRequest("Utilisateur non trouvé".into()));
+        let user_row = user_data.ok_or_else(|| crate::core::types::AppError::BadRequest("Utilisateur non trouvé".into()))?;
+        let gps_str = user_row.gps.ok_or_else(|| crate::core::types::AppError::BadRequest("Aucune adresse de livraison fournie et GPS utilisateur non disponible".into()))?;
+        
+        let parts: Vec<&str> = gps_str.split(',').collect();
+        if parts.len() != 2 {
+            return Err(crate::core::types::AppError::BadRequest("Format GPS utilisateur invalide".into()));
+        }
+        
+        let lng = parts[0].trim().parse::<f64>()
+            .map_err(|_| crate::core::types::AppError::BadRequest("GPS utilisateur invalide".into()))?;
+        let lat = parts[1].trim().parse::<f64>()
+            .map_err(|_| crate::core::types::AppError::BadRequest("GPS utilisateur invalide".into()))?;
+        
+        LocationInput {
+            latitude: lat,
+            longitude: lng,
+            address: None,
         }
     };
 
@@ -1887,10 +1883,8 @@ async fn assign_courier(
     // Si la livraison n'a pas encore de coursier assigné, déclencher le matching
     if summary.courier_id.is_none() {
         let updated_summary = service.get_delivery_summary(delivery_id).await?;
-        if let Some(updated) = updated_summary {
-            // Re-déclencher le matching qui va maintenant prioriser le preferred_courier_id
-            service.enqueue_delivery_matching(&updated).await?;
-        }
+        // Re-déclencher le matching qui va maintenant prioriser le preferred_courier_id
+        service.enqueue_delivery_matching(&updated_summary).await?;
     } else {
         // Si un coursier est déjà assigné, on peut soit le remplacer, soit juste mettre à jour preferred_courier_id
         // Pour l'instant, on met juste à jour preferred_courier_id

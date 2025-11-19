@@ -3,7 +3,9 @@ use crate::core::types::{AppError, AppResult};
 use crate::services::delivery_service::DeliveryService;
 use crate::services::payment_matching_service::PaymentMatchingService;
 use chrono::Utc;
+use bigdecimal::BigDecimal;
 use rust_decimal::Decimal;
+use std::str::FromStr;
 use serde_json::{json, Value};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -97,13 +99,14 @@ impl DeliveryPaymentService {
             delivery_service.get_wallet_balance(user_id).await?
         } else {
             // Fallback: utiliser query directe
-            let balance = sqlx::query_scalar::<_, Option<i64>>(
+            sqlx::query_scalar::<_, Option<i64>>(
                 "SELECT balance_cents FROM user_wallets WHERE user_id = $1"
             )
             .bind(user_id)
             .fetch_optional(&self.pool)
-            .await?;
-            balance.unwrap_or(0)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur récupération solde: {}", e)))?
+            .unwrap_or(0)
         };
 
         if balance < total_amount_cents {
@@ -164,18 +167,20 @@ impl DeliveryPaymentService {
             product_price_cents: reservation.product_price_cents,
             delivery_cost_cents: reservation.delivery_cost_cents,
             total_amount_cents: reservation.total_amount_cents,
-            billing_mode: reservation.billing_mode,
-            merchant_pays_delivery: reservation.merchant_pays_delivery,
-            reservation_status: reservation.reservation_status,
+            billing_mode: reservation.billing_mode.unwrap_or_else(|| "client_pays".to_string()),
+            merchant_pays_delivery: reservation.merchant_pays_delivery.unwrap_or(false),
+            reservation_status: reservation.reservation_status.unwrap_or_else(|| "reserved".to_string()),
             reserved_at: reservation.reserved_at,
             debited_at: reservation.debited_at,
             released_at: reservation.released_at,
             refunded_at: reservation.refunded_at,
             merchant_payout_cents: reservation.merchant_payout_cents,
             commission_cents: reservation.commission_cents,
-            commission_rate: reservation.commission_rate,
+            commission_rate: reservation.commission_rate
+                .and_then(|bd| Decimal::from_str(&bd.to_string()).ok())
+                .unwrap_or_else(|| Decimal::new(5, 2)),
             merchant_paid_at: reservation.merchant_paid_at,
-            metadata: reservation.metadata,
+            metadata: reservation.metadata.unwrap_or_else(|| json!({})),
         })
     }
 
@@ -222,7 +227,7 @@ impl DeliveryPaymentService {
             AppError::NotFound("Réservation non trouvée".into())
         })?;
 
-        if res.reservation_status != "reserved" {
+        if res.reservation_status.as_deref() != Some("reserved") {
             return Err(AppError::BadRequest(
                 "La réservation ne peut pas être libérée (statut invalide)".into()
             ));
@@ -337,7 +342,11 @@ impl DeliveryPaymentService {
         };
 
         // ✅ Mettre à jour la réservation avec les informations de matching
-        let commission_rate_decimal = Decimal::try_from(commission_rate).unwrap_or_else(|_| Decimal::new(5, 2)); // 0.05
+        // Convertir f64 en Decimal puis en BigDecimal pour la base de données
+        let commission_rate_decimal = Decimal::try_from(commission_rate)
+            .unwrap_or_else(|_| Decimal::new(5, 2)); // 0.05 par défaut
+        let commission_rate_bigdecimal = BigDecimal::from_str(&commission_rate_decimal.to_string())
+            .unwrap_or_else(|_| BigDecimal::from(0));
         sqlx::query!(
             r#"
             UPDATE delivery_payment_reservations
@@ -354,7 +363,7 @@ impl DeliveryPaymentService {
             "#,
             merchant_payout_cents,
             commission_cents,
-            commission_rate_decimal,
+            commission_rate_bigdecimal,
             client_payment_method,
             merchant_payment_method_json,
             payout_method_used,
@@ -397,7 +406,7 @@ impl DeliveryPaymentService {
             ).await?;
 
             // ✅ 2. Gestion du coût de livraison selon billing_mode
-            if res.merchant_pays_delivery {
+            if res.merchant_pays_delivery.unwrap_or(false) {
                 // Si prestataire avait offert la livraison, on prélève le coût chez le client
                 // (pas de pénalité pour le prestataire, mais le client assume les frais de transport)
                 delivery_service.debit_wallet_for_delivery(
@@ -418,7 +427,7 @@ impl DeliveryPaymentService {
                 Some("Remboursement: produit rejeté par le client".to_string())
             ).await?;
 
-            if res.merchant_pays_delivery {
+            if res.merchant_pays_delivery.unwrap_or(false) {
                 self.debit_user_wallet(
                     client_user_id,
                     delivery_id,

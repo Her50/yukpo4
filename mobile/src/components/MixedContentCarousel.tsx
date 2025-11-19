@@ -333,7 +333,6 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             }
         }
 
-        const safeContent = Array.isArray(content) ? content : [];
         const currentItem = safeContent[index];
         if (currentItem) {
             trackVisibility(currentItem, index).catch(() => undefined);

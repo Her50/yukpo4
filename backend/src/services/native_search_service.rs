@@ -373,10 +373,10 @@ impl NativeSearchService {
             return Ok(results);
         }
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
-        if let Some(gps_zone) = gps_zone {
+        if let Some(gps_zone_val) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
 
-            log_info(&format!("[NativeSearch] Utilisation de search_services_gps_final avec GPS: {} et rayon: {}km", gps_zone, radius));
+            log_info(&format!("[NativeSearch] Utilisation de search_services_gps_final avec GPS: {} et rayon: {}km", gps_zone_val, radius));
 
             // Appeler notre fonction PostgreSQL optimisée
             let sql = r#"
@@ -393,7 +393,7 @@ impl NativeSearchService {
 
             let results = sqlx::query(sql)
                 .bind(query)
-                .bind(gps_zone)
+                .bind(gps_zone_val)
                 .bind(radius)
                 .fetch_all(&self.pool)
                 .await
@@ -463,15 +463,13 @@ impl NativeSearchService {
             ));
             
             // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
-            if let Some(gps_zone) = gps_zone {
-                if let Some((lat_str, lng_str)) = gps_zone.split_once(',') {
-                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                        SearchResult::enrich_with_google_maps(
-                            &mut search_results,
-                            Some((user_lat, user_lng)),
-                            self.geographic_matching.as_ref(),
-                        ).await;
-                    }
+            if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+                if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                    SearchResult::enrich_with_google_maps(
+                        &mut search_results,
+                        Some((user_lat, user_lng)),
+                        self.geographic_matching.as_ref(),
+                    ).await;
                 }
             }
             
@@ -826,12 +824,12 @@ SELECT DISTINCT
         search_radius_km: Option<i32>,
     ) -> AppResult<Vec<SearchResult>> {
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
-        if let Some(gps_zone) = gps_zone {
+        if let Some(gps_zone_val) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
 
             log_info(&format!(
                 "[NativeSearch] Trigram avec GPS optimisé: {} et rayon: {}km",
-                gps_zone, radius
+                gps_zone_val, radius
             ));
 
             // Appeler notre fonction PostgreSQL optimisée
@@ -849,7 +847,7 @@ SELECT DISTINCT
 
             let results = sqlx::query(sql)
                 .bind(query)
-                .bind(gps_zone)
+                .bind(gps_zone_val)
                 .bind(radius)
                 .fetch_all(&self.pool)
                 .await
@@ -907,15 +905,13 @@ SELECT DISTINCT
             }
 
             // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
-            if let Some(gps_zone) = gps_zone {
-                if let Some((lat_str, lng_str)) = gps_zone.split_once(',') {
-                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                        SearchResult::enrich_with_google_maps(
-                            &mut search_results,
-                            Some((user_lat, user_lng)),
-                            self.geographic_matching.as_ref(),
-                        ).await;
-                    }
+            if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+                if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                    SearchResult::enrich_with_google_maps(
+                        &mut search_results,
+                        Some((user_lat, user_lng)),
+                        self.geographic_matching.as_ref(),
+                    ).await;
                 }
             }
 
@@ -1035,12 +1031,12 @@ SELECT DISTINCT
         search_radius_km: Option<i32>,
     ) -> AppResult<Vec<SearchResult>> {
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
-        if let Some(gps_zone) = gps_zone {
+        if let Some(gps_zone_val) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
 
             log_info(&format!(
                 "[NativeSearch] Mots-clés avec GPS optimisé: {} et rayon: {}km",
-                gps_zone, radius
+                gps_zone_val, radius
             ));
 
             // Appeler notre fonction PostgreSQL optimisée
@@ -1058,7 +1054,7 @@ SELECT DISTINCT
 
             let results = sqlx::query(sql)
                 .bind(query)
-                .bind(gps_zone)
+                .bind(gps_zone_val)
                 .bind(radius)
                 .fetch_all(&self.pool)
                 .await
@@ -1116,15 +1112,13 @@ SELECT DISTINCT
             }
 
             // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
-            if let Some(gps_zone) = gps_zone {
-                if let Some((lat_str, lng_str)) = gps_zone.split_once(',') {
-                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                        SearchResult::enrich_with_google_maps(
-                            &mut search_results,
-                            Some((user_lat, user_lng)),
-                            self.geographic_matching.as_ref(),
-                        ).await;
-                    }
+            if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+                if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                    SearchResult::enrich_with_google_maps(
+                        &mut search_results,
+                        Some((user_lat, user_lng)),
+                        self.geographic_matching.as_ref(),
+                    ).await;
                 }
             }
 
