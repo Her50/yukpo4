@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 use crate::core::types::{AppError, AppResult};
 use crate::services::cache_service::{cache_keys, CacheService};

@@ -174,7 +174,7 @@ impl ProductPriceService {
 
             // Cas 2 : Réduction fixe (ex: "-5000", "-5000 FCFA")
             if valeur_str.starts_with('-') {
-                if let Ok(reduction) = valeur_str
+                if let Some(reduction) = valeur_str
                     .trim_start_matches('-')
                     .trim()
                     .split_whitespace()
@@ -187,7 +187,7 @@ impl ProductPriceService {
             }
 
             // Cas 3 : Prix fixe (ex: "5000", "5000 FCFA")
-            if let Ok(fixed_price) = valeur_str
+            if let Some(fixed_price) = valeur_str
                 .split_whitespace()
                 .next()
                 .and_then(|s| s.parse::<f64>().ok())

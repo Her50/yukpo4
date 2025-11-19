@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::state::AppState;
 
-pub fn health_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+pub fn health_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/health/google-maps", axum::routing::get(check_google_maps_support))
         .route("/health/cache", axum::routing::get(check_cache_status))

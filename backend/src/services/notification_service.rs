@@ -30,6 +30,7 @@ pub enum NotificationType {
     GlobalPromoEntryEnded,
     GlobalPromoEntryApproved,
     GlobalPromoEntryRejected,
+    ProductDeliveryConfigMissing,
     // ✅ Phase 10 - Notifications de livraison
     DeliveryAccepted,
     DeliveryPickedUp,
