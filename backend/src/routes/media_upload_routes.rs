@@ -5,6 +5,7 @@ use crate::AppState;
 use axum::{
     body::Body,
     extract::{Multipart, Path, State},
+    http::StatusCode,
     response::{Json, Response},
     Extension,
 };

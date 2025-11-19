@@ -1,15 +1,14 @@
-use chrono::Utc;
+use chrono::{Duration, Utc};
 use log::info;
 use serde::Serialize;
 use sqlx::{FromRow, PgPool};
-use uuid::Uuid;
 
 use crate::core::types::{AppError, AppResult};
 
 #[derive(Debug, Clone, Serialize, FromRow)]
 pub struct NegotiatedPriceOffer {
     pub id: i32,
-    pub conversation_id: i32,
+    pub conversation_id: String,
     pub service_id: i32,
     pub product_index: Option<i32>,
     pub merchant_user_id: i32,
@@ -34,7 +33,7 @@ impl NegotiatedPriceService {
     /// Crée une offre de prix négocié
     pub async fn create_negotiated_price(
         &self,
-        _conversation_id: i32,
+        _conversation_id: String,
         _service_id: i32,
         _product_index: Option<i32>,
         _merchant_user_id: i32,
@@ -75,7 +74,7 @@ impl NegotiatedPriceService {
     /// Récupère le prix négocié actif pour une conversation/service/produit
     pub async fn get_active_negotiated_price(
         &self,
-        _conversation_id: i32,
+        _conversation_id: String,
         _service_id: i32,
         _product_index: Option<i32>,
         _client_user_id: i32,
@@ -89,7 +88,7 @@ impl NegotiatedPriceService {
     /// Récupère l'offre en attente pour une conversation/service/produit
     pub async fn get_pending_offer(
         &self,
-        _conversation_id: i32,
+        _conversation_id: String,
         _service_id: i32,
         _product_index: Option<i32>,
         _client_user_id: i32,
