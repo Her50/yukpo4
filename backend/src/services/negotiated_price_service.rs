@@ -1,12 +1,13 @@
 use chrono::{Duration, Utc};
 use log::{error, info, warn};
+use serde::Serialize;
 use serde_json::Value;
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::core::types::{AppError, AppResult};
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone, Serialize, FromRow)]
 pub struct NegotiatedPriceOffer {
     pub id: i32,
     pub conversation_id: i32,
