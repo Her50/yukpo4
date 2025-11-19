@@ -49,24 +49,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env::var("MONGODB_URL").unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
     let mongo_client = MongoClient::with_uri_str(&mongo_url).await?;
 
-    // Configuration Redis temporaire - utiliser une URL factice pour ?viter les erreurs
+    // Configuration Redis avec test de connexion
     let redis_url =
         env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
 
-    // Cr?er un client Redis avec gestion d'erreur
-    let redis_client = match RedisClient::open(redis_url) {
+    // Créer un client Redis et tester la connexion
+    let (redis_client, redis_available_for_ws) = match RedisClient::open(redis_url.clone()) {
         Ok(client) => {
-            println!("✅ Connexion Redis établie - Backend v2.1.4");
-            client
+            // Tester la connexion réelle avec un timeout
+            let test_conn = tokio::time::timeout(
+                std::time::Duration::from_secs(2),
+                client.get_multiplexed_async_connection(),
+            )
+            .await;
+            
+            match test_conn {
+                Ok(Ok(_)) => {
+                    println!("✅ Connexion Redis établie - Backend v2.1.4");
+                    (client, true)
+                }
+                Ok(Err(e)) | Err(e) => {
+                    log::warn!("⚠️ Redis URL configurée mais connexion impossible: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
+                    // Créer un client factice pour les autres services qui peuvent gérer l'absence de Redis
+                    let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
+                        RedisClient::open("redis://localhost:9999/0")
+                            .expect("Impossible de créer un client Redis factice")
+                    });
+                    (dummy_client, false)
+                }
+            }
         }
         Err(e) => {
-            println!("??  Erreur Redis: {}. Utilisation d'un client factice.", e);
-            // Cr?er un client factice qui ne se connectera jamais
-            RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
-                // Si m?me ?a ?choue, on utilise une URL qui ne fonctionnera jamais
+            log::warn!("⚠️ Erreur création client Redis: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
+            // Créer un client factice pour les autres services
+            let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
                 RedisClient::open("redis://localhost:9999/0")
-                    .expect("Impossible de cr?er un client Redis factice")
-            })
+                    .expect("Impossible de créer un client Redis factice")
+            });
+            (dummy_client, false)
         }
     };
 
@@ -83,6 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         app_ia,
         ia_stats,
         redis_client,
+        redis_available_for_ws,
     ));
 
     social_distribution_service::start_distribution_worker(app_state.clone());

@@ -87,6 +87,7 @@ impl AppState {
         ia: Arc<AppIA>,
         ia_stats: Arc<Mutex<IAStats>>,
         redis_client: redis::Client,
+        redis_available_for_ws: bool,
     ) -> Self {
         dotenv().ok(); // Charge les variables d'environnement depuis .env
         let database_url =
@@ -106,8 +107,14 @@ impl AppState {
 
         let delivery_repo =
             Arc::new(crate::services::delivery_repository::DeliveryRepository::new(pg.clone()));
-        let delivery_ws_manager =
-            Arc::new(DeliveryTrackingManager::new(64, Some(redis_client.clone())));
+        let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(
+            64,
+            if redis_available_for_ws {
+                Some(redis_client.clone())
+            } else {
+                None
+            },
+        ));
         
         // ✅ Phase 10 - Initialiser le cache service d'abord
         let cache_service = Arc::new(CacheService::new(Some(redis_client.clone())));
@@ -268,8 +275,16 @@ impl AppState {
 
         let delivery_repo =
             Arc::new(crate::services::delivery_repository::DeliveryRepository::new(pg.clone()));
-        let delivery_ws_manager =
-            Arc::new(DeliveryTrackingManager::new(16, Some(redis_client.clone())));
+        // Pour les tests, on essaie d'utiliser Redis si disponible, sinon None
+        let redis_available_for_ws = redis_client.get_multiplexed_async_connection().await.is_ok();
+        let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(
+            16,
+            if redis_available_for_ws {
+                Some(redis_client.clone())
+            } else {
+                None
+            },
+        ));
         let delivery_service = Arc::new(crate::services::delivery_service::DeliveryService::new(
             delivery_repo.clone(),
             delivery_ws_manager.clone(),
