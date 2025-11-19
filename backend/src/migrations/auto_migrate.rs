@@ -4307,9 +4307,17 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
 
     run_delivery_step(
         pool,
-        "Create delivery_zones indexes",
+        "Create delivery_zones region index",
         r#"
         CREATE INDEX IF NOT EXISTS idx_delivery_zones_region ON delivery_zones USING GIST (region);
+        "#,
+    )
+    .await?;
+
+    run_delivery_step(
+        pool,
+        "Create delivery_zones center index",
+        r#"
         CREATE INDEX IF NOT EXISTS idx_delivery_zones_center ON delivery_zones USING GIST (center);
         "#,
     )

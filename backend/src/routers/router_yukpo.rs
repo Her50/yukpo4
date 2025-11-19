@@ -432,17 +432,6 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/studio/sessions/{session_id}/suggestions",
             post(studio_controller::generate_suggestions).layer(axum::middleware::from_fn(jwt_auth)),
         )
-        // ✅ Phase 9 - Amélioration 31 : Endpoints pour chaînage vidéos
-        .route(
-            "/api/studio/sessions/{session_id}/dependencies",
-            post(studio_controller::set_dependencies)
-                .get(studio_controller::get_dependencies)
-                .layer(axum::middleware::from_fn(jwt_auth)),
-        )
-        .route(
-            "/api/studio/sessions/{session_id}/next",
-            get(studio_controller::get_next_video).layer(axum::middleware::from_fn(jwt_auth)),
-        )
         .route(
             "/api/studio/templates",
             get(studio_controller::list_templates).layer(axum::middleware::from_fn(jwt_auth)),
