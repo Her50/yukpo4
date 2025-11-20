@@ -6,8 +6,11 @@ use std::{
 
 use axum::{
     extract::{Extension, Multipart, Path as AxumPath},
+    http::{header, StatusCode},
+    response::Response,
     Json,
 };
+use axum::body::Body;
 use chrono::{NaiveDateTime, Utc};
 use sqlx::{FromRow, PgPool};
 use tokio::fs::{self, File};
@@ -18,7 +21,8 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
 };
-use log::{error, info};
+use log::{error, info, warn};
+use std::path::Path;
 
 /// ? Repr?sente un m?dia dans la base
 #[derive(Debug, FromRow, serde::Serialize)]
@@ -293,4 +297,68 @@ pub async fn delete_media(
     .ok();
     info!("[delete_media] Deleted media_id={}", media_id);
     Ok(Json("✅ Média supprimé"))
+}
+
+/// ✅ PHASE 2: Servir la vidéo exemple de création vidéo
+/// Endpoint: GET /api/media/examples/video-creation-demo.mp4
+/// Route publique (pas d'authentification requise)
+pub async fn serve_example_video() -> Result<Response<Body>, AppError> {
+    info!("[serve_example_video] Requête pour la vidéo exemple");
+    
+    // Chemin vers la vidéo exemple
+    let upload_dir = std::env::var("UPLOAD_STORAGE_PATH")
+        .unwrap_or_else(|_| "./uploads".to_string());
+    
+    // Créer le dossier examples s'il n'existe pas
+    let examples_dir = Path::new(&upload_dir).join("examples");
+    if !examples_dir.exists() {
+        if let Err(e) = std::fs::create_dir_all(&examples_dir) {
+            warn!("[serve_example_video] Impossible de créer le dossier examples: {}", e);
+        }
+    }
+    
+    let video_path = examples_dir.join("video-creation-demo.mp4");
+    
+    // Vérifier si le fichier existe
+    if !video_path.exists() {
+        warn!(
+            "[serve_example_video] Vidéo exemple introuvable: {:?}",
+            video_path
+        );
+        // Retourner 404 avec un message informatif
+        return Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(
+                serde_json::json!({
+                    "error": "Vidéo exemple non disponible",
+                    "message": "La vidéo exemple n'a pas encore été uploadée. Veuillez placer video-creation-demo.mp4 dans uploads/examples/",
+                    "path": video_path.to_string_lossy()
+                })
+                .to_string(),
+            ))
+            .map_err(|e| AppError::Internal(format!("Erreur création réponse: {}", e)))?);
+    }
+    
+    // Lire le fichier vidéo
+    let file_data = std::fs::read(&video_path)
+        .map_err(|e| {
+            error!("[serve_example_video] Erreur lecture fichier: {}", e);
+            AppError::Internal(format!("Erreur lecture vidéo: {}", e))
+        })?;
+    
+    info!(
+        "[serve_example_video] Vidéo exemple servie: {} bytes",
+        file_data.len()
+    );
+    
+    // Retourner la vidéo avec les bons headers
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::CONTENT_LENGTH, file_data.len())
+        .header(header::CACHE_CONTROL, "public, max-age=3600") // Cache 1h
+        .header(header::ACCEPT_RANGES, "bytes") // Support range requests pour streaming
+        .body(Body::from(file_data))
+        .map_err(|e| AppError::Internal(format!("Erreur création réponse: {}", e)))?)
 }

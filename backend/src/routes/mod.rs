@@ -30,11 +30,13 @@ pub mod metrics_routes;
 pub mod metrics_tracking_routes;
 pub mod nearby_services_routes;
 pub mod notification_routes; // ✅ Routes de notifications
+pub mod order_routes; // ✅ NOUVEAU : Routes pour commandes produits
 pub mod payment_routes;
 pub mod phone_model_routes; // ✅ Routes pour modèles de smartphones
 pub mod places_routes; // ✅ NOUVEAU: Routes pour autocomplete de lieux (Google Maps API)
 pub mod popular_products_routes; // ✅ NOUVEAU 2025-11-04: Routes pour produits populaires (analyse concurrence)
 pub mod prestataire_routes;
+pub mod provider_analytics_routes; // ✅ NOUVEAU : Routes analytics prestataire
 pub mod product_lifecycle_routes; // ✅ Routes de gestion du cycle de vie des produits
 pub mod product_reactions_routes; // ✅ NOUVEAU 2025-11-04: Routes pour réactions/émotions sur les produits
 pub mod products_management; // ✅ Routes pour gestion des produits

@@ -2866,6 +2866,70 @@ impl DeliveryService {
                 continue;
             };
 
+            // ✅ NOUVEAU : Vérifier si la commande est prête (estimated_ready_at)
+            let service_id = summary.metadata.get("service_id").and_then(|v| v.as_i64()).map(|i| i as i32);
+            let product_index = summary.metadata.get("product_index").and_then(|v| v.as_i64()).map(|i| i as i32);
+            
+            if let (Some(sid), Some(pidx)) = (service_id, product_index) {
+                // Vérifier le statut et estimated_ready_at de la commande
+                let order_check = sqlx::query!(
+                    r#"
+                    SELECT status, estimated_ready_at
+                    FROM product_orders
+                    WHERE service_id = $1
+                    AND product_index = $2
+                    AND delivery_id = $3
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    "#,
+                    sid,
+                    pidx,
+                    summary.id
+                )
+                .fetch_optional(self.repository.pool())
+                .await?;
+
+                if let Some(order) = order_check {
+                    // Si la commande n'est pas "ready", vérifier estimated_ready_at
+                    if order.status != "ready" {
+                        if let Some(estimated_ready_at) = order.estimated_ready_at {
+                            let now = Utc::now();
+                            if now < estimated_ready_at {
+                                // Commande pas encore prête, reprogrammer pour plus tard
+                                let wait_minutes = (estimated_ready_at - now).num_minutes().max(1);
+                                self.repository
+                                    .update_matching_queue_status(
+                                        summary.id,
+                                        DeliveryMatchingStatus::Queued,
+                                        Some(estimated_ready_at),
+                                        Some(json!({ 
+                                            "reason": "awaiting_order_ready",
+                                            "estimated_ready_at": estimated_ready_at.to_rfc3339(),
+                                            "wait_minutes": wait_minutes
+                                        })),
+                                        false,
+                                    )
+                                    .await?;
+                                log::info!(
+                                    "[DeliveryMatching] Commande pas encore prête, reprogrammation pour delivery_id={}, estimated_ready_at={:?}",
+                                    summary.id,
+                                    estimated_ready_at
+                                );
+                                continue;
+                            }
+                        } else {
+                            // Pas de estimated_ready_at mais statut != ready, ne pas traiter
+                            log::debug!(
+                                "[DeliveryMatching] Commande pas prête (statut: {}), différé pour delivery_id={}",
+                                order.status,
+                                summary.id
+                            );
+                            continue;
+                        }
+                    }
+                }
+            }
+
             let dropoff_pending = summary
                 .metadata
                 .get("dropoff_pending")
@@ -3138,6 +3202,49 @@ impl DeliveryService {
 
     /// Enfile immédiatement la livraison dans la file de matching et tente un dispatch express
     pub async fn enqueue_delivery_matching(&self, summary: &DeliverySummary) -> AppResult<()> {
+        // ✅ NOUVEAU : Vérifier si la commande est "Ready" avant de démarrer le matching
+        let service_id = summary.metadata.get("service_id").and_then(|v| v.as_i64()).map(|i| i as i32);
+        let product_index = summary.metadata.get("product_index").and_then(|v| v.as_i64()).map(|i| i as i32);
+        
+        if let (Some(sid), Some(pidx)) = (service_id, product_index) {
+            // Vérifier le statut de la commande dans product_orders
+            let order_status = sqlx::query_scalar!(
+                r#"
+                SELECT status
+                FROM product_orders
+                WHERE service_id = $1
+                AND product_index = $2
+                AND delivery_id = $3
+                ORDER BY created_at DESC
+                LIMIT 1
+                "#,
+                sid,
+                pidx,
+                summary.id
+            )
+            .fetch_optional(self.repository.pool())
+            .await?;
+
+            if let Some(status) = order_status {
+                if status != "ready" {
+                    // Commande pas encore prête, ne pas démarrer le matching
+                    log::info!(
+                        "[DeliveryService] Commande pas encore prête (statut: {}), matching différé pour delivery_id={}",
+                        status,
+                        summary.id
+                    );
+                    return Ok(()); // Ne pas démarrer le matching maintenant
+                }
+            } else {
+                // Pas de commande trouvée, peut-être une livraison directe sans commande
+                // Dans ce cas, on continue normalement
+                log::debug!(
+                    "[DeliveryService] Aucune commande trouvée pour delivery_id={}, matching direct",
+                    summary.id
+                );
+            }
+        }
+
         let mut zone_id = Self::extract_zone_from_metadata(&summary.metadata);
         
         // ✅ Phase 3 - Amélioration 7 : Récupérer les préférences client et configuration produit
@@ -3156,9 +3263,6 @@ impl DeliveryService {
         };
 
         let product_config = {
-            let service_id = summary.metadata.get("service_id").and_then(|v| v.as_i64()).map(|i| i as i32);
-            let product_index = summary.metadata.get("product_index").and_then(|v| v.as_i64()).map(|i| i as i32);
-            
             if let (Some(sid), Some(pidx)) = (service_id, product_index) {
                 sqlx::query_as::<_, ProductDeliveryConfig>(
                     "SELECT id, service_id, product_index, pickup_address, pickup_latitude, pickup_longitude, storage_location_id, required_vehicle_type_id, weight_kg, volume_cm3, requires_isothermal, requires_fragile_handling, pickup_availability_schedule, pickup_instructions, billing_mode, billing_partner_label, is_configured, configured_at, configured_by, created_at, updated_at FROM product_delivery_config WHERE service_id = $1 AND product_index = $2 AND is_configured = TRUE"

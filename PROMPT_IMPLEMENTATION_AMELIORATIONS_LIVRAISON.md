@@ -1,555 +1,1075 @@
-# 🚀 PROMPT COMPLET : Implémentation Plan d'Améliorations Système de Livraison Intelligent
+# 🚀 Prompt d'Implémentation : Améliorations Workflow de Livraison
 
-## 📋 CONTEXTE DU PROJET
+## 📋 Contexte
 
-**Monorepo Yukpomnang** : `C:\Users\23767\yukpomnang2`
+Ce prompt décrit l'implémentation complète des améliorations du workflow de livraison décrites dans le document **`ANALYSE_WORKFLOW_LIVRAISON_AMELIORATIONS.md`**.
 
-**Stack technique** :
-- **Backend** : Rust avec Axum, SQLx, PostgreSQL (avec pgvector et imgsmlr)
-- **Frontend Web** : React avec TypeScript, TailwindCSS
-- **Mobile** : React Native avec Expo, TypeScript
-- **Base de données** : PostgreSQL sur Render (`DATABASE_URL` fournie, `SQLX_OFFLINE=true`)
-
-**Document de référence** : `PLAN_COMPLET_AMELIORATIONS_LIVRAISON.md` (2392 lignes)
+Le système doit être implémenté dans :
+- **Backend** : Rust avec Axum, SQLx, PostgreSQL
+- **Mobile** : React Native avec TypeScript
+- **Frontend** : React avec TypeScript
 
 ---
 
-## 🎯 OBJECTIF
+## 🎯 Objectifs
 
-Implémenter toutes les améliorations décrites dans le plan complet d'améliorations du système de livraison intelligent, en suivant les règles de développement et contraintes spécifiques ci-dessous.
+Implémenter les améliorations principales :
+
+1. ✅ **Vérification disponibilité par jour + Suggestion produits similaires**
+2. ✅ **Système de temps de préparation** (avec option disponibilité immédiate)
+   - ✅ **Calcul dynamique par catégorie** : Durée par défaut calculée automatiquement depuis données historiques
+3. ✅ **Validation prestataire avec workflow complet**
+   - ✅ **Monitor timeout** : Annulation automatique si prestataire ne valide pas dans les délais
+4. ✅ **Gestion stock en temps réel**
+5. ✅ **Notifications intelligentes + Redirection automatique**
+6. ✅ **Système de pénalités** : Débit automatique prestataire si produit indisponible signalé par coursier
+7. ✅ **Métriques d'annulation** : Dashboard avec taux d'annulation, pénalités, indicateurs sur ProductCard
+
+### Points Importants à Respecter
+
+- **Disponibilité immédiate** : Le prestataire peut marquer un produit comme "disponible immédiatement" (pas de délai de préparation). Dans ce cas, le matching coursier démarre directement après validation.
+- **Affichage lieux pickup** : Les lieux de pickup doivent toujours s'afficher en **adresse textuelle** (ex: "123 Rue de la Paix, Douala"), jamais en coordonnées GPS brutes, pour faciliter la compréhension par les utilisateurs.
+- **Indicateurs dans ProductCard** : Tous les ProductCard (mobile ET frontend) doivent afficher des badges visuels indiquant la capacité de livraison rapide :
+  - Badge "⚡ Livraison rapide" si disponibilité immédiate
+  - Badge "⏱️ Prêt en X min" si délai de préparation
+  - Badge "📅 Disponible [jours]" si jours spécifiques
+  - **Badge "⚠️ Taux d'annulation"** si `cancellation_rate >= 10%` (rouge/orange/jaune selon le taux)
+- **Dashboard & Analytics Prestataire** : Toutes les nouvelles métriques (délais préparation, produits rejetés, **annulations, pénalités**, etc.) doivent être intégrées dans le dashboard/analytics du prestataire avec graphiques et statistiques détaillées.
+- **Durée de préparation dynamique** : Si `preparation_time_minutes` est NULL, utiliser valeur calculée automatiquement par catégorie depuis données historiques (médiane des temps observés).
+- **Gestion timeout** : Si prestataire ne valide pas avant `validation_deadline`, commande automatiquement rejetée, annulation enregistrée, produits similaires recherchés, client notifié avec redirection.
 
 ---
 
-## ⚠️ CONTRAINTES CRITIQUES
+## 📚 Référence Documentaire
 
-### **0. Vérification de l'Existant (TRÈS IMPORTANT - À FAIRE EN PREMIER)**
+**Document principal** : `ANALYSE_WORKFLOW_LIVRAISON_AMELIORATIONS.md`
 
-**⚠️ AVANT TOUTE MODIFICATION, IL EST OBLIGATOIRE DE :**
+Ce document contient :
+- Analyse détaillée de chaque amélioration
+- Schémas de workflow complets
+- Code Rust de référence pour les services
+- Migrations SQL proposées
+- Plan d'implémentation par phases
 
-1. ✅ **Rechercher dans le code existant** si la fonctionnalité n'existe pas déjà
-   - Utiliser `codebase_search` pour rechercher des fonctionnalités similaires
-   - Utiliser `grep` pour chercher des patterns, noms de fonctions, classes, composants
-   - Vérifier les fichiers dans les dossiers pertinents (`backend/src/services/`, `mobile/src/`, `frontend/src/`)
+**⚠️ IMPORTANT** : Consulter ce document avant de commencer l'implémentation pour comprendre l'architecture complète.
 
-2. ✅ **Vérifier les tables de base de données existantes**
-   - Vérifier si les tables nécessaires existent déjà
-   - Vérifier les schémas SQL existants dans `backend/migrations/`
-   - Vérifier les modèles Rust dans `backend/src/models/`
+---
 
-3. ✅ **Vérifier les endpoints API existants**
-   - Rechercher dans `backend/src/routes/` et `backend/src/controllers/`
-   - Vérifier si un endpoint similaire existe déjà
-   - Éviter de créer des endpoints en double
+## 🗄️ PARTIE 1 : Migrations Base de Données
 
-4. ✅ **Vérifier les composants Frontend/Mobile existants**
-   - Rechercher dans `frontend/src/components/` et `mobile/src/components/`
-   - Rechercher dans `frontend/src/pages/` et `mobile/src/screens/`
-   - Réutiliser les composants existants plutôt que d'en créer de nouveaux
+### Contraintes SQLx Mode Offline
 
-5. ✅ **Vérifier les services/utilitaires existants**
-   - Vérifier `backend/src/services/` pour services similaires
-   - Vérifier `mobile/src/services/` et `frontend/src/services/`
-   - Réutiliser la logique existante quand c'est possible
+**⚠️ CRITIQUE** : Le projet utilise SQLx en mode **OFFLINE**. Cela signifie :
 
-6. ✅ **Vérifier les hooks personnalisés existants**
-   - Rechercher dans `mobile/src/hooks/` et `frontend/src/hooks/`
-   - Réutiliser les hooks existants plutôt que de dupliquer la logique
+1. **Toutes les migrations doivent être dans 2 endroits** :
+   - Fichier SQL dans `backend/migrations/YYYYMMDD_NNN_description.sql`
+   - Fonction dans `backend/src/migrations/auto_migrate.rs`
 
-**Exemple de vérification systématique** :
+2. **Format de nom de migration** :
+   ```
+   YYYYMMDD_NNN_description.sql
+   ```
+   Exemple : `20250120_001_add_order_preparation_system.sql`
+
+3. **Après création d'une migration** :
+   ```bash
+   # 1. Appliquer la migration
+   cd backend
+   sqlx migrate run
+   
+   # 2. Régénérer les métadonnées offline (CRITIQUE)
+   cargo sqlx prepare
+   
+   # 3. Tester compilation offline
+   export SQLX_OFFLINE=true  # Linux/Mac
+   $env:SQLX_OFFLINE="true"  # PowerShell
+   cargo build
+   
+   # 4. Commiter TOUT (migration + .sqlx/*.json)
+   git add migrations/YYYYMMDD_NNN_description.sql
+   git add .sqlx/*.json
+   ```
+
+4. **Pattern dans auto_migrate.rs** :
+   - Utiliser `sqlx::query()` avec `CREATE TABLE IF NOT EXISTS`
+   - Séparer chaque `CREATE INDEX` en un appel `sqlx::query()` distinct
+   - Utiliser `run_delivery_step()` pour les migrations delivery (voir exemples existants)
+   - Logger avec `info!()` et `error!()`
+
+### Migrations à Créer
+
+#### Migration 1 : Temps de préparation + Disponibilité par jour
+
+**Fichier** : `backend/migrations/20250120_001_add_order_preparation_system.sql`
+
+```sql
+-- Migration: Système de temps de préparation et disponibilité par jour
+-- Date: 2025-01-20
+-- Description: Ajoute colonnes pour temps de préparation et jours de disponibilité
+
+-- 1. Ajouter colonnes à product_delivery_config
+ALTER TABLE product_delivery_config
+ADD COLUMN IF NOT EXISTS preparation_time_minutes INTEGER,
+-- NULL = utiliser valeur dynamique calculée par catégorie
+-- Si défini, utilise cette valeur spécifique au produit
+ADD COLUMN IF NOT EXISTS max_preparation_time_minutes INTEGER DEFAULT 60,
+ADD COLUMN IF NOT EXISTS availability_days INTEGER[] DEFAULT ARRAY[0,1,2,3,4,5,6],
+ADD COLUMN IF NOT EXISTS is_immediately_available BOOLEAN DEFAULT FALSE;
+-- 0=dimanche, 1=lundi, ..., 6=samedi
+-- is_immediately_available: TRUE = pas de délai de préparation, matching coursier immédiat
+
+-- 1.1. Table pour stocker les durées de préparation observées par catégorie
+CREATE TABLE IF NOT EXISTS category_preparation_stats (
+    id SERIAL PRIMARY KEY,
+    category VARCHAR(255) NOT NULL UNIQUE,
+    avg_preparation_minutes NUMERIC(10,2) NOT NULL DEFAULT 5.0,
+    median_preparation_minutes NUMERIC(10,2) NOT NULL DEFAULT 5.0,
+    sample_count INTEGER NOT NULL DEFAULT 0,
+    last_calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_category_preparation_stats_category 
+ON category_preparation_stats(category);
+
+-- 2. Index pour recherche par jours de disponibilité
+CREATE INDEX IF NOT EXISTS idx_product_delivery_config_availability_days 
+ON product_delivery_config USING GIN(availability_days);
+
+-- 3. Table commandes avec workflow de préparation
+CREATE TABLE IF NOT EXISTS product_orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    delivery_id UUID REFERENCES deliveries(id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES services(id),
+    product_index INTEGER NOT NULL,
+    client_user_id INTEGER NOT NULL REFERENCES users(id),
+    provider_user_id INTEGER NOT NULL REFERENCES users(id),
+    status TEXT NOT NULL DEFAULT 'pending', 
+    -- pending, validated, preparing, ready, courier_assigned, picked_up, delivered, cancelled, rejected
+    preparation_time_minutes INTEGER,
+    estimated_ready_at TIMESTAMPTZ,
+    validated_at TIMESTAMPTZ,
+    validated_by INTEGER REFERENCES users(id),
+    rejected_at TIMESTAMPTZ,
+    rejection_reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- 4. Index pour product_orders
+CREATE INDEX IF NOT EXISTS idx_product_orders_status 
+ON product_orders(status, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_product_orders_provider 
+ON product_orders(provider_user_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_product_orders_delivery 
+ON product_orders(delivery_id) WHERE delivery_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_product_orders_estimated_ready 
+ON product_orders(estimated_ready_at) WHERE estimated_ready_at IS NOT NULL;
+
+-- 3.1. Ajouter colonne validation_deadline à product_orders pour gérer les timeouts
+ALTER TABLE product_orders
+ADD COLUMN IF NOT EXISTS validation_deadline TIMESTAMPTZ;
+-- Deadline pour que le prestataire valide la commande
+
+CREATE INDEX IF NOT EXISTS idx_product_orders_validation_deadline 
+ON product_orders(validation_deadline) 
+WHERE status = 'pending' AND validation_deadline IS NOT NULL;
+
+-- 3.2. Table pour enregistrer les annulations (timeout, rejet, etc.)
+CREATE TABLE IF NOT EXISTS order_cancellations (
+    id SERIAL PRIMARY KEY,
+    order_id UUID NOT NULL REFERENCES product_orders(id) ON DELETE CASCADE,
+    provider_user_id INTEGER NOT NULL REFERENCES users(id),
+    service_id INTEGER NOT NULL REFERENCES services(id),
+    product_index INTEGER NOT NULL,
+    cancellation_type VARCHAR(50) NOT NULL CHECK (cancellation_type IN ('timeout', 'rejected', 'provider_cancelled', 'courier_unavailable')),
+    reason TEXT,
+    cancelled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_cancellations_provider 
+ON order_cancellations(provider_user_id, cancelled_at);
+
+CREATE INDEX IF NOT EXISTS idx_order_cancellations_service_product 
+ON order_cancellations(service_id, product_index, cancellation_type);
+
+-- 3.3. Table pour calculer les statistiques d'annulation par produit
+CREATE TABLE IF NOT EXISTS product_cancellation_stats (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    product_index INTEGER NOT NULL,
+    total_orders INTEGER NOT NULL DEFAULT 0,
+    total_cancellations INTEGER NOT NULL DEFAULT 0,
+    cancellation_rate NUMERIC(5,2) NOT NULL DEFAULT 0.0, -- Pourcentage
+    timeout_cancellations INTEGER NOT NULL DEFAULT 0,
+    rejected_cancellations INTEGER NOT NULL DEFAULT 0,
+    last_calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(service_id, product_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_cancellation_stats_rate 
+ON product_cancellation_stats(cancellation_rate DESC);
+```
+
+**Fonction dans auto_migrate.rs** :
+
 ```rust
-// AVANT de créer une nouvelle fonction calculate_distance() :
-// 1. Chercher : haversine_distance, calculate_distance, distance
-// 2. Vérifier : backend/src/services/delivery_service.rs
-// 3. Résultat : Fonction haversine_distance() existe déjà → UTILISER l'existante
+/// ✅ NOUVEAU : Système de temps de préparation et disponibilité par jour
+pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification du système de préparation de commandes...");
+    
+    // 1. Ajouter colonnes à product_delivery_config
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'product_delivery_config' 
+                AND column_name = 'preparation_time_minutes'
+            ) THEN
+                ALTER TABLE product_delivery_config
+                ADD COLUMN preparation_time_minutes INTEGER,
+                -- NULL = utiliser valeur dynamique calculée par catégorie
+                ADD COLUMN max_preparation_time_minutes INTEGER DEFAULT 60,
+                ADD COLUMN availability_days INTEGER[] DEFAULT ARRAY[0,1,2,3,4,5,6],
+                ADD COLUMN is_immediately_available BOOLEAN DEFAULT FALSE;
+            END IF;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    // 2. Index pour availability_days
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_delivery_config_availability_days ON product_delivery_config USING GIN(availability_days)",
+    )
+    .execute(pool)
+    .await?;
+    
+    // 3. Table product_orders
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS product_orders (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            delivery_id UUID REFERENCES deliveries(id) ON DELETE CASCADE,
+            service_id INTEGER NOT NULL REFERENCES services(id),
+            product_index INTEGER NOT NULL,
+            client_user_id INTEGER NOT NULL REFERENCES users(id),
+            provider_user_id INTEGER NOT NULL REFERENCES users(id),
+            status TEXT NOT NULL DEFAULT 'pending',
+            preparation_time_minutes INTEGER,
+            estimated_ready_at TIMESTAMPTZ,
+            validated_at TIMESTAMPTZ,
+            validated_by INTEGER REFERENCES users(id),
+            rejected_at TIMESTAMPTZ,
+            rejection_reason TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            metadata JSONB DEFAULT '{}'::jsonb
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    // 4. Index pour product_orders (séparés)
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_orders_status ON product_orders(status, created_at)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_orders_provider ON product_orders(provider_user_id, status)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_orders_delivery ON product_orders(delivery_id) WHERE delivery_id IS NOT NULL",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_orders_estimated_ready ON product_orders(estimated_ready_at) WHERE estimated_ready_at IS NOT NULL",
+    )
+    .execute(pool)
+    .await?;
+    
+    // 4.1. Ajouter colonne validation_deadline
+    sqlx::query(
+        "ALTER TABLE product_orders ADD COLUMN IF NOT EXISTS validation_deadline TIMESTAMPTZ"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_orders_validation_deadline ON product_orders(validation_deadline) WHERE status = 'pending' AND validation_deadline IS NOT NULL"
+    )
+    .execute(pool)
+    .await?;
+    
+    // 4.2. Table order_cancellations
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS order_cancellations (
+            id SERIAL PRIMARY KEY,
+            order_id UUID NOT NULL REFERENCES product_orders(id) ON DELETE CASCADE,
+            provider_user_id INTEGER NOT NULL REFERENCES users(id),
+            service_id INTEGER NOT NULL REFERENCES services(id),
+            product_index INTEGER NOT NULL,
+            cancellation_type VARCHAR(50) NOT NULL CHECK (cancellation_type IN ('timeout', 'rejected', 'provider_cancelled', 'courier_unavailable')),
+            reason TEXT,
+            cancelled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_order_cancellations_provider ON order_cancellations(provider_user_id, cancelled_at)"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_order_cancellations_service_product ON order_cancellations(service_id, product_index, cancellation_type)"
+    )
+    .execute(pool)
+    .await?;
+    
+    // 4.3. Table product_cancellation_stats
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS product_cancellation_stats (
+            id SERIAL PRIMARY KEY,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            product_index INTEGER NOT NULL,
+            total_orders INTEGER NOT NULL DEFAULT 0,
+            total_cancellations INTEGER NOT NULL DEFAULT 0,
+            cancellation_rate NUMERIC(5,2) NOT NULL DEFAULT 0.0,
+            timeout_cancellations INTEGER NOT NULL DEFAULT 0,
+            rejected_cancellations INTEGER NOT NULL DEFAULT 0,
+            last_calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(service_id, product_index)
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_cancellation_stats_rate ON product_cancellation_stats(cancellation_rate DESC)"
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
 ```
 
-**Risques de non-vérification** :
-- ❌ Doublons de code (même logique implémentée plusieurs fois)
-- ❌ Endpoints API dupliqués (confusion, maintenance difficile)
-- ❌ Tables de base de données dupliquées (incohérence de données)
-- ❌ Composants UI dupliqués (design incohérent)
-- ❌ Services dupliqués (complexité inutile)
+**Ajouter dans `run_auto_migrations()`** :
 
-**Action requise** :
-- ✅ Toujours commencer par une recherche complète dans le codebase
-- ✅ Documenter ce qui existe déjà avant de créer du nouveau
-- ✅ Préférer l'extension de l'existant plutôt que la création de nouveau
+```rust
+// Dans la fonction run_auto_migrations(), après les autres migrations
+match ensure_order_preparation_system(pool).await {
+    Ok(_) => info!("✅ Migration auto: order preparation system OK"),
+    Err(e) => error!("❌ Erreur migration auto order preparation: {}", e),
+}
+```
+
+#### Migration 2 : Gestion Stock
+
+**Fichier** : `backend/migrations/20250120_002_add_product_stock_management.sql`
+
+```sql
+-- Migration: Gestion de stock en temps réel
+-- Date: 2025-01-20
+
+-- 1. Table stock par lieu
+CREATE TABLE IF NOT EXISTS product_stock_locations (
+    id SERIAL PRIMARY KEY,
+    product_delivery_config_id INTEGER NOT NULL REFERENCES product_delivery_config(id) ON DELETE CASCADE,
+    storage_location_id INTEGER REFERENCES merchant_storage_locations(id),
+    quantity_available INTEGER DEFAULT 0,
+    quantity_reserved INTEGER DEFAULT 0,
+    is_available BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by INTEGER REFERENCES users(id),
+    UNIQUE(product_delivery_config_id, storage_location_id)
+);
+
+-- 2. Index pour product_stock_locations
+CREATE INDEX IF NOT EXISTS idx_product_stock_locations_config 
+ON product_stock_locations(product_delivery_config_id);
+
+CREATE INDEX IF NOT EXISTS idx_product_stock_locations_available 
+ON product_stock_locations(is_available, quantity_available) 
+WHERE is_available = TRUE;
+
+-- 3. Table réservations stock
+CREATE TABLE IF NOT EXISTS stock_reservations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID NOT NULL REFERENCES product_orders(id) ON DELETE CASCADE,
+    stock_location_id INTEGER NOT NULL REFERENCES product_stock_locations(id),
+    quantity INTEGER NOT NULL,
+    reserved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    released_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ NOT NULL
+);
+
+-- 4. Index pour stock_reservations
+CREATE INDEX IF NOT EXISTS idx_stock_reservations_order 
+ON stock_reservations(order_id);
+
+CREATE INDEX IF NOT EXISTS idx_stock_reservations_expires 
+ON stock_reservations(expires_at) WHERE released_at IS NULL;
+```
+
+**Fonction dans auto_migrate.rs** (même pattern que ci-dessus)
 
 ---
 
-### **1. Migrations SQLx - Mode Offline (TRÈS IMPORTANT)**
+## 🔧 PARTIE 2 : Backend (Rust)
 
-**⚠️ TOUTES les migrations créées DOIVENT :**
+### Structure des Services
 
-1. ✅ **Respecter SQLx en mode offline** (`SQLX_OFFLINE=true`)
-   - Créer les fichiers SQL dans `backend/migrations/` avec le format : `YYYYMMDDHHMMSS_description.sql`
-   - Utiliser `sqlx migrate add description` pour générer le fichier
+Créer les services suivants dans `backend/src/services/` :
 
-2. ✅ **Être intégrées dans `auto_migrate`**
-   - Localiser le fichier `backend/src/main.rs` ou `backend/src/lib.rs` qui contient `auto_migrate()`
-   - Vérifier que les migrations sont bien exécutées automatiquement au démarrage
+1. **`product_availability_service.rs`** - Vérification disponibilité + produits similaires
+2. **`order_preparation_service.rs`** - Workflow de préparation
+3. **`product_stock_service.rs`** - Gestion stock
+4. **`smart_notification_service.rs`** - Notifications intelligentes
+5. **`similar_products_service.rs`** - Recherche produits similaires
+6. **`dynamic_preparation_time_service.rs`** - Calcul dynamique durée par catégorie (NOUVEAU)
+7. **`order_timeout_monitor.rs`** - Monitor timeout validation commandes (NOUVEAU - dans tasks/)
 
-3. ✅ **Être insérées dans `000..all..`**
-   - Localiser le fichier de migration globale (probablement `backend/migrations/000_all.sql` ou similaire)
-   - Y ajouter toutes les nouvelles migrations SQL dans l'ordre chronologique
-   - Format attendu : `\i migrations/YYYYMMDDHHMMSS_description.sql`
+### Patterns à Suivre
 
-4. ✅ **Régénérer sqlx-data.json**
-   - Après chaque migration, exécuter : `cargo sqlx prepare -- --lib`
-   - Vérifier que `sqlx-data.json` est mis à jour
+**1. Structure de service standard** :
 
-**Structure attendue** :
+```rust
+use crate::core::types::{AppError, AppResult};
+use sqlx::PgPool;
+use chrono::{DateTime, Utc};
 
-1. **Créer fichier SQL séparé** :
-```sql
--- backend/migrations/20240101120000_add_product_delivery_config.sql
-CREATE TABLE IF NOT EXISTS product_delivery_config (
-    -- schéma complet
-);
-```
+pub struct ProductAvailabilityService {
+    pool: PgPool,
+}
 
-2. **Ajouter dans le fichier principal** :
-```sql
--- backend/migrations/0000_create_all_tables.sql
--- Ajouter à la fin du fichier (copier le contenu complet) :
-CREATE TABLE IF NOT EXISTS product_delivery_config (
-    -- schéma complet (même contenu que dans le fichier séparé)
-);
-```
-
-3. **Vérifier auto_migrate.rs** :
-   - Si la migration est critique et doit être exécutée automatiquement au démarrage
-   - Ajouter une fonction dans `backend/src/migrations/auto_migrate.rs` si nécessaire
-   - Vérifier que `run_auto_migrations()` appelle cette fonction
-
-**Important** : Le fichier `0000_create_all_tables.sql` semble être le fichier principal qui contient toutes les migrations consolidées. TOUTES les nouvelles migrations doivent y être ajoutées en plus du fichier séparé.
-
-### **2. Composant de Rechargement (TRÈS IMPORTANT)**
-
-**⚠️ Pour la partie financière (réservation/vérification solde)** :
-
-Quand le client doit recharger son compte (solde insuffisant) :
-
-1. ✅ **Utiliser le composant EXISTANT** : `RechargeTokensPage` / `RechargeTokensScreen`
-   - **Web** : `frontend/src/pages/RechargeTokensPage.tsx`
-   - **Mobile** : `mobile/src/screens/RechargeTokensScreen.tsx`
-
-2. ✅ **Ne PAS créer de nouveau composant de recharge**
-   - Ouvrir le composant existant en modal
-   - Passer le montant minimum à recharger comme paramètre optionnel
-   - Après rechargement réussi → Retry la création de livraison
-
-3. ✅ **Exemple d'utilisation** :
-```typescript
-// Dans le composant de vérification solde (mobile ou web)
-
-const handleInsufficientBalance = (requiredAmount: number, currentBalance: number) => {
-    // Ouvrir le composant de recharge existant
-    // Navigation vers RechargeTokensPage/RechargeTokensScreen
-    // Passer amountToRecharge = requiredAmount - currentBalance
+impl ProductAvailabilityService {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
     
-    navigation.navigate('RechargeTokens', {
-        minimumAmount: requiredAmount - currentBalance,
-        onRechargeSuccess: () => {
-            // Retry création livraison après rechargement
-            retryDeliveryCreation();
+    // Méthodes publiques
+}
+```
+
+**2. Gestion d'erreurs** :
+- Utiliser `AppResult<T>` et `AppError`
+- Logger avec `log::info!()`, `log::error!()`, `log::warn!()`
+
+**3. Requêtes SQL** :
+- Utiliser `sqlx::query()` avec bindings
+- Préparer les requêtes pour mode offline (`cargo sqlx prepare`)
+
+**4. Transactions** :
+- Utiliser `pool.begin()` pour opérations multiples
+- Commit/rollback appropriés
+
+### Routes API à Créer/Modifier
+
+Dans `backend/src/routes/delivery_routes.rs` :
+
+1. **Modifier `create_client_order`** :
+   - Vérifier disponibilité avant création
+   - Retourner produits similaires si indisponible
+   - **IMPORTANT** : Toujours retourner les adresses textuelles des lieux pickup, jamais les coordonnées GPS brutes
+
+2. **Nouvelles routes** :
+   - `POST /api/delivery/orders/:order_id/validate` - Prestataire valide
+     - Si `is_immediately_available = TRUE`, passer directement à statut "Ready" et démarrer matching
+   - `POST /api/delivery/orders/:order_id/reject` - Prestataire invalide
+   - `GET /api/delivery/orders/:order_id/similar` - Produits similaires
+   - `PUT /api/delivery/stock/:config_id` - Mettre à jour stock
+   - `DELETE /api/delivery/stock/:config_id/location/:location_id` - Supprimer lieu stock
+   - `GET /api/delivery/config/:config_id/pickup-locations` - Liste lieux pickup (retourner adresses, pas GPS)
+
+3. **Routes Analytics Prestataire** (NOUVEAU) :
+   - `GET /api/provider/:provider_id/analytics/orders` - Statistiques commandes
+   - `GET /api/provider/:provider_id/analytics/preparation-time` - Métriques délais préparation
+   - `GET /api/provider/:provider_id/analytics/rejections` - Analyse produits rejetés
+   - `GET /api/provider/:provider_id/analytics/product-performance` - Performance par produit
+   - `GET /api/provider/:provider_id/analytics/availability-stats` - Stats disponibilité immédiate
+   - `GET /api/provider/:provider_id/analytics/dashboard` - Données complètes dashboard
+
+### Intégration avec Services Existants
+
+**Modifier `delivery_service.rs`** :
+- Dans `enqueue_delivery_matching()`, vérifier si commande est "Ready"
+- Ne pas démarrer matching si statut != Ready
+- **IMPORTANT** : Si `is_immediately_available = TRUE`, démarrer matching immédiatement après validation (pas d'attente)
+
+**Modifier routes de recherche produits** :
+- Dans les routes qui retournent des produits (ex: `/api/search`, `/api/services`), inclure les données de `product_delivery_config` :
+  - `is_immediately_available`
+  - `preparation_time_minutes`
+  - `availability_days`
+- Ces données seront utilisées par les ProductCard pour afficher les badges
+
+**Modifier `delivery_matching_worker.rs`** :
+- Vérifier `estimated_ready_at` avant matching
+- Attendre si commande pas encore prête
+
+---
+
+## 📱 PARTIE 3 : Mobile (React Native)
+
+### Écrans à Créer/Modifier
+
+1. **`ResultatBesoinScreen.tsx`** (MODIFIER - Déjà existe)
+   - ✅ **Déjà implémenté** : Accepte `route.params.results` pour précharger des produits
+   - ✅ **Déjà implémenté** : Accepte `route.params.searchQuery` pour préremplir la recherche
+   - **Utilisation** : Navigation depuis notifications avec produits similaires préchargés
+   - **Pas besoin de créer `SimilarProductsScreen`** : Réutiliser `ResultatBesoinScreen` avec paramètres
+
+2. **`OrderStatusScreen.tsx`** (NOUVEAU)
+   - Suivi commande avec statuts (Pending → Validated → Ready → etc.)
+   - Notifications temps réel
+
+3. **`ProviderOrderManagementScreen.tsx`** (NOUVEAU)
+   - Liste commandes en attente
+   - Actions : Valider / Invalider / Modifier stock
+   - Notifications sonores nouvelles commandes
+
+### Services API Mobile
+
+Dans `mobile/src/services/` :
+
+1. **`orderService.ts`** :
+```typescript
+export const orderService = {
+  createOrder: async (orderData: CreateOrderPayload) => {
+    // Créer commande avec vérification disponibilité
+    // IMPORTANT: Les lieux pickup retournés doivent être en adresse textuelle
+  },
+  validateOrder: async (orderId: string, estimatedReadyAt?: Date) => {
+    // Prestataire valide commande
+    // Si is_immediately_available = true, estimatedReadyAt peut être null
+  },
+  rejectOrder: async (orderId: string, reason: string) => {
+    // Prestataire invalide commande
+  },
+  getSimilarProducts: async (orderId: string) => {
+    // Récupérer produits similaires
+  },
+  getPickupLocations: async (configId: number) => {
+    // Récupérer lieux pickup (retourne adresses textuelles, pas GPS)
+  },
+};
+
+2. **`productDeliveryService.ts`** (NOUVEAU) :
+```typescript
+export const productDeliveryService = {
+  getDeliveryConfig: async (serviceId: number, productIndex: number) => {
+    // Récupérer product_delivery_config pour un produit
+    // Retourne : is_immediately_available, preparation_time_minutes, availability_days
+  },
+  formatAvailabilityDays: (days: number[]) => {
+    // Formater les jours pour affichage (ex: [1,2,3,4,5] -> "Lun-Ven")
+    // 0=dimanche, 1=lundi, ..., 6=samedi
+  },
+};
+```
+
+2. **`stockService.ts`** :
+```typescript
+export const stockService = {
+  updateStock: async (configId: number, locationId: number, quantity: number) => {
+    // Mettre à jour stock
+  },
+  removeStockLocation: async (configId: number, locationId: number) => {
+    // Supprimer lieu stockage
+  },
+};
+```
+
+### Notifications Sonores
+
+Dans `mobile/src/services/notificationService.ts` :
+
+```typescript
+import Sound from 'react-native-sound';
+
+export const playNotificationSound = (type: 'order' | 'courier' | 'ready') => {
+  const sounds = {
+    order: require('../assets/sounds/order_notification.wav'),
+    courier: require('../assets/sounds/courier_assigned.wav'),
+    ready: require('../assets/sounds/order_ready.wav'),
+  };
+  
+  const sound = new Sound(sounds[type], Sound.MAIN_BUNDLE, (error) => {
+    if (!error) {
+      sound.play();
+    }
+  });
+};
+```
+
+### Redirection vers ResultatBesoinScreen avec Produits Préchargés
+
+**⚠️ IMPORTANT** : `ResultatBesoinScreen` accepte déjà des paramètres de route pour précharger des produits. C'est techniquement possible et déjà implémenté !
+
+**Solution technique** :
+
+1. **Backend : Inclure produits similaires dans la notification**
+
+```rust
+// backend/src/services/smart_notification_service.rs
+pub async fn notify_client_order_rejected_with_alternatives(
+    &self,
+    client_user_id: i32,
+    order_id: Uuid,
+    alternatives: Vec<AlternativeProduct>,
+) -> AppResult<()> {
+    // Construire le payload de notification avec produits préchargés
+    let notification_data = json!({
+        "type": "order_rejected_with_alternatives",
+        "order_id": order_id,
+        "alternatives": alternatives,  // ✅ Produits similaires déjà recherchés
+        "redirect": {
+            "screen": "ResultatBesoin",
+            "params": {
+                "results": alternatives,  // ✅ Produits à afficher directement
+                "searchQuery": alternatives.first().map(|p| p.name.clone()).unwrap_or_default(),
+                "type": "similar_products",
+                "title": "Produits similaires disponibles"
+            }
         }
     });
+
+    // Envoyer notification push
+    self.push_service.send_push_notification(
+        client_user_id,
+        "🔄 Produit non disponible",
+        "Voici des alternatives disponibles",
+        Some(notification_data),
+    ).await?;
+
+    Ok(())
+}
+```
+
+2. **Mobile : Gestionnaire de notifications**
+
+```typescript
+// mobile/src/components/PushNotificationManager.tsx
+import { useNavigation } from '@react-navigation/native';
+
+// Dans le gestionnaire de notifications
+const handleNotificationPress = (notification: any) => {
+  const data = notification.data;
+  
+  if (data?.type === 'order_rejected_with_alternatives' && data?.redirect) {
+    const { screen, params } = data.redirect;
+    
+    // ✅ Navigation vers ResultatBesoin avec produits préchargés
+    navigation.navigate(screen, params);
+    // params contient : { results: [...], searchQuery: "...", type: "similar_products" }
+  }
+};
+```
+
+3. **ResultatBesoinScreen : Utilisation des paramètres (DÉJÀ IMPLÉMENTÉ)**
+
+```typescript
+// mobile/src/screens/ResultatBesoinScreen.tsx
+// ✅ DÉJÀ IMPLÉMENTÉ : Le screen accepte route.params.results
+useEffect(() => {
+  const params = route.params as any;
+  
+  if (params?.results) {
+    // ✅ Produits déjà préchargés, pas besoin de recherche
+    setResults(params.results);
+    if (params.searchQuery) {
+      setSearchQuery(params.searchQuery);
+    }
+  }
+}, [route.params]);
+```
+
+**Workflow complet** :
+
+1. **Prestataire rejette commande** → Backend cherche produits similaires
+2. **Backend envoie notification** → Avec `alternatives` dans le payload
+3. **Client clique notification** → `PushNotificationManager` intercepte
+4. **Navigation automatique** → Vers `ResultatBesoin` avec `params.results = alternatives`
+5. **ResultatBesoin affiche** → Produits déjà chargés, pas de recherche nécessaire
+
+**Avantages** :
+- ✅ Pas de recherche supplémentaire côté client
+- ✅ Expérience fluide (produits affichés immédiatement)
+- ✅ Réutilise l'infrastructure existante (`route.params`)
+- ✅ Compatible avec deep linking pour notifications externes
+
+### Navigation
+
+Dans `mobile/src/navigation/` :
+
+- ✅ **Pas besoin de route `SimilarProducts`** : Utiliser `ResultatBesoin` avec paramètres
+- Ajouter route `OrderStatus` 
+- Ajouter route `ProviderOrderManagement`
+
+---
+
+## 🖥️ PARTIE 4 : Frontend (React)
+
+### Pages à Créer/Modifier
+
+1. **`SimilarProductsPage.tsx`** (NOUVEAU)
+   - Même logique que mobile mais pour web
+   - Design responsive
+
+2. **`OrderManagementPage.tsx`** (NOUVEAU)
+   - Dashboard prestataire pour gérer commandes
+   - Tableau avec filtres par statut
+   - **Même fonctionnalités que mobile** : Statistiques, métriques, graphiques
+
+3. **`ProductCard.tsx`** (MODIFIER)
+   - **Même indicateurs que mobile** :
+     - Badge "⚡ Livraison rapide" si `is_immediately_available = TRUE`
+     - Badge "⏱️ Prêt en X min" si `preparation_time_minutes > 0`
+     - Badge "📅 Disponible [jours]" si `availability_days` est défini
+   - **Design responsive** : S'adapter aux différentes tailles d'écran
+   - **Tooltip** : Au survol, afficher plus de détails (ex: "Disponible immédiatement - Livraison en moins de 30 min")
+
+3. **`ProviderAnalyticsPage.tsx`** (MODIFIER/CRÉER)
+   - **Analytics avancés** :
+     - Statistiques détaillées sur délais de préparation
+     - Analyse des produits rejetés (raisons, fréquences)
+     - **Analyse annulations** :
+       - Nombre total d'annulations (timeout, rejet prestataire, annulation prestataire, coursier indisponible)
+       - Taux d'annulation par produit (pourcentage)
+       - Raisons d'annulation les plus fréquentes
+       - Évolution du taux d'annulation dans le temps
+       - Produits avec taux d'annulation élevé (> 20%)
+     - **Pénalités** :
+       - Nombre de pénalités (produit indisponible signalé par coursier)
+       - Montant total débité pour pénalités
+       - Montant moyen par pénalité
+       - Évolution des pénalités dans le temps
+     - Performance par produit (temps préparation, taux validation, taux annulation)
+     - Comparaison produits disponibles immédiatement vs avec délai
+     - Impact des délais sur satisfaction client
+   - **Rapports exportables** :
+     - Export CSV/PDF des métriques
+     - Rapports mensuels/hebdomadaires
+   - **Recommandations** :
+     - Suggestions d'optimisation des délais
+     - Produits à marquer comme "disponibles immédiatement"
+     - Identification des problèmes récurrents
+
+### Services API Frontend
+
+Dans `frontend/src/services/` :
+
+- Même structure que mobile mais adapté pour web
+- Utiliser `axios` ou `fetch` pour appels API
+
+1. **`providerAnalyticsService.ts`** (NOUVEAU) :
+```typescript
+export const providerAnalyticsService = {
+  getOrderStatistics: async (providerId: number, dateRange?: DateRange) => {
+    // Statistiques commandes (pending, validated, rejected, etc.)
+  },
+  getPreparationTimeMetrics: async (providerId: number) => {
+    // Métriques délais de préparation
+    // Temps moyen, médian, par produit, etc.
+  },
+  getRejectionAnalytics: async (providerId: number) => {
+    // Analyse des rejets (raisons, fréquences, tendances)
+  },
+  getCancellationAnalytics: async (providerId: number) => {
+    // Analyse des annulations (timeout, rejet, etc.)
+    // Taux d'annulation par produit, raisons, évolution
+  },
+  getPenaltiesAnalytics: async (providerId: number) => {
+    // Analyse des pénalités (montant total, nombre, évolution)
+  },
+  getProductPerformance: async (providerId: number) => {
+    // Performance par produit (temps préparation, taux validation)
+  },
+  getImmediateAvailabilityStats: async (providerId: number) => {
+    // Stats produits disponibles immédiatement vs avec délai
+  },
+};
+
+2. **`productDeliveryService.ts`** (NOUVEAU) :
+```typescript
+export const productDeliveryService = {
+  getDeliveryConfig: async (serviceId: number, productIndex: number) => {
+    // Récupérer product_delivery_config pour un produit
+    // Retourne : is_immediately_available, preparation_time_minutes, availability_days
+  },
+  formatAvailabilityDays: (days: number[]) => {
+    // Formater les jours pour affichage (ex: [1,2,3,4,5] -> "Lun-Ven")
+    // 0=dimanche, 1=lundi, ..., 6=samedi
+  },
 };
 ```
 
 ---
 
-## 📊 PLAN D'IMPLÉMENTATION (33 Améliorations)
+## ✅ Checklist d'Implémentation
 
-### **Phase 1 : Fondations (Critique)** - Priorité 🔴 Haute
+### Phase 1 : Migrations
+- [ ] Créer migration 1 (temps préparation + disponibilité)
+- [ ] Créer migration 2 (gestion stock)
+- [ ] Ajouter fonctions dans `auto_migrate.rs`
+- [ ] Tester migrations localement
+- [ ] `cargo sqlx prepare` et tester compilation offline
+- [ ] Commiter migrations + métadonnées
 
-1. ✅ **Systématisation infos livraison** (obligatoire pour activation produit)
-   - Migration : Table `product_delivery_config`
-   - Backend : Validation configuration obligatoire
-   - Frontend/Mobile : Formulaire configuration lors création produit
-   - Voir Section 1 du plan
+### Phase 2 : Backend Services
+- [ ] Créer `ProductAvailabilityService`
+- [ ] Créer `OrderPreparationService` (avec gestion `is_immediately_available`)
+- [ ] Créer `ProductStockService`
+- [ ] Créer `SmartNotificationService`
+- [ ] Créer `SimilarProductsService`
+- [ ] Créer `DynamicPreparationTimeService` (NOUVEAU)
+  - [ ] Calculer statistiques par catégorie depuis données historiques
+  - [ ] Mettre à jour `category_preparation_stats` toutes les 24h
+  - [ ] Utiliser médiane pour valeur par défaut
+  - [ ] Intégrer dans `OrderPreparationService` (si `preparation_time_minutes` NULL, utiliser valeur dynamique)
+- [ ] Créer `OrderTimeoutMonitor` (NOUVEAU - dans tasks/)
+  - [ ] Vérifier toutes les minutes les commandes avec `validation_deadline` expirée
+  - [ ] Appeler `handle_validation_timeout` pour chaque commande expirée
+  - [ ] Démarrer dans `main.rs` avec `tokio::spawn`
+- [ ] Créer `ProviderAnalyticsService` (NOUVEAU)
+  - [ ] Statistiques commandes par statut
+  - [ ] Métriques délais de préparation
+  - [ ] **Analyse annulations** :
+    - [ ] Nombre total d'annulations (timeout, rejet, etc.)
+    - [ ] Taux d'annulation par produit
+    - [ ] Raisons d'annulation les plus fréquentes
+    - [ ] Évolution du taux d'annulation dans le temps
+  - [ ] **Pénalités** :
+    - [ ] Nombre de pénalités (produit indisponible signalé par coursier)
+    - [ ] Montant total débité pour pénalités
+    - [ ] Montant moyen par pénalité
+    - [ ] Évolution des pénalités dans le temps
+  - [ ] Performance par produit
+  - [ ] Comparaison disponibilité immédiate vs délai
+- [ ] Modifier `DeliveryService` pour intégrer workflow
+  - [ ] Gérer cas `is_immediately_available = TRUE` (matching immédiat)
+- [ ] **Modifier routes de recherche produits** (IMPORTANT)
+  - [ ] Inclure `product_delivery_config` dans les réponses (is_immediately_available, preparation_time_minutes, availability_days)
+  - [ ] Routes concernées : `/api/search`, `/api/services`, `/api/products`, etc.
+  - [ ] Créer route `GET /api/delivery/config/:service_id/:product_index` pour récupérer config d'un produit
+  - [ ] Joindre `product_delivery_config` dans les requêtes de recherche pour éviter appels multiples
+- [ ] Créer/modifier routes API
+  - [ ] S'assurer que toutes les routes retournent adresses textuelles, pas GPS
+  - [ ] Routes analytics prestataire : `/api/provider/analytics/*`
+- [ ] Tests unitaires
 
-2. ✅ **Matching seulement quand client commande** (pas à la création vidéo)
-   - Backend : Modifier `delivery_service.rs` pour enlever `enqueue_delivery_matching` immédiat
-   - Matching déclenché seulement après `assign_delivery_recipient`
-   - Voir Section 2 du plan
+### Phase 3 : Backend Routes
+- [ ] Modifier `create_client_order` pour vérification disponibilité
+- [ ] Créer routes validation/invalidation
+- [ ] Créer routes gestion stock
+- [ ] Créer route produits similaires
+- [ ] Tests d'intégration
 
-3. ✅ **Flux commande client direct** (modal automatique)
-   - Frontend/Mobile : Modal `OrderDeliveryModal` qui s'ouvre automatiquement
-   - Endpoint : `POST /api/delivery/client-order`
-   - Auto-remplissage adresses par défaut
-   - Voir Section 3 du plan
+### Phase 4 : Mobile
+- [ ] **Modifier `PushNotificationManager`** pour gérer redirection vers `ResultatBesoin` avec produits préchargés
+  - [ ] Intercepter notifications de type `order_rejected_with_alternatives`
+  - [ ] Extraire `redirect.params` et naviguer vers `ResultatBesoin` avec ces params
+  - [ ] Tester avec notification réelle
+- [ ] **Vérifier `ResultatBesoinScreen`** : S'assurer que `route.params.results` fonctionne correctement (déjà implémenté)
+- [ ] Créer `OrderStatusScreen`
+- [ ] Créer `ProviderOrderManagementScreen`
+  - [ ] Ajouter checkbox "Disponible immédiatement"
+  - [ ] Afficher lieux pickup en adresses textuelles uniquement
+- [ ] Créer/Modifier `ProviderDashboardScreen`
+  - [ ] Statistiques commandes (pending, validated, rejected, cancelled)
+  - [ ] Métriques délais de préparation
+  - [ ] **Analyse annulations** :
+    - [ ] Nombre total d'annulations
+    - [ ] Taux d'annulation par produit
+    - [ ] Raisons d'annulation les plus fréquentes
+    - [ ] Évolution du taux d'annulation
+  - [ ] **Pénalités** :
+    - [ ] Nombre de pénalités
+    - [ ] Montant total débité
+    - [ ] Évolution des pénalités
+  - [ ] Graphiques et visualisations
+  - [ ] Alertes et notifications
+- [ ] **Modifier `ProductCard.tsx`** (IMPORTANT - Mobile)
+  - [ ] Créer composant `DeliveryBadge` pour afficher les indicateurs
+  - [ ] Récupérer `product_delivery_config` depuis l'API ou props
+  - [ ] Récupérer `cancellation_rate` depuis `product_cancellation_stats` via API
+  - [ ] Ajouter badge "⚡ Livraison rapide" si `is_immediately_available = TRUE`
+  - [ ] Ajouter badge "⏱️ Prêt en X min" si `preparation_time_minutes > 0`
+  - [ ] Ajouter badge "📅 Disponible [jours]" si `availability_days` est défini
+  - [ ] **Ajouter badge "⚠️ Taux d'annulation"** (NOUVEAU)
+    - [ ] Si `cancellation_rate >= 30%` : Badge rouge "⚠️ Annulations fréquentes (X%)"
+    - [ ] Si `cancellation_rate >= 20%` : Badge orange "⚠️ Annulations modérées (X%)"
+    - [ ] Si `cancellation_rate >= 10%` : Badge jaune "⚠️ Quelques annulations (X%)"
+    - [ ] Si `cancellation_rate < 10%` : Ne pas afficher (ou badge vert "✅ Fiable" si < 5%)
+    - [ ] Tooltip : "Taux d'annulation basé sur les commandes récentes"
+    - [ ] Position : En haut à gauche du ProductCard
+  - [ ] Implémenter logique de priorité d'affichage
+  - [ ] Positionner les badges en haut à droite du card (sauf annulation en haut à gauche)
+  - [ ] Style : Badges colorés avec icônes, taille adaptée mobile
+  - [ ] Gérer les cas où les données ne sont pas disponibles
+  - [ ] Tester avec différents produits (avec/sans config)
+- [ ] Créer services API
+  - [ ] Service analytics pour prestataire
+- [ ] Implémenter notifications sonores
+- [ ] Ajouter navigation
+- [ ] **Vérifier affichage adresses** : Tous les lieux pickup affichés en texte, pas GPS
+- [ ] Tests UI
 
----
+### Phase 5 : Frontend
+- [ ] Créer pages web équivalentes
+- [ ] Créer/Modifier `ProviderAnalyticsPage`
+  - [ ] Dashboard analytics complet
+  - [ ] Statistiques délais de préparation
+  - [ ] Analyse produits rejetés
+  - [ ] Graphiques et rapports
+  - [ ] Export de données
+- [ ] **Modifier `ProductCard.tsx`** (IMPORTANT - Frontend)
+  - [ ] Créer composant `DeliveryBadge` pour afficher les indicateurs
+  - [ ] Récupérer `product_delivery_config` depuis l'API ou props
+  - [ ] Récupérer `cancellation_rate` depuis `product_cancellation_stats` via API
+  - [ ] Même indicateurs que mobile (badges livraison rapide)
+  - [ ] **Ajouter badge "⚠️ Taux d'annulation"** (NOUVEAU - même logique que mobile)
+  - [ ] Design responsive (mobile/tablette/desktop)
+  - [ ] Tooltip au survol pour plus de détails
+  - [ ] Animation subtile au survol
+  - [ ] Accessibilité (contraste, taille de texte)
+- [ ] Créer services API
+  - [ ] `providerAnalyticsService.ts` avec toutes les métriques
+- [ ] Tests UI
 
-### **Phase 2 : UX Améliorée** - Priorité 🟡 Moyenne
+### Phase 6 : Monitor Timeout + Calcul Dynamique Durée (NOUVEAU)
+- [ ] Créer `OrderTimeoutMonitor` dans `backend/src/tasks/`
+  - [ ] Vérifier toutes les minutes les commandes avec `validation_deadline` expirée
+  - [ ] Appeler `handle_validation_timeout` pour chaque commande expirée
+  - [ ] Démarrer dans `main.rs` avec `tokio::spawn`
+- [ ] Créer `DynamicPreparationTimeService`
+  - [ ] Calculer statistiques par catégorie depuis données historiques
+  - [ ] Mettre à jour `category_preparation_stats` toutes les 24h
+  - [ ] Utiliser médiane pour valeur par défaut
+- [ ] Intégrer calcul dynamique dans `OrderPreparationService`
+  - [ ] Si `preparation_time_minutes` est NULL, utiliser valeur dynamique de la catégorie
+- [ ] Créer tâche périodique pour recalculer stats catégories (cron quotidien)
+- [ ] Créer tâche périodique pour recalculer `product_cancellation_stats` (cron quotidien)
+  - [ ] Calculer taux d'annulation par produit
+  - [ ] Mettre à jour `product_cancellation_stats`
 
-4. ✅ **Auto-remplissage adresses** (depuis base de données + GPS courant)
-   - Frontend/Mobile : Charger adresses par défaut utilisateur
-   - GPS courant si pas d'adresse enregistrée
-   - Voir Section 3 du plan
-
-5. ✅ **Modification adresses à tout moment**
-   - UI : Bouton "Modifier" pour pickup/dropoff
-   - Backend : Endpoint pour mise à jour adresses livraison
-   - Voir Section 3 du plan
-
-6. ✅ **Formulaire persistant si infos manquantes** (notification prestataire)
-   - Backend : Notification automatique si config livraison manquante
-   - Frontend/Mobile : Formulaire persistant affiché jusqu'à complétion
-   - Voir Section 4 du plan
-
----
-
-### **Phase 3 : Intelligence Avancée** - Priorité 🔴 Haute
-
-7. ✅ **Plages horaires prestataire/client** + Matching intelligent
-   - Migration : Tables `product_delivery_config` (pickup_availability_schedule) et `client_delivery_preferences`
-   - Backend : Service de matching intelligent avec contraintes horaires
-   - Frontend/Mobile : Interface pour définir plages horaires
-   - Voir Section 5 du plan
-
----
-
-### **Phase 4 : Extensions** - Priorité 🟢 Basse
-
-8. ✅ **Navigation vidéos liées** (chaînage de vidéos)
-   - Migration : Table `video_links`
-   - Backend : Endpoints `POST /api/videos/links`, `GET /api/videos/{id}/links`
-   - Frontend/Mobile : Composant `VideoLinksPanel`
-   - Voir Section 6 du plan
-
-9. ✅ **Externalisation API publique** (WhatsApp, Facebook)
-   - Backend : Endpoint public `POST /api/external/delivery`
-   - Documentation API publique
-   - Voir Section 7 du plan
-
----
-
-### **Phase 5 : Gestion Financière Avancée** - Priorité 🔴 Haute
-
-10. ✅ **Verrouillage confirmation livraison** (vérification solde)
-    - Backend : Vérification solde avant création livraison
-    - Frontend/Mobile : Blocage si solde insuffisant
-    - ⚠️ **UTILISER** : `RechargeTokensPage` / `RechargeTokensScreen` (composant existant)
-    - Voir Section 9 du plan
-
-11. ✅ **Réservation fonds + Débit définitif**
-    - Migration : Table `delivery_payment_reservations`
-    - Backend : Service `DeliveryPaymentService` pour gestion réservations
-    - Voir Section 9 du plan
-
-12. ✅ **Mécanisme rechargement immédiat**
-    - Frontend/Mobile : Ouvrir automatiquement `RechargeTokensPage` / `RechargeTokensScreen`
-    - ⚠️ **NE PAS créer de nouveau composant**, utiliser l'existant
-    - Après rechargement → Retry création livraison
-    - Voir Section 9 du plan
-
-13. ✅ **Gestion rejet produit** (coût livraison non remboursable)
-    - Si client payait : Coût reste débité chez client
-    - Si prestataire avait offert : Coût prélevé chez client (pas de pénalité prestataire)
-    - Backend : Logique de remboursement partiel (produit remboursé, livraison non)
-    - Voir Section 9 du plan
-
-14. ✅ **Reversement prestataire** (après validation coursier)
-    - Commission Yukpo : Variable d'environnement `YUKPO_COMMISSION_RATE` (par défaut : 5%)
-    - **⚠️ IMPORTANT** : Ne pas coder en dur, utiliser variable d'environnement
-    - Configuration facilement modifiable : `YUKPO_COMMISSION_RATE=0.05` (5%)
-    - Montant reversé = Prix produit - Commission
-    - Backend : Paiement automatique au prestataire après livraison validée
-    - Voir Section 9 du plan
-
-15. ✅ **Livraison offerte** (débit compte prestataire)
-    - Backend : Support `billing_mode: merchant_inclusive`
-    - Voir Section 9 du plan
-
----
-
-### **Phase 6 : Automatisation Intelligente** - Priorité 🟡 Moyenne
-
-16. ✅ **Détection automatique proximité GPS** (pickup/dropoff)
-    - Backend : Fonction `check_proximity_and_suggest_status_update()` (déjà partiellement implémentée)
-    - Améliorer : Envoi événement WebSocket + Notification push
-    - Voir Section 11 du plan
-
-17. ✅ **Suggestions automatiques changement de statut**
-    - Backend : Événement WebSocket "proximity_suggestion"
-    - Mobile : Modal de confirmation automatique
-    - Voir Section 11 du plan
-
-18. ✅ **Notifications push automatiques** (changements de statut)
-    - Backend : Service `send_delivery_status_notifications()` (déjà partiellement implémenté)
-    - Améliorer : Notifications pour tous les statuts importants
-    - Voir Section 11 du plan
-
-19. ✅ **Notifications SMS/Email** (clients sans app)
-    - Backend : Service `delivery_notification_service` (structure créée)
-    - Intégration service SMS/Email (Twilio, SendGrid) - optionnel pour Phase 6
-    - Voir Section 11 du plan
-
-20. ✅ **Changements de statut semi-automatiques** (avec confirmation)
-    - Mobile : Bouton "Confirmer" après suggestion automatique
-    - Voir Section 11 du plan
-
----
-
-### **Phase 7 : Améliorations UX Studio Vidéo** - Priorité 🟡 Moyenne
-
-21. ✅ **Auto-remplissage Brief IA** (depuis description produit/service)
-    - Frontend/Mobile : Modifier `fetchServiceData` dans `VideoCreationWizardScreen` / `ImmersiveVideoWizard`
-    - Priorité : `product.description` > `service.description` (si ≤ 2 produits)
-    - Voir Section 12 du plan
-
-22. ✅ **Endpoint Suggestions IA** (génération suggestions depuis brief)
-    - Backend : Créer `POST /api/studio/sessions/{id}/suggestions`
-    - Frontend/Mobile : Remplacer code hardcodé par appel backend
-    - Voir Section 12 du plan
-
-23. ✅ **Amélioration affichage coûts** (produit + livraison séparés)
-    - Frontend/Mobile : Séparer visuellement : Prix produit | Coût livraison | Total
-    - Badge "Gratuite" si livraison offerte
-    - Voir Section 13 du plan
-
----
-
-### **Phase 8 : Points d'Entrée Commande Multiples** - Priorité 🔴 Haute
-
-24. ✅ **Commande depuis ProductCard** (bouton "Se faire livrer")
-    - Frontend/Mobile : Ajouter bouton sur `ProductCard`
-    - Modal `OrderDeliveryModal` avec sélection produit + multi-produits
-    - Voir Section 13 du plan
-
-25. ✅ **Commande depuis ChatModal** (intégration dans conversation)
-    - Frontend/Mobile : Intégrer `OrderDeliveryModal` dans `ChatModal` / `ChatModalMobile`
-    - Actions rapides : "Commander ce produit"
-    - Voir Section 13 du plan
-
-26. ✅ **Sélection multi-produits** (ajouter plusieurs produits lors commande)
-    - Frontend/Mobile : Interface pour sélectionner plusieurs produits du prestataire
-    - Backend : Utiliser endpoint existant `create_shopping_order` (déjà supporté)
-    - Voir Section 13 du plan
+### Phase 7 : Intégration
+- [ ] Tests end-to-end
+- [ ] Documentation API
+- [ ] Documentation utilisateur
 
 ---
 
-### **Phase 9 : Fonctionnalités Avancées** - Priorité 🟡 Moyenne
+## 🎨 Conventions de Code
 
-27. ✅ **Page publique dropoff** (client sans compte via lien)
-    - Backend : `GET /api/delivery/public/:token`, `POST /api/delivery/public/:token/dropoff`
-    - Frontend/Mobile : Page `PublicDropoffPage` / `PublicDropoffScreen`
-    - Voir Section 14 du plan
+### Rust
+- Utiliser `snake_case` pour fonctions/variables
+- Utiliser `PascalCase` pour structs/enums
+- Documenter avec `///` pour fonctions publiques
+- Gérer erreurs avec `AppResult<T>`
 
-28. ✅ **Sélection livreur personnel** (choix coursier par prestataire)
-    - Backend : Support `courier_id` optionnel dans `CreateDeliveryParams`
-    - Frontend/Mobile : Interface pour choisir coursier (liste disponibles)
-    - Voir Section 15 du plan
+### TypeScript/React
+- Utiliser `camelCase` pour fonctions/variables
+- Utiliser `PascalCase` pour composants
+- Utiliser hooks personnalisés pour logique métier
+- TypeScript strict mode
 
-29. ✅ **Notification client fournit adresse** (alerte prestataire)
-    - Backend : Notification automatique dans `assign_delivery_recipient` si dropoff était pending
-    - Voir Section 16 du plan
-
-30. ✅ **Amélioration UX dropoff pending** (gestion dropoff temporaire)
-    - Frontend/Mobile : Badge "En attente adresse client" + Bouton "Partager lien"
-    - Backend : Support dropoff optionnel (null) lors création livraison
-    - Voir Section 17 du plan
-
-31. ✅ **Chaînage vidéos lors création** (définir dépendances pendant création)
-    - Frontend/Mobile : Panneau "Vidéos liées" dans `VideoCreationWizard`
-    - Création automatique liens lors sauvegarde/génération vidéo
-    - Voir Section 18 du plan
-
-32. ✅ **Plusieurs lieux de stock** (points de départ multiples, matching choisit plus proche)
-    - Migration : Table `prestataire_stock_locations`
-    - Backend : Fonction `find_optimal_stock_location()` avec calcul distances Haversine
-    - Frontend/Mobile : Écran `StockLocationsScreen` pour gérer lieux de stock
-    - Voir Section 19 du plan
-
-33. ✅ **Renommage pickup/dropoff** (termes plus naturels : "départ" / "destination")
-    - Frontend/Mobile : Labels traduits dans `i18n/locales/fr.ts`
-    - Backend : Garder noms techniques internes, renommer dans réponses API (optionnel)
-    - Voir Section 21 du plan
+### SQL
+- Utiliser `CREATE TABLE IF NOT EXISTS` pour idempotence
+- Séparer chaque `CREATE INDEX` en requête distincte
+- Utiliser `DO $$ ... $$` pour logique conditionnelle
 
 ---
 
-## 🔧 RÈGLES DE DÉVELOPPEMENT
+## 📝 Notes Importantes
 
-### **Backend Rust**
-1. ✅ **Vérifier l'existant** : Rechercher fonctions/services similaires avant de créer
-2. ✅ Utiliser `Result<T, E>` pour la gestion d'erreurs
-3. ✅ Implémenter des traits pour la réutilisabilité
-4. ✅ Utiliser `async/await` pour les opérations asynchrones
-5. ✅ Valider toutes les entrées utilisateur
-6. ✅ Utiliser des enums pour les états
-7. ✅ Optimiser les requêtes SQL avec des index appropriés
-8. ✅ Réutiliser les services existants (ex: `delivery_service`, `notification_service`)
+1. **Rétrocompatibilité** : Les produits existants sans config doivent avoir des valeurs par défaut
+2. **Performance** : Index appropriés pour toutes les recherches
+3. **UX** : Messages d'erreur clairs et redirections intelligentes
+4. **Robustesse** : Gestion timeouts et cas d'erreur
+5. **Généricité** : Pas de hardcoding, fonctionne pour tous types de produits
+6. **Disponibilité immédiate** : 
+   - Le prestataire peut marquer un produit comme `is_immediately_available = TRUE`
+   - Dans ce cas, pas de délai de préparation, matching coursier démarre immédiatement après validation
+   - L'interface doit permettre de cocher/décocher cette option
+7. **Affichage lieux pickup** :
+   - **TOUJOURS** afficher les lieux de pickup en adresse textuelle (ex: "123 Rue de la Paix, Douala")
+   - **JAMAIS** afficher les coordonnées GPS brutes (ex: "4.0500, 9.7000") à l'utilisateur final
+   - Les coordonnées GPS sont utilisées en interne pour calculs de distance, mais l'affichage doit être lisible
+   - Si l'adresse n'est pas disponible, utiliser un geocoding inverse pour obtenir l'adresse depuis les coordonnées
+8. **Dashboard & Analytics Prestataire** :
+   - **CRITIQUE** : Toutes les nouvelles fonctionnalités doivent être intégrées dans le dashboard/analytics du prestataire
+   - Le dashboard doit afficher :
+     - Statistiques commandes (pending, validated, preparing, ready, rejected, etc.)
+     - Métriques délais de préparation (moyen, médian, par produit, par jour)
+     - Analyse produits rejetés (raisons, fréquences, tendances)
+     - Performance par produit (temps préparation, taux validation)
+     - Comparaison produits disponibles immédiatement vs avec délai
+     - Graphiques et visualisations (timeline, répartition, évolution)
+     - Alertes (commandes en attente, taux rejet élevé, stock faible)
+     - Recommandations (optimisation délais, produits à marquer immédiatement disponibles)
+   - Export de données (CSV/PDF) pour rapports
+   - Disponible sur mobile ET web
 
-### **Frontend React**
-1. ✅ **Vérifier l'existant** : Rechercher composants/hooks similaires avant de créer
-2. ✅ Utiliser des hooks personnalisés pour la logique métier
-3. ✅ Séparer la logique métier des composants UI
-4. ✅ Utiliser des contextes React pour l'état global
-5. ✅ Implémenter la gestion d'erreur robuste
-6. ✅ Utiliser TypeScript strictement
-7. ✅ Optimiser les re-renders avec useMemo/useCallback
-8. ✅ Réutiliser les composants système existants (ex: `RechargeTokensPage`)
-
-### **Mobile React Native**
-1. ✅ **Vérifier l'existant** : Rechercher screens/composants/hooks similaires avant de créer
-2. ✅ Respecter la structure stable (Expo SDK 52, React Native 0.76.9)
-3. ✅ Utiliser les composants système de design : `SafeIcon`, `NativeCard`, `NativeButton`, etc.
-4. ✅ Gérer les différences iOS/Android avec `Platform.OS`
-5. ✅ Utiliser `ErrorBoundary` pour gestion d'erreur robuste
-6. ✅ Réutiliser les screens existants (ex: `RechargeTokensScreen`)
-
-### **Base de données**
-1. ✅ **TOUTES les migrations DOIVENT être dans `auto_migrate` ET `000..all..`**
-2. ✅ Utiliser des migrations pour les changements de schéma
-3. ✅ Créer des index pour les requêtes fréquentes
-4. ✅ Utiliser des contraintes de clé étrangère
-5. ✅ Optimiser les requêtes avec EXPLAIN
-6. ✅ Utiliser des transactions pour les opérations complexes
-7. ✅ **Régénérer `sqlx-data.json` après chaque migration** : `cargo sqlx prepare -- --lib`
-
----
-
-## 🚨 POINTS CRITIQUES À RETENIR
-
-1. ⚠️ **VÉRIFICATION EXISTANT** : **TOUJOURS** vérifier le code existant avant toute modification/création pour éviter doublons
-2. ⚠️ **MIGRATIONS** : Toujours vérifier `auto_migrate` et `000..all..` après création
-3. ⚠️ **RECHARGEMENT** : Utiliser `RechargeTokensPage` / `RechargeTokensScreen` (composant existant), ne pas créer de nouveau
-4. ⚠️ **SQLX OFFLINE** : Toujours régénérer `sqlx-data.json` après migrations
-5. ⚠️ **GPS MATCHING** : Utiliser fonction `haversine_distance()` existante pour calcul distances
-6. ⚠️ **TERMES NATURELS** : Utiliser "Départ" / "Destination" dans l'UI (garder pickup/dropoff en backend)
-7. ⚠️ **COMMISSION YUKPO** : Utiliser variable d'environnement `YUKPO_COMMISSION_RATE`, **NE PAS coder en dur** (par défaut 5%)
-8. ⚠️ **REJET PRODUIT + LIVRAISON OFFERTE** : Si prestataire avait offert la livraison et client refuse, prélever les frais chez le client (pas le prestataire)
+9. **Indicateurs dans ProductCard** :
+   - **CRITIQUE** : Tous les ProductCard (mobile ET frontend) doivent afficher des indicateurs visuels de capacité de livraison rapide
+   - **Badges à afficher** :
+     - **"⚡ Livraison rapide"** (badge vert) : Si `is_immediately_available = TRUE`
+       - Tooltip : "Disponible immédiatement - Livraison en moins de 30 minutes"
+     - **"⏱️ Prêt en X min"** (badge orange) : Si `preparation_time_minutes > 0`
+       - Afficher le temps réel (ex: "Prêt en 15 min", "Prêt en 45 min")
+       - Tooltip : "Temps de préparation estimé"
+     - **"📅 Disponible [jours]"** (badge bleu) : Si `availability_days` est défini
+       - Afficher les jours (ex: "Disponible Lun-Ven", "Disponible Mar, Jeu, Sam")
+       - Tooltip : "Jours de disponibilité"
+   - **Priorité d'affichage** :
+     1. Si `is_immediately_available = TRUE` → Afficher uniquement badge "Livraison rapide"
+     2. Sinon, si `preparation_time_minutes > 0` → Afficher badge "Prêt en X min"
+     3. Si `availability_days` est défini → Afficher badge "Disponible [jours]"
+   - **Position** : En haut à droite du card, visible mais non intrusif
+   - **Design** : Badges colorés avec icônes, taille adaptée à l'écran
 
 ---
 
-## 📝 VALIDATION AVANT COMMIT
+## 🔗 Références
 
-Avant chaque commit, vérifier :
-
-1. ✅ **Vérification doublons** : Recherche complète dans le codebase pour s'assurer qu'aucun code similaire n'existe déjà
-2. ✅ `cargo fmt` - Formatage Rust
-3. ✅ `cargo check` - Compilation Rust
-4. ✅ `cargo test` - Tests Rust
-5. ✅ `cargo sqlx prepare -- --lib` - Régénération sqlx-data.json
-6. ✅ `read_lints` - Linter errors (TypeScript, Rust)
-7. ✅ Migrations vérifiées dans `auto_migrate` et `000..all..`
-8. ✅ Composants/services réutilisés (RechargeTokens, haversine_distance, etc.) au lieu de créer de nouveaux
-9. ✅ Aucun endpoint API dupliqué
-10. ✅ Aucune table de base de données dupliquée
+- Document d'analyse : `ANALYSE_WORKFLOW_LIVRAISON_AMELIORATIONS.md`
+- Guide migrations SQLx : `backend/GUIDE_MIGRATIONS_SQLX.md`
+- Exemples migrations : `backend/migrations/20250127000001_create_product_delivery_config.sql`
+- Exemples auto_migrate : `backend/src/migrations/auto_migrate.rs` (lignes 6450-6500)
 
 ---
 
-## 📚 DOCUMENTATION DE RÉFÉRENCE
-
-### **Document principal** (À LIRE EN PRIORITÉ) :
-- `PLAN_COMPLET_AMELIORATIONS_LIVRAISON.md` - Plan complet avec toutes les 33 améliorations détaillées
-
-### **Documents d'architecture technique** :
-- `ARCHITECTURE_GESTION_FINANCIERE_LIVRAISON.md` - Détails techniques gestion financière (réservations, commissions, remboursements)
-- `ARCHITECTURE_VIDEO_PREUVE_LIVRAISON.md` - Détails techniques vidéo preuve de livraison
-- `ANALYSE_FLUX_COMMANDE_ET_VIDEOS_LIEES.md` - Détails commande client et chaînage vidéos
-- `ANALYSE_FLUX_LIVRAISON_REVISEE.md` - Analyse du flux de livraison révisé
-- `ANALYSE_FLUX_LIVRAISON_ET_AMELIORATIONS.md` - Analyse initiale du flux de livraison
-- `DIAGNOSTIC_COMPOSANT_VIDEO.md` - Diagnostic du composant vidéo (erreurs, corrections)
-
-### **Documents d'analyse externe** :
-- `ANALYSE_EXTERNALISATION_LIVRAISON_PLATEFORMES.md` - Externalisation du système de livraison (WhatsApp, Facebook)
-- `BENCHMARK_SYSTEMES_LIVRAISON_AUTOMATISES.md` - Benchmark des systèmes de livraison existants
-- `FONCTIONNEMENT_REEL_SUIVI_LIVRAISON.md` - Fonctionnement réel du suivi de livraison
-
-### **Références codebase** (à vérifier avant implémentation) :
-- `backend/src/services/delivery_service.rs` - Service principal de livraison
-- `backend/src/services/delivery_repository.rs` - Repository de livraison
-- `backend/src/models/delivery_models.rs` - Modèles de données livraison
-- `backend/src/routes/delivery_routes.rs` - Routes API livraison
-- `mobile/src/screens/delivery/` - Écrans de livraison mobile
-- `frontend/src/pages/delivery/` - Pages de livraison web
-- `mobile/src/screens/RechargeTokensScreen.tsx` - Composant de recharge (à réutiliser)
-- `frontend/src/pages/RechargeTokensPage.tsx` - Composant de recharge web (à réutiliser)
-
----
-
-## 🎯 ORDRE D'IMPLÉMENTATION RECOMMANDÉ
-
-**Sprint 1 (Critique)** : Phases 1, 2, 5 (Fondations + Financière)
-**Sprint 2 (Important)** : Phases 3, 8 (Intelligence + Points d'entrée)
-**Sprint 3 (Améliorations)** : Phases 6, 7 (Automatisation + UX Studio)
-**Sprint 4 (Avancé)** : Phase 9 (Fonctionnalités avancées)
-
----
-
-## ✅ CHECKLIST DE DÉMARRAGE
-
-Avant de commencer l'implémentation :
-
-### **Phase 0 : Exploration et Vérification de l'Existant (OBLIGATOIRE)**
-
-- [ ] Lire complètement `PLAN_COMPLET_AMELIORATIONS_LIVRAISON.md`
-- [ ] **Rechercher dans le codebase** : Fonctionnalités similaires déjà implémentées
-- [ ] **Vérifier les tables existantes** : `backend/migrations/` pour voir quelles tables existent déjà
-- [ ] **Vérifier les endpoints API** : `backend/src/routes/` et `backend/src/controllers/` pour endpoints similaires
-- [ ] **Vérifier les composants Frontend** : `frontend/src/components/`, `frontend/src/pages/`
-- [ ] **Vérifier les composants Mobile** : `mobile/src/components/`, `mobile/src/screens/`
-- [ ] **Vérifier les services** : `backend/src/services/`, `mobile/src/services/`, `frontend/src/services/`
-- [ ] **Vérifier les hooks** : `mobile/src/hooks/`, `frontend/src/hooks/`
-- [ ] **Documenter ce qui existe déjà** : Créer une liste des fonctionnalités existantes à réutiliser
-
-### **Phase 1 : Configuration Environnement**
-
-- [ ] Vérifier la structure des migrations existantes (`backend/migrations/`)
-- [ ] Localiser `auto_migrate()` dans le code backend (`backend/src/migrations/auto_migrate.rs`)
-- [ ] Localiser le fichier `0000_create_all_tables.sql` (ou équivalent)
-- [ ] Configurer `SQLX_OFFLINE=true` dans l'environnement
-- [ ] Vérifier la structure de la base de données actuelle
-- [ ] Configurer `YUKPO_COMMISSION_RATE=0.05` dans les variables d'environnement (ou laisser par défaut 5%)
-
-### **Phase 2 : Vérification Composants/Services Existants**
-
-- [ ] Tester le composant `RechargeTokensPage` / `RechargeTokensScreen` (composant de recharge)
-- [ ] Vérifier la fonction `haversine_distance()` dans `delivery_service.rs` (calcul distances GPS)
-- [ ] Vérifier les services de livraison existants : `delivery_service.rs`, `delivery_repository.rs`
-- [ ] Vérifier les services de notifications existants : `notification_service.rs`, `delivery_notification_service.rs`
-- [ ] Vérifier les modèles de livraison : `delivery_models.rs`
-
----
-
-## 💬 SUPPORT
-
-En cas de doute sur une implémentation, se référer dans cet ordre :
-
-1. **Documentation du plan** : `PLAN_COMPLET_AMELIORATIONS_LIVRAISON.md` (section correspondante)
-2. **Documents d'architecture** : `ARCHITECTURE_GESTION_FINANCIERE_LIVRAISON.md`, `ARCHITECTURE_VIDEO_PREUVE_LIVRAISON.md`
-3. **Recherche dans le codebase** : Utiliser `codebase_search` et `grep` pour trouver code similaire existant
-4. **Exemples de code** : Voir les exemples dans les documents d'architecture
-5. **Patterns existants** : Inspirer du code existant dans le repo (services, composants, routes similaires)
-
-**Workflow recommandé pour chaque amélioration** :
-```
-1. Lire la section correspondante dans PLAN_COMPLET_AMELIORATIONS_LIVRAISON.md
-2. Rechercher dans le codebase si quelque chose existe déjà (codebase_search + grep)
-3. Vérifier les documents d'architecture pour détails techniques
-4. Étudier le code existant similaire pour patterns
-5. Implémenter en réutilisant l'existant au maximum
-6. Vérifier avant commit : pas de doublons, migrations OK, tests OK
-```
-
----
-
-## 🎯 RÉCAPITULATIF : Tous les Éléments Nécessaires pour la Mise en Œuvre
-
-Le prompt contient toutes les informations nécessaires :
-
-✅ **33 améliorations détaillées** avec références aux sections du plan
-✅ **Contraintes critiques** : Migrations SQLx, composant recharge, vérification existant
-✅ **Règles de développement** : Backend Rust, Frontend React, Mobile React Native, Base de données
-✅ **Points critiques** : 8 points essentiels à retenir
-✅ **Validation avant commit** : Checklist complète
-✅ **Documentation de référence** : Tous les documents nécessaires listés
-✅ **Checklist de démarrage** : Phase 0 (vérification existant), Phase 1 (config), Phase 2 (composants)
-✅ **Support et workflow** : Guide étape par étape
-
-**Tous les éléments sont présents pour une implémentation réussie ! 🚀**
-
+**Date de création** : 2025-01-20  
+**Version** : 1.0

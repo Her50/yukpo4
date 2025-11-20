@@ -65,8 +65,14 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
 
             const response = await apiGet(endpoint);
             if (response.success) {
-                setMembers(response.data.members || []);
-                setInvitations(response.data.invitations || []);
+                // ✅ CORRECTION: Vérifier que data existe et est un objet
+                const data = response.data || {};
+                setMembers(Array.isArray(data.members) ? data.members : []);
+                setInvitations(Array.isArray(data.invitations) ? data.invitations : []);
+            } else {
+                // Si l'API retourne une erreur, initialiser avec des tableaux vides
+                setMembers([]);
+                setInvitations([]);
             }
         } catch (error) {
             console.error('Erreur chargement équipe:', error);
@@ -363,25 +369,33 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Membres de l'équipe</Text>
-                    <FlatList
-                        data={members}
-                        renderItem={renderMember}
-                        keyExtractor={item => item.id}
-                        scrollEnabled={false}
-                        showsVerticalScrollIndicator={false}
-                    />
+                    {members && Array.isArray(members) && members.length > 0 ? (
+                        <FlatList
+                            data={members}
+                            renderItem={renderMember}
+                            keyExtractor={item => item.id || `member-${item.userId}`}
+                            scrollEnabled={false}
+                            showsVerticalScrollIndicator={false}
+                        />
+                    ) : (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyStateText}>Aucun membre dans l'équipe</Text>
+                        </View>
+                    )}
                 </View>
 
-                {invitations.length > 0 && (
+                {invitations && Array.isArray(invitations) && invitations.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Invitations en attente</Text>
-                        {invitations.map(invitation => (
-                            <NativeCard key={invitation.id} style={styles.invitationCard}>
+                        {invitations.map((invitation, index) => (
+                            <NativeCard key={invitation?.id || `invitation-${index}`} style={styles.invitationCard}>
                                 <View style={styles.invitationContent}>
-                                    <Text style={styles.invitationEmail}>{invitation.email}</Text>
-                                    <Text style={styles.invitationRole}>{invitation.role.name}</Text>
+                                    <Text style={styles.invitationEmail}>{invitation?.email || 'Email inconnu'}</Text>
+                                    <Text style={styles.invitationRole}>{invitation?.role?.name || 'Rôle inconnu'}</Text>
                                     <Text style={styles.invitationDate}>
-                                        Invité le {new Date(invitation.invitedAt).toLocaleDateString()}
+                                        {invitation?.invitedAt
+                                            ? `Invité le ${new Date(invitation.invitedAt).toLocaleDateString()}`
+                                            : 'Date inconnue'}
                                     </Text>
                                 </View>
                             </NativeCard>
@@ -667,6 +681,15 @@ const styles = {
     },
     confirmButton: {
         marginTop: 20,
+    },
+    emptyState: {
+        padding: 20,
+        alignItems: 'center' as const,
+    },
+    emptyStateText: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontStyle: 'italic' as const,
     },
 };
 

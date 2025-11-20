@@ -6,7 +6,6 @@ import {
     Animated,
     FlatList,
     Linking,
-    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -21,6 +20,7 @@ import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDe
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { StudioAudioPanel } from '../../components/StudioAudioPanel';
+import VideoProgressModal from '../../components/VideoProgressModal';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useVideoGenerationProgress } from '../../hooks/useVideoGenerationProgress';
 import { useVoiceProfiles } from '../../hooks/useVoiceProfiles';
@@ -37,6 +37,8 @@ import {
     VideoGenerationPayload
 } from '../../types/VideoGeneration';
 import type { CreateVoiceProfilePayload, MusicMode } from '../../types/audio';
+import { apiCallWithRetry } from '../../utils/retryWithBackoff';
+import { clearVideoDraft, loadVideoDraft, saveVideoDraft } from '../../utils/videoDraftStorage';
 
 interface WizardParams {
     serviceId: number;
@@ -295,6 +297,7 @@ const VideoCreationWizardScreen: React.FC = () => {
     );
 
     const [isGenerating, setIsGenerating] = useState(false);
+    const [generationStartTime, setGenerationStartTime] = useState<number | undefined>();
     const {
         steps: progressSteps,
         startSimulation,
@@ -319,12 +322,24 @@ const VideoCreationWizardScreen: React.FC = () => {
             setLoadingService(false);
             // ✅ CORRIGÉ: Afficher un message d'erreur si serviceId est manquant
             Alert.alert(
-                'Service manquant',
-                'Aucun service n\'a été sélectionné. Veuillez créer un service avant de créer une vidéo.',
+                'Service requis',
+                'Pour créer une vidéo, vous devez d\'abord sélectionner un service avec au moins un produit.\n\nSouhaitez-vous créer un nouveau service ?',
                 [
                     {
                         text: 'Retour',
                         onPress: () => navigation.goBack(),
+                        style: 'cancel',
+                    },
+                    {
+                        text: 'Créer un service',
+                        onPress: () => {
+                            const parent = (navigation as any).getParent();
+                            if (parent) {
+                                parent.navigate('Services');
+                            } else {
+                                navigation.navigate('Services' as never);
+                            }
+                        },
                     },
                 ]
             );
@@ -332,7 +347,8 @@ const VideoCreationWizardScreen: React.FC = () => {
         }
         try {
             setLoadingService(true);
-            const response = await apiGet<any>(`/api/services/${serviceId}`);
+            // ✅ PHASE 1: Retry automatique avec backoff
+            const response = await apiCallWithRetry(() => apiGet<any>(`/api/services/${serviceId}`));
             if (response.success && response.data) {
                 const service = response.data;
                 setServiceName(service.titre || service.name || `Service #${serviceId}`);
@@ -359,11 +375,16 @@ const VideoCreationWizardScreen: React.FC = () => {
                 // ✅ CORRIGÉ: Afficher un message d'erreur si le service n'est pas trouvé
                 Alert.alert(
                     'Service introuvable',
-                    'Le service sélectionné n\'a pas pu être chargé. Veuillez réessayer.',
+                    'Le service sélectionné n\'a pas pu être chargé. Cela peut être dû à:\n\n• Une connexion internet instable\n• Le service a été supprimé\n• Un problème temporaire du serveur\n\nVoulez-vous réessayer ou retourner en arrière ?',
                     [
                         {
                             text: 'Retour',
                             onPress: () => navigation.goBack(),
+                            style: 'cancel',
+                        },
+                        {
+                            text: 'Réessayer',
+                            onPress: () => fetchServiceDetails(),
                         },
                     ]
                 );
@@ -371,13 +392,25 @@ const VideoCreationWizardScreen: React.FC = () => {
         } catch (error) {
             console.warn('[VideoCreationWizard] Service introuvable', error);
             // ✅ CORRIGÉ: Afficher un message d'erreur en cas d'erreur
+            const errorMessage = (error as any)?.message || 'Erreur inconnue';
+            const isNetworkError = errorMessage.toLowerCase().includes('network') ||
+                errorMessage.toLowerCase().includes('timeout') ||
+                errorMessage.toLowerCase().includes('fetch');
+
             Alert.alert(
-                'Erreur',
-                'Une erreur est survenue lors du chargement du service. Veuillez réessayer.',
+                isNetworkError ? 'Problème de connexion' : 'Erreur de chargement',
+                isNetworkError
+                    ? 'Impossible de charger le service. Vérifiez votre connexion internet et réessayez.\n\nL\'application va réessayer automatiquement.'
+                    : `Une erreur est survenue lors du chargement du service:\n\n${errorMessage}\n\nVoulez-vous réessayer ?`,
                 [
                     {
                         text: 'Retour',
                         onPress: () => navigation.goBack(),
+                        style: 'cancel',
+                    },
+                    {
+                        text: 'Réessayer',
+                        onPress: () => fetchServiceDetails(),
                     },
                 ]
             );
@@ -392,7 +425,8 @@ const VideoCreationWizardScreen: React.FC = () => {
         }
         try {
             setMediaLoading(true);
-            const response = await mediaApi.getServiceMediaDetailed(serviceId);
+            // ✅ PHASE 1: Retry automatique avec backoff
+            const response = await apiCallWithRetry(() => mediaApi.getServiceMediaDetailed(serviceId));
             if (response.success && Array.isArray(response.data)) {
                 setMediaItems(response.data as ServiceMediaItem[]);
             } else if (response.data && Array.isArray((response.data as any).items)) {
@@ -405,9 +439,114 @@ const VideoCreationWizardScreen: React.FC = () => {
         }
     }, [serviceId]);
 
+    // ✅ PHASE 1: Charger le brouillon au démarrage
+    useEffect(() => {
+        const loadDraft = async () => {
+            try {
+                const draft = await loadVideoDraft();
+                if (draft && draft.serviceId === serviceId && draft.productIndex === productIndex) {
+                    Alert.alert(
+                        'Brouillon trouvé',
+                        'Un brouillon non terminé a été trouvé. Voulez-vous le reprendre ?',
+                        [
+                            {
+                                text: 'Non, recommencer',
+                                onPress: async () => {
+                                    await clearVideoDraft();
+                                },
+                                style: 'cancel',
+                            },
+                            {
+                                text: 'Oui, reprendre',
+                                onPress: () => {
+                                    // Restaurer les valeurs du brouillon
+                                    if (draft.brief) setBrief(draft.brief);
+                                    if (draft.headline) setHeadline(draft.headline);
+                                    if (draft.callToAction) setCallToAction(draft.callToAction);
+                                    if (draft.selectedMediaIds) setSelectedMediaIds(draft.selectedMediaIds);
+                                    if (draft.sceneAssignments) setSceneAssignments(draft.sceneAssignments);
+                                    if (draft.scenesDraft) setScenesDraft(draft.scenesDraft);
+                                    if (draft.storyTemplateId) setStoryTemplateId(draft.storyTemplateId);
+                                    if (draft.stylePack) setStylePack(draft.stylePack);
+                                    if (draft.musicMode && (draft.musicMode === 'pulse' || draft.musicMode === 'lofi' || draft.musicMode === 'ambient' || draft.musicMode === 'cinematic' || draft.musicMode === 'none')) {
+                                        setMusicMode(draft.musicMode as MusicMode);
+                                    }
+                                    if (draft.voiceoverEnabled !== undefined) setVoiceoverEnabled(draft.voiceoverEnabled);
+                                    if (draft.voiceoverLang) setVoiceoverLang(draft.voiceoverLang);
+                                    if (draft.selectedVoiceProfileId) setSelectedVoiceProfileId(draft.selectedVoiceProfileId);
+                                    if (draft.autoStoryboard !== undefined) setAutoStoryboard(draft.autoStoryboard);
+                                    if (draft.mode) setMode(draft.mode);
+                                    if (draft.selectedStyle) setSelectedStyle(draft.selectedStyle);
+                                    if (draft.publishChat !== undefined) setPublishChat(draft.publishChat);
+                                    if (draft.publishCard !== undefined) setPublishCard(draft.publishCard);
+                                    if (draft.publishSocial !== undefined) setPublishSocial(draft.publishSocial);
+                                },
+                            },
+                        ]
+                    );
+                }
+            } catch (error) {
+                console.error('[VideoCreationWizard] Erreur chargement brouillon:', error);
+            }
+        };
+        loadDraft();
+    }, [serviceId, productIndex]);
+
     useEffect(() => {
         fetchServiceDetails();
     }, [fetchServiceDetails]);
+
+    // ✅ PHASE 1: Sauvegarde automatique du brouillon avec debounce
+    useEffect(() => {
+        const draft = {
+            serviceId,
+            productIndex,
+            productName,
+            serviceName,
+            brief,
+            headline,
+            callToAction,
+            selectedMediaIds,
+            sceneAssignments,
+            scenesDraft,
+            storyTemplateId,
+            stylePack,
+            musicMode,
+            voiceoverEnabled,
+            voiceoverLang,
+            selectedVoiceProfileId,
+            autoStoryboard,
+            mode,
+            selectedStyle,
+            publishChat,
+            publishCard,
+            publishSocial,
+        };
+        saveVideoDraft(draft);
+    }, [
+        serviceId,
+        productIndex,
+        productName,
+        serviceName,
+        brief,
+        headline,
+        callToAction,
+        selectedMediaIds,
+        sceneAssignments,
+        scenesDraft,
+        storyTemplateId,
+        stylePack,
+        musicMode,
+        voiceoverEnabled,
+        voiceoverLang,
+        selectedVoiceProfileId,
+        autoStoryboard,
+        mode,
+        selectedStyle,
+        publishChat,
+        publishCard,
+        publishSocial,
+    ]);
 
     useEffect(() => {
         if (step >= 2) {
@@ -470,11 +609,14 @@ const VideoCreationWizardScreen: React.FC = () => {
         }
     }, [storyTemplateId, storyTemplates]);
 
+    // ✅ PHASE 3: Animation de transition améliorée entre les étapes
     useEffect(() => {
         stepTransition.setValue(0);
-        Animated.timing(stepTransition, {
+        // Animation plus fluide avec spring pour un effet plus naturel
+        Animated.spring(stepTransition, {
             toValue: 1,
-            duration: 420,
+            tension: 50,
+            friction: 8,
             useNativeDriver: true,
         }).start();
     }, [step, stepTransition]);
@@ -512,6 +654,7 @@ const VideoCreationWizardScreen: React.FC = () => {
         }
     }, [isGenerating, modalScale]);
 
+    // ✅ PHASE 3: Animation de transition améliorée avec fade + slide + scale
     const stepAnimatedStyle = useMemo(
         () => ({
             opacity: stepTransition,
@@ -519,7 +662,13 @@ const VideoCreationWizardScreen: React.FC = () => {
                 {
                     translateY: stepTransition.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [18, 0],
+                        outputRange: [20, 0],
+                    }),
+                },
+                {
+                    scale: stepTransition.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.95, 1],
                     }),
                 },
             ],
@@ -610,7 +759,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                 media_scene_overrides: undefined,
             };
 
-            const response = await iaApi.estimateVideoCost(serviceId, productIndex, payload);
+            // ✅ PHASE 1: Retry automatique avec backoff
+            const response = await apiCallWithRetry(() => iaApi.estimateVideoCost(serviceId, productIndex, payload));
             const estimationResponse = response.data as VideoCostEstimateResponse | VideoCostEstimation | undefined;
             const estimation =
                 estimationResponse && 'data' in estimationResponse
@@ -1017,13 +1167,21 @@ const VideoCreationWizardScreen: React.FC = () => {
 
         try {
             setIsGenerating(true);
+            // ✅ PHASE 2: Enregistrer le temps de début pour calculer le temps estimé
+            setGenerationStartTime(Date.now());
             startSimulation();
 
-            const response = await iaApi.generateImmersiveVideo(serviceId, productIndex, payload);
+            // ✅ PHASE 1: Retry automatique avec backoff
+            const response = await apiCallWithRetry(() =>
+                iaApi.generateImmersiveVideo(serviceId, productIndex, payload),
+                { maxRetries: 2, initialDelay: 2000 } // Moins de retries pour génération (plus long)
+            );
             if (response.success && response.data?.job_id) {
                 const jobId = response.data.job_id;
                 setCurrentJobId(jobId);
                 startJobPolling(jobId);
+                // ✅ PHASE 1: Nettoyer le brouillon après génération réussie
+                await clearVideoDraft();
             } else {
                 throw new Error(response.message || t('videoWizard.errors.launchFailed'));
             }
@@ -1034,9 +1192,26 @@ const VideoCreationWizardScreen: React.FC = () => {
             resetProgress();
             setCurrentJobId(null);
             setIsGenerating(false);
+            setGenerationStartTime(undefined);
+
+            // ✅ PHASE 1: Message d'erreur amélioré
+            const errorMessage = error?.message || t('videoWizard.alert.renderFailedMessage');
+            const isNetworkError = errorMessage.toLowerCase().includes('network') ||
+                errorMessage.toLowerCase().includes('timeout') ||
+                errorMessage.toLowerCase().includes('fetch');
+
             Alert.alert(
-                t('videoWizard.alert.renderFailedTitle'),
-                error?.message || t('videoWizard.alert.renderFailedMessage'),
+                isNetworkError ? 'Problème de connexion' : t('videoWizard.alert.renderFailedTitle'),
+                isNetworkError
+                    ? 'Impossible de lancer la génération vidéo. Vérifiez votre connexion internet et réessayez.\n\nVotre brouillon a été sauvegardé automatiquement.'
+                    : `${errorMessage}\n\nVotre brouillon a été sauvegardé automatiquement.`,
+                [
+                    { text: 'OK' },
+                    {
+                        text: 'Réessayer',
+                        onPress: () => handleGenerate(),
+                    },
+                ]
             );
         }
     };
@@ -1837,42 +2012,17 @@ const VideoCreationWizardScreen: React.FC = () => {
         }
     };
 
-    const renderProgressModal = () => (
-        <Modal visible={isGenerating} transparent animationType="fade">
-            <View style={styles.modalOverlay}>
-                <Animated.View style={[styles.modalCard, modalAnimatedStyle]}>
-                    <Text style={styles.modalTitle}>{t('videoWizard.modal.title')}</Text>
-                    <Text style={styles.modalSubtitle}>{t('videoWizard.modal.subtitle')}</Text>
-                    <View style={styles.modalSteps}>
-                        {progressSteps.map((item) => (
-                            <Animated.View
-                                key={item.key}
-                                style={[
-                                    styles.modalStepRow,
-                                    item.status === 'running' ? runningPulseStyle : undefined,
-                                ]}
-                            >
-                                <SafeIcon
-                                    name={item.status === 'completed' ? 'check-circle' : item.status === 'running' ? 'loader' : 'circle'}
-                                    size={20}
-                                    color={item.status === 'completed' ? modernColors.success : modernColors.textSecondary}
-                                />
-                                <Animated.Text
-                                    style={[
-                                        styles.modalStepLabel,
-                                        item.status === 'running' ? runningPulseStyle : undefined,
-                                    ]}
-                                >
-                                    {item.label}
-                                </Animated.Text>
-                            </Animated.View>
-                        ))}
-                    </View>
-                    <ActivityIndicator color={modernColors.primary} style={{ marginTop: 12 }} />
-                </Animated.View>
-            </View>
-        </Modal>
-    );
+    const renderProgressModal = () => {
+        // ✅ PHASE 2: Modal de progression amélioré
+        if (!isGenerating) return null;
+        return (
+            <VideoProgressModal
+                visible={isGenerating}
+                steps={progressSteps}
+                startTime={generationStartTime}
+            />
+        );
+    };
 
     return (
         <SafeNativeView

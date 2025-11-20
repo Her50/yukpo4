@@ -1,0 +1,625 @@
+use crate::core::types::{AppError, AppResult};
+use chrono::{DateTime, Duration, Utc};
+use log::{info, warn};
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use uuid::Uuid;
+
+/// Service pour gérer le workflow de préparation des commandes
+pub struct OrderPreparationService {
+    pool: PgPool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum OrderStatus {
+    Pending,
+    Validated,
+    Preparing,
+    Ready,
+    CourierAssigned,
+    PickedUp,
+    Delivered,
+    Cancelled,
+    Rejected,
+}
+
+impl OrderStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            OrderStatus::Pending => "pending",
+            OrderStatus::Validated => "validated",
+            OrderStatus::Preparing => "preparing",
+            OrderStatus::Ready => "ready",
+            OrderStatus::CourierAssigned => "courier_assigned",
+            OrderStatus::PickedUp => "picked_up",
+            OrderStatus::Delivered => "delivered",
+            OrderStatus::Cancelled => "cancelled",
+            OrderStatus::Rejected => "rejected",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "pending" => OrderStatus::Pending,
+            "validated" => OrderStatus::Validated,
+            "preparing" => OrderStatus::Preparing,
+            "ready" => OrderStatus::Ready,
+            "courier_assigned" => OrderStatus::CourierAssigned,
+            "picked_up" => OrderStatus::PickedUp,
+            "delivered" => OrderStatus::Delivered,
+            "cancelled" => OrderStatus::Cancelled,
+            "rejected" => OrderStatus::Rejected,
+            _ => OrderStatus::Pending,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProductOrder {
+    pub id: Uuid,
+    pub delivery_id: Option<Uuid>,
+    pub service_id: i32,
+    pub product_index: i32,
+    pub client_user_id: i32,
+    pub provider_user_id: i32,
+    pub status: String,
+    pub preparation_time_minutes: Option<i32>,
+    pub estimated_ready_at: Option<DateTime<Utc>>,
+    pub validated_at: Option<DateTime<Utc>>,
+    pub validated_by: Option<i32>,
+    pub rejected_at: Option<DateTime<Utc>>,
+    pub rejection_reason: Option<String>,
+    pub validation_deadline: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub metadata: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateOrderRequest {
+    pub delivery_id: Option<Uuid>,
+    pub service_id: i32,
+    pub product_index: i32,
+    pub client_user_id: i32,
+    pub provider_user_id: i32,
+    pub validation_timeout_minutes: Option<i32>, // Délai pour validation (défaut: 15 min)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidateOrderRequest {
+    pub estimated_ready_at: Option<DateTime<Utc>>, // NULL si is_immediately_available = TRUE
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RejectOrderRequest {
+    pub reason: String,
+}
+
+impl OrderPreparationService {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub fn pool(&self) -> &PgPool {
+        &self.pool
+    }
+
+    /// Crée une nouvelle commande produit
+    /// Calcule automatiquement le temps de préparation si NULL
+    pub async fn create_order(&self, request: CreateOrderRequest) -> AppResult<ProductOrder> {
+        info!(
+            "[OrderPreparation] Création commande: service_id={}, product_index={}, client={}",
+            request.service_id, request.product_index, request.client_user_id
+        );
+
+        // Récupérer la configuration de livraison
+        let config = sqlx::query!(
+            r#"
+            SELECT 
+                preparation_time_minutes,
+                is_immediately_available,
+                max_preparation_time_minutes
+            FROM product_delivery_config
+            WHERE service_id = $1 AND product_index = $2
+            "#,
+            request.service_id,
+            request.product_index
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let config = match config {
+            Some(c) => c,
+            None => {
+                return Err(AppError::NotFound(format!(
+                    "Configuration de livraison non trouvée pour service_id={}, product_index={}",
+                    request.service_id, request.product_index
+                )));
+            }
+        };
+
+        let is_immediately_available = config.is_immediately_available.unwrap_or(false);
+        let mut preparation_time_minutes = config.preparation_time_minutes;
+        let validation_timeout_minutes = request.validation_timeout_minutes.unwrap_or(15);
+
+        // Si preparation_time_minutes est NULL, utiliser valeur dynamique
+        if preparation_time_minutes.is_none() && !is_immediately_available {
+            // Récupérer la catégorie du service pour calcul dynamique
+            let service_category = sqlx::query_scalar!(
+                r#"
+                SELECT category
+                FROM services
+                WHERE id = $1
+                "#,
+                request.service_id
+            )
+            .fetch_optional(&self.pool)
+            .await?
+            .flatten();
+
+            if let Some(category) = service_category {
+                let dynamic_service = crate::services::dynamic_preparation_time_service::DynamicPreparationTimeService::new(self.pool.clone());
+                if let Ok(Some(dynamic_time)) = dynamic_service.get_preparation_time_for_category(&category).await {
+                    preparation_time_minutes = Some(dynamic_time);
+                    info!(
+                        "[OrderPreparation] Utilisation temps dynamique pour catégorie {}: {} min",
+                        category, dynamic_time
+                    );
+                } else {
+                    // Fallback: valeur par défaut
+                    preparation_time_minutes = Some(30);
+                }
+            } else {
+                // Pas de catégorie, utiliser valeur par défaut
+                preparation_time_minutes = Some(30);
+            }
+        }
+
+        // Calculer estimated_ready_at et validation_deadline
+        let now = Utc::now();
+        let estimated_ready_at = if is_immediately_available {
+            None // Pas de délai si disponible immédiatement
+        } else {
+            preparation_time_minutes.map(|mins| {
+                now + Duration::minutes(mins as i64)
+            })
+        };
+
+        let validation_deadline = now + Duration::minutes(validation_timeout_minutes as i64);
+
+        // Créer la commande
+        let order_id = sqlx::query_scalar!(
+            r#"
+            INSERT INTO product_orders (
+                delivery_id,
+                service_id,
+                product_index,
+                client_user_id,
+                provider_user_id,
+                status,
+                preparation_time_minutes,
+                estimated_ready_at,
+                validation_deadline,
+                metadata
+            )
+            VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, '{}'::jsonb)
+            RETURNING id
+            "#,
+            request.delivery_id,
+            request.service_id,
+            request.product_index,
+            request.client_user_id,
+            request.provider_user_id,
+            preparation_time_minutes,
+            estimated_ready_at,
+            validation_deadline
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        info!(
+            "[OrderPreparation] Commande créée: order_id={}, estimated_ready_at={:?}, validation_deadline={:?}",
+            order_id, estimated_ready_at, validation_deadline
+        );
+
+        // Récupérer la commande créée
+        self.get_order(order_id).await
+    }
+
+    /// Valide une commande (prestataire accepte)
+    /// Si is_immediately_available = TRUE, passe directement à "ready" et démarre matching
+    pub async fn validate_order(
+        &self,
+        order_id: Uuid,
+        provider_user_id: i32,
+        request: ValidateOrderRequest,
+    ) -> AppResult<ProductOrder> {
+        info!(
+            "[OrderPreparation] Validation commande: order_id={}, provider={}",
+            order_id, provider_user_id
+        );
+
+        // Vérifier que la commande existe et appartient au prestataire
+        let order = self.get_order(order_id).await?;
+        
+        if order.provider_user_id != provider_user_id {
+            return Err(AppError::Forbidden(
+                "Vous n'êtes pas le prestataire de cette commande".to_string(),
+            ));
+        }
+
+        if order.status != "pending" {
+            return Err(AppError::BadRequest(format!(
+                "La commande n'est pas en attente de validation (statut: {})",
+                order.status
+            )));
+        }
+
+        // Vérifier que le délai de validation n'est pas expiré
+        if let Some(deadline) = order.validation_deadline {
+            if Utc::now() > deadline {
+                return Err(AppError::BadRequest(
+                    "Le délai de validation est expiré".to_string(),
+                ));
+            }
+        }
+
+        // Récupérer la configuration pour vérifier is_immediately_available
+        let config = sqlx::query!(
+            r#"
+            SELECT is_immediately_available
+            FROM product_delivery_config
+            WHERE service_id = $1 AND product_index = $2
+            "#,
+            order.service_id,
+            order.product_index
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let is_immediately_available = config
+            .and_then(|c| c.is_immediately_available)
+            .unwrap_or(false);
+
+        let now = Utc::now();
+        let new_status = if is_immediately_available {
+            // Disponible immédiatement → passer directement à "ready"
+            "ready"
+        } else {
+            // Avec délai → passer à "validated" puis "preparing"
+            "validated"
+        };
+
+        let estimated_ready_at = if is_immediately_available {
+            // Pas de délai si disponible immédiatement
+            None
+        } else {
+            // Utiliser estimated_ready_at fourni ou calculer
+            request.estimated_ready_at.or_else(|| {
+                order.preparation_time_minutes.map(|mins| {
+                    now + Duration::minutes(mins as i64)
+                })
+            })
+        };
+
+        // Mettre à jour la commande
+        sqlx::query!(
+            r#"
+            UPDATE product_orders
+            SET 
+                status = $1,
+                validated_at = $2,
+                validated_by = $3,
+                estimated_ready_at = $4,
+                updated_at = NOW()
+            WHERE id = $5
+            "#,
+            new_status,
+            now,
+            provider_user_id,
+            estimated_ready_at,
+            order_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        info!(
+            "[OrderPreparation] Commande validée: order_id={}, status={}, estimated_ready_at={:?}",
+            order_id, new_status, estimated_ready_at
+        );
+
+        // Si ready, démarrer le matching coursier (sera géré par delivery_service)
+        if new_status == "ready" {
+            info!(
+                "[OrderPreparation] Commande prête immédiatement, matching coursier peut démarrer: order_id={}",
+                order_id
+            );
+        }
+
+        self.get_order(order_id).await
+    }
+
+    /// Rejette une commande (prestataire refuse)
+    pub async fn reject_order(
+        &self,
+        order_id: Uuid,
+        provider_user_id: i32,
+        request: RejectOrderRequest,
+    ) -> AppResult<ProductOrder> {
+        info!(
+            "[OrderPreparation] Rejet commande: order_id={}, provider={}, reason={}",
+            order_id, provider_user_id, request.reason
+        );
+
+        // Vérifier que la commande existe et appartient au prestataire
+        let order = self.get_order(order_id).await?;
+        
+        if order.provider_user_id != provider_user_id {
+            return Err(AppError::Forbidden(
+                "Vous n'êtes pas le prestataire de cette commande".to_string(),
+            ));
+        }
+
+        if order.status != "pending" {
+            return Err(AppError::BadRequest(format!(
+                "La commande n'est pas en attente de validation (statut: {})",
+                order.status
+            )));
+        }
+
+        let now = Utc::now();
+
+        // Mettre à jour la commande
+        sqlx::query!(
+            r#"
+            UPDATE product_orders
+            SET 
+                status = 'rejected',
+                rejected_at = $1,
+                rejection_reason = $2,
+                updated_at = NOW()
+            WHERE id = $3
+            "#,
+            now,
+            request.reason,
+            order_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        // Enregistrer l'annulation
+        sqlx::query!(
+            r#"
+            INSERT INTO order_cancellations (
+                order_id,
+                provider_user_id,
+                service_id,
+                product_index,
+                cancellation_type,
+                reason
+            )
+            VALUES ($1, $2, $3, $4, 'rejected', $5)
+            "#,
+            order_id,
+            provider_user_id,
+            order.service_id,
+            order.product_index,
+            request.reason
+        )
+        .execute(&self.pool)
+        .await?;
+
+        info!(
+            "[OrderPreparation] Commande rejetée: order_id={}",
+            order_id
+        );
+
+        self.get_order(order_id).await
+    }
+
+    /// Récupère une commande par ID
+    pub async fn get_order(&self, order_id: Uuid) -> AppResult<ProductOrder> {
+        let row = sqlx::query!(
+            r#"
+            SELECT 
+                id,
+                delivery_id,
+                service_id,
+                product_index,
+                client_user_id,
+                provider_user_id,
+                status,
+                preparation_time_minutes,
+                estimated_ready_at,
+                validated_at,
+                validated_by,
+                rejected_at,
+                rejection_reason,
+                validation_deadline,
+                created_at,
+                updated_at,
+                metadata
+            FROM product_orders
+            WHERE id = $1
+            "#,
+            order_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let row = match row {
+            Some(r) => r,
+            None => {
+                return Err(AppError::NotFound(format!(
+                    "Commande {} non trouvée",
+                    order_id
+                )));
+            }
+        };
+
+        Ok(ProductOrder {
+            id: row.id,
+            delivery_id: row.delivery_id,
+            service_id: row.service_id,
+            product_index: row.product_index,
+            client_user_id: row.client_user_id,
+            provider_user_id: row.provider_user_id,
+            status: row.status,
+            preparation_time_minutes: row.preparation_time_minutes,
+            estimated_ready_at: row.estimated_ready_at,
+            validated_at: row.validated_at,
+            validated_by: row.validated_by,
+            rejected_at: row.rejected_at,
+            rejection_reason: row.rejection_reason,
+            validation_deadline: row.validation_deadline,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            metadata: row.metadata.unwrap_or_else(|| serde_json::json!({})),
+        })
+    }
+
+    /// Liste les commandes d'un prestataire
+    pub async fn list_provider_orders(
+        &self,
+        provider_user_id: i32,
+        status_filter: Option<&str>,
+        limit: i32,
+    ) -> AppResult<Vec<ProductOrder>> {
+        let orders = if let Some(status) = status_filter {
+            sqlx::query!(
+                r#"
+                SELECT 
+                    id,
+                    delivery_id,
+                    service_id,
+                    product_index,
+                    client_user_id,
+                    provider_user_id,
+                    status,
+                    preparation_time_minutes,
+                    estimated_ready_at,
+                    validated_at,
+                    validated_by,
+                    rejected_at,
+                    rejection_reason,
+                    validation_deadline,
+                    created_at,
+                    updated_at,
+                    metadata
+                FROM product_orders
+                WHERE provider_user_id = $1 AND status = $2
+                ORDER BY created_at DESC
+                LIMIT $3
+                "#,
+                provider_user_id,
+                status,
+                limit
+            )
+            .fetch_all(&self.pool)
+            .await?
+        } else {
+            sqlx::query!(
+                r#"
+                SELECT 
+                    id,
+                    delivery_id,
+                    service_id,
+                    product_index,
+                    client_user_id,
+                    provider_user_id,
+                    status,
+                    preparation_time_minutes,
+                    estimated_ready_at,
+                    validated_at,
+                    validated_by,
+                    rejected_at,
+                    rejection_reason,
+                    validation_deadline,
+                    created_at,
+                    updated_at,
+                    metadata
+                FROM product_orders
+                WHERE provider_user_id = $1
+                ORDER BY created_at DESC
+                LIMIT $2
+                "#,
+                provider_user_id,
+                limit
+            )
+            .fetch_all(&self.pool)
+            .await?
+        };
+
+        Ok(orders
+            .into_iter()
+            .map(|row| ProductOrder {
+                id: row.id,
+                delivery_id: row.delivery_id,
+                service_id: row.service_id,
+                product_index: row.product_index,
+                client_user_id: row.client_user_id,
+                provider_user_id: row.provider_user_id,
+                status: row.status,
+                preparation_time_minutes: row.preparation_time_minutes,
+                estimated_ready_at: row.estimated_ready_at,
+                validated_at: row.validated_at,
+                validated_by: row.validated_by,
+                rejected_at: row.rejected_at,
+                rejection_reason: row.rejection_reason,
+                validation_deadline: row.validation_deadline,
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+                metadata: row.metadata.unwrap_or_else(|| serde_json::json!({})),
+            })
+            .collect())
+    }
+
+    /// Met à jour le statut d'une commande
+    pub async fn update_status(
+        &self,
+        order_id: Uuid,
+        new_status: &str,
+    ) -> AppResult<ProductOrder> {
+        sqlx::query!(
+            r#"
+            UPDATE product_orders
+            SET status = $1, updated_at = NOW()
+            WHERE id = $2
+            "#,
+            new_status,
+            order_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        self.get_order(order_id).await
+    }
+
+    /// Marque une commande comme prête
+    pub async fn mark_as_ready(&self, order_id: Uuid) -> AppResult<ProductOrder> {
+        let now = Utc::now();
+        
+        sqlx::query!(
+            r#"
+            UPDATE product_orders
+            SET 
+                status = 'ready',
+                estimated_ready_at = $1,
+                updated_at = NOW()
+            WHERE id = $2
+            "#,
+            now,
+            order_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        info!(
+            "[OrderPreparation] Commande marquée comme prête: order_id={}",
+            order_id
+        );
+
+        self.get_order(order_id).await
+    }
+}
+

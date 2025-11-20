@@ -70,9 +70,9 @@ const DeliveryHomeScreen: React.FC = () => {
         setNavigating(true);
 
         try {
-            // DeliveryHomeScreen est dans SecondaryStack, donc navigation directe fonctionne
-            navigation.navigate('DeliveryShoppingFlow');
-            console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingFlow');
+            // Navigation vers le nouveau flux shopping
+            navigation.navigate('DeliveryShoppingFlowNew');
+            console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingFlowNew');
         } catch (error: any) {
             console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
             Alert.alert(
@@ -86,31 +86,21 @@ const DeliveryHomeScreen: React.FC = () => {
     const handleStartParcel = useCallback(() => {
         if (navigating) return;
 
-        console.log('[DeliveryHomeScreen] 📦 Tentative d\'ouverture du flux colis');
+        console.log('[DeliveryHomeScreen] 📦 Navigation vers DeliveryParcelFlow');
         setNavigating(true);
 
-        // Pour l'instant, rediriger vers le flux shopping (même logique)
-        // TODO: Implémenter DeliveryParcelFlow quand il sera prêt
-        if (isEnabled('delivery_v2')) {
-            // Utiliser le flux shopping en attendant
-            handleStartShopping();
-        } else {
-            // Rediriger vers shopping avec message informatif
+        try {
+            navigation.navigate('DeliveryParcelFlow');
+            console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryParcelFlow');
+        } catch (error: any) {
+            console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
             Alert.alert(
-                'Flux colis en préparation',
-                'Le flux de livraison de colis est en cours de finalisation. Vous pouvez utiliser les courses supermarché pour tester le suivi temps réel.',
-                [
-                    { text: 'Annuler', style: 'cancel', onPress: () => setNavigating(false) },
-                    {
-                        text: 'Utiliser les courses', onPress: () => {
-                            setNavigating(false);
-                            handleStartShopping();
-                        }
-                    }
-                ]
+                'Erreur',
+                'Impossible d\'ouvrir le flux colis. Veuillez réessayer.',
+                [{ text: 'OK', onPress: () => setNavigating(false) }]
             );
         }
-    }, [isEnabled, navigating, handleStartShopping]);
+    }, [navigation, navigating]);
 
     const handleOpenDelivery = useCallback((deliveryId: string) => {
         if (navigating) return;
@@ -147,18 +137,17 @@ const DeliveryHomeScreen: React.FC = () => {
                     subtitle="Orchestre tes courses supermarché, tracking temps réel et notifications destinataire."
                 />
 
-                {(!isNetworkOnline || !isWebSocketConnected) && (
+                {/* ✅ CORRIGÉ: Afficher uniquement si réseau offline (pas pour WebSocket limité) */}
+                {!isNetworkOnline && (
                     <NativeCard style={[styles.card, styles.warningCard]}>
                         <Text style={styles.warningTitle}>
-                            {!isNetworkOnline ? 'Connexion réseau indisponible' : 'Connexion WebSocket limitée'}
+                            Connexion réseau indisponible
                         </Text>
                         <Text style={styles.warningSubtitle}>
-                            {!isNetworkOnline
-                                ? 'Votre connexion internet est indisponible. Les actions seront synchronisées automatiquement dès le retour en ligne.'
-                                : 'La connexion WebSocket pour le suivi en temps réel est limitée. Les données se resynchroniseront automatiquement une fois la connexion rétablie.'}
+                            Votre connexion internet est indisponible. Les actions seront synchronisées automatiquement dès le retour en ligne.
                         </Text>
                         <NativeButton
-                            title={!isNetworkOnline ? 'Vérifier la connexion' : 'Retenter la synchronisation'}
+                            title="Vérifier la connexion"
                             variant='outline'
                             onPress={() => {
                                 console.log('[DeliveryHomeScreen] 🔄 Tentative de reconnexion...');
@@ -189,6 +178,53 @@ const DeliveryHomeScreen: React.FC = () => {
                     </NativeCard>
                 )}
 
+                {/* ✅ CORRIGÉ: Livraisons actives EN HAUT */}
+                {activeDeliveries.length > 0 && (
+                    <>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>Vos livraisons actives</Text>
+                            <TouchableOpacity
+                                onPress={handleRefresh}
+                                disabled={loading || refreshing}
+                                style={[styles.refreshButton, (loading || refreshing) && styles.refreshButtonDisabled]}
+                            >
+                                <SafeIcon
+                                    name="refresh"
+                                    size={16}
+                                    color={(loading || refreshing) ? modernColors.textSecondary : modernColors.primary}
+                                />
+                                <Text style={[
+                                    styles.refreshButtonText,
+                                    (loading || refreshing) && styles.refreshButtonTextDisabled
+                                ]}>
+                                    Actualiser
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.deliveriesList}>
+                            {activeDeliveries.map(delivery => (
+                                <ActiveDeliveryCard
+                                    key={delivery.id}
+                                    delivery={delivery}
+                                    onPress={handleOpenDelivery}
+                                />
+                            ))}
+                        </View>
+                    </>
+                )}
+
+                {loading && activeDeliveries.length === 0 && (
+                    <View style={styles.loadingState}>
+                        <ActivityIndicator size="small" color={modernColors.primary} />
+                        <Text style={styles.loadingText}>Chargement des livraisons en cours...</Text>
+                    </View>
+                )}
+
+                {/* ✅ NOUVEAU: Section pour créer une nouvelle livraison */}
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Nouvelle livraison</Text>
+                </View>
+
                 <NativeCard style={styles.card}>
                     <Text style={styles.cardTitle}>Courses supermarché</Text>
                     <Text style={styles.cardSubtitle}>
@@ -203,74 +239,31 @@ const DeliveryHomeScreen: React.FC = () => {
                     />
                 </NativeCard>
 
-                {/* ✅ CORRIGÉ: Toujours afficher le flux colis, mais avec message adapté selon feature flag */}
+                {/* ✅ CORRIGÉ: Flux colis séparé avec navigation vers DeliveryParcelFlow */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.cardTitle}>Livraison de colis</Text>
                     <Text style={styles.cardSubtitle}>
-                        {isEnabled('delivery_v2')
-                            ? 'Expédie un colis ou un document avec le nouveau flux de livraison intelligente (beta).'
-                            : 'Envoie un colis ou un document avec suivi en temps réel. Le flux est opérationnel via les courses supermarché.'}
+                        Expédie un colis ou un document avec le nouveau flux de livraison intelligente. Gestion des points pickup/drop et matching automatique avec le coursier le plus proche.
                     </Text>
                     <NativeButton
-                        title={isEnabled('delivery_v2') ? "Nouveau flux colis (beta)" : "Utiliser les courses supermarché"}
-                        variant={isEnabled('delivery_v2') ? "outline" : "primary"}
-                        onPress={isEnabled('delivery_v2') ? handleStartParcel : handleStartShopping}
+                        title="Nouveau flux colis"
+                        variant="outline"
+                        onPress={handleStartParcel}
                         disabled={navigating}
                         style={styles.actionButton}
                     />
                 </NativeCard>
 
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Vos livraisons actives</Text>
-                    <TouchableOpacity
-                        onPress={handleRefresh}
-                        disabled={loading || refreshing}
-                        style={[styles.refreshButton, (loading || refreshing) && styles.refreshButtonDisabled]}
-                    >
-                        <SafeIcon
-                            name="refresh"
-                            size={16}
-                            color={(loading || refreshing) ? modernColors.textSecondary : modernColors.primary}
-                        />
-                        <Text style={[
-                            styles.refreshButtonText,
-                            (loading || refreshing) && styles.refreshButtonTextDisabled
-                        ]}>
-                            Actualiser
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
-                {loading && activeDeliveries.length === 0 ? (
-                    <View style={styles.loadingState}>
-                        <ActivityIndicator size="small" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Chargement des livraisons en cours...</Text>
-                    </View>
-                ) : activeDeliveries.length === 0 ? (
+                {/* ✅ Afficher état vide seulement si pas de livraisons */}
+                {!loading && activeDeliveries.length === 0 && (
                     <View style={styles.emptyState}>
                         <View style={styles.emptyIconContainer}>
                             <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
                         </View>
                         <Text style={styles.emptyTitle}>Aucune livraison en cours</Text>
                         <Text style={styles.emptySubtitle}>
-                            Lance une commande supermarché pour suivre ton coursier en temps réel.
+                            Lance une commande supermarché ou une livraison de colis pour suivre ton coursier en temps réel.
                         </Text>
-                        <NativeButton
-                            title="Nouvelle commande"
-                            onPress={handleStartShopping}
-                            disabled={navigating}
-                            style={styles.emptyStateButton}
-                        />
-                    </View>
-                ) : (
-                    <View style={styles.deliveriesList}>
-                        {activeDeliveries.map(delivery => (
-                            <ActiveDeliveryCard
-                                key={delivery.id}
-                                delivery={delivery}
-                                onPress={handleOpenDelivery}
-                            />
-                        ))}
                     </View>
                 )}
             </ScrollView>

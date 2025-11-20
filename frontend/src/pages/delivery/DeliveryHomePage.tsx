@@ -40,11 +40,11 @@ const DeliveryHomePage: React.FC = () => {
     const handleStartShopping = useCallback(() => {
         if (navigating) return;
 
-        console.log('[DeliveryHomePage] 🛒 Navigation vers /delivery/shopping/basket');
+        console.log('[DeliveryHomePage] 🛒 Navigation vers /delivery/shopping/flow');
         setNavigating(true);
 
         try {
-            navigate('/delivery/shopping/basket');
+            navigate('/delivery/shopping/flow');
             console.log('[DeliveryHomePage] ✅ Navigation réussie');
         } catch (error: any) {
             console.error('[DeliveryHomePage] ❌ Erreur navigation:', error);
@@ -56,50 +56,18 @@ const DeliveryHomePage: React.FC = () => {
     const handleStartParcel = useCallback(() => {
         if (navigating) return;
 
-        console.log('[DeliveryHomePage] 📦 Tentative d\'ouverture du flux colis');
+        console.log('[DeliveryHomePage] 📦 Navigation vers /delivery/parcel/flow');
         setNavigating(true);
 
-        // Pour l'instant, rediriger vers le flux shopping (même logique)
-        // TODO: Implémenter le flux colis web quand il sera prêt
-        if (isEnabled('delivery_v2')) {
-            // Utiliser le flux shopping en attendant
-            handleStartShopping();
-        } else {
-            // Afficher un toast informatif et rediriger vers shopping
-            toast(
-                (t) => (
-                    <div className="space-y-2">
-                        <p className="font-semibold">Flux colis en préparation</p>
-                        <p className="text-sm">
-                            Le flux de livraison de colis est en cours de finalisation. Vous pouvez utiliser les courses supermarché pour tester le suivi en temps réel.
-                        </p>
-                        <div className="flex gap-2 mt-2">
-                            <button
-                                onClick={() => {
-                                    toast.dismiss(t.id);
-                                    setNavigating(false);
-                                    handleStartShopping();
-                                }}
-                                className="px-3 py-1 bg-primary text-white rounded text-sm font-medium"
-                            >
-                                Utiliser les courses
-                            </button>
-                            <button
-                                onClick={() => {
-                                    toast.dismiss(t.id);
-                                    setNavigating(false);
-                                }}
-                                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm"
-                            >
-                                Annuler
-                            </button>
-                        </div>
-                    </div>
-                ),
-                { duration: 5000 }
-            );
+        try {
+            navigate('/delivery/parcel/flow');
+            console.log('[DeliveryHomePage] ✅ Navigation réussie vers flux colis');
+        } catch (error: any) {
+            console.error('[DeliveryHomePage] ❌ Erreur navigation:', error);
+            toast.error('Impossible d\'ouvrir le flux colis. Veuillez réessayer.');
+            setNavigating(false);
         }
-    }, [isEnabled, navigating, handleStartShopping]);
+    }, [navigate, navigating]);
 
     const handleOpenDelivery = useCallback((deliveryId: string) => {
         if (navigating) return;

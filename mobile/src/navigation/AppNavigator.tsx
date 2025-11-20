@@ -27,32 +27,36 @@ import ProfileScreen from '../screens/ProfileScreen';
 import AjouterProduitSimpleScreen from '../screens/AjouterProduitSimpleScreen';
 import ContactScreen from '../screens/ContactScreen';
 import CreatePubliciteScreen from '../screens/CreatePubliciteScreen';
-import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
-import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
-import MesProduitsScreen from '../screens/MesProduitsScreen';
-import ProductDetailScreen from '../screens/ProductDetailScreen';
-import PubliciteDashboardScreen from '../screens/PubliciteDashboardScreen';
-import RechargeTokensScreen from '../screens/RechargeTokensScreen';
-import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
-import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
-import SoldeDetailScreen from '../screens/SoldeDetailScreen';
-import VideoAnalyticsScreen from '../screens/VideoAnalyticsScreen';
-import VideoFeedScreen from '../screens/VideoFeedScreen';
-import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
 import AnalyticsDashboardScreen from '../screens/dashboard/AnalyticsDashboardScreen'; // ✅ Phase 10 - Analytics Dashboard
-import DashboardScreen from '../screens/DashboardScreen'; // ✅ Ancien Dashboard
 import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen'; // ✅ Dashboard Prestataire
+import DashboardScreen from '../screens/DashboardScreen'; // ✅ Ancien Dashboard
 import DeliveryHomeScreen from '../screens/delivery/DeliveryHomeScreen';
+import DeliveryParcelFlowScreen from '../screens/delivery/DeliveryParcelFlowScreen';
+import DeliveryShoppingFlowScreen from '../screens/delivery/DeliveryShoppingFlowScreen';
 import DeliveryShoppingTrackingScreen from '../screens/delivery/DeliveryShoppingTrackingScreen';
 import ShoppingBasketScreen from '../screens/delivery/ShoppingBasketScreen';
 import ShoppingBudgetScreen from '../screens/delivery/ShoppingBudgetScreen';
 import ShoppingPickupDropScreen from '../screens/delivery/ShoppingPickupDropScreen';
 import ShoppingSummaryScreen from '../screens/delivery/ShoppingSummaryScreen';
 import StorageLocationsScreen from '../screens/delivery/StorageLocationsScreen';
+import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
+import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
+import MesProduitsScreen from '../screens/MesProduitsScreen';
+import OrderStatusScreen from '../screens/OrderStatusScreen';
+import ProductDetailScreen from '../screens/ProductDetailScreen';
 import GlobalPromoSubmissionScreen from '../screens/promo/GlobalPromoSubmissionScreen';
+import ProviderOrderManagementScreen from '../screens/ProviderOrderManagementScreen';
+import PubliciteDashboardScreen from '../screens/PubliciteDashboardScreen';
+import RechargeTokensScreen from '../screens/RechargeTokensScreen';
+import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
+import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
+import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import VideoCreationIntroScreen from '../screens/video/VideoCreationIntroScreen';
 import VideoCreationWizardScreen from '../screens/video/VideoCreationWizardScreen';
 import VideoGenerationResultScreen from '../screens/video/VideoGenerationResultScreen';
+import VideoAnalyticsScreen from '../screens/VideoAnalyticsScreen';
+import VideoFeedScreen from '../screens/VideoFeedScreen';
+import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
 
 markNavigatorSafeAreaHandled(HomeScreen as any);
 markNavigatorSafeAreaHandled(ContactScreen as any);
@@ -72,6 +76,8 @@ const AjouterProduitSimpleWithSafeArea = withNavigatorSafeArea(AjouterProduitSim
 const ProductDetailScreenWithSafeArea = withNavigatorSafeArea(ProductDetailScreen);
 const ServiceDetailSharedScreenWithSafeArea = withNavigatorSafeArea(ServiceDetailSharedScreen);
 const ResultatBesoinScreenWithSafeArea = withNavigatorSafeArea(ResultatBesoinScreen);
+const OrderStatusScreenWithSafeArea = withNavigatorSafeArea(OrderStatusScreen);
+const ProviderOrderManagementScreenWithSafeArea = withNavigatorSafeArea(ProviderOrderManagementScreen);
 const CreatePubliciteScreenWithSafeArea = withNavigatorSafeArea(CreatePubliciteScreen);
 const PubliciteDashboardScreenWithSafeArea = withNavigatorSafeArea(PubliciteDashboardScreen);
 const SoldeDetailScreenWithSafeArea = withNavigatorSafeArea(SoldeDetailScreen);
@@ -243,6 +249,8 @@ const SecondaryStack = () => {
         <Stack.Screen name="Delivery" component={DeliveryHomeScreenWithSafeArea} />
         <Stack.Screen name="DeliveryHome" component={DeliveryHomeScreenWithSafeArea} />
         <Stack.Screen name="DeliveryShoppingFlow" component={DeliveryShoppingFlow} />
+        <Stack.Screen name="DeliveryShoppingFlowNew" component={withNavigatorSafeArea(DeliveryShoppingFlowScreen)} />
+        <Stack.Screen name="DeliveryParcelFlow" component={withNavigatorSafeArea(DeliveryParcelFlowScreen)} />
         <Stack.Screen
           name="DeliveryShoppingTracking"
           component={DeliveryShoppingTrackingScreenWithSafeArea}

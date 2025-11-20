@@ -471,6 +471,67 @@ export interface DropoffShareResponse {
   dropoff_pending: boolean;
 }
 
+// ✅ Cache pour les supermarchés (mobile) - AsyncStorage déjà importé en haut du fichier
+
+interface CachedSupermarkets {
+  supermarkets: any[];
+  timestamp: number;
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
+}
+
+const SUPERMARKETS_CACHE_KEY = 'yukpo_supermarkets_cache';
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+const getCacheKey = (lat: number, lng: number, radius: number): string => {
+  const roundedLat = Math.round(lat * 100) / 100;
+  const roundedLng = Math.round(lng * 100) / 100;
+  return `${SUPERMARKETS_CACHE_KEY}_${roundedLat}_${roundedLng}_${radius}`;
+};
+
+const getCachedSupermarkets = async (lat: number, lng: number, radiusKm: number): Promise<any[] | null> => {
+  try {
+    const cacheKey = getCacheKey(lat, lng, radiusKm);
+    const cached = await AsyncStorage.getItem(cacheKey);
+    if (!cached) return null;
+
+    const data: CachedSupermarkets = JSON.parse(cached);
+    const now = Date.now();
+
+    if (now - data.timestamp > CACHE_DURATION_MS) {
+      await AsyncStorage.removeItem(cacheKey);
+      return null;
+    }
+
+    const distance = Math.sqrt(
+      Math.pow(data.latitude - lat, 2) + Math.pow(data.longitude - lng, 2)
+    ) * 111;
+    if (distance > 1) return null;
+
+    return data.supermarkets;
+  } catch (error) {
+    console.warn('Erreur lecture cache supermarchés:', error);
+    return null;
+  }
+};
+
+const setCachedSupermarkets = async (lat: number, lng: number, radiusKm: number, supermarkets: any[]): Promise<void> => {
+  try {
+    const cacheKey = getCacheKey(lat, lng, radiusKm);
+    const data: CachedSupermarkets = {
+      supermarkets,
+      timestamp: Date.now(),
+      latitude: lat,
+      longitude: lng,
+      radiusKm,
+    };
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+  } catch (error) {
+    console.warn('Erreur écriture cache supermarchés:', error);
+  }
+};
+
 export const deliveryApi = {
   listActiveDeliveries: async () => {
     return apiCall<DeliveryListResponse>('/api/deliveries/active');
@@ -479,7 +540,7 @@ export const deliveryApi = {
     return apiCall(`/api/deliveries/${deliveryId}`);
   },
   createDeliveryRequest: async (payload: CreateDeliveryRequestPayload) => {
-    return apiCall(`/api/delivery`, {
+    const response = await apiCall<{ delivery?: any; id?: string; status?: string; metadata?: any; shopping_required?: boolean }>(`/api/delivery`, {
       method: 'POST',
       body: JSON.stringify({
         ...payload,
@@ -492,6 +553,69 @@ export const deliveryApi = {
         },
       }),
     });
+
+    // ✅ CORRIGÉ : Extraire les données de la réponse backend
+    // Le backend retourne { "delivery": DeliverySummary }
+    if (response.success && response.data) {
+      const data = response.data as any;
+      const delivery = data.delivery || data;
+      return {
+        success: true,
+        data: {
+          id: delivery.id,
+          status: delivery.status,
+          kind: delivery.metadata?.kind || (delivery.shopping_required ? 'shopping' : 'parcel'),
+        },
+      };
+    }
+
+    return response;
+  },
+  // ✅ Nouveau : Récupérer les supermarchés avec cache
+  listSupermarkets: async (latitude: number, longitude: number, radiusKm: number = 10) => {
+    try {
+      // Vérifier le cache
+      const cached = await getCachedSupermarkets(latitude, longitude, radiusKm);
+      if (cached) {
+        console.log('[DeliveryApi] ✅ Supermarchés récupérés depuis le cache');
+        return { supermarkets: cached, total: cached.length };
+      }
+
+      // Appeler l'API
+      const response = await apiCall(`/api/services/nearby?latitude=${latitude}&longitude=${longitude}&radius=${radiusKm * 1000}&limit=20`);
+      const data = (response.data || response) as { services?: any[] };
+
+      // Filtrer les supermarchés
+      const keywords = ['supermarche', 'supermarket', 'carrefour', 'casino', 'super u', 'auchan', 'leclerc', 'intermarche', 'monoprix', 'franprix', 'magasin', 'epicerie', 'hypermarché'];
+
+      const supermarkets = ((data?.services || []) as any[])
+        .filter((service: any) => {
+          const category = (service.category || '').toLowerCase();
+          const name = (service.name || '').toLowerCase();
+          const description = (service.description || '').toLowerCase();
+          return keywords.some(keyword =>
+            category.includes(keyword) || name.includes(keyword) || description.includes(keyword)
+          );
+        })
+        .map((service: any) => ({
+          id: service.id,
+          name: service.name,
+          address: service.address || 'Adresse non disponible',
+          latitude: service.latitude || 0,
+          longitude: service.longitude || 0,
+          distance_km: service.distance ? Math.round(service.distance / 1000 * 10) / 10 : undefined,
+          phone: service.phone,
+          website: service.website,
+        }));
+
+      // Mettre en cache
+      await setCachedSupermarkets(latitude, longitude, radiusKm, supermarkets);
+
+      return { supermarkets, total: supermarkets.length };
+    } catch (error) {
+      console.error('Erreur récupération supermarchés:', error);
+      return { supermarkets: [], total: 0 };
+    }
   },
   getRecipientUpdates: async (deliveryId: string) => {
     return apiCall(`/api/deliveries/${deliveryId}/recipient/updates`);

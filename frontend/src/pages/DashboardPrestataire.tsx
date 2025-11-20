@@ -12,6 +12,7 @@ import {
   Eye,
   MessageCircle,
   RefreshCw,
+  Sparkles,
   Star,
   Target,
   TrendingUp,
@@ -335,6 +336,59 @@ const DashboardPrestataire: React.FC = () => {
                   <p className="text-orange-200 text-sm">Restant: {formatCurrency(dashboardData.budgetRemaining)}</p>
                 </div>
                 <Zap className="w-12 h-12 text-orange-200" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Actions rapides - Navigation vers workflow de livraison */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <Card className="border-blue-200 hover:border-blue-400 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/orders/management'}
+            role="button"
+            aria-label="Gérer mes commandes"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                window.location.href = '/orders/management';
+              }
+            }}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-2xl">📦</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 mb-1">Gérer mes commandes</h3>
+                  <p className="text-sm text-gray-600">Valider, rejeter et suivre les commandes</p>
+                </div>
+                <span className="text-blue-600">→</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-purple-200 hover:border-purple-400 transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/provider/analytics'}
+            role="button"
+            aria-label="Voir les analytics détaillées"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                window.location.href = '/provider/analytics';
+              }
+            }}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                  <BarChart3 className="w-6 h-6 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 mb-1">Analytics détaillées</h3>
+                  <p className="text-sm text-gray-600">Statistiques complètes et analyses</p>
+                </div>
+                <span className="text-purple-600">→</span>
               </div>
             </CardContent>
           </Card>

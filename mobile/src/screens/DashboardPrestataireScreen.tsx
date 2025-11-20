@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Remplacement des Ionicons par des emojis pour éviter les crashes
+// Remplacement des Ionicons par des emojis pour ï¿½viter les crashes
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -42,6 +42,7 @@ interface DashboardData {
 }
 
 const DashboardPrestataireScreen: React.FC = () => {
+  const navigation = useNavigation();
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,27 +58,27 @@ const DashboardPrestataireScreen: React.FC = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      console.log('[DashboardPrestataireScreen] Chargement des données pour la période:', selectedPeriod);
+      console.log('[DashboardPrestataireScreen] Chargement des donnï¿½es pour la pï¿½riode:', selectedPeriod);
 
-      // Essayer d'abord l'endpoint spécialisé
+      // Essayer d'abord l'endpoint spï¿½cialisï¿½
       const response = await userApi.getDashboardPrestataire(selectedPeriod);
 
       if (response.success && response.data) {
-        console.log('[DashboardPrestataireScreen] Données reçues:', response.data);
+        console.log('[DashboardPrestataireScreen] Donnï¿½es reï¿½ues:', response.data);
         setDashboardData(response.data as DashboardData);
       } else {
-        // Charger les données réelles depuis l'API des services et du budget
-        console.log('[DashboardPrestataireScreen] Chargement des données alternatives...');
+        // Charger les donnï¿½es rï¿½elles depuis l'API des services et du budget
+        console.log('[DashboardPrestataireScreen] Chargement des donnï¿½es alternatives...');
 
         const [servicesResponse, budgetResponse] = await Promise.all([
-          userApi.getUserProfile(), // Utiliser getUserProfile à la place
+          userApi.getUserProfile(), // Utiliser getUserProfile ï¿½ la place
           userApi.getUserBudget()
         ]);
 
         const services = (servicesResponse.data as any)?.services || [];
         const budgetData = (budgetResponse.data as any) || { consumed: 0, remaining: 0 };
 
-        // Calculer les statistiques réelles (logique identique au frontend)
+        // Calculer les statistiques rï¿½elles (logique identique au frontend)
         const activeServices = services.filter((s: any) => s.is_active).length;
         const totalViews = services.reduce((sum: number, s: any) => sum + (s.views || 0), 0);
         const totalInteractions = services.reduce((sum: number, s: any) => sum + (s.interactions || 0), 0);
@@ -85,7 +86,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           ? services.reduce((sum: number, s: any) => sum + (s.rating || 0), 0) / services.length
           : 0;
 
-        // Utiliser les données réelles des services
+        // Utiliser les donnï¿½es rï¿½elles des services
         const topPerformingServices: ServiceStats[] = services.slice(0, 5).map((service: any) => ({
           id: service.id,
           title: service.nom || service.title || 'Service',
@@ -98,8 +99,8 @@ const DashboardPrestataireScreen: React.FC = () => {
           revenue: service.revenue || 0,
           lastActivity: new Date(service.last_activity || service.created_at),
           status: service.is_active ? 'active' : 'inactive',
-          category: service.categorie || 'Général',
-          location: service.location || 'Non spécifié'
+          category: service.categorie || 'Gï¿½nï¿½ral',
+          location: service.location || 'Non spï¿½cifiï¿½'
         }));
 
         const realDashboardData: DashboardData = {
@@ -122,8 +123,8 @@ const DashboardPrestataireScreen: React.FC = () => {
         setDashboardData(realDashboardData);
       }
     } catch (error) {
-      console.error('[DashboardPrestataireScreen] Erreur chargement données:', error);
-      Alert.alert('Erreur', 'Impossible de charger les données du dashboard');
+      console.error('[DashboardPrestataireScreen] Erreur chargement donnï¿½es:', error);
+      Alert.alert('Erreur', 'Impossible de charger les donnï¿½es du dashboard');
     } finally {
       setLoading(false);
     }
@@ -174,9 +175,9 @@ const DashboardPrestataireScreen: React.FC = () => {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorIcon}>??</Text>
-        <Text style={styles.errorText}>Aucune donnée disponible</Text>
+        <Text style={styles.errorText}>Aucune donnï¿½e disponible</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadDashboardData}>
-          <Text style={styles.retryButtonText}>Réessayer</Text>
+          <Text style={styles.retryButtonText}>Rï¿½essayer</Text>
         </TouchableOpacity>
       </View>
     );
@@ -184,7 +185,7 @@ const DashboardPrestataireScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* En-tête avec sélecteur de période */}
+      {/* En-tï¿½te avec sï¿½lecteur de pï¿½riode */}
       <View style={styles.header}>
         <Title style={styles.title}>?? Dashboard Prestataire</Title>
         <Text style={styles.subtitle}>Statistiques et performances de vos services</Text>
@@ -268,7 +269,7 @@ const DashboardPrestataireScreen: React.FC = () => {
               <Text style={styles.statIconText}>??</Text>
             </View>
             <Text style={styles.statNumber}>{formatCurrency(dashboardData.budgetConsumed)}</Text>
-            <Text style={styles.statLabel}>Budget utilisé</Text>
+            <Text style={styles.statLabel}>Budget utilisï¿½</Text>
           </Card.Content>
         </Card>
       </View>
@@ -313,10 +314,10 @@ const DashboardPrestataireScreen: React.FC = () => {
         </Card.Content>
       </Card>
 
-      {/* Activité récente */}
+      {/* Activitï¿½ rï¿½cente */}
       <Card style={styles.sectionCard}>
         <Card.Content>
-          <Title style={styles.sectionTitle}>?? Activité récente</Title>
+          <Title style={styles.sectionTitle}>?? Activitï¿½ rï¿½cente</Title>
 
           {dashboardData.recentActivity.map((activity, index) => (
             <View key={index} style={styles.activityItem}>
@@ -332,7 +333,7 @@ const DashboardPrestataireScreen: React.FC = () => {
                 <Text style={styles.activityText}>
                   {activity.type === 'view' ? 'Vue' :
                     activity.type === 'message' ? 'Message' :
-                      activity.type === 'call' ? 'Appel' : 'Activité'} sur {activity.service}
+                      activity.type === 'call' ? 'Appel' : 'Activitï¿½'} sur {activity.service}
                 </Text>
                 <Text style={styles.activityTime}>Il y a {activity.time}</Text>
               </View>
@@ -348,17 +349,17 @@ const DashboardPrestataireScreen: React.FC = () => {
 
           <TouchableOpacity style={styles.actionButton}>
             <Text style={styles.actionIcon}>??</Text>
-            <Text style={styles.actionButtonText}>Actualiser les données</Text>
+            <Text style={styles.actionButtonText}>Actualiser les donnï¿½es</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
             <Text style={styles.actionIcon}>?</Text>
-            <Text style={styles.actionButtonText}>Créer un nouveau service</Text>
+            <Text style={styles.actionButtonText}>Crï¿½er un nouveau service</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
             <Text style={styles.actionIcon}>??</Text>
-            <Text style={styles.actionButtonText}>Voir les statistiques détaillées</Text>
+            <Text style={styles.actionButtonText}>Voir les statistiques dï¿½taillï¿½es</Text>
           </TouchableOpacity>
         </Card.Content>
       </Card>

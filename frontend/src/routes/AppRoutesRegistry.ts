@@ -48,7 +48,14 @@ export const ROUTES = {
   DELIVERY_SHOPPING_BUDGET: "/delivery/shopping/budget",
   DELIVERY_SHOPPING_PICKUP_DROP: "/delivery/shopping/pickup-drop",
   DELIVERY_SHOPPING_SUMMARY: "/delivery/shopping/summary",
+  DELIVERY_SHOPPING_FLOW: "/delivery/shopping/flow", // ✅ Nouveau : Flux shopping simplifié
+  DELIVERY_PARCEL_FLOW: "/delivery/parcel/flow", // ✅ Nouveau : Flux colis
   DELIVERY_TRACKING: "/delivery/:deliveryId/tracking",
   DELIVERY_COURIER_DASHBOARD: "/delivery/:deliveryId/courier",
   DELIVERY_STORAGE_LOCATIONS: "/delivery/storage-locations", // ✅ Phase 9 - Amélioration 32
+
+  // 🛒 Gestion commandes et produits similaires
+  SIMILAR_PRODUCTS: "/similar-products", // Produits similaires (quand produit non disponible)
+  ORDER_MANAGEMENT: "/orders/management", // Gestion des commandes (prestataire)
+  PROVIDER_ANALYTICS: "/provider/analytics", // Analytics prestataire
 } as const;

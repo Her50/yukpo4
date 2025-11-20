@@ -1145,10 +1145,10 @@ pub async fn get_services_list(
 
     match result {
         Ok(rows) => {
-            let services: Vec<Value> = rows
+            let mut services: Vec<Value> = rows
                 .iter()
                 .map(|row| {
-                    json!({
+                    let mut service_data = json!({
                         "id": row.id,
                         "data": row.data,
                         "created_at": row.created_at,
@@ -1156,9 +1156,17 @@ pub async fn get_services_list(
                         "gps": row.gps,
                         "category": row.category,
                         "is_active": row.is_active
-                    })
+                    });
+                    service_data
                 })
                 .collect();
+
+            // ✅ NOUVEAU : Enrichir les produits avec les données de disponibilité
+            let enrichment_service = crate::services::product_enrichment_service::ProductEnrichmentService::new(pg_pool.clone());
+            if let Err(e) = enrichment_service.enrich_services(&mut services).await {
+                error!("[get_services_list] ⚠️ Erreur enrichissement produits: {}", e);
+                // Continuer même en cas d'erreur d'enrichissement
+            }
 
             info!("[get_services_list] ✅ {} services trouvés", services.len());
             (
@@ -1221,7 +1229,7 @@ pub async fn get_services_recent(
 
     match result {
         Ok(rows) => {
-            let services: Vec<Value> = rows
+            let mut services: Vec<Value> = rows
                 .iter()
                 .map(|row| {
                     json!({
@@ -1235,6 +1243,13 @@ pub async fn get_services_recent(
                     })
                 })
                 .collect();
+
+            // ✅ NOUVEAU : Enrichir les produits avec les données de disponibilité
+            let enrichment_service = crate::services::product_enrichment_service::ProductEnrichmentService::new(pg_pool.clone());
+            if let Err(e) = enrichment_service.enrich_services(&mut services).await {
+                error!("[get_services_recent] ⚠️ Erreur enrichissement produits: {}", e);
+                // Continuer même en cas d'erreur d'enrichissement
+            }
 
             info!(
                 "[get_services_recent] ✅ {} services récents trouvés",

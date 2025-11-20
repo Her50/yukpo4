@@ -40,8 +40,17 @@ const linking: LinkingOptions<any> = {
       CreatePublicite: 'create-ad',
       PubliciteDashboard: 'ads-dashboard',
       YukpoServicePlaceholder: 'yukpo-service',
+      // ✅ NOUVEAU: Deep links pour workflow de livraison
+      OrderStatus: {
+        path: 'order/:orderId',
+        parse: {
+          orderId: (orderId: string) => orderId,
+        },
+      },
+      ProviderOrderManagement: 'orders/management',
     },
   },
 };
 
 export { linking };
+

@@ -31,6 +31,15 @@ pub mod negotiated_price_service; // ✅ NOUVEAU : Service pour gérer les prix 
 pub mod delivery_schedule_service; // ✅ Phase 3 - Amélioration 7: Gestion contraintes horaires
 pub mod delivery_service;
 pub mod distribution_automation_service;
+pub mod order_preparation_service; // ✅ NOUVEAU : Workflow de préparation des commandes
+pub mod product_availability_service; // ✅ NOUVEAU : Vérification disponibilité produits
+pub mod product_stock_service; // ✅ NOUVEAU : Gestion stock en temps réel
+pub mod similar_products_service; // ✅ NOUVEAU : Recherche produits similaires
+pub mod smart_notification_service; // ✅ NOUVEAU : Notifications intelligentes avec redirection
+pub mod courier_verification_service; // ✅ NOUVEAU : Vérification identité coursier
+pub mod dynamic_preparation_time_service; // ✅ NOUVEAU : Calcul dynamique durée préparation par catégorie
+pub mod provider_analytics_service; // ✅ NOUVEAU : Analytics prestataire
+pub mod product_enrichment_service; // ✅ NOUVEAU : Enrichissement produits avec disponibilité
 pub mod embedding_client;
 pub mod embedding_service;
 pub mod embedding_tracker;

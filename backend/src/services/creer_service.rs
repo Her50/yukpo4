@@ -483,6 +483,56 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
                 log::info!(
                     "[valider_service_json] Normalisation du champ produits: tableau -> objet"
                 );
+            } else if let Some(produits_obj) = produits.as_object() {
+                // ✅ CORRECTION : Gérer le cas où produits.type_donnee = "string" et produits.valeur est un objet autocomplete
+                if let Some(type_donnee) = produits_obj.get("type_donnee").and_then(|v| v.as_str()) {
+                    if type_donnee == "string" {
+                        if let Some(valeur_obj) = produits_obj.get("valeur").and_then(|v| v.as_object()) {
+                            if let Some(valeur_type_donnee) = valeur_obj.get("type_donnee").and_then(|v| v.as_str()) {
+                                if valeur_type_donnee == "autocomplete" {
+                                    // Structure incorrecte : produits.type_donnee="string" avec produits.valeur.type_donnee="autocomplete"
+                                    // Normaliser en listeproduit
+                                    let origine_champs = produits_obj
+                                        .get("origine_champs")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("formulaire")
+                                        .to_string();
+                                    
+                                    // Extraire les valeurs de l'autocomplete
+                                    let autocomplete_valeurs = valeur_obj
+                                        .get("valeur")
+                                        .and_then(|v| v.as_array())
+                                        .cloned()
+                                        .unwrap_or_default();
+                                    
+                                    // Construire un produit basique à partir de l'autocomplete
+                                    let produit_obj = serde_json::json!({
+                                        "nom": autocomplete_valeurs.get(0).and_then(|v| v.as_str()).unwrap_or(""),
+                                        "combinaison_brute": autocomplete_valeurs
+                                            .iter()
+                                            .filter_map(|v| v.as_str())
+                                            .collect::<Vec<_>>()
+                                            .join(","),
+                                        "characteristic_vector": autocomplete_valeurs,
+                                        "sous_caracteristiques": valeur_obj.get("sous_caracteristiques").cloned().unwrap_or(serde_json::json!({})),
+                                        "origine_champs": origine_champs.clone()
+                                    });
+                                    
+                                    let produits_normalized = serde_json::json!({
+                                        "type_donnee": "listeproduit",
+                                        "valeur": vec![produit_obj],
+                                        "origine_champs": origine_champs
+                                    });
+                                    
+                                    map.insert("produits".to_string(), produits_normalized);
+                                    log::info!(
+                                        "[valider_service_json] ✅ Normalisation produits: type_donnee='string' avec valeur autocomplete -> listeproduit"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -680,6 +730,16 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
                                 )));
                             }
                             log::info!("[valider_service_json] ✅ Champ '{}' location validé", key);
+                        }
+                        "media" | "image" | "video" | "audio" | "document" | "file" | "excel" => {
+                            // Validation basique : vérifier que la valeur existe
+                            if !obj.contains_key("valeur") {
+                                return Err(AppError::BadRequest(format!(
+                                    "Champ '{}': media doit avoir 'valeur'",
+                                    key
+                                )));
+                            }
+                            log::info!("[valider_service_json] ✅ Champ '{}' media validé", key);
                         }
                         _ => {}
                     }

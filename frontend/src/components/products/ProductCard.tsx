@@ -2,6 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/buttons/Button';
 import { Card, CardContent } from '@/components/ui/card';
+import { productDeliveryService } from '@/services/productDeliveryService';
 import {
     Activity,
     Calendar,
@@ -17,8 +18,9 @@ import {
     Truck,
     User
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import OrderDeliveryModal from '../delivery/OrderDeliveryModal';
+import { CancellationBadgeAbsolute, DeliveryBadge } from './DeliveryBadge';
 
 interface ProductCardProps {
     product: any;
@@ -39,6 +41,32 @@ const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [showOrderModal, setShowOrderModal] = useState(false);
+    const [deliveryConfig, setDeliveryConfig] = useState<any>(null);
+
+    // Récupérer la configuration de livraison
+    useEffect(() => {
+        const loadDeliveryConfig = async () => {
+            // D'abord, vérifier si delivery_availability est déjà dans product (enrichi par backend)
+            if (product.delivery_availability) {
+                setDeliveryConfig(product.delivery_availability);
+                return;
+            }
+
+            // Sinon, récupérer depuis l'API
+            if (serviceId && productIndex !== undefined) {
+                try {
+                    const config = await productDeliveryService.getDeliveryConfig(serviceId, productIndex);
+                    if (config) {
+                        setDeliveryConfig(config);
+                    }
+                } catch (error) {
+                    console.error('[ProductCard] Erreur chargement config livraison:', error);
+                }
+            }
+        };
+
+        loadDeliveryConfig();
+    }, [product, serviceId, productIndex]);
 
     // Obtenir service_id et product_index
     const serviceId = service?.id;
@@ -800,11 +828,28 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </div>
 
                 {/* Section Informations */}
-                <CardContent className="flex-1 p-6">
+                <CardContent className="flex-1 p-6 relative">
+                    {/* Badge taux d'annulation (position absolue en haut à gauche) */}
+                    {deliveryConfig?.cancellation_rate !== undefined && (
+                        <CancellationBadgeAbsolute cancellationRate={deliveryConfig.cancellation_rate} />
+                    )}
+
                     {/* Nom du produit */}
                     <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">
                         {product.nom || product.name || product.titre || 'Produit'}
                     </h3>
+
+                    {/* Badges de disponibilité */}
+                    {deliveryConfig && (
+                        <DeliveryBadge
+                            deliveryConfig={{
+                                is_immediately_available: deliveryConfig.is_immediately_available,
+                                preparation_time_minutes: deliveryConfig.preparation_time_minutes,
+                                availability_days: deliveryConfig.availability_days,
+                                cancellation_rate: deliveryConfig.cancellation_rate,
+                            }}
+                        />
+                    )}
 
                     {/* Description */}
                     {product.description && (

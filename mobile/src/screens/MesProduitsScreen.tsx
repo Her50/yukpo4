@@ -26,6 +26,7 @@ import { apiDelete, apiGet, apiPatch, mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
+import { navigateToVideoWizard } from '../utils/videoNavigation';
 
 const normalizeCategoryKey = (product: Record<string, any>): string => {
     const raw = product?.categorie_produit
@@ -359,8 +360,44 @@ const MesProduitsScreen: React.FC = () => {
     }, [loadProducts]);
 
     const openVideoCreatorForProduct = (product: ManagedProduct) => {
-        setVideoCreatorProduct(product);
-        setVideoCreatorVisible(true);
+        const serviceId = product.serviceId;
+        // ✅ AMÉLIORÉ: Validation plus robuste de productIndex
+        const productIndex = typeof product.productIndex === 'number' && product.productIndex >= 0
+            ? product.productIndex
+            : (product.product_index !== undefined ? Number(product.product_index) : undefined);
+        const productName = product.nom || product.name || product.title;
+
+        // ✅ Validation améliorée
+        if (!serviceId || serviceId === 0) {
+            Alert.alert(
+                'Service requis',
+                'Ce produit n\'est associé à aucun service. Veuillez vérifier la configuration du produit.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        if (productIndex === undefined || productIndex === null || productIndex < 0) {
+            Alert.alert(
+                'Index produit invalide',
+                'Impossible de déterminer l\'index du produit. Veuillez réessayer ou contacter le support.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        // ✅ AMÉLIORÉ: Utiliser VideoCreationWizard avec validation
+        const success = navigateToVideoWizard(navigation, {
+            serviceId: Number(serviceId),
+            productIndex: Number(productIndex),
+            productName: productName
+        });
+
+        // Si la navigation échoue, fallback vers le modal
+        if (!success) {
+            setVideoCreatorProduct(product);
+            setVideoCreatorVisible(true);
+        }
     };
 
     const openVideoCreatorGlobal = () => {

@@ -4799,6 +4799,298 @@ async fn ensure_staging_demo_delivery(pool: &PgPool) -> Result<(), sqlx::Error> 
     Ok(())
 }
 
+/// ✅ NOUVEAU : Système de temps de préparation et disponibilité par jour
+pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification du système de préparation de commandes...");
+    
+    // 1. Ajouter colonnes à product_delivery_config
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'product_delivery_config' 
+                AND column_name = 'preparation_time_minutes'
+            ) THEN
+                ALTER TABLE product_delivery_config
+                ADD COLUMN preparation_time_minutes INTEGER,
+                ADD COLUMN max_preparation_time_minutes INTEGER DEFAULT 60,
+                ADD COLUMN availability_days INTEGER[] DEFAULT ARRAY[0,1,2,3,4,5,6],
+                ADD COLUMN is_immediately_available BOOLEAN DEFAULT FALSE;
+            END IF;
+        END
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    // 2. Index pour availability_days
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_delivery_config_availability_days ON product_delivery_config USING GIN(availability_days)",
+    )
+    .execute(pool)
+    .await?;
+    
+    // 3. Table category_preparation_stats
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS category_preparation_stats (
+            id SERIAL PRIMARY KEY,
+            category VARCHAR(255) NOT NULL UNIQUE,
+            avg_preparation_minutes NUMERIC(10,2) NOT NULL DEFAULT 5.0,
+            median_preparation_minutes NUMERIC(10,2) NOT NULL DEFAULT 5.0,
+            sample_count INTEGER NOT NULL DEFAULT 0,
+            last_calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_category_preparation_stats_category ON category_preparation_stats(category)",
+    )
+    .execute(pool)
+    .await?;
+    
+    // 4. Table product_orders
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS product_orders (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            delivery_id UUID REFERENCES deliveries(id) ON DELETE CASCADE,
+            service_id INTEGER NOT NULL REFERENCES services(id),
+            product_index INTEGER NOT NULL,
+            client_user_id INTEGER NOT NULL REFERENCES users(id),
+            provider_user_id INTEGER NOT NULL REFERENCES users(id),
+            status TEXT NOT NULL DEFAULT 'pending',
+            preparation_time_minutes INTEGER,
+            estimated_ready_at TIMESTAMPTZ,
+            validated_at TIMESTAMPTZ,
+            validated_by INTEGER REFERENCES users(id),
+            rejected_at TIMESTAMPTZ,
+            rejection_reason TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            metadata JSONB DEFAULT '{}'::jsonb
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    // 5. Index pour product_orders (séparés)
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_orders_status ON product_orders(status, created_at)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_orders_provider ON product_orders(provider_user_id, status)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_orders_delivery ON product_orders(delivery_id) WHERE delivery_id IS NOT NULL",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_orders_estimated_ready ON product_orders(estimated_ready_at) WHERE estimated_ready_at IS NOT NULL",
+    )
+    .execute(pool)
+    .await?;
+    
+    // 6. Ajouter colonne validation_deadline
+    sqlx::query(
+        "ALTER TABLE product_orders ADD COLUMN IF NOT EXISTS validation_deadline TIMESTAMPTZ"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_orders_validation_deadline ON product_orders(validation_deadline) WHERE status = 'pending' AND validation_deadline IS NOT NULL"
+    )
+    .execute(pool)
+    .await?;
+    
+    // 7. Table order_cancellations
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS order_cancellations (
+            id SERIAL PRIMARY KEY,
+            order_id UUID NOT NULL REFERENCES product_orders(id) ON DELETE CASCADE,
+            provider_user_id INTEGER NOT NULL REFERENCES users(id),
+            service_id INTEGER NOT NULL REFERENCES services(id),
+            product_index INTEGER NOT NULL,
+            cancellation_type VARCHAR(50) NOT NULL CHECK (cancellation_type IN ('timeout', 'rejected', 'provider_cancelled', 'courier_unavailable')),
+            reason TEXT,
+            cancelled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_order_cancellations_provider ON order_cancellations(provider_user_id, cancelled_at)"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_order_cancellations_service_product ON order_cancellations(service_id, product_index, cancellation_type)"
+    )
+    .execute(pool)
+    .await?;
+    
+    // 8. Table product_cancellation_stats
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS product_cancellation_stats (
+            id SERIAL PRIMARY KEY,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            product_index INTEGER NOT NULL,
+            total_orders INTEGER NOT NULL DEFAULT 0,
+            total_cancellations INTEGER NOT NULL DEFAULT 0,
+            cancellation_rate NUMERIC(5,2) NOT NULL DEFAULT 0.0,
+            timeout_cancellations INTEGER NOT NULL DEFAULT 0,
+            rejected_cancellations INTEGER NOT NULL DEFAULT 0,
+            last_calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(service_id, product_index)
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_cancellation_stats_rate ON product_cancellation_stats(cancellation_rate DESC)"
+    )
+    .execute(pool)
+    .await?;
+    
+    // 9. Table pour vérification d'identité du coursier
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS courier_verification_codes (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+            order_id UUID REFERENCES product_orders(id) ON DELETE CASCADE,
+            courier_id INTEGER NOT NULL REFERENCES couriers(id),
+            verification_code VARCHAR(6) NOT NULL UNIQUE,
+            qr_code_data TEXT,
+            expires_at TIMESTAMPTZ NOT NULL,
+            verified_at TIMESTAMPTZ,
+            verified_by INTEGER REFERENCES users(id),
+            verification_method VARCHAR(50),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_courier_verification_delivery ON courier_verification_codes(delivery_id)"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_courier_verification_code ON courier_verification_codes(verification_code) WHERE verified_at IS NULL AND expires_at > NOW()"
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_courier_verification_courier ON courier_verification_codes(courier_id, delivery_id)"
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
+/// ✅ NOUVEAU : Gestion de stock en temps réel
+pub async fn ensure_product_stock_management(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification du système de gestion de stock...");
+    
+    // 1. Table product_stock_locations
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS product_stock_locations (
+            id SERIAL PRIMARY KEY,
+            product_delivery_config_id INTEGER NOT NULL REFERENCES product_delivery_config(id) ON DELETE CASCADE,
+            storage_location_id INTEGER REFERENCES merchant_storage_locations(id),
+            quantity_available INTEGER DEFAULT 0,
+            quantity_reserved INTEGER DEFAULT 0,
+            is_available BOOLEAN DEFAULT TRUE,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_by INTEGER REFERENCES users(id),
+            UNIQUE(product_delivery_config_id, storage_location_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    // 2. Index pour product_stock_locations
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_stock_locations_config ON product_stock_locations(product_delivery_config_id)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_product_stock_locations_available ON product_stock_locations(is_available, quantity_available) WHERE is_available = TRUE",
+    )
+    .execute(pool)
+    .await?;
+    
+    // 3. Table stock_reservations
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS stock_reservations (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            order_id UUID NOT NULL REFERENCES product_orders(id) ON DELETE CASCADE,
+            stock_location_id INTEGER NOT NULL REFERENCES product_stock_locations(id),
+            quantity INTEGER NOT NULL,
+            reserved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            released_at TIMESTAMPTZ,
+            expires_at TIMESTAMPTZ NOT NULL
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    // 4. Index pour stock_reservations
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_stock_reservations_order ON stock_reservations(order_id)",
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_stock_reservations_expires ON stock_reservations(expires_at) WHERE released_at IS NULL",
+    )
+    .execute(pool)
+    .await?;
+    
+    Ok(())
+}
+
 pub async fn run_auto_migrations(pool: &PgPool) {
     info!("🚀 Démarrage des migrations automatiques...");
 
@@ -4900,6 +5192,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_payment_methods_matching_columns(pool).await {
         Ok(_) => info!("✅ Migration auto: payment_methods_matching OK"),
         Err(e) => error!("❌ Erreur migration auto payment_methods_matching: {}", e),
+    }
+
+    // ✅ NOUVEAU : Système de préparation de commandes et disponibilité
+    match ensure_order_preparation_system(pool).await {
+        Ok(_) => info!("✅ Migration auto: order preparation system OK"),
+        Err(e) => error!("❌ Erreur migration auto order preparation: {}", e),
+    }
+
+    // ✅ NOUVEAU : Gestion de stock en temps réel
+    match ensure_product_stock_management(pool).await {
+        Ok(_) => info!("✅ Migration auto: product stock management OK"),
+        Err(e) => error!("❌ Erreur migration auto product stock management: {}", e),
     }
 
     // ✅ NOUVEAU : Table delivery_proximity_suggestions

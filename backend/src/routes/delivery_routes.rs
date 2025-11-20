@@ -32,6 +32,8 @@ use crate::{
     },
     services::product_price_service::ProductPriceService, // ✅ NOUVEAU : Service pour prix avec promotions
     services::product_validation_service::{notify_missing_delivery_config, validate_product_for_activation},
+    services::product_stock_service::ProductStockService, // ✅ NOUVEAU : Service gestion stock
+    services::courier_verification_service::{CourierVerificationService, VerifyCourierRequest}, // ✅ NOUVEAU : Service vérification coursier
     state::AppState,
     websocket::delivery_tracking::{
         record_ws_connection_close, record_ws_connection_open, record_ws_error,
@@ -181,6 +183,14 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/courier/{id}/assets", post(upsert_courier_asset))
         .route("/delivery/{id}/assign-courier", post(assign_courier)) // ✅ Phase 9 - Amélioration 28
         .route("/couriers/available", get(list_available_couriers)) // ✅ Phase 9 - Amélioration 28
+        // ✅ NOUVEAU : Routes pour gestion de stock
+        .route("/delivery/stock/{config_id}", axum::routing::put(update_stock))
+        .route("/delivery/stock/{config_id}/location/{location_id}", axum::routing::delete(delete_stock_location))
+        // ✅ NOUVEAU : Routes pour vérification coursier
+        .route("/delivery/{id}/verify-courier", post(verify_courier))
+        .route("/delivery/{id}/verification-code", get(get_verification_code))
+        // ✅ NOUVEAU : Route pour lieux pickup
+        .route("/delivery/config/{config_id}/pickup-locations", get(get_pickup_locations))
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }
@@ -626,6 +636,53 @@ async fn create_client_order(
     Json(payload): Json<ClientOrderPayload>,
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
+
+    // ✅ NOUVEAU : Vérifier la disponibilité du produit AVANT création
+    if let Some(product_index) = payload.product_index {
+        let availability_service = crate::services::product_availability_service::ProductAvailabilityService::new(state.pg.clone());
+        let availability = availability_service
+            .check_availability(
+                payload.service_id,
+                product_index,
+                None, // Maintenant
+            )
+            .await?;
+
+        if !availability.is_available {
+            // Produit non disponible, retourner produits similaires avec proximité
+            // ✅ AMÉLIORATION : Utiliser les coordonnées GPS du pickup (client) pour proximité
+            let client_lat = payload.pickup.as_ref().map(|p| p.latitude);
+            let client_lng = payload.pickup.as_ref().map(|p| p.longitude);
+            
+            // ✅ AMÉLIORATION : Utiliser GeographicMatchingService si disponible (Google Maps priorité + fallback local)
+            let similar_service = if let Some(geo_service) = state.geographic_matching.as_ref() {
+                crate::services::similar_products_service::SimilarProductsService::with_geographic_matching(
+                    state.pg.clone(),
+                    geo_service.clone(),
+                )
+            } else {
+                crate::services::similar_products_service::SimilarProductsService::new(state.pg.clone())
+            };
+            
+            let similar_products = similar_service
+                .find_similar_products_with_location(
+                    payload.service_id, 
+                    product_index, 
+                    5,
+                    client_lat,
+                    client_lng,
+                )
+                .await?;
+
+            return Ok(Json(json!({
+                "success": false,
+                "available": false,
+                "reason": availability.reason,
+                "similar_products": similar_products,
+                "message": "Produit non disponible. Voici des alternatives."
+            })));
+        }
+    }
 
     // ✅ 1. Récupérer la configuration de livraison du produit
     let delivery_config = if let Some(product_index) = payload.product_index {
@@ -2498,4 +2555,249 @@ async fn save_product_zones(
 
 fn dec(value: f64) -> Decimal {
     Decimal::from_f64(value).unwrap_or(Decimal::ZERO)
+}
+
+// ✅ NOUVEAU : Routes pour gestion de stock
+
+#[derive(Deserialize)]
+struct UpdateStockPayload {
+    quantity_available: Option<i32>,
+    quantity_reserved: Option<i32>,
+    is_available: Option<bool>,
+    storage_location_id: Option<i32>,
+}
+
+/// PUT /api/delivery/stock/{config_id} - Mettre à jour le stock
+async fn update_stock(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(config_id): Path<i32>,
+    Json(payload): Json<UpdateStockPayload>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est propriétaire du produit
+    let config = sqlx::query!(
+        r#"
+        SELECT pdc.service_id, s.user_id
+        FROM product_delivery_config pdc
+        INNER JOIN services s ON s.id = pdc.service_id
+        WHERE pdc.id = $1
+        "#,
+        config_id
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let config = config.ok_or_else(|| AppError::NotFound("Configuration non trouvée".to_string()))?;
+
+    if config.user_id != user.id {
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas le propriétaire de ce produit".to_string(),
+        ));
+    }
+
+    let stock_service = ProductStockService::new(state.pg.clone());
+    
+    if let Some(storage_location_id) = payload.storage_location_id {
+        // Mettre à jour stock pour un lieu spécifique
+        stock_service
+            .update_stock_location(
+                config_id,
+                storage_location_id,
+                payload.quantity_available,
+                payload.quantity_reserved,
+                payload.is_available,
+            )
+            .await?;
+    } else {
+        // Mettre à jour stock par défaut
+        stock_service
+            .update_stock(
+                config_id,
+                payload.quantity_available,
+                payload.quantity_reserved,
+                payload.is_available,
+            )
+            .await?;
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Stock mis à jour avec succès"
+    })))
+}
+
+/// DELETE /api/delivery/stock/{config_id}/location/{location_id} - Supprimer un lieu de stock
+async fn delete_stock_location(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((config_id, location_id)): Path<(i32, i32)>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est propriétaire du produit
+    let config = sqlx::query!(
+        r#"
+        SELECT pdc.service_id, s.user_id
+        FROM product_delivery_config pdc
+        INNER JOIN services s ON s.id = pdc.service_id
+        WHERE pdc.id = $1
+        "#,
+        config_id
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let config = config.ok_or_else(|| AppError::NotFound("Configuration non trouvée".to_string()))?;
+
+    if config.user_id != user.id {
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas le propriétaire de ce produit".to_string(),
+        ));
+    }
+
+    let stock_service = ProductStockService::new(state.pg.clone());
+    stock_service
+        .delete_stock_location(config_id, location_id)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Lieu de stock supprimé avec succès"
+    })))
+}
+
+// ✅ NOUVEAU : Routes pour vérification coursier
+
+#[derive(Deserialize)]
+struct VerifyCourierPayload {
+    verification_code: String,
+    verification_method: Option<String>,
+}
+
+/// POST /api/delivery/{id}/verify-courier - Vérifier l'identité du coursier
+async fn verify_courier(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+    Json(payload): Json<VerifyCourierPayload>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est le prestataire (créateur de la livraison)
+    let delivery = sqlx::query!(
+        "SELECT creator_id FROM deliveries WHERE id = $1",
+        delivery_id
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let delivery = delivery.ok_or_else(|| AppError::NotFound("Livraison non trouvée".to_string()))?;
+
+    // Vérifier si l'utilisateur est le prestataire (via product_orders)
+    let order = sqlx::query!(
+        r#"
+        SELECT provider_user_id
+        FROM product_orders
+        WHERE delivery_id = $1
+        LIMIT 1
+        "#,
+        delivery_id
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let provider_user_id = if let Some(order) = order {
+        order.provider_user_id
+    } else {
+        delivery.creator_id.ok_or_else(|| AppError::NotFound("Prestataire non trouvé".to_string()))?
+    };
+
+    if user.id != provider_user_id {
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas le prestataire de cette livraison".to_string(),
+        ));
+    }
+
+    let verification_service = CourierVerificationService::new(state.pg.clone());
+    let result = verification_service
+        .verify_courier(
+            delivery_id,
+            provider_user_id,
+            VerifyCourierRequest {
+                verification_code: payload.verification_code,
+                verification_method: payload.verification_method,
+            },
+        )
+        .await?;
+
+    Ok(Json(json!({
+        "success": result.is_valid,
+        "result": result
+    })))
+}
+
+/// GET /api/delivery/{id}/verification-code - Récupérer le code de vérification
+async fn get_verification_code(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est le prestataire
+    let order = sqlx::query!(
+        r#"
+        SELECT provider_user_id
+        FROM product_orders
+        WHERE delivery_id = $1
+        LIMIT 1
+        "#,
+        delivery_id
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let provider_user_id = order
+        .ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?
+        .provider_user_id;
+
+    if user.id != provider_user_id {
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas le prestataire de cette livraison".to_string(),
+        ));
+    }
+
+    let verification_service = CourierVerificationService::new(state.pg.clone());
+    let verification_code = verification_service
+        .get_verification_code_for_delivery(delivery_id)
+        .await?;
+
+    Ok(Json(json!({
+        "verification_code": verification_code
+    })))
+}
+
+/// GET /api/delivery/config/{config_id}/pickup-locations - Liste des lieux pickup (adresses textuelles)
+async fn get_pickup_locations(
+    State(state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+    Path(config_id): Path<i32>,
+) -> AppResult<Json<Value>> {
+    let config = sqlx::query!(
+        r#"
+        SELECT 
+            pickup_address,
+            pickup_latitude,
+            pickup_longitude
+        FROM product_delivery_config
+        WHERE id = $1
+        "#,
+        config_id
+    )
+    .fetch_optional(&state.pg)
+    .await?;
+
+    let config = config.ok_or_else(|| AppError::NotFound("Configuration non trouvée".to_string()))?;
+
+    // Retourner uniquement l'adresse textuelle, pas les coordonnées GPS
+    Ok(Json(json!({
+        "pickup_locations": [{
+            "address": config.pickup_address,
+            "id": config_id
+        }]
+    })))
 }

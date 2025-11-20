@@ -6,6 +6,8 @@ pub mod archived_service_cleaner;
 pub mod delivery_matching_worker;
 pub mod delivery_sla_monitor;
 pub mod delivery_timeout_monitor; // ✅ NOUVEAU : Monitor des timeouts de validation d'étapes
+pub mod order_timeout_monitor; // ✅ NOUVEAU : Monitor des timeouts de validation de commandes
+pub mod stats_recalculation; // ✅ NOUVEAU : Recalcul périodique des statistiques
 pub mod global_promo_scheduler;
 pub mod intelligent_service_task;
 pub mod live_analytics;

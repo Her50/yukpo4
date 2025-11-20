@@ -1,11 +1,18 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useRef } from 'react';
-import { Alert, Animated, Image, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Image, StyleSheet, Text, View } from 'react-native';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import ServiceProductSelector from '../../components/ServiceProductSelector';
+import VideoCreationTutorial from '../../components/VideoCreationTutorial';
+import VideoExampleModal from '../../components/VideoExampleModal';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { apiCallWithRetry } from '../../utils/retryWithBackoff';
+import { navigateToVideoWizard } from '../../utils/videoNavigation';
 
 interface VideoCreationIntroParams {
     serviceId?: number;
@@ -14,10 +21,8 @@ interface VideoCreationIntroParams {
     productName?: string;
 }
 
-type Navigation = ReturnType<typeof useNavigation>;
-
 const VideoCreationIntroScreen: React.FC = () => {
-    const navigation = useNavigation<Navigation>();
+    const navigation = useNavigation();
     const route = useRoute();
     const params = (route.params || {}) as VideoCreationIntroParams;
     const { t } = useLanguageSafe();
@@ -26,31 +31,101 @@ const VideoCreationIntroScreen: React.FC = () => {
     const contentAnim = useRef(new Animated.Value(0)).current;
     const actionsAnim = useRef(new Animated.Value(0)).current;
 
+    const [userServices, setUserServices] = useState<any[]>([]);
+    const [loadingServices, setLoadingServices] = useState(true);
+    const [imageError, setImageError] = useState(false);
+    const [showProductSelector, setShowProductSelector] = useState(false);
+    const [availableProducts, setAvailableProducts] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
+    const [showExampleModal, setShowExampleModal] = useState(false);
+    const [showTutorial, setShowTutorial] = useState(false);
+
+    // ✅ PHASE 3: Animations améliorées avec transitions plus fluides
     useEffect(() => {
-        Animated.stagger(120, [
-            Animated.timing(headerAnim, {
+        Animated.stagger(100, [
+            Animated.spring(headerAnim, {
                 toValue: 1,
-                duration: 420,
+                tension: 50,
+                friction: 8,
                 useNativeDriver: true,
             }),
             Animated.spring(heroAnim, {
                 toValue: 1,
-                damping: 12,
-                stiffness: 120,
+                tension: 50,
+                friction: 8,
                 useNativeDriver: true,
             }),
-            Animated.timing(contentAnim, {
+            Animated.spring(contentAnim, {
                 toValue: 1,
-                duration: 420,
+                tension: 50,
+                friction: 8,
                 useNativeDriver: true,
             }),
-            Animated.timing(actionsAnim, {
+            Animated.spring(actionsAnim, {
                 toValue: 1,
-                duration: 360,
+                tension: 50,
+                friction: 8,
                 useNativeDriver: true,
             }),
         ]).start();
     }, [headerAnim, heroAnim, contentAnim, actionsAnim]);
+
+    // ✅ PHASE 3: Vérifier si l'utilisateur a déjà vu le tutoriel
+    useEffect(() => {
+        const checkTutorial = async () => {
+            try {
+                const hasSeenTutorial = await AsyncStorage.getItem('video_creation_tutorial_seen');
+                if (!hasSeenTutorial) {
+                    // Attendre un peu pour que l'écran soit chargé
+                    setTimeout(() => {
+                        setShowTutorial(true);
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('[VideoCreationIntroScreen] Erreur vérification tutoriel:', error);
+            }
+        };
+        checkTutorial();
+    }, []);
+
+    // Charger les services de l'utilisateur avec timeout
+    useEffect(() => {
+        const loadServices = async () => {
+            try {
+                setLoadingServices(true);
+
+                // ✅ Timeout de 10 secondes
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Timeout')), 10000);
+                });
+
+                // ✅ PHASE 1: Retry automatique avec backoff
+                const response = await apiCallWithRetry(() =>
+                    Promise.race([
+                        apiGet('/api/prestataire/services'),
+                        timeoutPromise
+                    ]) as Promise<any>
+                );
+
+                if (response.success && Array.isArray(response.data)) {
+                    setUserServices(response.data);
+                } else {
+                    console.warn('[VideoCreationIntroScreen] Réponse API invalide:', response);
+                }
+            } catch (error: any) {
+                console.error('[VideoCreationIntroScreen] Erreur chargement services:', error);
+                if (error.message === 'Timeout') {
+                    Alert.alert(
+                        'Chargement lent',
+                        'Le chargement prend plus de temps que prévu. Vérifiez votre connexion internet.',
+                        [{ text: 'OK' }]
+                    );
+                }
+            } finally {
+                setLoadingServices(false);
+            }
+        };
+        loadServices();
+    }, []);
 
     const fadeUp = (anim: Animated.Value, offset = 16) => ({
         opacity: anim,
@@ -64,55 +139,99 @@ const VideoCreationIntroScreen: React.FC = () => {
         ],
     });
 
-    const handleStart = () => {
-        console.log('[VideoCreationIntroScreen] 🎬 Navigation vers VideoCreationWizard', params);
-        try {
-            // ✅ CORRIGÉ: Utiliser getParent() pour naviguer depuis Tab Navigator vers Stack Navigator
-            const parentNavigation = (navigation as any).getParent();
-            if (parentNavigation) {
-                parentNavigation.navigate('VideoCreationWizard', params);
-                console.log('[VideoCreationIntroScreen] ✅ Navigation réussie via parent');
-            } else {
-                navigation.navigate('VideoCreationWizard' as never, params as never);
-                console.log('[VideoCreationIntroScreen] ✅ Navigation réussie (directe)');
-            }
-        } catch (error) {
-            console.error('[VideoCreationIntroScreen] ❌ Erreur navigation vers VideoCreationWizard:', error);
-            // Fallback: essayer navigation directe
-            try {
-                navigation.navigate('VideoCreationWizard' as never, params as never);
-            } catch (fallbackError) {
-                console.error('[VideoCreationIntroScreen] ❌ Erreur navigation fallback:', fallbackError);
-            }
+    const handleStart = async () => {
+        console.log('[VideoCreationIntroScreen] 🎬 Démarrage création vidéo', params);
+
+        // Si params déjà présents → Navigation directe
+        if (params.serviceId && params.productIndex !== undefined) {
+            const success = navigateToVideoWizard(navigation, {
+                serviceId: params.serviceId,
+                productIndex: params.productIndex,
+                productName: params.productName
+            });
+            if (success) return;
         }
+
+        // Si l'utilisateur a des services → Extraire les produits
+        if (userServices.length > 0) {
+            const allProducts: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> = [];
+
+            userServices.forEach((service: any) => {
+                const produits = service.data?.produits?.valeur || service.data?.produits || [];
+                const serviceId = service.id || service.service_id;
+                const serviceName = service.data?.titre_service?.valeur || service.titre || `Service #${serviceId}`;
+
+                if (Array.isArray(produits) && produits.length > 0) {
+                    produits.forEach((product: any, index: number) => {
+                        allProducts.push({
+                            serviceId: Number(serviceId),
+                            productIndex: index,
+                            productName: product.nom || product.name || product.title || `Produit ${index + 1}`,
+                            serviceName: serviceName
+                        });
+                    });
+                }
+            });
+
+            if (allProducts.length === 0) {
+                Alert.alert(
+                    'Produit requis',
+                    'Vous n\'avez pas encore de produit. Créez d\'abord un produit pour pouvoir créer une vidéo.',
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        {
+                            text: 'Aller à Mes Services',
+                            onPress: () => {
+                                const parent = (navigation as any).getParent();
+                                if (parent) {
+                                    parent.navigate('Services');
+                                } else {
+                                    navigation.navigate('Services' as never);
+                                }
+                            }
+                        }
+                    ]
+                );
+                return;
+            }
+
+            // Si un seul produit → Navigation directe
+            if (allProducts.length === 1) {
+                navigateToVideoWizard(navigation, allProducts[0]);
+                return;
+            }
+
+            // Plusieurs produits → Afficher le sélecteur
+            setAvailableProducts(allProducts);
+            setShowProductSelector(true);
+            return;
+        }
+
+        // Pas de services → Rediriger vers MesServices
+        Alert.alert(
+            'Service requis',
+            'Pour créer une vidéo, vous devez d\'abord créer un service avec au moins un produit.',
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Aller à Mes Services',
+                    onPress: () => {
+                        const parent = (navigation as any).getParent();
+                        if (parent) {
+                            parent.navigate('Services');
+                        } else {
+                            navigation.navigate('Services' as never);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const handleShowExample = () => {
-        console.log('[VideoCreationIntroScreen] 📺 Affichage d\'un exemple de vidéo');
-        // ✅ CORRIGÉ: Afficher un exemple réel en ouvrant une vidéo exemple ou en naviguant vers une vidéo spécifique
-        try {
-            const parentNavigation = (navigation as any).getParent();
-            if (parentNavigation) {
-                // Naviguer vers VideoFeed avec un paramètre pour afficher un exemple
-                parentNavigation.navigate('VideoFeed', {
-                    showExample: true,
-                    exampleVideoId: 'example' // Indicateur pour afficher un exemple
-                });
-            } else {
-                navigation.navigate('VideoFeed' as never, {
-                    showExample: true,
-                    exampleVideoId: 'example'
-                } as never);
-            }
-        } catch (error) {
-            console.error('[VideoCreationIntroScreen] ❌ Erreur navigation vers VideoFeed:', error);
-            // Fallback: Afficher une alerte avec un lien vers un exemple
-            Alert.alert(
-                'Exemple de vidéo',
-                'Pour voir un exemple de vidéo immersive créée avec Yukpo, consultez la section Vidéo dans l\'application.',
-                [{ text: 'OK' }]
-            );
-        }
+        console.log('[VideoCreationIntroScreen] 📺 Affichage d\'un exemple vidéo');
+        // ✅ PHASE 2: Afficher le modal avec exemple vidéo réel
+        setShowExampleModal(true);
     };
 
     return (
@@ -125,19 +244,47 @@ const VideoCreationIntroScreen: React.FC = () => {
 
             <Animated.View style={[fadeUp(heroAnim, 20)]}>
                 <NativeCard style={styles.heroCard}>
-                    <Image
-                        source={{
-                            uri: 'https://cdn.yukpo.com/illustrations/video-immersive-hero.png',
-                        }}
-                        style={styles.heroImage}
-                        resizeMode="cover"
-                    />
+                    {!imageError ? (
+                        <Image
+                            source={{
+                                uri: 'https://cdn.yukpo.com/illustrations/video-immersive-hero.png',
+                            }}
+                            style={styles.heroImage}
+                            resizeMode="cover"
+                            onError={() => {
+                                console.warn('[VideoCreationIntroScreen] Erreur chargement image hero');
+                                setImageError(true);
+                            }}
+                        />
+                    ) : (
+                        <View style={styles.heroFallback}>
+                            <SafeIcon name="film" size={64} color={modernColors.primary} />
+                            <Text style={styles.heroFallbackText}>
+                                {t('video.intro.heroTitle')}
+                            </Text>
+                        </View>
+                    )}
                     <View style={styles.heroOverlay}>
                         <Text style={styles.heroTitle}>{t('video.intro.heroTitle')}</Text>
                         <Text style={styles.heroDescription}>{t('video.intro.heroDescription')}</Text>
                     </View>
                 </NativeCard>
             </Animated.View>
+
+            {/* ✅ NOUVEAU: Afficher les services disponibles */}
+            {loadingServices ? (
+                <View style={styles.servicesInfo}>
+                    <ActivityIndicator size="small" color={modernColors.primary} />
+                    <Text style={styles.servicesInfoText}>Chargement de vos services...</Text>
+                </View>
+            ) : userServices.length > 0 && (
+                <Animated.View style={[styles.servicesInfo, fadeUp(contentAnim, 14)]}>
+                    <SafeIcon name="check-circle" size={20} color="#10B981" />
+                    <Text style={styles.servicesInfoText}>
+                        {userServices.length} service(s) disponible(s) - Prêt à créer une vidéo
+                    </Text>
+                </Animated.View>
+            )}
 
             <Animated.View style={[styles.benefits, fadeUp(contentAnim, 14)]}>
                 <View style={styles.benefitItem}>
@@ -156,10 +303,11 @@ const VideoCreationIntroScreen: React.FC = () => {
 
             <Animated.View style={[styles.actions, fadeUp(actionsAnim, 10)]}>
                 <NativeButton
-                    title={t('video.intro.createButton')}
+                    title={loadingServices ? 'Chargement...' : t('video.intro.createButton')}
                     size="large"
                     variant="primary"
                     onPress={handleStart}
+                    disabled={loadingServices}
                 />
                 <NativeButton
                     title={t('video.intro.exampleButton')}
@@ -168,6 +316,39 @@ const VideoCreationIntroScreen: React.FC = () => {
                     onPress={handleShowExample}
                 />
             </Animated.View>
+
+            {/* ✅ NOUVEAU: Sélecteur de produit */}
+            <ServiceProductSelector
+                visible={showProductSelector}
+                products={availableProducts}
+                onSelect={(product) => {
+                    navigateToVideoWizard(navigation, product);
+                }}
+                onClose={() => {
+                    setShowProductSelector(false);
+                    setAvailableProducts([]);
+                }}
+            />
+
+            {/* ✅ PHASE 2: Modal exemple vidéo */}
+            <VideoExampleModal
+                visible={showExampleModal}
+                onClose={() => setShowExampleModal(false)}
+                onStartCreation={handleStart}
+            />
+
+            {/* ✅ PHASE 3: Tutoriel interactif */}
+            <VideoCreationTutorial
+                visible={showTutorial}
+                onClose={async () => {
+                    setShowTutorial(false);
+                    await AsyncStorage.setItem('video_creation_tutorial_seen', 'true');
+                }}
+                onSkip={async () => {
+                    setShowTutorial(false);
+                    await AsyncStorage.setItem('video_creation_tutorial_seen', 'true');
+                }}
+            />
         </SafeNativeView>
     );
 };
@@ -239,6 +420,37 @@ const styles = StyleSheet.create({
     actions: {
         marginTop: 'auto',
         gap: 12,
+    },
+    heroFallback: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: modernColors.primary + '20',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 12,
+    },
+    heroFallbackText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.primary,
+        textAlign: 'center',
+    },
+    servicesInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 12,
+        backgroundColor: '#F0FDF4',
+        borderRadius: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+    },
+    servicesInfoText: {
+        fontSize: 14,
+        color: '#166534',
+        fontWeight: '500',
+        flex: 1,
     },
 });
 

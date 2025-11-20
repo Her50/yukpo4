@@ -13,6 +13,7 @@ import ModernGPSModal from '../components/ModernGPSModal'; // Utiliser ModernGPS
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import GlobalPromoHighlights from '../components/promotions/GlobalPromoHighlights';
 import { SafeNativeView } from '../components/SafeNativeView';
+import ServiceProductSelector from '../components/ServiceProductSelector';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +24,7 @@ import { searchHistoryService } from '../services/searchHistoryService';
 import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 import { cleanupGhostNotifications, debugNotifications, printNotificationReport } from '../utils/debugNotifications';
+import { navigateToVideoWizard } from '../utils/videoNavigation';
 
 const { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } = ReactNative;
 
@@ -75,6 +77,8 @@ const HomeScreen: React.FC = () => {
     const [showChatModal, setShowChatModal] = useState(false);
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
     const [userBehaviorCategories, setUserBehaviorCategories] = useState<string[]>([]);
+    const [showProductSelector, setShowProductSelector] = useState(false);
+    const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
 
     const loadUnreadNotificationsCount = React.useCallback(async () => {
         if (!user?.id) {
@@ -586,7 +590,7 @@ const HomeScreen: React.FC = () => {
 
                         {/* Titre principal PARFAITEMENT centré */}
                         <View style={styles.brandTitleContainer}>
-                            <Text style={styles.brandTitleCompact}>
+                            <Text style={styles.brandTitleCompact} numberOfLines={1}>
                                 <Text style={styles.brandYuk}>Yuk</Text>
                                 <Text style={styles.brandPo}>po</Text>
                             </Text>
@@ -594,7 +598,7 @@ const HomeScreen: React.FC = () => {
 
                         {/* Colonne droite: Actions */}
                         <View style={styles.headerActionsCompact}>
-                            {/* ✅ NOUVEAU: Bouton livraison (remplace vidéo) */}
+                            {/* ✅ Bouton livraison */}
                             <TouchableOpacity
                                 style={styles.headerButtonCompact}
                                 onPress={() => {
@@ -812,6 +816,21 @@ const HomeScreen: React.FC = () => {
                         </View>
                     </View>
                 )}
+
+                {/* ✅ NOUVEAU: Sélecteur de produit pour création vidéo */}
+                <ServiceProductSelector
+                    visible={showProductSelector}
+                    products={productsForSelection}
+                    onSelect={(product) => {
+                        navigateToVideoWizard(navigation, product);
+                        setShowProductSelector(false);
+                        setProductsForSelection([]);
+                    }}
+                    onClose={() => {
+                        setShowProductSelector(false);
+                        setProductsForSelection([]);
+                    }}
+                />
             </SafeNativeView>
         </ModernBackground>
     );
@@ -914,15 +933,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
-        minWidth: 120, // ✅ Largeur minimale pour équilibrer
+        minWidth: 100, // ✅ Réduit de 120 à 100 pour plus d'espace au centre
+        maxWidth: 140, // ✅ Limite la largeur maximale
     },
     // ✅ Conteneur pour le titre PARFAITEMENT centré au milieu
     brandTitleContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 8, // ✅ Espacement pour éviter chevauchement
-        marginLeft: -8, // ✅ Décalage léger à gauche pour équilibrer
+        paddingHorizontal: 4,
+        maxWidth: 120, // ✅ Limite la largeur maximale pour éviter le débordement
+        minWidth: 60, // ✅ Largeur minimale pour garantir l'affichage
     },
     headerTop: {
         flexDirection: 'row',
@@ -998,8 +1019,9 @@ const styles = StyleSheet.create({
         gap: 6, // ✅ Réduit de 8 à 6 pour plus d'espace
         flex: 1,
         justifyContent: 'flex-end', // ✅ Aligner à droite
-        minWidth: 110, // ✅ Réduit de 120 à 110 pour plus d'espace au centre
-        paddingLeft: 8, // ✅ Espacement à gauche pour éviter chevauchement avec titre
+        minWidth: 100, // ✅ Réduit de 110 à 100 pour plus d'espace au centre
+        maxWidth: 130, // ✅ Limite la largeur maximale
+        paddingLeft: 4, // ✅ Réduit de 8 à 4 pour plus d'espace
     },
     headerButtonCompact: {
         width: 38, // ✅ Réduit de 40 à 38 pour plus d'espace
@@ -1086,6 +1108,9 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         textAlign: 'center',
         letterSpacing: -0.3, // ✅ Ajusté pour meilleur équilibre visuel
+        includeFontPadding: false, // ✅ Évite le padding supplémentaire Android
+        textAlignVertical: 'center', // ✅ Centre verticalement sur Android
+        flexShrink: 1, // ✅ Permet au texte de rétrécir si nécessaire
     },
     brandYuk: {
         color: '#EAB308', // text-yellow-500 du frontend

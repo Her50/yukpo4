@@ -59,8 +59,10 @@ use crate::routes::{
     metrics_routes::metrics_routes,
     metrics_tracking_routes::metrics_tracking_routes,
     notification_routes::notification_routes, // ✅ NOUVEAU : Routes de notifications
+    order_routes::order_routes, // ✅ NOUVEAU : Routes pour commandes produits
     payment_routes::payment_routes,
     prestataire_routes::prestataire_routes,
+    provider_analytics_routes::provider_analytics_routes, // ✅ NOUVEAU : Routes analytics prestataire
     product_lifecycle_routes::product_lifecycle_routes, // ✅ Routes de gestion du cycle de vie des produits
     push_routes::push_routes,                           // ✅ NOUVEAU : Routes push
     recommendation_routes::recommendation_routes,       // ✅ NOUVEAU: Routes recommandations
@@ -232,6 +234,12 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     
     // ✅ Phase 10 - Routes d'analytics pour prestataires
     let analytics = analytics_routes(state.clone());
+    
+    // ✅ NOUVEAU : Routes pour commandes produits
+    let orders = order_routes(state.clone());
+    
+    // ✅ NOUVEAU : Routes analytics prestataire
+    let provider_analytics = provider_analytics_routes(state.clone());
 
     // ✅ NOUVEAU 2025-11-06: Routes debug pour vérification des tables
     let debug = debug_routes(state.clone());
@@ -290,6 +298,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(health) // ✅ Phase 10 - Routes de santé et vérification services
         .merge(metrics)
         .merge(analytics) // ✅ Phase 10 - Routes d'analytics pour prestataires
+        .merge(orders) // ✅ NOUVEAU : Routes pour commandes produits
+        .merge(provider_analytics) // ✅ NOUVEAU : Routes analytics prestataire
         .merge(metrics_tracking) // ✅ Routes de tracking métriques frontend
         .nest_service("/uploads", uploads_service)
         // .merge(modalities)  // ✅ Routes des modalités personnalisées (déjà dans router_yukpo)

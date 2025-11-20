@@ -9,10 +9,12 @@ import { ActivityIndicator, Alert, DeviceEventEmitter, Dimensions, Modal, Refres
 import { NativeButton, NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import ServiceCardModern from '../components/ServiceCardModern';
+import ServiceProductSelector from '../components/ServiceProductSelector';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors, modernStyles } from '../theme/modernTheme';
+import { navigateToVideoWizard } from '../utils/videoNavigation';
 
 const { width } = Dimensions.get('window');
 
@@ -40,6 +42,10 @@ const MesServicesScreen: React.FC = () => {
   // ✅ NOUVEAU : États pour gestion d'équipe
   const [showTeamManager, setShowTeamManager] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [showProductSelector, setShowProductSelector] = useState(false);
+  const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
+  // ✅ NOUVEAU: État pour le menu global
+  const [showGlobalMenu, setShowGlobalMenu] = useState(false);
 
   const loadServices = useCallback(async (isRefresh = false) => {
     try {
@@ -97,10 +103,37 @@ const MesServicesScreen: React.FC = () => {
               service.titre ||
               'Service sans titre';
 
-            // Extraire les produits depuis service.data.produits.valeur
-            const produits = service.data?.produits?.valeur || service.data?.produits;
+            // ✅ CORRECTION: Extraire les produits depuis service.data.produits.valeur ou service.data.produits
+            // Vérifier plusieurs structures possibles
+            let produits = null;
 
-            if (produits && Array.isArray(produits)) {
+            // Structure 1: data.produits.valeur (structure standard)
+            if (service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur)) {
+              produits = service.data.produits.valeur;
+            }
+            // Structure 2: data.produits directement (tableau)
+            else if (Array.isArray(service.data?.produits)) {
+              produits = service.data.produits;
+            }
+            // Structure 3: data.produits est un objet avec un tableau à l'intérieur
+            else if (service.data?.produits && typeof service.data.produits === 'object') {
+              // Chercher un tableau dans l'objet produits
+              const produitsObj = service.data.produits;
+              if (Array.isArray(produitsObj.items)) {
+                produits = produitsObj.items;
+              } else if (Array.isArray(produitsObj.list)) {
+                produits = produitsObj.list;
+              }
+            }
+
+            console.log('[MesServicesScreen] 🔍 Produits extraits pour service', serviceId, ':', {
+              hasProduits: !!produits,
+              produitsType: Array.isArray(produits) ? 'array' : typeof produits,
+              produitsLength: Array.isArray(produits) ? produits.length : 0,
+              sample: Array.isArray(produits) && produits.length > 0 ? produits[0] : null
+            });
+
+            if (produits && Array.isArray(produits) && produits.length > 0) {
               produits.forEach((product: any, index: number) => {
                 const productIndex = typeof product.product_index === 'number' ? product.product_index : index;
 
@@ -170,8 +203,25 @@ const MesServicesScreen: React.FC = () => {
             id: allProducts[0].id,
             title: allProducts[0].title,
             status: allProducts[0].status,
-            service_id: allProducts[0].service_id
+            service_id: allProducts[0].service_id,
+            data: allProducts[0].data
           });
+        } else {
+          console.warn('[MesServicesScreen] ⚠️ Aucun produit trouvé dans les services');
+          // Log détaillé pour déboguer
+          if (Array.isArray(data) && data.length > 0) {
+            console.log('[MesServicesScreen] 🔍 Structure des services reçus:', {
+              serviceCount: data.length,
+              firstService: {
+                id: data[0]?.id,
+                hasData: !!data[0]?.data,
+                dataKeys: data[0]?.data ? Object.keys(data[0].data) : [],
+                hasProduits: !!data[0]?.data?.produits,
+                produitsType: typeof data[0]?.data?.produits,
+                produitsValue: data[0]?.data?.produits
+              }
+            });
+          }
         }
         setServices(allProducts);
       } else {
@@ -203,12 +253,27 @@ const MesServicesScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener('service:refresh', () => {
+    // Écouter les événements de création/modification de service/produit
+    const subscription1 = DeviceEventEmitter.addListener('service:refresh', () => {
+      console.log('[MesServicesScreen] 🔄 Événement service:refresh reçu');
+      loadServices(true);
+    });
+
+    // ✅ NOUVEAU: Écouter les événements de création de produit
+    const subscription2 = DeviceEventEmitter.addListener('product:created', () => {
+      console.log('[MesServicesScreen] 🔄 Événement product:created reçu');
+      loadServices(true);
+    });
+
+    const subscription3 = DeviceEventEmitter.addListener('product:updated', () => {
+      console.log('[MesServicesScreen] 🔄 Événement product:updated reçu');
       loadServices(true);
     });
 
     return () => {
-      subscription.remove();
+      subscription1.remove();
+      subscription2.remove();
+      subscription3.remove();
     };
   }, [loadServices]);
 
@@ -458,6 +523,55 @@ const MesServicesScreen: React.FC = () => {
     setShowTeamManager(true);
   };
 
+  const handleCreateVideo = (service: any) => {
+    const produits = service.data?.produits?.valeur || service.data?.produits || [];
+    const serviceId = service.service_id || service.id;
+
+    if (!Array.isArray(produits) || produits.length === 0) {
+      Alert.alert(
+        'Produit requis',
+        'Ce service n\'a pas encore de produit. Créez d\'abord un produit pour pouvoir créer une vidéo.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Créer un produit',
+            onPress: () => {
+              (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                mode: 'edit',
+                serviceId: serviceId,
+                focusProduct: true
+              });
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    // Si un seul produit → Navigation directe
+    if (produits.length === 1) {
+      const product = produits[0];
+      navigateToVideoWizard(navigation, {
+        serviceId: Number(serviceId),
+        productIndex: 0,
+        productName: product.nom || product.name || product.title || 'Produit'
+      });
+      return;
+    }
+
+    // Plusieurs produits → Afficher le sélecteur
+    const serviceName = service.data?.titre_service?.valeur || service.title || `Service #${serviceId}`;
+    const productsList = produits.map((product: any, index: number) => ({
+      serviceId: Number(serviceId),
+      productIndex: index,
+      productName: product.nom || product.name || product.title || `Produit ${index + 1}`,
+      serviceName: serviceName
+    }));
+
+    setProductsForSelection(productsList);
+    setShowProductSelector(true);
+  };
+
   const handlePromotionService = (service: any) => {
     const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service';
 
@@ -554,42 +668,111 @@ const MesServicesScreen: React.FC = () => {
           <View style={styles.headerTop}>
             <View style={styles.logoContainer}>
               <SafeIcon name="briefcase" size={24} color="#fff" />
-              <Text style={styles.title}>Mes services Yukpo</Text>
+              <Text style={styles.title}>Mes Produits</Text>
+              <Text style={styles.subtitle}>{services.length} produit{services.length !== 1 ? 's' : ''}</Text>
             </View>
             <View style={styles.headerActions}>
+              {/* ✅ Menu global avec actions - EN PREMIÈRE POSITION */}
+              <TouchableOpacity
+                style={[styles.headerButton, styles.menuButton]}
+                onPress={() => setShowGlobalMenu(!showGlobalMenu)}
+              >
+                <SafeIcon name="more-vertical" size={20} color="#fff" />
+              </TouchableOpacity>
+
+              {/* Bouton Vidéo */}
               <TouchableOpacity
                 style={styles.headerButton}
-                onPress={() => navigation.navigate('Home' as never)}
+                onPress={() => (navigation as any).navigate('Video')}
               >
-                <SafeIcon name="home" size={20} color="#fff" />
-                <Text style={styles.headerButtonText}>Accueil</Text>
+                <SafeIcon name="video" size={20} color="#fff" />
               </TouchableOpacity>
+
+              {/* Bouton Paramètres */}
               <TouchableOpacity
                 style={styles.headerButton}
-                onPress={onRefresh}
-                disabled={refreshing}
+                onPress={() => (navigation as any).navigate('Settings')}
               >
-                <SafeIcon name="refresh" size={20} color="#fff" />
-                <Text style={styles.headerButtonText}>Actualiser</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.headerButton, styles.analyticsButton]}
-                onPress={() => (navigation as any).navigate('AnalyticsDashboard')}
-              >
-                <SafeIcon name="bar-chart-3" size={20} color="#fff" />
-                <Text style={styles.headerButtonText}>Analytics</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.headerButton, styles.publiciteButton]}
-                onPress={() => (navigation as any).navigate('CreatePublicite')}
-              >
-                <SafeIcon name="megaphone" size={20} color="#fff" />
-                <Text style={styles.headerButtonText}>Publicité</Text>
+                <SafeIcon name="settings" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
+
+        {/* ✅ NOUVEAU: Menu global déroulant */}
+        {showGlobalMenu && (
+          <View style={styles.globalMenu}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                // Ouvrir le gestionnaire d'équipe global
+                setSelectedService(null);
+                setShowTeamManager(true);
+              }}
+            >
+              <SafeIcon name="users" size={18} color="#6366F1" />
+              <Text style={styles.menuItemText}>Membres</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                  mode: 'create',
+                  focusProduct: true
+                });
+              }}
+            >
+              <SafeIcon name="plus-circle" size={18} color="#10B981" />
+              <Text style={styles.menuItemText}>Créer produit</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                (navigation as any).navigate('AnalyticsDashboard');
+              }}
+            >
+              <SafeIcon name="bar-chart-3" size={18} color="#3B82F6" />
+              <Text style={styles.menuItemText}>Statistiques</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                (navigation as any).navigate('CreatePublicite');
+              }}
+            >
+              <SafeIcon name="megaphone" size={18} color="#EC4899" />
+              <Text style={styles.menuItemText}>Publicité</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                onRefresh();
+              }}
+            >
+              <SafeIcon name="refresh-cw" size={18} color="#6B7280" />
+              <Text style={styles.menuItemText}>Actualiser</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </LinearGradient>
+
+      {/* Overlay pour fermer le menu quand on clique ailleurs */}
+      {showGlobalMenu && (
+        <TouchableOpacity
+          style={styles.menuOverlay}
+          activeOpacity={1}
+          onPress={() => setShowGlobalMenu(false)}
+        />
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -598,40 +781,127 @@ const MesServicesScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Bandeau d'information */}
-        <NativeCard style={styles.infoBanner}>
-          <Text style={styles.infoText}>
-            Vous avez <Text style={styles.infoBold}>{services.length}</Text> produit(s) créé(s)
-            {refreshing && (
-              <Text style={styles.refreshingText}> 🔄 Actualisation en cours...</Text>
-            )}
-          </Text>
-        </NativeCard>
+        {/* ✅ NOUVEAU: Cartes de statistiques */}
+        <View style={styles.statsContainer}>
+          <NativeCard style={styles.statCard}>
+            <Text style={[styles.statNumber, { color: '#3B82F6' }]}>
+              {services.length}
+            </Text>
+            <Text style={styles.statLabel}>Produits</Text>
+          </NativeCard>
 
-        {/* Filtres */}
-        <View style={styles.filtersContainer}>
-          <NativeButton
-            title={`📦 Tous (${services.length})`}
-            onPress={() => setFilter('tous')}
-            variant={filter === 'tous' ? 'primary' : 'outline'}
-            size="small"
-            style={styles.filterButton}
-          />
-          <NativeButton
-            title={`✅ Actifs (${services.filter(s => s.status === 'active').length})`}
-            onPress={() => setFilter('actif')}
-            variant={filter === 'actif' ? 'primary' : 'outline'}
-            size="small"
-            style={styles.filterButton}
-          />
-          <NativeButton
-            title={`⏸️ Inactifs (${services.filter(s => s.status === 'inactive').length})`}
-            onPress={() => setFilter('inactif')}
-            variant={filter === 'inactif' ? 'primary' : 'outline'}
-            size="small"
-            style={styles.filterButton}
-          />
+          <NativeCard style={styles.statCard}>
+            <Text style={[styles.statNumber, { color: '#10B981' }]}>
+              {services.filter(s => s.status === 'active').length}
+            </Text>
+            <Text style={styles.statLabel}>Actifs</Text>
+          </NativeCard>
+
+          <NativeCard style={styles.statCard}>
+            <Text style={[styles.statNumber, { color: '#F97316' }]}>
+              {services.filter(s => s.status === 'inactive').length}
+            </Text>
+            <Text style={styles.statLabel}>En pause</Text>
+          </NativeCard>
+
+          <NativeCard style={styles.statCard}>
+            <Text style={[styles.statNumber, { color: '#6366F1' }]}>
+              {(() => {
+                const categories = new Set<string>();
+                services.forEach(s => {
+                  const cat = s.data?.category?.valeur ||
+                    s.data?.categorie?.valeur ||
+                    s.data?.type ||
+                    null;
+                  if (cat) categories.add(cat);
+                });
+                return categories.size;
+              })()}
+            </Text>
+            <Text style={styles.statLabel}>Catégories</Text>
+          </NativeCard>
         </View>
+
+        {/* ✅ AMÉLIORÉ: Filtres avec design moderne */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filtersScrollView}
+          contentContainerStyle={styles.filtersContainer}
+        >
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              filter === 'tous' && styles.filterChipActive
+            ]}
+            onPress={() => setFilter('tous')}
+          >
+            <SafeIcon
+              name="package"
+              size={16}
+              color={filter === 'tous' ? '#fff' : '#6366F1'}
+            />
+            <Text style={[
+              styles.filterChipText,
+              filter === 'tous' && styles.filterChipTextActive
+            ]}>
+              Tous ({services.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              filter === 'actif' && styles.filterChipActive
+            ]}
+            onPress={() => setFilter('actif')}
+          >
+            <SafeIcon
+              name="check-circle"
+              size={16}
+              color={filter === 'actif' ? '#fff' : '#10B981'}
+            />
+            <Text style={[
+              styles.filterChipText,
+              filter === 'actif' && styles.filterChipTextActive
+            ]}>
+              Actifs ({services.filter(s => s.status === 'active').length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              filter === 'inactif' && styles.filterChipActive
+            ]}
+            onPress={() => setFilter('inactif')}
+          >
+            <SafeIcon
+              name="pause-circle"
+              size={16}
+              color={filter === 'inactif' ? '#fff' : '#F97316'}
+            />
+            <Text style={[
+              styles.filterChipText,
+              filter === 'inactif' && styles.filterChipTextActive
+            ]}>
+              Inactifs ({services.filter(s => s.status === 'inactive').length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.filterChip}
+            onPress={() => {
+              // TODO: Implémenter le filtre par catégorie
+              Alert.alert('Filtre catégories', 'Fonctionnalité à venir');
+            }}
+          >
+            <SafeIcon name="tag" size={16} color="#8B5CF6" />
+            <Text style={styles.filterChipText}>
+              Toutes catégories
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
 
         {/* Liste des services */}
         {filteredServices.length === 0 ? (
@@ -647,8 +917,11 @@ const MesServicesScreen: React.FC = () => {
               }
             </Text>
             <NativeButton
-              title="➕ Créer un nouveau service"
-              onPress={() => navigation.navigate('CreateService' as never)}
+              title="➕ Créer un nouveau produit"
+              onPress={() => (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                mode: 'create',
+                focusProduct: true
+              })}
               variant="primary"
               size="medium"
               style={styles.createButton}
@@ -668,6 +941,7 @@ const MesServicesScreen: React.FC = () => {
                 onPromotion={handlePromotionService}
                 onViewProducts={() => navigation.navigate('MesProduits' as never)}
                 onManageTeam={handleManageTeam}  // ✅ NOUVEAU
+                onCreateVideo={handleCreateVideo}  // ✅ NOUVEAU
               />
             ))}
           </View>
@@ -724,6 +998,21 @@ const MesServicesScreen: React.FC = () => {
           />
         </Modal>
       )}
+
+      {/* ✅ NOUVEAU: Sélecteur de produit pour création vidéo */}
+      <ServiceProductSelector
+        visible={showProductSelector}
+        products={productsForSelection}
+        onSelect={(product) => {
+          navigateToVideoWizard(navigation, product);
+          setShowProductSelector(false);
+          setProductsForSelection([]);
+        }}
+        onClose={() => {
+          setShowProductSelector(false);
+          setProductsForSelection([]);
+        }}
+      />
     </View>
   );
 };
@@ -800,6 +1089,51 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  subtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  menuButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  globalMenu: {
+    position: 'absolute',
+    top: 90,
+    right: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 180,
+    zIndex: 1000,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 12,
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  menuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 999,
+  },
   scrollView: {
     flex: 1,
   },
@@ -807,33 +1141,64 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 120,
   },
-  infoBanner: {
-    backgroundColor: modernColors.info + '20',
-    borderColor: modernColors.info + '40',
-    borderWidth: 1,
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 16,
+    gap: 8,
   },
-  infoText: {
-    fontSize: 16,
-    color: modernColors.info,
-    textAlign: 'center',
-    fontWeight: '500',
+  statCard: {
+    flex: 1,
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  infoBold: {
+  statNumber: {
+    fontSize: 24,
     fontWeight: 'bold',
+    marginBottom: 4,
   },
-  refreshingText: {
-    fontSize: 14,
+  statLabel: {
+    fontSize: 12,
     color: modernColors.textSecondary,
+    textAlign: 'center',
+  },
+  filtersScrollView: {
+    marginBottom: 20,
   },
   filtersContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
     gap: 8,
+    paddingHorizontal: 4,
   },
-  filterButton: {
-    flex: 1,
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 6,
+  },
+  filterChipActive: {
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  filterChipTextActive: {
+    color: '#fff',
   },
   servicesContainer: {
     gap: 16,

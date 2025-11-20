@@ -323,6 +323,19 @@ const HomePage: React.FC = () => {
             <PublicitesCarousel userId={user?.id} />
           </div>
 
+          {/* ✅ Bouton vidéo flottant */}
+          {user && (
+            <div className="fixed bottom-6 right-6 z-50">
+              <Link
+                to="/immersive-video"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:from-pink-600 hover:to-rose-700"
+              >
+                <span className="text-2xl">🎬</span>
+                <span className="font-semibold">Créer une vidéo</span>
+              </Link>
+            </div>
+          )}
+
           {/* Indicateurs visuels subtils */}
           <motion.div
             className="flex justify-center gap-8 mt-8"

@@ -13,6 +13,7 @@ interface ServiceCardModernProps {
         views?: number;
         interactions?: number;
         data?: any;
+        service_id?: number | string;
         [key: string]: any;
     };
     onEdit: (service: any) => void;
@@ -23,6 +24,7 @@ interface ServiceCardModernProps {
     onPromotion?: (service: any) => void;
     onViewProducts?: (service: any) => void;
     onManageTeam?: (service: any) => void;  // ✅ NOUVEAU : Gérer l'équipe
+    onCreateVideo?: (service: any) => void;  // ✅ NOUVEAU : Créer une vidéo
 }
 
 const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
@@ -34,7 +36,8 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
     onDelete,
     onPromotion,
     onViewProducts,
-    onManageTeam  // ✅ NOUVEAU
+    onManageTeam,  // ✅ NOUVEAU
+    onCreateVideo  // ✅ NOUVEAU
 }) => {
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -204,6 +207,18 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
 
                 {/* ✅ NOUVEAU : Seconde rangée d'actions */}
                 <View style={styles.actionsRow}>
+                    {/* Créer une vidéo */}
+                    {onCreateVideo && (
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.actionVideo]}
+                            onPress={() => onCreateVideo(service)}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon name="video" size={18} color="#EC4899" />
+                            <Text style={[styles.actionLabel, { color: '#EC4899' }]}>Vidéo</Text>
+                        </TouchableOpacity>
+                    )}
+
                     {/* Gérer l'équipe */}
                     {onManageTeam && (
                         <TouchableOpacity
@@ -414,6 +429,10 @@ const styles = StyleSheet.create({
     actionDeactivate: {
         backgroundColor: '#FFEDD5',
         borderColor: '#FED7AA',
+    },
+    actionVideo: {
+        backgroundColor: '#FDF2F8',
+        borderColor: '#FBCFE8',
     },
     actionLabel: {
         fontSize: 11,

@@ -162,6 +162,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tasks::delivery_sla_monitor::start_delivery_sla_monitor(app_state.clone());
     // ✅ Monitor des timeouts de validation d'étapes
     tokio::spawn(tasks::delivery_timeout_monitor::start_delivery_timeout_monitor(app_state.clone()));
+    // ✅ Monitor des timeouts de validation de commandes
+    tokio::spawn(tasks::order_timeout_monitor::start_order_timeout_monitor(app_state.clone()));
+
+    // ✅ Tâches de recalcul périodique des statistiques (Phase 6)
+    let pool_clone_category_stats = Arc::new(app_state.pg.clone());
+    tokio::spawn(async move {
+        tasks::stats_recalculation::start_category_stats_recalculation_task(pool_clone_category_stats).await;
+    });
+
+    let pool_clone_cancellation_stats = Arc::new(app_state.pg.clone());
+    tokio::spawn(async move {
+        tasks::stats_recalculation::start_product_cancellation_stats_recalculation_task(pool_clone_cancellation_stats).await;
+    });
 
     // Construction de l'application avec Extension
     let app = build_app(app_state.clone())

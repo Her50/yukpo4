@@ -274,4 +274,219 @@ export const deleteProofMedia = async (deliveryId: string, mediaId: number): Pro
     await apiDelete(`/delivery/${deliveryId}/proof-media/${mediaId}`);
 };
 
+// ✅ Nouveau : Créer une demande de livraison (parcel ou shopping)
+export interface CreateDeliveryRequestPayload {
+    parcel: {
+        type_id?: number;
+        weight_kg?: number;
+        volume_cm3?: number;
+        declared_value?: number;
+        notes?: string;
+        photos?: string[] | Record<string, unknown> | unknown[];
+        constraints?: Record<string, unknown>;
+        metadata?: Record<string, unknown>;
+    };
+    pickup: {
+        latitude: number;
+        longitude: number;
+        address?: string;
+    };
+    dropoff: {
+        latitude: number;
+        longitude: number;
+        address?: string;
+    };
+    distance_meters?: number;
+    estimated_duration_seconds?: number;
+    metadata?: Record<string, unknown>;
+    initial_event_payload?: Record<string, unknown>;
+    recipient?: DeliveryRecipientPayload;
+}
+
+export interface CreateDeliveryRequestResponse {
+    id: string;
+    status: string;
+    kind: 'parcel' | 'shopping';
+}
+
+export const createDeliveryRequest = async (
+    payload: CreateDeliveryRequestPayload,
+): Promise<CreateDeliveryRequestResponse> => {
+    // ✅ CORRIGÉ : Utiliser l'endpoint existant /api/delivery au lieu de /api/delivery/request
+    // ✅ CORRIGÉ : Normaliser le payload pour correspondre au format backend
+    const normalizedPayload = {
+        ...payload,
+        parcel: {
+            ...payload.parcel,
+            // S'assurer que photos est toujours un tableau (pas undefined)
+            photos: payload.parcel.photos || [],
+            // S'assurer que constraints est toujours un objet (pas undefined)
+            constraints: payload.parcel.constraints || {},
+        },
+        // S'assurer que metadata est toujours un objet
+        metadata: payload.metadata || {},
+        // S'assurer que initial_event_payload est toujours un objet
+        initial_event_payload: payload.initial_event_payload || {},
+    };
+
+    const response = await apiPost('/api/delivery', normalizedPayload);
+    const data = await response.json();
+
+    // ✅ CORRIGÉ : Extraire les données de la réponse backend
+    // Le backend retourne { "delivery": DeliverySummary }
+    const delivery = data.delivery || data;
+    const kind = delivery.metadata?.kind || (delivery.shopping_required ? 'shopping' : 'parcel');
+
+    return {
+        id: delivery.id,
+        status: delivery.status,
+        kind: kind as 'parcel' | 'shopping',
+    };
+};
+
+// ✅ Nouveau : Récupérer la liste des supermarchés à proximité
+export interface Supermarket {
+    id: string;
+    name: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    distance?: number;
+    phone?: string;
+    website?: string;
+}
+
+export interface SupermarketsResponse {
+    supermarkets: Supermarket[];
+    total: number;
+}
+
+// ✅ Cache pour les supermarchés
+interface CachedSupermarkets {
+    supermarkets: Supermarket[];
+    timestamp: number;
+    latitude: number;
+    longitude: number;
+    radiusKm: number;
+}
+
+const SUPERMARKETS_CACHE_KEY = 'yukpo_supermarkets_cache';
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+const getCacheKey = (lat: number, lng: number, radius: number): string => {
+    // Arrondir les coordonnées pour regrouper les requêtes proches
+    const roundedLat = Math.round(lat * 100) / 100; // 2 décimales
+    const roundedLng = Math.round(lng * 100) / 100;
+    return `${SUPERMARKETS_CACHE_KEY}_${roundedLat}_${roundedLng}_${radius}`;
+};
+
+const getCachedSupermarkets = (lat: number, lng: number, radiusKm: number): Supermarket[] | null => {
+    try {
+        const cacheKey = getCacheKey(lat, lng, radiusKm);
+        const cached = localStorage.getItem(cacheKey);
+        if (!cached) return null;
+
+        const data: CachedSupermarkets = JSON.parse(cached);
+        const now = Date.now();
+
+        // Vérifier si le cache est encore valide
+        if (now - data.timestamp > CACHE_DURATION_MS) {
+            localStorage.removeItem(cacheKey);
+            return null;
+        }
+
+        // Vérifier si la position est proche (dans un rayon de 1km)
+        const distance = Math.sqrt(
+            Math.pow(data.latitude - lat, 2) + Math.pow(data.longitude - lng, 2)
+        ) * 111; // Approximation en km
+        if (distance > 1) {
+            return null; // Position trop éloignée
+        }
+
+        return data.supermarkets;
+    } catch (error) {
+        console.warn('Erreur lecture cache supermarchés:', error);
+        return null;
+    }
+};
+
+const setCachedSupermarkets = (lat: number, lng: number, radiusKm: number, supermarkets: Supermarket[]): void => {
+    try {
+        const cacheKey = getCacheKey(lat, lng, radiusKm);
+        const data: CachedSupermarkets = {
+            supermarkets,
+            timestamp: Date.now(),
+            latitude: lat,
+            longitude: lng,
+            radiusKm,
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+    } catch (error) {
+        console.warn('Erreur écriture cache supermarchés:', error);
+    }
+};
+
+export const listSupermarkets = async (
+    latitude: number,
+    longitude: number,
+    radiusKm: number = 10,
+): Promise<SupermarketsResponse> => {
+    try {
+        // ✅ Vérifier le cache d'abord
+        const cached = getCachedSupermarkets(latitude, longitude, radiusKm);
+        if (cached) {
+            console.log('[DeliveryApi] ✅ Supermarchés récupérés depuis le cache');
+            return {
+                supermarkets: cached,
+                total: cached.length,
+            };
+        }
+
+        // Utiliser l'API nearby services avec filtre pour les supermarchés
+        const response = await apiGet(
+            `/api/services/nearby?latitude=${latitude}&longitude=${longitude}&radius=${radiusKm * 1000}&limit=20`
+        );
+        const data = await response.json();
+
+        // Filtrer les services qui sont des supermarchés
+        const supermarkets: Supermarket[] = (data.services || [])
+            .filter((service: any) => {
+                const category = (service.category || '').toLowerCase();
+                const name = (service.name || '').toLowerCase();
+                const description = (service.description || '').toLowerCase();
+
+                // Mots-clés pour identifier les supermarchés
+                const keywords = ['supermarche', 'supermarket', 'carrefour', 'casino', 'super u', 'auchan', 'leclerc', 'intermarche', 'monoprix', 'franprix', 'magasin', 'epicerie', 'hypermarché', 'hypermarché'];
+
+                return keywords.some(keyword =>
+                    category.includes(keyword) ||
+                    name.includes(keyword) ||
+                    description.includes(keyword)
+                );
+            })
+            .map((service: any) => ({
+                id: service.id,
+                name: service.name,
+                address: service.address || 'Adresse non disponible',
+                latitude: service.latitude || 0,
+                longitude: service.longitude || 0,
+                distance: service.distance ? Math.round(service.distance / 1000 * 10) / 10 : undefined, // Convertir en km
+                phone: service.phone,
+                website: service.website,
+            }));
+
+        // ✅ Mettre en cache les résultats
+        setCachedSupermarkets(latitude, longitude, radiusKm, supermarkets);
+
+        return {
+            supermarkets,
+            total: supermarkets.length,
+        };
+    } catch (error) {
+        console.error('Erreur récupération supermarchés:', error);
+        // Retourner une liste vide en cas d'erreur
+        return { supermarkets: [], total: 0 };
+    }
+};
+
 

@@ -12,6 +12,7 @@ import {
   Dimensions,
   Image,
   Linking,
+  Modal,
   ScrollView,
   Share,
   StyleSheet,
@@ -20,11 +21,11 @@ import {
   View,
 } from 'react-native';
 import { config } from '../config/environment';
-import { apiGet, apiPost } from '../services/api';
+import { apiGet, apiPost, commentsApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
 import OrderDeliveryModal from './delivery/OrderDeliveryModal';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { NativeCard } from './NativeDesign';
 import ProductCommentsSection from './ProductCommentsSection';
 import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
@@ -206,6 +207,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
   const [loadingReactions, setLoadingReactions] = useState(false);
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
+  // ✅ NOUVEAU : États pour commentaires compacts
+  const [commentStats, setCommentStats] = useState<{ total_comments: number; rating_count: number; average_rating: number } | null>(null);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
 
   // Données produit
   const productVector = Array.isArray(product.product_vector)
@@ -582,25 +587,37 @@ const ProductCard: React.FC<ProductCardProps> = ({
   ];
   const compactTopStats = topStatsData.filter((stat) => (stat.value ?? 0) > 0).slice(0, 3);
 
-  // ✅ CORRIGÉ: Toujours ouvrir le modal, même si onChatPress est défini
+  // ✅ CORRIGÉ: Toujours ouvrir le modal - amélioration robuste
   const handleChatPress = () => {
     // Appeler onChatPress si fourni (pour compatibilité)
     if (onChatPress) {
       onChatPress();
     }
 
-    // Vérifier que prestataireUserId est défini avant d'ouvrir le modal
-    if (!prestataireUserId) {
-      Alert.alert('Information manquante', 'Impossible d\'ouvrir le chat : informations du prestataire manquantes.');
+    // Toujours ouvrir le modal - laisser ChatModalMobile gérer les cas manquants
+    // Essayer de récupérer prestataireUserId de plusieurs sources
+    const resolvedPrestataireUserId =
+      prestataireUserId ||
+      prestataire?.user_id ||
+      product?.prestataire?.user_id ||
+      service?.user_id ||
+      service?.data?.user_id ||
+      null;
+
+    if (!resolvedPrestataireUserId && !service?.id && !product?.service_id) {
+      Alert.alert(
+        'Information manquante',
+        'Impossible d\'ouvrir le chat : informations du service ou du prestataire manquantes.'
+      );
       return;
     }
 
-    // Toujours ouvrir le modal local
+    // Toujours ouvrir le modal local avec les informations disponibles
     setChatContext({
       type: 'service',
-      targetUserId: prestataireUserId ? Number(prestataireUserId) : undefined,
-      targetUserName: prestataire.nom,
-      targetAvatar: prestataire.avatar_url || null,
+      targetUserId: resolvedPrestataireUserId ? Number(resolvedPrestataireUserId) : undefined,
+      targetUserName: prestataire.nom || prestataireName || 'Prestataire',
+      targetAvatar: prestataire.avatar_url || prestataireAvatar || null,
     });
     setPrivateConversationId(null);
     setShowChatModal(true);
@@ -662,6 +679,31 @@ const ProductCard: React.FC<ProductCardProps> = ({
   useEffect(() => {
     loadReactions();
   }, [loadReactions]);
+
+  // ✅ NOUVEAU : Charger les stats des commentaires (version compacte)
+  const loadCommentStats = useCallback(async () => {
+    if (!commentServiceId || commentServiceId <= 0) return;
+    try {
+      setLoadingComments(true);
+      const response = await commentsApi.getProductComments(commentServiceId);
+      if (response.success && response.data) {
+        const payload: any = response.data;
+        setCommentStats({
+          total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
+          rating_count: payload.stats?.rating_count ?? 0,
+          average_rating: payload.stats?.average_rating ?? 0,
+        });
+      }
+    } catch (error) {
+      console.error('[ProductCard] Erreur chargement stats commentaires:', error);
+    } finally {
+      setLoadingComments(false);
+    }
+  }, [commentServiceId]);
+
+  useEffect(() => {
+    loadCommentStats();
+  }, [loadCommentStats]);
 
   // ✅ NOUVEAU : Handler pour réagir
   const handleReaction = async (reactionType: string) => {
@@ -811,18 +853,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
             )}
 
             <View style={[styles.content, !hasMedia && styles.contentCompact]}>
+              {/* ✅ AMÉLIORÉ: Indicateurs miniaturisés mais visibles */}
               {compactTopStats.length > 0 && (
                 <View style={styles.topStatsRow}>
                   {compactTopStats.map((stat) => (
                     <View
                       key={stat.key}
                       style={[
-                        styles.topStatPill,
-                        { backgroundColor: `${stat.tint}12` },
+                        styles.topStatPillCompact,
+                        { backgroundColor: `${stat.tint}08` },
+                        { borderColor: `${stat.tint}30` },
                       ]}
                     >
-                      <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
-                      <Text style={[styles.topStatValue, { color: stat.tint }]}>
+                      <SafeIcon name={stat.icon as any} size={12} color={stat.tint} />
+                      <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
                         {formatCompactNumber(stat.value)}
                       </Text>
                     </View>
@@ -835,8 +879,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
               </Text>
 
-              {/* Prestataire cliquable */}
-              {prestataire.nom && (
+              {/* ✅ AMÉLIORÉ: Prestataire cliquable - S'assure d'afficher le vrai nom */}
+              {prestataireName && prestataireName !== 'Prestataire' && (
                 <TouchableOpacity
                   style={styles.prestataireRow}
                   onPress={() => {
@@ -845,9 +889,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     }
                   }}
                 >
-                  {prestataire.avatar_url ? (
+                  {prestataireAvatar ? (
                     <Image
-                      source={{ uri: prestataire.avatar_url }}
+                      source={{ uri: prestataireAvatar }}
                       style={styles.avatar}
                     />
                   ) : (
@@ -856,32 +900,52 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </View>
                   )}
                   <Text style={styles.prestataireName} numberOfLines={1}>
-                    {prestataire.nom}
+                    {prestataireName}
                   </Text>
                   <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
                 </TouchableOpacity>
               )}
 
-              {/* ✅ AMÉLIORATION: Localisation hiérarchique détaillée */}
-              {chosenLocation && (
+              {/* ✅ AMÉLIORÉ: Localisation hiérarchique détaillée - Affiche toutes les adresses disponibles */}
+              {(chosenLocation || locationVector.length > 0) && (
                 <View style={styles.locationSection}>
                   <View style={styles.locationRow}>
                     <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                    <Text style={styles.locationTextPrimary} numberOfLines={1}>
-                      {chosenLocation}
+                    <Text style={styles.locationTextPrimary} numberOfLines={2}>
+                      {chosenLocation || locationVector[0] || 'Localisation disponible'}
                     </Text>
                     {countryFlag && countryFlag !== '🌍' && (
                       <Text style={styles.locationFlag}>{countryFlag}</Text>
                     )}
                   </View>
-                  {/* Hiérarchie complète (ville > région > pays) */}
+                  {/* Hiérarchie complète (quartier > ville > région > pays) */}
                   {locationVector.length > 1 && (
                     <View style={styles.locationHierarchy}>
                       <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
-                      <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                      <Text style={styles.locationTextSecondary} numberOfLines={2}>
                         {locationVector.slice(1).join(' › ')}
                       </Text>
                     </View>
+                  )}
+                  {/* Affichage supplémentaire des adresses si disponibles */}
+                  {(!chosenLocation || locationVector.length === 0) && (
+                    <>
+                      {product.quartier && (
+                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                          📍 Quartier: {product.quartier}
+                        </Text>
+                      )}
+                      {product.ville && (
+                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                          🏙️ Ville: {product.ville}
+                        </Text>
+                      )}
+                      {product.region && (
+                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                          🌍 Région: {product.region}
+                        </Text>
+                      )}
+                    </>
                   )}
                   {formattedDistance && (
                     <View style={styles.locationDistanceChip}>
@@ -1090,30 +1154,40 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </View>
               )}
 
-              {/* Actions */}
+              {/* Actions - Design moderne et subtil */}
               <View style={styles.actions}>
-                {/* ✅ NOUVEAU: Bouton "Se faire livrer" - Uniquement pour les produits (pas les prestations) */}
+                {/* ✅ AMÉLIORÉ: Bouton "Me livrer" - Style outline subtil */}
                 {serviceId && isProduct && (
-                  <NativeButton
-                    title="🚚 Se faire livrer"
-                    variant="primary"
+                  <TouchableOpacity
+                    style={[styles.actionButtonModern, styles.actionButtonDelivery]}
                     onPress={() => setShowOrderModal(true)}
-                    style={[styles.actionButton, { backgroundColor: modernColors.success }]}
-                  />
+                  >
+                    <SafeIcon name="truck" size={16} color="#10B981" />
+                    <Text style={[styles.actionButtonText, styles.actionButtonTextDelivery]} numberOfLines={1}>
+                      Me livrer
+                    </Text>
+                  </TouchableOpacity>
                 )}
 
-                <NativeButton
-                  title="💬 Chat"
-                  variant="primary"
+                <TouchableOpacity
+                  style={[styles.actionButtonModern, styles.actionButtonChat]}
                   onPress={handleChatPress}
-                  style={styles.actionButton}
-                />
-                <NativeButton
-                  title="👁️ Voir"
-                  variant="secondary"
+                >
+                  <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
+                  <Text style={[styles.actionButtonText, styles.actionButtonTextChat]} numberOfLines={1}>
+                    Chat
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButtonModern, styles.actionButtonView]}
                   onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
-                  style={styles.actionButton}
-                />
+                >
+                  <SafeIcon name="eye" size={16} color="#6B7280" />
+                  <Text style={[styles.actionButtonText, styles.actionButtonTextView]} numberOfLines={1}>
+                    Voir
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* ✅ NOUVEAU : Actions secondaires (Galerie, Partage) */}
@@ -1151,12 +1225,33 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </TouchableOpacity>
               </View>
 
+              {/* ✅ AMÉLIORÉ: Section commentaires ultra-compacte */}
               {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
-                <ProductCommentsSection
-                  serviceId={commentServiceId}
-                  serviceTitle={serviceTitleForComments}
-                  onOpenChat={handleContactUser}
-                />
+                <View style={styles.commentsCompactSection}>
+                  <View style={styles.commentsCompactRow}>
+                    <View style={styles.commentsCompactStats}>
+                      <SafeIcon name="message-circle" size={14} color="#6B7280" />
+                      <Text style={styles.commentsCompactText}>
+                        {loadingComments ? '...' : commentStats ? `${commentStats.rating_count} avis` : '0 avis'}
+                      </Text>
+                      {commentStats && commentStats.average_rating > 0 && (
+                        <>
+                          <Text style={styles.commentsCompactSeparator}>•</Text>
+                          <Text style={styles.commentsCompactRating}>
+                            {commentStats.average_rating.toFixed(1)}/5
+                          </Text>
+                        </>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={styles.commentsCompactButton}
+                      onPress={() => setShowCommentsModal(true)}
+                    >
+                      <SafeIcon name="corner-up-right" size={14} color={modernColors.primary} />
+                      <Text style={styles.commentsCompactButtonText}>Ouvrir le fil</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               )}
 
               {/* Footer info */}
@@ -1195,21 +1290,25 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </NativeCard>
       </LinearGradient>
 
-      {/* ✅ CORRIGÉ: Modal Chat avec props correctes - Toujours afficher si showChatModal est true */}
-      {showChatModal && (activeChatPeer?.user_id || prestataireUserId) && (
-        <ChatModalMobile
-          visible={showChatModal}
-          onClose={handleCloseChatModal}
-          service={service || {
-            id: product.service_id,
-            data: { titre_service: { valeur: product.nom } }
-          }}
-          prestataireInfo={activeChatPeer || prestataire}
-          user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
-          conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
-          isPrivateConversation={isPrivateChat}
-        />
-      )}
+      {/* ✅ CORRIGÉ: Modal Chat - Toujours rendre le composant, contrôler via visible */}
+      <ChatModalMobile
+        visible={showChatModal}
+        onClose={handleCloseChatModal}
+        service={service || {
+          id: product.service_id || service?.id,
+          data: { titre_service: { valeur: product.nom || service?.data?.titre_service?.valeur || 'Produit' } },
+          user_id: prestataireUserId || service?.user_id,
+        }}
+        prestataireInfo={activeChatPeer || prestataire || {
+          nom: prestataireName || 'Prestataire',
+          nom_complet: prestataireName || 'Prestataire',
+          user_id: prestataireUserId,
+          avatar_url: prestataireAvatar,
+        }}
+        user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
+        conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
+        isPrivateConversation={isPrivateChat}
+      />
 
       {/* ✅ NOUVEAU : Modal Galerie du prestataire */}
       {showGallery && (
@@ -1240,6 +1339,31 @@ const ProductCard: React.FC<ProductCardProps> = ({
           }}
         />
       )}
+
+      {/* ✅ NOUVEAU: Modal commentaires complet */}
+      <Modal
+        visible={showCommentsModal}
+        animationType="slide"
+        onRequestClose={() => setShowCommentsModal(false)}
+        transparent={false}
+      >
+        {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
+          <View style={styles.commentsModalContainer}>
+            <View style={styles.commentsModalHeader}>
+              <Text style={styles.commentsModalTitle}>Commentaires & Avis</Text>
+              <TouchableOpacity onPress={() => setShowCommentsModal(false)}>
+                <SafeIcon name="x" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+            <ProductCommentsSection
+              serviceId={commentServiceId}
+              serviceTitle={serviceTitleForComments}
+              onOpenChat={handleContactUser}
+              mode="full"
+            />
+          </View>
+        )}
+      </Modal>
     </>
   );
 };
@@ -1430,10 +1554,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E7FF',
   },
+  // ✅ AMÉLIORÉ: Style compact pour indicateurs miniaturisés
+  topStatPillCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 3,
+  },
   topStatValue: {
     fontSize: 12,
     fontWeight: '700',
     marginLeft: 4,
+  },
+  topStatValueCompact: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   productName: {
     fontSize: 16,
@@ -1670,11 +1808,49 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 2,
+    gap: 8,
+    marginTop: 4,
   },
   actionButton: {
     flex: 1,
+  },
+  // ✅ AMÉLIORÉ: Styles boutons d'action modernes et subtils
+  actionButtonModern: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+  },
+  actionButtonDelivery: {
+    borderColor: '#D1FAE5',
+    backgroundColor: '#F0FDF4',
+  },
+  actionButtonChat: {
+    borderColor: '#DBEAFE',
+    backgroundColor: '#EFF6FF',
+  },
+  actionButtonView: {
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  actionButtonTextDelivery: {
+    color: '#047857',
+  },
+  actionButtonTextChat: {
+    color: modernColors.primary,
+  },
+  actionButtonTextView: {
+    color: '#6B7280',
   },
   footer: {
     flexDirection: 'row',
@@ -1862,6 +2038,76 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 1,
     marginBottom: 12,
+  },
+  // ✅ NOUVEAU: Styles section commentaires compacte
+  commentsCompactSection: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  commentsCompactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  commentsCompactStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  commentsCompactText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  commentsCompactSeparator: {
+    fontSize: 12,
+    color: '#D1D5DB',
+    marginHorizontal: 2,
+  },
+  commentsCompactRating: {
+    fontSize: 12,
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+  commentsCompactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+  },
+  commentsCompactButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
+  // ✅ NOUVEAU: Styles modal commentaires
+  commentsModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  commentsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  commentsModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
   },
 });
 

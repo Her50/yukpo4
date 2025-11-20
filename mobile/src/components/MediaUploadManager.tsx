@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
@@ -126,14 +127,42 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsMultipleSelection: false,
         quality: 0.8,
-        base64: false, // Vidéos : pas de base64 (trop lourd)
+        base64: false, // ImagePicker ne supporte pas base64 pour les vidéos
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
         const videoUri = result.assets[0].uri;
 
         if (videoUri) {
-          onVideosChange([...videos, videoUri]);
+          // ✅ CORRECTION : Convertir l'URI file:// en base64
+          try {
+            console.log('[MediaUploadManager] Conversion vidéo en base64:', videoUri);
+
+            // Lire le fichier et le convertir en base64
+            const base64Data = await FileSystem.readAsStringAsync(videoUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+
+            // Déterminer le type MIME à partir de l'extension
+            const mimeType = videoUri.endsWith('.mp4')
+              ? 'video/mp4'
+              : videoUri.endsWith('.mov')
+                ? 'video/quicktime'
+                : 'video/mp4'; // Par défaut
+
+            // Créer le data URI
+            const videoBase64 = `data:${mimeType};base64,${base64Data}`;
+
+            console.log('[MediaUploadManager] ✅ Vidéo convertie en base64, taille:', Math.ceil((base64Data.length * 3) / 4) / (1024 * 1024), 'MB');
+
+            onVideosChange([...videos, videoBase64]);
+          } catch (conversionError) {
+            console.error('[MediaUploadManager] ❌ Erreur conversion vidéo en base64:', conversionError);
+            Alert.alert(
+              'Erreur de conversion',
+              'Impossible de convertir la vidéo. Veuillez réessayer avec une autre vidéo.'
+            );
+          }
         }
       }
     } catch (error) {
