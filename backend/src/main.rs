@@ -134,7 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     });
                     (dummy_client, false)
                 }
-                Err(e) => {
+                Err(_e) => {
                     log::info!("ℹ️ Redis timeout de connexion (service optionnel). WebSocket de livraison fonctionnera sans Redis.");
                     // Créer un client factice pour les autres services qui peuvent gérer l'absence de Redis
                     let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
