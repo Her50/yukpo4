@@ -5,9 +5,30 @@ use crate::utils::embedding_client::{AddEmbeddingPineconeRequest, EmbeddingClien
 use once_cell::sync::Lazy;
 use redis::AsyncCommands;
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use std::collections::HashMap;
 use tokio::sync::RwLock;
+
+#[derive(FromRow)]
+struct EchangeIdRow {
+    id: i32,
+}
+
+#[derive(FromRow)]
+struct EchangeCandidatRow {
+    id: i32,
+    user_id: i32,
+    offre: Value,
+    besoin: Value,
+    quantite_offerte: Option<f64>,
+    quantite_requise: Option<f64>,
+    lot_id: Option<i32>,
+    disponibilite: Option<Value>,
+    contraintes: Option<Value>,
+    gps_fixe_lat: Option<f64>,
+    gps_fixe_lon: Option<f64>,
+    don: Option<bool>,
+}
 
 // Seuil configurable via variable d'environnement
 fn get_match_threshold() -> f64 {
@@ -122,13 +143,13 @@ pub async fn traiter_echange(
         }
     }
 
-    // V?rification en base (fallback si pas de Redis)
-    let doublon = sqlx::query!(
-        r#"SELECT id FROM echanges WHERE user_id = $1 AND offre = $2 AND besoin = $3 AND statut = 'en_attente' LIMIT 1"#,
-        user_id,
-        &offre,
-        &besoin
+    // Vérification en base (fallback si pas de Redis)
+    let doublon: Option<EchangeIdRow> = sqlx::query_as(
+        r#"SELECT id FROM echanges WHERE user_id = $1 AND offre = $2 AND besoin = $3 AND statut = 'en_attente' LIMIT 1"#
     )
+    .bind(user_id)
+    .bind(&offre)
+    .bind(&besoin)
     .fetch_optional(pool)
     .await?;
 
@@ -150,18 +171,18 @@ pub async fn traiter_echange(
         );
     }
 
-    // 1. Enregistrer la demande d'?change ou de don en base
-    let rec = sqlx::query!(
+    // 1. Enregistrer la demande d'échange ou de don en base
+    let rec: EchangeIdRow = sqlx::query_as(
         r#"
         INSERT INTO echanges (user_id, offre, besoin, statut, don)
         VALUES ($1, $2, $3, 'en_attente', $4)
         RETURNING id
-        "#,
-        user_id,
-        &offre,
-        &besoin,
-        don
+        "#
     )
+    .bind(user_id)
+    .bind(&offre)
+    .bind(&besoin)
+    .bind(don)
     .fetch_one(pool)
     .await?;
     let echange_id = rec.id;
@@ -241,27 +262,27 @@ pub async fn traiter_echange(
     let weights = ScoringWeights::default();
 
     loop {
-        let candidats = sqlx::query!(
+        let candidats: Vec<EchangeCandidatRow> = sqlx::query_as(
             r#"SELECT id,
                      user_id,
-                     offre                      AS "offre: serde_json::Value",
-                     besoin                     AS "besoin: serde_json::Value",
-                     quantite_offerte::FLOAT8   AS "quantite_offerte: Option<f64>",
-                     quantite_requise::FLOAT8   AS "quantite_requise: Option<f64>",
+                     offre,
+                     besoin,
+                     quantite_offerte::FLOAT8 AS quantite_offerte,
+                     quantite_requise::FLOAT8 AS quantite_requise,
                      lot_id,
-                     disponibilite             AS "disponibilite: Option<serde_json::Value>",
-                     contraintes               AS "contraintes: Option<serde_json::Value>",
-                     gps_fixe_lat::FLOAT8      AS "gps_fixe_lat: Option<f64>",
-                     gps_fixe_lon::FLOAT8      AS "gps_fixe_lon: Option<f64>",
-                     don                       AS "don: Option<bool>"
+                     disponibilite,
+                     contraintes,
+                     gps_fixe_lat::FLOAT8 AS gps_fixe_lat,
+                     gps_fixe_lon::FLOAT8 AS gps_fixe_lon,
+                     don
                FROM echanges 
                WHERE statut = 'en_attente' AND id != $1 
                ORDER BY created_at DESC 
-               LIMIT $2 OFFSET $3"#,
-            echange_id,
-            BATCH_SIZE as i64,
-            offset as i64
+               LIMIT $2 OFFSET $3"#
         )
+        .bind(echange_id)
+        .bind(BATCH_SIZE as i64)
+        .bind(offset as i64)
         .fetch_all(pool)
         .await?;
 
@@ -288,7 +309,7 @@ pub async fn traiter_echange(
         for c in &candidats_filtres {
             // Matching dons
             let is_don = don;
-            let is_candidat_don = c.don.and_then(|value| value).unwrap_or(false);
+            let is_candidat_don = c.don.unwrap_or(false);
             let is_offre_seule = !offre.is_null() && (besoin.is_null() || besoin == Value::Null);
             let is_besoin_seul = !besoin.is_null() && (offre.is_null() || offre == Value::Null);
             let is_candidat_offre_seule =
@@ -335,14 +356,14 @@ pub async fn traiter_echange(
                 besoin: c.besoin.clone(),
                 statut: "en_attente".to_string(),
                 matched_with: None,
-                quantite_offerte: c.quantite_offerte.and_then(|value| value),
-                quantite_requise: c.quantite_requise.and_then(|value| value),
+                quantite_offerte: c.quantite_offerte,
+                quantite_requise: c.quantite_requise,
                 lot_id: c.lot_id,
-                disponibilite: c.disponibilite.clone().and_then(|value| value),
-                contraintes: c.contraintes.clone().and_then(|value| value),
+                disponibilite: c.disponibilite.clone(),
+                contraintes: c.contraintes.clone(),
                 reputation: Some(user_reputation),
-                gps_fixe_lat: c.gps_fixe_lat.and_then(|value| value),
-                gps_fixe_lon: c.gps_fixe_lon.and_then(|value| value),
+                gps_fixe_lat: c.gps_fixe_lat,
+                gps_fixe_lon: c.gps_fixe_lon,
                 don: is_candidat_don,
                 created_at: chrono::Utc::now().naive_utc(),
                 updated_at: chrono::Utc::now().naive_utc(),
@@ -379,19 +400,19 @@ pub async fn traiter_echange(
     if let Some((matched_id, _matched_user_id)) = best_match {
         if best_score >= get_match_threshold() {
             // Mise à jour atomique des deux échanges
-            let result1 = sqlx::query!(
-                "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2",
-                matched_id,
-                echange_id
+            let result1 = sqlx::query(
+                "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2"
             )
+            .bind(matched_id)
+            .bind(echange_id)
             .execute(pool)
             .await;
 
-            let result2 = sqlx::query!(
-                "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2",
-                echange_id,
-                matched_id
+            let result2 = sqlx::query(
+                "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2"
             )
+            .bind(echange_id)
+            .bind(matched_id)
             .execute(pool)
             .await;
 

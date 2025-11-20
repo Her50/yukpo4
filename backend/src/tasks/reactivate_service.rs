@@ -1,7 +1,7 @@
 use crate::core::types::AppError;
-use chrono::{Duration, Utc};
+use chrono::{DateTime, Duration, Utc};
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 
 pub async fn reactivate_service(
     pool: &PgPool,
@@ -9,28 +9,36 @@ pub async fn reactivate_service(
     user_id: i32,
     extra_duration: Duration, // e.g. Duration::hours(24)
 ) -> Result<Value, AppError> {
-    // R?cup?rer si le service est tarissable
-    let service = sqlx::query!(
-        "SELECT is_tarissable AS \"is_tarissable: Option<bool>\" FROM services WHERE id = $1 AND user_id = $2",
-        service_id,
-        user_id
+    #[derive(FromRow)]
+    struct ServiceTarissableRow {
+        is_tarissable: Option<bool>,
+    }
+
+    // Récupérer si le service est tarissable
+    let service: ServiceTarissableRow = sqlx::query_as(
+        "SELECT is_tarissable FROM services WHERE id = $1 AND user_id = $2"
     )
+    .bind(service_id)
+    .bind(user_id)
     .fetch_one(pool)
     .await
     .map_err(|e| AppError::internal_server_error(e.to_string()))?;
 
-    // Limitation ? 30 jours si tarissable
+    // Limitation à 30 jours si tarissable
     let mut days = extra_duration.num_days();
-    let is_tarissable = service
-        .is_tarissable
-        .unwrap_or(Some(false))
-        .unwrap_or(false);
+    let is_tarissable = service.is_tarissable.unwrap_or(false);
     if is_tarissable && days > 30 {
         days = 30;
     }
     let new_off = Utc::now() + Duration::days(days);
 
-    let updated = sqlx::query!(
+    #[derive(FromRow)]
+    struct UpdatedServiceRow {
+        id: i32,
+        auto_deactivate_at: Option<DateTime<Utc>>,
+    }
+
+    let updated: UpdatedServiceRow = sqlx::query_as(
         r#"
         UPDATE services
            SET is_active = TRUE,
@@ -39,28 +47,33 @@ pub async fn reactivate_service(
                auto_deactivate_at = $3
          WHERE id = $1
            AND user_id = $2
-         RETURNING id,
-                   auto_deactivate_at AS "auto_deactivate_at: Option<chrono::DateTime<Utc>>"
-        "#,
-        service_id,
-        user_id,
-        new_off,
-        days as i32
+         RETURNING id, auto_deactivate_at
+        "#
     )
+    .bind(service_id)
+    .bind(user_id)
+    .bind(new_off)
+    .bind(days as i32)
     .fetch_one(pool)
     .await
     .map_err(|e| AppError::internal_server_error(e.to_string()))?;
 
-    // R?indexation Pinecone : r?cup?rer les donn?es du service
-    let rec = sqlx::query!(
-        "SELECT data AS \"data: serde_json::Value\", gps AS \"gps: Option<String>\" FROM services WHERE id = $1",
-        service_id
+    #[derive(FromRow)]
+    struct ServiceDataRow {
+        data: Value,
+        gps: Option<String>,
+    }
+
+    // Réindexation Pinecone : récupérer les données du service
+    let rec: ServiceDataRow = sqlx::query_as(
+        "SELECT data, gps FROM services WHERE id = $1"
     )
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::internal_server_error(e.to_string()))?;
+    .bind(service_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::internal_server_error(e.to_string()))?;
     let _data_obj: serde_json::Value = serde_json::from_value(rec.data).unwrap_or_default();
-    let gps = rec.gps.and_then(|opt| opt).and_then(|s| {
+    let gps = rec.gps.and_then(|s| {
         let parts: Vec<&str> = s.split(',').collect();
         if parts.len() == 2 {
             Some((
@@ -89,7 +102,7 @@ pub async fn reactivate_service(
     }
     */
     Ok(serde_json::json!({
-        "message": "? Service r?activ?",
+        "message": "Service réactivé",
         "service_id": updated.id,
         "next_auto_deactivate": updated.auto_deactivate_at,
     }))

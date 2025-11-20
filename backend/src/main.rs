@@ -42,6 +42,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&db_url)
         .await?;
 
+    // 🔄 Exécuter les migrations SQLx standard au démarrage
+    log::info!("🚀 Application des migrations SQLx standard...");
+    match sqlx::migrate!("./migrations").run(&pg_pool).await {
+        Ok(_) => log::info!("✅ Migrations SQLx standard appliquées avec succès"),
+        Err(e) => {
+            log::error!("❌ Erreur lors de l'application des migrations SQLx standard: {}", e);
+            // On continue quand même, certaines migrations peuvent déjà être appliquées
+            log::warn!("⚠️ Continuation du démarrage malgré l'erreur de migration");
+        }
+    }
+
     // 🔄 Exécuter les migrations automatiques au démarrage
     yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
 

@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::{core::types::AppResult, services::video_generation_service::ProgressStep};
@@ -17,7 +17,7 @@ pub struct JobProgressStep {
     pub detail: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct VideoGenerationJob {
     pub job_id: Uuid,
     pub user_id: i32,
@@ -30,6 +30,26 @@ pub struct VideoGenerationJob {
     pub result_payload: Option<Value>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(FromRow)]
+struct JobIdRow {
+    job_id: Uuid,
+}
+
+#[derive(FromRow)]
+struct VideoGenerationJobRow {
+    job_id: Uuid,
+    user_id: i32,
+    service_id: Option<i32>,
+    product_index: Option<i32>,
+    status: String,
+    progress_steps: Option<Value>,
+    result_media_id: Option<i32>,
+    error_message: Option<String>,
+    result_payload: Option<Value>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
 }
 
 pub struct VideoGenerationJobService {
@@ -47,16 +67,16 @@ impl VideoGenerationJobService {
         service_id: i32,
         product_index: i32,
     ) -> AppResult<Uuid> {
-        let row = sqlx::query!(
+        let row: JobIdRow = sqlx::query_as(
             r#"
             INSERT INTO video_generation_jobs (user_id, service_id, product_index, status)
             VALUES ($1, $2, $3, 'queued')
-            RETURNING job_id AS "job_id: Uuid"
-            "#,
-            user_id,
-            service_id,
-            product_index
+            RETURNING job_id
+            "#
         )
+        .bind(user_id)
+        .bind(service_id)
+        .bind(product_index)
         .fetch_one(&self.pool)
         .await?;
 
@@ -64,15 +84,15 @@ impl VideoGenerationJobService {
     }
 
     pub async fn mark_running(&self, job_id: Uuid) -> AppResult<()> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE video_generation_jobs
             SET status = 'running',
                 updated_at = NOW()
             WHERE job_id = $1
-            "#,
-            job_id
+            "#
         )
+        .bind(job_id)
         .execute(&self.pool)
         .await?;
 
@@ -86,18 +106,18 @@ impl VideoGenerationJobService {
         steps: &[ProgressStep],
     ) -> AppResult<()> {
         let serialized_steps = self.serialize_steps(steps)?;
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE video_generation_jobs
             SET status = $2,
                 progress_steps = $3,
                 updated_at = NOW()
             WHERE job_id = $1
-            "#,
-            job_id,
-            status,
-            serialized_steps
+            "#
         )
+        .bind(job_id)
+        .bind(status)
+        .bind(serialized_steps)
         .execute(&self.pool)
         .await?;
 
@@ -112,7 +132,7 @@ impl VideoGenerationJobService {
         result_payload: &Value,
     ) -> AppResult<()> {
         let serialized_steps = self.serialize_steps(steps)?;
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE video_generation_jobs
             SET status = 'completed',
@@ -121,12 +141,12 @@ impl VideoGenerationJobService {
                 result_payload = $4,
                 updated_at = NOW()
             WHERE job_id = $1
-            "#,
-            job_id,
-            media_id,
-            serialized_steps,
-            result_payload
+            "#
         )
+        .bind(job_id)
+        .bind(media_id)
+        .bind(serialized_steps)
+        .bind(result_payload)
         .execute(&self.pool)
         .await?;
 
@@ -144,7 +164,7 @@ impl VideoGenerationJobService {
             None => None,
         };
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE video_generation_jobs
             SET status = 'failed',
@@ -153,11 +173,11 @@ impl VideoGenerationJobService {
                 result_payload = NULL,
                 updated_at = NOW()
             WHERE job_id = $1
-            "#,
-            job_id,
-            error_message,
-            serialized_steps
+            "#
         )
+        .bind(job_id)
+        .bind(error_message)
+        .bind(serialized_steps)
         .execute(&self.pool)
         .await?;
 
@@ -165,25 +185,25 @@ impl VideoGenerationJobService {
     }
 
     pub async fn get_job(&self, job_id: Uuid) -> AppResult<Option<VideoGenerationJob>> {
-        let row = sqlx::query!(
+        let row: Option<VideoGenerationJobRow> = sqlx::query_as(
             r#"
             SELECT
-                job_id           AS "job_id: Uuid",
+                job_id,
                 user_id,
-                service_id       AS "service_id: Option<i32>",
-                product_index    AS "product_index: Option<i32>",
+                service_id,
+                product_index,
                 status,
-                progress_steps   AS "progress_steps: Option<serde_json::Value>",
-                result_media_id  AS "result_media_id: Option<i32>",
-                error_message    AS "error_message: Option<String>",
-                result_payload   AS "result_payload: Option<serde_json::Value>",
-                created_at       AS "created_at: DateTime<Utc>",
-                updated_at       AS "updated_at: DateTime<Utc>"
+                progress_steps,
+                result_media_id,
+                error_message,
+                result_payload,
+                created_at,
+                updated_at
             FROM video_generation_jobs
             WHERE job_id = $1
-            "#,
-            job_id
+            "#
         )
+        .bind(job_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -196,13 +216,13 @@ impl VideoGenerationJobService {
             Ok(Some(VideoGenerationJob {
                 job_id: row.job_id,
                 user_id: row.user_id,
-                service_id: row.service_id.and_then(|value| value),
-                product_index: row.product_index.and_then(|value| value),
+                service_id: row.service_id,
+                product_index: row.product_index,
                 status: row.status,
                 progress_steps: steps,
-                result_media_id: row.result_media_id.and_then(|value| value),
-                error_message: row.error_message.and_then(|value| value),
-                result_payload: row.result_payload.and_then(|value| value),
+                result_media_id: row.result_media_id,
+                error_message: row.error_message,
+                result_payload: row.result_payload,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             }))
