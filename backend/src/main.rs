@@ -19,28 +19,61 @@ use yukpomnang_backend::tasks;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Installer un panic hook pour capturer les panics et les logger proprement
+    std::panic::set_hook(Box::new(|panic_info| {
+        let location = panic_info.location()
+            .map(|loc| format!("{}:{}:{}", loc.file(), loc.line(), loc.column()))
+            .unwrap_or_else(|| "unknown location".to_string());
+        
+        let message = panic_info.payload()
+            .downcast_ref::<&str>()
+            .copied()
+            .or_else(|| panic_info.payload().downcast_ref::<String>().map(|s| s.as_str()))
+            .unwrap_or("unknown panic message");
+        
+        log::error!(
+            "🚨 PANIC détecté à {}: {}",
+            location,
+            message
+        );
+        eprintln!("🚨 PANIC: {} ({})", message, location);
+    }));
+    
     dotenv().ok();
     yukpomnang_backend::init_logging();
 
-    let db_url = env::var("DATABASE_URL")?;
+    let db_url = env::var("DATABASE_URL")
+        .map_err(|e| {
+            log::error!("❌ DATABASE_URL manquante ou invalide: {}", e);
+            e
+        })?;
     let timeout_config = TimeoutConfig::from_env();
 
     let upload_storage_path =
         env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "/var/data/uploads".to_string());
     if let Err(err) = fs::create_dir_all(&upload_storage_path) {
+        log::warn!("⚠️ Impossible de créer le dossier des uploads ({upload_storage_path}): {err}");
         eprintln!("⚠️ Impossible de créer le dossier des uploads ({upload_storage_path}): {err}");
     }
     if let Err(err) = fs::create_dir_all(Path::new(&upload_storage_path).join("tmp")) {
+        log::warn!("⚠️ Impossible de créer le dossier temporaire des uploads: {err}");
         eprintln!("⚠️ Impossible de créer le dossier temporaire des uploads: {err}");
     }
 
+    log::info!("🔌 Connexion à la base de données PostgreSQL...");
     let pg_pool = PgPoolOptions::new()
         .max_connections(10) // Augmenté de 5 à 10 pour de meilleures performances
         .acquire_timeout(timeout_config.get_database_timeout())
         .idle_timeout(Some(std::time::Duration::from_secs(600))) // 10 minutes
         .max_lifetime(Some(std::time::Duration::from_secs(1800))) // 30 minutes
         .connect(&db_url)
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!("❌ Impossible de se connecter à PostgreSQL: {}", e);
+            log::error!("   URL utilisée: {}...", db_url.chars().take(30).collect::<String>());
+            e
+        })?;
+    log::info!("✅ Connexion PostgreSQL établie");
 
     // 🔄 Exécuter les migrations SQLx standard au démarrage
     log::info!("🚀 Application des migrations SQLx standard...");
@@ -58,7 +91,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mongo_url =
         env::var("MONGODB_URL").unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
-    let mongo_client = MongoClient::with_uri_str(&mongo_url).await?;
+    log::info!("🔌 Connexion à MongoDB...");
+    let mongo_client = MongoClient::with_uri_str(&mongo_url)
+        .await
+        .map_err(|e| {
+            log::error!("❌ Impossible de créer le client MongoDB: {}", e);
+            e
+        })?;
+    log::info!("✅ Client MongoDB initialisé");
 
     // Configuration Redis avec test de connexion
     let redis_url =
@@ -208,7 +248,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(app_state.clone());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
-    println!("?? Serveur lanc? sur http://{}", addr);
+    log::info!("✅ Serveur lance sur http://{}", addr);
+    println!("✅ Serveur lance sur http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     serve(listener, app).await?;
