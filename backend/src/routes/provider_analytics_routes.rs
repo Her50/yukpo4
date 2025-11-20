@@ -18,12 +18,12 @@ use crate::{
 
 pub fn provider_analytics_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/api/provider/:provider_id/analytics/orders", get(get_order_stats))
-        .route("/api/provider/:provider_id/analytics/preparation-time", get(get_preparation_time_stats))
-        .route("/api/provider/:provider_id/analytics/rejections", get(get_rejection_stats))
-        .route("/api/provider/:provider_id/analytics/cancellations", get(get_cancellation_stats))
-        .route("/api/provider/:provider_id/analytics/product-performance", get(get_product_performance))
-        .route("/api/provider/:provider_id/analytics/dashboard", get(get_dashboard_analytics))
+        .route("/api/provider/{provider_id}/analytics/orders", get(get_order_stats))
+        .route("/api/provider/{provider_id}/analytics/preparation-time", get(get_preparation_time_stats))
+        .route("/api/provider/{provider_id}/analytics/rejections", get(get_rejection_stats))
+        .route("/api/provider/{provider_id}/analytics/cancellations", get(get_cancellation_stats))
+        .route("/api/provider/{provider_id}/analytics/product-performance", get(get_product_performance))
+        .route("/api/provider/{provider_id}/analytics/dashboard", get(get_dashboard_analytics))
         .with_state(state)
 }
 
