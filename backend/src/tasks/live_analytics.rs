@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
@@ -19,16 +20,28 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
     tokio::spawn(async move {
         let mut ticker = tokio::time::interval(Duration::from_secs(SYNC_INTERVAL_SECS));
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        
+        // Flag partagé pour limiter la verbosité des logs de connexion
+        let connection_error_logged = Arc::new(AtomicBool::new(false));
 
         loop {
             ticker.tick().await;
             if let Err(err) = sync_live_analytics(worker_state.clone()).await {
-                // Logger en DEBUG si c'est une erreur de connexion (service non disponible)
+                // Logger une seule fois si c'est une erreur de connexion (service non disponible)
                 let err_str = format!("{err:?}");
                 if err_str.contains("Connection refused") || err_str.contains("tcp connect error") {
-                    log::debug!("Live analytics sync failed (service non disponible): {err:?}");
+                    if !connection_error_logged.swap(true, Ordering::Relaxed) {
+                        log::info!("ℹ️ LiveKit non disponible (service optionnel). Synchronisation analytics désactivée.");
+                    }
+                    // Ignorer les erreurs de connexion répétées
+                    continue;
                 } else {
                     log::warn!("Live analytics sync failed: {err:?}");
+                }
+            } else {
+                // Si la connexion réussit après une erreur, réinitialiser le flag
+                if connection_error_logged.swap(false, Ordering::Relaxed) {
+                    log::info!("✅ LiveKit disponible. Synchronisation analytics activée.");
                 }
             }
         }
@@ -86,12 +99,21 @@ async fn list_livekit_rooms(
     let token = generate_server_access_token(api_key, api_secret).map_err(|err| anyhow!(err))?;
 
     let response = client
-        .post(list_endpoint)
+        .post(&list_endpoint)
         .bearer_auth(token)
         .json(&serde_json::json!({}))
+        .timeout(Duration::from_secs(5))
         .send()
         .await
-        .context("appel ListRooms")?;
+        .map_err(|e| {
+            // Améliorer le message d'erreur pour les connexions refusées
+            let err_msg = format!("{}", e);
+            if err_msg.contains("Connection refused") || err_msg.contains("tcp connect error") {
+                anyhow::anyhow!("LiveKit service non disponible: connexion refusée")
+            } else {
+                anyhow::anyhow!(e).context("appel ListRooms")
+            }
+        })?;
 
     let status = response.status();
     if status == StatusCode::UNAUTHORIZED {

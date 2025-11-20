@@ -80,7 +80,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     (client, true)
                 }
                 Ok(Err(e)) => {
-                    log::warn!("⚠️ Redis URL configurée mais connexion impossible: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
+                    // Ne logger qu'en INFO pour les erreurs de connexion Redis (service optionnel)
+                    let err_msg = format!("{}", e);
+                    if err_msg.contains("Name or service not known") || err_msg.contains("Connection refused") {
+                        log::info!("ℹ️ Redis non disponible (service optionnel). WebSocket de livraison fonctionnera sans Redis.");
+                    } else {
+                        log::warn!("⚠️ Redis URL configurée mais connexion impossible: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
+                    }
                     // Créer un client factice pour les autres services qui peuvent gérer l'absence de Redis
                     let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
                         RedisClient::open("redis://localhost:9999/0")
@@ -89,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     (dummy_client, false)
                 }
                 Err(e) => {
-                    log::warn!("⚠️ Redis URL configurée mais timeout de connexion: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
+                    log::info!("ℹ️ Redis timeout de connexion (service optionnel). WebSocket de livraison fonctionnera sans Redis.");
                     // Créer un client factice pour les autres services qui peuvent gérer l'absence de Redis
                     let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
                         RedisClient::open("redis://localhost:9999/0")

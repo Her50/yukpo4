@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
@@ -19,11 +20,17 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
     // Exécuter une première fois immédiatement
     let immediate_state = state.clone();
     tokio::spawn(async move {
+        // Flag partagé pour limiter la verbosité des logs de connexion
+        let connection_error_logged = Arc::new(AtomicBool::new(false));
+        let connection_error_logged_first = connection_error_logged.clone();
+        
         if let Err(err) = cleanup_once(immediate_state.clone()).await {
-            // Logger en DEBUG si c'est une erreur de connexion (service non disponible)
+            // Logger une seule fois si c'est une erreur de connexion (service non disponible)
             let err_str = format!("{err:?}");
             if err_str.contains("Connection refused") || err_str.contains("tcp connect error") {
-                log::debug!("LiveKit cleanup initial failed (service non disponible): {err:?}");
+                if !connection_error_logged_first.swap(true, Ordering::Relaxed) {
+                    log::info!("ℹ️ LiveKit non disponible (service optionnel). Nettoyage automatique désactivé.");
+                }
             } else {
                 log::warn!("LiveKit cleanup initial failed: {err:?}");
             }
@@ -35,12 +42,18 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
         loop {
             ticker.tick().await;
             if let Err(err) = cleanup_once(immediate_state.clone()).await {
-                // Logger en DEBUG si c'est une erreur de connexion (service non disponible)
+                // Ne plus logger les erreurs de connexion répétées
                 let err_str = format!("{err:?}");
                 if err_str.contains("Connection refused") || err_str.contains("tcp connect error") {
-                    log::debug!("LiveKit cleanup failed (service non disponible): {err:?}");
+                    // Ignorer les erreurs de connexion répétées (déjà loggé une fois)
+                    continue;
                 } else {
                     log::warn!("LiveKit cleanup failed: {err:?}");
+                }
+            } else {
+                // Si la connexion réussit après une erreur, réinitialiser le flag
+                if connection_error_logged.swap(false, Ordering::Relaxed) {
+                    log::info!("✅ LiveKit disponible. Nettoyage automatique activé.");
                 }
             }
         }
@@ -79,12 +92,21 @@ async fn cleanup_rooms(client: &Client, config: &LiveStreamingConfig) -> Result<
     let list_endpoint = format!("{}/twirp/livekit.RoomService/ListRooms", base_url);
     let token = generate_server_access_token(api_key, api_secret).map_err(|err| anyhow!(err))?;
     let response = client
-        .post(list_endpoint)
+        .post(&list_endpoint)
         .bearer_auth(token)
         .json(&json!({}))
+        .timeout(Duration::from_secs(5))
         .send()
         .await
-        .context("appel ListRooms")?;
+        .map_err(|e| {
+            // Améliorer le message d'erreur pour les connexions refusées
+            let err_msg = format!("{}", e);
+            if err_msg.contains("Connection refused") || err_msg.contains("tcp connect error") {
+                anyhow!("LiveKit service non disponible: connexion refusée")
+            } else {
+                anyhow!(e).context("appel ListRooms")
+            }
+        })?;
 
     let status = response.status();
     if status == StatusCode::UNAUTHORIZED {
