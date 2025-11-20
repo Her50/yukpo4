@@ -26,8 +26,11 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
         
         if let Err(err) = cleanup_once(immediate_state.clone()).await {
             // Logger une seule fois si c'est une erreur de connexion (service non disponible)
-            let err_str = format!("{err:?}");
-            if err_str.contains("Connection refused") || err_str.contains("tcp connect error") {
+            let err_str = format!("{err:?}").to_lowercase();
+            if err_str.contains("connection refused") 
+                || err_str.contains("connexion refusée")
+                || err_str.contains("tcp connect error")
+                || err_str.contains("service non disponible") {
                 if !connection_error_logged_first.swap(true, Ordering::Relaxed) {
                     log::info!("ℹ️ LiveKit non disponible (service optionnel). Nettoyage automatique désactivé.");
                 }
@@ -43,8 +46,11 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
             ticker.tick().await;
             if let Err(err) = cleanup_once(immediate_state.clone()).await {
                 // Ne plus logger les erreurs de connexion répétées
-                let err_str = format!("{err:?}");
-                if err_str.contains("Connection refused") || err_str.contains("tcp connect error") {
+                let err_str = format!("{err:?}").to_lowercase();
+                if err_str.contains("connection refused") 
+                    || err_str.contains("connexion refusée")
+                    || err_str.contains("tcp connect error")
+                    || err_str.contains("service non disponible") {
                     // Ignorer les erreurs de connexion répétées (déjà loggé une fois)
                     continue;
                 } else {

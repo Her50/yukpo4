@@ -28,8 +28,11 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
             ticker.tick().await;
             if let Err(err) = sync_live_analytics(worker_state.clone()).await {
                 // Logger une seule fois si c'est une erreur de connexion (service non disponible)
-                let err_str = format!("{err:?}");
-                if err_str.contains("Connection refused") || err_str.contains("tcp connect error") {
+                let err_str = format!("{err:?}").to_lowercase();
+                if err_str.contains("connection refused") 
+                    || err_str.contains("connexion refusée")
+                    || err_str.contains("tcp connect error")
+                    || err_str.contains("service non disponible") {
                     if !connection_error_logged.swap(true, Ordering::Relaxed) {
                         log::info!("ℹ️ LiveKit non disponible (service optionnel). Synchronisation analytics désactivée.");
                     }
