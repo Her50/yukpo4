@@ -27,6 +27,26 @@ pub enum DistanceSource {
     GoogleMaps,
 }
 
+/// ✅ NOUVEAU : Instructions de navigation pour guider le coursier
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NavigationDirections {
+    pub total_distance_meters: f64,
+    pub total_duration_seconds: f64,
+    pub steps: Vec<NavigationStep>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub overview_polyline: Option<String>, // Polyline encodée pour affichage sur carte
+    pub source: DistanceSource,
+}
+
+/// ✅ NOUVEAU : Étape de navigation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NavigationStep {
+    pub instructions: String,
+    pub distance_meters: f64,
+    pub duration_seconds: f64,
+    pub location: (f64, f64), // Coordonnées GPS de l'étape
+}
+
 /// Service de matching géographique optimisé
 pub struct GeographicMatchingService {
     pool: PgPool,
@@ -189,6 +209,145 @@ impl GeographicMatchingService {
 
         Err(AppError::Internal(
             "Réponse Google Maps invalide".to_string(),
+        ))
+    }
+
+    /// ✅ NOUVEAU : Obtient les directions de navigation avec Google Maps Directions API
+    /// Retourne les instructions de route pour guider le coursier
+    pub async fn get_navigation_directions(
+        &self,
+        origin: (f64, f64),
+        destination: (f64, f64),
+        waypoints: Option<Vec<(f64, f64)>>,
+    ) -> AppResult<NavigationDirections> {
+        let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
+            .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;
+
+        // Construire l'URL avec waypoints si fournis
+        let mut url = format!(
+            "https://maps.googleapis.com/maps/api/directions/json?origin={},{}&destination={},{}&key={}&language=fr&units=metric",
+            origin.0, origin.1, destination.0, destination.1, api_key
+        );
+
+        if let Some(waypoints) = waypoints {
+            if !waypoints.is_empty() {
+                let waypoints_str = waypoints
+                    .iter()
+                    .map(|(lat, lng)| format!("{},{}", lat, lng))
+                    .collect::<Vec<_>>()
+                    .join("|");
+                url.push_str(&format!("&waypoints={}", waypoints_str));
+            }
+        }
+
+        let client = reqwest::Client::new();
+        let response = client
+            .get(&url)
+            .timeout(Duration::from_secs(10))
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur requête Google Maps Directions: {}", e)))?;
+
+        let data: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur parsing Google Maps Directions: {}", e)))?;
+
+        // Parser la réponse Google Maps Directions
+        if let Some(status) = data.get("status").and_then(|s| s.as_str()) {
+            if status != "OK" {
+                return Err(AppError::Internal(format!(
+                    "Google Maps Directions API error: {}",
+                    status
+                )));
+            }
+
+            if let Some(routes) = data.get("routes").and_then(|r| r.as_array()) {
+                if let Some(route) = routes.first() {
+                    let legs = route
+                        .get("legs")
+                        .and_then(|l| l.as_array())
+                        .ok_or_else(|| AppError::Internal("Aucune étape trouvée dans la route".to_string()))?;
+
+                    let mut total_distance_meters = 0.0;
+                    let mut total_duration_seconds = 0.0;
+                    let mut steps = Vec::new();
+
+                    for leg in legs {
+                        if let Some(distance) = leg.get("distance").and_then(|d| d.get("value")).and_then(|v| v.as_f64()) {
+                            total_distance_meters += distance;
+                        }
+                        if let Some(duration) = leg.get("duration").and_then(|d| d.get("value")).and_then(|v| v.as_f64()) {
+                            total_duration_seconds += duration;
+                        }
+
+                        // Extraire les instructions de chaque étape
+                        if let Some(leg_steps) = leg.get("steps").and_then(|s| s.as_array()) {
+                            for step in leg_steps {
+                                if let Some(html_instructions) = step.get("html_instructions").and_then(|i| i.as_str()) {
+                                    // Nettoyer les balises HTML
+                                    let clean_instructions = html_instructions
+                                        .replace("<b>", "")
+                                        .replace("</b>", "")
+                                        .replace("<div style=\"font-size:0.9em\">", "")
+                                        .replace("</div>", "")
+                                        .trim()
+                                        .to_string();
+
+                                    let step_distance = step
+                                        .get("distance")
+                                        .and_then(|d| d.get("value"))
+                                        .and_then(|v| v.as_f64())
+                                        .unwrap_or(0.0);
+
+                                    let step_duration = step
+                                        .get("duration")
+                                        .and_then(|d| d.get("value"))
+                                        .and_then(|v| v.as_f64())
+                                        .unwrap_or(0.0);
+
+                                    // Extraire les coordonnées de l'étape
+                                    let end_location = step.get("end_location");
+                                    let step_lat = end_location
+                                        .and_then(|l| l.get("lat"))
+                                        .and_then(|v| v.as_f64())
+                                        .unwrap_or(destination.0);
+                                    let step_lng = end_location
+                                        .and_then(|l| l.get("lng"))
+                                        .and_then(|v| v.as_f64())
+                                        .unwrap_or(destination.1);
+
+                                    steps.push(NavigationStep {
+                                        instructions: clean_instructions,
+                                        distance_meters: step_distance,
+                                        duration_seconds: step_duration,
+                                        location: (step_lat, step_lng),
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    // Extraire le polyline de la route pour l'affichage sur la carte
+                    let overview_polyline = route
+                        .get("overview_polyline")
+                        .and_then(|p| p.get("points"))
+                        .and_then(|p| p.as_str())
+                        .map(|s| s.to_string());
+
+                    return Ok(NavigationDirections {
+                        total_distance_meters,
+                        total_duration_seconds,
+                        steps,
+                        overview_polyline,
+                        source: DistanceSource::GoogleMaps,
+                    });
+                }
+            }
+        }
+
+        Err(AppError::Internal(
+            "Réponse Google Maps Directions invalide".to_string(),
         ))
     }
 

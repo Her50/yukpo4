@@ -10,6 +10,7 @@ use axum::{
     routing::{delete, get, post},
     Json, Router,
 };
+use serde::Deserialize;
 use chrono::{DateTime, Utc};
 use futures::{SinkExt, StreamExt};
 use bigdecimal::ToPrimitive;
@@ -151,6 +152,7 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/delivery/client-order", post(create_client_order))
         .route("/delivery/estimate-costs", post(estimate_delivery_costs)) // ✅ Phase 7 - Amélioration 23
         .route("/delivery/{id}", get(get_delivery_summary))
+        .route("/delivery/{id}/navigation", get(get_courier_navigation)) // ✅ NOUVEAU : Navigation pour coursier
         .route("/delivery/{id}/status", post(update_delivery_status))
         .route("/delivery/{id}/confirm-proximity", post(confirm_proximity_suggestion)) // ✅ Phase 6 - Amélioration 20
         .route("/delivery/{id}/pricing", post(upsert_pricing))
@@ -1738,6 +1740,120 @@ async fn upsert_courier_asset(
         .await?;
 
     Ok(Json(serde_json::json!({ "asset": asset })))
+}
+
+/// ✅ NOUVEAU : GET /api/delivery/{id}/navigation - Obtenir les instructions de navigation pour le coursier
+/// Utilise Google Maps Directions API pour guider le coursier
+async fn get_courier_navigation(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(delivery_id): Path<Uuid>,
+    Query(params): Query<serde_json::Value>, // Pour courier_lat et courier_lng optionnels
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let summary = service.get_delivery_summary(delivery_id).await?;
+
+    // Vérifier que l'utilisateur est le coursier assigné
+    let courier = service
+        .repository()
+        .find_courier_by_user(user.id)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Coursier introuvable pour cet utilisateur".into()))?;
+
+    if summary.courier_id != Some(courier.id) {
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas le coursier assigné à cette livraison".into(),
+        ));
+    }
+
+    // Récupérer la position actuelle du coursier (optionnel, depuis query params ou dernière position connue)
+    let courier_current_lat = params
+        .get("courier_lat")
+        .and_then(|v| v.as_f64());
+    let courier_current_lng = params
+        .get("courier_lng")
+        .and_then(|v| v.as_f64());
+
+    // Déterminer l'origine et la destination selon le statut de la livraison
+    let (origin, destination, navigation_type) = match summary.status {
+        DeliveryStatus::EnRoutePickup | DeliveryStatus::AwaitingCourierConfirmation => {
+            // Le coursier va vers le point de pickup
+            let origin = if let (Some(lat), Some(lng)) = (courier_current_lat, courier_current_lng) {
+                (lat, lng)
+            } else {
+                // Fallback : utiliser la position du coursier depuis la base de données
+                // TODO: Récupérer depuis courier_locations ou dernière position tracking
+                return Err(AppError::BadRequest(
+                    "Position actuelle du coursier requise (courier_lat, courier_lng)".into(),
+                ));
+            };
+            let destination = (summary.pickup.latitude, summary.pickup.longitude);
+            (origin, destination, "pickup")
+        }
+        DeliveryStatus::PickedUp | DeliveryStatus::EnRouteDelivery => {
+            // Le coursier va vers le point de dropoff
+            let origin = if let (Some(lat), Some(lng)) = (courier_current_lat, courier_current_lng) {
+                (lat, lng)
+            } else {
+                // Utiliser le pickup comme origine si position actuelle non disponible
+                (summary.pickup.latitude, summary.pickup.longitude)
+            };
+            let destination = (summary.dropoff.latitude, summary.dropoff.longitude);
+            (origin, destination, "delivery")
+        }
+        _ => {
+            return Err(AppError::BadRequest(
+                format!("Navigation non disponible pour le statut: {:?}", summary.status).into(),
+            ));
+        }
+    };
+
+    // Obtenir les directions depuis GeographicMatchingService
+    let geo_service = state
+        .geographic_matching
+        .as_ref()
+        .ok_or_else(|| AppError::Internal("Service géographique non disponible".into()))?;
+
+    let directions = geo_service
+        .get_navigation_directions(origin, destination, None)
+        .await?;
+
+    Ok(Json(json!({
+        "delivery_id": delivery_id,
+        "navigation_type": navigation_type, // "pickup" ou "delivery"
+        "origin": {
+            "latitude": origin.0,
+            "longitude": origin.1,
+            "address": if navigation_type == "pickup" {
+                summary.pickup_address.clone()
+            } else {
+                None
+            }
+        },
+        "destination": {
+            "latitude": destination.0,
+            "longitude": destination.1,
+            "address": if navigation_type == "delivery" {
+                summary.dropoff_address.clone()
+            } else {
+                summary.pickup_address.clone()
+            }
+        },
+        "directions": {
+            "total_distance_meters": directions.total_distance_meters,
+            "total_duration_seconds": directions.total_duration_seconds,
+            "total_distance_km": (directions.total_distance_meters / 1000.0).round() as i32,
+            "total_duration_minutes": (directions.total_duration_seconds / 60.0).round() as i32,
+            "steps": directions.steps,
+            "overview_polyline": directions.overview_polyline,
+            "source": match directions.source {
+                crate::services::geographic_matching_service::DistanceSource::GoogleMaps => "google_maps",
+                crate::services::geographic_matching_service::DistanceSource::Cache => "cache",
+                crate::services::geographic_matching_service::DistanceSource::Haversine => "haversine",
+            }
+        },
+        "delivery_status": format!("{:?}", summary.status),
+    })))
 }
 
 async fn get_delivery_summary(

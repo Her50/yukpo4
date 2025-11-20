@@ -676,7 +676,6 @@ impl SimilarProductsService {
         // haversine_distance retourne en mètres, convertir en km
         haversine_distance((lat1, lon1), (lat2, lon2)) / 1000.0
     }
-    }
 
     /// Fallback : recherche basique si autocomplete_characteristics n'est pas disponible
     async fn find_similar_products_fallback(
