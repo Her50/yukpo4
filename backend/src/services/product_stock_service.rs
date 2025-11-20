@@ -212,7 +212,15 @@ impl ProductStockService {
         );
 
         // Vérifier la disponibilité du stock
-        let stock = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct StockRow {
+            id: i32,
+            quantity_available: i32,
+            quantity_reserved: i32,
+            is_available: bool,
+        }
+        
+        let stock: Option<StockRow> = sqlx::query_as(
             r#"
             SELECT 
                 id,
@@ -223,9 +231,9 @@ impl ProductStockService {
             WHERE product_delivery_config_id = $1 
             AND (storage_location_id = $2 OR (storage_location_id IS NULL AND $2 IS NULL))
             "#,
-            product_delivery_config_id,
-            storage_location_id
         )
+        .bind(product_delivery_config_id)
+        .bind(storage_location_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -256,7 +264,7 @@ impl ProductStockService {
         let now = Utc::now();
         let expires_at = now + chrono::Duration::minutes(request.expires_in_minutes as i64);
 
-        let reservation_id = sqlx::query_scalar!(
+        let reservation_id: Uuid = sqlx::query_scalar::<_, Uuid>(
             r#"
             INSERT INTO stock_reservations (
                 order_id,
@@ -267,16 +275,16 @@ impl ProductStockService {
             VALUES ($1, $2, $3, $4)
             RETURNING id
             "#,
-            request.order_id,
-            stock.id,
-            request.quantity,
-            expires_at
         )
+        .bind(request.order_id)
+        .bind(stock.id)
+        .bind(request.quantity)
+        .bind(expires_at)
         .fetch_one(&self.pool)
         .await?;
 
         // Mettre à jour la quantité réservée
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE product_stock_locations
             SET 
@@ -284,9 +292,9 @@ impl ProductStockService {
                 updated_at = NOW()
             WHERE id = $2
             "#,
-            request.quantity,
-            stock.id
         )
+        .bind(request.quantity)
+        .bind(stock.id)
         .execute(&self.pool)
         .await?;
 
@@ -296,7 +304,18 @@ impl ProductStockService {
         );
 
         // Récupérer la réservation créée
-        let row = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct ReservationRow {
+            id: Uuid,
+            order_id: Uuid,
+            stock_location_id: i32,
+            quantity: i32,
+            reserved_at: DateTime<Utc>,
+            released_at: Option<DateTime<Utc>>,
+            expires_at: DateTime<Utc>,
+        }
+        
+        let row: ReservationRow = sqlx::query_as(
             r#"
             SELECT 
                 id,
@@ -309,8 +328,8 @@ impl ProductStockService {
             FROM stock_reservations
             WHERE id = $1
             "#,
-            reservation_id
         )
+        .bind(reservation_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -333,7 +352,14 @@ impl ProductStockService {
         );
 
         // Récupérer la réservation
-        let reservation = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct ReservationInfoRow {
+            stock_location_id: i32,
+            quantity: i32,
+            released_at: Option<DateTime<Utc>>,
+        }
+        
+        let reservation: Option<ReservationInfoRow> = sqlx::query_as(
             r#"
             SELECT 
                 stock_location_id,
@@ -342,8 +368,8 @@ impl ProductStockService {
             FROM stock_reservations
             WHERE id = $1
             "#,
-            reservation_id
         )
+        .bind(reservation_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -365,19 +391,19 @@ impl ProductStockService {
         }
 
         // Marquer la réservation comme libérée
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE stock_reservations
             SET released_at = NOW()
             WHERE id = $1
             "#,
-            reservation_id
         )
+        .bind(reservation_id)
         .execute(&self.pool)
         .await?;
 
         // Mettre à jour la quantité réservée
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE product_stock_locations
             SET 
@@ -385,9 +411,9 @@ impl ProductStockService {
                 updated_at = NOW()
             WHERE id = $2
             "#,
-            reservation.quantity,
-            reservation.stock_location_id
         )
+        .bind(reservation.quantity)
+        .bind(reservation.stock_location_id)
         .execute(&self.pool)
         .await?;
 
@@ -404,7 +430,14 @@ impl ProductStockService {
         let now = Utc::now();
 
         // Récupérer les réservations expirées
-        let expired = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct ExpiredReservationRow {
+            id: Uuid,
+            stock_location_id: i32,
+            quantity: i32,
+        }
+        
+        let expired: Vec<ExpiredReservationRow> = sqlx::query_as(
             r#"
             SELECT 
                 id,
@@ -414,8 +447,8 @@ impl ProductStockService {
             WHERE expires_at < $1
             AND released_at IS NULL
             "#,
-            now
         )
+        .bind(now)
         .fetch_all(&self.pool)
         .await?;
 
@@ -423,19 +456,19 @@ impl ProductStockService {
 
         for reservation in &expired {
             // Libérer chaque réservation
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE stock_reservations
                 SET released_at = NOW()
                 WHERE id = $1
                 "#,
-                reservation.id
             )
+            .bind(reservation.id)
             .execute(&self.pool)
             .await?;
 
             // Mettre à jour la quantité réservée
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE product_stock_locations
                 SET 
@@ -443,9 +476,9 @@ impl ProductStockService {
                     updated_at = NOW()
                 WHERE id = $2
                 "#,
-                reservation.quantity,
-                reservation.stock_location_id
             )
+            .bind(reservation.quantity)
+            .bind(reservation.stock_location_id)
             .execute(&self.pool)
             .await?;
         }
@@ -466,7 +499,12 @@ impl ProductStockService {
         product_delivery_config_id: i32,
         quantity: i32,
     ) -> AppResult<bool> {
-        let stock = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct AvailabilityRow {
+            total_available: Option<i64>,
+        }
+        
+        let stock: AvailabilityRow = sqlx::query_as(
             r#"
             SELECT 
                 SUM(quantity_available - quantity_reserved) as total_available
@@ -474,12 +512,12 @@ impl ProductStockService {
             WHERE product_delivery_config_id = $1
             AND is_available = TRUE
             "#,
-            product_delivery_config_id
         )
+        .bind(product_delivery_config_id)
         .fetch_one(&self.pool)
         .await?;
 
-        let total_available = stock.total_available.unwrap_or(0);
+        let total_available = stock.total_available.unwrap_or(0) as i32;
         Ok(total_available >= quantity)
     }
 
@@ -494,15 +532,15 @@ impl ProductStockService {
             product_delivery_config_id, storage_location_id
         );
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             DELETE FROM product_stock_locations
             WHERE product_delivery_config_id = $1
             AND storage_location_id = $2
             "#,
-            product_delivery_config_id,
-            storage_location_id
         )
+        .bind(product_delivery_config_id)
+        .bind(storage_location_id)
         .execute(&self.pool)
         .await?;
 

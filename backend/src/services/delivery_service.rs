@@ -3684,7 +3684,7 @@ impl DeliveryService {
         let filtered_candidates: Vec<_> = if let Some(_pref_type) = &preferred_vehicle_type_backend {
             candidates
                 .into_iter()
-                .filter(|candidate| {
+                .filter(|_candidate| {
                     // Vérifier si le coursier a un véhicule compatible
                     // Le type de véhicule du coursier est stocké dans courier_assets.engine_type
                     // Pour l'instant, on accepte tous les candidats et on priorise ceux avec le bon type
@@ -3717,10 +3717,10 @@ impl DeliveryService {
         let best = filtered_candidates
             .into_iter()
             .map(|candidate| {
-                let mut score = Self::compute_candidate_score(&candidate, passenger_mode);
+                let score = Self::compute_candidate_score(&candidate, passenger_mode);
                 
                 // ✅ NOUVEAU : Bonus de score si le type de véhicule correspond
-                if let Some(pref_type) = &preferred_vehicle_type_backend {
+                if let Some(_pref_type) = &preferred_vehicle_type_backend {
                     // TODO: Vérifier le type de véhicule du candidat et ajouter un bonus
                     // Pour l'instant, on garde le score tel quel
                 }

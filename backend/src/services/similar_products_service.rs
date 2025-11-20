@@ -725,47 +725,57 @@ impl SimilarProductsService {
         let current_weekday = now.weekday().num_days_from_sunday() as i32;
 
         // Recherche basique par nom et description
+        // Utiliser LATERAL JOIN pour éviter l'erreur "set-returning functions are not allowed in JOIN conditions"
         let similar_products = sqlx::query!(
             r#"
             SELECT DISTINCT
                 s.id as service_id,
-                (jsonb_array_elements(s.data->'produits')->>'index')::integer as product_index,
-                jsonb_array_elements(s.data->'produits')->>'nom' as product_name,
-                jsonb_array_elements(s.data->'produits')->>'description' as product_description,
-                jsonb_array_elements(s.data->'produits')->>'categorie_produit' as category,
-                (jsonb_array_elements(s.data->'produits')->>'prix')::text as price,
+                (product_elem->>'index')::integer as product_index,
+                product_elem->>'nom' as product_name,
+                product_elem->>'description' as product_description,
+                product_elem->>'categorie_produit' as category,
+                product_elem->>'prix' as price,
                 pdc.pickup_address,
                 pdc.is_immediately_available,
                 pdc.preparation_time_minutes,
                 pdc.availability_days,
                 (
                     CASE 
-                        WHEN jsonb_array_elements(s.data->'produits')->>'nom' ILIKE '%' || $3 || '%' THEN 0.8
-                        WHEN jsonb_array_elements(s.data->'produits')->>'description' ILIKE '%' || $3 || '%' THEN 0.6
-                        WHEN jsonb_array_elements(s.data->'produits')->>'categorie_produit' = $4 THEN 0.5
+                        WHEN product_elem->>'nom' ILIKE '%' || $3 || '%' THEN 0.8
+                        WHEN product_elem->>'description' ILIKE '%' || $3 || '%' THEN 0.6
+                        WHEN product_elem->>'categorie_produit' = $4 THEN 0.5
                         ELSE 0.3
                     END +
                     CASE 
                         WHEN $5 IS NOT NULL 
-                             AND jsonb_array_elements(s.data->'produits')->>'description' IS NOT NULL
+                             AND product_elem->>'description' IS NOT NULL
                         THEN similarity(
                             LOWER(COALESCE($5, '')),
-                            LOWER(COALESCE(jsonb_array_elements(s.data->'produits')->>'description', ''))
+                            LOWER(COALESCE(product_elem->>'description', ''))
                         ) * 0.4
                         ELSE 0.0
                     END
                 ) as similarity_score
             FROM services s
+            CROSS JOIN LATERAL jsonb_array_elements(
+                CASE 
+                    WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                    THEN s.data->'produits'
+                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                    THEN s.data->'produits'->'valeur'
+                    ELSE '[]'::jsonb
+                END
+            ) AS product_elem
             LEFT JOIN product_delivery_config pdc 
                 ON s.id = pdc.service_id 
-                AND (jsonb_array_elements(s.data->'produits')->>'index')::integer = pdc.product_index
+                AND (product_elem->>'index')::integer = pdc.product_index
             WHERE 
                 s.id != $1
                 AND s.is_active = TRUE
                 AND (
-                    jsonb_array_elements(s.data->'produits')->>'nom' ILIKE '%' || $3 || '%'
-                    OR jsonb_array_elements(s.data->'produits')->>'description' ILIKE '%' || $3 || '%'
-                    OR jsonb_array_elements(s.data->'produits')->>'categorie_produit' = $4
+                    product_elem->>'nom' ILIKE '%' || $3 || '%'
+                    OR product_elem->>'description' ILIKE '%' || $3 || '%'
+                    OR product_elem->>'categorie_produit' = $4
                 )
                 AND (
                     pdc.availability_days IS NULL 

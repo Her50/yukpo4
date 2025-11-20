@@ -873,8 +873,9 @@ async fn create_client_order(
     
     // ✅ NOUVEAU : Ajouter le type de véhicule préféré dans les métadonnées
     // Priorité : 1) Type choisi par le client, 2) Type requis par le produit
-    let final_vehicle_type = if let Some(preferred_vehicle_type) = payload.preferred_vehicle_type {
-        Some(preferred_vehicle_type)
+    let preferred_vehicle_type_clone = payload.preferred_vehicle_type.clone();
+    let final_vehicle_type = if let Some(ref preferred_vehicle_type) = payload.preferred_vehicle_type {
+        Some(preferred_vehicle_type.clone())
     } else if let Some(product_vehicle_type) = product_required_vehicle_type {
         Some(product_vehicle_type)
     } else {
@@ -904,7 +905,7 @@ async fn create_client_order(
         metadata["preferred_vehicle_type"] = serde_json::json!(vehicle_type);
         metadata["preferred_vehicle_type_backend"] = serde_json::json!(backend_vehicle_type);
         metadata["vehicle_type_source"] = serde_json::json!(
-            if payload.preferred_vehicle_type.is_some() { "client_choice" } else { "product_config" }
+            if preferred_vehicle_type_clone.is_some() { "client_choice" } else { "product_config" }
         );
     }
 
