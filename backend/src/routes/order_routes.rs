@@ -306,10 +306,11 @@ async fn get_similar_products(
         })
     })
     .fetch_optional(&state.pg)
-    .await?;
+    .await?
+    .flatten();
 
     let (client_lat, client_lng) = if let Some(gps) = client_gps {
-        (gps.latitude, gps.longitude)
+        (Some(gps.0), Some(gps.1))
     } else {
         (None, None)
     };

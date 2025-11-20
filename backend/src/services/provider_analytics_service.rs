@@ -181,13 +181,13 @@ impl ProviderAnalyticsService {
 
         Ok(ProviderOrderStats {
             provider_user_id,
-            total_orders: stats.total_orders as i32,
-            pending_orders: stats.pending_orders as i32,
-            validated_orders: stats.validated_orders as i32,
-            rejected_orders: stats.rejected_orders as i32,
-            cancelled_orders: stats.cancelled_orders as i32,
-            ready_orders: stats.ready_orders as i32,
-            delivered_orders: stats.delivered_orders as i32,
+            total_orders: stats.total_orders,
+            pending_orders: stats.pending_orders,
+            validated_orders: stats.validated_orders,
+            rejected_orders: stats.rejected_orders,
+            cancelled_orders: stats.cancelled_orders,
+            ready_orders: stats.ready_orders,
+            delivered_orders: stats.delivered_orders,
         })
     }
 
@@ -241,7 +241,7 @@ impl ProviderAnalyticsService {
             median_preparation_minutes: stats.median_preparation_minutes,
             min_preparation_minutes: stats.min_preparation_minutes,
             max_preparation_minutes: stats.max_preparation_minutes,
-            total_orders_with_preparation: stats.total_orders_with_preparation as i32,
+            total_orders_with_preparation: stats.total_orders_with_preparation,
         })
     }
 
@@ -252,7 +252,7 @@ impl ProviderAnalyticsService {
         period_start: DateTime<Utc>,
         period_end: DateTime<Utc>,
     ) -> AppResult<ProviderRejectionStats> {
-        let total_orders: i64 = sqlx::query_scalar(
+        let total_orders: i64 = sqlx::query_scalar::<_, i64>(
             r#"
             SELECT COUNT(*)::BIGINT
             FROM product_orders
@@ -265,10 +265,9 @@ impl ProviderAnalyticsService {
         .bind(period_start)
         .bind(period_end)
         .fetch_one(&self.pool)
-        .await?
-        .unwrap_or(0);
+        .await?;
 
-        let rejection_count: i64 = sqlx::query_scalar(
+        let rejection_count: i64 = sqlx::query_scalar::<_, i64>(
             r#"
             SELECT COUNT(*)::BIGINT
             FROM product_orders
@@ -282,8 +281,7 @@ impl ProviderAnalyticsService {
         .bind(period_start)
         .bind(period_end)
         .fetch_one(&self.pool)
-        .await?
-        .unwrap_or(0);
+        .await?;
 
         let rejection_rate = if total_orders > 0 {
             (rejection_count as f64 / total_orders as f64) * 100.0
@@ -318,7 +316,7 @@ impl ProviderAnalyticsService {
         .bind(period_end)
         .map(|row: sqlx::postgres::PgRow| RejectionReasonCount {
             reason: row.try_get::<String, _>("reason").unwrap_or_default(),
-            count: row.get::<i64, _>("count") as i32,
+            count: row.get::<i64, _>("count"),
         })
         .fetch_all(&self.pool)
         .await?;
@@ -338,7 +336,7 @@ impl ProviderAnalyticsService {
         period_start: DateTime<Utc>,
         period_end: DateTime<Utc>,
     ) -> AppResult<ProviderCancellationStats> {
-        let total_orders: i64 = sqlx::query_scalar(
+        let total_orders: i64 = sqlx::query_scalar::<_, i64>(
             r#"
             SELECT COUNT(*)::BIGINT
             FROM product_orders
@@ -351,8 +349,7 @@ impl ProviderAnalyticsService {
         .bind(period_start)
         .bind(period_end)
         .fetch_one(&self.pool)
-        .await?
-        .unwrap_or(0);
+        .await?;
 
         struct CancellationStatsRow {
             total_cancellations: i64,
@@ -400,10 +397,10 @@ impl ProviderAnalyticsService {
             provider_user_id,
             total_cancellations,
             cancellation_rate,
-            timeout_cancellations: stats.timeout_cancellations as i32,
-            rejected_cancellations: stats.rejected_cancellations as i32,
-            provider_cancelled: stats.provider_cancelled as i32,
-            courier_unavailable: stats.courier_unavailable as i32,
+            timeout_cancellations: stats.timeout_cancellations,
+            rejected_cancellations: stats.rejected_cancellations,
+            provider_cancelled: stats.provider_cancelled,
+            courier_unavailable: stats.courier_unavailable,
         })
     }
 

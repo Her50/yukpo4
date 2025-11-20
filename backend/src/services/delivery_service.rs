@@ -2269,7 +2269,7 @@ impl DeliveryService {
                 courier_notification_data["pickup"] = json!({
                     "latitude": summary.pickup.latitude,
                     "longitude": summary.pickup.longitude,
-                    "address": summary.pickup_address.clone()
+                    "address": summary.store_name.clone().or_else(|| summary.store_location.map(|_| "Adresse de collecte".to_string()))
                 });
                 courier_notification_data["dropoff"] = json!({
                     "latitude": summary.dropoff.latitude,
@@ -3385,7 +3385,7 @@ impl DeliveryService {
                         LIMIT 1
                         "#
                     )
-                    .bind(service.user_id)
+                    .bind(service_user_id)
                     .bind(dropoff_lat)
                     .bind(dropoff_lng)
                     .fetch_optional(self.repository.pool())
@@ -3681,7 +3681,7 @@ impl DeliveryService {
             .await?;
         
         // ✅ NOUVEAU : Filtrer les candidats par type de véhicule si spécifié
-        let filtered_candidates: Vec<_> = if let Some(pref_type) = preferred_vehicle_type_backend {
+        let filtered_candidates: Vec<_> = if let Some(_pref_type) = &preferred_vehicle_type_backend {
             candidates
                 .into_iter()
                 .filter(|candidate| {
@@ -3813,7 +3813,7 @@ impl DeliveryService {
                     "pickup": {
                         "latitude": summary.pickup.latitude,
                         "longitude": summary.pickup.longitude,
-                        "address": summary.pickup_address.clone()
+                        "address": summary.store_name.clone().or_else(|| summary.store_location.as_ref().map(|_| "Adresse de collecte".to_string()))
                     },
                     "dropoff": {
                         "latitude": summary.dropoff.latitude,

@@ -2916,7 +2916,7 @@ async fn verify_courier(
     let delivery = delivery.ok_or_else(|| AppError::NotFound("Livraison non trouvée".to_string()))?;
 
     // Vérifier si l'utilisateur est le prestataire (via product_orders)
-    let order = sqlx::query(
+    let order_provider_user_id: Option<i32> = sqlx::query_scalar::<_, i32>(
         r#"
         SELECT provider_user_id
         FROM product_orders
@@ -2925,15 +2925,10 @@ async fn verify_courier(
         "#,
     )
     .bind(delivery_id)
-    .map(|row: sqlx::postgres::PgRow| row.get::<i32, _>("provider_user_id"))
     .fetch_optional(&state.pg)
     .await?;
 
-    let provider_user_id = if let Some(order) = order {
-        order.provider_user_id
-    } else {
-        delivery.creator_id
-    };
+    let provider_user_id = order_provider_user_id.unwrap_or(delivery.creator_id);
 
     if user.id != provider_user_id {
         return Err(AppError::Unauthorized(

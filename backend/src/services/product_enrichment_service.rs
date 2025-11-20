@@ -114,7 +114,7 @@ impl ProductEnrichmentService {
             availability_days: Some(availability_days),
             pickup_availability_schedule: config.pickup_availability_schedule,
             pickup_address: config.pickup_address,
-            is_configured: config.is_configured,
+            is_configured: config.is_configured.unwrap_or(false),
             is_available_now,
         }))
     }

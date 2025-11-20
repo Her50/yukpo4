@@ -191,7 +191,7 @@ impl ProductStockService {
             quantity_reserved: row.get::<i32, _>("quantity_reserved"),
             is_available: row.get::<bool, _>("is_available"),
             updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
-            updated_by: row.get::<i32, _>("updated_by"),
+            updated_by: row.try_get::<Option<i32>, _>("updated_by").ok().flatten(),
         })
         .fetch_one(&self.pool)
         .await?;

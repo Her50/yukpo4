@@ -124,7 +124,7 @@ async fn recalculate_product_cancellation_stats(
     let period_start = Utc::now() - chrono::Duration::days(90);
 
     // Compter les commandes totales
-    let total_orders: i64 = sqlx::query_scalar(
+    let total_orders: i64 = sqlx::query_scalar::<_, i64>(
         r#"
         SELECT COUNT(*)::BIGINT
         FROM product_orders
@@ -137,8 +137,7 @@ async fn recalculate_product_cancellation_stats(
     .bind(product_index)
     .bind(period_start)
     .fetch_one(pool)
-    .await?
-    .unwrap_or(0);
+    .await?;
 
     if total_orders == 0 {
         // Pas de commandes, ne pas créer d'entrée
@@ -148,7 +147,7 @@ async fn recalculate_product_cancellation_stats(
     let total_orders_i32 = total_orders as i32;
 
     // Compter les annulations par type
-    let timeout_cancellations: i64 = sqlx::query_scalar(
+    let timeout_cancellations: i64 = sqlx::query_scalar::<_, i64>(
         r#"
         SELECT COUNT(*)::BIGINT
         FROM order_cancellations
@@ -164,10 +163,9 @@ async fn recalculate_product_cancellation_stats(
     .bind(product_index)
     .bind(period_start)
     .fetch_one(pool)
-    .await?
-    .unwrap_or(0);
+    .await?;
 
-    let rejected_cancellations: i64 = sqlx::query_scalar(
+    let rejected_cancellations: i64 = sqlx::query_scalar::<_, i64>(
         r#"
         SELECT COUNT(*)::BIGINT
         FROM order_cancellations
@@ -183,8 +181,7 @@ async fn recalculate_product_cancellation_stats(
     .bind(product_index)
     .bind(period_start)
     .fetch_one(pool)
-    .await?
-    .unwrap_or(0);
+    .await?;
 
     let total_cancellations = timeout_cancellations + rejected_cancellations;
 

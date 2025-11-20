@@ -162,7 +162,7 @@ impl DynamicPreparationTimeService {
 
         times.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        let count = times.len() as i32;
+        let count = times.len();
         let sum: f64 = times.iter().sum();
         let avg = sum / count as f64;
 
@@ -175,7 +175,7 @@ impl DynamicPreparationTimeService {
         };
 
         // Mettre à jour les stats
-        self.upsert_category_stats(category, avg, median, count).await?;
+        self.upsert_category_stats(category, avg, median, count as i32).await?;
 
         Ok(())
     }

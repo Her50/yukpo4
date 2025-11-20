@@ -226,28 +226,30 @@ impl CourierVerificationService {
         };
 
         // Vérifier si le code est expiré
-        if Utc::now() > verification.expires_at {
-            return Ok(CourierVerificationResult {
-                is_valid: false,
-                courier_id: Some(verification.courier_id),
-                courier_name: verification.nom_complet.or_else(|| {
-                    match (verification.nom, verification.prenom) {
-                        (Some(n), Some(p)) => Some(format!("{} {}", p, n)),
-                        (Some(n), None) => Some(n),
-                        (None, Some(p)) => Some(p),
-                        (None, None) => None,
-                    }
-                }),
-                delivery_id: Some(verification.delivery_id),
-                message: "Code de vérification expiré".to_string(),
-            });
+        if let Some(expires_at) = verification.expires_at {
+            if Utc::now() > expires_at {
+                return Ok(CourierVerificationResult {
+                    is_valid: false,
+                    courier_id: verification.courier_id,
+                    courier_name: verification.nom_complet.or_else(|| {
+                        match (verification.nom, verification.prenom) {
+                            (Some(n), Some(p)) => Some(format!("{} {}", p, n)),
+                            (Some(n), None) => Some(n),
+                            (None, Some(p)) => Some(p),
+                            (None, None) => None,
+                        }
+                    }),
+                    delivery_id: Some(verification.delivery_id),
+                    message: "Code de vérification expiré".to_string(),
+                });
+            }
         }
 
         // Vérifier si déjà vérifié
         if verification.verified_at.is_some() {
             return Ok(CourierVerificationResult {
                 is_valid: false,
-                courier_id: Some(verification.courier_id),
+                courier_id: verification.courier_id,
                 courier_name: verification.nom_complet.or_else(|| {
                     match (verification.nom, verification.prenom) {
                         (Some(n), Some(p)) => Some(format!("{} {}", p, n)),
@@ -264,7 +266,7 @@ impl CourierVerificationService {
         // Vérifier que le prestataire est bien le propriétaire de la livraison/commande
         let is_authorized = if let Some(order_id) = verification.order_id {
             // Vérifier via product_orders
-            let order_provider_id: Option<i32> = sqlx::query_scalar(
+            let order_provider_id: Option<i32> = sqlx::query_scalar::<_, i32>(
                 r#"
                 SELECT provider_user_id
                 FROM product_orders
@@ -280,7 +282,7 @@ impl CourierVerificationService {
                 .unwrap_or(false)
         } else {
             // Vérifier via deliveries (si pas de product_order)
-            let delivery_creator_id: Option<i32> = sqlx::query_scalar(
+            let delivery_creator_id: Option<i32> = sqlx::query_scalar::<_, i32>(
                 r#"
                 SELECT creator_id
                 FROM deliveries
@@ -331,13 +333,13 @@ impl CourierVerificationService {
         });
 
         info!(
-            "[CourierVerification] ✅ Coursier vérifié: courier_id={}, name={:?}",
+            "[CourierVerification] ✅ Coursier vérifié: courier_id={:?}, name={:?}",
             verification.courier_id, courier_name
         );
 
         Ok(CourierVerificationResult {
             is_valid: true,
-            courier_id: Some(verification.courier_id),
+            courier_id: verification.courier_id,
             courier_name,
             delivery_id: Some(verification.delivery_id),
             message: "Coursier vérifié avec succès".to_string(),
@@ -441,7 +443,7 @@ impl CourierVerificationService {
         delivery_id: Uuid,
         courier_id: i32,
     ) -> AppResult<bool> {
-        let verification: Option<i32> = sqlx::query_scalar(
+        let verification: Option<i32> = sqlx::query_scalar::<_, i32>(
             r#"
             SELECT courier_id
             FROM courier_verification_codes
