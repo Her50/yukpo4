@@ -122,6 +122,8 @@ struct ClientOrderPayload {
     metadata: Option<Value>,
     // ✅ NOUVEAU : ID de la conversation pour prix négociés
     conversation_id: Option<String>,
+    // ✅ NOUVEAU : Type de véhicule souhaité pour la livraison
+    preferred_vehicle_type: Option<String>, // 'bike', 'motorcycle', 'tricycle', 'car', 'pickup', 'van', 'truck', 'walking'
 }
 
 #[derive(Serialize)]
@@ -181,6 +183,7 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/wallet/debit", post(debit_wallet_for_delivery))
         .route("/wallet/refund", post(refund_wallet_for_delivery))
         .route("/courier/applications", post(submit_courier_application))
+        .route("/courier/me", get(get_my_courier_status)) // ✅ NOUVEAU : Vérifier statut coursier de l'utilisateur
         .route("/courier/{id}/assets", post(upsert_courier_asset))
         .route("/delivery/{id}/assign-courier", post(assign_courier)) // ✅ Phase 9 - Amélioration 28
         .route("/couriers/available", get(list_available_couriers)) // ✅ Phase 9 - Amélioration 28
@@ -267,7 +270,35 @@ async fn save_product_delivery_config(
     let is_complete = !payload.pickup_address.trim().is_empty()
         && payload.required_vehicle_type_id > 0
         && has_schedule;
+    
+    // ✅ NOUVEAU : Stocker le type de véhicule requis dans les métadonnées de la configuration
+    // On va utiliser un champ JSONB dans la table pour stocker les métadonnées additionnelles
+    // Pour l'instant, on peut le stocker dans pickup_availability_schedule ou créer un champ séparé
+    // Solution temporaire : stocker dans pickup_instructions ou créer un champ metadata
 
+    // ✅ NOUVEAU : Construire pickup_instructions avec le type de véhicule requis
+    let mut pickup_instructions_json = serde_json::json!({});
+    if let Some(instructions) = &payload.pickup_instructions {
+        // Si pickup_instructions est déjà un JSON, le parser
+        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(instructions) {
+            pickup_instructions_json = parsed;
+        } else {
+            // Sinon, créer un objet avec les instructions en texte
+            pickup_instructions_json["text"] = serde_json::json!(instructions);
+        }
+    }
+    
+    // Ajouter le type de véhicule requis dans les instructions JSON
+    if let Some(required_vehicle_type) = &payload.required_vehicle_type {
+        pickup_instructions_json["required_vehicle_type"] = serde_json::json!(required_vehicle_type);
+    }
+    
+    let pickup_instructions_final = if pickup_instructions_json.is_object() && !pickup_instructions_json.is_null() {
+        Some(pickup_instructions_json.to_string())
+    } else {
+        payload.pickup_instructions.clone()
+    };
+    
     // ✅ 5. Créer ou mettre à jour la configuration
     let config_row = sqlx::query(
         r#"
@@ -317,7 +348,7 @@ async fn save_product_delivery_config(
     .bind(payload.requires_isothermal.unwrap_or(false))
     .bind(payload.requires_fragile_handling.unwrap_or(false))
     .bind(&payload.pickup_availability_schedule)
-    .bind(payload.pickup_instructions.as_deref())
+    .bind(pickup_instructions_final.as_deref())
     .bind(payload.billing_mode.as_deref().unwrap_or("standard"))
     .bind(payload.billing_partner_label.as_deref())
     .bind(is_complete)
@@ -691,7 +722,7 @@ async fn create_client_order(
             "SELECT pickup_address, pickup_latitude, pickup_longitude, 
                     required_vehicle_type_id, weight_kg, volume_cm3,
                     requires_isothermal, requires_fragile_handling, is_configured,
-                    billing_mode
+                    billing_mode, pickup_instructions
              FROM product_delivery_config 
              WHERE service_id = $1 AND product_index = $2",
             payload.service_id,
@@ -699,6 +730,28 @@ async fn create_client_order(
         )
         .fetch_optional(&state.pg)
         .await?
+    } else {
+        None
+    };
+    
+    // ✅ NOUVEAU : Extraire le type de véhicule requis depuis la configuration
+    let product_required_vehicle_type: Option<String> = if let Some(config) = &delivery_config {
+        // Le type de véhicule peut être stocké dans pickup_instructions (temporaire)
+        // ou dans un champ metadata dédié (à implémenter)
+        // Pour l'instant, on peut le déduire de required_vehicle_type_id via une table de mapping
+        // ou le stocker dans pickup_instructions au format JSON
+        if let Some(instructions) = &config.pickup_instructions {
+            // Essayer de parser JSON depuis instructions
+            if let Ok(instructions_json) = serde_json::from_str::<serde_json::Value>(instructions) {
+                instructions_json.get("required_vehicle_type")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     } else {
         None
     };
@@ -817,8 +870,46 @@ async fn create_client_order(
         metadata["product_index"] = serde_json::json!(product_index);
     }
     metadata["order_source"] = serde_json::json!("client_direct");
+    
+    // ✅ NOUVEAU : Ajouter le type de véhicule préféré dans les métadonnées
+    // Priorité : 1) Type choisi par le client, 2) Type requis par le produit
+    let final_vehicle_type = if let Some(preferred_vehicle_type) = payload.preferred_vehicle_type {
+        Some(preferred_vehicle_type)
+    } else if let Some(product_vehicle_type) = product_required_vehicle_type {
+        Some(product_vehicle_type)
+    } else {
+        None
+    };
+    
+    if let Some(vehicle_type) = final_vehicle_type {
+        // Mapper les types du formulaire vers les types du backend
+        let vehicle_type_mapping: std::collections::HashMap<&str, &str> = [
+            ("bike", "velo_cargo"),
+            ("motorcycle", "moto"),
+            ("tricycle", "autre"), // Tricycle peut être mappé à "autre" ou créer un nouveau type
+            ("car", "voiture"),
+            ("pickup", "camionnette"),
+            ("van", "camionnette"),
+            ("truck", "camion_leger"),
+            ("walking", "pieton"),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+        
+        let backend_vehicle_type = vehicle_type_mapping
+            .get(vehicle_type.as_str())
+            .unwrap_or(&"autre");
+        
+        metadata["preferred_vehicle_type"] = serde_json::json!(vehicle_type);
+        metadata["preferred_vehicle_type_backend"] = serde_json::json!(backend_vehicle_type);
+        metadata["vehicle_type_source"] = serde_json::json!(
+            if payload.preferred_vehicle_type.is_some() { "client_choice" } else { "product_config" }
+        );
+    }
 
     // ✅ 7. Créer la livraison
+    // ✅ NOUVEAU : Le preferred_vehicle_type est déjà dans metadata (ajouté à l'étape 6)
     let params = CreateDeliveryParams {
         creator_id: user.id,
         parcel,
@@ -840,7 +931,7 @@ async fn create_client_order(
         }),
         distance_meters: None,
         estimated_duration_seconds: None,
-        metadata,
+        metadata, // ✅ Contient déjà preferred_vehicle_type et preferred_vehicle_type_backend
         initial_event_payload: serde_json::json!({
             "source": "client_order",
             "created_at": chrono::Utc::now().to_rfc3339(),
@@ -1694,6 +1785,37 @@ async fn submit_courier_application(
     Ok(Json(serde_json::json!({ "application": application })))
 }
 
+// ✅ NOUVEAU : Vérifier le statut coursier de l'utilisateur connecté
+async fn get_my_courier_status(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    
+    // Vérifier si l'utilisateur a un profil coursier
+    let courier = service.repository().find_courier_by_user(user.id).await?;
+    
+    // Vérifier si l'utilisateur a une candidature en cours
+    let application = service.repository().find_courier_application_by_user(user.id).await?;
+    
+    Ok(Json(json!({
+        "is_courier": courier.is_some(),
+        "courier": courier.map(|c| json!({
+            "id": c.id,
+            "status": format!("{:?}", c.status),
+            "rating_average": c.rating_average.to_f64().unwrap_or(0.0),
+            "rating_count": c.rating_count,
+        })),
+        "application": application.map(|a| json!({
+            "id": a.id,
+            "status": format!("{:?}", a.status),
+            "submitted_at": a.submitted_at,
+            "reviewed_at": a.reviewed_at,
+            "rejection_reason": a.rejection_reason,
+        })),
+    })))
+}
+
 #[derive(Deserialize)]
 struct CourierAssetPayload {
     engine_type: crate::models::delivery_model::DeliveryEngineType,
@@ -1823,7 +1945,7 @@ async fn get_courier_navigation(
         "origin": {
             "latitude": origin.0,
             "longitude": origin.1,
-            "address": None // pickup address récupéré depuis product_delivery_config si nécessaire
+            "address": None::<Option<String>> // pickup address récupéré depuis product_delivery_config si nécessaire
         },
         "destination": {
             "latitude": destination.0,
@@ -2794,15 +2916,16 @@ async fn verify_courier(
     let delivery = delivery.ok_or_else(|| AppError::NotFound("Livraison non trouvée".to_string()))?;
 
     // Vérifier si l'utilisateur est le prestataire (via product_orders)
-    let order = sqlx::query!(
+    let order = sqlx::query(
         r#"
         SELECT provider_user_id
         FROM product_orders
         WHERE delivery_id = $1
         LIMIT 1
         "#,
-        delivery_id
     )
+    .bind(delivery_id)
+    .map(|row: sqlx::postgres::PgRow| row.get::<i32, _>("provider_user_id"))
     .fetch_optional(&state.pg)
     .await?;
 
@@ -2843,21 +2966,21 @@ async fn get_verification_code(
     Path(delivery_id): Path<Uuid>,
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est le prestataire
-    let order = sqlx::query!(
+    let order = sqlx::query(
         r#"
         SELECT provider_user_id
         FROM product_orders
         WHERE delivery_id = $1
         LIMIT 1
         "#,
-        delivery_id
     )
+    .bind(delivery_id)
+    .map(|row: sqlx::postgres::PgRow| row.get::<i32, _>("provider_user_id"))
     .fetch_optional(&state.pg)
     .await?;
 
     let provider_user_id = order
-        .ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?
-        .provider_user_id;
+        .ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
 
     if user.id != provider_user_id {
         return Err(AppError::Unauthorized(

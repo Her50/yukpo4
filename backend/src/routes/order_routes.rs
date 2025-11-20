@@ -1,19 +1,17 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     response::Json,
     routing::{get, post},
     Extension, Router,
 };
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
-    core::types::{AppError, AppResult},
+    core::types::AppError,
     middlewares::jwt::AuthenticatedUser,
     services::{
         order_preparation_service::{CreateOrderRequest, OrderPreparationService, RejectOrderRequest, ValidateOrderRequest},
@@ -144,16 +142,17 @@ async fn validate_order(
     Json(payload): Json<ValidateOrderRequest>,
 ) -> Result<Json<Value>, AppError> {
     // Vérifier que l'utilisateur est le prestataire
-    let order = sqlx::query!(
+    let provider_user_id: Option<i32> = sqlx::query(
         "SELECT provider_user_id FROM product_orders WHERE id = $1",
-        order_id
     )
+    .bind(order_id)
+    .map(|row: sqlx::postgres::PgRow| row.get::<i32, _>("provider_user_id"))
     .fetch_optional(&state.pg)
     .await?;
 
-    let order = order.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
+    let provider_user_id = provider_user_id.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
 
-    if order.provider_user_id != user.id {
+    if provider_user_id != user.id {
         return Err(AppError::Unauthorized(
             "Vous n'êtes pas le prestataire de cette commande".to_string(),
         ));
@@ -208,10 +207,23 @@ async fn reject_order(
     Json(payload): Json<RejectOrderRequest>,
 ) -> Result<Json<Value>, AppError> {
     // Vérifier que l'utilisateur est le prestataire
-    let order = sqlx::query!(
+    struct OrderInfo {
+        provider_user_id: i32,
+        service_id: i32,
+        product_index: i32,
+        client_user_id: i32,
+    }
+    
+    let order: Option<OrderInfo> = sqlx::query(
         "SELECT provider_user_id, service_id, product_index, client_user_id FROM product_orders WHERE id = $1",
-        order_id
     )
+    .bind(order_id)
+    .map(|row: sqlx::postgres::PgRow| OrderInfo {
+        provider_user_id: row.get::<i32, _>("provider_user_id"),
+        service_id: row.get::<i32, _>("service_id"),
+        product_index: row.get::<i32, _>("product_index"),
+        client_user_id: row.get::<i32, _>("client_user_id"),
+    })
     .fetch_optional(&state.pg)
     .await?;
 
@@ -253,20 +265,46 @@ async fn get_similar_products(
     Path(order_id): Path<Uuid>,
 ) -> Result<Json<Value>, AppError> {
     // Récupérer les infos de la commande
-    let order = sqlx::query!(
-        "SELECT service_id, product_index FROM product_orders WHERE id = $1",
-        order_id
+    struct OrderBasicInfo {
+        service_id: i32,
+        product_index: i32,
+        client_user_id: i32,
+    }
+    
+    let order: Option<OrderBasicInfo> = sqlx::query(
+        "SELECT service_id, product_index, client_user_id FROM product_orders WHERE id = $1",
     )
+    .bind(order_id)
+    .map(|row: sqlx::postgres::PgRow| OrderBasicInfo {
+        service_id: row.get::<i32, _>("service_id"),
+        product_index: row.get::<i32, _>("product_index"),
+        client_user_id: row.get::<i32, _>("client_user_id"),
+    })
     .fetch_optional(&state.pg)
     .await?;
 
     let order = order.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
 
     // ✅ AMÉLIORATION : Récupérer les coordonnées GPS du client si disponibles
-    let client_gps = sqlx::query!(
-        "SELECT latitude, longitude FROM users WHERE id = $1",
-        order.client_user_id
+    // Note: users table n'a pas de colonnes latitude/longitude, utiliser gps ou autre
+    let client_gps: Option<(f64, f64)> = sqlx::query(
+        "SELECT gps FROM users WHERE id = $1",
     )
+    .bind(order.client_user_id)
+    .map(|row: sqlx::postgres::PgRow| {
+        let gps_str: Option<String> = row.try_get("gps").ok();
+        // Parser le GPS si nécessaire (format "lat,lng")
+        gps_str.and_then(|gps| {
+            let parts: Vec<&str> = gps.split(',').collect();
+            if parts.len() == 2 {
+                parts[0].parse::<f64>().ok().and_then(|lat| {
+                    parts[1].parse::<f64>().ok().map(|lng| (lat, lng))
+                })
+            } else {
+                None
+            }
+        })
+    })
     .fetch_optional(&state.pg)
     .await?;
 
@@ -307,7 +345,8 @@ async fn get_order(
     Extension(user): Extension<AuthenticatedUser>,
     Path(order_id): Path<Uuid>,
 ) -> Result<Json<Value>, AppError> {
-    let order = sqlx::query!(
+    // Utiliser sqlx::query pour éviter les problèmes d'inférence de type en mode offline
+    let order: Option<Value> = sqlx::query(
         r#"
         SELECT 
             id,
@@ -330,22 +369,50 @@ async fn get_order(
         FROM product_orders
         WHERE id = $1
         "#,
-        order_id
     )
+    .bind(order_id)
+    .map(|row: sqlx::postgres::PgRow| {
+        json!({
+            "id": row.get::<uuid::Uuid, _>("id"),
+            "delivery_id": row.try_get::<Option<uuid::Uuid>, _>("delivery_id").ok(),
+            "service_id": row.get::<i32, _>("service_id"),
+            "product_index": row.get::<i32, _>("product_index"),
+            "client_user_id": row.get::<i32, _>("client_user_id"),
+            "provider_user_id": row.get::<i32, _>("provider_user_id"),
+            "status": row.get::<String, _>("status"),
+            "preparation_time_minutes": row.try_get::<Option<i32>, _>("preparation_time_minutes").ok(),
+            "estimated_ready_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("estimated_ready_at").ok(),
+            "validated_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("validated_at").ok(),
+            "validated_by": row.try_get::<Option<i32>, _>("validated_by").ok(),
+            "rejected_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("rejected_at").ok(),
+            "rejection_reason": row.try_get::<Option<String>, _>("rejection_reason").ok(),
+            "validation_deadline": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("validation_deadline").ok(),
+            "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+            "updated_at": row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
+            "metadata": row.try_get::<Value, _>("metadata").unwrap_or_else(|_| json!({})),
+        })
+    })
     .fetch_optional(&state.pg)
     .await?;
 
-    let order = order.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
+    let order_value = order.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
+    
+    let client_user_id = order_value.get("client_user_id").and_then(|v| v.as_i64()).map(|v| v as i32);
+    let provider_user_id = order_value.get("provider_user_id").and_then(|v| v.as_i64()).map(|v| v as i32);
 
     // Vérifier que l'utilisateur est le client ou le prestataire
-    if user.id != order.client_user_id && user.id != order.provider_user_id {
-        return Err(AppError::Unauthorized(
-            "Vous n'avez pas accès à cette commande".to_string(),
-        ));
+    if let (Some(client_id), Some(provider_id)) = (client_user_id, provider_user_id) {
+        if user.id != client_id && user.id != provider_id {
+            return Err(AppError::Unauthorized(
+                "Vous n'avez pas accès à cette commande".to_string(),
+            ));
+        }
+    } else {
+        return Err(AppError::Internal("Données de commande invalides".to_string()));
     }
 
     Ok(Json(json!({
-        "order": order
+        "order": order_value
     })))
 }
 

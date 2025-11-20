@@ -1,8 +1,8 @@
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use chrono::{DateTime, Duration, Utc};
-use log::{info, warn};
+use log::info;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 /// Service pour gérer le workflow de préparation des commandes
@@ -113,7 +113,13 @@ impl OrderPreparationService {
         );
 
         // Récupérer la configuration de livraison
-        let config = sqlx::query!(
+        struct Config {
+            preparation_time_minutes: Option<i32>,
+            is_immediately_available: Option<bool>,
+            max_preparation_time_minutes: Option<i32>,
+        }
+        
+        let config: Option<Config> = sqlx::query(
             r#"
             SELECT 
                 preparation_time_minutes,
@@ -122,9 +128,14 @@ impl OrderPreparationService {
             FROM product_delivery_config
             WHERE service_id = $1 AND product_index = $2
             "#,
-            request.service_id,
-            request.product_index
         )
+        .bind(request.service_id)
+        .bind(request.product_index)
+        .map(|row: sqlx::postgres::PgRow| Config {
+            preparation_time_minutes: row.try_get("preparation_time_minutes").ok(),
+            is_immediately_available: row.try_get("is_immediately_available").ok(),
+            max_preparation_time_minutes: row.try_get("max_preparation_time_minutes").ok(),
+        })
         .fetch_optional(&self.pool)
         .await?;
 
@@ -145,17 +156,16 @@ impl OrderPreparationService {
         // Si preparation_time_minutes est NULL, utiliser valeur dynamique
         if preparation_time_minutes.is_none() && !is_immediately_available {
             // Récupérer la catégorie du service pour calcul dynamique
-            let service_category = sqlx::query_scalar!(
+            let service_category: Option<String> = sqlx::query_scalar(
                 r#"
                 SELECT category
                 FROM services
                 WHERE id = $1
                 "#,
-                request.service_id
             )
+            .bind(request.service_id)
             .fetch_optional(&self.pool)
-            .await?
-            .flatten();
+            .await?;
 
             if let Some(category) = service_category {
                 let dynamic_service = crate::services::dynamic_preparation_time_service::DynamicPreparationTimeService::new(self.pool.clone());
@@ -188,7 +198,7 @@ impl OrderPreparationService {
         let validation_deadline = now + Duration::minutes(validation_timeout_minutes as i64);
 
         // Créer la commande
-        let order_id = sqlx::query_scalar!(
+        let order_id: Uuid = sqlx::query_scalar(
             r#"
             INSERT INTO product_orders (
                 delivery_id,
@@ -205,15 +215,15 @@ impl OrderPreparationService {
             VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, '{}'::jsonb)
             RETURNING id
             "#,
-            request.delivery_id,
-            request.service_id,
-            request.product_index,
-            request.client_user_id,
-            request.provider_user_id,
-            preparation_time_minutes,
-            estimated_ready_at,
-            validation_deadline
         )
+        .bind(request.delivery_id)
+        .bind(request.service_id)
+        .bind(request.product_index)
+        .bind(request.client_user_id)
+        .bind(request.provider_user_id)
+        .bind(preparation_time_minutes)
+        .bind(estimated_ready_at)
+        .bind(validation_deadline)
         .fetch_one(&self.pool)
         .await?;
 
@@ -265,21 +275,19 @@ impl OrderPreparationService {
         }
 
         // Récupérer la configuration pour vérifier is_immediately_available
-        let config = sqlx::query!(
+        let is_immediately_available: Option<bool> = sqlx::query_scalar(
             r#"
             SELECT is_immediately_available
             FROM product_delivery_config
             WHERE service_id = $1 AND product_index = $2
             "#,
-            order.service_id,
-            order.product_index
         )
+        .bind(order.service_id)
+        .bind(order.product_index)
         .fetch_optional(&self.pool)
         .await?;
 
-        let is_immediately_available = config
-            .and_then(|c| c.is_immediately_available)
-            .unwrap_or(false);
+        let is_immediately_available = is_immediately_available.unwrap_or(false);
 
         let now = Utc::now();
         let new_status = if is_immediately_available {
@@ -303,7 +311,7 @@ impl OrderPreparationService {
         };
 
         // Mettre à jour la commande
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE product_orders
             SET 
@@ -314,12 +322,12 @@ impl OrderPreparationService {
                 updated_at = NOW()
             WHERE id = $5
             "#,
-            new_status,
-            now,
-            provider_user_id,
-            estimated_ready_at,
-            order_id
         )
+        .bind(new_status)
+        .bind(now)
+        .bind(provider_user_id)
+        .bind(estimated_ready_at)
+        .bind(order_id)
         .execute(&self.pool)
         .await?;
 
@@ -370,7 +378,7 @@ impl OrderPreparationService {
         let now = Utc::now();
 
         // Mettre à jour la commande
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE product_orders
             SET 
@@ -380,15 +388,15 @@ impl OrderPreparationService {
                 updated_at = NOW()
             WHERE id = $3
             "#,
-            now,
-            request.reason,
-            order_id
         )
+        .bind(now)
+        .bind(&request.reason)
+        .bind(order_id)
         .execute(&self.pool)
         .await?;
 
         // Enregistrer l'annulation
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO order_cancellations (
                 order_id,
@@ -400,12 +408,12 @@ impl OrderPreparationService {
             )
             VALUES ($1, $2, $3, $4, 'rejected', $5)
             "#,
-            order_id,
-            provider_user_id,
-            order.service_id,
-            order.product_index,
-            request.reason
         )
+        .bind(order_id)
+        .bind(provider_user_id)
+        .bind(order.service_id)
+        .bind(order.product_index)
+        .bind(&request.reason)
         .execute(&self.pool)
         .await?;
 
@@ -419,7 +427,7 @@ impl OrderPreparationService {
 
     /// Récupère une commande par ID
     pub async fn get_order(&self, order_id: Uuid) -> AppResult<ProductOrder> {
-        let row = sqlx::query!(
+        let row = sqlx::query(
             r#"
             SELECT 
                 id,
@@ -442,40 +450,39 @@ impl OrderPreparationService {
             FROM product_orders
             WHERE id = $1
             "#,
-            order_id
         )
+        .bind(order_id)
+        .map(|row: sqlx::postgres::PgRow| ProductOrder {
+            id: row.get::<Uuid, _>("id"),
+            delivery_id: row.try_get::<Option<Uuid>, _>("delivery_id").ok(),
+            service_id: row.get::<i32, _>("service_id"),
+            product_index: row.get::<i32, _>("product_index"),
+            client_user_id: row.get::<i32, _>("client_user_id"),
+            provider_user_id: row.get::<i32, _>("provider_user_id"),
+            status: row.get::<String, _>("status"),
+            preparation_time_minutes: row.try_get::<Option<i32>, _>("preparation_time_minutes").ok(),
+            estimated_ready_at: row.try_get::<Option<DateTime<Utc>>, _>("estimated_ready_at").ok(),
+            validated_at: row.try_get::<Option<DateTime<Utc>>, _>("validated_at").ok(),
+            validated_by: row.try_get::<Option<i32>, _>("validated_by").ok(),
+            rejected_at: row.try_get::<Option<DateTime<Utc>>, _>("rejected_at").ok(),
+            rejection_reason: row.try_get::<Option<String>, _>("rejection_reason").ok(),
+            validation_deadline: row.try_get::<Option<DateTime<Utc>>, _>("validation_deadline").ok(),
+            created_at: row.get::<DateTime<Utc>, _>("created_at"),
+            updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
+            metadata: row.try_get::<serde_json::Value, _>("metadata").unwrap_or_else(|_| serde_json::json!({})),
+        })
         .fetch_optional(&self.pool)
         .await?;
 
-        let row = match row {
-            Some(r) => r,
+        match row {
+            Some(order) => Ok(order),
             None => {
-                return Err(AppError::NotFound(format!(
+                Err(AppError::NotFound(format!(
                     "Commande {} non trouvée",
                     order_id
-                )));
+                )))
             }
-        };
-
-        Ok(ProductOrder {
-            id: row.id,
-            delivery_id: row.delivery_id,
-            service_id: row.service_id,
-            product_index: row.product_index,
-            client_user_id: row.client_user_id,
-            provider_user_id: row.provider_user_id,
-            status: row.status,
-            preparation_time_minutes: row.preparation_time_minutes,
-            estimated_ready_at: row.estimated_ready_at,
-            validated_at: row.validated_at,
-            validated_by: row.validated_by,
-            rejected_at: row.rejected_at,
-            rejection_reason: row.rejection_reason,
-            validation_deadline: row.validation_deadline,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-            metadata: row.metadata.unwrap_or_else(|| serde_json::json!({})),
-        })
+        }
     }
 
     /// Liste les commandes d'un prestataire
@@ -485,8 +492,8 @@ impl OrderPreparationService {
         status_filter: Option<&str>,
         limit: i32,
     ) -> AppResult<Vec<ProductOrder>> {
-        let orders = if let Some(status) = status_filter {
-            sqlx::query!(
+        let orders: Vec<ProductOrder> = if let Some(status) = status_filter {
+            sqlx::query(
                 r#"
                 SELECT 
                     id,
@@ -511,14 +518,33 @@ impl OrderPreparationService {
                 ORDER BY created_at DESC
                 LIMIT $3
                 "#,
-                provider_user_id,
-                status,
-                limit
             )
+            .bind(provider_user_id)
+            .bind(status)
+            .bind(limit)
+            .map(|row: sqlx::postgres::PgRow| ProductOrder {
+                id: row.get::<Uuid, _>("id"),
+                delivery_id: row.try_get::<Option<Uuid>, _>("delivery_id").ok(),
+                service_id: row.get::<i32, _>("service_id"),
+                product_index: row.get::<i32, _>("product_index"),
+                client_user_id: row.get::<i32, _>("client_user_id"),
+                provider_user_id: row.get::<i32, _>("provider_user_id"),
+                status: row.get::<String, _>("status"),
+                preparation_time_minutes: row.try_get::<Option<i32>, _>("preparation_time_minutes").ok(),
+                estimated_ready_at: row.try_get::<Option<DateTime<Utc>>, _>("estimated_ready_at").ok(),
+                validated_at: row.try_get::<Option<DateTime<Utc>>, _>("validated_at").ok(),
+                validated_by: row.try_get::<Option<i32>, _>("validated_by").ok(),
+                rejected_at: row.try_get::<Option<DateTime<Utc>>, _>("rejected_at").ok(),
+                rejection_reason: row.try_get::<Option<String>, _>("rejection_reason").ok(),
+                validation_deadline: row.try_get::<Option<DateTime<Utc>>, _>("validation_deadline").ok(),
+                created_at: row.get::<DateTime<Utc>, _>("created_at"),
+                updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
+                metadata: row.try_get::<serde_json::Value, _>("metadata").unwrap_or_else(|_| serde_json::json!({})),
+            })
             .fetch_all(&self.pool)
             .await?
         } else {
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 SELECT 
                     id,
@@ -543,35 +569,33 @@ impl OrderPreparationService {
                 ORDER BY created_at DESC
                 LIMIT $2
                 "#,
-                provider_user_id,
-                limit
             )
+            .bind(provider_user_id)
+            .bind(limit)
+            .map(|row: sqlx::postgres::PgRow| ProductOrder {
+                id: row.get::<Uuid, _>("id"),
+                delivery_id: row.try_get::<Option<Uuid>, _>("delivery_id").ok(),
+                service_id: row.get::<i32, _>("service_id"),
+                product_index: row.get::<i32, _>("product_index"),
+                client_user_id: row.get::<i32, _>("client_user_id"),
+                provider_user_id: row.get::<i32, _>("provider_user_id"),
+                status: row.get::<String, _>("status"),
+                preparation_time_minutes: row.try_get::<Option<i32>, _>("preparation_time_minutes").ok(),
+                estimated_ready_at: row.try_get::<Option<DateTime<Utc>>, _>("estimated_ready_at").ok(),
+                validated_at: row.try_get::<Option<DateTime<Utc>>, _>("validated_at").ok(),
+                validated_by: row.try_get::<Option<i32>, _>("validated_by").ok(),
+                rejected_at: row.try_get::<Option<DateTime<Utc>>, _>("rejected_at").ok(),
+                rejection_reason: row.try_get::<Option<String>, _>("rejection_reason").ok(),
+                validation_deadline: row.try_get::<Option<DateTime<Utc>>, _>("validation_deadline").ok(),
+                created_at: row.get::<DateTime<Utc>, _>("created_at"),
+                updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
+                metadata: row.try_get::<serde_json::Value, _>("metadata").unwrap_or_else(|_| serde_json::json!({})),
+            })
             .fetch_all(&self.pool)
             .await?
         };
 
-        Ok(orders
-            .into_iter()
-            .map(|row| ProductOrder {
-                id: row.id,
-                delivery_id: row.delivery_id,
-                service_id: row.service_id,
-                product_index: row.product_index,
-                client_user_id: row.client_user_id,
-                provider_user_id: row.provider_user_id,
-                status: row.status,
-                preparation_time_minutes: row.preparation_time_minutes,
-                estimated_ready_at: row.estimated_ready_at,
-                validated_at: row.validated_at,
-                validated_by: row.validated_by,
-                rejected_at: row.rejected_at,
-                rejection_reason: row.rejection_reason,
-                validation_deadline: row.validation_deadline,
-                created_at: row.created_at,
-                updated_at: row.updated_at,
-                metadata: row.metadata.unwrap_or_else(|| serde_json::json!({})),
-            })
-            .collect())
+        Ok(orders)
     }
 
     /// Met à jour le statut d'une commande
@@ -580,15 +604,15 @@ impl OrderPreparationService {
         order_id: Uuid,
         new_status: &str,
     ) -> AppResult<ProductOrder> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE product_orders
             SET status = $1, updated_at = NOW()
             WHERE id = $2
             "#,
-            new_status,
-            order_id
         )
+        .bind(new_status)
+        .bind(order_id)
         .execute(&self.pool)
         .await?;
 
@@ -599,7 +623,7 @@ impl OrderPreparationService {
     pub async fn mark_as_ready(&self, order_id: Uuid) -> AppResult<ProductOrder> {
         let now = Utc::now();
         
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE product_orders
             SET 
@@ -608,9 +632,9 @@ impl OrderPreparationService {
                 updated_at = NOW()
             WHERE id = $2
             "#,
-            now,
-            order_id
         )
+        .bind(now)
+        .bind(order_id)
         .execute(&self.pool)
         .await?;
 

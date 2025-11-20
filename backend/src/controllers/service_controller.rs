@@ -1148,7 +1148,7 @@ pub async fn get_services_list(
             let mut services: Vec<Value> = rows
                 .iter()
                 .map(|row| {
-                    let mut service_data = json!({
+                    let service_data = json!({
                         "id": row.id,
                         "data": row.data,
                         "created_at": row.created_at,

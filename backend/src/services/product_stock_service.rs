@@ -2,7 +2,7 @@ use crate::core::types::{AppError, AppResult};
 use chrono::{DateTime, Utc};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 /// Service pour gérer le stock des produits
@@ -57,7 +57,7 @@ impl ProductStockService {
         &self,
         product_delivery_config_id: i32,
     ) -> AppResult<Vec<StockLocation>> {
-        let rows = sqlx::query!(
+        let rows: Vec<StockLocation> = sqlx::query(
             r#"
             SELECT 
                 id,
@@ -72,24 +72,22 @@ impl ProductStockService {
             WHERE product_delivery_config_id = $1
             ORDER BY updated_at DESC
             "#,
-            product_delivery_config_id
         )
+        .bind(product_delivery_config_id)
+        .map(|row: sqlx::postgres::PgRow| StockLocation {
+            id: row.get::<i32, _>("id"),
+            product_delivery_config_id: row.get::<i32, _>("product_delivery_config_id"),
+            storage_location_id: row.try_get("storage_location_id").ok(),
+            quantity_available: row.get::<i32, _>("quantity_available"),
+            quantity_reserved: row.get::<i32, _>("quantity_reserved"),
+            is_available: row.get::<bool, _>("is_available"),
+            updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
+            updated_by: row.try_get("updated_by").ok(),
+        })
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|row| StockLocation {
-                id: row.id,
-                product_delivery_config_id: row.product_delivery_config_id,
-                storage_location_id: row.storage_location_id,
-                quantity_available: row.quantity_available,
-                quantity_reserved: row.quantity_reserved,
-                is_available: row.is_available,
-                updated_at: row.updated_at,
-                updated_by: row.updated_by,
-            })
-            .collect())
+        Ok(rows)
     }
 
     /// Met à jour le stock d'un produit
@@ -106,22 +104,22 @@ impl ProductStockService {
         );
 
         // Vérifier si l'entrée existe
-        let existing = sqlx::query!(
+        let existing_id: Option<i32> = sqlx::query_scalar(
             r#"
             SELECT id
             FROM product_stock_locations
             WHERE product_delivery_config_id = $1 
             AND (storage_location_id = $2 OR (storage_location_id IS NULL AND $2 IS NULL))
             "#,
-            product_delivery_config_id,
-            storage_location_id
         )
+        .bind(product_delivery_config_id)
+        .bind(storage_location_id)
         .fetch_optional(&self.pool)
         .await?;
 
-        let stock_id = if let Some(existing) = existing {
+        let stock_id: i32 = if let Some(existing_id) = existing_id {
             // Mettre à jour l'entrée existante
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE product_stock_locations
                 SET 
@@ -133,18 +131,18 @@ impl ProductStockService {
                 WHERE id = $5
                 RETURNING id
                 "#,
-                request.quantity_available,
-                request.quantity_reserved,
-                request.is_available,
-                updated_by,
-                existing.id
             )
+            .bind(request.quantity_available)
+            .bind(request.quantity_reserved)
+            .bind(request.is_available)
+            .bind(updated_by)
+            .bind(existing_id)
+            .map(|row: sqlx::postgres::PgRow| row.get::<i32, _>("id"))
             .fetch_one(&self.pool)
             .await?
-            .id
         } else {
             // Créer une nouvelle entrée
-            sqlx::query_scalar!(
+            sqlx::query_scalar(
                 r#"
                 INSERT INTO product_stock_locations (
                     product_delivery_config_id,
@@ -157,19 +155,19 @@ impl ProductStockService {
                 VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING id
                 "#,
-                product_delivery_config_id,
-                storage_location_id,
-                request.quantity_available.unwrap_or(0),
-                request.quantity_reserved.unwrap_or(0),
-                request.is_available.unwrap_or(true),
-                updated_by
             )
+            .bind(product_delivery_config_id)
+            .bind(storage_location_id)
+            .bind(request.quantity_available.unwrap_or(0))
+            .bind(request.quantity_reserved.unwrap_or(0))
+            .bind(request.is_available.unwrap_or(true))
+            .bind(updated_by)
             .fetch_one(&self.pool)
             .await?
         };
 
         // Récupérer l'entrée mise à jour
-        let row = sqlx::query!(
+        let row = sqlx::query(
             r#"
             SELECT 
                 id,
@@ -183,21 +181,22 @@ impl ProductStockService {
             FROM product_stock_locations
             WHERE id = $1
             "#,
-            stock_id
         )
+        .bind(stock_id)
+        .map(|row: sqlx::postgres::PgRow| StockLocation {
+            id: row.get::<i32, _>("id"),
+            product_delivery_config_id: row.get::<i32, _>("product_delivery_config_id"),
+            storage_location_id: row.try_get("storage_location_id").ok(),
+            quantity_available: row.get::<i32, _>("quantity_available"),
+            quantity_reserved: row.get::<i32, _>("quantity_reserved"),
+            is_available: row.get::<bool, _>("is_available"),
+            updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
+            updated_by: row.get::<i32, _>("updated_by"),
+        })
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(StockLocation {
-            id: row.id,
-            product_delivery_config_id: row.product_delivery_config_id,
-            storage_location_id: row.storage_location_id,
-            quantity_available: row.quantity_available,
-            quantity_reserved: row.quantity_reserved,
-            is_available: row.is_available,
-            updated_at: row.updated_at,
-            updated_by: row.updated_by,
-        })
+        Ok(row)
     }
 
     /// Réserve du stock pour une commande

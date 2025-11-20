@@ -1,8 +1,8 @@
 use crate::core::types::{AppError, AppResult};
 use chrono::Datelike;
-use log::{info, warn};
+use log::info;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
 /// Service pour rechercher des produits similaires

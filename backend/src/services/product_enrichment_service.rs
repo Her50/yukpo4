@@ -1,8 +1,7 @@
 use crate::core::types::{AppError, AppResult};
 use chrono::{Datelike, DateTime, Utc};
-use log::info;
 use serde_json::{json, Value};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 /// Service pour enrichir les produits avec les données de disponibilité depuis product_delivery_config
 pub struct ProductEnrichmentService {
@@ -32,7 +31,17 @@ impl ProductEnrichmentService {
         service_id: i32,
         product_index: i32,
     ) -> AppResult<Option<ProductAvailabilityData>> {
-        let config = sqlx::query!(
+        struct Config {
+            is_immediately_available: Option<bool>,
+            preparation_time_minutes: Option<i32>,
+            max_preparation_time_minutes: Option<i32>,
+            availability_days: Option<Value>,
+            pickup_availability_schedule: Option<Value>,
+            pickup_address: Option<String>,
+            is_configured: Option<bool>,
+        }
+        
+        let config: Option<Config> = sqlx::query(
             r#"
             SELECT 
                 is_immediately_available,
@@ -47,9 +56,18 @@ impl ProductEnrichmentService {
             AND product_index = $2
             AND is_configured = TRUE
             "#,
-            service_id,
-            product_index
         )
+        .bind(service_id)
+        .bind(product_index)
+        .map(|row: sqlx::postgres::PgRow| Config {
+            is_immediately_available: row.try_get("is_immediately_available").ok(),
+            preparation_time_minutes: row.try_get("preparation_time_minutes").ok(),
+            max_preparation_time_minutes: row.try_get("max_preparation_time_minutes").ok(),
+            availability_days: row.try_get("availability_days").ok(),
+            pickup_availability_schedule: row.try_get("pickup_availability_schedule").ok(),
+            pickup_address: row.try_get("pickup_address").ok(),
+            is_configured: row.try_get("is_configured").ok(),
+        })
         .fetch_optional(&self.pool)
         .await?;
 
@@ -75,7 +93,9 @@ impl ProductEnrichmentService {
         let current_weekday = now.weekday().num_days_from_sunday() as i32;
         
         // Vérifier les jours de disponibilité
-        let availability_days: Vec<i32> = config.availability_days.unwrap_or_default();
+        let availability_days: Vec<i32> = config.availability_days
+            .and_then(|v| serde_json::from_value(v).ok())
+            .unwrap_or_default();
         let is_available_today = availability_days.is_empty() || availability_days.contains(&current_weekday);
 
         // Vérifier les plages horaires

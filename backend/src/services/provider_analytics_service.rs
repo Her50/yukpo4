@@ -1,8 +1,8 @@
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use chrono::{DateTime, Utc};
 use log::info;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 /// Service pour calculer les analytics des prestataires
 pub struct ProviderAnalyticsService {
@@ -138,37 +138,56 @@ impl ProviderAnalyticsService {
         period_start: DateTime<Utc>,
         period_end: DateTime<Utc>,
     ) -> AppResult<ProviderOrderStats> {
-        let stats = sqlx::query!(
+        struct StatsRow {
+            total_orders: i64,
+            pending_orders: i64,
+            validated_orders: i64,
+            rejected_orders: i64,
+            cancelled_orders: i64,
+            ready_orders: i64,
+            delivered_orders: i64,
+        }
+        
+        let stats: StatsRow = sqlx::query(
             r#"
             SELECT 
-                COUNT(*) as total_orders,
-                COUNT(*) FILTER (WHERE status = 'pending') as pending_orders,
-                COUNT(*) FILTER (WHERE status = 'validated') as validated_orders,
-                COUNT(*) FILTER (WHERE status = 'rejected') as rejected_orders,
-                COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled_orders,
-                COUNT(*) FILTER (WHERE status = 'ready') as ready_orders,
-                COUNT(*) FILTER (WHERE status = 'delivered') as delivered_orders
+                COUNT(*)::BIGINT as total_orders,
+                COUNT(*) FILTER (WHERE status = 'pending')::BIGINT as pending_orders,
+                COUNT(*) FILTER (WHERE status = 'validated')::BIGINT as validated_orders,
+                COUNT(*) FILTER (WHERE status = 'rejected')::BIGINT as rejected_orders,
+                COUNT(*) FILTER (WHERE status = 'cancelled')::BIGINT as cancelled_orders,
+                COUNT(*) FILTER (WHERE status = 'ready')::BIGINT as ready_orders,
+                COUNT(*) FILTER (WHERE status = 'delivered')::BIGINT as delivered_orders
             FROM product_orders
             WHERE provider_user_id = $1
             AND created_at >= $2
             AND created_at <= $3
             "#,
-            provider_user_id,
-            period_start,
-            period_end
         )
+        .bind(provider_user_id)
+        .bind(period_start)
+        .bind(period_end)
+        .map(|row: sqlx::postgres::PgRow| StatsRow {
+            total_orders: row.get::<i64, _>("total_orders"),
+            pending_orders: row.get::<i64, _>("pending_orders"),
+            validated_orders: row.get::<i64, _>("validated_orders"),
+            rejected_orders: row.get::<i64, _>("rejected_orders"),
+            cancelled_orders: row.get::<i64, _>("cancelled_orders"),
+            ready_orders: row.get::<i64, _>("ready_orders"),
+            delivered_orders: row.get::<i64, _>("delivered_orders"),
+        })
         .fetch_one(&self.pool)
         .await?;
 
         Ok(ProviderOrderStats {
             provider_user_id,
-            total_orders: stats.total_orders.unwrap_or(0),
-            pending_orders: stats.pending_orders.unwrap_or(0),
-            validated_orders: stats.validated_orders.unwrap_or(0),
-            rejected_orders: stats.rejected_orders.unwrap_or(0),
-            cancelled_orders: stats.cancelled_orders.unwrap_or(0),
-            ready_orders: stats.ready_orders.unwrap_or(0),
-            delivered_orders: stats.delivered_orders.unwrap_or(0),
+            total_orders: stats.total_orders as i32,
+            pending_orders: stats.pending_orders as i32,
+            validated_orders: stats.validated_orders as i32,
+            rejected_orders: stats.rejected_orders as i32,
+            cancelled_orders: stats.cancelled_orders as i32,
+            ready_orders: stats.ready_orders as i32,
+            delivered_orders: stats.delivered_orders as i32,
         })
     }
 
@@ -179,14 +198,22 @@ impl ProviderAnalyticsService {
         period_start: DateTime<Utc>,
         period_end: DateTime<Utc>,
     ) -> AppResult<ProviderPreparationTimeStats> {
-        let stats = sqlx::query!(
+        struct PrepTimeStatsRow {
+            avg_preparation_minutes: Option<f64>,
+            median_preparation_minutes: Option<f64>,
+            min_preparation_minutes: Option<i32>,
+            max_preparation_minutes: Option<i32>,
+            total_orders_with_preparation: i64,
+        }
+        
+        let stats: PrepTimeStatsRow = sqlx::query(
             r#"
             SELECT 
                 AVG(preparation_time_minutes) as avg_preparation_minutes,
                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY preparation_time_minutes) as median_preparation_minutes,
                 MIN(preparation_time_minutes) as min_preparation_minutes,
                 MAX(preparation_time_minutes) as max_preparation_minutes,
-                COUNT(*) FILTER (WHERE preparation_time_minutes IS NOT NULL) as total_orders_with_preparation
+                COUNT(*) FILTER (WHERE preparation_time_minutes IS NOT NULL)::BIGINT as total_orders_with_preparation
             FROM product_orders
             WHERE provider_user_id = $1
             AND created_at >= $2
@@ -194,26 +221,27 @@ impl ProviderAnalyticsService {
             AND status IN ('ready', 'delivered', 'picked_up')
             AND preparation_time_minutes IS NOT NULL
             "#,
-            provider_user_id,
-            period_start,
-            period_end
         )
+        .bind(provider_user_id)
+        .bind(period_start)
+        .bind(period_end)
+        .map(|row: sqlx::postgres::PgRow| PrepTimeStatsRow {
+            avg_preparation_minutes: row.try_get("avg_preparation_minutes").ok(),
+            median_preparation_minutes: row.try_get("median_preparation_minutes").ok(),
+            min_preparation_minutes: row.try_get("min_preparation_minutes").ok(),
+            max_preparation_minutes: row.try_get("max_preparation_minutes").ok(),
+            total_orders_with_preparation: row.get::<i64, _>("total_orders_with_preparation"),
+        })
         .fetch_one(&self.pool)
         .await?;
 
         Ok(ProviderPreparationTimeStats {
             provider_user_id,
-            avg_preparation_minutes: stats.avg_preparation_minutes.and_then(|v| {
-                use rust_decimal::prelude::ToPrimitive;
-                v.to_f64()
-            }),
-            median_preparation_minutes: stats.median_preparation_minutes.and_then(|v| {
-                use rust_decimal::prelude::ToPrimitive;
-                v.to_f64()
-            }),
+            avg_preparation_minutes: stats.avg_preparation_minutes,
+            median_preparation_minutes: stats.median_preparation_minutes,
             min_preparation_minutes: stats.min_preparation_minutes,
             max_preparation_minutes: stats.max_preparation_minutes,
-            total_orders_with_preparation: stats.total_orders_with_preparation.unwrap_or(0),
+            total_orders_with_preparation: stats.total_orders_with_preparation as i32,
         })
     }
 
@@ -224,7 +252,7 @@ impl ProviderAnalyticsService {
         period_start: DateTime<Utc>,
         period_end: DateTime<Utc>,
     ) -> AppResult<ProviderRejectionStats> {
-        let total_orders = sqlx::query_scalar!(
+        let total_orders: i64 = sqlx::query_scalar(
             r#"
             SELECT COUNT(*)::BIGINT
             FROM product_orders
@@ -232,15 +260,15 @@ impl ProviderAnalyticsService {
             AND created_at >= $2
             AND created_at <= $3
             "#,
-            provider_user_id,
-            period_start,
-            period_end
         )
+        .bind(provider_user_id)
+        .bind(period_start)
+        .bind(period_end)
         .fetch_one(&self.pool)
         .await?
         .unwrap_or(0);
 
-        let rejection_count = sqlx::query_scalar!(
+        let rejection_count: i64 = sqlx::query_scalar(
             r#"
             SELECT COUNT(*)::BIGINT
             FROM product_orders
@@ -249,10 +277,10 @@ impl ProviderAnalyticsService {
             AND created_at <= $3
             AND status = 'rejected'
             "#,
-            provider_user_id,
-            period_start,
-            period_end
         )
+        .bind(provider_user_id)
+        .bind(period_start)
+        .bind(period_end)
         .fetch_one(&self.pool)
         .await?
         .unwrap_or(0);
@@ -264,7 +292,12 @@ impl ProviderAnalyticsService {
         };
 
         // Récupérer les raisons de rejet les plus fréquentes
-        let common_reasons = sqlx::query!(
+        struct RejectionReasonRow {
+            reason: Option<String>,
+            count: i64,
+        }
+        
+        let common_reasons: Vec<RejectionReasonCount> = sqlx::query(
             r#"
             SELECT 
                 rejection_reason as reason,
@@ -279,18 +312,16 @@ impl ProviderAnalyticsService {
             ORDER BY count DESC
             LIMIT 10
             "#,
-            provider_user_id,
-            period_start,
-            period_end
         )
-        .fetch_all(&self.pool)
-        .await?
-        .into_iter()
-        .map(|r| RejectionReasonCount {
-            reason: r.reason.unwrap_or_default(),
-            count: r.count.unwrap_or(0),
+        .bind(provider_user_id)
+        .bind(period_start)
+        .bind(period_end)
+        .map(|row: sqlx::postgres::PgRow| RejectionReasonCount {
+            reason: row.try_get::<String, _>("reason").unwrap_or_default(),
+            count: row.get::<i64, _>("count") as i32,
         })
-        .collect();
+        .fetch_all(&self.pool)
+        .await?;
 
         Ok(ProviderRejectionStats {
             provider_user_id,
@@ -307,7 +338,7 @@ impl ProviderAnalyticsService {
         period_start: DateTime<Utc>,
         period_end: DateTime<Utc>,
     ) -> AppResult<ProviderCancellationStats> {
-        let total_orders = sqlx::query_scalar!(
+        let total_orders: i64 = sqlx::query_scalar(
             r#"
             SELECT COUNT(*)::BIGINT
             FROM product_orders
@@ -315,15 +346,23 @@ impl ProviderAnalyticsService {
             AND created_at >= $2
             AND created_at <= $3
             "#,
-            provider_user_id,
-            period_start,
-            period_end
         )
+        .bind(provider_user_id)
+        .bind(period_start)
+        .bind(period_end)
         .fetch_one(&self.pool)
         .await?
         .unwrap_or(0);
 
-        let stats = sqlx::query!(
+        struct CancellationStatsRow {
+            total_cancellations: i64,
+            timeout_cancellations: i64,
+            rejected_cancellations: i64,
+            provider_cancelled: i64,
+            courier_unavailable: i64,
+        }
+        
+        let stats: CancellationStatsRow = sqlx::query(
             r#"
             SELECT 
                 COUNT(*)::BIGINT as total_cancellations,
@@ -336,14 +375,21 @@ impl ProviderAnalyticsService {
             AND cancelled_at >= $2
             AND cancelled_at <= $3
             "#,
-            provider_user_id,
-            period_start,
-            period_end
         )
+        .bind(provider_user_id)
+        .bind(period_start)
+        .bind(period_end)
+        .map(|row: sqlx::postgres::PgRow| CancellationStatsRow {
+            total_cancellations: row.get::<i64, _>("total_cancellations"),
+            timeout_cancellations: row.get::<i64, _>("timeout_cancellations"),
+            rejected_cancellations: row.get::<i64, _>("rejected_cancellations"),
+            provider_cancelled: row.get::<i64, _>("provider_cancelled"),
+            courier_unavailable: row.get::<i64, _>("courier_unavailable"),
+        })
         .fetch_one(&self.pool)
         .await?;
 
-        let total_cancellations = stats.total_cancellations.unwrap_or(0);
+        let total_cancellations = stats.total_cancellations;
         let cancellation_rate = if total_orders > 0 {
             (total_cancellations as f64 / total_orders as f64) * 100.0
         } else {
@@ -354,10 +400,10 @@ impl ProviderAnalyticsService {
             provider_user_id,
             total_cancellations,
             cancellation_rate,
-            timeout_cancellations: stats.timeout_cancellations.unwrap_or(0),
-            rejected_cancellations: stats.rejected_cancellations.unwrap_or(0),
-            provider_cancelled: stats.provider_cancelled.unwrap_or(0),
-            courier_unavailable: stats.courier_unavailable.unwrap_or(0),
+            timeout_cancellations: stats.timeout_cancellations as i32,
+            rejected_cancellations: stats.rejected_cancellations as i32,
+            provider_cancelled: stats.provider_cancelled as i32,
+            courier_unavailable: stats.courier_unavailable as i32,
         })
     }
 
@@ -384,8 +430,8 @@ impl ProviderAnalyticsService {
         let period_start = period_start.unwrap_or_else(|| Utc::now() - chrono::Duration::days(30));
         let period_end = period_end.unwrap_or_else(Utc::now);
 
-        let query = if let Some(service_id) = service_id {
-            sqlx::query!(
+        let query: Vec<ProductCancellationStats> = if let Some(service_id) = service_id {
+            sqlx::query(
                 r#"
                 SELECT 
                     service_id,
@@ -401,15 +447,24 @@ impl ProviderAnalyticsService {
                 AND last_calculated_at <= $3
                 ORDER BY cancellation_rate DESC
                 "#,
-                service_id,
-                period_start,
-                period_end
             )
+            .bind(service_id)
+            .bind(period_start)
+            .bind(period_end)
+            .map(|row: sqlx::postgres::PgRow| ProductCancellationStats {
+                service_id: row.get::<i32, _>("service_id"),
+                product_index: row.get::<i32, _>("product_index"),
+                total_orders: row.get::<i32, _>("total_orders"),
+                total_cancellations: row.get::<i32, _>("total_cancellations"),
+                cancellation_rate: row.get::<f64, _>("cancellation_rate"),
+                timeout_cancellations: row.get::<i32, _>("timeout_cancellations"),
+                rejected_cancellations: row.get::<i32, _>("rejected_cancellations"),
+            })
             .fetch_all(&self.pool)
             .await?
         } else {
             // Récupérer pour tous les services du prestataire
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 SELECT 
                     pcs.service_id,
@@ -426,29 +481,24 @@ impl ProviderAnalyticsService {
                 AND pcs.last_calculated_at <= $3
                 ORDER BY pcs.cancellation_rate DESC
                 "#,
-                provider_user_id,
-                period_start,
-                period_end
             )
+            .bind(provider_user_id)
+            .bind(period_start)
+            .bind(period_end)
+            .map(|row: sqlx::postgres::PgRow| ProductCancellationStats {
+                service_id: row.get::<i32, _>("service_id"),
+                product_index: row.get::<i32, _>("product_index"),
+                total_orders: row.get::<i32, _>("total_orders"),
+                total_cancellations: row.get::<i32, _>("total_cancellations"),
+                cancellation_rate: row.get::<f64, _>("cancellation_rate"),
+                timeout_cancellations: row.get::<i32, _>("timeout_cancellations"),
+                rejected_cancellations: row.get::<i32, _>("rejected_cancellations"),
+            })
             .fetch_all(&self.pool)
             .await?
         };
 
-        Ok(query
-            .into_iter()
-            .map(|r| ProductCancellationStats {
-                service_id: r.service_id,
-                product_index: r.product_index,
-                total_orders: r.total_orders,
-                total_cancellations: r.total_cancellations,
-                cancellation_rate: {
-                    use rust_decimal::prelude::ToPrimitive;
-                    r.cancellation_rate.to_f64().unwrap_or(0.0)
-                },
-                timeout_cancellations: r.timeout_cancellations,
-                rejected_cancellations: r.rejected_cancellations,
-            })
-            .collect())
+        Ok(query)
     }
 }
 

@@ -2,8 +2,7 @@ use crate::core::types::{AppError, AppResult};
 use chrono::{Datelike, DateTime, NaiveTime, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::PgPool;
-use uuid::Uuid;
+use sqlx::{PgPool, Row};
 
 /// Service pour vérifier la disponibilité des produits et suggérer des alternatives
 pub struct ProductAvailabilityService {
@@ -46,7 +45,15 @@ impl ProductAvailabilityService {
         let current_weekday = now.weekday().num_days_from_sunday() as i32;
 
         // Récupérer la configuration de livraison du produit
-        let config = sqlx::query!(
+        struct Config {
+            preparation_time_minutes: Option<i32>,
+            max_preparation_time_minutes: Option<i32>,
+            availability_days: Option<Value>,
+            is_immediately_available: Option<bool>,
+            pickup_availability_schedule: Option<Value>,
+        }
+        
+        let config: Option<Config> = sqlx::query(
             r#"
             SELECT 
                 preparation_time_minutes,
@@ -57,9 +64,16 @@ impl ProductAvailabilityService {
             FROM product_delivery_config
             WHERE service_id = $1 AND product_index = $2
             "#,
-            service_id,
-            product_index
         )
+        .bind(service_id)
+        .bind(product_index)
+        .map(|row: sqlx::postgres::PgRow| Config {
+            preparation_time_minutes: row.try_get("preparation_time_minutes").ok(),
+            max_preparation_time_minutes: row.try_get("max_preparation_time_minutes").ok(),
+            availability_days: row.try_get("availability_days").ok(),
+            is_immediately_available: row.try_get("is_immediately_available").ok(),
+            pickup_availability_schedule: row.try_get("pickup_availability_schedule").ok(),
+        })
         .fetch_optional(&self.pool)
         .await?;
 
@@ -77,7 +91,9 @@ impl ProductAvailabilityService {
         };
 
         // Vérifier les jours de disponibilité
-        let availability_days: Vec<i32> = config.availability_days.unwrap_or_default();
+        let availability_days: Vec<i32> = config.availability_days
+            .and_then(|v| serde_json::from_value(v).ok())
+            .unwrap_or_default();
         let is_available_today = availability_days.is_empty() || availability_days.contains(&current_weekday);
 
         if !is_available_today {
@@ -159,7 +175,14 @@ impl ProductAvailabilityService {
         service_id: i32,
         product_index: i32,
     ) -> AppResult<Option<ProductAvailabilityInfo>> {
-        let config = sqlx::query!(
+        struct Config2 {
+            preparation_time_minutes: Option<i32>,
+            max_preparation_time_minutes: Option<i32>,
+            availability_days: Option<Value>,
+            is_immediately_available: Option<bool>,
+        }
+        
+        let config: Option<Config2> = sqlx::query(
             r#"
             SELECT 
                 preparation_time_minutes,
@@ -169,9 +192,15 @@ impl ProductAvailabilityService {
             FROM product_delivery_config
             WHERE service_id = $1 AND product_index = $2
             "#,
-            service_id,
-            product_index
         )
+        .bind(service_id)
+        .bind(product_index)
+        .map(|row: sqlx::postgres::PgRow| Config2 {
+            preparation_time_minutes: row.try_get("preparation_time_minutes").ok(),
+            max_preparation_time_minutes: row.try_get("max_preparation_time_minutes").ok(),
+            availability_days: row.try_get("availability_days").ok(),
+            is_immediately_available: row.try_get("is_immediately_available").ok(),
+        })
         .fetch_optional(&self.pool)
         .await?;
 
@@ -180,7 +209,9 @@ impl ProductAvailabilityService {
             None => return Ok(None),
         };
 
-        let availability_days: Vec<i32> = config.availability_days.unwrap_or_else(|| vec![0, 1, 2, 3, 4, 5, 6]);
+        let availability_days: Vec<i32> = config.availability_days
+            .and_then(|v| serde_json::from_value(v).ok())
+            .unwrap_or_else(|| vec![0, 1, 2, 3, 4, 5, 6]);
         let now = Utc::now();
         let current_weekday = now.weekday().num_days_from_sunday() as i32;
         let is_available = availability_days.is_empty() || availability_days.contains(&current_weekday);

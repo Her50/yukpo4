@@ -6,10 +6,9 @@
 
 use crate::core::types::AppResult;
 use crate::services::dynamic_preparation_time_service::DynamicPreparationTimeService;
-use crate::services::provider_analytics_service::ProviderAnalyticsService;
 use chrono::{Timelike, Utc};
-use log::{error, info, warn};
-use sqlx::PgPool;
+use log::{error, info};
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
 
@@ -61,7 +60,12 @@ async fn recalculate_all_product_cancellation_stats(pool: &PgPool) -> AppResult<
     info!("🔄 [StatsRecalculation] Recalcul des statistiques d'annulation par produit...");
 
     // Récupérer tous les produits avec des commandes
-    let products = sqlx::query!(
+    struct ProductInfo {
+        service_id: i32,
+        product_index: i32,
+    }
+    
+    let products: Vec<ProductInfo> = sqlx::query(
         r#"
         SELECT DISTINCT 
             po.service_id,
@@ -71,6 +75,10 @@ async fn recalculate_all_product_cancellation_stats(pool: &PgPool) -> AppResult<
         ORDER BY po.service_id, po.product_index
         "#,
     )
+    .map(|row: sqlx::postgres::PgRow| ProductInfo {
+        service_id: row.get::<i32, _>("service_id"),
+        product_index: row.get::<i32, _>("product_index"),
+    })
     .fetch_all(pool)
     .await?;
 
@@ -88,7 +96,7 @@ async fn recalculate_all_product_cancellation_stats(pool: &PgPool) -> AppResult<
                 updated_count += 1;
             }
             Err(e) => {
-                warn!(
+                error!(
                     "⚠️ [StatsRecalculation] Erreur calcul stats annulation pour produit {} (service {}): {}",
                     row.product_index,
                     row.service_id,
@@ -116,32 +124,33 @@ async fn recalculate_product_cancellation_stats(
     let period_start = Utc::now() - chrono::Duration::days(90);
 
     // Compter les commandes totales
-    let total_orders = sqlx::query!(
+    let total_orders: i64 = sqlx::query_scalar(
         r#"
-        SELECT COUNT(*) as count
+        SELECT COUNT(*)::BIGINT
         FROM product_orders
         WHERE service_id = $1
         AND product_index = $2
         AND created_at >= $3
         "#,
-        service_id,
-        product_index,
-        period_start
     )
+    .bind(service_id)
+    .bind(product_index)
+    .bind(period_start)
     .fetch_one(pool)
     .await?
-    .count
-    .unwrap_or(0) as i32;
+    .unwrap_or(0);
 
     if total_orders == 0 {
         // Pas de commandes, ne pas créer d'entrée
         return Ok(());
     }
+    
+    let total_orders_i32 = total_orders as i32;
 
     // Compter les annulations par type
-    let timeout_cancellations = sqlx::query!(
+    let timeout_cancellations: i64 = sqlx::query_scalar(
         r#"
-        SELECT COUNT(*) as count
+        SELECT COUNT(*)::BIGINT
         FROM order_cancellations
         WHERE order_id IN (
             SELECT id FROM product_orders
@@ -150,18 +159,17 @@ async fn recalculate_product_cancellation_stats(
         AND cancellation_type = 'timeout'
         AND cancelled_at >= $3
         "#,
-        service_id,
-        product_index,
-        period_start
     )
+    .bind(service_id)
+    .bind(product_index)
+    .bind(period_start)
     .fetch_one(pool)
     .await?
-    .count
-    .unwrap_or(0) as i32;
+    .unwrap_or(0);
 
-    let rejected_cancellations = sqlx::query!(
+    let rejected_cancellations: i64 = sqlx::query_scalar(
         r#"
-        SELECT COUNT(*) as count
+        SELECT COUNT(*)::BIGINT
         FROM order_cancellations
         WHERE order_id IN (
             SELECT id FROM product_orders
@@ -170,14 +178,13 @@ async fn recalculate_product_cancellation_stats(
         AND cancellation_type = 'rejected'
         AND cancelled_at >= $3
         "#,
-        service_id,
-        product_index,
-        period_start
     )
+    .bind(service_id)
+    .bind(product_index)
+    .bind(period_start)
     .fetch_one(pool)
     .await?
-    .count
-    .unwrap_or(0) as i32;
+    .unwrap_or(0);
 
     let total_cancellations = timeout_cancellations + rejected_cancellations;
 
@@ -187,9 +194,13 @@ async fn recalculate_product_cancellation_stats(
     } else {
         0.0
     };
+    
+    let total_cancellations_i32 = total_cancellations as i32;
+    let timeout_cancellations_i32 = timeout_cancellations as i32;
+    let rejected_cancellations_i32 = rejected_cancellations as i32;
 
     // Mettre à jour ou insérer les stats
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO product_cancellation_stats (
             service_id,
@@ -211,14 +222,14 @@ async fn recalculate_product_cancellation_stats(
             rejected_cancellations = EXCLUDED.rejected_cancellations,
             last_calculated_at = EXCLUDED.last_calculated_at
         "#,
-        service_id,
-        product_index,
-        total_orders,
-        total_cancellations,
-        cancellation_rate,
-        timeout_cancellations,
-        rejected_cancellations
     )
+    .bind(service_id)
+    .bind(product_index)
+    .bind(total_orders_i32)
+    .bind(total_cancellations_i32)
+    .bind(cancellation_rate)
+    .bind(timeout_cancellations_i32)
+    .bind(rejected_cancellations_i32)
     .execute(pool)
     .await?;
 

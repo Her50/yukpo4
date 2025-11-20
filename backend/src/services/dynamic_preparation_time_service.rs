@@ -1,8 +1,8 @@
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use chrono::{DateTime, Utc};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 /// Service pour calculer dynamiquement les durées de préparation par catégorie
 pub struct DynamicPreparationTimeService {
@@ -29,25 +29,19 @@ impl DynamicPreparationTimeService {
         category: &str,
     ) -> AppResult<Option<i32>> {
         // Récupérer les stats de la catégorie
-        let stats = sqlx::query!(
+        let median: Option<f64> = sqlx::query_scalar(
             r#"
-            SELECT 
-                category,
-                avg_preparation_minutes,
-                median_preparation_minutes,
-                sample_count,
-                last_calculated_at
+            SELECT median_preparation_minutes
             FROM category_preparation_stats
             WHERE category = $1
             "#,
-            category
         )
+        .bind(category)
         .fetch_optional(&self.pool)
         .await?;
 
-        if let Some(stats) = stats {
+        if let Some(median) = median {
             // Utiliser la médiane comme valeur par défaut (plus robuste que la moyenne)
-            let median = stats.median_preparation_minutes;
             return Ok(Some(median as i32));
         }
 
@@ -60,7 +54,7 @@ impl DynamicPreparationTimeService {
         info!("[DynamicPreparationTime] Recalcul des statistiques par catégorie...");
 
         // Récupérer toutes les catégories uniques depuis les services
-        let categories = sqlx::query!(
+        let categories: Vec<String> = sqlx::query_scalar(
             r#"
             SELECT DISTINCT category
             FROM services
@@ -73,8 +67,7 @@ impl DynamicPreparationTimeService {
 
         let mut updated_count = 0;
 
-        for row in categories {
-            let category = row.category.unwrap_or_default();
+        for category in categories {
             if category.is_empty() {
                 continue;
             }
@@ -108,7 +101,12 @@ impl DynamicPreparationTimeService {
     pub async fn recalculate_category_stats(&self, category: &str) -> AppResult<()> {
         // Récupérer les temps de préparation observés pour cette catégorie
         // Depuis product_orders où le statut est 'ready' ou 'delivered'
-        let preparation_times = sqlx::query!(
+        struct PreparationTimeRow {
+            preparation_time_minutes: Option<i32>,
+            actual_minutes: Option<f64>,
+        }
+        
+        let preparation_times: Vec<PreparationTimeRow> = sqlx::query(
             r#"
             SELECT 
                 po.preparation_time_minutes,
@@ -124,8 +122,12 @@ impl DynamicPreparationTimeService {
             ORDER BY po.validated_at DESC
             LIMIT 1000
             "#,
-            category
         )
+        .bind(category)
+        .map(|row: sqlx::postgres::PgRow| PreparationTimeRow {
+            preparation_time_minutes: row.try_get("preparation_time_minutes").ok(),
+            actual_minutes: row.try_get("actual_minutes").ok(),
+        })
         .fetch_all(&self.pool)
         .await?;
 
@@ -186,7 +188,7 @@ impl DynamicPreparationTimeService {
         median: f64,
         sample_count: i32,
     ) -> AppResult<()> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO category_preparation_stats (
                 category,
@@ -203,11 +205,11 @@ impl DynamicPreparationTimeService {
                 last_calculated_at = EXCLUDED.last_calculated_at,
                 updated_at = NOW()
             "#,
-            category,
-            avg,
-            median,
-            sample_count
         )
+        .bind(category)
+        .bind(avg)
+        .bind(median)
+        .bind(sample_count)
         .execute(&self.pool)
         .await?;
 
@@ -219,7 +221,7 @@ impl DynamicPreparationTimeService {
         &self,
         category: &str,
     ) -> AppResult<Option<CategoryPreparationStats>> {
-        let row = sqlx::query!(
+        let row = sqlx::query(
             r#"
             SELECT 
                 category,
@@ -230,18 +232,19 @@ impl DynamicPreparationTimeService {
             FROM category_preparation_stats
             WHERE category = $1
             "#,
-            category
         )
+        .bind(category)
+        .map(|row: sqlx::postgres::PgRow| CategoryPreparationStats {
+            category: row.get::<String, _>("category"),
+            avg_preparation_minutes: row.get::<f64, _>("avg_preparation_minutes"),
+            median_preparation_minutes: row.get::<f64, _>("median_preparation_minutes"),
+            sample_count: row.get::<i32, _>("sample_count"),
+            last_calculated_at: row.get::<DateTime<Utc>, _>("last_calculated_at"),
+        })
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| CategoryPreparationStats {
-            category: r.category,
-            avg_preparation_minutes: r.avg_preparation_minutes.to_f64().unwrap_or(0.0),
-            median_preparation_minutes: r.median_preparation_minutes.to_f64().unwrap_or(0.0),
-            sample_count: r.sample_count,
-            last_calculated_at: r.last_calculated_at,
-        }))
+        Ok(row)
     }
 }
 

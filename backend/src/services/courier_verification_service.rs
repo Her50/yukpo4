@@ -1,10 +1,10 @@
 use crate::core::types::{AppError, AppResult};
 use chrono::{DateTime, Duration, Utc};
-use log::{info, warn};
+use log::info;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 /// Service pour vérifier l'identité du coursier lors du pickup
@@ -76,20 +76,20 @@ impl CourierVerificationService {
         let expires_at = now + Duration::hours(expires_in_hours as i64);
 
         // Vérifier si un code existe déjà pour cette livraison
-        let existing = sqlx::query!(
+        let existing_id: Option<Uuid> = sqlx::query_scalar(
             r#"
             SELECT id
             FROM courier_verification_codes
             WHERE delivery_id = $1 AND verified_at IS NULL AND expires_at > NOW()
             "#,
-            delivery_id
         )
+        .bind(delivery_id)
         .fetch_optional(&self.pool)
         .await?;
 
-        let verification_id = if let Some(existing) = existing {
+        let verification_id = if let Some(existing_id) = existing_id {
             // Mettre à jour le code existant
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE courier_verification_codes
                 SET 
@@ -101,19 +101,19 @@ impl CourierVerificationService {
                 WHERE id = $6
                 RETURNING id
                 "#,
-                courier_id,
-                verification_code,
-                qr_code_data,
-                expires_at,
-                order_id,
-                existing.id
             )
+            .bind(courier_id)
+            .bind(&verification_code)
+            .bind(&qr_code_data)
+            .bind(expires_at)
+            .bind(order_id)
+            .bind(existing_id)
+            .map(|row: sqlx::postgres::PgRow| row.get::<Uuid, _>("id"))
             .fetch_one(&self.pool)
             .await?
-            .id
         } else {
             // Créer un nouveau code
-            sqlx::query_scalar!(
+            sqlx::query_scalar(
                 r#"
                 INSERT INTO courier_verification_codes (
                     delivery_id,
@@ -126,13 +126,13 @@ impl CourierVerificationService {
                 VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING id
                 "#,
-                delivery_id,
-                order_id,
-                courier_id,
-                verification_code,
-                qr_code_data,
-                expires_at
             )
+            .bind(delivery_id)
+            .bind(order_id)
+            .bind(courier_id)
+            .bind(&verification_code)
+            .bind(&qr_code_data)
+            .bind(expires_at)
             .fetch_one(&self.pool)
             .await?
         };
@@ -159,7 +159,21 @@ impl CourierVerificationService {
         );
 
         // Récupérer le code de vérification
-        let verification = sqlx::query!(
+        struct VerificationRow {
+            id: Uuid,
+            delivery_id: Uuid,
+            order_id: Option<Uuid>,
+            courier_id: Option<i32>,
+            verification_code: String,
+            expires_at: Option<DateTime<Utc>>,
+            verified_at: Option<DateTime<Utc>>,
+            user_id: Option<i32>,
+            nom_complet: Option<String>,
+            nom: Option<String>,
+            prenom: Option<String>,
+        }
+        
+        let verification: Option<VerificationRow> = sqlx::query(
             r#"
             SELECT 
                 vc.id,
@@ -179,9 +193,22 @@ impl CourierVerificationService {
             WHERE vc.delivery_id = $1
             AND vc.verification_code = $2
             "#,
-            delivery_id,
-            request.verification_code
         )
+        .bind(delivery_id)
+        .bind(&request.verification_code)
+        .map(|row: sqlx::postgres::PgRow| VerificationRow {
+            id: row.get::<Uuid, _>("id"),
+            delivery_id: row.get::<Uuid, _>("delivery_id"),
+            order_id: row.try_get("order_id").ok(),
+            courier_id: row.try_get("courier_id").ok(),
+            verification_code: row.get::<String, _>("verification_code"),
+            expires_at: row.try_get("expires_at").ok(),
+            verified_at: row.try_get("verified_at").ok(),
+            user_id: row.try_get("user_id").ok(),
+            nom_complet: row.try_get("nom_complet").ok(),
+            nom: row.try_get("nom").ok(),
+            prenom: row.try_get("prenom").ok(),
+        })
         .fetch_optional(&self.pool)
         .await?;
 
@@ -237,35 +264,35 @@ impl CourierVerificationService {
         // Vérifier que le prestataire est bien le propriétaire de la livraison/commande
         let is_authorized = if let Some(order_id) = verification.order_id {
             // Vérifier via product_orders
-            let order = sqlx::query!(
+            let order_provider_id: Option<i32> = sqlx::query_scalar(
                 r#"
                 SELECT provider_user_id
                 FROM product_orders
                 WHERE id = $1
                 "#,
-                order_id
             )
+            .bind(order_id)
             .fetch_optional(&self.pool)
             .await?;
 
-            order
-                .map(|o| o.provider_user_id == provider_user_id)
+            order_provider_id
+                .map(|id| id == provider_user_id)
                 .unwrap_or(false)
         } else {
             // Vérifier via deliveries (si pas de product_order)
-            let delivery = sqlx::query!(
+            let delivery_creator_id: Option<i32> = sqlx::query_scalar(
                 r#"
                 SELECT creator_id
                 FROM deliveries
                 WHERE id = $1
                 "#,
-                delivery_id
             )
+            .bind(delivery_id)
             .fetch_optional(&self.pool)
             .await?;
 
-            delivery
-                .map(|d| d.creator_id == provider_user_id)
+            delivery_creator_id
+                .map(|id| id == provider_user_id)
                 .unwrap_or(false)
         };
 
@@ -277,7 +304,7 @@ impl CourierVerificationService {
 
         // Marquer comme vérifié
         let now = Utc::now();
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE courier_verification_codes
             SET 
@@ -286,11 +313,11 @@ impl CourierVerificationService {
                 verification_method = $3
             WHERE id = $4
             "#,
-            now,
-            provider_user_id,
-            request.verification_method.unwrap_or_else(|| "pin_code".to_string()),
-            verification.id
         )
+        .bind(now)
+        .bind(provider_user_id)
+        .bind(request.verification_method.as_deref().unwrap_or("pin_code"))
+        .bind(verification.id)
         .execute(&self.pool)
         .await?;
 
@@ -322,7 +349,7 @@ impl CourierVerificationService {
         &self,
         delivery_id: Uuid,
     ) -> AppResult<Option<CourierVerificationCode>> {
-        let row = sqlx::query!(
+        let row = sqlx::query(
             r#"
             SELECT 
                 id,
@@ -341,29 +368,30 @@ impl CourierVerificationService {
             ORDER BY created_at DESC
             LIMIT 1
             "#,
-            delivery_id
         )
+        .bind(delivery_id)
+        .map(|row: sqlx::postgres::PgRow| CourierVerificationCode {
+            id: row.get::<Uuid, _>("id"),
+            delivery_id: row.get::<Uuid, _>("delivery_id"),
+            order_id: row.try_get("order_id").ok(),
+            courier_id: row.get::<i32, _>("courier_id"),
+            verification_code: row.get::<String, _>("verification_code"),
+            qr_code_data: row.try_get("qr_code_data").ok(),
+            expires_at: row.get::<DateTime<Utc>, _>("expires_at"),
+            verified_at: row.try_get("verified_at").ok(),
+            verified_by: row.try_get("verified_by").ok(),
+            verification_method: row.try_get("verification_method").ok(),
+            created_at: row.get::<DateTime<Utc>, _>("created_at"),
+        })
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| CourierVerificationCode {
-            id: r.id,
-            delivery_id: r.delivery_id,
-            order_id: r.order_id,
-            courier_id: r.courier_id,
-            verification_code: r.verification_code,
-            qr_code_data: r.qr_code_data,
-            expires_at: r.expires_at,
-            verified_at: r.verified_at,
-            verified_by: r.verified_by,
-            verification_method: r.verification_method,
-            created_at: r.created_at,
-        }))
+        Ok(row)
     }
 
     /// Récupère un code de vérification par ID
     async fn get_verification_code(&self, id: Uuid) -> AppResult<CourierVerificationCode> {
-        let row = sqlx::query!(
+        let row = sqlx::query(
             r#"
             SELECT 
                 id,
@@ -380,24 +408,25 @@ impl CourierVerificationService {
             FROM courier_verification_codes
             WHERE id = $1
             "#,
-            id
         )
+        .bind(id)
+        .map(|row: sqlx::postgres::PgRow| CourierVerificationCode {
+            id: row.get::<Uuid, _>("id"),
+            delivery_id: row.get::<Uuid, _>("delivery_id"),
+            order_id: row.try_get("order_id").ok(),
+            courier_id: row.get::<i32, _>("courier_id"),
+            verification_code: row.get::<String, _>("verification_code"),
+            qr_code_data: row.try_get("qr_code_data").ok(),
+            expires_at: row.get::<DateTime<Utc>, _>("expires_at"),
+            verified_at: row.try_get("verified_at").ok(),
+            verified_by: row.try_get("verified_by").ok(),
+            verification_method: row.try_get("verification_method").ok(),
+            created_at: row.get::<DateTime<Utc>, _>("created_at"),
+        })
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(CourierVerificationCode {
-            id: row.id,
-            delivery_id: row.delivery_id,
-            order_id: row.order_id,
-            courier_id: row.courier_id,
-            verification_code: row.verification_code,
-            qr_code_data: row.qr_code_data,
-            expires_at: row.expires_at,
-            verified_at: row.verified_at,
-            verified_by: row.verified_by,
-            verification_method: row.verification_method,
-            created_at: row.created_at,
-        })
+        Ok(row)
     }
 
     /// Génère un code PIN à 6 chiffres
@@ -412,7 +441,7 @@ impl CourierVerificationService {
         delivery_id: Uuid,
         courier_id: i32,
     ) -> AppResult<bool> {
-        let verification = sqlx::query!(
+        let verification: Option<i32> = sqlx::query_scalar(
             r#"
             SELECT courier_id
             FROM courier_verification_codes
@@ -422,9 +451,9 @@ impl CourierVerificationService {
             ORDER BY verified_at DESC
             LIMIT 1
             "#,
-            delivery_id,
-            courier_id
         )
+        .bind(delivery_id)
+        .bind(courier_id)
         .fetch_optional(&self.pool)
         .await?;
 

@@ -539,6 +539,9 @@ pub struct ProductDeliveryConfigInput {
     
     // Type véhicule
     pub required_vehicle_type_id: i32,
+    // ✅ NOUVEAU : Type de véhicule requis (aligné avec formulaire de commande)
+    // 'bike', 'motorcycle', 'tricycle', 'car', 'pickup', 'van', 'truck', 'walking'
+    pub required_vehicle_type: Option<String>,
     pub weight_kg: Option<f64>,
     pub volume_cm3: Option<f64>,
     pub requires_isothermal: Option<bool>,

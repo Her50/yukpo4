@@ -1,6 +1,6 @@
 use crate::core::types::{AppError, AppResult};
 use crate::services::push_notification_service;
-use crate::services::similar_products_service::{SimilarProduct, SimilarProductsService};
+use crate::services::similar_products_service::SimilarProductsService;
 use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::json;

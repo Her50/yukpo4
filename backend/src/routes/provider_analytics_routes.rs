@@ -1,17 +1,15 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
     response::Json,
     routing::get,
     Extension, Router,
 };
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
 use crate::{
-    core::types::{AppError, AppResult},
+    core::types::AppError,
     middlewares::jwt::AuthenticatedUser,
     services::provider_analytics_service::ProviderAnalyticsService,
     state::AppState,
