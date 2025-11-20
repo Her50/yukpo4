@@ -68,8 +68,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("✅ Connexion Redis établie - Backend v2.1.4");
                     (client, true)
                 }
-                Ok(Err(e)) | Err(e) => {
+                Ok(Err(e)) => {
                     log::warn!("⚠️ Redis URL configurée mais connexion impossible: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
+                    // Créer un client factice pour les autres services qui peuvent gérer l'absence de Redis
+                    let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
+                        RedisClient::open("redis://localhost:9999/0")
+                            .expect("Impossible de créer un client Redis factice")
+                    });
+                    (dummy_client, false)
+                }
+                Err(e) => {
+                    log::warn!("⚠️ Redis URL configurée mais timeout de connexion: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
                     // Créer un client factice pour les autres services qui peuvent gérer l'absence de Redis
                     let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
                         RedisClient::open("redis://localhost:9999/0")
