@@ -364,9 +364,9 @@ impl ProviderAnalyticsService {
     /// Récupère les statistiques de pénalités (si système de pénalités implémenté)
     async fn get_penalty_stats(
         &self,
-        provider_user_id: i32,
-        period_start: DateTime<Utc>,
-        period_end: DateTime<Utc>,
+        _provider_user_id: i32,
+        _period_start: DateTime<Utc>,
+        _period_end: DateTime<Utc>,
     ) -> AppResult<Option<ProviderPenaltyStats>> {
         // TODO: Implémenter quand le système de pénalités sera créé
         // Pour l'instant, retourner None

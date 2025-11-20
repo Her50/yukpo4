@@ -353,7 +353,8 @@ async fn get_provider_pending_orders(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> Result<Json<Value>, AppError> {
-    let orders = sqlx::query!(
+    // Utiliser sqlx::query pour éviter les problèmes d'inférence de type en mode offline
+    let orders: Vec<Value> = sqlx::query(
         r#"
         SELECT 
             id,
@@ -379,8 +380,29 @@ async fn get_provider_pending_orders(
         ORDER BY created_at DESC
         LIMIT 50
         "#,
-        user.id
     )
+    .bind(user.id)
+    .map(|row: sqlx::postgres::PgRow| {
+        json!({
+            "id": row.get::<uuid::Uuid, _>("id"),
+            "delivery_id": row.try_get::<Option<uuid::Uuid>, _>("delivery_id").ok(),
+            "service_id": row.get::<i32, _>("service_id"),
+            "product_index": row.get::<i32, _>("product_index"),
+            "client_user_id": row.get::<i32, _>("client_user_id"),
+            "provider_user_id": row.get::<i32, _>("provider_user_id"),
+            "status": row.get::<String, _>("status"),
+            "preparation_time_minutes": row.try_get::<Option<i32>, _>("preparation_time_minutes").ok(),
+            "estimated_ready_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("estimated_ready_at").ok(),
+            "validated_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("validated_at").ok(),
+            "validated_by": row.try_get::<Option<i32>, _>("validated_by").ok(),
+            "rejected_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("rejected_at").ok(),
+            "rejection_reason": row.try_get::<Option<String>, _>("rejection_reason").ok(),
+            "validation_deadline": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("validation_deadline").ok(),
+            "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+            "updated_at": row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
+            "metadata": row.try_get::<Value, _>("metadata").unwrap_or_else(|_| json!({})),
+        })
+    })
     .fetch_all(&state.pg)
     .await?;
 
@@ -394,7 +416,8 @@ async fn get_client_orders(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> Result<Json<Value>, AppError> {
-    let orders = sqlx::query!(
+    // Utiliser sqlx::query pour éviter les problèmes d'inférence de type en mode offline
+    let orders: Vec<Value> = sqlx::query(
         r#"
         SELECT 
             id,
@@ -419,8 +442,29 @@ async fn get_client_orders(
         ORDER BY created_at DESC
         LIMIT 50
         "#,
-        user.id
     )
+    .bind(user.id)
+    .map(|row: sqlx::postgres::PgRow| {
+        json!({
+            "id": row.get::<uuid::Uuid, _>("id"),
+            "delivery_id": row.try_get::<Option<uuid::Uuid>, _>("delivery_id").ok(),
+            "service_id": row.get::<i32, _>("service_id"),
+            "product_index": row.get::<i32, _>("product_index"),
+            "client_user_id": row.get::<i32, _>("client_user_id"),
+            "provider_user_id": row.get::<i32, _>("provider_user_id"),
+            "status": row.get::<String, _>("status"),
+            "preparation_time_minutes": row.try_get::<Option<i32>, _>("preparation_time_minutes").ok(),
+            "estimated_ready_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("estimated_ready_at").ok(),
+            "validated_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("validated_at").ok(),
+            "validated_by": row.try_get::<Option<i32>, _>("validated_by").ok(),
+            "rejected_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("rejected_at").ok(),
+            "rejection_reason": row.try_get::<Option<String>, _>("rejection_reason").ok(),
+            "validation_deadline": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("validation_deadline").ok(),
+            "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+            "updated_at": row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
+            "metadata": row.try_get::<Value, _>("metadata").unwrap_or_else(|_| json!({})),
+        })
+    })
     .fetch_all(&state.pg)
     .await?;
 

@@ -20,7 +20,7 @@ pub async fn start_category_stats_recalculation_task(pool: Arc<PgPool>) {
 
     // Attendre jusqu'à la prochaine heure pile (pour commencer à minuit)
     let now = chrono::Utc::now();
-    let next_hour = (now.hour() + 1) as u64;
+    let _next_hour = (now.hour() + 1) as u64;
     let seconds_until_next_hour = (3600 - (now.minute() * 60 + now.second()) as u64) % 3600;
     
     if seconds_until_next_hour > 0 {
