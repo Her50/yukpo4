@@ -53,13 +53,19 @@ pub struct StudioPreviewEventRecord {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewTemplateMetrics {
     pub template: Option<String>,
     pub count: i64,
     pub avg_duration_seconds: f64,
     pub last_preview_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, FromRow)]
+struct PreviewSummaryRow {
+    total_previews: i64,
+    last_preview_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -276,38 +282,37 @@ impl StudioService {
             ));
         }
 
-        let summary = sqlx::query!(
+        let summary: PreviewSummaryRow = sqlx::query_as(
             r#"
             SELECT COUNT(*)::bigint AS total_previews,
                    MAX(created_at) AS last_preview_at
             FROM studio_preview_events
             WHERE session_id = $1
-            "#,
-            session_id
+            "#
         )
+        .bind(session_id)
         .fetch_one(&self.pool)
         .await?;
 
-        let templates = sqlx::query_as!(
-            PreviewTemplateMetrics,
+        let templates: Vec<PreviewTemplateMetrics> = sqlx::query_as(
             r#"
             SELECT
                 template,
-                COUNT(*)::bigint AS "count!: i64",
-                COALESCE(AVG(duration_seconds)::float, 0.0) AS "avg_duration_seconds!: f64",
-                MAX(created_at) AS "last_preview_at?"
+                COUNT(*)::bigint AS count,
+                COALESCE(AVG(duration_seconds)::float, 0.0) AS avg_duration_seconds,
+                MAX(created_at) AS last_preview_at
             FROM studio_preview_events
             WHERE session_id = $1
             GROUP BY template
             ORDER BY COUNT(*) DESC
-            "#,
-            session_id
+            "#
         )
+        .bind(session_id)
         .fetch_all(&self.pool)
         .await?;
 
         Ok(StudioPreviewMetrics {
-            total_previews: summary.total_previews.unwrap_or(0),
+            total_previews: summary.total_previews,
             last_preview_at: summary.last_preview_at,
             templates,
         })

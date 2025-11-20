@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT d.id\n            FROM deliveries d\n            LEFT JOIN couriers c ON d.courier_id = c.id\n            WHERE\n                (\n                    d.creator_id = $1\n                    OR d.recipient_user_id = $1\n                    OR c.user_id = $1\n                )\n                AND d.status <> 'completed'::delivery_status\n            ORDER BY d.requested_at DESC\n            LIMIT $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "05658611c814eb50e31593b79568baf8aee19db4e6f768d23ac9d827a5a92b8f"
+}

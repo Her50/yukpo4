@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE video_generation_jobs\n            SET status = 'completed',\n                result_media_id = $2,\n                progress_steps = $3,\n                result_payload = $4,\n                updated_at = NOW()\n            WHERE job_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e22bdde9ef4062e5504c06d053094995681c79db614afc4383c2bd396f198ca6"
+}

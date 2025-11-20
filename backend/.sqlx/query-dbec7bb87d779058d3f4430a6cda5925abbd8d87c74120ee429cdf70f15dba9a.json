@@ -1,0 +1,97 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO delivery_status_events (\n                delivery_id,\n                status,\n                payload,\n                recorded_by\n            )\n            VALUES ($1, $2, $3, $4)\n            RETURNING\n                id,\n                delivery_id,\n                status AS \"status: DeliveryStatus\",\n                occurred_at,\n                payload,\n                recorded_by\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "delivery_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "status: DeliveryStatus",
+        "type_info": {
+          "Custom": {
+            "name": "delivery_status",
+            "kind": {
+              "Enum": [
+                "requested",
+                "awaiting_courier_confirmation",
+                "accepted",
+                "en_route_pickup",
+                "arrival_pickup",
+                "picked_up",
+                "shopping_in_progress",
+                "shopping_completed",
+                "en_route_delivery",
+                "arrival_destination",
+                "delivered",
+                "completed",
+                "cancelled"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "occurred_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "payload",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "recorded_by",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "delivery_status",
+            "kind": {
+              "Enum": [
+                "requested",
+                "awaiting_courier_confirmation",
+                "accepted",
+                "en_route_pickup",
+                "arrival_pickup",
+                "picked_up",
+                "shopping_in_progress",
+                "shopping_completed",
+                "en_route_delivery",
+                "arrival_destination",
+                "delivered",
+                "completed",
+                "cancelled"
+              ]
+            }
+          }
+        },
+        "Jsonb",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "dbec7bb87d779058d3f4430a6cda5925abbd8d87c74120ee429cdf70f15dba9a"
+}

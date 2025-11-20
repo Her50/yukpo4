@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM products_lifecycle\n        WHERE id = $1\n        RETURNING id, service_id, product_index\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "service_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "product_index",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "713f095df41dd19db5adcf12c8fc061b252db7956a489a9378c2581f7d5e1949"
+}

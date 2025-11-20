@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE products_lifecycle\n        SET product_index = product_index - 1,\n            updated_at = NOW()\n        WHERE service_id = $1\n          AND product_index > $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c0a4734b302b1c292b066b047086322712fb20a2790e688c09fb559767c2131b"
+}

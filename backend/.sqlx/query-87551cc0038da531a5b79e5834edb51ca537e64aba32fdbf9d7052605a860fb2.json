@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO programmes_scolaires (etablissement, classe, annee, programme)\n        VALUES ($1, $2, $3, $4)\n        ON CONFLICT (etablissement, classe, annee)\n        DO UPDATE SET programme = EXCLUDED.programme\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "87551cc0038da531a5b79e5834edb51ca537e64aba32fdbf9d7052605a860fb2"
+}

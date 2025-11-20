@@ -1,0 +1,98 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            c.id,\n            c.user_id,\n            c.status AS \"status: crate::models::delivery_model::DeliveryCourierStatus\",\n            c.rating_average,\n            c.rating_count,\n            c.bio,\n            u.nom_complet,\n            u.avatar_url,\n            u.email,\n            -- Stats de livraison\n            COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS completed_deliveries,\n            COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'cancelled') AS cancelled_deliveries,\n            AVG(EXTRACT(EPOCH FROM (d.delivered_at - d.picked_up_at)) / 60.0) \n                FILTER (WHERE d.status = 'delivered' AND d.delivered_at IS NOT NULL AND d.picked_up_at IS NOT NULL) \n                AS avg_delivery_time_minutes\n        FROM couriers c\n        JOIN users u ON u.id = c.user_id\n        LEFT JOIN deliveries d ON d.courier_id = c.id\n        WHERE c.status = 'approved'\n        GROUP BY c.id, c.user_id, c.status, c.rating_average, c.rating_count, c.bio, \n                 u.nom_complet, u.avatar_url, u.email\n        ORDER BY c.rating_average DESC NULLS LAST, completed_deliveries DESC\n        LIMIT 50\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "status: crate::models::delivery_model::DeliveryCourierStatus",
+        "type_info": {
+          "Custom": {
+            "name": "delivery_courier_status",
+            "kind": {
+              "Enum": [
+                "pending_review",
+                "approved",
+                "rejected",
+                "suspended"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "rating_average",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "rating_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "bio",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "nom_complet",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "avatar_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "completed_deliveries",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
+        "name": "cancelled_deliveries",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "avg_delivery_time_minutes",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "5e6c87da3c42cde48314c3cac4c844ca62d1cfe582442ba03957b85919a9b2fc"
+}

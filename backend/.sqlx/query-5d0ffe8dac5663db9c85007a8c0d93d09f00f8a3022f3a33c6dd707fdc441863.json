@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, email, role, is_provider, gps, gps_consent,\n               nom, prenom, nom_complet, photo_profil, avatar_url, created_at\n        FROM users WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "role",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_provider",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "gps",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "gps_consent",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "nom",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "prenom",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "nom_complet",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "photo_profil",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "avatar_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "5d0ffe8dac5663db9c85007a8c0d93d09f00f8a3022f3a33c6dd707fdc441863"
+}

@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, user_id, offre, besoin, quantite_offerte, quantite_requise, \n                   gps_fixe_lat, gps_fixe_lon, don, created_at\n            FROM echanges \n            WHERE statut = 'en_attente' \n              AND id != $1\n              AND created_at > NOW() - INTERVAL '7 days'\n            ORDER BY created_at DESC \n            LIMIT $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "offre",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "besoin",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "quantite_offerte",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "quantite_requise",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 6,
+        "name": "gps_fixe_lat",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 7,
+        "name": "gps_fixe_lon",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 8,
+        "name": "don",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "ae40fa2220d9c182766e287e6a8bb0b1f3c4813466de4541b69490e582184561"
+}

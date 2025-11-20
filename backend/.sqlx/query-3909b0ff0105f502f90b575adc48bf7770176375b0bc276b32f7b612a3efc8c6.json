@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n             INSERT INTO delivery_parcels (\n                 type_id,\n                 weight_kg,\n                 volume_cm3,\n                 declared_value,\n                 notes,\n                 photos,\n                 constraints\n             )\n             VALUES ($1, $2, $3, $4, $5, $6, $7)\n             RETURNING\n                 id,\n                 type_id,\n                 weight_kg       AS \"weight_kg?: BigDecimal\",\n                 volume_cm3      AS \"volume_cm3?: BigDecimal\",\n                 declared_value  AS \"declared_value?: BigDecimal\",\n                notes,\n                photos         AS \"photos!: serde_json::Value\",\n                constraints    AS \"constraints!: serde_json::Value\",\n               created_at      AS \"created_at!: chrono::DateTime<Utc>\"\n             ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "type_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "weight_kg?: BigDecimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "volume_cm3?: BigDecimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "declared_value?: BigDecimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "photos!: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "constraints!: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at!: chrono::DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Text",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "3909b0ff0105f502f90b575adc48bf7770176375b0bc276b32f7b612a3efc8c6"
+}

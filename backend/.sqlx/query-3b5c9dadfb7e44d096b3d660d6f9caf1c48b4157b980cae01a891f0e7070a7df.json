@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE services\n        SET is_active = FALSE\n        WHERE is_active = TRUE\n          AND auto_deactivate_at IS NOT NULL\n          AND auto_deactivate_at < $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3b5c9dadfb7e44d096b3d660d6f9caf1c48b4157b980cae01a891f0e7070a7df"
+}

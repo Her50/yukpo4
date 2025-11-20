@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE media\n        SET product_index = product_index - 1\n        WHERE service_id = $1\n          AND product_index IS NOT NULL\n          AND product_index > $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "78d7531d117f539fccbfee41747e9c2257ff691960262edeed22dcfd4aab2901"
+}

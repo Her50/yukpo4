@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT product_price_cents, commission_rate\n            FROM delivery_payment_reservations\n            WHERE delivery_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "product_price_cents",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "commission_rate",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "be15fc8a3a52acaa83ae318bf5f173e40c2220473e7696b806ab82d3db73b1a0"
+}

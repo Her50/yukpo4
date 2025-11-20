@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, user_id, delivery_id,\n               preferred_delivery_date, preferred_delivery_time_start, preferred_delivery_time_end,\n               preferred_delivery_window_hours, avoid_days, urgency_level,\n               is_flexible, flexibility_window_days,\n               created_at, updated_at\n        FROM client_delivery_preferences\n        WHERE delivery_id = $1 AND user_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "delivery_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "preferred_delivery_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 4,
+        "name": "preferred_delivery_time_start",
+        "type_info": "Time"
+      },
+      {
+        "ordinal": 5,
+        "name": "preferred_delivery_time_end",
+        "type_info": "Time"
+      },
+      {
+        "ordinal": 6,
+        "name": "preferred_delivery_window_hours",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "avoid_days",
+        "type_info": "Int4Array"
+      },
+      {
+        "ordinal": 8,
+        "name": "urgency_level",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "is_flexible",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "flexibility_window_days",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ea4936893557380de1e58ed4d744d34ab8cd29ae65d31433d3cc59455caf2c76"
+}

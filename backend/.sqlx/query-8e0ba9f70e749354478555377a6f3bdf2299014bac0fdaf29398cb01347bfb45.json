@@ -1,0 +1,128 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO courier_assets (\n                courier_id,\n                engine_type,\n                is_primary,\n                max_weight_kg,\n                max_volume_cm3,\n                equipments,\n                available,\n                availability_schedule,\n                documents\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n            ON CONFLICT (courier_id) WHERE is_primary = TRUE\n            DO UPDATE SET\n                engine_type = EXCLUDED.engine_type,\n                max_weight_kg = EXCLUDED.max_weight_kg,\n                max_volume_cm3 = EXCLUDED.max_volume_cm3,\n                equipments = EXCLUDED.equipments,\n                available = EXCLUDED.available,\n                availability_schedule = EXCLUDED.availability_schedule,\n                documents = EXCLUDED.documents,\n                updated_at = NOW()\n            RETURNING\n                id,\n                courier_id,\n                engine_type             AS \"engine_type: DeliveryEngineType\",\n                is_primary              AS \"is_primary!: bool\",\n                max_weight_kg           AS \"max_weight_kg?: BigDecimal\",\n                max_volume_cm3          AS \"max_volume_cm3?: BigDecimal\",\n                equipments              AS \"equipments!: serde_json::Value\",\n                available               AS \"available!: bool\",\n                availability_schedule   AS \"availability_schedule?: serde_json::Value\",\n                documents               AS \"documents?: serde_json::Value\",\n                created_at              AS \"created_at!: chrono::DateTime<Utc>\",\n                updated_at              AS \"updated_at!: chrono::DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "courier_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "engine_type: DeliveryEngineType",
+        "type_info": {
+          "Custom": {
+            "name": "delivery_engine_type",
+            "kind": {
+              "Enum": [
+                "moto",
+                "scooter",
+                "voiture",
+                "camionnette",
+                "velo_cargo",
+                "pieton",
+                "camion_leger",
+                "autre"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "is_primary!: bool",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "max_weight_kg?: BigDecimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "max_volume_cm3?: BigDecimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "equipments!: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "available!: bool",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "availability_schedule?: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 9,
+        "name": "documents?: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at!: chrono::DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!: chrono::DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "delivery_engine_type",
+            "kind": {
+              "Enum": [
+                "moto",
+                "scooter",
+                "voiture",
+                "camionnette",
+                "velo_cargo",
+                "pieton",
+                "camion_leger",
+                "autre"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Numeric",
+        "Numeric",
+        "Jsonb",
+        "Bool",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "8e0ba9f70e749354478555377a6f3bdf2299014bac0fdaf29398cb01347bfb45"
+}

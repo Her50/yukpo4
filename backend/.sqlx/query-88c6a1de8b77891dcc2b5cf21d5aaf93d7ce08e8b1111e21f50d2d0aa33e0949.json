@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE payment_attempts \n        SET status = $1, transaction_id = $2, confirmed_at = NOW()\n        WHERE id = $3\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "88c6a1de8b77891dcc2b5cf21d5aaf93d7ce08e8b1111e21f50d2d0aa33e0949"
+}

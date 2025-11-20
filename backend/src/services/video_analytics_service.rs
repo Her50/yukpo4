@@ -4,18 +4,37 @@ use chrono::{DateTime, Utc};
 use log::{error, info};
 use serde::Serialize;
 use serde_json::Value;
+use sqlx::FromRow;
 
 use crate::{
     core::types::{AppError, AppResult},
     state::AppState,
 };
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, FromRow)]
 pub struct QualityScoreRecord {
     pub media_id: i32,
     pub service_id: i32,
     pub quality_score: f32,
     pub occurred_at: DateTime<Utc>,
+}
+
+#[derive(Debug, FromRow)]
+struct MediaCountRow {
+    total: i64,
+}
+
+#[derive(Debug, FromRow)]
+struct EngagementStatsRow {
+    views: i64,
+    shares: i64,
+    avg_quality: f64,
+}
+
+#[derive(Debug, FromRow)]
+struct DistributionStatsRow {
+    completed: i64,
+    pending: i64,
 }
 
 pub async fn record_engagement(
@@ -27,10 +46,13 @@ pub async fn record_engagement(
     session_id: Option<String>,
     metadata: Option<Value>,
 ) -> AppResult<()> {
-    let service_id = sqlx::query_scalar!("SELECT service_id FROM media WHERE id = $1", media_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|err| {
+    let service_id: Option<i32> = sqlx::query_scalar(
+        "SELECT service_id FROM media WHERE id = $1"
+    )
+    .bind(media_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|err| {
             error!(
                 "[VideoAnalytics] Erreur récupération service pour media {}: {:?}",
                 media_id, err
@@ -39,18 +61,18 @@ pub async fn record_engagement(
         })?
         .ok_or_else(|| AppError::NotFound("Média introuvable".to_string()))?;
 
-    sqlx::query!(
+    sqlx::query(
         "INSERT INTO media_engagement (media_id, service_id, event_type, channel, user_id, session_id, metadata, occurred_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-        media_id,
-        service_id,
-        event_type,
-        channel,
-        user_id,
-        session_id,
-        metadata,
-        Utc::now()
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
     )
+    .bind(media_id)
+    .bind(service_id)
+    .bind(event_type)
+    .bind(channel)
+    .bind(user_id)
+    .bind(session_id)
+    .bind(metadata)
+    .bind(Utc::now())
     .execute(&state.pg)
     .await
     .map_err(|err| {
@@ -70,20 +92,20 @@ pub async fn list_recent_quality_scores(
     state: Arc<AppState>,
     limit: i64,
 ) -> AppResult<Vec<QualityScoreRecord>> {
-    let rows = sqlx::query!(
+    let rows: Vec<QualityScoreRecord> = sqlx::query_as(
         r#"
         SELECT
             media_id,
             service_id,
-            COALESCE((metadata ->> 'quality_score')::float, 0.0) AS "quality_score!: f64",
-            occurred_at                                  AS "occurred_at: DateTime<Utc>"
+            COALESCE((metadata ->> 'quality_score')::float, 0.0) AS quality_score,
+            occurred_at
         FROM media_engagement
         WHERE event_type = 'quality_score'
         ORDER BY occurred_at DESC
         LIMIT $1
-        "#,
-        limit.max(1)
+        "#
     )
+    .bind(limit.max(1))
     .fetch_all(&state.pg)
     .await
     .map_err(|err| {
@@ -116,14 +138,14 @@ pub async fn schedule_distribution_targets(
     }
 
     for target in targets {
-        sqlx::query!(
+        sqlx::query(
             "INSERT INTO media_distribution (media_id, service_id, target, status)
              VALUES ($1, $2, $3, 'scheduled')
-             ON CONFLICT DO NOTHING",
-            media_id,
-            service_id,
-            target
+             ON CONFLICT DO NOTHING"
         )
+        .bind(media_id)
+        .bind(service_id)
+        .bind(target)
         .execute(&state.pg)
         .await
         .map_err(|err| {
@@ -145,15 +167,15 @@ pub async fn update_distribution_status(
     status: &str,
     metadata: Option<Value>,
 ) -> AppResult<()> {
-    sqlx::query!(
+    sqlx::query(
         "UPDATE media_distribution
          SET status = $1, metadata = COALESCE(metadata, '{}'::jsonb) || COALESCE($2, '{}'::jsonb), updated_at = NOW()
-         WHERE media_id = $3 AND target = $4",
-        status,
-        metadata,
-        media_id,
-        target
+         WHERE media_id = $3 AND target = $4"
     )
+    .bind(status)
+    .bind(metadata)
+    .bind(media_id)
+    .bind(target)
     .execute(&state.pg)
     .await
     .map_err(|err| {
@@ -185,45 +207,45 @@ pub async fn video_analytics_overview(
     let days = horizon_days.clamp(1, 30);
     let days_i32 = days as i32;
 
-    let media_row = sqlx::query!(
+    let media_row: MediaCountRow = sqlx::query_as(
         r#"
-        SELECT COUNT(*) AS "total!: i64"
+        SELECT COUNT(*) AS total
         FROM media
         WHERE media_type = 'video'
           AND uploaded_at >= NOW() - ($1::int * INTERVAL '1 day')
-        "#,
-        days_i32
+        "#
     )
+    .bind(days_i32)
     .fetch_one(&state.pg)
     .await
     .map_err(AppError::from)?;
 
-    let engagement_row = sqlx::query!(
+    let engagement_row: EngagementStatsRow = sqlx::query_as(
         r#"
         SELECT
-            COUNT(*) FILTER (WHERE event_type = 'view')   AS "views!: i64",
-            COUNT(*) FILTER (WHERE event_type = 'share')  AS "shares!: i64",
-            COALESCE(AVG((metadata ->> 'quality_score')::float), 0.0) AS "avg_quality!: f64"
+            COUNT(*) FILTER (WHERE event_type = 'view')   AS views,
+            COUNT(*) FILTER (WHERE event_type = 'share')  AS shares,
+            COALESCE(AVG((metadata ->> 'quality_score')::float), 0.0) AS avg_quality
         FROM media_engagement
         WHERE occurred_at >= NOW() - ($1::int * INTERVAL '1 day')
           AND event_type IN ('view', 'share', 'quality_score')
-        "#,
-        days_i32
+        "#
     )
+    .bind(days_i32)
     .fetch_one(&state.pg)
     .await
     .map_err(AppError::from)?;
 
-    let distribution_row = sqlx::query!(
+    let distribution_row: DistributionStatsRow = sqlx::query_as(
         r#"
         SELECT
-            COUNT(*) FILTER (WHERE status = 'completed')                       AS "completed!: i64",
-            COUNT(*) FILTER (WHERE status IN ('scheduled', 'processing'))      AS "pending!: i64"
+            COUNT(*) FILTER (WHERE status = 'completed')                       AS completed,
+            COUNT(*) FILTER (WHERE status IN ('scheduled', 'processing'))      AS pending
         FROM media_distribution
         WHERE updated_at >= NOW() - ($1::int * INTERVAL '1 day')
-        "#,
-        days_i32
+        "#
     )
+    .bind(days_i32)
     .fetch_one(&state.pg)
     .await
     .map_err(AppError::from)?;

@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE delivery_payment_reservations\n            SET\n                merchant_payout_cents = $1,\n                commission_cents = $2,\n                commission_rate = $3,\n                merchant_paid_at = NOW(),\n                client_payment_method = $4,\n                merchant_payment_method = $5,\n                payout_method_used = $6,\n                updated_at = NOW()\n            WHERE delivery_id = $7\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Numeric",
+        "Jsonb",
+        "Jsonb",
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "73c9774056a4d749f61dacae3b7167ac1ebcf518297c6cd24bebb00d2e1bacef"
+}

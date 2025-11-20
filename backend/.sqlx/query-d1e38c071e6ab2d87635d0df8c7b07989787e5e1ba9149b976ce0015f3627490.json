@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT payment_method\n            FROM payment_transactions pt\n            JOIN delivery_payment_reservations dpr ON pt.user_id = dpr.user_id\n            WHERE dpr.delivery_id = $1\n            ORDER BY pt.created_at DESC\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "payment_method",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d1e38c071e6ab2d87635d0df8c7b07989787e5e1ba9149b976ce0015f3627490"
+}

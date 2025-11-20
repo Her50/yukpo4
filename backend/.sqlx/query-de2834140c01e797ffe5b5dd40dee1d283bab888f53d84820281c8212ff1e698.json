@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE services \n        SET is_active = FALSE \n        WHERE is_active = TRUE \n          AND is_tarissable = TRUE \n          AND vitesse_tarissement = 'rapide'\n          AND updated_at < NOW() - INTERVAL '7 days'\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "de2834140c01e797ffe5b5dd40dee1d283bab888f53d84820281c8212ff1e698"
+}

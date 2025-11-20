@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT programme AS \"programme: serde_json::Value\" FROM programmes_scolaires\n        WHERE etablissement = $1 AND classe = $2\n        ORDER BY annee DESC NULLS LAST\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "programme: serde_json::Value",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "80d20cc732a3f5659ff5f7cf4ff87e86607774d89686ae9f3e56f62688fdc3b4"
+}
