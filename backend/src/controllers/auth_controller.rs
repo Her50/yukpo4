@@ -6,6 +6,7 @@ use bcrypt::{hash, verify, DEFAULT_COST};
 use log::{error, info};
 use reqwest::Client;
 use serde::Deserialize;
+use sqlx::FromRow;
 use std::sync::Arc;
 
 use crate::{
@@ -30,14 +31,25 @@ pub async fn login_handler(
 ) -> AppResult<Json<serde_json::Value>> {
     info!("Appel login_handler pour email={}", payload.email);
     let db = &state.pg;
-    let user = sqlx::query!(
+    
+    #[derive(FromRow)]
+    struct UserRow {
+        id: i32,
+        email: String,
+        password_hash: String,
+        role: String,
+        tokens_balance: i64,
+        nom_complet: Option<String>,
+    }
+    
+    let user = sqlx::query_as::<_, UserRow>(
         r#"
         SELECT id, email, password_hash, role, tokens_balance, nom_complet
         FROM users
         WHERE email = $1
         "#,
-        payload.email
     )
+    .bind(&payload.email)
     .fetch_optional(db)
     .await;
     let user = match user {
@@ -91,10 +103,10 @@ pub async fn register_user(
 ) -> impl IntoResponse {
     info!("Appel register_user pour email={}", payload.email);
     let db = &state.pg;
-    let exists = sqlx::query_scalar!(
+    let exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)",
-        payload.email
     )
+    .bind(&payload.email)
     .fetch_one(db)
     .await;
     let exists = match exists {
@@ -104,7 +116,7 @@ pub async fn register_user(
             return Err(e.into());
         }
     };
-    if exists.unwrap_or(false) {
+    if exists {
         error!("[register_user] Email deja utilise: {}", payload.email);
         return Err(AppError::Conflict("Email deja utilise".into()));
     }
@@ -133,7 +145,13 @@ pub async fn register_user(
         )
     });
 
-    let new = sqlx::query!(
+    #[derive(FromRow)]
+    struct NewUserRow {
+        id: i32,
+        tokens_balance: i64,
+    }
+    
+    let new = sqlx::query_as::<_, NewUserRow>(
         r#"
         INSERT INTO users (
             email, password_hash, role, tokens_balance, preferred_lang,
@@ -143,19 +161,19 @@ pub async fn register_user(
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id, tokens_balance
         "#,
-        payload.email,
-        password_hash,
-        "user",
-        INITIAL_TOKENS,
-        payload.lang.unwrap_or_else(|| "fr".to_string()),
-        default_token_price_user,
-        default_token_price_provider,
-        default_commission_pct,
-        payload.nom.as_deref(),
-        payload.prenom.as_deref(),
-        nom_complet.as_deref(),
-        avatar_url.as_deref(),
     )
+    .bind(&payload.email)
+    .bind(&password_hash)
+    .bind("user")
+    .bind(INITIAL_TOKENS)
+    .bind(payload.lang.as_deref().unwrap_or("fr"))
+    .bind(default_token_price_user)
+    .bind(default_token_price_provider)
+    .bind(default_commission_pct)
+    .bind(payload.nom.as_deref())
+    .bind(payload.prenom.as_deref())
+    .bind(nom_complet.as_deref())
+    .bind(avatar_url.as_deref())
     .fetch_one(db)
     .await;
     let new = match new {
@@ -267,30 +285,45 @@ pub async fn oauth_login_handler(
         .map(|s| s.to_string());
 
     let db = &state.pg;
-    let row = sqlx::query!(
+    
+    #[derive(FromRow)]
+    struct OAuthUserRow {
+        id: i32,
+        role: String,
+        tokens_balance: i64,
+        nom_complet: Option<String>,
+    }
+    
+    #[derive(FromRow)]
+    struct NewOAuthUserRow {
+        id: i32,
+        tokens_balance: i64,
+    }
+    
+    let row = sqlx::query_as::<_, OAuthUserRow>(
         r#"
         SELECT id, role, tokens_balance, nom_complet
         FROM users
         WHERE email = $1
         "#,
-        email
     )
+    .bind(email)
     .fetch_optional(db)
     .await;
     let (user_id, role, balance, nom_complet) = match row {
         Ok(Some(u)) => (u.id, u.role, u.tokens_balance, u.nom_complet),
         Ok(None) => {
-            let new = sqlx::query!(
+            let new = sqlx::query_as::<_, NewOAuthUserRow>(
                 r#"
                 INSERT INTO users (email, role, tokens_balance, nom_complet)
                 VALUES ($1, $2, $3, $4)
                 RETURNING id, tokens_balance
                 "#,
-                email,
-                "user",
-                INITIAL_TOKENS,
-                oauth_name.as_deref() // ✅ NOUVEAU: sauvegarder le nom depuis OAuth
             )
+            .bind(email)
+            .bind("user")
+            .bind(INITIAL_TOKENS)
+            .bind(oauth_name.as_deref()) // ✅ NOUVEAU: sauvegarder le nom depuis OAuth
             .fetch_one(db)
             .await;
             match new {

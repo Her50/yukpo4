@@ -2,7 +2,7 @@ use crate::core::types::{AppError, AppResult};
 use chrono::Datelike;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use sqlx::{PgPool, Row, FromRow};
 use std::sync::Arc;
 
 /// Service pour rechercher des produits similaires
@@ -80,7 +80,19 @@ impl SimilarProductsService {
         );
 
         // Récupérer les caractéristiques du produit original depuis autocomplete_characteristics
-        let original_characteristics = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct OriginalCharacteristicsRow {
+            characteristic_vector: Option<Vec<String>>,
+            full_vector: Option<Vec<String>>,
+            product_labels: Option<Vec<String>>,
+            product_name: Option<String>,
+            product_description: Option<String>,
+            category: Option<String>,
+            price: Option<String>,
+            pickup_address: Option<String>,
+        }
+        
+        let original_characteristics: Option<OriginalCharacteristicsRow> = sqlx::query_as(
             r#"
             SELECT 
                 ac.characteristic_vector,
@@ -104,9 +116,9 @@ impl SimilarProductsService {
                 )
             LIMIT 1
             "#,
-            service_id,
-            product_index
         )
+        .bind(service_id)
+        .bind(product_index)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -145,7 +157,25 @@ impl SimilarProductsService {
             let client_lat = client_latitude.unwrap();
             let client_lng = client_longitude.unwrap();
             
-            sqlx::query!(
+            // Struct pour mapper les résultats de la requête avec distance
+            #[derive(sqlx::FromRow)]
+            struct SimilarProductRowWithDistance {
+                service_id: i32,
+                product_id: String,
+                product_index: i32,
+                product_name: Option<String>,
+                product_description: Option<String>,
+                category: Option<String>,
+                price: Option<String>,
+                pickup_address: Option<String>,
+                is_immediately_available: Option<bool>,
+                preparation_time_minutes: Option<i32>,
+                availability_days: Option<Vec<i32>>,
+                distance_km: Option<f64>,
+                similarity_score: Option<f64>,
+            }
+            
+            let rows: Vec<SimilarProductRowWithDistance> = sqlx::query_as(
                 r#"
                 WITH product_data AS (
                     SELECT 
@@ -380,20 +410,64 @@ impl SimilarProductsService {
                     END ASC
                 LIMIT $6
                 "#,
-                &characteristic_vector,
-                &full_vector,
-                product_description,
-                service_id,
-                current_weekday,
-                limit,
-                client_lat,
-                client_lng
             )
+            .bind(&characteristic_vector)
+            .bind(&full_vector)
+            .bind(product_description)
+            .bind(service_id)
+            .bind(current_weekday)
+            .bind(limit)
+            .bind(client_lat)
+            .bind(client_lng)
             .fetch_all(&self.pool)
-            .await?
+            .await?;
+            
+            let similar_products: Vec<_> = rows.into_iter().map(|row| {
+                let price = row.price.and_then(|p| p.parse::<f64>().ok());
+                let availability_days = row.availability_days;
+                let is_available = availability_days
+                    .as_ref()
+                    .map(|days| days.is_empty() || days.contains(&current_weekday))
+                    .unwrap_or(true);
+                
+                SimilarProduct {
+                    service_id: row.service_id,
+                    product_index: row.product_index,
+                    product_id: row.product_id,
+                    name: row.product_name.unwrap_or_default(),
+                    description: row.product_description,
+                    category: row.category,
+                    price,
+                    similarity_score: row.similarity_score.unwrap_or(0.0),
+                    is_available,
+                    is_immediately_available: row.is_immediately_available.unwrap_or(false),
+                    preparation_time_minutes: row.preparation_time_minutes,
+                    pickup_address: row.pickup_address,
+                    distance_km: row.distance_km,
+                }
+            }).collect();
+            
+            similar_products
         } else {
             // Requête sans calcul de distance (version originale)
-            sqlx::query!(
+            #[derive(sqlx::FromRow)]
+            struct SimilarProductRowNoDistance {
+                service_id: i32,
+                product_id: String,
+                product_index: i32,
+                product_name: Option<String>,
+                product_description: Option<String>,
+                category: Option<String>,
+                price: Option<String>,
+                pickup_address: Option<String>,
+                is_immediately_available: Option<bool>,
+                preparation_time_minutes: Option<i32>,
+                availability_days: Option<Vec<i32>>,
+                distance_km: Option<f64>,
+                similarity_score: Option<f64>,
+            }
+            
+            let rows: Vec<SimilarProductRowNoDistance> = sqlx::query_as(
                 r#"
                 WITH product_data AS (
                     SELECT 
@@ -514,44 +588,29 @@ impl SimilarProductsService {
                 ORDER BY pd.service_id, pd.product_index, similarity_score DESC
                 LIMIT $6
                 "#,
-                &characteristic_vector,
-                &full_vector,
-                product_description,
-                service_id,
-                current_weekday,
-                limit
             )
+            .bind(&characteristic_vector)
+            .bind(&full_vector)
+            .bind(product_description)
+            .bind(service_id)
+            .bind(current_weekday)
+            .bind(limit)
             .fetch_all(&self.pool)
-            .await?
-        };
-
-        let mut results = Vec::new();
-
-        for row in similar_products {
-            let price = row.price.and_then(|p| p.parse::<f64>().ok());
-            let availability_days: Option<Vec<i32>> = row.availability_days;
-            let is_available = availability_days
-                .as_ref()
-                .map(|days| days.is_empty() || days.contains(&current_weekday))
-                .unwrap_or(true);
-
-            let product_index = row.product_index.unwrap_or_else(|| {
-                // Extraire product_index depuis product_id (format: "serviceId_productIndex")
-                row.product_id
-                    .split('_')
-                    .nth(1)
-                    .and_then(|s| s.parse::<i32>().ok())
-                    .unwrap_or(0)
-            });
-
-            // ✅ NOUVEAU : Récupérer distance_km si disponible
-            let distance_km = row.distance_km;
-
-            results.push(SimilarProduct {
-                service_id: row.service_id,
-                product_index,
-                product_id: row.product_id,
-                name: row.product_name.unwrap_or_default(),
+            .await?;
+            
+            let similar_products: Vec<_> = rows.into_iter().map(|row| {
+                let price = row.price.and_then(|p| p.parse::<f64>().ok());
+                let availability_days = row.availability_days;
+                let is_available = availability_days
+                    .as_ref()
+                    .map(|days| days.is_empty() || days.contains(&current_weekday))
+                    .unwrap_or(true);
+                
+                SimilarProduct {
+                    service_id: row.service_id,
+                    product_index: row.product_index,
+                    product_id: row.product_id,
+                    name: row.product_name.unwrap_or_default(),
                 description: row.product_description,
                 category: row.category,
                 price,
@@ -560,9 +619,14 @@ impl SimilarProductsService {
                 is_immediately_available: row.is_immediately_available.unwrap_or(false),
                 preparation_time_minutes: row.preparation_time_minutes,
                 pickup_address: row.pickup_address,
-                distance_km, // ✅ NOUVEAU : Distance en km
-            });
-        }
+                    distance_km: row.distance_km, // ✅ NOUVEAU : Distance en km
+                }
+            }).collect();
+            
+            similar_products
+        };
+        
+        let mut results = similar_products;
 
         // ✅ AMÉLIORATION : Enrichir les distances avec Google Maps si disponible (priorité)
         // Sinon, utiliser les distances calculées localement (fallback)
@@ -573,15 +637,20 @@ impl SimilarProductsService {
             
             for product in &mut results {
                 // Récupérer les coordonnées GPS du service/produit
-                let service_gps = sqlx::query!(
+                #[derive(sqlx::FromRow)]
+                struct ServiceGpsRow {
+                    gps_coords: Option<String>,
+                }
+                
+                let service_gps: Option<ServiceGpsRow> = sqlx::query_as(
                     r#"
                     SELECT 
                         COALESCE(s.data->>'gps_fixe', s.gps) as gps_coords
                     FROM services s
                     WHERE s.id = $1
                     "#,
-                    product.service_id
                 )
+                .bind(product.service_id)
                 .fetch_optional(&self.pool)
                 .await?;
 
@@ -692,7 +761,14 @@ impl SimilarProductsService {
 
         // Récupérer le produit original depuis services
         let product_index_str = product_index.to_string();
-        let original_product = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct OriginalProductRow {
+            product_name: Option<String>,
+            product_description: Option<String>,
+            category: Option<String>,
+        }
+        
+        let original_product: Option<OriginalProductRow> = sqlx::query_as(
             r#"
             SELECT 
                 s.data->'produits'->$2->>'nom' as product_name,
@@ -701,9 +777,9 @@ impl SimilarProductsService {
             FROM services s
             WHERE s.id = $1
             "#,
-            service_id,
-            product_index_str
         )
+        .bind(service_id)
+        .bind(product_index_str)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -726,7 +802,22 @@ impl SimilarProductsService {
 
         // Recherche basique par nom et description
         // Utiliser LATERAL JOIN pour éviter l'erreur "set-returning functions are not allowed in JOIN conditions"
-        let similar_products = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct SimilarProductRowFallback {
+            service_id: i32,
+            product_index: i32,
+            product_name: Option<String>,
+            product_description: Option<String>,
+            category: Option<String>,
+            price: Option<String>,
+            pickup_address: Option<String>,
+            is_immediately_available: Option<bool>,
+            preparation_time_minutes: Option<i32>,
+            availability_days: Option<Vec<i32>>,
+            similarity_score: Option<f64>,
+        }
+        
+        let rows: Vec<SimilarProductRowFallback> = sqlx::query_as(
             r#"
             SELECT DISTINCT
                 s.id as service_id,
@@ -784,50 +875,50 @@ impl SimilarProductsService {
             ORDER BY similarity_score DESC
             LIMIT $2
             "#,
-            service_id,
-            limit,
-            product_name,
-            category,
-            product_description,
-            current_weekday
-        )
-        .fetch_all(&self.pool)
-        .await?;
+            )
+            .bind(service_id)
+            .bind(limit)
+            .bind(product_name)
+            .bind(category)
+            .bind(product_description)
+            .bind(current_weekday)
+            .fetch_all(&self.pool)
+            .await?;
+            
+            let similar_products: Vec<_> = rows.into_iter().map(|row| {
+                let price = row.price.and_then(|p| p.parse::<f64>().ok());
+                let availability_days = row.availability_days;
+                let is_available = availability_days
+                    .as_ref()
+                    .map(|days| days.is_empty() || days.contains(&current_weekday))
+                    .unwrap_or(true);
+                
+                SimilarProduct {
+                    service_id: row.service_id,
+                    product_index: row.product_index,
+                    product_id: format!("{}_{}", row.service_id, row.product_index),
+                    name: row.product_name.unwrap_or_default(),
+                    description: row.product_description,
+                    category: row.category,
+                    price,
+                    similarity_score: row.similarity_score.unwrap_or(0.0),
+                    is_available,
+                    is_immediately_available: row.is_immediately_available.unwrap_or(false),
+                    preparation_time_minutes: row.preparation_time_minutes,
+                    pickup_address: row.pickup_address,
+                    distance_km: None, // Fallback n'a pas de calcul de distance
+                }
+            }).collect();
+            
+            let mut results = similar_products;
 
-        let mut results = Vec::new();
-
-        for row in similar_products {
-            let price = row.price.and_then(|p| p.parse::<f64>().ok());
-            let availability_days: Option<Vec<i32>> = row.availability_days;
-            let is_available = availability_days
-                .as_ref()
-                .map(|days| days.is_empty() || days.contains(&current_weekday))
-                .unwrap_or(true);
-
-            results.push(SimilarProduct {
-                service_id: row.service_id,
-                product_index: row.product_index.unwrap_or(0),
-                product_id: row.product_index.unwrap_or(0).to_string(),
-                name: row.product_name.unwrap_or_default(),
-                description: row.product_description,
-                category: row.category,
-                price,
-                similarity_score: row.similarity_score.unwrap_or(0.0) as f64,
-                is_available,
-                is_immediately_available: row.is_immediately_available.unwrap_or(false),
-                preparation_time_minutes: row.preparation_time_minutes,
-                pickup_address: row.pickup_address,
-                distance_km: None, // Fallback n'a pas de calcul de distance
+            results.sort_by(|a, b| {
+                b.similarity_score
+                    .partial_cmp(&a.similarity_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
-        }
 
-        results.sort_by(|a, b| {
-            b.similarity_score
-                .partial_cmp(&a.similarity_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-
-        Ok(results)
+            Ok(results)
     }
 
     /// Recherche des produits similaires avec filtres supplémentaires

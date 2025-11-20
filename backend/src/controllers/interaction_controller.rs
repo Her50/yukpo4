@@ -15,7 +15,7 @@ use crate::services::scoring_service::{compute_score, get_score, ServiceScore};
 use crate::services::sharing_service::generate_share_link;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use sqlx::Row;
+use sqlx::{Row, FromRow};
 use std::sync::Arc;
 
 #[derive(Deserialize)]
@@ -46,6 +46,11 @@ pub struct SharePayload {
     pub base_url: String, // URL de base de la plateforme
 }
 
+#[derive(FromRow)]
+struct ServiceUserRow {
+    user_id: i32,
+}
+
 /// POST /services/:id/message ? envoie un message texte
 pub async fn post_message(
     Path(service_id): Path<i32>,
@@ -65,7 +70,10 @@ pub async fn post_message(
     .expect("save_interaction");
 
     // Cr?e une alerte pour le prestataire
-    let service = sqlx::query!("SELECT user_id FROM services WHERE id = $1", service_id)
+    let service = sqlx::query_as::<_, ServiceUserRow>(
+        "SELECT user_id FROM services WHERE id = $1"
+    )
+        .bind(service_id)
         .fetch_one(&state.pg)
         .await
         .expect("service");
@@ -163,7 +171,10 @@ pub async fn post_audio(
     .expect("save_interaction");
 
     // Cr?e une alerte pour le prestataire
-    let service = sqlx::query!("SELECT user_id FROM services WHERE id = $1", service_id)
+    let service = sqlx::query_as::<_, ServiceUserRow>(
+        "SELECT user_id FROM services WHERE id = $1"
+    )
+        .bind(service_id)
         .fetch_one(&state.pg)
         .await
         .expect("service");
@@ -190,7 +201,10 @@ pub async fn post_call(
     .expect("save_interaction");
 
     // Cr?e une alerte pour le prestataire
-    let service = sqlx::query!("SELECT user_id FROM services WHERE id = $1", service_id)
+    let service = sqlx::query_as::<_, ServiceUserRow>(
+        "SELECT user_id FROM services WHERE id = $1"
+    )
+        .bind(service_id)
         .fetch_one(&state.pg)
         .await
         .expect("service");
