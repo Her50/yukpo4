@@ -116,11 +116,19 @@ const ProfileScreen: React.FC = () => {
       'document-outline': '📄',
       'camera-outline': '📷',
       'location-outline': '📍',
+      'bicycle-outline': '🚴',
     };
     return iconMap[iconName] || '❓';
   };
 
   const profileActions = [
+    {
+      title: 'Devenir coursier Yukpo',
+      icon: 'bicycle-outline',
+      color: '#10B981',
+      route: 'CourierRegistration',
+      description: 'Rejoignez notre équipe de coursiers'
+    },
     {
       title: 'Mon historique',
       icon: 'analytics-outline',

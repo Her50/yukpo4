@@ -24,11 +24,19 @@ const DeliveryTrackingPage: React.FC = () => {
     const [showCourierModal, setShowCourierModal] = useState(false);
 
     // Vérifier si l'utilisateur est le créateur de la livraison
-    const isCreator = user && delivery && delivery.creator_id && String(delivery.creator_id) === String(user.id);
+    const isCreator = Boolean(
+        user?.id && 
+        delivery?.creator_id && 
+        String(delivery.creator_id) === String(user.id)
+    );
     const canAssignCourier = isCreator && !delivery?.courier && (delivery?.status === 'pending' || delivery?.status === 'awaiting_courier');
 
     // ✅ Phase 9 - Amélioration : Vérifier si l'utilisateur est le coursier
-    const isCourier = user && delivery?.courier?.id && String(delivery.courier.id) === String(user.id);
+    const isCourier = Boolean(
+        user?.id && 
+        delivery?.courier?.id && 
+        String(delivery.courier.id) === String(user.id)
+    );
 
     // ✅ Phase 9 - Amélioration : Déterminer si on peut ajouter des médias de pickup
     const canAddPickupMedia = isCourier && (
@@ -201,6 +209,42 @@ const DeliveryTrackingPage: React.FC = () => {
                             <p className="text-sm text-slate-600">
                                 Coursier : <span className="font-semibold">{delivery.courier.name}</span>
                             </p>
+                        )}
+                        {/* ✅ NOUVEAU : Bouton navigation pour le coursier */}
+                        {isCourier && (
+                            <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={async () => {
+                                    if (!deliveryId) return;
+                                    try {
+                                        const { getCourierNavigation } = await import('@/services/deliveryApi');
+                                        const navigation = await getCourierNavigation(deliveryId);
+
+                                        // Vérifier que la réponse contient les données nécessaires
+                                        if (!navigation?.origin || !navigation?.destination) {
+                                            throw new Error('Données de navigation incomplètes');
+                                        }
+
+                                        // Ouvrir Google Maps avec les directions
+                                        const origin = `${navigation.origin.latitude},${navigation.origin.longitude}`;
+                                        const destination = `${navigation.destination.latitude},${navigation.destination.longitude}`;
+                                        const googleMapsUrl = `https://www.google.com/maps/dir/${origin}/${destination}`;
+                                        window.open(googleMapsUrl, '_blank');
+                                    } catch (error: any) {
+                                        console.error('[DeliveryTrackingPage] Erreur navigation:', error);
+                                        toast({
+                                            title: 'Erreur',
+                                            description: error?.message || 'Impossible d\'ouvrir la navigation',
+                                            variant: 'destructive',
+                                        });
+                                    }
+                                }}
+                                className="mt-2"
+                            >
+                                <Navigation2 className="w-4 h-4 mr-2" />
+                                Navigation GPS
+                            </Button>
                         )}
                         {delivery.pricing?.finalTotal ?? delivery.pricing?.estimatedTotal ? (
                             <p className="text-sm text-slate-600">

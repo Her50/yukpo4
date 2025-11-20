@@ -9,7 +9,7 @@ import type { IAResponseWithHeaders } from '@/lib/yukpoaclient';
 import { genererSuggestionsService } from '@/lib/yukpoaclient';
 import { MultiModalInput } from '@/types/yukpoIaClient';
 import { motion } from 'framer-motion';
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
@@ -24,6 +24,28 @@ const HomePage: React.FC = () => {
   const [pendingInput, setPendingInput] = useState<MultiModalInput | null>(null);
   const { user } = useUser();
   const { setStats } = useContext(GlobalIAStatsContext);
+  const [isCourier, setIsCourier] = useState(false);
+
+  // ✅ NOUVEAU : Vérifier si l'utilisateur est coursier
+  useEffect(() => {
+    const checkCourierStatus = async () => {
+      if (!user?.id) {
+        setIsCourier(false);
+        return;
+      }
+
+      try {
+        const { getMyCourierStatus } = await import('@/services/deliveryApi');
+        const response = await getMyCourierStatus();
+        setIsCourier(response.is_courier || false);
+      } catch (error) {
+        console.error('[HomePage] Erreur vérification coursier:', error);
+        setIsCourier(false);
+      }
+    };
+
+    checkCourierStatus();
+  }, [user?.id]);
 
   const handleSubmit = async (input: MultiModalInput) => {
     try {
@@ -265,6 +287,19 @@ const HomePage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
+          {/* ✅ NOUVEAU : Bouton "Suivre mes courses" pour coursiers */}
+          {isCourier && (
+            <div className="w-full flex justify-end mb-4">
+              <Link
+                to="/courier/my-deliveries"
+                className="inline-flex items-center gap-2 rounded-full bg-green-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-green-700"
+              >
+                <span>🚴</span>
+                <span>Suivre mes courses</span>
+              </Link>
+            </div>
+          )}
+
           {/* Titre et description */}
           <div className="space-y-4">
             <h1 className="text-4xl sm:text-5xl font-bold">

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
 import RequireAccess from "@/components/auth/RequireAccess";
+import ResponsiveContainer from "@/components/layout/ResponsiveContainer";
 import { useUser } from "@/hooks/useUser";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import React, { useEffect, useState } from "react";
 
 const MonProfil: React.FC = () => {
   const { user, login } = useUser();
@@ -82,7 +82,7 @@ const MonProfil: React.FC = () => {
             />
           </label>
 
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap">
             <button
               type="submit"
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -96,6 +96,13 @@ const MonProfil: React.FC = () => {
             >
               🔐 Changer mon mot de passe
             </button>
+            {/* ✅ NOUVEAU : Lien devenir coursier */}
+            <a
+              href="/become-courier"
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 inline-block text-center"
+            >
+              🚴 Devenir coursier Yukpo
+            </a>
           </div>
         </form>
 

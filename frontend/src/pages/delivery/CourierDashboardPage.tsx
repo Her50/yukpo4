@@ -7,6 +7,7 @@ import useCourierShopping from '@/hooks/useCourierShopping';
 import useDeliveryTracking from '@/hooks/useDeliveryTracking';
 import { updateShoppingItem, updateShoppingStatus } from '@/services/shoppingApi';
 import formatCurrency from '@/utils/formatCurrency';
+import { Navigation2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -160,6 +161,28 @@ const CourierDashboardPage: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
+                        {/* ✅ NOUVEAU : Bouton navigation pour le coursier */}
+                        <Button
+                            variant="primary"
+                            onClick={async () => {
+                                try {
+                                    const { getCourierNavigation } = await import('@/services/deliveryApi');
+                                    const navigation = await getCourierNavigation(delivery.id);
+
+                                    // Ouvrir Google Maps avec les directions
+                                    const origin = `${navigation.origin.latitude},${navigation.origin.longitude}`;
+                                    const destination = `${navigation.destination.latitude},${navigation.destination.longitude}`;
+                                    const googleMapsUrl = `https://www.google.com/maps/dir/${origin}/${destination}`;
+                                    window.open(googleMapsUrl, '_blank');
+                                } catch (error: any) {
+                                    console.error('[CourierDashboardPage] Erreur navigation:', error);
+                                    toast.error('Impossible d\'ouvrir la navigation');
+                                }
+                            }}
+                        >
+                            <Navigation2 className="w-4 h-4 mr-2" />
+                            Navigation GPS
+                        </Button>
                         <Button variant="outline" onClick={() => refresh({ force: true })}>
                             Rafraîchir
                         </Button>

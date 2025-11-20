@@ -455,6 +455,7 @@ export interface DeliveryParcelInput {
 }
 
 export interface CreateDeliveryRequestPayload {
+  preferred_vehicle_type?: string; // ✅ NOUVEAU : Type de véhicule préféré ('bike', 'motorcycle', 'tricycle', 'car', 'pickup', 'van', 'truck', 'walking')
   parcel: DeliveryParcelInput;
   pickup: DeliveryLocationInput;
   dropoff: DeliveryLocationInput;
@@ -544,6 +545,7 @@ export const deliveryApi = {
       method: 'POST',
       body: JSON.stringify({
         ...payload,
+        preferred_vehicle_type: payload.preferred_vehicle_type, // ✅ NOUVEAU : Transmettre le type de véhicule préféré
         metadata: payload.metadata ?? {},
         initial_event_payload: payload.initial_event_payload ?? {},
         parcel: {
@@ -622,6 +624,30 @@ export const deliveryApi = {
   },
   assignRecipient: async (deliveryId: string, payload: DeliveryRecipientPayload) => {
     return apiCall(`/api/deliveries/${deliveryId}/recipient`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  // ✅ NOUVEAU : Récupérer les instructions de navigation pour le coursier
+  getCourierNavigation: async (deliveryId: string, courierLat?: number, courierLng?: number) => {
+    const params = new URLSearchParams();
+    if (courierLat !== undefined) params.append('courier_lat', courierLat.toString());
+    if (courierLng !== undefined) params.append('courier_lng', courierLng.toString());
+    const queryString = params.toString();
+    const url = `/api/delivery/${deliveryId}/navigation${queryString ? `?${queryString}` : ''}`;
+    return apiCall(url);
+  },
+  // ✅ NOUVEAU : Vérifier le statut coursier de l'utilisateur
+  getMyCourierStatus: async () => {
+    return apiCall('/api/courier/me');
+  },
+  // ✅ NOUVEAU : Soumettre une candidature de coursier
+  submitCourierApplication: async (payload: {
+    profile_data: Record<string, unknown>;
+    documents: Record<string, unknown>;
+    submitted: boolean;
+  }) => {
+    return apiCall('/api/courier/applications', {
       method: 'POST',
       body: JSON.stringify(payload),
     });

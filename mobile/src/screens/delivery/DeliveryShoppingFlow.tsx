@@ -110,6 +110,9 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
     // Notes
     const [notes, setNotes] = useState('');
 
+    // ✅ NOUVEAU : Type de véhicule préféré
+    const [preferredVehicleType, setPreferredVehicleType] = useState<string | null>(null);
+
     // Charger GPS utilisateur et supermarchés au montage
     useEffect(() => {
         if (visible) {
@@ -412,6 +415,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
 
             // Construire le payload
             const payload: CreateDeliveryRequestPayload = {
+                preferred_vehicle_type: preferredVehicleType || undefined,
                 parcel: {
                     type_id: 1, // Type shopping
                     notes: notes || `Courses supermarché: ${selectedSupermarket.name}`,
@@ -844,6 +848,47 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                             )}
                         </View>
 
+                        {/* ✅ NOUVEAU : Type de véhicule préféré */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Type de transport souhaité (optionnel)</Text>
+                            <Text style={styles.sectionSubtitle}>
+                                Choisissez le type de véhicule pour votre livraison
+                            </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.vehicleTypeScroll}>
+                                {[
+                                    { value: 'bike', label: 'Vélo', icon: '🚲' },
+                                    { value: 'motorcycle', label: 'Moto', icon: '🏍️' },
+                                    { value: 'tricycle', label: 'Tricycle', icon: '🛺' },
+                                    { value: 'car', label: 'Voiture', icon: '🚗' },
+                                    { value: 'pickup', label: 'Pickup', icon: '🛻' },
+                                    { value: 'van', label: 'Fourgonnette', icon: '🚐' },
+                                    { value: 'truck', label: 'Camion', icon: '🚚' },
+                                    { value: 'walking', label: 'À pied', icon: '🚶' },
+                                ].map((type) => (
+                                    <TouchableOpacity
+                                        key={type.value}
+                                        style={[
+                                            styles.vehicleTypeOption,
+                                            preferredVehicleType === type.value && styles.vehicleTypeOptionSelected,
+                                        ]}
+                                        onPress={() => setPreferredVehicleType(
+                                            preferredVehicleType === type.value ? null : type.value
+                                        )}
+                                    >
+                                        <Text style={styles.vehicleTypeIcon}>{type.icon}</Text>
+                                        <Text
+                                            style={[
+                                                styles.vehicleTypeLabel,
+                                                preferredVehicleType === type.value && styles.vehicleTypeLabelSelected,
+                                            ]}
+                                        >
+                                            {type.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+
                         {/* Notes */}
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>Instructions (optionnel)</Text>
@@ -1136,6 +1181,42 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
         textAlign: 'center',
+    },
+    // ✅ NOUVEAU : Styles pour sélection type de véhicule
+    vehicleTypeScroll: {
+        marginTop: 12,
+    },
+    vehicleTypeOption: {
+        alignItems: 'center',
+        padding: 12,
+        marginRight: 12,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+        minWidth: 80,
+    },
+    vehicleTypeOptionSelected: {
+        borderColor: modernColors.primary,
+        backgroundColor: modernColors.primary + '20',
+    },
+    vehicleTypeIcon: {
+        fontSize: 32,
+        marginBottom: 4,
+    },
+    vehicleTypeLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    vehicleTypeLabelSelected: {
+        color: modernColors.primary,
+    },
+    sectionSubtitle: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        marginBottom: 8,
     },
     basketList: {
         gap: 12,

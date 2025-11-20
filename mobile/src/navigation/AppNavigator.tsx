@@ -1,7 +1,7 @@
 // Navigation ULTRA-SIMPLIFIÉE avec TOUS les providers nécessaires
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { modernColors } from '../theme/modernTheme';
@@ -97,6 +97,7 @@ const DeliveryShoppingTrackingScreenWithSafeArea = withNavigatorSafeArea(Deliver
 const StorageLocationsScreenWithSafeArea = withNavigatorSafeArea(StorageLocationsScreen);
 const DashboardScreenWithSafeArea = withNavigatorSafeArea(DashboardScreen);
 const DashboardPrestataireScreenWithSafeArea = withNavigatorSafeArea(DashboardPrestataireScreen);
+const CourierDashboardScreenWithSafeArea = withNavigatorSafeArea(require('../screens/delivery/CourierDashboardScreen').default);
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -120,6 +121,7 @@ const TabIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focused }
     'dashboard': '📊',
     'history': '📋',
     'profile': '👤',
+    'courierdashboard': '🚴',
   };
 
   return (
@@ -143,6 +145,31 @@ const AuthStack = () => {
 // Tabs principaux
 const MainStack = () => {
   console.log('[AppNavigator] 📱 Rendu MainStack');
+  const { user } = useAuth();
+  const [isCourier, setIsCourier] = useState(false);
+
+  // ✅ NOUVEAU : Vérifier si l'utilisateur est coursier
+  useEffect(() => {
+    const checkCourierStatus = async () => {
+      if (!user?.id) {
+        setIsCourier(false);
+        return;
+      }
+
+      try {
+        const { deliveryApi } = require('../services/api');
+        const response = await deliveryApi.getMyCourierStatus();
+        const data = response.data || response;
+        setIsCourier(data.is_courier || false);
+      } catch (error) {
+        console.error('[AppNavigator] Erreur vérification coursier:', error);
+        setIsCourier(false);
+      }
+    };
+
+    checkCourierStatus();
+  }, [user?.id]);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -185,7 +212,18 @@ const MainStack = () => {
           title: 'Mes Services',
         }}
       />
-      <Tab.Screen name="History" component={MesInteractionsScreenWithSafeArea} options={{ tabBarLabel: 'Historique' }} />
+      {/* ✅ NOUVEAU : Masquer l'onglet Historique si l'utilisateur est coursier */}
+      {!isCourier && (
+        <Tab.Screen name="History" component={MesInteractionsScreenWithSafeArea} options={{ tabBarLabel: 'Historique' }} />
+      )}
+      {/* ✅ NOUVEAU : Ajouter onglet "Suivre mes courses" pour les coursiers */}
+      {isCourier && (
+        <Tab.Screen
+          name="CourierDashboard"
+          component={CourierDashboardScreenWithSafeArea}
+          options={{ tabBarLabel: 'Mes Courses' }}
+        />
+      )}
       <Tab.Screen name="Profile" component={ProfileScreenWithSafeArea} options={{ tabBarLabel: 'Mon Compte' }} />
     </Tab.Navigator>
   );
@@ -274,6 +312,14 @@ const SecondaryStack = () => {
         <Stack.Screen
           name="DashboardPrestataire"
           component={DashboardPrestataireScreenWithSafeArea}
+        />
+        <Stack.Screen
+          name="CourierRegistration"
+          component={withNavigatorSafeArea(require('../screens/delivery/CourierRegistrationScreen').default)}
+        />
+        <Stack.Screen
+          name="CourierDashboard"
+          component={withNavigatorSafeArea(require('../screens/delivery/CourierDashboardScreen').default)}
         />
       </Stack.Navigator>
     </DeepLinkHandler>

@@ -19,10 +19,11 @@ import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useLocation } from '../contexts/LocationContext';
-import { apiGet } from '../services/api';
+import { apiGet, deliveryApi } from '../services/api';
 import { searchHistoryService } from '../services/searchHistoryService';
 import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
+import { modernColors } from '../theme/modernTheme';
 import { cleanupGhostNotifications, debugNotifications, printNotificationReport } from '../utils/debugNotifications';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
 
@@ -79,6 +80,30 @@ const HomeScreen: React.FC = () => {
     const [userBehaviorCategories, setUserBehaviorCategories] = useState<string[]>([]);
     const [showProductSelector, setShowProductSelector] = useState(false);
     const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
+    const [isCourier, setIsCourier] = useState(false);
+
+    // ✅ NOUVEAU : Vérifier si l'utilisateur est coursier
+    React.useEffect(() => {
+        const checkCourierStatus = async () => {
+            if (!user?.id) {
+                setIsCourier(false);
+                return;
+            }
+
+            try {
+                const response = await deliveryApi.getMyCourierStatus();
+                // La réponse peut être dans response.data ou directement dans response
+                const data = (response as any)?.data || response;
+                const isCourierValue = data?.is_courier ?? data?.isCourier ?? false;
+                setIsCourier(Boolean(isCourierValue));
+            } catch (error) {
+                console.error('[HomeScreen] Erreur vérification coursier:', error);
+                setIsCourier(false);
+            }
+        };
+
+        checkCourierStatus();
+    }, [user?.id]);
 
     const loadUnreadNotificationsCount = React.useCallback(async () => {
         if (!user?.id) {
@@ -831,6 +856,30 @@ const HomeScreen: React.FC = () => {
                         setProductsForSelection([]);
                     }}
                 />
+
+                {/* ✅ NOUVEAU : Bouton floating "Suivre mes courses" pour coursiers */}
+                {isCourier && (
+                    <TouchableOpacity
+                        style={styles.floatingCourierButton}
+                        onPress={() => {
+                            try {
+                                const parentNavigation = (navigation as any).getParent();
+                                if (parentNavigation) {
+                                    parentNavigation.navigate('CourierDashboard');
+                                } else {
+                                    (navigation as any).navigate('CourierDashboard');
+                                }
+                            } catch (error) {
+                                console.error('[HomeScreen] ❌ Erreur navigation vers CourierDashboard:', error);
+                                Alert.alert('Erreur', 'Impossible d\'ouvrir le tableau de bord coursier.');
+                            }
+                        }}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.floatingCourierButtonIcon}>🚴</Text>
+                        <Text style={styles.floatingCourierButtonText}>Mes courses</Text>
+                    </TouchableOpacity>
+                )}
             </SafeNativeView>
         </ModernBackground>
     );
@@ -1483,6 +1532,33 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#6B7280',
         fontWeight: '500',
+    },
+    // ✅ NOUVEAU : Bouton floating coursier
+    floatingCourierButton: {
+        position: 'absolute',
+        bottom: 80, // Au-dessus de la barre de navigation
+        right: 16,
+        backgroundColor: modernColors.primary,
+        borderRadius: 28,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+        zIndex: 1000,
+    },
+    floatingCourierButtonIcon: {
+        fontSize: 20,
+    },
+    floatingCourierButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
 });
 

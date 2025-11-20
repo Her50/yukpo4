@@ -4,12 +4,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     BackHandler,
+    Linking,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 
 import CourierSelectionModal from '../../components/delivery/CourierSelectionModal';
@@ -45,7 +46,11 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
     const [rejectingItem, setRejectingItem] = useState<ShoppingBasketItem | null>(null);
 
     // ✅ Phase 9 - Amélioration 28 : Vérifier si l'utilisateur est le créateur
-    const isCreator = user && delivery && delivery.creator_id && String(delivery.creator_id) === String(user.id);
+    const isCreator = Boolean(
+        user?.id && 
+        delivery?.creator_id && 
+        String(delivery.creator_id) === String(user.id)
+    );
     const canAssignCourier = isCreator && !delivery?.courier && (delivery?.status === 'pending' || delivery?.status === 'awaiting_courier');
 
     useEffect(() => {
@@ -89,7 +94,10 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         if (!user?.id || !delivery?.courier?.id) {
             return false;
         }
-        return String(user.id) === String(delivery.courier.id);
+        // Comparer les IDs en tant que strings pour éviter les problèmes de type
+        const courierId = String(delivery.courier.id);
+        const userId = String(user.id);
+        return courierId === userId;
     }, [user?.id, delivery?.courier?.id]);
 
     // ✅ Phase 9 - Amélioration : Déterminer si on peut ajouter des médias
@@ -246,6 +254,41 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                     {isCurrentUserCourier && (
                         <View style={styles.courierActions}>
                             <Text style={styles.courierActionsTitle}>Actions coursier</Text>
+                            {/* ✅ NOUVEAU : Bouton navigation */}
+                            <NativeButton
+                                title="🗺️ Voir navigation"
+                                variant="primary"
+                                onPress={async () => {
+                                    if (!deliveryId) return;
+                                    try {
+                                        const response = await deliveryApi.getCourierNavigation(deliveryId);
+                                        const responseData = (response as any)?.data || response;
+                                        
+                                        // Vérifier que la réponse contient les données nécessaires
+                                        if (!responseData?.origin || !responseData?.destination) {
+                                            Alert.alert('Erreur', 'Données de navigation incomplètes');
+                                            return;
+                                        }
+
+                                        // Ouvrir Google Maps avec les directions
+                                        const origin = `${responseData.origin.latitude},${responseData.origin.longitude}`;
+                                        const destination = `${responseData.destination.latitude},${responseData.destination.longitude}`;
+                                        const googleMapsUrl = `https://www.google.com/maps/dir/${origin}/${destination}`;
+
+                                        // Essayer d'ouvrir l'app native, sinon le navigateur
+                                        const canOpen = await Linking.canOpenURL(googleMapsUrl);
+                                        if (canOpen) {
+                                            await Linking.openURL(googleMapsUrl);
+                                        } else {
+                                            Alert.alert('Erreur', 'Impossible d\'ouvrir Google Maps');
+                                        }
+                                    } catch (error: any) {
+                                        console.error('[DeliveryShoppingTrackingScreen] Erreur navigation:', error);
+                                        Alert.alert('Erreur', 'Impossible d\'ouvrir la navigation');
+                                    }
+                                }}
+                                style={styles.statusButton}
+                            />
                             {getNextStatusOptions().map((option) => (
                                 <NativeButton
                                     key={option.status}

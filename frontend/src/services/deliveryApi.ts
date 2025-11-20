@@ -309,6 +309,96 @@ export interface CreateDeliveryRequestResponse {
     kind: 'parcel' | 'shopping';
 }
 
+// ✅ NOUVEAU : Récupérer les instructions de navigation pour le coursier
+export interface CourierNavigationResponse {
+    delivery_id: string;
+    navigation_type: 'pickup' | 'delivery';
+    origin: {
+        latitude: number;
+        longitude: number;
+        address?: string | null;
+    };
+    destination: {
+        latitude: number;
+        longitude: number;
+        address?: string | null;
+    };
+    directions: {
+        total_distance_meters: number;
+        total_duration_seconds: number;
+        total_distance_km: number;
+        total_duration_minutes: number;
+        steps: Array<{
+            instruction: string;
+            distance_meters: number;
+            duration_seconds: number;
+            start_location: { lat: number; lng: number };
+            end_location: { lat: number; lng: number };
+        }>;
+        overview_polyline?: string | null;
+        source: 'google_maps' | 'haversine';
+    };
+}
+
+export interface CourierNavigationParams {
+    courier_lat?: number;
+    courier_lng?: number;
+}
+
+export const getCourierNavigation = async (
+    deliveryId: string,
+    params?: CourierNavigationParams,
+): Promise<CourierNavigationResponse> => {
+    const queryParams = new URLSearchParams();
+    if (params?.courier_lat !== undefined) {
+        queryParams.append('courier_lat', params.courier_lat.toString());
+    }
+    if (params?.courier_lng !== undefined) {
+        queryParams.append('courier_lng', params.courier_lng.toString());
+    }
+    const queryString = queryParams.toString();
+    const url = `/delivery/${deliveryId}/navigation${queryString ? `?${queryString}` : ''}`;
+    const response = await apiGet(url);
+    return response.json();
+};
+
+// ✅ NOUVEAU : Vérifier le statut coursier de l'utilisateur
+export interface CourierStatusResponse {
+    is_courier: boolean;
+    courier?: {
+        id: string;
+        status: string;
+        rating_average: number;
+        rating_count: number;
+    };
+    application?: {
+        id: string;
+        status: string;
+        submitted_at?: string;
+        reviewed_at?: string;
+        rejection_reason?: string;
+    };
+}
+
+export const getMyCourierStatus = async (): Promise<CourierStatusResponse> => {
+    const response = await apiGet('/courier/me');
+    return response.json();
+};
+
+// ✅ NOUVEAU : Soumettre une candidature de coursier
+export interface CourierApplicationPayload {
+    profile_data: Record<string, unknown>;
+    documents: Record<string, unknown>;
+    submitted: boolean;
+}
+
+export const submitCourierApplication = async (
+    payload: CourierApplicationPayload,
+): Promise<{ application: unknown }> => {
+    const response = await apiPost('/courier/applications', payload);
+    return response.json();
+};
+
 export const createDeliveryRequest = async (
     payload: CreateDeliveryRequestPayload,
 ): Promise<CreateDeliveryRequestResponse> => {
