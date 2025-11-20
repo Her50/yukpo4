@@ -1,5 +1,5 @@
 use crate::core::types::{AppError, AppResult};
-use chrono::{DateTime, NaiveTime, Utc, Weekday};
+use chrono::{Datelike, DateTime, NaiveTime, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::PgPool;

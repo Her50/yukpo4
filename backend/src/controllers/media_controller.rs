@@ -22,7 +22,6 @@ use crate::{
     middlewares::jwt::AuthenticatedUser,
 };
 use log::{error, info, warn};
-use std::path::Path;
 
 /// ? Repr?sente un m?dia dans la base
 #[derive(Debug, FromRow, serde::Serialize)]

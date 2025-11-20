@@ -7,7 +7,7 @@
 use crate::core::types::AppResult;
 use crate::services::dynamic_preparation_time_service::DynamicPreparationTimeService;
 use crate::services::provider_analytics_service::ProviderAnalyticsService;
-use chrono::Utc;
+use chrono::{Timelike, Utc};
 use log::{error, info, warn};
 use sqlx::PgPool;
 use std::sync::Arc;
