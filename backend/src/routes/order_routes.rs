@@ -76,7 +76,7 @@ async fn create_order(
     if !availability.is_available {
         // Produit non disponible, retourner produits similaires avec proximité
         // ✅ AMÉLIORATION : Utiliser GeographicMatchingService si disponible (Google Maps priorité + fallback local)
-        let similar_service = if let Some(geo_service) = state.geographic_matching_service.as_ref() {
+        let similar_service = if let Some(geo_service) = state.geographic_matching.as_ref() {
             SimilarProductsService::with_geographic_matching(
                 state.pg.clone(),
                 geo_service.clone(),
@@ -224,7 +224,7 @@ async fn reject_order(
 
     let order_service = OrderPreparationService::new(state.pg.clone());
     let updated_order = order_service
-        .reject_order(order_id, payload)
+        .reject_order(order_id, order.provider_user_id, payload)
         .await?;
 
     // Notifier le client avec produits similaires

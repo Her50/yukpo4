@@ -22,7 +22,7 @@ use uuid::Uuid;
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::{jwt_auth, AuthenticatedUser},
-    models::delivery_model::{ClientDeliveryPreferencesInput, MerchantStorageLocationInput, ProductDeliveryConfigInput},
+    models::delivery_model::{ClientDeliveryPreferencesInput, DeliveryStatus, MerchantStorageLocationInput, ProductDeliveryConfigInput},
     services::cache_service::{cache_keys, CacheService}, // ✅ Phase 10 - Cache Redis
     services::delivery_payment_service::DeliveryPaymentService,
     services::delivery_service::{
@@ -651,9 +651,9 @@ async fn create_client_order(
 
         if !availability.is_available {
             // Produit non disponible, retourner produits similaires avec proximité
-            // ✅ AMÉLIORATION : Utiliser les coordonnées GPS du pickup (client) pour proximité
-            let client_lat = payload.pickup.as_ref().map(|p| p.latitude);
-            let client_lng = payload.pickup.as_ref().map(|p| p.longitude);
+            // ✅ AMÉLIORATION : Utiliser les coordonnées GPS du dropoff (client) pour proximité
+            let client_lat = payload.dropoff.as_ref().map(|p| p.latitude);
+            let client_lng = payload.dropoff.as_ref().map(|p| p.longitude);
             
             // ✅ AMÉLIORATION : Utiliser GeographicMatchingService si disponible (Google Maps priorité + fallback local)
             let similar_service = if let Some(geo_service) = state.geographic_matching.as_ref() {
@@ -1823,11 +1823,7 @@ async fn get_courier_navigation(
         "origin": {
             "latitude": origin.0,
             "longitude": origin.1,
-            "address": if navigation_type == "pickup" {
-                summary.pickup_address.clone()
-            } else {
-                None
-            }
+            "address": None // pickup address récupéré depuis product_delivery_config si nécessaire
         },
         "destination": {
             "latitude": destination.0,
@@ -1835,7 +1831,7 @@ async fn get_courier_navigation(
             "address": if navigation_type == "delivery" {
                 summary.dropoff_address.clone()
             } else {
-                summary.pickup_address.clone()
+                None // pickup address récupéré depuis product_delivery_config si nécessaire
             }
         },
         "directions": {
@@ -2712,28 +2708,21 @@ async fn update_stock(
 
     let stock_service = ProductStockService::new(state.pg.clone());
     
-    if let Some(storage_location_id) = payload.storage_location_id {
-        // Mettre à jour stock pour un lieu spécifique
-        stock_service
-            .update_stock_location(
-                config_id,
-                storage_location_id,
-                payload.quantity_available,
-                payload.quantity_reserved,
-                payload.is_available,
-            )
-            .await?;
-    } else {
-        // Mettre à jour stock par défaut
-        stock_service
-            .update_stock(
-                config_id,
-                payload.quantity_available,
-                payload.quantity_reserved,
-                payload.is_available,
-            )
-            .await?;
-    }
+    use crate::services::product_stock_service::UpdateStockRequest;
+    let request = UpdateStockRequest {
+        quantity_available: payload.quantity_available,
+        quantity_reserved: payload.quantity_reserved,
+        is_available: payload.is_available,
+    };
+    
+    stock_service
+        .update_stock(
+            config_id,
+            payload.storage_location_id,
+            request,
+            user.id,
+        )
+        .await?;
 
     Ok(Json(json!({
         "success": true,
@@ -2770,7 +2759,7 @@ async fn delete_stock_location(
 
     let stock_service = ProductStockService::new(state.pg.clone());
     stock_service
-        .delete_stock_location(config_id, location_id)
+        .remove_stock_location(config_id, location_id)
         .await?;
 
     Ok(Json(json!({
@@ -2820,7 +2809,7 @@ async fn verify_courier(
     let provider_user_id = if let Some(order) = order {
         order.provider_user_id
     } else {
-        delivery.creator_id.ok_or_else(|| AppError::NotFound("Prestataire non trouvé".to_string()))?
+        delivery.creator_id
     };
 
     if user.id != provider_user_id {

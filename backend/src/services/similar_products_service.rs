@@ -691,6 +691,7 @@ impl SimilarProductsService {
         );
 
         // Récupérer le produit original depuis services
+        let product_index_str = product_index.to_string();
         let original_product = sqlx::query!(
             r#"
             SELECT 
@@ -701,7 +702,7 @@ impl SimilarProductsService {
             WHERE s.id = $1
             "#,
             service_id,
-            product_index
+            product_index_str
         )
         .fetch_optional(&self.pool)
         .await?;
