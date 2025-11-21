@@ -11,9 +11,9 @@ Write-Host ""
 Write-Host "🔴 PARTIE 1 : Configuration Redis (Upstash)" -ForegroundColor Red
 Write-Host ""
 
-Write-Host "📋 Instructions Redis :" -ForegroundColor Green
+Write-Host "Instructions Redis :" -ForegroundColor Green
 Write-Host "1. Dashboard Upstash va s'ouvrir dans votre navigateur" -ForegroundColor White
-Write-Host "2. Créez une base Redis (gratuite)" -ForegroundColor White
+Write-Host "2. Creez une base Redis (gratuite)" -ForegroundColor White
 Write-Host "3. Copiez l'URL Redis (format: redis://default:password@host:port)" -ForegroundColor White
 Write-Host ""
 
@@ -24,7 +24,7 @@ if ($openUpstash -eq "O" -or $openUpstash -eq "o") {
 }
 
 Write-Host ""
-Write-Host "📝 Après avoir créé votre base Redis, collez l'URL ici :" -ForegroundColor Yellow
+Write-Host "Apres avoir cree votre base Redis, collez l'URL ici :" -ForegroundColor Yellow
 $redisUrl = Read-Host "URL Redis (ou appuyez sur Entrée pour ignorer)"
 
 if ($redisUrl -and $redisUrl.StartsWith("redis://")) {
@@ -43,10 +43,10 @@ Write-Host ""
 Write-Host "🎥 PARTIE 2 : Configuration LiveKit" -ForegroundColor Magenta
 Write-Host ""
 
-Write-Host "📋 Instructions LiveKit :" -ForegroundColor Green
+Write-Host "Instructions LiveKit :" -ForegroundColor Green
 Write-Host "1. Dashboard LiveKit Cloud va s'ouvrir dans votre navigateur" -ForegroundColor White
-Write-Host "2. Créez un projet (gratuit jusqu'à 10GB/mois)" -ForegroundColor White
-Write-Host "3. Créez une clé API avec toutes les permissions" -ForegroundColor White
+Write-Host "2. Creez un projet (gratuit jusqu'a 10GB/mois)" -ForegroundColor White
+Write-Host "3. Creez une cle API avec toutes les permissions" -ForegroundColor White
 Write-Host "4. Copiez l'API Key, API Secret, et les URLs" -ForegroundColor White
 Write-Host ""
 
@@ -57,7 +57,7 @@ if ($openLiveKit -eq "O" -or $openLiveKit -eq "o") {
 }
 
 Write-Host ""
-Write-Host "📝 Remplissez les informations LiveKit :" -ForegroundColor Yellow
+Write-Host "Remplissez les informations LiveKit :" -ForegroundColor Yellow
 
 $livekitApiUrl = Read-Host "LIVEKIT_API_URL (ex: https://votre-projet.livekit.cloud)"
 $livekitWsUrl = Read-Host "LIVEKIT_WS_URL (ex: wss://votre-projet.livekit.cloud)"
@@ -90,7 +90,7 @@ Write-Host ""
 # ============================================
 # GÉNÉRATION DU FICHIER DE CONFIGURATION
 # ============================================
-Write-Host "📝 Génération du fichier de configuration..." -ForegroundColor Cyan
+Write-Host "Generation du fichier de configuration..." -ForegroundColor Cyan
 Write-Host ""
 
 $configContent = @"
@@ -151,15 +151,15 @@ $configContent | Out-File -FilePath $configFile -Encoding UTF8
 # Copier dans le presse-papier
 $configContent | Set-Clipboard
 
-Write-Host "✅ Configuration générée !" -ForegroundColor Green
-Write-Host "📁 Fichier sauvegardé : $configFile" -ForegroundColor White
-Write-Host "📋 Configuration copiée dans le presse-papier" -ForegroundColor White
+Write-Host "Configuration generee !" -ForegroundColor Green
+Write-Host "Fichier sauvegarde : $configFile" -ForegroundColor White
+Write-Host "Configuration copiee dans le presse-papier" -ForegroundColor White
 Write-Host ""
 
 # ============================================
 # RÉSUMÉ
 # ============================================
-Write-Host "📊 RÉSUMÉ DE LA CONFIGURATION :" -ForegroundColor Cyan
+Write-Host "RESUME DE LA CONFIGURATION :" -ForegroundColor Cyan
 Write-Host ""
 
 if ($redisUrl) {
@@ -177,7 +177,7 @@ if ($livekitValid) {
 }
 
 Write-Host ""
-Write-Host "🎯 PROCHAINES ÉTAPES :" -ForegroundColor Yellow
+Write-Host "PROCHAINES ETAPES :" -ForegroundColor Yellow
 Write-Host "1. Ouvrez https://dashboard.render.com" -ForegroundColor White
 Write-Host "2. Sélectionnez votre service 'yukpomnang'" -ForegroundColor White
 Write-Host "3. Allez dans l'onglet 'Environment'" -ForegroundColor White
@@ -194,6 +194,6 @@ if ($openRender -eq "O" -or $openRender -eq "o") {
 }
 
 Write-Host ""
-Write-Host "🎉 Configuration terminée !" -ForegroundColor Green
+Write-Host "Configuration terminee !" -ForegroundColor Green
 Write-Host ""
 
