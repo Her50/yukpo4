@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import ModernGPSModal from '../ModernGPSModal';
 import SafeIcon from '../SafeIcon';
 
 interface OrderDeliveryModalProps {
@@ -33,6 +34,49 @@ interface Location {
     address?: string;
 }
 
+interface Product {
+    index: number;
+    name: string;
+    price: number;
+    originalPrice?: number;
+    hasPromotion?: boolean;
+    promotionType?: string;
+    promotionValeur?: string;
+}
+
+interface ApiResponse<T = any> {
+    success: boolean;
+    data?: T;
+    error?: string;
+}
+
+interface UserMeResponse {
+    gps?: string;
+    [key: string]: any;
+}
+
+interface ServiceResponse {
+    data?: {
+        produits?: {
+            valeur?: any[];
+        } | any[];
+    };
+    [key: string]: any;
+}
+
+interface DeliveryCostsResponse {
+    delivery_cost_cents?: number;
+    is_delivery_free?: boolean;
+    [key: string]: any;
+}
+
+interface DeliveryOrderResponse {
+    delivery?: {
+        id: string;
+    };
+    [key: string]: any;
+}
+
 const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     visible,
     onClose,
@@ -48,6 +92,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     const [dropoffLocation, setDropoffLocation] = useState<Location | null>(null);
     const [notes, setNotes] = useState('');
     const [userGPS, setUserGPS] = useState<Location | null>(null);
+    const [showGPSModal, setShowGPSModal] = useState(false); // ✅ NOUVEAU : Pour ouvrir le modal GPS
 
     // ✅ Phase 3 - Amélioration 7 : Préférences de livraison
     const [preferredDeliveryDate, setPreferredDeliveryDate] = useState<string>('');
@@ -67,7 +112,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     const [selectedProducts, setSelectedProducts] = useState<number[]>(() =>
         productIndex !== undefined ? [productIndex] : []
     );
-    const [availableProducts, setAvailableProducts] = useState<Array<{ index: number, name: string, price: number }>>([]);
+    const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(false);
     const [showProductSelector, setShowProductSelector] = useState(false);
 
@@ -91,7 +136,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
     const loadUserGPS = async () => {
         try {
-            const response = await apiPost('/api/user/me', {});
+            const response = await apiPost('/api/user/me', {}) as ApiResponse<UserMeResponse>;
             if (response.success && response.data?.gps) {
                 const [lng, lat] = response.data.gps.split(',').map(parseFloat);
                 const location = { latitude: lat, longitude: lng };
@@ -109,10 +154,12 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
         setLoadingProducts(true);
         try {
-            const response = await apiPost(`/api/services/${serviceId}`, {});
+            const response = await apiPost(`/api/services/${serviceId}`, {}) as ApiResponse<ServiceResponse>;
             if (response.success && response.data) {
                 const service = response.data;
-                const products = service.data?.produits?.valeur || service.data?.produits || [];
+                const products = (service.data?.produits && typeof service.data.produits === 'object' && 'valeur' in service.data.produits 
+                    ? (service.data.produits as any).valeur 
+                    : service.data?.produits) || [];
 
                 // ✅ Fonction helper pour obtenir le prix réel avec promotions
                 const getRealPrice = (product: any): number => {
@@ -212,7 +259,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 client_user_id: clientUserId,
             };
 
-            const response = await apiPost('/api/delivery/estimate-costs', payload);
+            const response = await apiPost('/api/delivery/estimate-costs', payload) as ApiResponse<DeliveryCostsResponse>;
             if (response.success && response.data) {
                 const data = response.data;
 
@@ -265,11 +312,94 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
             };
-            setDropoffLocation(coords);
+
+            // ✅ CORRIGÉ : Géocodage inverse pour obtenir l'adresse
+            try {
+                const reverseGeocode = await Location.reverseGeocodeAsync(coords);
+                if (reverseGeocode.length > 0) {
+                    const addr = reverseGeocode[0];
+                    const fullAddress = [
+                        addr.street || '',
+                        addr.streetNumber || '',
+                        addr.city || '',
+                        addr.region || '',
+                        addr.country || '',
+                    ].filter(Boolean).join(', ');
+
+                    setDropoffLocation({
+                        ...coords,
+                        address: fullAddress,
+                    });
+                } else {
+                    setDropoffLocation(coords);
+                }
+            } catch (geocodeError) {
+                console.warn('Erreur géocodage:', geocodeError);
+                setDropoffLocation(coords);
+            }
+
             setUserGPS(coords);
         } catch (error) {
             console.error('Erreur géolocalisation:', error);
             Alert.alert('Erreur', 'Impossible d\'obtenir votre position');
+        }
+    };
+
+    // ✅ NOUVEAU : Handler pour sélectionner une adresse via Google Maps
+    const handleSelectAddressFromMap = () => {
+        setShowGPSModal(true);
+    };
+
+    // ✅ NOUVEAU : Handler pour quand l'utilisateur sélectionne une adresse dans le modal GPS
+    const handleGPSSelect = async (coordinates: string) => {
+        try {
+            // Le modal GPS retourne une chaîne de coordonnées "lat,lng"
+            const [lat, lng] = coordinates.split(',').map(parseFloat);
+
+            if (isNaN(lat) || isNaN(lng)) {
+                console.error('[OrderDeliveryModal] Coordonnées invalides:', coordinates);
+                return;
+            }
+
+            // Géocodage inverse pour obtenir l'adresse
+            try {
+                const reverseGeocode = await Location.reverseGeocodeAsync({
+                    latitude: lat,
+                    longitude: lng,
+                });
+
+                if (reverseGeocode.length > 0) {
+                    const addr = reverseGeocode[0];
+                    const fullAddress = [
+                        addr.street || '',
+                        addr.streetNumber || '',
+                        addr.city || '',
+                        addr.region || '',
+                        addr.country || '',
+                    ].filter(Boolean).join(', ');
+
+                    setDropoffLocation({
+                        latitude: lat,
+                        longitude: lng,
+                        address: fullAddress,
+                    });
+                } else {
+                    setDropoffLocation({
+                        latitude: lat,
+                        longitude: lng,
+                    });
+                }
+            } catch (geocodeError) {
+                console.warn('[OrderDeliveryModal] Erreur géocodage:', geocodeError);
+                setDropoffLocation({
+                    latitude: lat,
+                    longitude: lng,
+                });
+            }
+
+            setShowGPSModal(false);
+        } catch (error) {
+            console.error('[OrderDeliveryModal] Erreur sélection GPS:', error);
         }
     };
 
@@ -304,11 +434,12 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 const firstResponse = responses[0];
 
                 // Sauvegarder les préférences pour la première livraison
-                if (firstResponse.success && firstResponse.data?.delivery?.id) {
+                const firstResponseTyped = firstResponse as ApiResponse<DeliveryOrderResponse>;
+                if (firstResponseTyped.success && firstResponseTyped.data?.delivery?.id) {
                     if (preferredDeliveryDate || preferredDeliveryTimeStart) {
                         try {
                             const preferencesPayload = {
-                                delivery_id: firstResponse.data.delivery.id,
+                                delivery_id: firstResponseTyped.data.delivery.id,
                                 preferred_delivery_date: preferredDeliveryDate || undefined,
                                 preferred_delivery_time_start: preferredDeliveryTimeStart || undefined,
                                 preferred_delivery_time_end: preferredDeliveryTimeEnd || undefined,
@@ -328,8 +459,8 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     `${selectedProducts.length} commande(s) créée(s) avec succès. Le matching des coursiers est en cours.`
                 );
 
-                if (firstResponse.success && firstResponse.data?.delivery?.id && onSuccess) {
-                    onSuccess(firstResponse.data.delivery.id);
+                if (firstResponseTyped.success && firstResponseTyped.data?.delivery?.id && onSuccess) {
+                    onSuccess(firstResponseTyped.data.delivery.id);
                 }
             } else {
                 // Un seul produit : utiliser le flux normal
@@ -342,7 +473,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     conversation_id: conversationId,
                 };
 
-                const response = await apiPost('/api/delivery/client-order', payload);
+                const response = await apiPost('/api/delivery/client-order', payload) as ApiResponse<DeliveryOrderResponse>;
 
                 // ✅ Phase 3 - Amélioration 7 : Sauvegarder les préférences de livraison si fournies
                 if (response.success && response.data?.delivery?.id) {
@@ -432,7 +563,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     {availableProducts.length > 1 && (
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
-                                <SafeIcon name="package" size={18} color={modernColors.purple || '#9333EA'} />
+                                <SafeIcon name="package" size={18} color="#9333EA" />
                                 <Text style={styles.sectionTitle}>Produits à commander</Text>
                                 {!showProductSelector && (
                                     <TouchableOpacity
@@ -599,13 +730,25 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                     style={styles.locationButton}
                                     onPress={handleUseCurrentLocation}
                                 >
-                                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                                    <SafeIcon name="navigation" size={20} color={modernColors.primary} />
                                     <Text style={styles.locationButtonText}>
                                         Utiliser ma position actuelle
                                     </Text>
                                 </TouchableOpacity>
+
+                                {/* ✅ NOUVEAU : Bouton pour sélectionner une adresse sur la carte */}
+                                <TouchableOpacity
+                                    style={[styles.locationButton, styles.locationButtonSecondary]}
+                                    onPress={handleSelectAddressFromMap}
+                                >
+                                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                                    <Text style={styles.locationButtonText}>
+                                        Choisir une adresse sur la carte
+                                    </Text>
+                                </TouchableOpacity>
+
                                 <Text style={styles.hintText}>
-                                    Ou sélectionnez une adresse sur la carte
+                                    Sélectionnez votre position actuelle ou choisissez une autre adresse
                                 </Text>
                             </View>
                         )}
@@ -831,6 +974,22 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     </TouchableOpacity>
                 </View>
             </View>
+
+            {/* ✅ NOUVEAU : Modal GPS pour sélectionner une adresse sur la carte */}
+            <ModernGPSModal
+                visible={showGPSModal}
+                onClose={() => setShowGPSModal(false)}
+                onSelect={handleGPSSelect}
+                currentLocation={
+                    dropoffLocation
+                        ? { lat: dropoffLocation.latitude, lng: dropoffLocation.longitude }
+                        : userGPS
+                            ? { lat: userGPS.latitude, lng: userGPS.longitude }
+                            : undefined
+                }
+                title="Sélectionner l'adresse de livraison"
+                allowZoneSelection={false}
+            />
         </Modal>
     );
 };
@@ -939,6 +1098,11 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E5E7EB',
         borderRadius: 12,
+    },
+    locationButtonSecondary: {
+        backgroundColor: '#FFFFFF',
+        borderColor: modernColors.primary,
+        borderWidth: 2,
     },
     locationButtonText: {
         fontSize: 16,
@@ -1130,6 +1294,190 @@ const styles = StyleSheet.create({
     costValuePromo: {
         color: '#16A34A',
         fontWeight: '600',
+    },
+    // ✅ Styles pour sélecteur de produits
+    addProductButton: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        backgroundColor: modernColors.primary,
+        borderRadius: 6,
+    },
+    addProductButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    productSelectorContainer: {
+        marginTop: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+    },
+    productSelectorHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    productSelectorTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+        flex: 1,
+    },
+    closeSelectorButton: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 6,
+    },
+    closeSelectorButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.text,
+    },
+    productList: {
+        maxHeight: 300,
+    },
+    productItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    productItemSelected: {
+        borderColor: modernColors.primary,
+        borderWidth: 2,
+        backgroundColor: '#EFF6FF',
+    },
+    checkboxContainer: {
+        marginRight: 12,
+    },
+    productInfo: {
+        flex: 1,
+    },
+    productName: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    productPrice: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.text,
+    },
+    // ✅ Styles pour produits sélectionnés
+    selectedProductsList: {
+        marginTop: 12,
+        gap: 8,
+    },
+    selectedProductCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    selectedProductInfo: {
+        flex: 1,
+    },
+    selectedProductName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    selectedProductPrice: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.text,
+    },
+    removeProductButton: {
+        padding: 8,
+        marginLeft: 8,
+    },
+    // ✅ Styles pour section coûts
+    costsSection: {
+        marginTop: 24,
+    },
+    costsTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 12,
+    },
+    costsCard: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    productsDetail: {
+        marginBottom: 12,
+    },
+    costRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
+    },
+    costLabel: {
+        fontSize: 14,
+        color: modernColors.text,
+        fontWeight: '500',
+    },
+    costValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    subtotalRow: {
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+        marginTop: 8,
+        paddingTop: 12,
+    },
+    subtotalLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    totalRow: {
+        borderTopWidth: 2,
+        borderTopColor: modernColors.primary,
+        marginTop: 12,
+        paddingTop: 12,
+    },
+    totalLabel: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    totalValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    freeBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: '#D1FAE5',
+        borderRadius: 4,
+        marginLeft: 8,
+    },
+    freeBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#065F46',
     },
 });
 
