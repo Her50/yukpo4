@@ -62,25 +62,39 @@ pub async fn enregistrer_consultation(
         0
     };
 
+    #[derive(sqlx::FromRow)]
+    struct ServiceRecordRow {
+        user_id: i32,
+        #[sqlx(rename = "data")]
+        data: serde_json::Value,
+        is_active: bool,
+        category: Option<String>,
+        provider_nom: Option<String>,
+        provider_prenom: Option<String>,
+        provider_nom_complet: Option<String>,
+        provider_avatar_url: Option<String>,
+        provider_tokens_balance: i64,
+    }
+    
     // 2. Charger le service et le prestataire pour construire l'événement enrichi
-    let service_record = sqlx::query!(
+    let service_record: ServiceRecordRow = sqlx::query_as(
         r#"
             SELECT
                 s.user_id,
-                s.data                        AS "data: serde_json::Value",
+                s.data,
                 s.is_active,
                 s.category,
                 u.nom               AS provider_nom,
                 u.prenom            AS provider_prenom,
                 u.nom_complet       AS provider_nom_complet,
                 u.avatar_url        AS provider_avatar_url,
-                u.tokens_balance    AS "provider_tokens_balance: i64"
+                u.tokens_balance    AS provider_tokens_balance
             FROM services s
             JOIN users u ON u.id = s.user_id
             WHERE s.id = $1
-        "#,
-        service_id
+        "#
     )
+    .bind(service_id)
     .fetch_one(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Service introuvable: {}", e)))?;
@@ -145,11 +159,11 @@ pub async fn enregistrer_consultation(
     }
 
     // 3. Débiter le solde du prestataire (PostgreSQL)
-    sqlx::query!(
-        "UPDATE users SET tokens_balance = $1 WHERE id = $2",
-        tokens_after,
-        provider_id
+    sqlx::query(
+        "UPDATE users SET tokens_balance = $1 WHERE id = $2"
     )
+    .bind(tokens_after)
+    .bind(provider_id)
     .execute(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur débit tokens: {}", e)))?;

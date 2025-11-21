@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
@@ -236,86 +236,93 @@ const VideoCreationIntroScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container} edges={['top', 'bottom']}>
-            <Animated.View style={[styles.header, fadeUp(headerAnim, 18)]}>
-                <SafeIcon name="sparkles" size={32} color={modernColors.primary} />
-                <Text style={styles.title}>{t('video.intro.title')}</Text>
-                <Text style={styles.subtitle}>{t('video.intro.subtitle')}</Text>
-            </Animated.View>
-
-            <Animated.View style={[fadeUp(heroAnim, 20)]}>
-                <NativeCard style={styles.heroCard}>
-                    {!imageError ? (
-                        <Image
-                            source={{
-                                uri: 'https://cdn.yukpo.com/illustrations/video-immersive-hero.png',
-                            }}
-                            style={styles.heroImage}
-                            resizeMode="cover"
-                            onError={() => {
-                                console.warn('[VideoCreationIntroScreen] Erreur chargement image hero');
-                                setImageError(true);
-                            }}
-                        />
-                    ) : (
-                        <View style={styles.heroFallback}>
-                            <SafeIcon name="film" size={64} color={modernColors.primary} />
-                            <Text style={styles.heroFallbackText}>
-                                {t('video.intro.heroTitle')}
-                            </Text>
-                        </View>
-                    )}
-                    <View style={styles.heroOverlay}>
-                        <Text style={styles.heroTitle}>{t('video.intro.heroTitle')}</Text>
-                        <Text style={styles.heroDescription}>{t('video.intro.heroDescription')}</Text>
-                    </View>
-                </NativeCard>
-            </Animated.View>
-
-            {/* ✅ NOUVEAU: Afficher les services disponibles */}
-            {loadingServices ? (
-                <View style={styles.servicesInfo}>
-                    <ActivityIndicator size="small" color={modernColors.primary} />
-                    <Text style={styles.servicesInfoText}>Chargement de vos services...</Text>
-                </View>
-            ) : userServices.length > 0 && (
-                <Animated.View style={[styles.servicesInfo, fadeUp(contentAnim, 14)]}>
-                    <SafeIcon name="check-circle" size={20} color="#10B981" />
-                    <Text style={styles.servicesInfoText}>
-                        {userServices.length} service(s) disponible(s) - Prêt à créer une vidéo
-                    </Text>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={true}
+                keyboardShouldPersistTaps="handled"
+            >
+                <Animated.View style={[styles.header, fadeUp(headerAnim, 18)]}>
+                    <SafeIcon name="sparkles" size={32} color={modernColors.primary} />
+                    <Text style={styles.title}>{t('video.intro.title')}</Text>
+                    <Text style={styles.subtitle}>{t('video.intro.subtitle')}</Text>
                 </Animated.View>
-            )}
 
-            <Animated.View style={[styles.benefits, fadeUp(contentAnim, 14)]}>
-                <View style={styles.benefitItem}>
-                    <SafeIcon name="film" size={28} color={modernColors.primary} />
-                    <Text style={styles.benefitText}>{t('video.intro.benefit.timeline')}</Text>
-                </View>
-                <View style={styles.benefitItem}>
-                    <SafeIcon name="sparkle" size={28} color={modernColors.primary} />
-                    <Text style={styles.benefitText}>{t('video.intro.benefit.broll')}</Text>
-                </View>
-                <View style={styles.benefitItem}>
-                    <SafeIcon name="volume" size={28} color={modernColors.primary} />
-                    <Text style={styles.benefitText}>{t('video.intro.benefit.audio')}</Text>
-                </View>
-            </Animated.View>
+                <Animated.View style={[fadeUp(heroAnim, 20)]}>
+                    <NativeCard style={styles.heroCard}>
+                        {!imageError ? (
+                            <Image
+                                source={{
+                                    uri: 'https://cdn.yukpo.com/illustrations/video-immersive-hero.png',
+                                }}
+                                style={styles.heroImage}
+                                resizeMode="cover"
+                                onError={() => {
+                                    console.warn('[VideoCreationIntroScreen] Erreur chargement image hero');
+                                    setImageError(true);
+                                }}
+                            />
+                        ) : (
+                            <View style={styles.heroFallback}>
+                                <SafeIcon name="film" size={64} color={modernColors.primary} />
+                                <Text style={styles.heroFallbackText}>
+                                    {t('video.intro.heroTitle')}
+                                </Text>
+                            </View>
+                        )}
+                        <View style={styles.heroOverlay}>
+                            <Text style={styles.heroTitle}>{t('video.intro.heroTitle')}</Text>
+                            <Text style={styles.heroDescription}>{t('video.intro.heroDescription')}</Text>
+                        </View>
+                    </NativeCard>
+                </Animated.View>
 
-            <Animated.View style={[styles.actions, fadeUp(actionsAnim, 10)]}>
-                <NativeButton
-                    title={loadingServices ? 'Chargement...' : t('video.intro.createButton')}
-                    size="large"
-                    variant="primary"
-                    onPress={handleStart}
-                    disabled={loadingServices}
-                />
-                <NativeButton
-                    title={t('video.intro.exampleButton')}
-                    size="large"
-                    variant="secondary"
-                    onPress={handleShowExample}
-                />
-            </Animated.View>
+                {/* ✅ NOUVEAU: Afficher les services disponibles */}
+                {loadingServices ? (
+                    <View style={styles.servicesInfo}>
+                        <ActivityIndicator size="small" color={modernColors.primary} />
+                        <Text style={styles.servicesInfoText}>Chargement de vos services...</Text>
+                    </View>
+                ) : userServices.length > 0 && (
+                    <Animated.View style={[styles.servicesInfo, fadeUp(contentAnim, 14)]}>
+                        <SafeIcon name="check-circle" size={20} color="#10B981" />
+                        <Text style={styles.servicesInfoText}>
+                            {userServices.length} service(s) disponible(s) - Prêt à créer une vidéo
+                        </Text>
+                    </Animated.View>
+                )}
+
+                <Animated.View style={[styles.benefits, fadeUp(contentAnim, 14)]}>
+                    <View style={styles.benefitItem}>
+                        <SafeIcon name="film" size={28} color={modernColors.primary} />
+                        <Text style={styles.benefitText}>{t('video.intro.benefit.timeline')}</Text>
+                    </View>
+                    <View style={styles.benefitItem}>
+                        <SafeIcon name="sparkle" size={28} color={modernColors.primary} />
+                        <Text style={styles.benefitText}>{t('video.intro.benefit.broll')}</Text>
+                    </View>
+                    <View style={styles.benefitItem}>
+                        <SafeIcon name="volume" size={28} color={modernColors.primary} />
+                        <Text style={styles.benefitText}>{t('video.intro.benefit.audio')}</Text>
+                    </View>
+                </Animated.View>
+
+                <Animated.View style={[styles.actions, fadeUp(actionsAnim, 10)]}>
+                    <NativeButton
+                        title={loadingServices ? 'Chargement...' : t('video.intro.createButton')}
+                        size="large"
+                        variant="primary"
+                        onPress={handleStart}
+                        disabled={loadingServices}
+                    />
+                    <NativeButton
+                        title={t('video.intro.exampleButton')}
+                        size="large"
+                        variant="secondary"
+                        onPress={handleShowExample}
+                    />
+                </Animated.View>
+            </ScrollView>
 
             {/* ✅ NOUVEAU: Sélecteur de produit */}
             <ServiceProductSelector
@@ -356,8 +363,14 @@ const VideoCreationIntroScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 24,
         backgroundColor: modernColors.background,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        padding: 24,
+        paddingBottom: 32, // ✅ Espace en bas pour permettre le scroll jusqu'en bas
     },
     header: {
         marginBottom: 16,
@@ -418,8 +431,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     actions: {
-        marginTop: 'auto',
+        marginTop: 24, // ✅ Espace au-dessus des boutons au lieu de marginTop: 'auto'
         gap: 12,
+        paddingBottom: 16, // ✅ Espace supplémentaire en bas
     },
     heroFallback: {
         width: '100%',

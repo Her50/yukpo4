@@ -7,9 +7,52 @@ use bigdecimal::BigDecimal;
 use rust_decimal::Decimal;
 use std::str::FromStr;
 use serde_json::{json, Value};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use std::sync::Arc;
 use uuid::Uuid;
+
+#[derive(FromRow)]
+struct DeliveryPaymentReservationRow {
+    id: i32,
+    delivery_id: Uuid,
+    user_id: i32,
+    product_price_cents: i64,
+    delivery_cost_cents: i64,
+    total_amount_cents: i64,
+    billing_mode: Option<String>,
+    merchant_pays_delivery: Option<bool>,
+    reservation_status: Option<String>,
+    reserved_at: chrono::DateTime<Utc>,
+    debited_at: Option<chrono::DateTime<Utc>>,
+    released_at: Option<chrono::DateTime<Utc>>,
+    refunded_at: Option<chrono::DateTime<Utc>>,
+    merchant_payout_cents: Option<i64>,
+    commission_cents: Option<i64>,
+    commission_rate: Option<bigdecimal::BigDecimal>,
+    merchant_paid_at: Option<chrono::DateTime<Utc>>,
+    metadata: Option<Value>,
+}
+
+#[derive(FromRow)]
+struct ReservationUserAmountRow {
+    user_id: i32,
+    total_amount_cents: i64,
+    reservation_status: Option<String>,
+}
+
+#[derive(FromRow)]
+struct ReservationProductCommissionRow {
+    product_price_cents: i64,
+    commission_rate: Option<bigdecimal::BigDecimal>,
+}
+
+#[derive(FromRow)]
+struct ReservationProductDeliveryRow {
+    product_price_cents: i64,
+    delivery_cost_cents: i64,
+    billing_mode: Option<String>,
+    merchant_pays_delivery: Option<bool>,
+}
 
 /// Statut d'une réservation de paiement
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -119,7 +162,8 @@ impl DeliveryPaymentService {
         }
 
         // ✅ Créer la réservation avec mode de paiement client
-        let reservation = sqlx::query!(
+        let client_payment_method_val = client_payment_method.unwrap_or_else(|| json!({"type": "wallet"}));
+        let reservation: DeliveryPaymentReservationRow = sqlx::query_as(
             r#"
             INSERT INTO delivery_payment_reservations (
                 delivery_id, user_id,
@@ -134,16 +178,16 @@ impl DeliveryPaymentService {
                       reserved_at, debited_at, released_at, refunded_at,
                       merchant_payout_cents, commission_cents, commission_rate,
                       merchant_paid_at, metadata
-            "#,
-            delivery_id,
-            user_id,
-            product_price_cents,
-            delivery_cost_cents,
-            total_amount_cents,
-            billing_mode,
-            merchant_pays_delivery,
-            client_payment_method.unwrap_or_else(|| json!({"type": "wallet"}))
+            "#
         )
+        .bind(delivery_id)
+        .bind(user_id)
+        .bind(product_price_cents)
+        .bind(delivery_cost_cents)
+        .bind(total_amount_cents)
+        .bind(billing_mode)
+        .bind(merchant_pays_delivery)
+        .bind(&client_payment_method_val)
         .fetch_one(&self.pool)
         .await?;
 
@@ -191,7 +235,7 @@ impl DeliveryPaymentService {
         delivery_id: Uuid,
     ) -> AppResult<()> {
         // La réservation a déjà été débitée, on marque juste comme "debited"
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE delivery_payment_reservations
             SET
@@ -199,9 +243,9 @@ impl DeliveryPaymentService {
                 debited_at = NOW(),
                 updated_at = NOW()
             WHERE delivery_id = $1 AND reservation_status = 'reserved'
-            "#,
-            delivery_id
+            "#
         )
+        .bind(delivery_id)
         .execute(&self.pool)
         .await?;
 
@@ -213,14 +257,14 @@ impl DeliveryPaymentService {
         &self,
         delivery_id: Uuid,
     ) -> AppResult<()> {
-        let reservation = sqlx::query!(
+        let reservation: Option<ReservationUserAmountRow> = sqlx::query_as(
             r#"
             SELECT user_id, total_amount_cents, reservation_status
             FROM delivery_payment_reservations
             WHERE delivery_id = $1
-            "#,
-            delivery_id
+            "#
         )
+        .bind(delivery_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -252,7 +296,7 @@ impl DeliveryPaymentService {
         }
 
         // ✅ Marquer comme libérée
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE delivery_payment_reservations
             SET
@@ -260,9 +304,9 @@ impl DeliveryPaymentService {
                 released_at = NOW(),
                 updated_at = NOW()
             WHERE delivery_id = $1
-            "#,
-            delivery_id
+            "#
         )
+        .bind(delivery_id)
         .execute(&self.pool)
         .await?;
 
@@ -276,14 +320,14 @@ impl DeliveryPaymentService {
         merchant_user_id: i32,
     ) -> AppResult<()> {
         // Récupérer la réservation
-        let reservation = sqlx::query!(
+        let reservation: Option<ReservationProductCommissionRow> = sqlx::query_as(
             r#"
             SELECT product_price_cents, commission_rate
             FROM delivery_payment_reservations
             WHERE delivery_id = $1
-            "#,
-            delivery_id
+            "#
         )
+        .bind(delivery_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -348,7 +392,7 @@ impl DeliveryPaymentService {
             .unwrap_or_else(|_| Decimal::new(5, 2)); // 0.05 par défaut
         let commission_rate_bigdecimal = BigDecimal::from_str(&commission_rate_decimal.to_string())
             .unwrap_or_else(|_| BigDecimal::from(0));
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE delivery_payment_reservations
             SET
@@ -361,15 +405,15 @@ impl DeliveryPaymentService {
                 payout_method_used = $6,
                 updated_at = NOW()
             WHERE delivery_id = $7
-            "#,
-            merchant_payout_cents,
-            commission_cents,
-            commission_rate_bigdecimal,
-            client_payment_method,
-            merchant_payment_method_json,
-            payout_method_used,
-            delivery_id
+            "#
         )
+        .bind(merchant_payout_cents)
+        .bind(commission_cents)
+        .bind(commission_rate_bigdecimal)
+        .bind(&client_payment_method)
+        .bind(&merchant_payment_method_json)
+        .bind(&payout_method_used)
+        .bind(delivery_id)
         .execute(&self.pool)
         .await?;
 
@@ -382,14 +426,14 @@ impl DeliveryPaymentService {
         delivery_id: Uuid,
         client_user_id: i32,
     ) -> AppResult<()> {
-        let reservation = sqlx::query!(
+        let reservation: Option<ReservationProductDeliveryRow> = sqlx::query_as(
             r#"
             SELECT product_price_cents, delivery_cost_cents, billing_mode, merchant_pays_delivery
             FROM delivery_payment_reservations
             WHERE delivery_id = $1
-            "#,
-            delivery_id
+            "#
         )
+        .bind(delivery_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -439,7 +483,7 @@ impl DeliveryPaymentService {
         }
 
         // ✅ 3. Marquer comme remboursé partiellement
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE delivery_payment_reservations
             SET
@@ -447,9 +491,9 @@ impl DeliveryPaymentService {
                 refunded_at = NOW(),
                 updated_at = NOW()
             WHERE delivery_id = $1
-            "#,
-            delivery_id
+            "#
         )
+        .bind(delivery_id)
         .execute(&self.pool)
         .await?;
 

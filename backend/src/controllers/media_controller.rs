@@ -17,6 +17,21 @@ use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
+#[derive(FromRow)]
+struct MediaIdTypeRow {
+    id: i32,
+    #[sqlx(rename = "type")]
+    media_type: String,
+}
+
+#[derive(FromRow)]
+struct MediaPathRow {
+    path: String,
+    service_id: i32,
+    #[sqlx(rename = "type")]
+    media_type: String,
+}
+
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
@@ -129,12 +144,12 @@ pub async fn upload_media(
             "image"
         };
 
-        let record = sqlx::query!(
-            "INSERT INTO media (service_id, type, path) VALUES ($1, $2, $3) RETURNING id, type",
-            service_id,
-            media_type,
-            relative_path
+        let record: MediaIdTypeRow = sqlx::query_as(
+            "INSERT INTO media (service_id, type, path) VALUES ($1, $2, $3) RETURNING id, type"
         )
+        .bind(service_id)
+        .bind(&media_type)
+        .bind(&relative_path)
         .fetch_one(&pool)
         .await
         .map_err(|e| {
@@ -155,8 +170,8 @@ pub async fn upload_media(
 
         uploaded_items.push(UploadedMediaResponse {
             id: record.id,
-            path: relative_path.clone(),
-            media_type: record.r#type,
+            path: relative_path,
+            media_type: record.media_type,
         });
     }
 
@@ -219,10 +234,17 @@ pub async fn delete_media(
         "[delete_media] Called for media_id={}, user_id={}",
         media_id, user.id
     );
-    let record = match sqlx::query!(
-        "SELECT path, service_id, type FROM media WHERE id = $1",
-        media_id
+    #[derive(sqlx::FromRow)]
+    struct MediaRecord {
+        path: String,
+        service_id: i32,
+        r#type: String,
+    }
+    
+    let record = match sqlx::query_as::<_, MediaRecord>(
+        "SELECT path, service_id, type FROM media WHERE id = $1"
     )
+    .bind(media_id)
     .fetch_optional(&pool)
     .await
     {
@@ -265,7 +287,8 @@ pub async fn delete_media(
             absolute_path
         );
     }
-    if let Err(e) = sqlx::query!("DELETE FROM media WHERE id = $1", media_id)
+    if let Err(e) = sqlx::query("DELETE FROM media WHERE id = $1")
+        .bind(media_id)
         .execute(&pool)
         .await
     {

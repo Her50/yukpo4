@@ -11,6 +11,57 @@ use crate::state::AppState;
 use crate::{
     core::types::AppResult, middlewares::jwt::AuthenticatedUser, models::user_model::User,
 };
+use sqlx::FromRow;
+use chrono::{DateTime, Utc};
+
+#[derive(FromRow)]
+struct UserTokensBalanceRow {
+    tokens_balance: i64,
+}
+
+#[derive(FromRow)]
+struct UserBalanceUpdateRow {
+    tokens_balance: i64,
+}
+
+#[derive(FromRow)]
+struct UserProfileRow {
+    id: i32,
+    email: String,
+    created_at: DateTime<Utc>,
+    gps_consent: Option<bool>,
+}
+
+#[derive(FromRow)]
+struct UserDetailsRow {
+    id: i32,
+    email: String,
+    role: String,
+    is_provider: Option<bool>,
+    gps: Option<String>,
+    gps_consent: Option<bool>,
+    nom: Option<String>,
+    prenom: Option<String>,
+    nom_complet: Option<String>,
+    photo_profil: Option<String>,
+    avatar_url: Option<String>,
+    created_at: DateTime<Utc>,
+}
+
+#[derive(FromRow)]
+struct UserFullProfileRow {
+    id: i32,
+    email: String,
+    role: String,
+    nom: Option<String>,
+    prenom: Option<String>,
+    nom_complet: Option<String>,
+    photo_profil: Option<String>,
+    avatar_url: Option<String>,
+    preferred_lang: Option<String>,
+    tokens_balance: i64,
+    created_at: DateTime<Utc>,
+}
 
 #[derive(Serialize)]
 pub struct UserProfileResponse {
@@ -143,8 +194,9 @@ pub async fn deduct_balance(
     );
 
     // Vérifier le solde actuel
-    let current_balance_result =
-        sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user.id)
+    let current_balance_result: Result<UserTokensBalanceRow, _> =
+        sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+            .bind(user.id)
             .fetch_one(&state.pg)
             .await;
 
@@ -172,11 +224,11 @@ pub async fn deduct_balance(
     let new_balance = current_balance - req.amount;
 
     // Mettre à jour le solde
-    let update_result = sqlx::query!(
-        "UPDATE users SET tokens_balance = $1 WHERE id = $2 RETURNING tokens_balance",
-        new_balance,
-        user.id
+    let update_result: Result<UserBalanceUpdateRow, _> = sqlx::query_as(
+        "UPDATE users SET tokens_balance = $1 WHERE id = $2 RETURNING tokens_balance"
     )
+    .bind(new_balance)
+    .bind(user.id)
     .fetch_one(&state.pg)
     .await;
 
@@ -349,10 +401,10 @@ pub async fn export_user_data(
     Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<serde_json::Value>> {
-    let row = sqlx::query!(
-        "SELECT id, email, created_at, gps_consent FROM users WHERE id = $1",
-        user.id
+    let row: UserProfileRow = sqlx::query_as(
+        "SELECT id, email, created_at, gps_consent FROM users WHERE id = $1"
     )
+    .bind(user.id)
     .fetch_one(&state.pg)
     .await?;
     let user_json = serde_json::json!({
@@ -369,7 +421,8 @@ pub async fn delete_user_data(
     Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<serde_json::Value>> {
-    let res = sqlx::query!("DELETE FROM users WHERE id = $1", user.id)
+    let res = sqlx::query("DELETE FROM users WHERE id = $1")
+        .bind(user.id)
         .execute(&state.pg)
         .await?;
     if res.rows_affected() == 0 {
@@ -387,14 +440,14 @@ pub async fn get_user_by_id(
 ) -> AppResult<Json<serde_json::Value>> {
     info!("Appel get_user_by_id pour user_id={}", user_id);
 
-    let result = sqlx::query!(
+    let result: Result<Option<UserDetailsRow>, _> = sqlx::query_as(
         r#"
         SELECT id, email, role, is_provider, gps, gps_consent,
                nom, prenom, nom_complet, photo_profil, avatar_url, created_at
         FROM users WHERE id = $1
-        "#,
-        user_id
+        "#
     )
+    .bind(user_id)
     .fetch_optional(&state.pg)
     .await;
 
@@ -792,7 +845,7 @@ pub async fn get_user_profile(
         user.id
     );
 
-    let row = sqlx::query!(
+    let row: UserFullProfileRow = sqlx::query_as(
         r#"
         SELECT 
             id, email, role, nom, prenom, nom_complet, 
@@ -800,9 +853,9 @@ pub async fn get_user_profile(
             tokens_balance, created_at
         FROM users 
         WHERE id = $1
-        "#,
-        user.id
+        "#
     )
+    .bind(user.id)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
@@ -819,7 +872,7 @@ pub async fn get_user_profile(
         nom_complet: row.nom_complet,
         photo_profil: row.photo_profil,
         avatar_url: row.avatar_url,
-        preferred_lang: Some(row.preferred_lang),
+        preferred_lang: row.preferred_lang,
         tokens_balance: row.tokens_balance,
         created_at: row.created_at,
     };

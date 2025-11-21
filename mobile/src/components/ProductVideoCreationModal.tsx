@@ -825,6 +825,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const groupedProducts: GroupedProducts[] = useMemo(() => {
         const groups = new Map<string, GroupedProducts>();
 
+        console.log('[ProductVideoCreationModal] 📦 Traitement produits:', products.length);
+
         products.forEach((product) => {
             const serviceId = product.serviceId || 'service';
             const existing = groups.get(serviceId);
@@ -841,7 +843,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
         });
 
-        return Array.from(groups.values());
+        const result = Array.from(groups.values());
+        console.log('[ProductVideoCreationModal] 📦 Groupes créés:', result.length, 'services');
+        return result;
     }, [products]);
 
     const productsSameService = useMemo(() => {
@@ -1186,13 +1190,26 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             );
         }
 
+        // ✅ Vérifier si des produits sont disponibles
+        if (!groupedProducts || groupedProducts.length === 0) {
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Sélectionnez le produit à mettre en avant</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Aucun produit disponible. Créez d'abord un produit dans vos services.
+                    </Text>
+                </NativeCard>
+            );
+        }
+
         return (
             <NativeCard style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>Sélectionnez le produit à mettre en avant</Text>
                 <Text style={styles.sectionSubtitle}>
                     Choisissez un service puis un produit pour lancer la création automatique de votre vidéo verticale.
                 </Text>
-                <ScrollView style={styles.productSelectionList}>
+                {/* ✅ CORRECTION: Remplacer ScrollView imbriqué par View pour éviter les problèmes de toucher */}
+                <View style={styles.productSelectionList}>
                     {groupedProducts.map((group) => (
                         <View key={group.serviceId} style={styles.productGroup}>
                             <Text style={styles.productGroupTitle}>{group.serviceTitre}</Text>
@@ -1200,7 +1217,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 <TouchableOpacity
                                     key={`${group.serviceId}_${product.product_index ?? product.id}`}
                                     style={styles.productSelectItem}
-                                    onPress={() => setSelectedProduct(product)}
+                                    onPress={() => {
+                                        console.log('[ProductVideoCreationModal] Produit sélectionné:', product);
+                                        setSelectedProduct(product);
+                                    }}
+                                    activeOpacity={0.7}
                                 >
                                     <View style={styles.productSelectIcon}>
                                         <SafeIcon name="package" size={18} color={modernColors.primary} />
@@ -1219,7 +1240,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             ))}
                         </View>
                     ))}
-                </ScrollView>
+                </View>
             </NativeCard>
         );
     };
@@ -2368,7 +2389,7 @@ const styles = StyleSheet.create({
     },
     productSelectionList: {
         marginTop: 12,
-        maxHeight: 320,
+        // ✅ Pas de maxHeight car le ScrollView parent gère le scroll
     },
     productGroup: {
         marginBottom: 16,

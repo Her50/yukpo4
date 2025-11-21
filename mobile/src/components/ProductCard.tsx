@@ -102,33 +102,99 @@ const splitWithFallback = (input: any, primary?: string): string[] => {
 
 // Mapper codes pays → drapeaux emoji
 const getCountryFlag = (country?: string): string => {
+  if (!country || typeof country !== 'string') return '🌍';
+
+  const countryLower = country.trim().toLowerCase();
+
+  // ✅ AMÉLIORÉ: Mapping plus complet et robuste
   const countryMap: Record<string, string> = {
-    'Cameroun': '🇨🇲',
-    'Cameroon': '🇨🇲',
-    'CM': '🇨🇲',
-    'CMR': '🇨🇲',
-    'Gabon': '🇬🇦',
-    'Congo': '🇨🇬',
-    'RDC': '🇨🇩',
-    'Sénégal': '🇸🇳',
-    'Senegal': '🇸🇳',
-    'Côte d\'Ivoire': '🇨🇮',
-    'Mali': '🇲🇱',
-    'Burkina': '🇧🇫',
-    'Niger': '🇳🇪',
-    'Tchad': '🇹🇩',
-    'Togo': '🇹🇬',
-    'Bénin': '🇧🇯',
-    'Guinée': '🇬🇳',
-    'Madagascar': '🇲🇬',
-    'France': '🇫🇷',
-    'USA': '🇺🇸',
+    // Cameroun
+    'cameroun': '🇨🇲',
+    'cameroon': '🇨🇲',
+    'cm': '🇨🇲',
+    'cmr': '🇨🇲',
+    // Gabon
+    'gabon': '🇬🇦',
+    'ga': '🇬🇦',
+    'gab': '🇬🇦',
+    // Congo
+    'congo': '🇨🇬',
+    'cg': '🇨🇬',
+    'cog': '🇨🇬',
+    // RDC
+    'rdc': '🇨🇩',
+    'rd congo': '🇨🇩',
+    'république démocratique du congo': '🇨🇩',
+    'republic democratique du congo': '🇨🇩',
+    'cd': '🇨🇩',
+    'cod': '🇨🇩',
+    // Sénégal
+    'sénégal': '🇸🇳',
+    'senegal': '🇸🇳',
+    'sn': '🇸🇳',
+    'sen': '🇸🇳',
+    // Côte d'Ivoire
+    'côte d\'ivoire': '🇨🇮',
+    'cote d\'ivoire': '🇨🇮',
+    'ivory coast': '🇨🇮',
+    'ci': '🇨🇮',
+    'civ': '🇨🇮',
+    // Mali
+    'mali': '🇲🇱',
+    'ml': '🇲🇱',
+    'mli': '🇲🇱',
+    // Burkina Faso
+    'burkina': '🇧🇫',
+    'burkina faso': '🇧🇫',
+    'bf': '🇧🇫',
+    'bfa': '🇧🇫',
+    // Niger
+    'niger': '🇳🇪',
+    'ne': '🇳🇪',
+    'ner': '🇳🇪',
+    // Tchad
+    'tchad': '🇹🇩',
+    'chad': '🇹🇩',
+    'td': '🇹🇩',
+    'tcd': '🇹🇩',
+    // Togo
+    'togo': '🇹🇬',
+    'tg': '🇹🇬',
+    'tgo': '🇹🇬',
+    // Bénin
+    'bénin': '🇧🇯',
+    'benin': '🇧🇯',
+    'bj': '🇧🇯',
+    'ben': '🇧🇯',
+    // Guinée
+    'guinée': '🇬🇳',
+    'guinee': '🇬🇳',
+    'guinea': '🇬🇳',
+    'gn': '🇬🇳',
+    'gin': '🇬🇳',
+    // Madagascar
+    'madagascar': '🇲🇬',
+    'mg': '🇲🇬',
+    'mdg': '🇲🇬',
+    // France
+    'france': '🇫🇷',
+    'fr': '🇫🇷',
+    'fra': '🇫🇷',
+    // USA
+    'usa': '🇺🇸',
+    'united states': '🇺🇸',
+    'united states of america': '🇺🇸',
+    'us': '🇺🇸',
   };
 
-  if (!country) return '🌍';
+  // Recherche exacte d'abord
+  if (countryMap[countryLower]) {
+    return countryMap[countryLower];
+  }
 
+  // Recherche partielle (contient)
   for (const [key, flag] of Object.entries(countryMap)) {
-    if (country.toLowerCase().includes(key.toLowerCase())) {
+    if (countryLower.includes(key) || key.includes(countryLower)) {
       return flag;
     }
   }
@@ -511,9 +577,44 @@ const ProductCard: React.FC<ProductCardProps> = ({
       : `${distanceKm!.toFixed(distanceKm! < 10 ? 1 : 0)}km`
     : null;
 
-  // Pays (pour drapeau)
+  // Pays (pour drapeau) - Extraction améliorée depuis plusieurs sources
+  // Essayer d'extraire le pays depuis l'adresse complète si disponible
+  const extractCountryFromAddress = (address: string | undefined): string | undefined => {
+    if (!address || typeof address !== 'string') return undefined;
+
+    // Liste des pays à chercher dans l'adresse
+    const countryKeywords = [
+      'Cameroun', 'Cameroon', 'CM', 'CMR',
+      'Gabon', 'GA', 'GAB',
+      'Congo', 'CG', 'COG',
+      'RDC', 'RD Congo', 'République démocratique du Congo',
+      'Sénégal', 'Senegal', 'SN', 'SEN',
+      'Côte d\'Ivoire', 'Cote d\'Ivoire', 'Ivory Coast', 'CI', 'CIV',
+      'Mali', 'ML', 'MLI',
+      'Burkina', 'Burkina Faso', 'BF', 'BFA',
+      'Niger', 'NE', 'NER',
+      'Tchad', 'Chad', 'TD', 'TCD',
+      'Togo', 'TG', 'TGO',
+      'Bénin', 'Benin', 'BJ', 'BEN',
+      'Guinée', 'Guinee', 'Guinea', 'GN', 'GIN',
+      'Madagascar', 'MG', 'MDG',
+      'France', 'FR', 'FRA',
+      'USA', 'United States', 'US', 'USA',
+    ];
+
+    const addressLower = address.toLowerCase();
+    for (const keyword of countryKeywords) {
+      if (addressLower.includes(keyword.toLowerCase())) {
+        return keyword;
+      }
+    }
+    return undefined;
+  };
+
   const pays = firstNonEmptyString(
-    locationVector[locationVector.length - 1],
+    extractCountryFromAddress(chosenLocation || product.adresse_complete || product.adresse || product.address),
+    extractCountryFromAddress(product.location?.formatted_address || product.location?.full_address || product.location?.address),
+    locationVector[locationVector.length - 1], // Dernier élément du vecteur = pays
     product.pays,
     product.country,
     product.country_name,
@@ -521,13 +622,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
     product.countryCode,
     product.country_label,
     product.location?.country,
+    product.location?.country_code,
     service?.data?.pays?.valeur,
     service?.data?.pays_origine?.valeur,
     service?.data?.country?.valeur,
+    service?.data?.country_code?.valeur,
   );
 
   const countryFlag = getCountryFlag(pays);
   const showCountryBadge = countryFlag && countryFlag !== '🌍';
+
+  // Debug: afficher le pays extrait
+  if (pays) {
+    console.log('[ProductCard] Pays extrait:', pays, 'Drapeau:', countryFlag);
+  }
 
   const commentServiceId = Number(product._serviceId || product.service_id || service?.id || 0);
   const serviceTitleForComments =
@@ -580,12 +688,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
     0;
 
   const topStatsData = [
-    { key: 'views', icon: 'eye', value: viewsCount, tint: '#4f46e5' },
-    { key: 'shares', icon: 'share-2', value: sharesCount, tint: '#a855f7' },
-    { key: 'reviews', icon: 'message-circle', value: reviewsCount, tint: '#f59e0b' },
-    { key: 'favorites', icon: 'heart', value: favoritesCount, tint: '#ef4444' },
+    { key: 'views', icon: 'eye', value: viewsCount, tint: '#4f46e5', label: 'vues' },
+    { key: 'shares', icon: 'share-2', value: sharesCount, tint: '#a855f7', label: 'partages' },
+    { key: 'reviews', icon: 'message-circle', value: reviewsCount, tint: '#f59e0b', label: 'avis' },
+    { key: 'favorites', icon: 'heart', value: favoritesCount, tint: '#ef4444', label: 'favoris' },
   ];
-  const compactTopStats = topStatsData.filter((stat) => (stat.value ?? 0) > 0).slice(0, 3);
+  // ✅ CORRIGÉ : Toujours afficher les 3 premières statistiques principales même si elles sont à 0
+  const compactTopStats = topStatsData.slice(0, 3);
 
   // ✅ CORRIGÉ: Toujours ouvrir le modal - amélioration robuste
   const handleChatPress = () => {
@@ -853,26 +962,27 @@ const ProductCard: React.FC<ProductCardProps> = ({
             )}
 
             <View style={[styles.content, !hasMedia && styles.contentCompact]}>
-              {/* ✅ AMÉLIORÉ: Indicateurs miniaturisés mais visibles */}
-              {compactTopStats.length > 0 && (
-                <View style={styles.topStatsRow}>
-                  {compactTopStats.map((stat) => (
-                    <View
-                      key={stat.key}
-                      style={[
-                        styles.topStatPillCompact,
-                        { backgroundColor: `${stat.tint}08` },
-                        { borderColor: `${stat.tint}30` },
-                      ]}
-                    >
-                      <SafeIcon name={stat.icon as any} size={12} color={stat.tint} />
-                      <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
-                        {formatCompactNumber(stat.value)}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
+              {/* ✅ CORRIGÉ: Toujours afficher les statistiques principales avec icônes */}
+              <View style={styles.topStatsRow}>
+                {compactTopStats.map((stat) => (
+                  <View
+                    key={stat.key}
+                    style={[
+                      styles.topStatPillCompact,
+                      { backgroundColor: `${stat.tint}08` },
+                      { borderColor: `${stat.tint}30` },
+                    ]}
+                  >
+                    <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+                    <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
+                      {formatCompactNumber(stat.value ?? 0)}
+                    </Text>
+                    <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
+                      {stat.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
 
               {/* Nom produit */}
               <Text style={styles.productName} numberOfLines={2}>
@@ -906,16 +1016,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </TouchableOpacity>
               )}
 
-              {/* ✅ AMÉLIORÉ: Localisation hiérarchique détaillée - Affiche toutes les adresses disponibles */}
-              {(chosenLocation || locationVector.length > 0) && (
+              {/* ✅ CORRIGÉ: Localisation hiérarchique détaillée - Affiche le drapeau avec l'adresse */}
+              {(chosenLocation || locationVector.length > 0 || pays) && (
                 <View style={styles.locationSection}>
                   <View style={styles.locationRow}>
                     <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
                     <Text style={styles.locationTextPrimary} numberOfLines={2}>
                       {chosenLocation || locationVector[0] || 'Localisation disponible'}
                     </Text>
+                    {/* ✅ CORRIGÉ : Toujours afficher le drapeau si disponible */}
                     {countryFlag && countryFlag !== '🌍' && (
-                      <Text style={styles.locationFlag}>{countryFlag}</Text>
+                      <Text style={styles.locationFlag} numberOfLines={1}>
+                        {countryFlag}
+                      </Text>
                     )}
                   </View>
                   {/* Hiérarchie complète (quartier > ville > région > pays) */}
@@ -1573,6 +1686,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  topStatLabelCompact: {
+    fontSize: 9,
+    fontWeight: '500',
+    opacity: 0.8,
+    marginLeft: 2,
+  },
   productName: {
     fontSize: 16,
     fontWeight: '700',
@@ -1921,7 +2040,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locationFlag: {
-    fontSize: 16,
+    fontSize: 18,
+    marginLeft: 4,
+    lineHeight: 20,
   },
   locationHierarchy: {
     flexDirection: 'row',

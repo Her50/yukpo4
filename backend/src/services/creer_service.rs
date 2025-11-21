@@ -7,7 +7,12 @@ use crate::utils::embedding_client::AddEmbeddingPineconeRequest;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
 use log::{info, warn};
-use sqlx::{PgPool, Row};
+use sqlx::{FromRow, PgPool, Row};
+
+#[derive(FromRow)]
+struct UserGpsRow {
+    gps: Option<String>,
+}
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use uuid::Uuid;
@@ -3221,10 +3226,13 @@ pub async fn save_autocomplete_combination(
 /// Fonction utilitaire pour r?cup?rer le GPS dynamique du prestataire
 #[allow(dead_code)]
 async fn get_user_gps(pool: &PgPool, user_id: i32) -> Result<(f64, f64), AppError> {
-    let row = sqlx::query!("SELECT gps FROM users WHERE id = $1", user_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur lecture GPS user: {}", e)))?;
+    let row: Option<UserGpsRow> = sqlx::query_as(
+        "SELECT gps FROM users WHERE id = $1"
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture GPS user: {}", e)))?;
     if let Some(r) = row {
         if let Some(coords) = r.gps {
             let parts: Vec<&str> = coords.split(',').collect();

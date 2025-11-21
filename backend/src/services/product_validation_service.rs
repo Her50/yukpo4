@@ -1,7 +1,29 @@
 use crate::core::types::{AppError, AppResult};
 use crate::services::notification_service::{create_notification, NotificationType};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use serde_json::Value;
+use sqlx::{FromRow, PgPool};
+
+#[derive(FromRow)]
+struct ServiceDataRow {
+    data: Value,
+}
+
+#[derive(FromRow)]
+struct DeliveryConfigRow {
+    is_configured: Option<bool>,
+}
+
+#[derive(FromRow)]
+struct ServiceInfoRow {
+    user_id: i32,
+    data: Value,
+}
+
+#[derive(FromRow)]
+struct NotificationIdRow {
+    id: i32,
+}
 
 /// Résultat de la validation d'un produit pour activation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,10 +40,10 @@ pub async fn validate_product_for_activation(
     product_index: i32,
 ) -> AppResult<ProductValidationResult> {
     // 1. Vérifier existence produit
-    let service = sqlx::query!(
-        "SELECT data FROM services WHERE id = $1",
-        service_id
+    let service: Option<ServiceDataRow> = sqlx::query_as(
+        "SELECT data FROM services WHERE id = $1"
     )
+    .bind(service_id)
     .fetch_optional(pool)
     .await?;
     
@@ -41,12 +63,12 @@ pub async fn validate_product_for_activation(
         })?;
     
     // 2. Vérifier configuration livraison
-    let delivery_config = sqlx::query!(
+    let delivery_config: Option<DeliveryConfigRow> = sqlx::query_as(
         "SELECT is_configured FROM product_delivery_config 
-         WHERE service_id = $1 AND product_index = $2",
-        service_id,
-        product_index
+         WHERE service_id = $1 AND product_index = $2"
     )
+    .bind(service_id)
+    .bind(product_index)
     .fetch_optional(pool)
     .await?;
     
@@ -105,16 +127,16 @@ pub async fn activate_product_if_valid(
     }
     
     // Marquer le produit comme actif dans products_lifecycle
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
         UPDATE products_lifecycle
         SET is_active = TRUE,
             updated_at = NOW()
         WHERE service_id = $1 AND product_index = $2
-        "#,
-        service_id,
-        product_index
+        "#
     )
+    .bind(service_id)
+    .bind(product_index)
     .execute(pool)
     .await?;
     
@@ -135,12 +157,12 @@ pub async fn has_delivery_config(
     service_id: i32,
     product_index: i32,
 ) -> AppResult<bool> {
-    let config = sqlx::query!(
+    let config: Option<DeliveryConfigRow> = sqlx::query_as(
         "SELECT is_configured FROM product_delivery_config 
-         WHERE service_id = $1 AND product_index = $2",
-        service_id,
-        product_index
+         WHERE service_id = $1 AND product_index = $2"
     )
+    .bind(service_id)
+    .bind(product_index)
     .fetch_optional(pool)
     .await?;
     
@@ -154,14 +176,14 @@ pub async fn notify_missing_delivery_config(
     product_index: i32,
 ) -> AppResult<()> {
     // Récupérer les infos du service et du produit
-    let service_info = sqlx::query!(
+    let service_info: Option<ServiceInfoRow> = sqlx::query_as(
         r#"
         SELECT s.user_id, s.data
         FROM services s
         WHERE s.id = $1
-        "#,
-        service_id
+        "#
     )
+    .bind(service_id)
     .fetch_optional(pool)
     .await?;
 
@@ -186,7 +208,7 @@ pub async fn notify_missing_delivery_config(
         .unwrap_or("Produit");
 
     // Vérifier si une notification a déjà été envoyée récemment (dans les dernières 24h)
-    let recent_notification = sqlx::query!(
+    let recent_notification: Option<NotificationIdRow> = sqlx::query_as(
         r#"
         SELECT id FROM notifications
         WHERE user_id = $1
@@ -195,11 +217,11 @@ pub async fn notify_missing_delivery_config(
           AND data->>'product_index' = $3::text
           AND created_at > NOW() - INTERVAL '24 hours'
         LIMIT 1
-        "#,
-        service_data.user_id,
-        service_id.to_string(),
-        product_index.to_string()
+        "#
     )
+    .bind(service_data.user_id)
+    .bind(service_id.to_string())
+    .bind(product_index.to_string())
     .fetch_optional(pool)
     .await?;
 

@@ -173,6 +173,12 @@ const iconToEmoji: { [key: string]: string } = {
     'rotate-cw': '↻',
     'rotate-ccw': '↺',
     'paperclip': '📎',
+    'reply': '↩️', // ✅ CORRIGÉ : Icône de réponse
+    'corner-down-right': '↪️',
+    'corner-up-right': '↗️',
+    'video-call': '📞', // ✅ CORRIGÉ : Icône d'appel vidéo classique
+    'videocall': '📞',
+    'videoCall': '📞',
     'printer': '🖨️',
     'wifi': '📶',
     'wifi-off': '📵',
@@ -186,8 +192,56 @@ const iconToEmoji: { [key: string]: string } = {
     'code': '💻',
     'command': '⌘',
 
+    // ✅ AJOUTS: Icônes pour ResultatBesoinScreen et ProductCard
+    'map-pin': '📍',
+    'mappin': '📍',
+    'MapPin': '📍',
+    'file-text': '📄',
+    'filetext': '📄',
+    'FileText': '📄',
+    'message-circle': '💬',
+    'messagecircle': '💬',
+    'MessageCircle': '💬',
+    'truck': '🚚',
+    'Truck': '🚚',
+    'navigation': '🧭',
+    'Navigation': '🧭',
+    'sliders': '🎚️',
+    'Sliders': '🎚️',
+    'sparkles': '✨',
+    'Sparkles': '✨',
+    'flame': '🔥',
+    'Flame': '🔥',
+    'check-circle': '✅',
+    'checkcircle': '✅',
+    'CheckCircle': '✅',
+    'package-x': '📦❌',
+    'packagex': '📦❌',
+    'PackageX': '📦❌',
+    'corner-up-right': '↗️',
+    'cornerupright': '↗️',
+    'CornerUpRight': '↗️',
+    'zap': '⚡',
+    'Zap': '⚡',
+    'store': '🏪',
+    'Store': '🏪',
+    'info': 'ℹ️',
+    'Info': 'ℹ️',
+    'gallery': '🖼️',
+    'Gallery': '🖼️',
+    'images': '🖼️',
+    'Images': '🖼️',
+
     // Défaut
     'default': '📱'
+};
+
+// Fonction pour convertir kebab-case en PascalCase (ex: message-circle -> MessageCircle)
+const toPascalCase = (str: string): string => {
+    return str
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join('');
 };
 
 export const SafeIcon: React.FC<SafeIconProps> = ({
@@ -196,13 +250,27 @@ export const SafeIcon: React.FC<SafeIconProps> = ({
     color = '#000',
     type = 'lucide'
 }) => {
-    // Essayer Lucide en premier
-    if (type === 'lucide' && LucideIcons[name]) {
-        try {
-            const IconComponent = LucideIcons[name];
-            return <IconComponent size={size} color={color} accessibilityLabel="" accessibilityRole="none" />;
-        } catch (error) {
-            console.warn(`[SafeIcon] Erreur avec l'icône Lucide ${name}:`, error);
+    // ✅ CORRIGÉ : Essayer Lucide avec plusieurs variantes de noms
+    if (type === 'lucide' && LucideIcons && typeof LucideIcons === 'object') {
+        // Essayer le nom tel quel (PascalCase)
+        if (name && LucideIcons[name] && typeof LucideIcons[name] === 'function') {
+            try {
+                const IconComponent = LucideIcons[name];
+                return <IconComponent size={size} color={color} accessibilityLabel="" accessibilityRole="none" />;
+            } catch (error) {
+                console.warn(`[SafeIcon] Erreur avec l'icône Lucide ${name}:`, error);
+            }
+        }
+
+        // Essayer en PascalCase si c'est du kebab-case (message-circle -> MessageCircle)
+        const pascalName = toPascalCase(name);
+        if (pascalName && pascalName !== name && LucideIcons[pascalName] && typeof LucideIcons[pascalName] === 'function') {
+            try {
+                const IconComponent = LucideIcons[pascalName];
+                return <IconComponent size={size} color={color} accessibilityLabel="" accessibilityRole="none" />;
+            } catch (error) {
+                console.warn(`[SafeIcon] Erreur avec l'icône Lucide ${pascalName}:`, error);
+            }
         }
     }
 
@@ -218,8 +286,9 @@ export const SafeIcon: React.FC<SafeIconProps> = ({
         }
     }
 
-    // Fallback vers emoji
-    const emoji = iconToEmoji[name.toLowerCase()] || iconToEmoji['default'];
+    // ✅ CORRIGÉ : Fallback vers emoji avec recherche améliorée
+    const normalizedName = name.toLowerCase();
+    const emoji = iconToEmoji[normalizedName] || iconToEmoji[name] || iconToEmoji['default'];
     return (
         <Text style={[styles.emoji, { fontSize: size }]}>
             {emoji}

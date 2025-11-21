@@ -34,6 +34,23 @@ const GlobalPromoHighlights: React.FC = () => {
     const navigation = useNavigation<any>();
     const { catalog, loading, error, refresh } = useGlobalPromos();
     const { isEnabled } = useFeatureFlags();
+    const [isInitialized, setIsInitialized] = React.useState(false);
+
+    // ✅ CORRIGÉ: Éviter le flash rapide au démarrage
+    React.useEffect(() => {
+        if (!loading && !isInitialized) {
+            // Attendre que le chargement initial soit terminé avant d'afficher
+            const timer = setTimeout(() => {
+                setIsInitialized(true);
+            }, 300); // Petit délai pour éviter le flash
+            return () => clearTimeout(timer);
+        }
+    }, [loading, isInitialized]);
+
+    // ✅ CORRIGÉ: Ne rien afficher pendant le chargement initial pour éviter le flash
+    if (loading && !isInitialized) {
+        return null;
+    }
 
     // ✅ CORRIGÉ: Toujours afficher les promotions (le flag est activé par défaut)
     // if (!isEnabled('global_promos')) {

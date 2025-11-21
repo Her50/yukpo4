@@ -2,7 +2,17 @@
 // Structure prête pour intégration APIs mobile money (MTN/Orange)
 use crate::core::types::{AppError, AppResult};
 use serde_json::{json, Value};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
+
+#[derive(FromRow)]
+struct UserPaymentMethodsRow {
+    payment_methods: Option<Value>,
+}
+
+#[derive(FromRow)]
+struct PaymentMethodRow {
+    payment_method: Option<Value>,
+}
 
 /// Mode de reversement déterminé par le matching
 #[derive(Debug, Clone)]
@@ -117,10 +127,10 @@ impl PaymentMatchingService {
         &self,
         merchant_user_id: i32,
     ) -> AppResult<MerchantPaymentMethods> {
-        let row = sqlx::query!(
-            "SELECT payment_methods FROM users WHERE id = $1",
-            merchant_user_id
+        let row: Option<UserPaymentMethodsRow> = sqlx::query_as(
+            "SELECT payment_methods FROM users WHERE id = $1"
         )
+        .bind(merchant_user_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -313,7 +323,7 @@ impl PaymentMatchingService {
         delivery_id: uuid::Uuid,
     ) -> AppResult<Value> {
         // Chercher la transaction de paiement associée à cette livraison
-        let row = sqlx::query!(
+        let row: Option<PaymentMethodRow> = sqlx::query_as(
             r#"
             SELECT payment_method
             FROM payment_transactions pt
@@ -321,17 +331,17 @@ impl PaymentMatchingService {
             WHERE dpr.delivery_id = $1
             ORDER BY pt.created_at DESC
             LIMIT 1
-            "#,
-            delivery_id
+            "#
         )
+        .bind(delivery_id)
         .fetch_optional(&self.pool)
         .await?;
 
         if let Some(record) = row {
-            if record.payment_method.is_null() {
+            if record.payment_method.is_none() || record.payment_method.as_ref().map(|v| v.is_null()).unwrap_or(true) {
                 Ok(json!({"type": "wallet"}))
             } else {
-                Ok(record.payment_method)
+                Ok(record.payment_method.unwrap_or_else(|| json!({"type": "wallet"})))
             }
         } else {
             // Pas de transaction trouvée → par défaut wallet

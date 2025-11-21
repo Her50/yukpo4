@@ -22,7 +22,7 @@ import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import { useAuth } from '../contexts/AuthContext';
-import { apiDelete, apiGet, apiPatch, mediaApi } from '../services/api';
+import { apiDelete, apiGet, apiPatch, apiPost, mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
@@ -195,6 +195,7 @@ const MesProduitsScreen: React.FC = () => {
     const [teamManagerServiceId, setTeamManagerServiceId] = useState<string>('');
     const [videoCreatorVisible, setVideoCreatorVisible] = useState(false);
     const [videoCreatorProduct, setVideoCreatorProduct] = useState<ManagedProduct | null>(null);
+    const [showMenuModal, setShowMenuModal] = useState(false);
     const scrollY = useMemo(() => new Animated.Value(0), []);
     const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
 
@@ -1177,35 +1178,47 @@ const MesProduitsScreen: React.FC = () => {
         );
     };
 
-    const quickActions = [
-        {
-            label: 'Éditer service',
-            icon: 'settings',
-            onPress: handleEditServiceInfo,
-        },
+    // ✅ Menu regroupant toutes les actions
+    const menuActions = [
         {
             label: 'Membres',
             icon: 'users',
-            onPress: handleManageMembers,
+            onPress: () => {
+                setShowMenuModal(false);
+                handleManageMembers();
+            },
         },
         {
             label: 'Créer une publicité',
             icon: 'megaphone',
-            onPress: () => (navigation as any).navigate('CreatePublicite'),
+            onPress: () => {
+                setShowMenuModal(false);
+                (navigation as any).navigate('CreatePublicite');
+            },
         },
         {
             label: 'Statistiques',
             icon: 'bar-chart-2',
-            onPress: handleViewGlobalStats,
+            onPress: () => {
+                setShowMenuModal(false);
+                handleViewGlobalStats();
+            },
         },
-    ];
-
-    const quickActionsRow = [
-        ...quickActions.slice(1),
         {
             label: 'Studio vidéo',
             icon: 'video',
-            onPress: openVideoCreatorGlobal,
+            onPress: () => {
+                setShowMenuModal(false);
+                openVideoCreatorGlobal();
+            },
+        },
+        {
+            label: 'Éditer service',
+            icon: 'settings',
+            onPress: () => {
+                setShowMenuModal(false);
+                handleEditServiceInfo();
+            },
         },
     ];
 
@@ -1234,16 +1247,16 @@ const MesProduitsScreen: React.FC = () => {
                             rightSlot={(
                                 <View style={styles.headerActions}>
                                     <TouchableOpacity
+                                        style={styles.headerMenuButton}
+                                        onPress={() => setShowMenuModal(true)}
+                                    >
+                                        <SafeIcon name="more-vertical" size={18} color={modernColors.primary} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
                                         style={styles.headerIconButton}
                                         onPress={openVideoCreatorGlobal}
                                     >
                                         <SafeIcon name="video" size={18} color={modernColors.primary} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.editServiceButton}
-                                        onPress={handleEditServiceInfo}
-                                    >
-                                        <SafeIcon name="settings" size={18} color={modernColors.primary} />
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -1270,19 +1283,6 @@ const MesProduitsScreen: React.FC = () => {
                                 </View>
                             ))}
                         </ScrollView>
-                    </View>
-
-                    <View style={styles.quickActionsRow}>
-                        {quickActionsRow.map((action) => (
-                            <TouchableOpacity
-                                key={action.label}
-                                style={styles.quickActionButton}
-                                onPress={action.onPress}
-                            >
-                                <SafeIcon name={action.icon} size={16} color={modernColors.primary} />
-                                <Text style={styles.quickActionText} numberOfLines={1}>{action.label}</Text>
-                            </TouchableOpacity>
-                        ))}
                     </View>
 
                     <View style={styles.filtersContainer}>
@@ -1404,6 +1404,37 @@ const MesProduitsScreen: React.FC = () => {
                     }}
                 />
             </Modal>
+
+            {/* ✅ Menu modal avec toutes les actions */}
+            <Modal
+                visible={showMenuModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowMenuModal(false)}
+            >
+                <TouchableOpacity
+                    style={styles.menuModalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowMenuModal(false)}
+                >
+                    <View style={styles.menuModalContent}>
+                        {menuActions.map((action, index) => (
+                            <TouchableOpacity
+                                key={action.label}
+                                style={[
+                                    styles.menuActionItem,
+                                    index === 0 && styles.menuActionItemFirst,
+                                    index === menuActions.length - 1 && styles.menuActionItemLast,
+                                ]}
+                                onPress={action.onPress}
+                            >
+                                <SafeIcon name={action.icon} size={20} color={modernColors.primary} />
+                                <Text style={styles.menuActionText}>{action.label}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </View>
     );
 };
@@ -1434,6 +1465,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
+    headerMenuButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
     headerIconButton: {
         width: 36,
         height: 36,
@@ -1443,16 +1484,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: '#BBF7D0',
-    },
-    editServiceButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#EEF2FF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#E0E7FF',
     },
     statsRowContainer: {
         backgroundColor: '#FFFFFF',
@@ -1498,36 +1529,48 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: modernColors.textSecondary,
     },
-    quickActionsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-        gap: 8,
-    },
-    quickActionButton: {
+    menuModalOverlay: {
         flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-start',
+        alignItems: 'flex-end',
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingRight: 16,
+    },
+    menuModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        paddingVertical: 8,
+        minWidth: 200,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    menuActionItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 8,
-        backgroundColor: '#EEF2FF',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E0E7FF',
-        gap: 6,
-        minHeight: 36,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        gap: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
     },
-    quickActionText: {
-        fontSize: 12,
+    menuActionItemFirst: {
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+    },
+    menuActionItemLast: {
+        borderBottomWidth: 0,
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 16,
+    },
+    menuActionText: {
+        fontSize: 15,
         fontWeight: '600',
-        color: modernColors.primary,
-        flexShrink: 1,
+        color: modernColors.text,
+        flex: 1,
     },
     filtersContainer: {
         backgroundColor: '#FFFFFF',

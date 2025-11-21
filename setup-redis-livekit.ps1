@@ -29,7 +29,8 @@ $redisUrl = Read-Host "URL Redis (ou appuyez sur Entrée pour ignorer)"
 
 if ($redisUrl -and $redisUrl.StartsWith("redis://")) {
     Write-Host "✅ URL Redis valide détectée" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "⚠️ URL Redis non fournie ou invalide" -ForegroundColor Yellow
     $redisUrl = ""
 }
@@ -114,7 +115,8 @@ if ($redisUrl) {
 REDIS_URL=$redisUrl
 
 "@
-} else {
+}
+else {
     $configContent += @"
 # 🔴 REDIS (Cache) - À CONFIGURER
 # REDIS_URL=redis://default:password@host.upstash.io:6379
@@ -132,7 +134,8 @@ LIVEKIT_API_SECRET=$livekitApiSecret
 LIVEKIT_HLS_URL=$livekitHlsUrl
 
 "@
-} else {
+}
+else {
     $configContent += @"
 # 🎥 LIVEKIT (Streaming) - À CONFIGURER
 # LIVEKIT_API_URL=https://votre-projet.livekit.cloud
@@ -165,14 +168,16 @@ Write-Host ""
 if ($redisUrl) {
     Write-Host "✅ Redis : Configuré" -ForegroundColor Green
     Write-Host "   URL: $($redisUrl.Substring(0, [Math]::Min(50, $redisUrl.Length)))..." -ForegroundColor Gray
-} else {
+}
+else {
     Write-Host "⚠️ Redis : Non configuré" -ForegroundColor Yellow
 }
 
 if ($livekitValid) {
     Write-Host "✅ LiveKit : Configuré" -ForegroundColor Green
     Write-Host "   API URL: $livekitApiUrl" -ForegroundColor Gray
-} else {
+}
+else {
     Write-Host "⚠️ LiveKit : Non configuré" -ForegroundColor Yellow
 }
 

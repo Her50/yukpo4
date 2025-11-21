@@ -952,6 +952,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 <SafeIcon name="phone" size={20} color={modernColors.success} />
                             </TouchableOpacity>
 
+                            {/* ✅ CORRIGÉ : Appel vidéo - Icône d'appel vidéo classique (caméra avec téléphone) */}
                             <TouchableOpacity
                                 style={styles.actionButton}
                                 onPress={() => {
@@ -962,15 +963,16 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 <SafeIcon name="video" size={20} color={modernColors.primary} />
                             </TouchableOpacity>
 
-                            {/* ✅ NOUVEAU: Avatar véhicule pour livraison intelligente */}
+                            {/* ✅ CORRIGÉ: Avatar véhicule pour livraison intelligente - Ouvre OrderDeliveryModal */}
                             <TouchableOpacity
                                 style={[styles.actionButton, styles.deliveryVehicleButton]}
                                 onPress={() => {
-                                    // Navigation vers le flux de livraison
-                                    (navigation as any).navigate('DeliveryShoppingFlow');
+                                    // ✅ CORRIGÉ : Ouvrir OrderDeliveryModal au lieu de naviguer vers l'ancienne page
+                                    setSelectedProductForOrder(null);
+                                    setShowOrderModal(true);
                                 }}
                             >
-                                <Text style={styles.deliveryVehicleIcon}>🚚</Text>
+                                <SafeIcon name="truck" size={20} color={modernColors.warning} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -1102,7 +1104,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     )}
                                                 </Text>
 
-                                                {/* ✅ NOUVEAU: Bouton Répondre (toujours visible) */}
+                                                {/* ✅ CORRIGÉ : Bouton Répondre - Icône de réponse appropriée */}
                                                 <TouchableOpacity
                                                     style={styles.replyButton}
                                                     onPress={() => setReplyingTo({
@@ -1115,7 +1117,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                         fileUrl: message.fileUrl
                                                     })}
                                                 >
-                                                    <SafeIcon name="corner-down-left" size={14} color={modernColors.textSecondary} />
+                                                    <SafeIcon name="corner-up-right" size={14} color={modernColors.textSecondary} />
                                                     <Text style={styles.replyButtonText}>Répondre</Text>
                                                 </TouchableOpacity>
                                             </View>
@@ -1247,28 +1249,63 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
                     {/* ✅ Phase 8 - Amélioration 25 : Boutons d'actions rapides pour commande */}
                     <View style={styles.quickActionsRow}>
-                        <TouchableOpacity
-                            style={styles.quickActionButton}
-                            onPress={() => {
-                                setSelectedProductForOrder(null);
-                                setShowOrderModal(true);
-                            }}
-                        >
-                            <SafeIcon name="package" size={18} color={modernColors.primary} />
-                            <Text style={styles.quickActionText}>Commander avec livraison</Text>
-                        </TouchableOpacity>
-                        {/* ✅ NOUVEAU : Bouton pour négocier un prix */}
-                        {user?.id === service?.user_id && (
+                        {/* ✅ Bouton commander avec livraison - Visible pour le client */}
+                        {user?.id !== service?.user_id && (
                             <TouchableOpacity
                                 style={styles.quickActionButton}
                                 onPress={() => {
-                                    // TODO: Récupérer le produit sélectionné depuis le chat ou un sélecteur
-                                    setSelectedProductForNegotiation({ index: 0, name: 'Produit', price: 0 });
+                                    setSelectedProductForOrder(null);
+                                    setShowOrderModal(true);
+                                }}
+                            >
+                                <SafeIcon name="package" size={18} color={modernColors.primary} />
+                                <Text style={styles.quickActionText}>Commander avec livraison</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* ✅ CORRIGÉ : Bouton pour négocier un prix - Visible pour le CLIENT uniquement */}
+                        {user?.id !== service?.user_id && (
+                            <TouchableOpacity
+                                style={styles.quickActionButton}
+                                onPress={() => {
+                                    // Récupérer le premier produit du service pour la négociation
+                                    const produits = service?.data?.produits?.valeur || service?.data?.produits || [];
+                                    const firstProduct = produits.length > 0 ? produits[0] : null;
+                                    const productPrice = firstProduct?.price || firstProduct?.prix || 0;
+
+                                    setSelectedProductForNegotiation({
+                                        index: 0,
+                                        name: firstProduct?.nom || firstProduct?.name || 'Produit',
+                                        price: productPrice
+                                    });
                                     setShowNegotiatedPriceModal(true);
                                 }}
                             >
                                 <SafeIcon name="dollar-sign" size={18} color={modernColors.primary} />
                                 <Text style={styles.quickActionText}>💰 Négocier un prix</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* ✅ NOUVEAU : Bouton pour le prestataire - Voir les propositions de prix */}
+                        {user?.id === service?.user_id && (
+                            <TouchableOpacity
+                                style={styles.quickActionButton}
+                                onPress={() => {
+                                    // Récupérer le premier produit du service pour voir les propositions
+                                    const produits = service?.data?.produits?.valeur || service?.data?.produits || [];
+                                    const firstProduct = produits.length > 0 ? produits[0] : null;
+                                    const productPrice = firstProduct?.price || firstProduct?.prix || 0;
+
+                                    setSelectedProductForNegotiation({
+                                        index: 0,
+                                        name: firstProduct?.nom || firstProduct?.name || 'Produit',
+                                        price: productPrice
+                                    });
+                                    setShowNegotiatedPriceModal(true);
+                                }}
+                            >
+                                <SafeIcon name="dollar-sign" size={18} color={modernColors.warning} />
+                                <Text style={styles.quickActionText}>💵 Voir les propositions de prix</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -1290,12 +1327,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="file-text" size={22} color={modernColors.primary} />
                         </TouchableOpacity>
 
-                        {/* ✅ Bouton galerie de produits/service */}
+                        {/* ✅ CORRIGÉ : Bouton galerie de produits/service - Icône pièce jointe classique */}
                         <TouchableOpacity
                             style={styles.mediaButton}
                             onPress={() => setShowProductGalleryPicker(true)}
                         >
-                            <SafeIcon name="folder-open" size={22} color="#8B5CF6" />
+                            <SafeIcon name="paperclip" size={22} color="#8B5CF6" />
                         </TouchableOpacity>
                     </View>
 

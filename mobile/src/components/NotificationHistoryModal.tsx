@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { API_ENDPOINTS } from '../config/api.config';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +33,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   onChange,
 }) => {
   const { user } = useAuth();
+  const navigation = useNavigation(); // ✅ NOUVEAU : Pour la navigation vers les actions
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -103,8 +105,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             timestamp: notif.created_at || notif.createdAt || notif.timestamp || new Date().toISOString(),
             isRead: notif.is_read || notif.isRead || false,
             category: mapNotificationCategory(backendType),
-            actionUrl: notif.data?.actionUrl,
-            actionText: notif.data?.actionText,
+            actionUrl: notif.data?.actionUrl || notif.data?.action_url, // ✅ CORRIGÉ : Support des deux formats
+            actionText: notif.data?.actionText || notif.data?.action_text, // ✅ CORRIGÉ : Support des deux formats
             productName,
           };
         });
@@ -460,6 +462,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                           </Text>
                         )}
 
+                        {/* ✅ CORRIGÉ : Texte notification avec retour à la ligne contrôlé */}
                         <Text style={styles.notificationMessage}>
                           {notification.message}
                         </Text>
@@ -478,6 +481,36 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
                   <View style={styles.notificationActions}>
                     <View style={styles.actionButtons}>
+                      {/* ✅ NOUVEAU : Bouton d'action si un lien est disponible (ex: Participer au Black Friday) */}
+                      {notification.actionUrl && notification.actionText && (
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.primaryActionButton]}
+                          onPress={() => {
+                            // ✅ CORRIGÉ : Gérer le deep link ou la navigation
+                            const url = notification.actionUrl;
+                            if (url?.startsWith('yukpo://')) {
+                              const route = url.replace('yukpo://', '');
+                              console.log('[NotificationHistoryModal] Navigation vers:', route);
+                              // Fermer le modal et naviguer vers la route
+                              onClose();
+                              try {
+                                (navigation as any).navigate(route);
+                              } catch (error) {
+                                console.error('[NotificationHistoryModal] Erreur navigation:', error);
+                              }
+                            } else if (url) {
+                              // Si c'est une URL complète (https://...)
+                              onClose();
+                              // TODO: Implémenter l'ouverture de l'URL externe si nécessaire
+                            }
+                          }}
+                        >
+                          <Text style={[styles.actionButtonText, styles.primaryActionText]}>
+                            {notification.actionText}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
                       {!notification.isRead && (
                         <TouchableOpacity
                           style={styles.actionButton}
@@ -741,6 +774,8 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginBottom: 8,
     lineHeight: 20,
+    // ✅ CORRIGÉ : Le texte s'adapte naturellement avec les retours à la ligne
+    flexShrink: 1, // ✅ CORRIGÉ : Permettre au texte de se rétrécir si nécessaire
   },
   notificationMeta: {
     flexDirection: 'row',
@@ -777,6 +812,17 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 12,
     color: theme.colors.text,
+  },
+  primaryActionButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  primaryActionText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 

@@ -10,9 +10,34 @@ use chrono::Utc;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::Row;
+use sqlx::{FromRow, Row};
 use tokio::{fs, process::Command};
 use uuid::Uuid;
+
+#[derive(FromRow)]
+struct ServiceDataRow {
+    user_id: i32,
+    data: Value,
+}
+
+#[derive(FromRow)]
+struct ServiceDataValueRow {
+    data: Value,
+}
+
+#[derive(FromRow)]
+struct MediaIdRow {
+    id: i32,
+}
+
+#[derive(FromRow)]
+struct MediaRow {
+    id: i32,
+    path: String,
+    #[sqlx(rename = "type")]
+    media_type: String,
+    ai_description: Option<String>,
+}
 
 use crate::{
     core::types::{AppError, AppResult},
@@ -230,10 +255,10 @@ pub async fn estimate_video_cost(
     product_index: i32,
     payload: VideoGenerationPayload,
 ) -> AppResult<CostEstimation> {
-    let svc = sqlx::query!(
-        "SELECT user_id, data AS \"data: serde_json::Value\" FROM services WHERE id = $1",
-        service_id
+    let svc = sqlx::query_as::<_, ServiceDataRow>(
+        "SELECT user_id, data FROM services WHERE id = $1"
     )
+    .bind(service_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|err| {
@@ -337,10 +362,10 @@ pub async fn generate_product_video(
 ) -> AppResult<VideoGenerationResult> {
     let overall_start = Instant::now();
 
-    let svc = sqlx::query!(
-        "SELECT user_id, data AS \"data: serde_json::Value\" FROM services WHERE id = $1",
-        service_id
+    let svc = sqlx::query_as::<_, ServiceDataRow>(
+        "SELECT user_id, data FROM services WHERE id = $1"
     )
+    .bind(service_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|err| {
@@ -1541,7 +1566,7 @@ pub async fn generate_product_video(
         }
     }
 
-    let inserted = sqlx::query!(
+    let inserted: MediaIdRow = sqlx::query_as(
         r#"
         INSERT INTO media (
             service_id,
@@ -1562,22 +1587,22 @@ pub async fn generate_product_video(
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), $12, $13
         )
-        RETURNING id AS "id: i32"
-        "#,
-        service_id,
-        product_identifier,
-        product_index,
-        "video_generated",
-        "video",
-        normalized_relative,
-        file_size,
-        "mp4",
-        ai_description,
-        &ai_tags,
-        ai_metadata,
-        "video_generation_pipeline_v1",
-        quality_score as f64
+        RETURNING id
+        "#
     )
+    .bind(service_id)
+    .bind(product_identifier)
+    .bind(product_index)
+    .bind("video_generated")
+    .bind("video")
+    .bind(normalized_relative.clone())
+    .bind(file_size)
+    .bind("mp4")
+    .bind(ai_description)
+    .bind(&ai_tags)
+    .bind(ai_metadata)
+    .bind("video_generation_pipeline_v1")
+    .bind(quality_score as f64)
     .fetch_one(&state.pg)
     .await
     .map_err(|err| {
@@ -1725,14 +1750,14 @@ async fn gather_media_sources(
 
     if let Some(ids) = selected_media_ids.as_ref() {
         if !ids.is_empty() {
-            let rows = sqlx::query!(
-                "SELECT id, path, type, ai_description AS \"ai_description: Option<String>\"
+            let rows: Vec<MediaRow> = sqlx::query_as(
+                "SELECT id, path, type, ai_description
                  FROM media
                  WHERE service_id = $1
-                 AND id = ANY($2)",
-                service_id,
-                ids
+                 AND id = ANY($2)"
             )
+            .bind(service_id)
+            .bind(ids)
             .fetch_all(&state.pg)
             .await
             .map_err(|err| {
@@ -1741,9 +1766,14 @@ async fn gather_media_sources(
             })?;
 
             for row in rows {
-                let ai_description = row.ai_description.clone().flatten();
+                let ai_description = row.ai_description.clone();
                 if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
-                    seen_ids.insert(source.id.unwrap());
+                    if let Some(id) = source.id {
+                        if seen_ids.contains(&id) {
+                            continue;
+                        }
+                        seen_ids.insert(id);
+                    }
                     collected.push(source);
                 }
             }
@@ -1751,16 +1781,16 @@ async fn gather_media_sources(
     }
 
     if collected.is_empty() && use_product_gallery {
-        let rows = sqlx::query!(
-            "SELECT id, path, type, ai_description AS \"ai_description: Option<String>\"
+        let rows: Vec<MediaRow> = sqlx::query_as(
+            "SELECT id, path, type, ai_description
              FROM media
              WHERE service_id = $1
              AND (product_index = $2 OR (product_index IS NULL AND type = 'image'))
              ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC
-             LIMIT 16",
-            service_id,
-            product_index
+             LIMIT 16"
         )
+        .bind(service_id)
+        .bind(product_index)
         .fetch_all(&state.pg)
         .await
         .map_err(|err| {
@@ -1769,7 +1799,7 @@ async fn gather_media_sources(
         })?;
 
         for row in rows {
-            let ai_description = row.ai_description.clone().flatten();
+            let ai_description = row.ai_description.clone();
             if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
@@ -1783,16 +1813,16 @@ async fn gather_media_sources(
     }
 
     if use_service_mediatech {
-        let rows = sqlx::query!(
-            "SELECT id, path, type, ai_description AS \"ai_description: Option<String>\"
+        let rows: Vec<MediaRow> = sqlx::query_as(
+            "SELECT id, path, type, ai_description
              FROM media
              WHERE service_id = $1
              AND (product_index IS NULL OR product_index != $2)
              ORDER BY uploaded_at DESC
-             LIMIT 12",
-            service_id,
-            product_index
+             LIMIT 12"
         )
+        .bind(service_id)
+        .bind(product_index)
         .fetch_all(&state.pg)
         .await
         .map_err(|err| {
@@ -1801,7 +1831,7 @@ async fn gather_media_sources(
         })?;
 
         for row in rows {
-            let ai_description = row.ai_description.clone().flatten();
+            let ai_description = row.ai_description.clone();
             if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
@@ -1815,8 +1845,8 @@ async fn gather_media_sources(
     }
 
     if include_publicite_assets {
-        let rows = sqlx::query!(
-            "SELECT id, path, type, ai_description AS \"ai_description: Option<String>\"
+        let rows: Vec<MediaRow> = sqlx::query_as(
+            "SELECT id, path, type, ai_description
              FROM media
              WHERE service_id = $1
              AND (
@@ -1826,9 +1856,9 @@ async fn gather_media_sources(
                 OR path ILIKE '%banner%'
              )
              ORDER BY uploaded_at DESC
-             LIMIT 6",
-            service_id
+             LIMIT 6"
         )
+        .bind(service_id)
         .fetch_all(&state.pg)
         .await
         .map_err(|err| {
@@ -1837,7 +1867,7 @@ async fn gather_media_sources(
         })?;
 
         for row in rows {
-            let ai_description = row.ai_description.clone().flatten();
+            let ai_description = row.ai_description.clone();
             if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
                 if let Some(id) = source.id {
                     if seen_ids.contains(&id) {
@@ -2248,11 +2278,11 @@ async fn append_video_to_service_data(
         }
     }
 
-    sqlx::query!(
-        "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2",
-        serde_json::Value::clone(service_data),
-        service_id
+    sqlx::query(
+        "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2"
     )
+    .bind(serde_json::Value::clone(service_data))
+    .bind(service_id)
     .execute(&state.pg)
     .await
     .map_err(|err| {
@@ -2269,10 +2299,10 @@ async fn append_video_variants_to_service_data(
     product_index: i32,
     variant_urls: &[(String, String)],
 ) -> AppResult<()> {
-    let service_row = sqlx::query!(
-        "SELECT data AS \"data: serde_json::Value\" FROM services WHERE id = $1",
-        service_id
+    let service_row = sqlx::query_as::<_, ServiceDataValueRow>(
+        "SELECT data FROM services WHERE id = $1"
     )
+    .bind(service_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|err| AppError::from(err))?
@@ -2303,11 +2333,11 @@ async fn append_video_variants_to_service_data(
         }
     }
 
-    sqlx::query!(
-        "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2",
-        data_value,
-        service_id
+    sqlx::query(
+        "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2"
     )
+    .bind(data_value)
+    .bind(service_id)
     .execute(&state.pg)
     .await
     .map_err(|err| AppError::from(err))?;

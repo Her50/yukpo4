@@ -2,12 +2,36 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Duration, Utc};
 use serde::Serialize;
+use sqlx::FromRow;
 
 use crate::{
     core::types::{AppError, AppResult},
     services::video_analytics_service::{self, VideoAnalyticsOverview},
     state::AppState,
 };
+
+#[derive(FromRow)]
+struct JobStatusCountRow {
+    status: String,
+    count: i64,
+}
+
+#[derive(FromRow)]
+struct CountRow {
+    count: i64,
+}
+
+#[derive(FromRow)]
+struct LastCompletedRow {
+    last_completed: Option<chrono::DateTime<Utc>>,
+}
+
+#[derive(FromRow)]
+struct StaleJobRow {
+    job_id: Option<uuid::Uuid>,
+    status: Option<String>,
+    updated_at: Option<chrono::DateTime<Utc>>,
+}
 
 #[derive(Debug, Serialize)]
 pub struct PipelineHealthStatus {
@@ -42,9 +66,9 @@ pub struct PipelineComponents {
 }
 
 pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<PipelineHealthStatus> {
-    let job_counts = sqlx::query!(
+    let job_counts: Vec<JobStatusCountRow> = sqlx::query_as(
         r#"
-        SELECT status AS "status: String", COUNT(*)::bigint AS "count!: i64"
+        SELECT status, COUNT(*)::bigint AS count
         FROM video_generation_jobs
         GROUP BY status
         "#
@@ -67,9 +91,9 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
         }
     }
 
-    let failed_last_24h = sqlx::query!(
+    let failed_last_24h: CountRow = sqlx::query_as(
         r#"
-        SELECT COUNT(*)::bigint AS "count!: i64"
+        SELECT COUNT(*)::bigint AS count
         FROM video_generation_jobs
         WHERE status = 'failed'
           AND updated_at >= NOW() - INTERVAL '24 hours'
@@ -77,12 +101,12 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
     )
     .fetch_one(&state.pg)
     .await
-    .map_err(AppError::from)?
-    .count;
+    .map_err(AppError::from)?;
+    let failed_last_24h = failed_last_24h.count;
 
-    let completed_last_24h = sqlx::query!(
+    let completed_last_24h: CountRow = sqlx::query_as(
         r#"
-        SELECT COUNT(*)::bigint AS "count!: i64"
+        SELECT COUNT(*)::bigint AS count
         FROM video_generation_jobs
         WHERE status = 'completed'
           AND updated_at >= NOW() - INTERVAL '24 hours'
@@ -90,12 +114,12 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
     )
     .fetch_one(&state.pg)
     .await
-    .map_err(AppError::from)?
-    .count;
+    .map_err(AppError::from)?;
+    let completed_last_24h = completed_last_24h.count;
 
-    let last_completed_row = sqlx::query!(
+    let last_completed_row: LastCompletedRow = sqlx::query_as(
         r#"
-        SELECT MAX(updated_at) AS "last_completed: Option<chrono::DateTime<Utc>>"
+        SELECT MAX(updated_at) AS last_completed
         FROM video_generation_jobs
         WHERE status = 'completed'
         "#
@@ -104,11 +128,11 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
     .await
     .map_err(AppError::from)?;
 
-    let last_completed_at = last_completed_row.last_completed.flatten();
+    let last_completed_at = last_completed_row.last_completed;
 
-    let stale_jobs_rows = sqlx::query!(
+    let stale_jobs_rows: Vec<StaleJobRow> = sqlx::query_as(
         r#"
-        SELECT job_id AS "job_id: Option<uuid::Uuid>", status AS "status: Option<String>", updated_at AS "updated_at: Option<chrono::DateTime<Utc>>"
+        SELECT job_id, status, updated_at
         FROM video_generation_jobs
         WHERE status IN ('queued', 'running')
           AND updated_at < NOW() - INTERVAL '30 minutes'

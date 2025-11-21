@@ -672,7 +672,15 @@ const MesServicesScreen: React.FC = () => {
               <Text style={styles.subtitle}>{services.length} produit{services.length !== 1 ? 's' : ''}</Text>
             </View>
             <View style={styles.headerActions}>
-              {/* ✅ Menu global avec actions - EN PREMIÈRE POSITION */}
+              {/* ✅ NOUVEAU : Bouton participation Black Friday */}
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => (navigation as any).navigate('GlobalPromoSubmission')}
+              >
+                <SafeIcon name="dollar-sign" size={20} color="#fff" />
+              </TouchableOpacity>
+
+              {/* ✅ Menu global avec actions */}
               <TouchableOpacity
                 style={[styles.headerButton, styles.menuButton]}
                 onPress={() => setShowGlobalMenu(!showGlobalMenu)}

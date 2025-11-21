@@ -124,7 +124,18 @@ async fn create_external_delivery(
 
         // Note: On ne peut pas utiliser l'endpoint normal car il nécessite un user authentifié
         // On va directement insérer dans la base
-        sqlx::query!(
+        let delivery_date = preferred_delivery_date
+            .as_ref()
+            .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok());
+        let delivery_time_start = preferred_delivery_time_start
+            .as_ref()
+            .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok());
+        let delivery_time_end = preferred_delivery_time_end
+            .as_ref()
+            .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok());
+        let urgency_level = urgency.unwrap_or_else(|| "standard".to_string());
+        
+        sqlx::query(
             r#"
             INSERT INTO client_delivery_preferences (
                 user_id, delivery_id,
@@ -136,19 +147,13 @@ async fn create_external_delivery(
                 0, $1, $2, $3, $4, 2, $5, TRUE, 3
             )
             ON CONFLICT DO NOTHING
-            "#,
-            summary.id,
-            preferred_delivery_date
-                .as_ref()
-                .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
-            preferred_delivery_time_start
-                .as_ref()
-                .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok()),
-            preferred_delivery_time_end
-                .as_ref()
-                .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok()),
-            urgency.unwrap_or_else(|| "standard".to_string())
+            "#
         )
+        .bind(summary.id)
+        .bind(delivery_date)
+        .bind(delivery_time_start)
+        .bind(delivery_time_end)
+        .bind(urgency_level)
         .execute(&state.pg)
         .await
         .ok(); // Ne pas faire échouer si les préférences échouent
@@ -158,16 +163,16 @@ async fn create_external_delivery(
     let tracking_token = generate_public_tracking_token(&summary.id);
     
     // Stocker le token dans la base
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO public_tracking_tokens (delivery_id, tracking_token, provider_id)
         VALUES ($1, $2, $3)
         ON CONFLICT (delivery_id, tracking_token) DO NOTHING
-        "#,
-        summary.id,
-        tracking_token,
-        provider.id
+        "#
     )
+    .bind(summary.id)
+    .bind(&tracking_token)
+    .bind(provider.id)
     .execute(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur stockage token: {}", e)))?;
@@ -295,16 +300,16 @@ async fn update_provider_stats(
     state: &Arc<AppState>,
     provider_id: i32,
 ) -> AppResult<()> {
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE external_delivery_providers
         SET
             last_used_at = NOW(),
             total_deliveries = total_deliveries + 1
         WHERE id = $1
-        "#,
-        provider_id
+        "#
     )
+    .bind(provider_id)
     .execute(&state.pg)
     .await?;
 

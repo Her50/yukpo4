@@ -12,6 +12,34 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
+use sqlx::FromRow;
+use chrono::{DateTime, Utc};
+
+#[derive(FromRow)]
+struct PaymentAttemptRow {
+    id: i32,
+    payment_id: String,
+    user_id: i32,
+    amount_xaf: i64,
+    currency: String,
+    payment_method: String,
+    phone_number: Option<String>,
+    status: String,
+    transaction_id: Option<String>,
+    created_at: DateTime<Utc>,
+    confirmed_at: Option<DateTime<Utc>>,
+}
+
+#[derive(FromRow)]
+struct PaymentHistoryRow {
+    id: i32,
+    amount_xaf: i64,
+    currency: String,
+    payment_method: String,
+    status: String,
+    created_at: DateTime<Utc>,
+    tokens_purchased: i64,
+}
 
 #[derive(Deserialize)]
 pub struct InitiatePaymentRequest {
@@ -115,19 +143,22 @@ pub async fn initiate_payment(
     let payment_id = format!("pay_{}_{}", user_id, chrono::Utc::now().timestamp());
 
     // Enregistrer la tentative de paiement en base
-    let result = sqlx::query!(
+    let currency = req.currency.clone();
+    let payment_method = req.payment_method.clone();
+    let phone_number = req.phone_number.clone();
+    let result = sqlx::query(
         r#"
         INSERT INTO payment_attempts 
         (payment_id, user_id, amount_xaf, currency, payment_method, phone_number, status, created_at)
         VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW())
-        "#,
-        payment_id,
-        user_id,
-        req.amount_xaf,
-        req.currency.clone(), // Cloner pour utilisation ult?rieure
-        req.payment_method.clone(), // Cloner pour utilisation ult?rieure
-        req.phone_number.clone() // Cloner pour utilisation ult?rieure
+        "#
     )
+    .bind(&payment_id)
+    .bind(user_id)
+    .bind(req.amount_xaf)
+    .bind(&currency)
+    .bind(&payment_method)
+    .bind(phone_number.as_deref())
     .execute(&state.pg)
     .await;
 
@@ -199,49 +230,50 @@ pub async fn confirm_payment(
 ) -> AppResult<JsonResponse<Value>> {
     let user_id = user.id;
 
-    // R?cup?rer les d?tails du paiement
-    let payment = sqlx::query!(
-        "SELECT * FROM payment_attempts WHERE payment_id = $1 AND user_id = $2",
-        req.payment_id,
-        user_id
+    // Récupérer les détails du paiement
+    let payment: Option<PaymentAttemptRow> = sqlx::query_as(
+        "SELECT * FROM payment_attempts WHERE payment_id = $1 AND user_id = $2"
     )
+    .bind(&req.payment_id)
+    .bind(user_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur DB: {}", e)))?;
 
-    let payment = payment.ok_or_else(|| AppError::NotFound("Paiement non trouv?".to_string()))?;
+    let payment = payment.ok_or_else(|| AppError::NotFound("Paiement non trouvé".to_string()))?;
 
     if payment.status != "pending" {
-        return Err(AppError::BadRequest("Paiement d?j? trait?".to_string()));
+        return Err(AppError::BadRequest("Paiement déjà traité".to_string()));
     }
 
-    // Mettre ? jour le statut du paiement
-    sqlx::query!(
+    // Mettre à jour le statut du paiement
+    let transaction_id = req.transaction_id.as_deref();
+    sqlx::query(
         r#"
         UPDATE payment_attempts 
         SET status = $1, transaction_id = $2, confirmed_at = NOW()
         WHERE payment_id = $3
-        "#,
-        req.status,
-        req.transaction_id,
-        req.payment_id
+        "#
     )
+    .bind(&req.status)
+    .bind(transaction_id)
+    .bind(&req.payment_id)
     .execute(&state.pg)
     .await
-    .map_err(|e| AppError::Internal(format!("Erreur mise ? jour paiement: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur mise à jour paiement: {}", e)))?;
 
     // Si le paiement est r?ussi, cr?diter les tokens
     if req.status == "success" {
         let tokens_to_add = payment.amount_xaf; // 1 token = 1 XAF
 
-        sqlx::query!(
-            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2",
-            tokens_to_add,
-            user_id
+        sqlx::query(
+            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
         )
+        .bind(tokens_to_add)
+        .bind(user_id)
         .execute(&state.pg)
         .await
-        .map_err(|e| AppError::Internal(format!("Erreur cr?dit tokens: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;
 
         log::info!(
             "[confirm_payment] {} tokens cr?dit?s pour utilisateur {}",
@@ -278,21 +310,21 @@ pub async fn get_payment_history(
     let limit = params.limit.unwrap_or(20);
     let offset = params.offset.unwrap_or(0);
 
-    let payments = sqlx::query!(
+    let payments: Vec<PaymentHistoryRow> = sqlx::query_as(
         r#"
         SELECT id, amount_xaf, currency, payment_method, status, created_at, amount_xaf as tokens_purchased
         FROM payment_attempts 
         WHERE user_id = $1 
         ORDER BY created_at DESC 
         LIMIT $2 OFFSET $3
-        "#,
-        user_id,
-        limit,
-        offset
+        "#
     )
+    .bind(user_id)
+    .bind(limit)
+    .bind(offset)
     .fetch_all(&state.pg)
     .await
-    .map_err(|e| AppError::Internal(format!("Erreur r?cup?ration historique: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur récupération historique: {}", e)))?;
 
     let history: Vec<PaymentHistoryItem> = payments
         .into_iter()

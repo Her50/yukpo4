@@ -1,7 +1,24 @@
 use crate::core::types::AppError;
 use chrono::{Duration, Utc};
 use log::info;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
+
+#[derive(FromRow)]
+struct ExpiredServiceRow {
+    id: i32,
+    user_id: i32,
+    tokens_balance: i64,
+}
+
+#[derive(FromRow)]
+struct ServiceIdRow {
+    id: i32,
+}
+
+#[derive(FromRow)]
+struct UserBalanceRow {
+    tokens_balance: i64,
+}
 
 /// Coût de base pour la réactivation d'un service (1000 FCFA)
 const COUT_REACTIVATION_BASE: i64 = 1000;
@@ -14,7 +31,7 @@ pub async fn process_expired_services_intelligently(
     let mut result = ProcessResult::new();
 
     // 1. Traiter les services non tarissables expirés
-    let expired_non_tarissable = sqlx::query!(
+    let expired_non_tarissable: Vec<ExpiredServiceRow> = sqlx::query_as(
         r#"
         SELECT s.id, s.user_id, u.tokens_balance
         FROM services s
@@ -23,9 +40,9 @@ pub async fn process_expired_services_intelligently(
           AND s.is_tarissable = FALSE
           AND s.auto_deactivate_at IS NOT NULL
           AND s.auto_deactivate_at < $1
-        "#,
-        now
+        "#
     )
+    .bind(now)
     .fetch_all(pool)
     .await
     .map_err(AppError::from)?;
@@ -35,36 +52,37 @@ pub async fn process_expired_services_intelligently(
 
         if balance >= COUT_REACTIVATION_BASE {
             // 💰 Solde suffisant : Renouvellement automatique
-            let updated_balance = sqlx::query!(
-                "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance",
-                COUT_REACTIVATION_BASE,
-                service.user_id
+            let updated_balance: UserBalanceRow = sqlx::query_as(
+                "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
             )
+            .bind(COUT_REACTIVATION_BASE)
+            .bind(service.user_id)
             .fetch_one(pool)
             .await
-            .map_err(AppError::from)?
-            .tokens_balance;
+            .map_err(AppError::from)?;
+            let updated_balance = updated_balance.tokens_balance;
 
             // Réactiver le service pour 30 jours
             let new_expiry = now + Duration::days(30);
-            sqlx::query!(
-                "UPDATE services SET is_active = TRUE, auto_deactivate_at = $1, updated_at = NOW() WHERE id = $2",
-                new_expiry,
-                service.id
+            sqlx::query(
+                "UPDATE services SET is_active = TRUE, auto_deactivate_at = $1, updated_at = NOW() WHERE id = $2"
             )
+            .bind(new_expiry)
+            .bind(service.id)
             .execute(pool)
             .await
             .map_err(AppError::from)?;
 
             // Logger l'action
-            sqlx::query!(
-                "INSERT INTO service_logs (service_id, user_id, action, reason, created_at) VALUES ($1, $2, $3, $4, $5)",
-                service.id,
-                service.user_id,
-                "auto_renewal",
-                &format!("Renouvellement automatique pour {} FCFA", COUT_REACTIVATION_BASE),
-                Utc::now().naive_utc()
+            let reason = format!("Renouvellement automatique pour {} FCFA", COUT_REACTIVATION_BASE);
+            sqlx::query(
+                "INSERT INTO service_logs (service_id, user_id, action, reason, created_at) VALUES ($1, $2, $3, $4, $5)"
             )
+            .bind(service.id)
+            .bind(service.user_id)
+            .bind("auto_renewal")
+            .bind(&reason)
+            .bind(Utc::now().naive_utc())
             .execute(pool)
             .await
             .map_err(AppError::from)?;
@@ -76,23 +94,24 @@ pub async fn process_expired_services_intelligently(
                   service.id, service.user_id, COUT_REACTIVATION_BASE, updated_balance);
         } else {
             // 🚫 Solde insuffisant : Désactivation
-            sqlx::query!(
-                "UPDATE services SET is_active = FALSE, updated_at = NOW() WHERE id = $1",
-                service.id
+            sqlx::query(
+                "UPDATE services SET is_active = FALSE, updated_at = NOW() WHERE id = $1"
             )
+            .bind(service.id)
             .execute(pool)
             .await
             .map_err(AppError::from)?;
 
             // Logger l'action
-            sqlx::query!(
-                "INSERT INTO service_logs (service_id, user_id, action, reason, created_at) VALUES ($1, $2, $3, $4, $5)",
-                service.id,
-                service.user_id,
-                "deactivated_insufficient_balance",
-                &format!("Solde insuffisant ({} FCFA < {} FCFA requis)", balance, COUT_REACTIVATION_BASE),
-                Utc::now().naive_utc()
+            let reason = format!("Solde insuffisant ({} FCFA < {} FCFA requis)", balance, COUT_REACTIVATION_BASE);
+            sqlx::query(
+                "INSERT INTO service_logs (service_id, user_id, action, reason, created_at) VALUES ($1, $2, $3, $4, $5)"
             )
+            .bind(service.id)
+            .bind(service.user_id)
+            .bind("deactivated_insufficient_balance")
+            .bind(&reason)
+            .bind(Utc::now().naive_utc())
             .execute(pool)
             .await
             .map_err(AppError::from)?;
@@ -108,7 +127,7 @@ pub async fn process_expired_services_intelligently(
 
     // 2. Traiter les services tarissables selon leur vitesse de tarissement (version simplifiée)
     // Désactiver les services tarissables rapides (7 jours)
-    let rapid_count = sqlx::query!(
+    let rapid_count: Vec<ServiceIdRow> = sqlx::query_as(
         r#"
         UPDATE services 
         SET is_active = FALSE 
@@ -117,7 +136,7 @@ pub async fn process_expired_services_intelligently(
           AND vitesse_tarissement = 'rapide'
           AND updated_at < NOW() - INTERVAL '7 days'
         RETURNING id
-        "#,
+        "#
     )
     .fetch_all(pool)
     .await
@@ -132,7 +151,7 @@ pub async fn process_expired_services_intelligently(
     }
 
     // Désactiver les services tarissables moyens (14 jours)
-    let medium_count = sqlx::query!(
+    let medium_count: Vec<ServiceIdRow> = sqlx::query_as(
         r#"
         UPDATE services 
         SET is_active = FALSE 
@@ -141,7 +160,7 @@ pub async fn process_expired_services_intelligently(
           AND vitesse_tarissement = 'moyenne'
           AND updated_at < NOW() - INTERVAL '14 days'
         RETURNING id
-        "#,
+        "#
     )
     .fetch_all(pool)
     .await
@@ -156,7 +175,7 @@ pub async fn process_expired_services_intelligently(
     }
 
     // Désactiver les services tarissables lents (30 jours)
-    let slow_count = sqlx::query!(
+    let slow_count: Vec<ServiceIdRow> = sqlx::query_as(
         r#"
         UPDATE services 
         SET is_active = FALSE 
@@ -165,7 +184,7 @@ pub async fn process_expired_services_intelligently(
           AND vitesse_tarissement = 'lente'
           AND updated_at < NOW() - INTERVAL '30 days'
         RETURNING id
-        "#,
+        "#
     )
     .fetch_all(pool)
     .await

@@ -1,7 +1,12 @@
 use chrono::{DateTime, Duration, Utc};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 
 use crate::core::types::{AppError, AppResult};
+
+#[derive(FromRow)]
+struct ServiceUserIdRow {
+    user_id: i32,
+}
 
 pub const INVENTORY_STALE_THRESHOLD_HOURS: i64 = 72;
 
@@ -40,10 +45,13 @@ impl InventoryService {
     }
 
     pub async fn ensure_service_owner(&self, user_id: i32, service_id: i32) -> AppResult<()> {
-        let record = sqlx::query!("SELECT user_id FROM services WHERE id = $1", service_id)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(AppError::from)?;
+        let record: Option<ServiceUserIdRow> = sqlx::query_as(
+            "SELECT user_id FROM services WHERE id = $1"
+        )
+        .bind(service_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::from)?;
 
         let Some(row) = record else {
             return Err(AppError::NotFound("Service introuvable.".into()));

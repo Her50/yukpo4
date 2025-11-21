@@ -8,6 +8,21 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::state::AppState;
+use sqlx::FromRow;
+
+#[derive(FromRow)]
+struct NearbyServiceRow {
+    id: i32,
+    name: Option<String>,
+    description: Option<String>,
+    category: Option<String>,
+    distance: Option<i32>,
+    latitude: Option<f64>,
+    longitude: Option<f64>,
+    address: Option<String>,
+    phone: Option<String>,
+    website: Option<String>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct NearbyServicesParams {
@@ -47,7 +62,9 @@ pub async fn get_nearby_services(
     let limit = params.limit.unwrap_or(20); // 20 services par défaut
 
     // Requête simplifiée pour éviter les problèmes de types
-    let services = match sqlx::query!(
+    let lat_str = params.latitude.to_string();
+    let lon_str = params.longitude.to_string();
+    let services: Vec<NearbyService> = match sqlx::query_as::<_, NearbyServiceRow>(
         r#"
         SELECT 
             s.id,
@@ -82,12 +99,12 @@ pub async fn get_nearby_services(
                 ST_GeogFromText('POINT(' || SPLIT_PART(s.gps, ',', 2) || ' ' || SPLIT_PART(s.gps, ',', 1) || ')')
             )
         LIMIT $4
-        "#,
-        params.latitude.to_string(),
-        params.longitude.to_string(),
-        radius as i64,
-        limit as i64
+        "#
     )
+    .bind(&lat_str)
+    .bind(&lon_str)
+    .bind(radius as i64)
+    .bind(limit as i64)
     .fetch_all(&state.pg)
     .await
     {

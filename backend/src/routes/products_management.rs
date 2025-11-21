@@ -7,10 +7,45 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::state::AppState;
+use sqlx::FromRow;
+use serde_json::Value;
 
 #[derive(Debug, Deserialize)]
 pub struct ToggleProductRequest {
     pub is_active: bool,
+}
+
+#[derive(FromRow)]
+struct ProductIdRow {
+    id: i32,
+}
+
+#[derive(FromRow)]
+struct DeletedProductRow {
+    id: i32,
+    service_id: i32,
+    product_index: Option<i32>,
+}
+
+#[derive(FromRow)]
+struct ServiceDataRow {
+    data: Value,
+}
+
+#[derive(FromRow)]
+struct ServiceDataUserIdRow {
+    data: Value,
+    user_id: i32,
+}
+
+#[derive(FromRow)]
+struct ProductLifecycleRow {
+    id: i32,
+    nom: Option<String>,
+    #[sqlx(rename = "type")]
+    product_type: Option<String>,
+    is_active: bool,
+    service_id: i32,
 }
 
 #[derive(Debug, Serialize)]
@@ -41,17 +76,18 @@ pub async fn toggle_product_status(
     );
 
     // Mettre à jour le statut du produit dans products_lifecycle
-    let result = sqlx::query!(
+    let product_id_i32 = product_id.parse::<i32>().unwrap_or(0);
+    let result: Option<ProductIdRow> = sqlx::query_as(
         r#"
         UPDATE products_lifecycle
         SET is_active = $1,
             updated_at = NOW()
         WHERE id = $2
         RETURNING id
-        "#,
-        payload.is_active,
-        product_id.parse::<i32>().unwrap_or(0)
+        "#
     )
+    .bind(payload.is_active)
+    .bind(product_id_i32)
     .fetch_optional(pool)
     .await
     .map_err(|e| {
@@ -108,14 +144,14 @@ pub async fn delete_product(
     })?;
 
     // Supprimer le produit de products_lifecycle
-    let result = sqlx::query!(
+    let result: Option<DeletedProductRow> = sqlx::query_as(
         r#"
         DELETE FROM products_lifecycle
         WHERE id = $1
         RETURNING id, service_id, product_index
-        "#,
-        product_id_i32
+        "#
     )
+    .bind(product_id_i32)
     .fetch_optional(pool)
     .await
     .map_err(|e| {
@@ -139,157 +175,164 @@ pub async fn delete_product(
     let removed_index = deleted_row.product_index;
 
     // Supprimer les médias associés au produit supprimé
-    if let Err(media_error) = sqlx::query!(
-        r#"
-        DELETE FROM media
-        WHERE service_id = $1 AND product_index = $2
-        "#,
-        service_id,
-        removed_index
-    )
-    .execute(pool)
-    .await
-    {
-        log::warn!(
-            "⚠️ Impossible de supprimer les médias du produit {}: {:?}",
-            product_id_i32,
-            media_error
-        );
+    if let Some(removed_idx) = removed_index {
+        if let Err(media_error) = sqlx::query(
+            r#"
+            DELETE FROM media
+            WHERE service_id = $1 AND product_index = $2
+            "#
+        )
+        .bind(service_id)
+        .bind(removed_idx)
+        .execute(pool)
+        .await
+        {
+            log::warn!(
+                "⚠️ Impossible de supprimer les médias du produit {}: {:?}",
+                product_id_i32,
+                media_error
+            );
+        }
     }
 
     // Re-indexer les médias restants
-    if let Err(media_shift_error) = sqlx::query!(
-        r#"
-        UPDATE media
-        SET product_index = product_index - 1
-        WHERE service_id = $1
-          AND product_index IS NOT NULL
-          AND product_index > $2
-        "#,
-        service_id,
-        removed_index
-    )
-    .execute(pool)
-    .await
-    {
-        log::warn!(
-            "⚠️ Impossible de ré-indexer les médias du service {} après suppression: {:?}",
-            service_id,
-            media_shift_error
-        );
+    if let Some(removed_idx) = removed_index {
+        if let Err(media_shift_error) = sqlx::query(
+            r#"
+            UPDATE media
+            SET product_index = product_index - 1
+            WHERE service_id = $1
+              AND product_index IS NOT NULL
+              AND product_index > $2
+            "#
+        )
+        .bind(service_id)
+        .bind(removed_idx)
+        .execute(pool)
+        .await
+        {
+            log::warn!(
+                "⚠️ Impossible de ré-indexer les médias du service {} après suppression: {:?}",
+                service_id,
+                media_shift_error
+            );
+        }
     }
 
     // Mettre à jour les produits dans le JSON du service
-    if let Ok(service_row) = sqlx::query!(
+    let service_row: Option<ServiceDataRow> = sqlx::query_as(
         r#"
         SELECT data
         FROM services
         WHERE id = $1
-        "#,
-        service_id
+        "#
     )
+    .bind(service_id)
     .fetch_optional(pool)
     .await
-    {
-        if let Some(row) = service_row {
-            let mut service_data: serde_json::Value = row.data;
-            let mut updated = false;
+    .unwrap_or(None);
 
-            if let Some(produits) = service_data.get_mut("produits") {
-                if let Some(valeur) = produits.get_mut("valeur") {
-                    if let Some(arr) = valeur.as_array_mut() {
-                        let mut removal_index: Option<usize> = arr.iter().position(|item| {
-                            let lifecycle_id = item
-                                .get("product_lifecycle_id")
-                                .and_then(|v| v.as_i64())
-                                .map(|v| v as i32);
-                            let legacy_id = item
-                                .get("lifecycle_id")
-                                .and_then(|v| v.as_i64())
-                                .map(|v| v as i32);
-                            let product_id_field = item
-                                .get("product_id")
-                                .and_then(|v| v.as_i64())
-                                .map(|v| v as i32);
+    if let Some(row) = service_row {
+        let mut service_data: serde_json::Value = row.data;
+        let mut updated = false;
 
-                            lifecycle_id == Some(product_id_i32)
-                                || legacy_id == Some(product_id_i32)
-                                || product_id_field == Some(product_id_i32)
-                        });
+        if let Some(produits) = service_data.get_mut("produits") {
+            if let Some(valeur) = produits.get_mut("valeur") {
+                if let Some(arr) = valeur.as_array_mut() {
+                    let mut removal_index: Option<usize> = arr.iter().position(|item| {
+                        let lifecycle_id = item
+                            .get("product_lifecycle_id")
+                            .and_then(|v| v.as_i64())
+                            .map(|v| v as i32);
+                        let legacy_id = item
+                            .get("lifecycle_id")
+                            .and_then(|v| v.as_i64())
+                            .map(|v| v as i32);
+                        let product_id_field = item
+                            .get("product_id")
+                            .and_then(|v| v.as_i64())
+                            .map(|v| v as i32);
 
-                        if removal_index.is_none()
-                            && removed_index >= 0
-                            && (removed_index as usize) < arr.len()
-                        {
-                            removal_index = Some(removed_index as usize);
-                        }
+                        lifecycle_id == Some(product_id_i32)
+                            || legacy_id == Some(product_id_i32)
+                            || product_id_field == Some(product_id_i32)
+                    });
 
-                        if let Some(idx) = removal_index {
-                            arr.remove(idx);
-                            updated = true;
+                    if removal_index.is_none()
+                        && removed_index.is_some()
+                        && removed_index.unwrap() >= 0
+                        && (removed_index.unwrap() as usize) < arr.len()
+                    {
+                        removal_index = Some(removed_index.unwrap() as usize);
+                    }
 
-                            for (index, product_value) in arr.iter_mut().enumerate() {
-                                if let Some(obj) = product_value.as_object_mut() {
-                                    obj.insert(
-                                        "product_index".to_string(),
-                                        serde_json::json!(index),
-                                    );
-                                    obj.insert(
-                                        "lifecycle_index".to_string(),
-                                        serde_json::json!(index),
-                                    );
-                                }
+                    if let Some(idx) = removal_index {
+                        arr.remove(idx);
+                        updated = true;
+
+                        for (index, product_value) in arr.iter_mut().enumerate() {
+                            if let Some(obj) = product_value.as_object_mut() {
+                                obj.insert(
+                                    "product_index".to_string(),
+                                    serde_json::json!(index),
+                                );
+                                obj.insert(
+                                    "lifecycle_index".to_string(),
+                                    serde_json::json!(index),
+                                );
                             }
                         }
                     }
                 }
             }
+        }
 
-            if updated {
-                if let Err(update_error) = sqlx::query!(
-                    r#"
-                    UPDATE services
-                    SET data = $1,
-                        updated_at = NOW()
-                    WHERE id = $2
-                    "#,
-                    service_data,
-                    service_id
-                )
-                .execute(pool)
-                .await
-                {
-                    log::error!(
-                        "❌ Erreur mise à jour JSON service {} après suppression produit {}: {:?}",
-                        service_id,
-                        product_id_i32,
-                        update_error
-                    );
-                }
+        if updated {
+            if let Err(update_error) = sqlx::query(
+                r#"
+                UPDATE services
+                SET data = $1,
+                    updated_at = NOW()
+                WHERE id = $2
+                "#
+            )
+            .bind(&service_data)
+            .bind(service_id)
+            .execute(pool)
+            .await
+            {
+                log::error!(
+                    "❌ Erreur mise à jour JSON service {} après suppression produit {}: {:?}",
+                    service_id,
+                    product_id_i32,
+                    update_error
+                );
             }
         }
     }
 
     // Ré-indexer les produits restants dans products_lifecycle
-    if let Err(reindex_error) = sqlx::query!(
-        r#"
-        UPDATE products_lifecycle
-        SET product_index = product_index - 1,
-            updated_at = NOW()
-        WHERE service_id = $1
-          AND product_index > $2
-        "#,
-        service_id,
-        removed_index
-    )
-    .execute(pool)
-    .await
-    {
-        log::error!(
-            "❌ Erreur ré-indexation products_lifecycle pour service {}: {:?}",
-            service_id,
-            reindex_error
-        );
+    if let Some(removed_idx) = removed_index {
+        if let Err(reindex_error) = sqlx::query(
+            r#"
+            UPDATE products_lifecycle
+            SET product_index = product_index - 1,
+                updated_at = NOW()
+            WHERE service_id = $1
+              AND product_index > $2
+            "#
+        )
+        .bind(service_id)
+        .bind(removed_idx)
+        .execute(pool)
+        .await
+        {
+            log::error!(
+                "❌ Erreur ré-indexation products_lifecycle pour service {}: {:?}",
+                service_id,
+                reindex_error
+            );
+        }
     }
 
     log::info!("✅ Produit {} supprimé", product_id);
@@ -315,7 +358,8 @@ pub async fn get_all_prestataire_products(
     log::info!("📦 Récupération produits prestataire");
 
     // Note: Cette requête sera améliorée avec extraction JWT
-    let products = sqlx::query!(
+    let user_id = 1; // TODO: Remplacer par user_id du JWT
+    let products: Vec<ProductLifecycleRow> = sqlx::query_as(
         r#"
         SELECT 
             pl.id,
@@ -327,9 +371,9 @@ pub async fn get_all_prestataire_products(
         JOIN services s ON pl.service_id = s.id
         WHERE s.user_id = $1
         ORDER BY pl.created_at DESC
-        "#,
-        1 // TODO: Remplacer par user_id du JWT
+        "#
     )
+    .bind(user_id)
     .fetch_all(pool)
     .await
     .map_err(|e| {
@@ -344,7 +388,7 @@ pub async fn get_all_prestataire_products(
             serde_json::json!({
                 "id": p.id,
                 "nom": p.nom,
-                "type": p.r#type,
+                "type": p.product_type,
                 "is_active": p.is_active,
                 "service_id": p.service_id
             })
@@ -375,14 +419,15 @@ pub async fn add_product_to_service(
     log::info!("➕ Ajout produit au service {}", service_id);
 
     // Récupérer le service
-    let service = sqlx::query!(
+    let service_id_i32 = service_id.parse::<i32>().unwrap_or(0);
+    let service: Option<ServiceDataRow> = sqlx::query_as(
         r#"
         SELECT data
         FROM services
         WHERE id = $1
-        "#,
-        service_id.parse::<i32>().unwrap_or(0)
+        "#
     )
+    .bind(service_id_i32)
     .fetch_optional(pool)
     .await
     .map_err(|e| {
@@ -436,16 +481,16 @@ pub async fn add_product_to_service(
     }
 
     // Mettre à jour le service
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE services
         SET data = $1,
             updated_at = NOW()
         WHERE id = $2
-        "#,
-        service_data,
-        service_id.parse::<i32>().unwrap_or(0)
+        "#
     )
+    .bind(&service_data)
+    .bind(service_id_i32)
     .execute(pool)
     .await
     .map_err(|e| {
@@ -489,14 +534,15 @@ pub async fn update_product(
     );
 
     // Récupérer le service avec user_id pour vérification
-    let service = sqlx::query!(
+    let service_id_i32 = payload.service_id.parse::<i32>().unwrap_or(0);
+    let service: Option<ServiceDataUserIdRow> = sqlx::query_as(
         r#"
         SELECT data, user_id
         FROM services
         WHERE id = $1
-        "#,
-        payload.service_id.parse::<i32>().unwrap_or(0)
+        "#
     )
+    .bind(service_id_i32)
     .fetch_optional(pool)
     .await
     .map_err(|e| {
@@ -576,16 +622,17 @@ pub async fn update_product(
     }
 
     // Mettre à jour le service (GRATUIT - pas de déduction de tokens)
-    sqlx::query!(
+    let service_id_update = payload.service_id.parse::<i32>().unwrap_or(0);
+    sqlx::query(
         r#"
         UPDATE services
         SET data = $1,
             updated_at = NOW()
         WHERE id = $2
-        "#,
-        service_data,
-        payload.service_id.parse::<i32>().unwrap_or(0)
+        "#
     )
+    .bind(&service_data)
+    .bind(service_id_update)
     .execute(pool)
     .await
     .map_err(|e| {
@@ -610,16 +657,16 @@ pub async fn update_product(
             "new_version": payload.updated_product
         });
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO service_logs (service_id, user_id, action, modification)
             VALUES ($1, $2, $3, $4::jsonb)
-            "#,
-            payload.service_id.parse::<i32>().unwrap_or(0),
-            user_id,
-            "product_modified",
-            modification_details
+            "#
         )
+        .bind(service_id_update)
+        .bind(user_id)
+        .bind("product_modified")
+        .bind(&modification_details)
         .execute(pool)
         .await
         .map_err(|e| {

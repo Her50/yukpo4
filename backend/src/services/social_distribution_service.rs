@@ -3,6 +3,7 @@ use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use log::{error, info, warn};
 use serde_json::Value;
+use sqlx::FromRow;
 
 use crate::{
     core::types::{AppError, AppResult},
@@ -23,14 +24,15 @@ pub async fn enqueue_distribution_job(
     platform: &str,
     payload: &DistributionJobPayload,
 ) -> AppResult<()> {
-    sqlx::query!(
+    let payload_value = serde_json::to_value(payload).unwrap_or(Value::Null);
+    sqlx::query(
         "INSERT INTO social_publication_jobs (media_id, platform, payload, scheduled_for)
-         VALUES ($1, $2, $3, COALESCE($4, NOW()))",
-        media_id,
-        platform,
-        serde_json::to_value(payload).unwrap_or(Value::Null),
-        payload.schedule_time,
+         VALUES ($1, $2, $3, COALESCE($4, NOW()))"
     )
+    .bind(media_id)
+    .bind(platform)
+    .bind(payload_value)
+    .bind(payload.schedule_time)
     .execute(&state.pg)
     .await
     .map_err(|err| AppError::from(err))?;
@@ -46,24 +48,23 @@ pub async fn fetch_due_jobs(
     state: Arc<AppState>,
     limit: i64,
 ) -> AppResult<Vec<SocialPublicationJob>> {
-    let rows = sqlx::query_as!(
-        SocialPublicationJob,
+    let rows: Vec<SocialPublicationJob> = sqlx::query_as(
         r#"SELECT id,
                  media_id,
                  platform,
-                 payload        AS "payload: Value",
+                 payload,
                  status,
                  attempt,
                  last_error,
-                 scheduled_for  AS "scheduled_for: DateTime<Utc>",
-                 created_at     AS "created_at: DateTime<Utc>",
-                 updated_at     AS "updated_at: DateTime<Utc>"
+                 scheduled_for,
+                 created_at,
+                 updated_at
          FROM social_publication_jobs
          WHERE status = 'queued' AND scheduled_for <= NOW()
          ORDER BY scheduled_for ASC
-         LIMIT $1"#,
-        limit
+         LIMIT $1"#
     )
+    .bind(limit)
     .fetch_all(&state.pg)
     .await
     .map_err(|err| AppError::from(err))?;
@@ -72,10 +73,10 @@ pub async fn fetch_due_jobs(
 }
 
 pub async fn mark_job_processing(state: Arc<AppState>, job_id: i32) -> AppResult<()> {
-    sqlx::query!(
-        "UPDATE social_publication_jobs SET status = 'processing', attempt = attempt + 1, updated_at = NOW() WHERE id = $1",
-        job_id
+    sqlx::query(
+        "UPDATE social_publication_jobs SET status = 'processing', attempt = attempt + 1, updated_at = NOW() WHERE id = $1"
     )
+    .bind(job_id)
     .execute(&state.pg)
     .await
     .map_err(AppError::from)?;
@@ -90,22 +91,22 @@ pub async fn mark_job_done(
 ) -> AppResult<()> {
     let mut tx = state.pg.begin().await.map_err(AppError::from)?;
 
-    sqlx::query!(
-        "UPDATE social_publication_jobs SET status = 'completed', updated_at = NOW() WHERE id = $1",
-        job.id
+    sqlx::query(
+        "UPDATE social_publication_jobs SET status = 'completed', updated_at = NOW() WHERE id = $1"
     )
+    .bind(job.id)
     .execute(&mut *tx)
     .await
     .map_err(AppError::from)?;
 
-    sqlx::query!(
+    sqlx::query(
         "INSERT INTO social_publications (media_id, platform, external_post_id, status, published_at, metadata, created_at, updated_at)
-         VALUES ($1, $2, $3, 'published', NOW(), $4, NOW(), NOW())",
-        job.media_id,
-        job.platform,
-        external_post_id,
-        metadata,
+         VALUES ($1, $2, $3, 'published', NOW(), $4, NOW(), NOW())"
     )
+    .bind(job.media_id)
+    .bind(&job.platform)
+    .bind(external_post_id)
+    .bind(metadata)
     .execute(&mut *tx)
     .await
     .map_err(AppError::from)?;
@@ -118,11 +119,11 @@ pub async fn mark_job_failed(
     job_id: i32,
     error_message: &str,
 ) -> AppResult<()> {
-    sqlx::query!(
-        "UPDATE social_publication_jobs SET status = 'failed', last_error = $1, updated_at = NOW() WHERE id = $2",
-        error_message,
-        job_id
+    sqlx::query(
+        "UPDATE social_publication_jobs SET status = 'failed', last_error = $1, updated_at = NOW() WHERE id = $2"
     )
+    .bind(error_message)
+    .bind(job_id)
     .execute(&state.pg)
     .await
     .map_err(|err| AppError::from(err))?;
@@ -134,7 +135,7 @@ pub async fn mark_job_failed(
     Ok(())
 }
 
-#[derive(Debug, sqlx::FromRow, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, FromRow, serde::Deserialize, serde::Serialize)]
 pub struct SocialPublicationJob {
     pub id: i32,
     pub media_id: i32,

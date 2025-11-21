@@ -8,6 +8,18 @@ use std::sync::Arc;
 use crate::models::echange::CreerEchangeRequest;
 use crate::state::AppState;
 use serde_json::json;
+use sqlx::FromRow;
+use chrono::{DateTime, Utc};
+
+#[derive(FromRow)]
+struct EchangeStatusRow {
+    id: i32,
+    user_id: i32,
+    statut: String,
+    matched_with: Option<i32>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+}
 
 /// POST /echanges ? cr?e un nouvel ?change (production)
 pub async fn creer_echange(
@@ -202,10 +214,10 @@ pub async fn get_echange_status(
     Path(echange_id): Path<i32>,
 ) -> Json<serde_json::Value> {
     let _pool: &PgPool = &state.pg;
-    let rec = sqlx::query!(
-        r#"SELECT id, user_id, statut, matched_with, created_at, updated_at FROM echanges WHERE id = $1"#,
-        echange_id
+    let rec: Result<Option<EchangeStatusRow>, _> = sqlx::query_as(
+        r#"SELECT id, user_id, statut, matched_with, created_at, updated_at FROM echanges WHERE id = $1"#
     )
+    .bind(echange_id)
     .fetch_optional(_pool)
     .await;
     match rec {

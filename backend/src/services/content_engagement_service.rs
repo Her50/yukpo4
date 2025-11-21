@@ -1,5 +1,31 @@
 use crate::core::types::AppResult;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
+
+#[derive(FromRow)]
+struct EngagementRow {
+    liked: Option<bool>,
+    saved: Option<bool>,
+}
+
+#[derive(FromRow)]
+struct EngagementCountsRow {
+    likes: i64,
+    saves: i64,
+}
+
+#[derive(FromRow)]
+struct BulkEngagementCountsRow {
+    content_id: String,
+    likes: i64,
+    saves: i64,
+}
+
+#[derive(FromRow)]
+struct UserEngagementRow {
+    content_id: String,
+    liked: Option<bool>,
+    saved: Option<bool>,
+}
 
 pub struct ContentEngagementService;
 
@@ -11,15 +37,15 @@ impl ContentEngagementService {
         liked: Option<bool>,
         saved: Option<bool>,
     ) -> AppResult<()> {
-        let existing = sqlx::query!(
+        let existing: Option<EngagementRow> = sqlx::query_as(
             r#"
-            SELECT liked AS "liked: Option<bool>", saved AS "saved: Option<bool>"
+            SELECT liked, saved
             FROM content_engagement
             WHERE user_id = $1 AND content_id = $2
-            "#,
-            user_id,
-            content_id
+            "#
         )
+        .bind(user_id)
+        .bind(content_id)
         .fetch_optional(pool)
         .await?;
 
@@ -30,7 +56,7 @@ impl ContentEngagementService {
         let next_liked = liked.unwrap_or(current_liked);
         let next_saved = saved.unwrap_or(current_saved);
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO content_engagement (user_id, content_id, liked, saved)
             VALUES ($1, $2, $3, $4)
@@ -38,12 +64,12 @@ impl ContentEngagementService {
             DO UPDATE SET liked = EXCLUDED.liked,
                           saved = EXCLUDED.saved,
                           updated_at = NOW()
-            "#,
-            user_id,
-            content_id,
-            next_liked,
-            next_saved
+            "#
         )
+        .bind(user_id)
+        .bind(content_id)
+        .bind(next_liked)
+        .bind(next_saved)
         .execute(pool)
         .await?;
 
@@ -51,16 +77,16 @@ impl ContentEngagementService {
     }
 
     pub async fn get_counts(pool: &PgPool, content_id: &str) -> AppResult<(i64, i64)> {
-        let row = sqlx::query!(
+        let row: EngagementCountsRow = sqlx::query_as(
             r#"
             SELECT 
-                COALESCE(SUM(CASE WHEN liked THEN 1 ELSE 0 END)::BIGINT, 0) AS "likes!: i64",
-                COALESCE(SUM(CASE WHEN saved THEN 1 ELSE 0 END)::BIGINT, 0) AS "saves!: i64"
+                COALESCE(SUM(CASE WHEN liked THEN 1 ELSE 0 END)::BIGINT, 0) AS likes,
+                COALESCE(SUM(CASE WHEN saved THEN 1 ELSE 0 END)::BIGINT, 0) AS saves
             FROM content_engagement
             WHERE content_id = $1
-            "#,
-            content_id
+            "#
         )
+        .bind(content_id)
         .fetch_one(pool)
         .await?;
 
@@ -76,18 +102,18 @@ impl ContentEngagementService {
             return Ok(vec![]);
         }
 
-        let counts = sqlx::query!(
+        let counts: Vec<BulkEngagementCountsRow> = sqlx::query_as(
             r#"
             SELECT 
                 content_id,
-                COALESCE(SUM(CASE WHEN liked THEN 1 ELSE 0 END)::BIGINT, 0) AS "likes!: i64",
-                COALESCE(SUM(CASE WHEN saved THEN 1 ELSE 0 END)::BIGINT, 0) AS "saves!: i64"
+                COALESCE(SUM(CASE WHEN liked THEN 1 ELSE 0 END)::BIGINT, 0) AS likes,
+                COALESCE(SUM(CASE WHEN saved THEN 1 ELSE 0 END)::BIGINT, 0) AS saves
             FROM content_engagement
             WHERE content_id = ANY($1)
             GROUP BY content_id
-            "#,
-            content_ids
+            "#
         )
+        .bind(content_ids)
         .fetch_all(pool)
         .await?;
 
@@ -99,15 +125,15 @@ impl ContentEngagementService {
         let mut user_map: std::collections::HashMap<String, (bool, bool)> =
             std::collections::HashMap::new();
         if let Some(uid) = user_id {
-            let rows = sqlx::query!(
+            let rows: Vec<UserEngagementRow> = sqlx::query_as(
                 r#"
-                SELECT content_id, liked AS "liked: Option<bool>", saved AS "saved: Option<bool>"
+                SELECT content_id, liked, saved
                 FROM content_engagement
                 WHERE user_id = $1 AND content_id = ANY($2)
-                "#,
-                uid,
-                content_ids
+                "#
             )
+            .bind(uid)
+            .bind(content_ids)
             .fetch_all(pool)
             .await?;
 

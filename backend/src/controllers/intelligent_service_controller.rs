@@ -4,7 +4,26 @@ use crate::state::AppState;
 use axum::{extract::State, Json};
 use log::{error, info};
 use serde_json::{json, Value};
+use sqlx::FromRow;
 use std::sync::Arc;
+
+#[derive(FromRow)]
+struct CountRow {
+    count: Option<i64>,
+}
+
+#[derive(FromRow)]
+struct ServiceInfoRow {
+    id: i32,
+    user_id: i32,
+    is_active: bool,
+    is_tarissable: Option<bool>,
+}
+
+#[derive(FromRow)]
+struct UserBalanceRow {
+    tokens_balance: i64,
+}
 
 /// 🧠 API pour déclencher manuellement le traitement intelligent des services
 /// Endpoint: POST /api/admin/process-services-intelligently
@@ -51,7 +70,7 @@ pub async fn get_services_pending_processing(
     let now = chrono::Utc::now();
 
     // Services non tarissables expirés
-    let expired_non_tarissable = sqlx::query!(
+    let expired_non_tarissable: CountRow = sqlx::query_as(
         r#"
         SELECT COUNT(*) as count
         FROM services s
@@ -60,33 +79,31 @@ pub async fn get_services_pending_processing(
           AND s.is_tarissable = FALSE
           AND s.auto_deactivate_at IS NOT NULL
           AND s.auto_deactivate_at < $1
-        "#,
-        now
+        "#
     )
+    .bind(now)
     .fetch_one(&state.ia.pool)
     .await
-    .map_err(AppError::from)?
-    .count
-    .unwrap_or(0);
+    .map_err(AppError::from)?;
+    let expired_non_tarissable = expired_non_tarissable.count.unwrap_or(0);
 
     // Services tarissables à traiter
-    let tarissable_to_process = sqlx::query!(
+    let tarissable_to_process: CountRow = sqlx::query_as(
         r#"
         SELECT COUNT(*) as count
         FROM services s
         WHERE s.is_active = TRUE
           AND s.is_tarissable = TRUE
           AND s.vitesse_tarissement IS NOT NULL
-        "#,
+        "#
     )
     .fetch_one(&state.ia.pool)
     .await
-    .map_err(AppError::from)?
-    .count
-    .unwrap_or(0);
+    .map_err(AppError::from)?;
+    let tarissable_to_process = tarissable_to_process.count.unwrap_or(0);
 
     // Utilisateurs avec solde insuffisant
-    let users_insufficient_balance = sqlx::query!(
+    let users_insufficient_balance: CountRow = sqlx::query_as(
         r#"
         SELECT COUNT(DISTINCT u.id) as count
         FROM users u
@@ -96,14 +113,13 @@ pub async fn get_services_pending_processing(
           AND s.auto_deactivate_at IS NOT NULL
           AND s.auto_deactivate_at < $1
           AND u.tokens_balance < 1000
-        "#,
-        now
+        "#
     )
+    .bind(now)
     .fetch_one(&state.ia.pool)
     .await
-    .map_err(AppError::from)?
-    .count
-    .unwrap_or(0);
+    .map_err(AppError::from)?;
+    let users_insufficient_balance = users_insufficient_balance.count.unwrap_or(0);
 
     let response = json!({
         "success": true,
@@ -133,15 +149,15 @@ pub async fn reactivate_service_intelligent(
         as i32;
 
     // Vérifier que le service existe et appartient à l'utilisateur
-    let service = sqlx::query!(
+    let service: Option<ServiceInfoRow> = sqlx::query_as(
         r#"
         SELECT id, user_id, is_active, is_tarissable
         FROM services 
         WHERE id = $1 AND user_id = $2
-        "#,
-        service_id,
-        user_id
+        "#
     )
+    .bind(service_id)
+    .bind(user_id)
     .fetch_optional(&state.ia.pool)
     .await
     .map_err(AppError::from)?;
@@ -162,13 +178,15 @@ pub async fn reactivate_service_intelligent(
     };
 
     // Vérifier le solde de l'utilisateur
-    let user_balance = sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user_id)
-        .fetch_optional(&state.ia.pool)
-        .await
-        .map_err(AppError::from)?;
+    let user_balance: Option<UserBalanceRow> = sqlx::query_as(
+        "SELECT tokens_balance FROM users WHERE id = $1"
+    )
+    .bind(user_id)
+    .fetch_optional(&state.ia.pool)
+    .await
+    .map_err(AppError::from)?;
 
-    let user_balance =
-        user_balance.ok_or_else(|| AppError::NotFound("Utilisateur non trouvé".to_string()))?;
+    let user_balance = user_balance.ok_or_else(|| AppError::NotFound("Utilisateur non trouvé".to_string()))?;
 
     if user_balance.tokens_balance < reactivation_cost {
         return Err(AppError::BadRequest(format!(
@@ -178,36 +196,37 @@ pub async fn reactivate_service_intelligent(
     }
 
     // Débiter le coût de réactivation
-    let updated_balance = sqlx::query!(
-        "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance",
-        reactivation_cost,
-        user_id
+    let updated_balance: UserBalanceRow = sqlx::query_as(
+        "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
     )
+    .bind(reactivation_cost)
+    .bind(user_id)
     .fetch_one(&state.ia.pool)
     .await
-    .map_err(AppError::from)?
-    .tokens_balance;
+    .map_err(AppError::from)?;
+    let updated_balance = updated_balance.tokens_balance;
 
     // Réactiver le service
     let new_expiry = chrono::Utc::now() + chrono::Duration::days(30);
-    sqlx::query!(
-        "UPDATE services SET is_active = TRUE, auto_deactivate_at = $1, updated_at = NOW() WHERE id = $2",
-        new_expiry,
-        service_id
+    sqlx::query(
+        "UPDATE services SET is_active = TRUE, auto_deactivate_at = $1, updated_at = NOW() WHERE id = $2"
     )
+    .bind(new_expiry)
+    .bind(service_id)
     .execute(&state.ia.pool)
     .await
     .map_err(AppError::from)?;
 
     // Logger l'action
-    sqlx::query!(
-        "INSERT INTO service_logs (service_id, user_id, action, reason, created_at) VALUES ($1, $2, $3, $4, $5)",
-        service_id,
-        user_id,
-        "manual_reactivation",
-        &format!("Réactivation manuelle pour {} FCFA", reactivation_cost),
-        chrono::Utc::now().naive_utc()
+    let reason = format!("Réactivation manuelle pour {} FCFA", reactivation_cost);
+    sqlx::query(
+        "INSERT INTO service_logs (service_id, user_id, action, reason, created_at) VALUES ($1, $2, $3, $4, $5)"
     )
+    .bind(service_id)
+    .bind(user_id)
+    .bind("manual_reactivation")
+    .bind(&reason)
+    .bind(chrono::Utc::now().naive_utc())
     .execute(&state.ia.pool)
     .await
     .map_err(AppError::from)?;

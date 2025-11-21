@@ -30,6 +30,8 @@ const DeliveryHomeScreen: React.FC = () => {
     useFocusEffect(
         useCallback(() => {
             refreshActiveDeliveries();
+            // ✅ CORRIGÉ : Réinitialiser l'état navigating quand l'écran devient actif
+            setNavigating(false);
         }, [refreshActiveDeliveries])
     );
 
@@ -73,12 +75,16 @@ const DeliveryHomeScreen: React.FC = () => {
             // Navigation vers le nouveau flux shopping
             navigation.navigate('DeliveryShoppingFlowNew');
             console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingFlowNew');
+            // ✅ CORRIGÉ : Réinitialiser immédiatement après navigation réussie
+            // L'état sera aussi réinitialisé par useFocusEffect au retour
+            setTimeout(() => setNavigating(false), 500);
         } catch (error: any) {
             console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
+            setNavigating(false); // Réinitialiser en cas d'erreur
             Alert.alert(
                 'Erreur',
                 'Impossible d\'ouvrir le flux de commande. Veuillez réessayer.',
-                [{ text: 'OK', onPress: () => setNavigating(false) }]
+                [{ text: 'OK' }]
             );
         }
     }, [navigation, navigating]);
@@ -92,12 +98,16 @@ const DeliveryHomeScreen: React.FC = () => {
         try {
             navigation.navigate('DeliveryParcelFlow');
             console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryParcelFlow');
+            // ✅ CORRIGÉ : Réinitialiser immédiatement après navigation réussie
+            // L'état sera aussi réinitialisé par useFocusEffect au retour
+            setTimeout(() => setNavigating(false), 500);
         } catch (error: any) {
             console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
+            setNavigating(false); // Réinitialiser en cas d'erreur
             Alert.alert(
                 'Erreur',
                 'Impossible d\'ouvrir le flux colis. Veuillez réessayer.',
-                [{ text: 'OK', onPress: () => setNavigating(false) }]
+                [{ text: 'OK' }]
             );
         }
     }, [navigation, navigating]);
@@ -113,12 +123,15 @@ const DeliveryHomeScreen: React.FC = () => {
             // Navigation directe vers le tracking
             navigation.navigate('DeliveryShoppingTracking', { deliveryId });
             console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingTracking');
+            // ✅ CORRIGÉ : Réinitialiser immédiatement après navigation réussie
+            setTimeout(() => setNavigating(false), 500);
         } catch (error: any) {
             console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
+            setNavigating(false); // Réinitialiser en cas d'erreur
             Alert.alert(
                 'Erreur',
                 'Impossible d\'ouvrir le suivi de livraison.',
-                [{ text: 'OK', onPress: () => setNavigating(false) }]
+                [{ text: 'OK' }]
             );
         }
     }, [navigation, setActiveDeliveryId, navigating]);
@@ -225,6 +238,21 @@ const DeliveryHomeScreen: React.FC = () => {
                     <Text style={styles.sectionTitle}>Nouvelle livraison</Text>
                 </View>
 
+                {/* ✅ CORRIGÉ: Livraison de colis AVANT courses supermarché */}
+                <NativeCard style={styles.card}>
+                    <Text style={styles.cardTitle}>Livraison de colis</Text>
+                    <Text style={styles.cardSubtitle}>
+                        Précisez les caractéristiques du colis que vous souhaitez faire transporter par un coursier.
+                    </Text>
+                    <NativeButton
+                        title="Expédier un colis"
+                        variant="primary"
+                        onPress={handleStartParcel}
+                        disabled={navigating}
+                        style={styles.actionButton}
+                    />
+                </NativeCard>
+
                 <NativeCard style={styles.card}>
                     <Text style={styles.cardTitle}>Courses supermarché</Text>
                     <Text style={styles.cardSubtitle}>
@@ -232,23 +260,8 @@ const DeliveryHomeScreen: React.FC = () => {
                     </Text>
                     <NativeButton
                         title="Commander au supermarché"
-                        variant="primary"
-                        onPress={handleStartShopping}
-                        disabled={navigating}
-                        style={styles.actionButton}
-                    />
-                </NativeCard>
-
-                {/* ✅ CORRIGÉ: Flux colis séparé avec navigation vers DeliveryParcelFlow */}
-                <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Livraison de colis</Text>
-                    <Text style={styles.cardSubtitle}>
-                        Expédie un colis ou un document avec le nouveau flux de livraison intelligente. Gestion des points pickup/drop et matching automatique avec le coursier le plus proche.
-                    </Text>
-                    <NativeButton
-                        title="Nouveau flux colis"
                         variant="outline"
-                        onPress={handleStartParcel}
+                        onPress={handleStartShopping}
                         disabled={navigating}
                         style={styles.actionButton}
                     />

@@ -130,7 +130,7 @@ pub async fn update_user_name(
         (None, None) => None,
     };
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE users 
         SET 
@@ -139,12 +139,12 @@ pub async fn update_user_name(
             nom_complet = COALESCE($3, nom_complet),
             updated_at = NOW()
         WHERE id = $4
-        "#,
-        nom,
-        prenom,
-        nom_complet,
-        user_id
+        "#
     )
+    .bind(nom.as_deref())
+    .bind(prenom.as_deref())
+    .bind(nom_complet.as_deref())
+    .bind(user_id)
     .execute(pool)
     .await?;
 

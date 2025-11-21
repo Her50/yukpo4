@@ -4,7 +4,42 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use serde_json::Value;
+use sqlx::{FromRow, PgPool};
+
+#[derive(FromRow)]
+struct ProductSeatMapRow {
+    #[sqlx(rename = "id")]
+    id_str: String,
+    seat_map: Option<Value>,
+}
+
+#[derive(FromRow)]
+struct ReservationIdRow {
+    #[sqlx(rename = "id")]
+    id_str: String,
+}
+
+#[derive(FromRow)]
+struct ReservationRow {
+    product_id: String,
+    seat_id: String,
+    seat_number: i32,
+}
+
+#[derive(FromRow)]
+struct ProductSeatMapOnlyRow {
+    seat_map: Option<Value>,
+}
+
+#[derive(FromRow)]
+struct UserReservationRow {
+    id: i32,
+    product_id: String,
+    seat_number: i32,
+    status: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Seat {
@@ -49,16 +84,16 @@ pub async fn reserve_seat(
     Json(payload): Json<ReserveSeatRequest>,
 ) -> Result<Json<ReservationResponse>, StatusCode> {
     // Vérifier que la place existe et est disponible
-    let seat_check = sqlx::query!(
+    let seat_check: Option<ProductSeatMapRow> = sqlx::query_as(
         r#"
         SELECT 
-            p.id::text as "id!",
+            p.id::text as id,
             p.seat_map::jsonb as seat_map
         FROM products p
         WHERE p.id::text = $1
-        "#,
-        &payload.product_id
+        "#
     )
+    .bind(&payload.product_id)
     .fetch_optional(&pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -76,7 +111,7 @@ pub async fn reserve_seat(
     
     // Parser le seat_map
     let seat_map_value = product.seat_map.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-    let mut seat_map: Vec<Seat> = serde_json::from_value(seat_map_value.clone())
+    let mut seat_map: Vec<Seat> = serde_json::from_value(seat_map_value)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Trouver la place et vérifier qu'elle est disponible
@@ -112,19 +147,20 @@ pub async fn reserve_seat(
     }
 
     // Créer la réservation
-    let result = sqlx::query!(
+    let user_id_int = payload.user_id.parse::<i32>().map_err(|_| StatusCode::BAD_REQUEST)?;
+    let result: Result<ReservationIdRow, _> = sqlx::query_as(
         r#"
         INSERT INTO bus_reservations 
             (product_id, user_id, seat_id, seat_number, status, created_at)
         VALUES 
             ($1, $2, $3, $4, 'reserved', NOW())
-        RETURNING id::text as "id!"
-        "#,
-        &payload.product_id,
-        payload.user_id.parse::<i32>().map_err(|_| StatusCode::BAD_REQUEST)?,
-        &payload.seat_id,
-        seat.number
+        RETURNING id::text as id
+        "#
     )
+    .bind(&payload.product_id)
+    .bind(user_id_int)
+    .bind(&payload.seat_id)
+    .bind(seat.number)
     .fetch_one(&pool)
     .await;
 
@@ -147,15 +183,15 @@ pub async fn reserve_seat(
     let updated_seat_map_json = serde_json::to_value(&seat_map)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE products
         SET seat_map = $1::jsonb
         WHERE id::text = $2
-        "#,
-        updated_seat_map_json,
-        &payload.product_id
+        "#
     )
+    .bind(&updated_seat_map_json)
+    .bind(&payload.product_id)
     .execute(&pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -163,7 +199,7 @@ pub async fn reserve_seat(
     Ok(Json(ReservationResponse {
         success: true,
         message: format!("Place n°{} réservée avec succès", seat.number),
-        reservation_id: Some(reservation.id),
+        reservation_id: Some(reservation.id_str),
         updated_seat_map: Some(seat_map),
     }))
 }
@@ -174,14 +210,14 @@ pub async fn cancel_reservation(
     Path(reservation_id): Path<String>,
 ) -> Result<Json<ReservationResponse>, StatusCode> {
     // Récupérer la réservation
-    let reservation = sqlx::query!(
+    let reservation: Option<ReservationRow> = sqlx::query_as(
         r#"
         SELECT product_id, seat_id, seat_number
         FROM bus_reservations
-        WHERE id = $1 AND status = 'reserved'
-        "#,
-        &reservation_id
+        WHERE id::text = $1 AND status = 'reserved'
+        "#
     )
+    .bind(&reservation_id)
     .fetch_optional(&pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -198,14 +234,14 @@ pub async fn cancel_reservation(
     let reservation = reservation.unwrap();
 
     // Récupérer le seat_map du produit
-    let product = sqlx::query!(
+    let product: ProductSeatMapOnlyRow = sqlx::query_as(
         r#"
         SELECT seat_map::jsonb as seat_map
         FROM products
         WHERE id::text = $1
-        "#,
-        &reservation.product_id
+        "#
     )
+    .bind(&reservation.product_id)
     .fetch_one(&pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -222,28 +258,28 @@ pub async fn cancel_reservation(
     let updated_seat_map_json = serde_json::to_value(&seat_map)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE products
         SET seat_map = $1::jsonb
         WHERE id::text = $2
-        "#,
-        updated_seat_map_json,
-        &reservation.product_id
+        "#
     )
+    .bind(&updated_seat_map_json)
+    .bind(&reservation.product_id)
     .execute(&pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Marquer la réservation comme annulée
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE bus_reservations
         SET status = 'cancelled', updated_at = NOW()
-        WHERE id = $1
-        "#,
-        &reservation_id
+        WHERE id::text = $1
+        "#
     )
+    .bind(&reservation_id)
     .execute(&pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -273,23 +309,23 @@ pub async fn get_user_reservations(
     let user_id_int = user_id.parse::<i32>()
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    let reservations = sqlx::query!(
+    let reservations: Vec<UserReservationRow> = sqlx::query_as(
         r#"
         SELECT id, product_id, seat_number, status, created_at
         FROM bus_reservations
         WHERE user_id = $1
         ORDER BY created_at DESC
-        "#,
-        user_id_int
+        "#
     )
+    .bind(user_id_int)
     .fetch_all(&pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let result = reservations
+    let result: Vec<UserReservation> = reservations
         .into_iter()
         .map(|r| UserReservation {
-            id: r.id,
+            id: r.id.to_string(),
             product_id: r.product_id,
             seat_number: r.seat_number,
             status: r.status,

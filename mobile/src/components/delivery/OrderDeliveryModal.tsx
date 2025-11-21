@@ -157,8 +157,8 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
             const response = await apiPost(`/api/services/${serviceId}`, {}) as ApiResponse<ServiceResponse>;
             if (response.success && response.data) {
                 const service = response.data;
-                const products = (service.data?.produits && typeof service.data.produits === 'object' && 'valeur' in service.data.produits 
-                    ? (service.data.produits as any).valeur 
+                const products = (service.data?.produits && typeof service.data.produits === 'object' && 'valeur' in service.data.produits
+                    ? (service.data.produits as any).valeur
                     : service.data?.produits) || [];
 
                 // ✅ Fonction helper pour obtenir le prix réel avec promotions

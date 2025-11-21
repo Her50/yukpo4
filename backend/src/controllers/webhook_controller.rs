@@ -19,6 +19,23 @@ use crate::{
         phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
     },
 };
+use sqlx::FromRow;
+use chrono::{DateTime, Utc};
+
+#[derive(FromRow)]
+struct PaymentAttemptWebhookRow {
+    id: i32,
+    payment_id: String,
+    user_id: i32,
+    amount_xaf: i64,
+    currency: String,
+    payment_method: String,
+    phone_number: Option<String>,
+    status: String,
+    transaction_id: Option<String>,
+    created_at: DateTime<Utc>,
+    confirmed_at: Option<DateTime<Utc>>,
+}
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -284,11 +301,12 @@ async fn process_payment_webhook(
     );
 
     // Rechercher la tentative de paiement correspondante
-    let payment_attempt = sqlx::query!(
-        "SELECT * FROM payment_attempts WHERE transaction_id = $1 OR payment_id = $2",
-        transaction_id,
-        reference.as_deref().unwrap_or("")
+    let reference_str = reference.as_deref().unwrap_or("");
+    let payment_attempt: Option<PaymentAttemptWebhookRow> = sqlx::query_as(
+        "SELECT * FROM payment_attempts WHERE transaction_id = $1 OR payment_id = $2"
     )
+    .bind(transaction_id)
+    .bind(reference_str)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur DB: {}", e)))?;
@@ -327,16 +345,16 @@ async fn process_payment_webhook(
     };
 
     // Mettre à jour le statut du paiement
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE payment_attempts 
         SET status = $1, transaction_id = $2, confirmed_at = NOW()
         WHERE id = $3
-        "#,
-        internal_status,
-        transaction_id,
-        payment_attempt.id
+        "#
     )
+    .bind(&internal_status)
+    .bind(transaction_id)
+    .bind(payment_attempt.id)
     .execute(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur mise à jour paiement: {}", e)))?;
@@ -345,11 +363,11 @@ async fn process_payment_webhook(
     if internal_status == "success" {
         let tokens_to_add = payment_attempt.amount_xaf;
 
-        sqlx::query!(
-            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2",
-            tokens_to_add,
-            payment_attempt.user_id
+        sqlx::query(
+            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
         )
+        .bind(tokens_to_add)
+        .bind(payment_attempt.user_id)
         .execute(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;

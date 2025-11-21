@@ -30,6 +30,7 @@ pub enum NotificationType {
     GlobalPromoEntryEnded,
     GlobalPromoEntryApproved,
     GlobalPromoEntryRejected,
+    GlobalPromoEventCreated, // ✅ NOUVEAU : Notification pour la création d'un événement Black Friday
     ProductDeliveryConfigMissing,
     // ✅ Phase 10 - Notifications de livraison
     DeliveryAccepted,
@@ -66,6 +67,7 @@ impl NotificationType {
             NotificationType::GlobalPromoEntryEnded => "global_promo_entry_ended",
             NotificationType::GlobalPromoEntryApproved => "global_promo_entry_approved",
             NotificationType::GlobalPromoEntryRejected => "global_promo_entry_rejected",
+            NotificationType::GlobalPromoEventCreated => "global_promo_event_created", // ✅ NOUVEAU
             NotificationType::ProductDeliveryConfigMissing => "product_delivery_config_missing",
             // ✅ Phase 10 - Notifications de livraison
             NotificationType::DeliveryAccepted => "delivery_accepted",

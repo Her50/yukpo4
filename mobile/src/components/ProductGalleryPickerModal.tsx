@@ -1,6 +1,7 @@
 // 🖼️ Modal pour sélectionner des images/vidéos de la galerie produit et les envoyer dans le chat
 import React, { useEffect, useState } from 'react';
 import {
+    Alert,
     Dimensions,
     Image,
     Modal,
@@ -271,27 +272,41 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
                                     activeOpacity={0.8}
                                 >
                                     {item.type === 'image' ? (
-                                        <Image source={{ uri: item.url }} style={styles.mediaImage} />
+                                        <Image
+                                            source={{ uri: item.url }}
+                                            style={styles.mediaImage}
+                                            resizeMode="cover"
+                                        />
                                     ) : (
                                         <View style={styles.videoContainer}>
-                                            <Image source={{ uri: item.url }} style={styles.mediaImage} />
+                                            <Image
+                                                source={{ uri: item.url }}
+                                                style={styles.mediaImage}
+                                                resizeMode="cover"
+                                            />
                                             <View style={styles.videoOverlay}>
-                                                <SafeIcon name="play-circle" size={32} color="#FFFFFF" />
+                                                <SafeIcon name="play" size={24} color="#FFFFFF" />
                                             </View>
                                         </View>
                                     )}
 
-                                    {/* Indicateur de sélection */}
+                                    {/* ✅ CORRIGÉ : Indicateur de sélection avec meilleure visibilité */}
                                     <View style={[styles.selectionIndicator, isSelected && styles.selectionIndicatorActive]}>
-                                        {isSelected && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                        {isSelected ? (
+                                            <SafeIcon name="check" size={16} color="#FFFFFF" />
+                                        ) : (
+                                            <View style={styles.selectionIndicatorInner} />
+                                        )}
                                     </View>
 
-                                    {/* Description */}
-                                    <View style={styles.mediaDescription}>
-                                        <Text style={styles.mediaDescriptionText} numberOfLines={1}>
-                                            {item.description}
-                                        </Text>
-                                    </View>
+                                    {/* ✅ CORRIGÉ : Description optimisée pour éviter l'allongement */}
+                                    {item.description && (
+                                        <View style={styles.mediaDescription}>
+                                            <Text style={styles.mediaDescriptionText} numberOfLines={2} ellipsizeMode="tail">
+                                                {item.description}
+                                            </Text>
+                                        </View>
+                                    )}
                                 </TouchableOpacity>
                             );
                         })
@@ -378,27 +393,36 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     gridContainer: {
-        padding: 16,
+        padding: 12,
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 8, // ✅ CORRIGÉ : Espacement réduit pour un affichage plus compact
+        justifyContent: 'flex-start',
+        alignItems: 'flex-start', // ✅ CORRIGÉ : Alignement en haut pour éviter les barres verticales
     },
     mediaItem: {
-        width: (width - 48) / 3, // 3 colonnes avec gaps
-        height: (width - 48) / 3,
+        width: (width - 44) / 3, // ✅ CORRIGÉ : 3 colonnes avec gaps ajustés (44 = 12*2 + 8*2 + 4)
+        aspectRatio: 1, // ✅ CORRIGÉ : Ratio carré strict pour éviter les barres verticales
         borderRadius: 12,
         overflow: 'hidden',
         position: 'relative',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F3F4F6',
         borderWidth: 2,
         borderColor: 'transparent',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     mediaItemSelected: {
         borderColor: modernColors.primary,
+        borderWidth: 3,
     },
     mediaImage: {
         width: '100%',
         height: '100%',
+        resizeMode: 'cover', // ✅ CORRIGÉ : Cover pour remplir l'espace sans déformation
     },
     videoContainer: {
         width: '100%',
@@ -417,33 +441,45 @@ const styles = StyleSheet.create({
     },
     selectionIndicator: {
         position: 'absolute',
-        top: 8,
-        right: 8,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        borderWidth: 2,
+        top: 6,
+        right: 6,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        borderWidth: 2.5,
         borderColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
+        zIndex: 10,
     },
     selectionIndicatorActive: {
         backgroundColor: modernColors.primary,
+        borderColor: '#FFFFFF',
+    },
+    selectionIndicatorInner: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: 'transparent',
     },
     mediaDescription: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        paddingVertical: 4,
-        paddingHorizontal: 6,
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        paddingVertical: 6,
+        paddingHorizontal: 8,
+        maxHeight: 32, // ✅ CORRIGÉ : Hauteur maximale pour éviter l'allongement
+        justifyContent: 'center',
     },
     mediaDescriptionText: {
         fontSize: 10,
         color: '#FFFFFF',
         fontWeight: '500',
+        lineHeight: 12, // ✅ CORRIGÉ : Hauteur de ligne fixe pour éviter l'allongement
+        includeFontPadding: false, // ✅ CORRIGÉ : Éviter le padding supplémentaire du texte
     },
     emptyState: {
         flex: 1,

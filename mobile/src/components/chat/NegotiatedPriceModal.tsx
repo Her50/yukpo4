@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
@@ -57,30 +58,49 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
     const [loadingOffer, setLoadingOffer] = useState(false);
     const [isMerchant, setIsMerchant] = useState(false);
 
-    // Vérifier si l'utilisateur est le prestataire
-    useEffect(() => {
-        // TODO: Récupérer l'ID de l'utilisateur connecté depuis le contexte/auth
-        setIsMerchant(true); // À adapter selon votre système d'auth
-    }, []);
+    // ✅ CORRIGÉ : Récupérer l'utilisateur actuel depuis le contexte d'authentification
+    const { user: currentUser } = useAuth();
 
-    // Charger l'offre en attente
+    // ✅ CORRIGÉ : Vérifier si l'utilisateur actuel est le prestataire (merchant) ou le client
     useEffect(() => {
-        if (visible && !isMerchant) {
+        const currentUserId = currentUser?.id || currentUser?.user_id || 0;
+        // L'utilisateur est le prestataire si son ID correspond au merchantUserId
+        // Sinon, c'est le client qui peut proposer un prix
+        const userIsMerchant = currentUserId === merchantUserId && merchantUserId > 0;
+        setIsMerchant(userIsMerchant);
+        console.log('[NegotiatedPriceModal] User role:', {
+            currentUserId,
+            merchantUserId,
+            clientUserId,
+            isMerchant: userIsMerchant
+        });
+    }, [merchantUserId, clientUserId, currentUser]);
+
+    // ✅ CORRIGÉ : Charger l'offre en attente (pour client et prestataire)
+    useEffect(() => {
+        if (visible) {
             loadPendingOffer();
         }
-    }, [visible, isMerchant]);
+    }, [visible, conversationId, serviceId, productIndex]);
 
     const loadPendingOffer = async () => {
         setLoadingOffer(true);
         try {
+            // ✅ CORRIGÉ : Charger les offres en attente pour cette conversation/produit
             const response = await apiGet(
                 `/api/negotiated-prices/pending?conversation_id=${conversationId}&service_id=${serviceId}${productIndex !== undefined ? `&product_index=${productIndex}` : ''}`
             );
             if (response.success && response.data) {
-                setPendingOffer(response.data || null);
+                // Si plusieurs offres, prendre la plus récente
+                const offers = Array.isArray(response.data) ? response.data : [response.data];
+                const latestOffer = offers.length > 0 ? offers[0] : null;
+                setPendingOffer(latestOffer);
+            } else {
+                setPendingOffer(null);
             }
         } catch (error) {
-            console.error('Erreur chargement offre:', error);
+            console.error('[NegotiatedPriceModal] Erreur chargement offre:', error);
+            setPendingOffer(null);
         } finally {
             setLoadingOffer(false);
         }
@@ -104,18 +124,28 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                 conversation_id: conversationId,
                 service_id: serviceId,
                 product_index: productIndex,
+                merchant_user_id: merchantUserId,
+                client_user_id: clientUserId,
                 original_price_cents: Math.round(originalPrice * 100),
                 negotiated_price_cents: Math.round(price * 100),
                 expires_in_hours: 24,
             });
 
             if (response.success) {
-                Alert.alert('Succès', 'Offre de prix négocié créée avec succès');
-                setNegotiatedPrice('');
-                onPriceNegotiated?.();
-                onClose();
+                Alert.alert(
+                    'Proposition envoyée',
+                    'Votre proposition de prix a été envoyée au prestataire. Vous serez notifié de sa réponse.',
+                    [{
+                        text: 'OK', onPress: () => {
+                            setNegotiatedPrice('');
+                            loadPendingOffer(); // Recharger pour afficher la proposition en attente
+                            onPriceNegotiated?.();
+                        }
+                    }]
+                );
+                // Ne pas fermer le modal pour que le client puisse voir sa proposition en attente
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de la création de l\'offre');
+                Alert.alert('Erreur', response.message || 'Erreur lors de l\'envoi de la proposition');
             }
         } catch (error) {
             console.error('Erreur création offre:', error);
@@ -133,10 +163,17 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
             const response = await apiPost(`/api/negotiated-prices/${pendingOffer.id}/accept`, {});
 
             if (response.success) {
-                Alert.alert('Succès', 'Offre acceptée avec succès');
-                setPendingOffer(null);
-                onPriceNegotiated?.();
-                onClose();
+                Alert.alert(
+                    'Prix négocié accepté',
+                    'Le prix négocié a été accepté et sera utilisé pour les prochaines commandes.',
+                    [{
+                        text: 'OK', onPress: () => {
+                            setPendingOffer(null);
+                            onPriceNegotiated?.();
+                            onClose();
+                        }
+                    }]
+                );
             } else {
                 Alert.alert('Erreur', response.message || 'Erreur lors de l\'acceptation de l\'offre');
             }
@@ -181,7 +218,7 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                         <View style={styles.headerContent}>
                             <SafeIcon name="dollar-sign" size={24} color="#FFFFFF" />
                             <Text style={styles.headerTitle}>
-                                {isMerchant ? 'Proposer un prix négocié' : 'Offre de prix négocié'}
+                                {isMerchant ? 'Proposition de prix négocié' : 'Proposer un prix négocié'}
                             </Text>
                         </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -198,71 +235,190 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                             </Text>
                         </View>
 
-                        {/* Interface prestataire */}
-                        {isMerchant && (
-                            <View style={styles.merchantSection}>
-                                <Text style={styles.label}>Prix négocié (FCFA)</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={negotiatedPrice}
-                                    onChangeText={setNegotiatedPrice}
-                                    placeholder="Ex: 15000"
-                                    keyboardType="numeric"
-                                />
-                                <Text style={styles.hint}>
-                                    Le prix doit être inférieur au prix original
-                                </Text>
-                                <TouchableOpacity
-                                    style={[styles.button, loading || !negotiatedPrice && styles.buttonDisabled]}
-                                    onPress={handleCreateOffer}
-                                    disabled={loading || !negotiatedPrice}
-                                >
-                                    {loading ? (
-                                        <ActivityIndicator color="#FFFFFF" />
-                                    ) : (
-                                        <Text style={styles.buttonText}>Créer l'offre</Text>
-                                    )}
-                                </TouchableOpacity>
+                        {/* ✅ CORRIGÉ : Interface CLIENT - Proposer un prix négocié */}
+                        {!isMerchant && (
+                            <View style={styles.clientProposalSection}>
+                                {pendingOffer ? (
+                                    // ✅ Afficher l'offre en attente si elle existe
+                                    <View style={styles.pendingOfferCard}>
+                                        <View style={styles.pendingOfferHeader}>
+                                            <SafeIcon name="clock" size={20} color={modernColors.warning} />
+                                            <Text style={styles.pendingOfferTitle}>Proposition en attente</Text>
+                                        </View>
+                                        <View style={styles.pendingOfferContent}>
+                                            <Text style={styles.pendingOfferLabel}>Votre prix proposé</Text>
+                                            <Text style={styles.pendingOfferPrice}>
+                                                {(pendingOffer.negotiated_price_cents / 100).toLocaleString('fr-FR')} FCFA
+                                            </Text>
+                                            <Text style={styles.pendingOfferStatus}>
+                                                En attente de réponse du prestataire
+                                            </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            style={[styles.button, styles.cancelOfferButton]}
+                                            onPress={async () => {
+                                                if (!pendingOffer) return;
+                                                Alert.alert(
+                                                    'Annuler la proposition',
+                                                    'Voulez-vous annuler cette proposition de prix ?',
+                                                    [
+                                                        { text: 'Non', style: 'cancel' },
+                                                        {
+                                                            text: 'Oui, annuler',
+                                                            style: 'destructive',
+                                                            onPress: async () => {
+                                                                try {
+                                                                    await apiPost(`/api/negotiated-prices/${pendingOffer.id}/cancel`, {});
+                                                                    setPendingOffer(null);
+                                                                    Alert.alert('Succès', 'Proposition annulée');
+                                                                } catch (error) {
+                                                                    console.error('Erreur annulation:', error);
+                                                                    Alert.alert('Erreur', 'Impossible d\'annuler la proposition');
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
+                                                );
+                                            }}
+                                        >
+                                            <SafeIcon name="x" size={18} color="#FFFFFF" />
+                                            <Text style={styles.buttonText}>Annuler la proposition</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    // ✅ Formulaire pour proposer un nouveau prix
+                                    <View style={styles.merchantSection}>
+                                        <Text style={styles.label}>Prix négocié proposé (FCFA) *</Text>
+                                        <TextInput
+                                            style={styles.input}
+                                            value={negotiatedPrice}
+                                            onChangeText={setNegotiatedPrice}
+                                            placeholder="Ex: 15000"
+                                            keyboardType="numeric"
+                                        />
+                                        <Text style={styles.hint}>
+                                            Le prix doit être inférieur au prix original ({originalPrice.toLocaleString('fr-FR')} FCFA)
+                                        </Text>
+
+                                        {/* ✅ Calcul automatique de l'économie */}
+                                        {negotiatedPrice && !isNaN(parseFloat(negotiatedPrice)) && parseFloat(negotiatedPrice) < originalPrice && (
+                                            <View style={styles.savingsPreview}>
+                                                <SafeIcon name="trending-down" size={16} color={modernColors.success} />
+                                                <Text style={styles.savingsText}>
+                                                    Économie : {(originalPrice - parseFloat(negotiatedPrice)).toLocaleString('fr-FR')} FCFA
+                                                </Text>
+                                            </View>
+                                        )}
+
+                                        <TouchableOpacity
+                                            style={[styles.button, styles.submitButton, (loading || !negotiatedPrice || parseFloat(negotiatedPrice) >= originalPrice) && styles.buttonDisabled]}
+                                            onPress={handleCreateOffer}
+                                            disabled={loading || !negotiatedPrice || parseFloat(negotiatedPrice) >= originalPrice}
+                                        >
+                                            {loading ? (
+                                                <ActivityIndicator color="#FFFFFF" />
+                                            ) : (
+                                                <>
+                                                    <SafeIcon name="send" size={18} color="#FFFFFF" />
+                                                    <Text style={styles.buttonText}>Envoyer la proposition</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </View>
                         )}
 
-                        {/* Interface client */}
-                        {!isMerchant && (
-                            <View style={styles.clientSection}>
+                        {/* ✅ CORRIGÉ : Interface PRESTATAIRE - Voir et valider les propositions du client */}
+                        {isMerchant && (
+                            <View style={styles.merchantSection}>
                                 {loadingOffer ? (
-                                    <ActivityIndicator size="large" color={modernColors.primary} />
+                                    <View style={styles.loadingContainer}>
+                                        <ActivityIndicator size="large" color={modernColors.primary} />
+                                        <Text style={styles.loadingText}>Chargement des propositions...</Text>
+                                    </View>
                                 ) : pendingOffer ? (
                                     <View style={styles.offerCard}>
-                                        <Text style={styles.offerLabel}>Prix négocié proposé</Text>
-                                        <Text style={styles.offerPrice}>
-                                            {(pendingOffer.negotiated_price_cents / 100).toLocaleString('fr-FR')} FCFA
-                                        </Text>
-                                        <Text style={styles.offerSavings}>
-                                            Économie : {((pendingOffer.original_price_cents - pendingOffer.negotiated_price_cents) / 100).toLocaleString('fr-FR')} FCFA
-                                        </Text>
+                                        <View style={styles.offerHeader}>
+                                            <SafeIcon name="dollar-sign" size={24} color={modernColors.primary} />
+                                            <Text style={styles.offerTitle}>Proposition du client</Text>
+                                        </View>
+
+                                        <View style={styles.priceComparison}>
+                                            <View style={styles.priceRow}>
+                                                <Text style={styles.priceLabel}>Prix original</Text>
+                                                <Text style={styles.originalPriceDisplay}>
+                                                    {(pendingOffer.original_price_cents / 100).toLocaleString('fr-FR')} FCFA
+                                                </Text>
+                                            </View>
+                                            <View style={styles.priceRow}>
+                                                <Text style={styles.priceLabel}>Prix proposé</Text>
+                                                <Text style={styles.negotiatedPriceDisplay}>
+                                                    {(pendingOffer.negotiated_price_cents / 100).toLocaleString('fr-FR')} FCFA
+                                                </Text>
+                                            </View>
+                                            <View style={styles.priceRow}>
+                                                <Text style={styles.priceLabel}>Réduction</Text>
+                                                <Text style={styles.discountDisplay}>
+                                                    - {((pendingOffer.original_price_cents - pendingOffer.negotiated_price_cents) / 100).toLocaleString('fr-FR')} FCFA
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {pendingOffer.expires_at && (
+                                            <View style={styles.expiryInfo}>
+                                                <SafeIcon name="clock" size={14} color={modernColors.warning} />
+                                                <Text style={styles.expiryText}>
+                                                    Expire le {new Date(pendingOffer.expires_at).toLocaleDateString('fr-FR')}
+                                                </Text>
+                                            </View>
+                                        )}
+
                                         <View style={styles.offerActions}>
                                             <TouchableOpacity
-                                                style={[styles.button, styles.acceptButton]}
+                                                style={[styles.button, styles.acceptButton, loading && styles.buttonDisabled]}
                                                 onPress={handleAcceptOffer}
                                                 disabled={loading}
                                             >
-                                                <SafeIcon name="check" size={20} color="#FFFFFF" />
-                                                <Text style={styles.buttonText}>Accepter</Text>
+                                                {loading ? (
+                                                    <ActivityIndicator color="#FFFFFF" />
+                                                ) : (
+                                                    <>
+                                                        <SafeIcon name="check" size={20} color="#FFFFFF" />
+                                                        <Text style={styles.buttonText}>Accepter</Text>
+                                                    </>
+                                                )}
                                             </TouchableOpacity>
                                             <TouchableOpacity
-                                                style={[styles.button, styles.rejectButton]}
+                                                style={[styles.button, styles.rejectButton, loading && styles.buttonDisabled]}
                                                 onPress={handleRejectOffer}
                                                 disabled={loading}
                                             >
-                                                <SafeIcon name="x" size={20} color="#FFFFFF" />
-                                                <Text style={styles.buttonText}>Rejeter</Text>
+                                                {loading ? (
+                                                    <ActivityIndicator color="#FFFFFF" />
+                                                ) : (
+                                                    <>
+                                                        <SafeIcon name="x" size={20} color="#FFFFFF" />
+                                                        <Text style={styles.buttonText}>Refuser</Text>
+                                                    </>
+                                                )}
                                             </TouchableOpacity>
                                         </View>
+
+                                        <Text style={styles.offerHint}>
+                                            En acceptant, ce prix sera utilisé pour les prochaines commandes de ce produit.
+                                        </Text>
                                     </View>
                                 ) : (
-                                    <Text style={styles.noOfferText}>
-                                        Aucune offre de prix négocié en attente
-                                    </Text>
+                                    <View style={styles.noOfferContainer}>
+                                        <SafeIcon name="dollar-sign" size={48} color="#D1D5DB" />
+                                        <Text style={styles.noOfferText}>
+                                            Aucune proposition de prix en attente
+                                        </Text>
+                                        <Text style={styles.noOfferSubtext}>
+                                            Le client peut proposer un prix négocié depuis le chat
+                                        </Text>
+                                    </View>
                                 )}
                             </View>
                         )}
@@ -400,7 +556,152 @@ const styles = StyleSheet.create({
     noOfferText: {
         textAlign: 'center',
         color: '#6B7280',
+        fontSize: 16,
+        fontWeight: '600',
+        marginTop: 12,
+    },
+    noOfferSubtext: {
+        textAlign: 'center',
+        color: '#9CA3AF',
+        fontSize: 13,
+        marginTop: 4,
+    },
+    noOfferContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 32,
+    },
+    loadingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 32,
+        gap: 12,
+    },
+    loadingText: {
         fontSize: 14,
+        color: '#6B7280',
+    },
+    pendingOfferCard: {
+        padding: 16,
+        backgroundColor: '#FEF3C7',
+        borderWidth: 1,
+        borderColor: '#FCD34D',
+        borderRadius: 12,
+        gap: 12,
+    },
+    pendingOfferHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    pendingOfferTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#92400E',
+    },
+    pendingOfferContent: {
+        gap: 4,
+    },
+    pendingOfferLabel: {
+        fontSize: 13,
+        color: '#78350F',
+    },
+    pendingOfferPrice: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#B45309',
+    },
+    pendingOfferStatus: {
+        fontSize: 12,
+        color: '#92400E',
+        fontStyle: 'italic',
+    },
+    cancelOfferButton: {
+        backgroundColor: '#DC2626',
+        marginTop: 8,
+    },
+    savingsPreview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        padding: 10,
+        backgroundColor: '#D1FAE5',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#10B981',
+    },
+    savingsText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#065F46',
+    },
+    submitButton: {
+        backgroundColor: modernColors.primary,
+        marginTop: 8,
+    },
+    offerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16,
+    },
+    offerTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text || '#111827',
+    },
+    priceComparison: {
+        gap: 12,
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    priceRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    priceLabel: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    originalPriceDisplay: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#6B7280',
+        textDecorationLine: 'line-through',
+    },
+    negotiatedPriceDisplay: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    discountDisplay: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.success,
+    },
+    expiryInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        padding: 8,
+        backgroundColor: '#FEF3C7',
+        borderRadius: 6,
+        marginBottom: 12,
+    },
+    expiryText: {
+        fontSize: 12,
+        color: '#92400E',
+    },
+    offerHint: {
+        fontSize: 12,
+        color: '#6B7280',
+        textAlign: 'center',
+        marginTop: 8,
+        fontStyle: 'italic',
     },
 });
 

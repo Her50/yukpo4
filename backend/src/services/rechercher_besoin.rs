@@ -1,6 +1,20 @@
 use crate::core::types::AppResult;
 use chrono::Utc;
-use sqlx::Row;
+use sqlx::{FromRow, Row};
+
+#[derive(FromRow)]
+struct ServiceSearchRow {
+    id: i32,
+    user_id: i32,
+    data: serde_json::Value,
+    is_active: bool,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(FromRow)]
+struct ServiceIdRow {
+    id: i32,
+}
 
 // use crate::utils::embedding_client::SearchEmbeddingPineconeRequest; // SUSPENDU - Recherche native PostgreSQL uniquement
 use crate::services::native_search_service::NativeSearchService;
@@ -48,13 +62,14 @@ async fn search_services_fallback(
     let mut all_results = Vec::new();
 
     for term in search_terms {
-        let services = sqlx::query!(
+        let search_pattern = format!("%{}%", term);
+        let services: Vec<ServiceSearchRow> = sqlx::query_as(
             r#"
             SELECT s.id,
                    s.user_id,
-                   s.data                AS "data: serde_json::Value",
+                   s.data,
                    s.is_active,
-                   s.created_at         AS "created_at: chrono::DateTime<Utc>"
+                   s.created_at
             FROM services s
             WHERE s.is_active = true
             AND (
@@ -91,9 +106,9 @@ async fn search_services_fallback(
                 )
             )
             ORDER BY s.created_at DESC
-            "#,
-            format!("%{}%", term)
+            "#
         )
+        .bind(&search_pattern)
         .fetch_all(pool)
         .await
         .map_err(|e| {
@@ -1224,10 +1239,10 @@ async fn validate_services_exist(
     for resultat in resultats {
         if let Some(service_id) = resultat.get("service_id").and_then(|v| v.as_i64()) {
             // Vérifier si le service existe et est actif
-            let service_exists = sqlx::query!(
-                "SELECT id AS \"id: i32\" FROM services WHERE id = $1 AND is_active = true",
-                service_id as i32
+            let service_exists: Option<ServiceIdRow> = sqlx::query_as(
+                "SELECT id FROM services WHERE id = $1 AND is_active = true"
             )
+            .bind(service_id as i32)
             .fetch_optional(pool)
             .await
             .map_err(|e| {

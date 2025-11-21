@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Linking,
     Modal,
     ScrollView,
     StyleSheet,
@@ -37,6 +38,8 @@ interface Supermarket {
     latitude: number;
     longitude: number;
     distance_km?: number;
+    phone?: string;
+    website?: string; // URL du site e-commerce du supermarché
 }
 
 interface BasketItem {
@@ -210,52 +213,33 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
             const result = await deliveryApi.listSupermarkets(userLat, userLng, 10);
 
             if (result.supermarkets && result.supermarkets.length > 0) {
-                setSupermarkets(result.supermarkets);
+                // ✅ Amélioré : Calculer les distances pour chaque supermarché
+                const supermarketsWithDistance = result.supermarkets.map((sm: any) => {
+                    if (!sm.distance_km && sm.latitude && sm.longitude) {
+                        const distance = calculateDistance(userLat, userLng, sm.latitude, sm.longitude);
+                        return { ...sm, distance_km: Math.round(distance * 10) / 10 };
+                    }
+                    return sm;
+                });
+                setSupermarkets(supermarketsWithDistance);
             } else {
-                // Fallback : liste mockée
-                const mockSupermarkets: Supermarket[] = [
-                    {
-                        id: '1',
-                        name: 'Carrefour Market',
-                        address: '123 Avenue de la République, Douala',
-                        latitude: 4.0511,
-                        longitude: 9.7679,
-                        distance_km: 2.5,
-                    },
-                    {
-                        id: '2',
-                        name: 'Super U',
-                        address: '456 Boulevard de la Liberté, Douala',
-                        latitude: 4.0522,
-                        longitude: 9.7680,
-                        distance_km: 3.2,
-                    },
-                    {
-                        id: '3',
-                        name: 'Casino',
-                        address: '789 Rue du Commerce, Douala',
-                        latitude: 4.0533,
-                        longitude: 9.7681,
-                        distance_km: 4.1,
-                    },
-                ];
-                setSupermarkets(mockSupermarkets);
+                // ✅ Amélioré : Aucun supermarché trouvé - message informatif
+                console.warn('[DeliveryShoppingFlow] Aucun supermarché trouvé dans la base de données');
+                setSupermarkets([]);
+                Alert.alert(
+                    'Aucun supermarché trouvé',
+                    'Aucun supermarché n\'a été trouvé près de votre position. Veuillez essayer d\'élargir votre recherche ou vérifier votre connexion.',
+                    [{ text: 'OK' }]
+                );
             }
         } catch (error) {
             console.error('Erreur chargement supermarchés:', error);
-            Alert.alert('Erreur', 'Impossible de charger la liste des supermarchés');
-            // Fallback : liste mockée
-            const mockSupermarkets: Supermarket[] = [
-                {
-                    id: '1',
-                    name: 'Carrefour Market',
-                    address: '123 Avenue de la République, Douala',
-                    latitude: 4.0511,
-                    longitude: 9.7679,
-                    distance_km: 2.5,
-                },
-            ];
-            setSupermarkets(mockSupermarkets);
+            Alert.alert(
+                'Erreur',
+                'Impossible de charger la liste des supermarchés. Vérifiez votre connexion internet.',
+                [{ text: 'OK' }]
+            );
+            setSupermarkets([]);
         } finally {
             setLoadingSupermarkets(false);
         }
@@ -575,16 +559,47 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                             À {selectedSupermarket.distance_km.toFixed(1)} km
                                         </Text>
                                     )}
-                                    <TouchableOpacity
-                                        style={styles.modifyButton}
-                                        onPress={() => {
-                                            setSelectedSupermarket(null);
-                                            setPickupLocation(null);
-                                            setErrors(prev => ({ ...prev, supermarket: '' }));
-                                        }}
-                                    >
-                                        <Text style={styles.modifyButtonText}>Changer</Text>
-                                    </TouchableOpacity>
+                                    {selectedSupermarket.website && (
+                                        <TouchableOpacity
+                                            style={styles.websiteButton}
+                                            onPress={async () => {
+                                                try {
+                                                    const url = selectedSupermarket.website!.startsWith('http')
+                                                        ? selectedSupermarket.website!
+                                                        : `https://${selectedSupermarket.website}`;
+                                                    const supported = await Linking.canOpenURL(url);
+                                                    if (supported) {
+                                                        await Linking.openURL(url);
+                                                        Alert.alert(
+                                                            'Redirection',
+                                                            'Vous allez être redirigé vers la plateforme du supermarché. Une fois votre commande finalisée, revenez ici pour activer la livraison Yukpo.',
+                                                            [{ text: 'OK' }]
+                                                        );
+                                                    } else {
+                                                        Alert.alert('Erreur', 'Impossible d\'ouvrir ce lien');
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Erreur ouverture URL:', error);
+                                                    Alert.alert('Erreur', 'Impossible d\'ouvrir le site web du supermarché');
+                                                }
+                                            }}
+                                        >
+                                            <SafeIcon name="external-link" size={16} color={modernColors.primary} />
+                                            <Text style={styles.websiteButtonText}>Acheter sur le site du supermarché</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    <View style={styles.supermarketActions}>
+                                        <TouchableOpacity
+                                            style={[styles.modifyButton, { flex: 1 }]}
+                                            onPress={() => {
+                                                setSelectedSupermarket(null);
+                                                setPickupLocation(null);
+                                                setErrors(prev => ({ ...prev, supermarket: '' }));
+                                            }}
+                                        >
+                                            <Text style={styles.modifyButtonText}>Changer</Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                             ) : (
                                 <View>
@@ -615,6 +630,12 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                                                     À {supermarket.distance_km.toFixed(1)} km
                                                                 </Text>
                                                             )}
+                                                            {supermarket.website && (
+                                                                <View style={styles.websiteBadge}>
+                                                                    <SafeIcon name="globe" size={12} color={modernColors.success} />
+                                                                    <Text style={styles.websiteBadgeText}>Site e-commerce disponible</Text>
+                                                                </View>
+                                                            )}
                                                         </View>
                                                         <SafeIcon name="chevron-right" size={20} color={modernColors.textSecondary} />
                                                     </TouchableOpacity>
@@ -644,6 +665,14 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                     </TouchableOpacity>
                                 )}
                             </View>
+                            {selectedSupermarket && selectedSupermarket.website && basketItems.length === 0 && (
+                                <View style={styles.infoBox}>
+                                    <SafeIcon name="info" size={16} color={modernColors.accent} />
+                                    <Text style={styles.infoText}>
+                                        Vous pouvez acheter directement sur le site du supermarché (bouton ci-dessus), puis revenir ici pour activer la livraison Yukpo. Vous pouvez aussi ajouter manuellement vos articles ci-dessous.
+                                    </Text>
+                                </View>
+                            )}
 
                             {showAddItem ? (
                                 <View style={styles.addItemForm}>
@@ -1069,6 +1098,44 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '500',
     },
+    supermarketActions: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 12,
+    },
+    websiteButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: '#EFF6FF',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        borderRadius: 8,
+        marginTop: 8,
+    },
+    websiteButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.primary,
+    },
+    websiteBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        backgroundColor: '#ECFDF5',
+        borderRadius: 6,
+        alignSelf: 'flex-start',
+    },
+    websiteBadgeText: {
+        fontSize: 11,
+        color: modernColors.success,
+        fontWeight: '500',
+    },
     loadingContainer: {
         padding: 20,
         alignItems: 'center',
@@ -1347,6 +1414,23 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.text,
         fontWeight: '500',
+    },
+    infoBox: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        padding: 12,
+        backgroundColor: '#EFF6FF',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    infoText: {
+        flex: 1,
+        fontSize: 13,
+        color: modernColors.text,
+        lineHeight: 18,
     },
 });
 

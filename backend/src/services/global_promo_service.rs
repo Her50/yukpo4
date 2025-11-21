@@ -93,6 +93,12 @@ impl GlobalPromoService {
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         }
 
+        // ✅ NOUVEAU : Notifier tous les prestataires lors de la création d'un événement Black Friday
+        if let Err(err) = notify_all_prestataires_event_created(pool, &event).await {
+            warn!("Failed to notify prestataires about new Black Friday event: {:?}", err);
+            // Ne pas échouer la création de l'événement si la notification échoue
+        }
+
         Ok(event)
     }
 
@@ -1056,12 +1062,29 @@ async fn activate_due_events(pool: &PgPool, now: DateTime<Utc>) -> AppResult<usi
     let mut counter = 0usize;
     for row in rows {
         let event_id: Uuid = row.try_get("id")?;
+        let event_name: String = row.try_get("display_name")?;
+        
         sqlx::query(
             "UPDATE global_promo_events SET status = 'live', updated_at = NOW() WHERE id = $1",
         )
         .bind(event_id)
         .execute(pool)
         .await?;
+        
+        // ✅ NOUVEAU : Notifier tous les prestataires quand un événement devient "live"
+        // Récupérer l'événement complet pour la notification
+        if let Ok(Some(event)) = sqlx::query_as::<_, GlobalPromoEvent>(
+            "SELECT * FROM global_promo_events WHERE id = $1"
+        )
+        .bind(event_id)
+        .fetch_optional(pool)
+        .await
+        {
+            if let Err(err) = notify_all_prestataires_event_created(pool, &event).await {
+                warn!("Failed to notify prestataires about activated event: {:?}", err);
+            }
+        }
+        
         counter += 1;
     }
 
@@ -1249,6 +1272,70 @@ async fn send_entry_notification(
     {
         warn!("GlobalPromo push notification failed: {:?}", err);
     }
+}
+
+// ✅ NOUVEAU : Notifier tous les prestataires lors de la création d'un événement Black Friday
+async fn notify_all_prestataires_event_created(
+    pool: &PgPool,
+    event: &GlobalPromoEvent,
+) -> AppResult<()> {
+    // ✅ Les imports notification_service et NotificationType sont déjà au niveau du module
+
+    // Récupérer tous les prestataires (utilisateurs qui ont créé au moins un service)
+    let prestataires: Vec<i32> = sqlx::query_scalar::<_, i32>(
+        "SELECT DISTINCT user_id FROM services WHERE user_id IS NOT NULL AND is_active = TRUE"
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let title = format!("🔥 Nouveau Black Friday : {}", event.display_name);
+    let body = format!(
+        "Une nouvelle campagne Black Friday '{}' est disponible ! Participez dès maintenant pour booster vos ventes. Cliquez pour voir les détails.",
+        event.display_name
+    );
+
+    let metadata = json!({
+        "event_id": event.id,
+        "event_slug": event.slug,
+        "event_name": event.display_name,
+        "action_url": "yukpo://GlobalPromoSubmission", // ✅ CORRIGÉ : Deep link vers la page de participation
+        "action_text": "Participer au Black Friday"
+    });
+
+    let prestataires_count = prestataires.len();
+    for prestataire_id in prestataires {
+        // Créer la notification en base
+        if let Err(err) = notification_service::create_notification(
+            pool,
+            prestataire_id,
+            NotificationType::GlobalPromoEventCreated,
+            title.clone(),
+            body.clone(),
+            Some(metadata.clone()),
+        )
+        .await
+        {
+            warn!("Failed to create notification for prestataire {}: {:?}", prestataire_id, err);
+            continue;
+        }
+
+        // Envoyer la push notification
+        if let Err(err) = push_notification_service::send_push_notification(
+            pool,
+            prestataire_id,
+            title.clone(),
+            body.clone(),
+            Some(metadata.clone()),
+            Some("default".into()),
+        )
+        .await
+        {
+            warn!("Failed to send push notification to prestataire {}: {:?}", prestataire_id, err);
+        }
+    }
+
+    info!("Notified {} prestataires about new Black Friday event: {}", prestataires.len(), event.display_name);
+    Ok(())
 }
 
 async fn ensure_service_ownership(pool: &PgPool, service_id: i32, user_id: i32) -> AppResult<()> {

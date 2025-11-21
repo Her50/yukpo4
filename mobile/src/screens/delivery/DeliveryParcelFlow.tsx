@@ -46,7 +46,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
     const [estimatedDistance, setEstimatedDistance] = useState<number | null>(null);
 
     // État informations colis
-    const [parcelType, setParcelType] = useState<'document' | 'package' | 'moving'>('package');
+    const [parcelType, setParcelType] = useState<'document' | 'package' | 'moving' | 'cake' | 'other'>('package');
+    const [transportMode, setTransportMode] = useState<string>(''); // Mode de transport souhaité
     const [weight, setWeight] = useState<string>('');
     const [volume, setVolume] = useState<string>('');
     const [declaredValue, setDeclaredValue] = useState<string>('');
@@ -66,6 +67,12 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
     const [movingBoxes, setMovingBoxes] = useState<string>('');
     const [movingFurniture, setMovingFurniture] = useState<string>('');
     const [movingAccess, setMovingAccess] = useState<string>('');
+
+    // État gâteau
+    const [isCake, setIsCake] = useState(false);
+    const [cakeTemperature, setCakeTemperature] = useState<string>(''); // Ex: "Tempéré", "Froid", "Chaud"
+    const [cakeFragility, setCakeFragility] = useState<string>(''); // Ex: "Fragile", "Très fragile"
+    const [cakeInstructions, setCakeInstructions] = useState<string>('');
 
     // Préférences de livraison
     const [preferredDeliveryDate, setPreferredDeliveryDate] = useState<string>('');
@@ -175,18 +182,24 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
             setMovingBoxes('');
             setMovingFurniture('');
             setMovingAccess('');
+            setIsCake(false);
+            setCakeTemperature('');
+            setCakeFragility('');
+            setCakeInstructions('');
             setPreferredDeliveryDate('');
             setPreferredDeliveryTimeStart('');
             setPreferredDeliveryTimeEnd('');
             setIsFlexible(true);
             setFlexibilityWindowDays(3);
             setUrgencyLevel('standard');
+            setTransportMode('');
         }
     }, [visible]);
 
-    // Mettre à jour isMoving quand le type change
+    // Mettre à jour isMoving et isCake quand le type change
     useEffect(() => {
         setIsMoving(parcelType === 'moving');
+        setIsCake(parcelType === 'cake');
     }, [parcelType]);
 
     const handleUseCurrentLocation = async (type: 'pickup' | 'dropoff') => {
@@ -322,23 +335,47 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
 
         setLoading(true);
         try {
+            // ✅ Mapping des types de colis vers type_id backend
+            // 1 = document, 2 = package, 3 = moving, 4 = cake, 5 = other (ou 2 pour autre si non défini)
+            const typeIdMapping: Record<string, number> = {
+                'document': 1,
+                'package': 2,
+                'moving': 3,
+                'cake': 4, // À ajuster selon le backend
+                'other': 2, // Utilise package comme fallback
+            };
+
+            // Construire les contraintes selon le type
+            const constraints: Record<string, any> = {};
+            if (isMoving) {
+                constraints.is_moving = true;
+                if (movingBoxes) constraints.boxes = movingBoxes;
+                if (movingFurniture) constraints.furniture = movingFurniture;
+                if (movingAccess) constraints.access = movingAccess;
+            } else if (isCake) {
+                constraints.is_cake = true;
+                if (cakeTemperature) constraints.temperature = cakeTemperature;
+                if (cakeFragility) constraints.fragility = cakeFragility;
+                if (cakeInstructions) constraints.instructions = cakeInstructions;
+            } else if (parcelType === 'other') {
+                constraints.type = 'other';
+                if (notes) constraints.description = notes;
+            }
+
             // Construire le payload
             const payload: CreateDeliveryRequestPayload = {
+                // ✅ NOUVEAU : Mode de transport souhaité
+                preferred_vehicle_type: transportMode || undefined,
                 parcel: {
-                    type_id: parcelType === 'document' ? 1 : parcelType === 'package' ? 2 : 3,
+                    type_id: typeIdMapping[parcelType] || 2,
                     weight_kg: weight ? parseFloat(weight) : undefined,
                     volume_cm3: volume ? parseFloat(volume) : undefined,
                     declared_value: declaredValue ? parseFloat(declaredValue) : undefined,
                     notes: notes || undefined,
                     // ✅ CORRIGÉ : Toujours envoyer un tableau (même vide) pour photos
                     photos: photos.length > 0 ? photos : [],
-                    // ✅ CORRIGÉ : Toujours envoyer un objet (même vide) pour constraints
-                    constraints: isMoving ? {
-                        is_moving: true,
-                        boxes: movingBoxes || undefined,
-                        furniture: movingFurniture || undefined,
-                        access: movingAccess || undefined,
-                    } : {},
+                    // ✅ Contraintes selon le type de colis
+                    constraints: Object.keys(constraints).length > 0 ? constraints : {},
                 },
                 pickup: {
                     latitude: pickupLocation.latitude,
@@ -352,7 +389,9 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                 },
                 metadata: {
                     kind: 'parcel',
+                    parcel_type: parcelType,
                     is_moving: isMoving,
+                    is_cake: isCake,
                     preferred_delivery_date: preferredDeliveryDate
                         ? preferredDeliveryDate.split('/').reverse().join('-')
                         : undefined,
@@ -361,6 +400,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                     is_flexible: isFlexible,
                     flexibility_window_days: flexibilityWindowDays,
                     urgency_level: urgencyLevel,
+                    // ✅ NOUVEAU : Mode de transport dans metadata aussi
+                    preferred_vehicle_type: transportMode || undefined,
                 },
                 // ✅ CORRIGÉ : Ajouter initial_event_payload par défaut
                 initial_event_payload: {},
@@ -386,7 +427,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                     ]
                 );
             } else {
-                Alert.alert('Erreur', result.error || 'Impossible de créer la livraison');
+                const errorMessage = (result as any).error || (result as any).message || 'Impossible de créer la livraison';
+                Alert.alert('Erreur', errorMessage);
             }
         } catch (error: any) {
             console.error('Erreur création livraison:', error);
@@ -436,166 +478,337 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                 <SafeIcon name="package" size={18} color={modernColors.primary} />
                                 <Text style={styles.sectionTitle}>Type de colis *</Text>
                             </View>
-                            <View style={styles.typeSelector}>
-                                {(['document', 'package', 'moving'] as const).map((type) => (
-                                    <TouchableOpacity
-                                        key={type}
-                                        style={[
-                                            styles.typeButton,
-                                            parcelType === type && styles.typeButtonActive,
-                                        ]}
-                                        onPress={() => setParcelType(type)}
-                                    >
-                                        <SafeIcon
-                                            name={
-                                                type === 'document'
-                                                    ? 'file-text'
-                                                    : type === 'package'
-                                                        ? 'package'
-                                                        : 'truck'
-                                            }
-                                            size={20}
-                                            color={parcelType === type ? '#FFFFFF' : modernColors.primary}
-                                        />
-                                        <Text
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeSelectorScroll}>
+                                <View style={styles.typeSelector}>
+                                    {([
+                                        { key: 'document', label: 'Document', icon: 'file-text' },
+                                        { key: 'package', label: 'Paquet', icon: 'package' },
+                                        { key: 'moving', label: 'Déménagement', icon: 'truck' },
+                                        { key: 'cake', label: 'Gâteau', icon: 'gift' },
+                                        { key: 'other', label: 'Autres', icon: 'box' },
+                                    ] as const).map(({ key, label, icon }) => (
+                                        <TouchableOpacity
+                                            key={key}
                                             style={[
-                                                styles.typeButtonText,
-                                                parcelType === type && styles.typeButtonTextActive,
+                                                styles.typeButton,
+                                                parcelType === key && styles.typeButtonActive,
                                             ]}
+                                            onPress={() => setParcelType(key as any)}
                                         >
-                                            {type === 'document'
-                                                ? 'Document'
-                                                : type === 'package'
-                                                    ? 'Paquet'
-                                                    : 'Déménagement'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                                            <SafeIcon
+                                                name={icon}
+                                                size={18}
+                                                color={parcelType === key ? '#FFFFFF' : modernColors.primary}
+                                            />
+                                            <Text
+                                                style={[
+                                                    styles.typeButtonText,
+                                                    parcelType === key && styles.typeButtonTextActive,
+                                                ]}
+                                                numberOfLines={1}
+                                            >
+                                                {label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
                         </View>
 
-                        {/* Informations colis */}
+                        {/* Informations colis - Conditionnel selon le type */}
+                        {parcelType !== 'other' && (
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="info" size={18} color={modernColors.accent} />
+                                    <Text style={styles.sectionTitle}>Informations du colis</Text>
+                                </View>
+                                {/* Poids et volume uniquement pour document, paquet et gâteau */}
+                                {(parcelType === 'document' || parcelType === 'package' || parcelType === 'cake') && (
+                                    <View style={styles.formGrid}>
+                                        <View style={styles.formItem}>
+                                            <Text style={styles.label}>Poids (kg)</Text>
+                                            <TextInput
+                                                style={[styles.input, errors.weight && styles.inputError]}
+                                                placeholder="Ex: 2.5"
+                                                value={weight}
+                                                onChangeText={(text) => {
+                                                    setWeight(text);
+                                                    const error = validateField('weight', text);
+                                                    setErrors(prev => ({ ...prev, weight: error }));
+                                                }}
+                                                keyboardType="decimal-pad"
+                                            />
+                                            {errors.weight ? (
+                                                <Text style={styles.errorText}>{errors.weight}</Text>
+                                            ) : null}
+                                        </View>
+                                        <View style={styles.formItem}>
+                                            <Text style={styles.label}>Volume (cm³)</Text>
+                                            <TextInput
+                                                style={[styles.input, errors.volume && styles.inputError]}
+                                                placeholder="Ex: 5000"
+                                                value={volume}
+                                                onChangeText={(text) => {
+                                                    setVolume(text);
+                                                    const error = validateField('volume', text);
+                                                    setErrors(prev => ({ ...prev, volume: error }));
+                                                }}
+                                                keyboardType="numeric"
+                                            />
+                                            {errors.volume ? (
+                                                <Text style={styles.errorText}>{errors.volume}</Text>
+                                            ) : null}
+                                        </View>
+                                    </View>
+                                )}
+                                {/* Valeur déclarée pour tous sauf autres */}
+                                {parcelType !== 'moving' && (
+                                    <View style={styles.formItem}>
+                                        <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
+                                        <TextInput
+                                            style={[styles.input, errors.declaredValue && styles.inputError]}
+                                            placeholder="Ex: 50000"
+                                            value={declaredValue}
+                                            onChangeText={(text) => {
+                                                setDeclaredValue(text);
+                                                const error = validateField('declaredValue', text);
+                                                setErrors(prev => ({ ...prev, declaredValue: error }));
+                                            }}
+                                            keyboardType="numeric"
+                                        />
+                                        {errors.declaredValue ? (
+                                            <Text style={styles.errorText}>{errors.declaredValue}</Text>
+                                        ) : null}
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        {/* Formulaire générique pour type "Autres" */}
+                        {parcelType === 'other' && (
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="info" size={18} color={modernColors.accent} />
+                                    <Text style={styles.sectionTitle}>Description du colis</Text>
+                                </View>
+                                <View style={styles.formItem}>
+                                    <Text style={styles.label}>Description *</Text>
+                                    <TextInput
+                                        style={[styles.input, styles.textArea]}
+                                        placeholder="Décrivez votre colis (nature, taille approximative, poids, etc.)"
+                                        value={notes}
+                                        onChangeText={setNotes}
+                                        multiline
+                                        numberOfLines={4}
+                                        textAlignVertical="top"
+                                    />
+                                </View>
+                                <View style={styles.formGrid}>
+                                    <View style={styles.formItem}>
+                                        <Text style={styles.label}>Poids estimé (kg)</Text>
+                                        <TextInput
+                                            style={[styles.input, errors.weight && styles.inputError]}
+                                            placeholder="Ex: 5"
+                                            value={weight}
+                                            onChangeText={(text) => {
+                                                setWeight(text);
+                                                const error = validateField('weight', text);
+                                                setErrors(prev => ({ ...prev, weight: error }));
+                                            }}
+                                            keyboardType="decimal-pad"
+                                        />
+                                    </View>
+                                    <View style={styles.formItem}>
+                                        <Text style={styles.label}>Valeur estimée (FCFA)</Text>
+                                        <TextInput
+                                            style={[styles.input, errors.declaredValue && styles.inputError]}
+                                            placeholder="Ex: 30000"
+                                            value={declaredValue}
+                                            onChangeText={(text) => {
+                                                setDeclaredValue(text);
+                                                const error = validateField('declaredValue', text);
+                                                setErrors(prev => ({ ...prev, declaredValue: error }));
+                                            }}
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Mode de transport souhaité */}
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
-                                <SafeIcon name="info" size={18} color={modernColors.accent} />
-                                <Text style={styles.sectionTitle}>Informations du colis</Text>
+                                <SafeIcon name="truck" size={18} color={modernColors.accent} />
+                                <Text style={styles.sectionTitle}>Mode de transport souhaité (optionnel)</Text>
                             </View>
-                            <View style={styles.formGrid}>
-                                <View style={styles.formItem}>
-                                    <Text style={styles.label}>Poids (kg)</Text>
-                                    <TextInput
-                                        style={[styles.input, errors.weight && styles.inputError]}
-                                        placeholder="Ex: 2.5"
-                                        value={weight}
-                                        onChangeText={(text) => {
-                                            setWeight(text);
-                                            const error = validateField('weight', text);
-                                            setErrors(prev => ({ ...prev, weight: error }));
-                                        }}
-                                        keyboardType="decimal-pad"
-                                    />
-                                    {errors.weight ? (
-                                        <Text style={styles.errorText}>{errors.weight}</Text>
-                                    ) : null}
-                                </View>
-                                <View style={styles.formItem}>
-                                    <Text style={styles.label}>Volume (cm³)</Text>
-                                    <TextInput
-                                        style={[styles.input, errors.volume && styles.inputError]}
-                                        placeholder="Ex: 5000"
-                                        value={volume}
-                                        onChangeText={(text) => {
-                                            setVolume(text);
-                                            const error = validateField('volume', text);
-                                            setErrors(prev => ({ ...prev, volume: error }));
-                                        }}
-                                        keyboardType="numeric"
-                                    />
-                                    {errors.volume ? (
-                                        <Text style={styles.errorText}>{errors.volume}</Text>
-                                    ) : null}
-                                </View>
-                            </View>
-                            <View style={styles.formItem}>
-                                <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
-                                <TextInput
-                                    style={[styles.input, errors.declaredValue && styles.inputError]}
-                                    placeholder="Ex: 50000"
-                                    value={declaredValue}
-                                    onChangeText={(text) => {
-                                        setDeclaredValue(text);
-                                        const error = validateField('declaredValue', text);
-                                        setErrors(prev => ({ ...prev, declaredValue: error }));
-                                    }}
-                                    keyboardType="numeric"
-                                />
-                                {errors.declaredValue ? (
-                                    <Text style={styles.errorText}>{errors.declaredValue}</Text>
-                                ) : null}
-                            </View>
-                        </View>
-
-                        {/* Photos du colis */}
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Photos du colis (optionnel)</Text>
-                            <MediaUploadManager
-                                images={photos}
-                                videos={[]}
-                                onImagesChange={async (images) => {
-                                    const imageUris = images.map((img: any) => img.uri || img.base64 || img);
-
-                                    // Compresser les nouvelles images avec progression
-                                    const newPhotos: string[] = [];
-                                    const newCompression: Record<number, CompressionResult> = {};
-                                    const newProgress: Record<number, number> = {};
-
-                                    for (let i = 0; i < imageUris.length; i++) {
-                                        const uri = imageUris[i];
-                                        const photoIndex = photos.length + i;
-
-                                        try {
-                                            newProgress[photoIndex] = 10;
-                                            setUploadProgress(prev => ({ ...prev, ...newProgress }));
-
-                                            newProgress[photoIndex] = 50;
-                                            setUploadProgress(prev => ({ ...prev, ...newProgress }));
-
-                                            const compressionResult = await compressImageFromUri(uri);
-                                            newPhotos.push(compressionResult.compressedBase64);
-                                            newCompression[photoIndex] = compressionResult;
-
-                                            newProgress[photoIndex] = 100;
-                                            setUploadProgress(prev => ({ ...prev, ...newProgress }));
-                                        } catch (error) {
-                                            console.error(`Erreur compression photo ${i}:`, error);
-                                            // Ajouter l'original en cas d'erreur
-                                            newPhotos.push(uri);
-                                            newProgress[photoIndex] = 100;
-                                            setUploadProgress(prev => ({ ...prev, ...newProgress }));
-                                        }
-                                    }
-
-                                    setPhotos([...photos, ...newPhotos]);
-                                    setPhotoCompression(prev => ({ ...prev, ...newCompression }));
+                            <TouchableOpacity
+                                style={styles.pickerButton}
+                                onPress={() => {
+                                    const transportOptions = [
+                                        { value: 'bike', label: '🚲 Vélo cargo' },
+                                        { value: 'motorcycle', label: '🏍️ Moto' },
+                                        { value: 'tricycle', label: '🛺 Tricycle' },
+                                        { value: 'car', label: '🚗 Voiture' },
+                                        { value: 'pickup', label: '🚛 Pick-up' },
+                                        { value: 'van', label: '🚐 Fourgonnette' },
+                                        { value: 'truck', label: '🚚 Camion' },
+                                        { value: 'walking', label: '🚶 Piéton' },
+                                    ];
+                                    Alert.alert(
+                                        'Mode de transport',
+                                        'Choisissez le mode de transport souhaité pour cette livraison',
+                                        [
+                                            ...transportOptions.map(opt => ({
+                                                text: opt.label,
+                                                onPress: () => setTransportMode(opt.value),
+                                            })),
+                                            { text: 'Aucune préférence', onPress: () => setTransportMode(''), style: 'cancel' },
+                                        ]
+                                    );
                                 }}
-                                maxImages={5}
-                            />
-                            {/* Afficher les stats de compression */}
-                            {Object.keys(photoCompression).length > 0 && (
-                                <View style={{ marginTop: 8, padding: 8, backgroundColor: modernColors.success + '20', borderRadius: 8 }}>
-                                    {Object.entries(photoCompression).map(([index, result]) => {
-                                        if (result.compressionRatio > 10) {
-                                            return (
-                                                <Text key={index} style={{ fontSize: 12, color: modernColors.success }}>
-                                                    Photo {parseInt(index) + 1}: {result.compressionRatio.toFixed(1)}% de réduction
-                                                </Text>
-                                            );
-                                        }
-                                        return null;
-                                    })}
-                                </View>
-                            )}
+                            >
+                                <Text style={styles.pickerText}>
+                                    {transportMode
+                                        ? [
+                                            { value: 'bike', label: '🚲 Vélo cargo' },
+                                            { value: 'motorcycle', label: '🏍️ Moto' },
+                                            { value: 'tricycle', label: '🛺 Tricycle' },
+                                            { value: 'car', label: '🚗 Voiture' },
+                                            { value: 'pickup', label: '🚛 Pick-up' },
+                                            { value: 'van', label: '🚐 Fourgonnette' },
+                                            { value: 'truck', label: '🚚 Camion' },
+                                            { value: 'walking', label: '🚶 Piéton' },
+                                        ].find(opt => opt.value === transportMode)?.label || 'Sélectionner...'
+                                        : 'Aucune préférence'}
+                                </Text>
+                                <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
                         </View>
+
+                        {/* Photos du colis - Version compacte */}
+                        <View style={[styles.section, styles.sectionCompact]}>
+                            <View style={styles.sectionHeader}>
+                                <SafeIcon name="camera" size={16} color={modernColors.accent} />
+                                <Text style={[styles.sectionTitle, styles.sectionTitleCompact]}>Photos du colis (optionnel)</Text>
+                                <Text style={styles.sectionSubtitleCompact}>{photos.length}/5</Text>
+                            </View>
+                            <View style={styles.mediaUploadWrapper}>
+                                <MediaUploadManager
+                                    images={photos}
+                                    videos={[]}
+                                    onImagesChange={async (images) => {
+                                        const imageUris = images.map((img: any) => img.uri || img.base64 || img);
+
+                                        // Compresser les nouvelles images avec progression
+                                        const newPhotos: string[] = [];
+                                        const newCompression: Record<number, CompressionResult> = {};
+                                        const newProgress: Record<number, number> = {};
+
+                                        for (let i = 0; i < imageUris.length; i++) {
+                                            const uri = imageUris[i];
+                                            const photoIndex = photos.length + i;
+
+                                            try {
+                                                newProgress[photoIndex] = 10;
+                                                setUploadProgress(prev => ({ ...prev, ...newProgress }));
+
+                                                newProgress[photoIndex] = 50;
+                                                setUploadProgress(prev => ({ ...prev, ...newProgress }));
+
+                                                const compressionResult = await compressImageFromUri(uri);
+                                                newPhotos.push(compressionResult.compressedBase64);
+                                                newCompression[photoIndex] = compressionResult;
+
+                                                newProgress[photoIndex] = 100;
+                                                setUploadProgress(prev => ({ ...prev, ...newProgress }));
+                                            } catch (error) {
+                                                console.error(`Erreur compression photo ${i}:`, error);
+                                                // Ajouter l'original en cas d'erreur
+                                                newPhotos.push(uri);
+                                                newProgress[photoIndex] = 100;
+                                                setUploadProgress(prev => ({ ...prev, ...newProgress }));
+                                            }
+                                        }
+
+                                        setPhotos([...photos, ...newPhotos]);
+                                        setPhotoCompression(prev => ({ ...prev, ...newCompression }));
+                                    }}
+                                    onVideosChange={() => { }} // Pas de vidéos pour les colis
+                                    maxImages={5}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Gâteau - Champs spécifiques */}
+                        {isCake && (
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="gift" size={18} color={modernColors.warning} />
+                                    <Text style={styles.sectionTitle}>Détails du gâteau</Text>
+                                </View>
+                                <View style={styles.formGrid}>
+                                    <View style={styles.formItem}>
+                                        <Text style={styles.label}>Température</Text>
+                                        <TouchableOpacity
+                                            style={styles.pickerButton}
+                                            onPress={() => {
+                                                Alert.alert(
+                                                    'Température',
+                                                    'Quelle température requise pour le gâteau ?',
+                                                    [
+                                                        { text: 'Tempéré', onPress: () => setCakeTemperature('tempéré') },
+                                                        { text: 'Froid', onPress: () => setCakeTemperature('froid') },
+                                                        { text: 'Chaud', onPress: () => setCakeTemperature('chaud') },
+                                                        { text: 'Annuler', style: 'cancel' },
+                                                    ]
+                                                );
+                                            }}
+                                        >
+                                            <Text style={styles.pickerText}>
+                                                {cakeTemperature || 'Sélectionner...'}
+                                            </Text>
+                                            <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
+                                        </TouchableOpacity>
+                                    </View>
+                                    <View style={styles.formItem}>
+                                        <Text style={styles.label}>Niveau de fragilité</Text>
+                                        <TouchableOpacity
+                                            style={styles.pickerButton}
+                                            onPress={() => {
+                                                Alert.alert(
+                                                    'Fragilité',
+                                                    'Quel est le niveau de fragilité ?',
+                                                    [
+                                                        { text: 'Standard', onPress: () => setCakeFragility('standard') },
+                                                        { text: 'Fragile', onPress: () => setCakeFragility('fragile') },
+                                                        { text: 'Très fragile', onPress: () => setCakeFragility('très fragile') },
+                                                        { text: 'Annuler', style: 'cancel' },
+                                                    ]
+                                                );
+                                            }}
+                                        >
+                                            <Text style={styles.pickerText}>
+                                                {cakeFragility || 'Sélectionner...'}
+                                            </Text>
+                                            <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                                <View style={styles.formItem}>
+                                    <Text style={styles.label}>Instructions spéciales (optionnel)</Text>
+                                    <TextInput
+                                        style={[styles.input, styles.textAreaCompact]}
+                                        placeholder="Ex: Manipuler avec précaution, maintenir droit..."
+                                        value={cakeInstructions}
+                                        onChangeText={setCakeInstructions}
+                                        multiline
+                                        numberOfLines={2}
+                                        textAlignVertical="top"
+                                    />
+                                </View>
+                            </View>
+                        )}
 
                         {/* Déménagement - Champs supplémentaires */}
                         {isMoving && (
@@ -1234,6 +1447,36 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.text,
         fontWeight: '500',
+    },
+    typeSelectorScroll: {
+        marginHorizontal: -20,
+        paddingHorizontal: 20,
+    },
+    sectionCompact: {
+        marginBottom: 16,
+    },
+    sectionTitleCompact: {
+        fontSize: 15,
+        flex: 1,
+    },
+    sectionSubtitleCompact: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        fontWeight: '500',
+        marginLeft: 'auto',
+    },
+    mediaUploadWrapper: {
+        // Réduction de l'espace pour MediaUploadManager
+        transform: [{ scale: 0.95 }],
+        marginHorizontal: -4,
+    },
+    textArea: {
+        minHeight: 100,
+        paddingVertical: 12,
+    },
+    textAreaCompact: {
+        minHeight: 70,
+        paddingVertical: 10,
     },
 });
 

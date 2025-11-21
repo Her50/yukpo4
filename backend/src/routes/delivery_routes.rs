@@ -16,8 +16,67 @@ use bigdecimal::ToPrimitive;
 use rust_decimal::{prelude::FromPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::Row;
+use sqlx::{FromRow, Row};
 use uuid::Uuid;
+
+#[derive(FromRow)]
+struct ServiceUserIdRow {
+    user_id: i32,
+}
+
+#[derive(FromRow)]
+struct ServiceDataRow {
+    data: Value,
+}
+
+#[derive(FromRow)]
+struct ClientDeliveryPreferencesFullRow {
+    id: i32,
+    user_id: i32,
+    delivery_id: Option<Uuid>,
+    preferred_delivery_date: Option<chrono::NaiveDate>,
+    preferred_delivery_time_start: Option<chrono::NaiveTime>,
+    preferred_delivery_time_end: Option<chrono::NaiveTime>,
+    preferred_delivery_window_hours: Option<i32>,
+    avoid_days: Option<Vec<String>>,
+    urgency_level: Option<String>,
+    is_flexible: Option<bool>,
+    flexibility_window_days: Option<i32>,
+    created_at: sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,
+    updated_at: sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,
+}
+
+#[derive(FromRow)]
+struct ProductDeliveryConfigRow {
+    pickup_address: Option<String>,
+    pickup_latitude: Option<f64>,
+    pickup_longitude: Option<f64>,
+    required_vehicle_type_id: Option<i32>,
+    weight_kg: Option<f64>,
+    volume_cm3: Option<f64>,
+    requires_isothermal: Option<bool>,
+    requires_fragile_handling: Option<bool>,
+    is_configured: Option<bool>,
+    billing_mode: Option<String>,
+    pickup_instructions: Option<String>,
+}
+
+#[derive(FromRow)]
+struct ServiceDataGpsRow {
+    data: Value,
+    gps: Option<String>,
+}
+
+#[derive(FromRow)]
+struct UserGpsNameRow {
+    gps: Option<String>,
+    nom_complet: Option<String>,
+}
+
+#[derive(FromRow)]
+struct BillingModeRow {
+    billing_mode: Option<String>,
+}
 
 use crate::{
     core::types::{AppError, AppResult},
@@ -222,10 +281,10 @@ async fn save_product_delivery_config(
     Json(payload): Json<ProductDeliveryConfigInput>,
 ) -> AppResult<Json<Value>> {
     // ✅ 1. Vérifier que l'utilisateur est propriétaire du service
-    let service = sqlx::query!(
-        "SELECT user_id FROM services WHERE id = $1",
-        payload.service_id
+    let service: Option<ServiceUserIdRow> = sqlx::query_as(
+        "SELECT user_id FROM services WHERE id = $1"
     )
+    .bind(payload.service_id)
     .fetch_optional(&state.pg)
     .await?;
 
@@ -240,13 +299,14 @@ async fn save_product_delivery_config(
     }
 
     // ✅ 2. Vérifier que le produit existe
-    let service_data = sqlx::query!(
-        "SELECT data FROM services WHERE id = $1",
-        payload.service_id
+    let service_data: Option<ServiceDataRow> = sqlx::query_as(
+        "SELECT data FROM services WHERE id = $1"
     )
+    .bind(payload.service_id)
     .fetch_optional(&state.pg)
-    .await?
-    .ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
+    .await?;
+    
+    let service_data = service_data.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
 
     let products = service_data.data
         .get("produits")
@@ -387,10 +447,10 @@ async fn validate_product(
     Path((service_id, product_index)): Path<(i32, i32)>,
 ) -> AppResult<Json<Value>> {
     // Vérifier propriétaire
-    let service = sqlx::query!(
-        "SELECT user_id FROM services WHERE id = $1",
-        service_id
+    let service: Option<ServiceUserIdRow> = sqlx::query_as(
+        "SELECT user_id FROM services WHERE id = $1"
     )
+    .bind(service_id)
     .fetch_optional(&state.pg)
     .await?;
 
@@ -439,7 +499,12 @@ async fn save_client_delivery_preferences(
         enforce_delivery_access(&service, &summary, user.id).await?;
     }
 
-    let preferences = sqlx::query!(
+    let window_hours = payload.preferred_delivery_window_hours.unwrap_or(2);
+    let urgency = payload.urgency_level.unwrap_or_else(|| "standard".to_string());
+    let is_flex = payload.is_flexible.unwrap_or(true);
+    let flex_days = payload.flexibility_window_days.unwrap_or(3);
+    
+    let preferences: ClientDeliveryPreferencesFullRow = sqlx::query_as(
         r#"
         INSERT INTO client_delivery_preferences (
             user_id, delivery_id,
@@ -466,18 +531,18 @@ async fn save_client_delivery_preferences(
                   preferred_delivery_window_hours, avoid_days, urgency_level,
                   is_flexible, flexibility_window_days,
                   created_at, updated_at
-        "#,
-        user.id,
-        payload.delivery_id,
-        preferred_delivery_date,
-        preferred_delivery_time_start,
-        preferred_delivery_time_end,
-        payload.preferred_delivery_window_hours.unwrap_or(2),
-        payload.avoid_days.as_deref(),
-        payload.urgency_level.unwrap_or_else(|| "standard".to_string()),
-        payload.is_flexible.unwrap_or(true),
-        payload.flexibility_window_days.unwrap_or(3)
+        "#
     )
+    .bind(user.id)
+    .bind(payload.delivery_id)
+    .bind(preferred_delivery_date)
+    .bind(preferred_delivery_time_start)
+    .bind(preferred_delivery_time_end)
+    .bind(window_hours)
+    .bind(payload.avoid_days.as_deref())
+    .bind(&urgency)
+    .bind(is_flex)
+    .bind(flex_days)
     .fetch_one(&state.pg)
     .await?;
 
@@ -510,7 +575,7 @@ async fn get_client_delivery_preferences(
     let summary = service.get_delivery_summary(delivery_id).await?;
     enforce_delivery_access(&service, &summary, user.id).await?;
 
-    let preferences = sqlx::query!(
+    let preferences: Option<ClientDeliveryPreferencesFullRow> = sqlx::query_as(
         r#"
         SELECT id, user_id, delivery_id,
                preferred_delivery_date, preferred_delivery_time_start, preferred_delivery_time_end,
@@ -519,10 +584,10 @@ async fn get_client_delivery_preferences(
                created_at, updated_at
         FROM client_delivery_preferences
         WHERE delivery_id = $1 AND user_id = $2
-        "#,
-        delivery_id,
-        user.id
+        "#
     )
+    .bind(delivery_id)
+    .bind(user.id)
     .fetch_optional(&state.pg)
     .await?;
 
@@ -556,10 +621,10 @@ async fn get_product_delivery_config(
     Path((service_id, product_index)): Path<(i32, i32)>,
 ) -> AppResult<Json<Value>> {
     // Vérifier propriétaire
-    let service = sqlx::query!(
-        "SELECT user_id FROM services WHERE id = $1",
-        service_id
+    let service: Option<ServiceUserIdRow> = sqlx::query_as(
+        "SELECT user_id FROM services WHERE id = $1"
     )
+    .bind(service_id)
     .fetch_optional(&state.pg)
     .await?;
 
@@ -717,17 +782,17 @@ async fn create_client_order(
     }
 
     // ✅ 1. Récupérer la configuration de livraison du produit
-    let delivery_config = if let Some(product_index) = payload.product_index {
-        sqlx::query!(
+    let delivery_config: Option<ProductDeliveryConfigRow> = if let Some(product_index) = payload.product_index {
+        sqlx::query_as(
             "SELECT pickup_address, pickup_latitude, pickup_longitude, 
                     required_vehicle_type_id, weight_kg, volume_cm3,
                     requires_isothermal, requires_fragile_handling, is_configured,
                     billing_mode, pickup_instructions
              FROM product_delivery_config 
-             WHERE service_id = $1 AND product_index = $2",
-            payload.service_id,
-            product_index
+             WHERE service_id = $1 AND product_index = $2"
         )
+        .bind(payload.service_id)
+        .bind(product_index)
         .fetch_optional(&state.pg)
         .await?
     } else {
@@ -768,22 +833,24 @@ async fn create_client_order(
     // ✅ 3. Auto-remplir pickup depuis product_delivery_config
     let pickup = if let Some(config) = &delivery_config {
         LocationInput {
-            latitude: config.pickup_latitude,
-            longitude: config.pickup_longitude,
-            address: Some(config.pickup_address.clone()),
+            latitude: config.pickup_latitude.unwrap_or(0.0),
+            longitude: config.pickup_longitude.unwrap_or(0.0),
+            address: config.pickup_address.clone(),
         }
     } else {
         // Fallback : récupérer depuis le service
-        let service_data = sqlx::query!(
-            "SELECT data, gps FROM services WHERE id = $1",
-            payload.service_id
+        let service_data: Option<ServiceDataGpsRow> = sqlx::query_as(
+            "SELECT data, gps FROM services WHERE id = $1"
         )
+        .bind(payload.service_id)
         .fetch_optional(&state.pg)
-        .await?
-        .ok_or_else(|| crate::core::types::AppError::NotFound("Service non trouvé".into()))?;
+        .await?;
+        
+        let service_data = service_data.ok_or_else(|| crate::core::types::AppError::NotFound("Service non trouvé".into()))?;
 
         // Extraire GPS du service
-        let (lat, lng) = if let Some(gps_str) = service_data.gps {
+        let (lat, lng) = if let Some(gps_str) = &service_data.gps {
+            let gps_str = gps_str.clone();
             let parts: Vec<&str> = gps_str.split(',').collect();
             if parts.len() == 2 {
                 if let (Ok(lng), Ok(lat)) = (parts[0].trim().parse::<f64>(), parts[1].trim().parse::<f64>()) {
@@ -810,10 +877,10 @@ async fn create_client_order(
         dropoff_payload
     } else {
         // Récupérer GPS utilisateur
-        let user_data = sqlx::query!(
-            "SELECT gps, nom_complet FROM users WHERE id = $1",
-            user.id
+        let user_data: Option<UserGpsNameRow> = sqlx::query_as(
+            "SELECT gps, nom_complet FROM users WHERE id = $1"
         )
+        .bind(user.id)
         .fetch_optional(&state.pg)
         .await?;
 
@@ -840,7 +907,7 @@ async fn create_client_order(
     // ✅ 5. Créer le colis depuis la configuration
     let parcel = if let Some(config) = &delivery_config {
         NewDeliveryParcelInput {
-            type_id: Some(config.required_vehicle_type_id),
+            type_id: config.required_vehicle_type_id,
             weight_kg: config.weight_kg.map(dec),
             volume_cm3: config.volume_cm3.map(dec),
             declared_value: None,
@@ -1464,10 +1531,10 @@ async fn estimate_delivery_costs(
 
     // 1. Récupérer le prix du produit (✅ avec promotions)
     let product_price_cents = if let Some(product_index) = payload.product_index {
-        let product_data = sqlx::query!(
-            "SELECT data FROM services WHERE id = $1",
-            payload.service_id
+        let product_data: Option<ServiceDataRow> = sqlx::query_as(
+            "SELECT data FROM services WHERE id = $1"
         )
+        .bind(payload.service_id)
         .fetch_optional(&state.pg)
         .await?;
 
@@ -1503,17 +1570,18 @@ async fn estimate_delivery_costs(
 
     // 2. Récupérer le billing_mode depuis product_delivery_config
     let (billing_mode, is_delivery_free) = if let Some(product_index) = payload.product_index {
-        let config = sqlx::query!(
+        let config: Option<BillingModeRow> = sqlx::query_as(
             "SELECT billing_mode FROM product_delivery_config 
-             WHERE service_id = $1 AND product_index = $2",
-            payload.service_id,
-            product_index
+             WHERE service_id = $1 AND product_index = $2"
         )
+        .bind(payload.service_id)
+        .bind(product_index)
         .fetch_optional(&state.pg)
         .await?;
 
         let mode = config
-            .and_then(|c| c.billing_mode)
+            .as_ref()
+            .and_then(|c| c.billing_mode.clone())
             .unwrap_or_else(|| "standard".to_string());
         let is_free = mode == "merchant_inclusive";
         (mode, is_free)
