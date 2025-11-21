@@ -25,16 +25,16 @@ use chrono::{DateTime, Utc};
 #[derive(FromRow)]
 struct PaymentAttemptWebhookRow {
     id: i32,
-    payment_id: String,
+    _payment_id: String,
     user_id: i32,
     amount_xaf: i64,
-    currency: String,
-    payment_method: String,
-    phone_number: Option<String>,
+    _currency: String,
+    _payment_method: String,
+    _phone_number: Option<String>,
     status: String,
-    transaction_id: Option<String>,
-    created_at: DateTime<Utc>,
-    confirmed_at: Option<DateTime<Utc>>,
+    _transaction_id: Option<String>,
+    _created_at: DateTime<Utc>,
+    _confirmed_at: Option<DateTime<Utc>>,
 }
 
 type HmacSha256 = Hmac<Sha256>;

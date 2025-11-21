@@ -43,14 +43,14 @@ struct ReservationUserAmountRow {
 #[derive(FromRow)]
 struct ReservationProductCommissionRow {
     product_price_cents: i64,
-    commission_rate: Option<bigdecimal::BigDecimal>,
+    _commission_rate: Option<bigdecimal::BigDecimal>,
 }
 
 #[derive(FromRow)]
 struct ReservationProductDeliveryRow {
     product_price_cents: i64,
     delivery_cost_cents: i64,
-    billing_mode: Option<String>,
+    _billing_mode: Option<String>,
     merchant_pays_delivery: Option<bool>,
 }
 

@@ -47,7 +47,7 @@ impl ProductAvailabilityService {
         // Récupérer la configuration de livraison du produit
         struct Config {
             preparation_time_minutes: Option<i32>,
-            max_preparation_time_minutes: Option<i32>,
+            _max_preparation_time_minutes: Option<i32>,
             availability_days: Option<Value>,
             is_immediately_available: Option<bool>,
             pickup_availability_schedule: Option<Value>,

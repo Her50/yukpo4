@@ -116,7 +116,7 @@ impl OrderPreparationService {
         struct Config {
             preparation_time_minutes: Option<i32>,
             is_immediately_available: Option<bool>,
-            max_preparation_time_minutes: Option<i32>,
+            _max_preparation_time_minutes: Option<i32>,
         }
         
         let config: Option<Config> = sqlx::query(

@@ -4,15 +4,15 @@ use sqlx::{FromRow, Row};
 #[derive(FromRow)]
 struct ServiceSearchRow {
     id: i32,
-    user_id: i32,
+    _user_id: i32,
     data: serde_json::Value,
-    is_active: bool,
+    _is_active: bool,
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(FromRow)]
 struct ServiceIdRow {
-    id: i32,
+    _id: i32,
 }
 
 // use crate::utils::embedding_client::SearchEmbeddingPineconeRequest; // SUSPENDU - Recherche native PostgreSQL uniquement

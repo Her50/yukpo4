@@ -42,8 +42,8 @@ struct ClientDeliveryPreferencesFullRow {
     urgency_level: Option<String>,
     is_flexible: Option<bool>,
     flexibility_window_days: Option<i32>,
-    created_at: sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,
-    updated_at: sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,
+    _created_at: sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,
+    _updated_at: sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,
 }
 
 #[derive(FromRow)]
@@ -63,14 +63,14 @@ struct ProductDeliveryConfigRow {
 
 #[derive(FromRow)]
 struct ServiceDataGpsRow {
-    data: Value,
+    _data: Value,
     gps: Option<String>,
 }
 
 #[derive(FromRow)]
 struct UserGpsNameRow {
     gps: Option<String>,
-    nom_complet: Option<String>,
+    _nom_complet: Option<String>,
 }
 
 #[derive(FromRow)]

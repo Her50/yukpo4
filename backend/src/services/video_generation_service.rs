@@ -35,7 +35,7 @@ struct MediaRow {
     id: i32,
     path: String,
     #[sqlx(rename = "type")]
-    media_type: String,
+    _media_type: String,
     ai_description: Option<String>,
 }
 

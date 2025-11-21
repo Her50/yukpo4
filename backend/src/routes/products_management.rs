@@ -17,12 +17,12 @@ pub struct ToggleProductRequest {
 
 #[derive(FromRow)]
 struct ProductIdRow {
-    id: i32,
+    _id: i32,
 }
 
 #[derive(FromRow)]
 struct DeletedProductRow {
-    id: i32,
+    _id: i32,
     service_id: i32,
     product_index: Option<i32>,
 }

@@ -22,7 +22,7 @@ struct ServiceInfoRow {
 
 #[derive(FromRow)]
 struct NotificationIdRow {
-    id: i32,
+    _id: i32,
 }
 
 /// Résultat de la validation d'un produit pour activation

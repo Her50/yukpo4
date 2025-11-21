@@ -290,6 +290,7 @@ impl ProviderAnalyticsService {
         };
 
         // Récupérer les raisons de rejet les plus fréquentes
+        #[allow(dead_code)]
         struct RejectionReasonRow {
             reason: Option<String>,
             count: i64,

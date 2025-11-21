@@ -24,7 +24,7 @@ pub async fn envoyer_alertes_prestataires(pool: &PgPool) -> Result<(), sqlx::Err
     struct ServiceAlertRow {
         id: i32,
         user_id: i32,
-        last_alert_sent_at: Option<NaiveDateTime>,
+        _last_alert_sent_at: Option<NaiveDateTime>,
     }
 
     // Récupérer les services désactivés sans alerte récente
@@ -91,8 +91,8 @@ pub async fn reactiver_service(
 
     #[derive(FromRow)]
     struct ServiceRow {
-        id: i32,
-        user_id: i32,
+        _id: i32,
+        _user_id: i32,
         is_active: bool,
     }
 

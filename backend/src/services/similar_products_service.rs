@@ -84,12 +84,12 @@ impl SimilarProductsService {
         struct OriginalCharacteristicsRow {
             characteristic_vector: Option<Vec<String>>,
             full_vector: Option<Vec<String>>,
-            product_labels: Option<Vec<String>>,
-            product_name: Option<String>,
+            _product_labels: Option<Vec<String>>,
+            _product_name: Option<String>,
             product_description: Option<String>,
-            category: Option<String>,
-            price: Option<String>,
-            pickup_address: Option<String>,
+            _category: Option<String>,
+            _price: Option<String>,
+            _pickup_address: Option<String>,
         }
         
         let original_characteristics: Option<OriginalCharacteristicsRow> = sqlx::query_as(
