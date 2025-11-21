@@ -47,7 +47,7 @@ impl ProductAvailabilityService {
         // Récupérer la configuration de livraison du produit
         struct Config {
             preparation_time_minutes: Option<i32>,
-            max_preparation_time_minutes: Option<i32>,
+            _max_preparation_time_minutes: Option<i32>,
             availability_days: Option<Value>,
             is_immediately_available: Option<bool>,
             pickup_availability_schedule: Option<Value>,
@@ -69,7 +69,7 @@ impl ProductAvailabilityService {
         .bind(product_index)
         .map(|row: sqlx::postgres::PgRow| Config {
             preparation_time_minutes: row.try_get("preparation_time_minutes").ok(),
-            max_preparation_time_minutes: row.try_get("max_preparation_time_minutes").ok(),
+            _max_preparation_time_minutes: row.try_get("max_preparation_time_minutes").ok(),
             availability_days: row.try_get("availability_days").ok(),
             is_immediately_available: row.try_get("is_immediately_available").ok(),
             pickup_availability_schedule: row.try_get("pickup_availability_schedule").ok(),

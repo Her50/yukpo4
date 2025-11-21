@@ -17,17 +17,17 @@ use chrono::{DateTime, Utc};
 
 #[derive(FromRow)]
 struct PaymentAttemptRow {
-    id: i32,
-    payment_id: String,
-    user_id: i32,
-    amount_xaf: i64,
-    currency: String,
-    payment_method: String,
-    phone_number: Option<String>,
-    status: String,
-    transaction_id: Option<String>,
-    created_at: DateTime<Utc>,
-    confirmed_at: Option<DateTime<Utc>>,
+    _id: i32,
+    _payment_id: String,
+    _user_id: i32,
+    _amount_xaf: i64,
+    _currency: String,
+    _payment_method: String,
+    _phone_number: Option<String>,
+    _status: String,
+    _transaction_id: Option<String>,
+    _created_at: DateTime<Utc>,
+    _confirmed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(FromRow)]

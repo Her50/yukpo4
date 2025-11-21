@@ -14,8 +14,8 @@ struct CountRow {
 
 #[derive(FromRow)]
 struct ServiceInfoRow {
-    id: i32,
-    user_id: i32,
+    _id: i32,
+    _user_id: i32,
     is_active: bool,
     is_tarissable: Option<bool>,
 }
