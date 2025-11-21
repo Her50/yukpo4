@@ -36,7 +36,7 @@ const HomeScreen: React.FC = () => {
     const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
     const { language, setLanguage, t } = useLanguageSafe(); // ✅ SAFE: Context de langue avec traduction (ne crash jamais)
     const { location } = useLocation(); // ✅ NOUVEAU PHASE 9: Pour contextualiser les recherches géographiques
-    const scrollViewRef = React.useRef<ScrollView>(null); // ✅ NOUVEAU: Référence pour scroll automatique
+    const scrollViewRef = React.useRef<ScrollView>(null) as React.RefObject<ScrollView>; // ✅ NOUVEAU: Référence pour scroll automatique
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -303,8 +303,8 @@ const HomeScreen: React.FC = () => {
                     searchQuery,
                     input.base64_image?.length > 0 ? 'image' : 'text',
                     {
-                        location_lat: location?.lat,
-                        location_lon: location?.lon,
+                        location_lat: location?.coords.latitude,
+                        location_lon: location?.coords.longitude,
                     }
                 ).catch((error) => {
                     console.error('[HomeScreen] Erreur enregistrement historique recherche:', error);
@@ -985,12 +985,13 @@ const styles = StyleSheet.create({
         minWidth: 100, // ✅ Réduit de 120 à 100 pour plus d'espace au centre
         maxWidth: 140, // ✅ Limite la largeur maximale
     },
-    // ✅ Conteneur pour le titre PARFAITEMENT centré au milieu
+    // ✅ Conteneur pour le titre équilibré - légèrement décalé à gauche
     brandTitleContainer: {
         flex: 1,
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
         paddingHorizontal: 4,
+        paddingLeft: 20, // ✅ Décalage à gauche pour équilibrer visuellement
         maxWidth: 120, // ✅ Limite la largeur maximale pour éviter le débordement
         minWidth: 60, // ✅ Largeur minimale pour garantir l'affichage
     },
