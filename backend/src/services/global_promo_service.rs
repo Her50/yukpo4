@@ -1307,7 +1307,7 @@ async fn notify_all_prestataires_event_created(
         // Créer la notification en base
         if let Err(err) = notification_service::create_notification(
             pool,
-            prestataire_id,
+            *prestataire_id,
             NotificationType::GlobalPromoEventCreated,
             title.clone(),
             body.clone(),
@@ -1322,7 +1322,7 @@ async fn notify_all_prestataires_event_created(
         // Envoyer la push notification
         if let Err(err) = push_notification_service::send_push_notification(
             pool,
-            prestataire_id,
+            *prestataire_id,
             title.clone(),
             body.clone(),
             Some(metadata.clone()),
