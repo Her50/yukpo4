@@ -104,26 +104,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let redis_url =
         env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
 
+    // Logger l'URL Redis utilisée (masquer le mot de passe)
+    let redis_url_display = if redis_url.contains("@") {
+        let parts: Vec<&str> = redis_url.split("@").collect();
+        if parts.len() == 2 {
+            let auth_part = parts[0].replace("redis://", "").replace("rediss://", "");
+            if auth_part.contains(":") {
+                let user_pass: Vec<&str> = auth_part.split(":").collect();
+                if user_pass.len() == 2 {
+                    format!("redis://{}:***@{}", user_pass[0], parts[1])
+                } else {
+                    format!("redis://***@{}", parts[1])
+                }
+            } else {
+                format!("redis://***@{}", parts[1])
+            }
+        } else {
+            redis_url.chars().take(50).collect::<String>()
+        }
+    } else {
+        redis_url.chars().take(50).collect::<String>()
+    };
+    
+    log::info!("🔍 Tentative de connexion Redis: {}...", redis_url_display);
+
     // Créer un client Redis et tester la connexion
     let (redis_client, redis_available_for_ws) = match RedisClient::open(redis_url.clone()) {
         Ok(client) => {
             // Tester la connexion réelle avec un timeout
             let test_conn = tokio::time::timeout(
-                std::time::Duration::from_secs(2),
+                std::time::Duration::from_secs(5), // Augmenté à 5 secondes
                 client.get_multiplexed_async_connection(),
             )
             .await;
             
             match test_conn {
                 Ok(Ok(_)) => {
+                    log::info!("✅ Connexion Redis établie avec succès");
                     println!("✅ Connexion Redis établie - Backend v2.1.4");
                     (client, true)
                 }
                 Ok(Err(e)) => {
-                    // Ne logger qu'en INFO pour les erreurs de connexion Redis (service optionnel)
                     let err_msg = format!("{}", e);
+                    log::warn!("⚠️ Redis: Échec de connexion - URL: {}... Erreur: {}", redis_url_display, err_msg);
                     if err_msg.contains("Name or service not known") || err_msg.contains("Connection refused") {
-                        log::info!("ℹ️ Redis non disponible (service optionnel). WebSocket de livraison fonctionnera sans Redis.");
+                        log::info!("ℹ️ Redis non disponible (service optionnel). Vérifiez que REDIS_URL est correcte sur Render.com. WebSocket fonctionnera sans Redis.");
                     } else {
                         log::warn!("⚠️ Redis URL configurée mais connexion impossible: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
                     }
@@ -135,6 +160,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     (dummy_client, false)
                 }
                 Err(_e) => {
+                    log::warn!("⚠️ Redis: Timeout de connexion (5s) - URL: {}... Vérifiez que le serveur Redis est accessible.", redis_url_display);
                     log::info!("ℹ️ Redis timeout de connexion (service optionnel). WebSocket de livraison fonctionnera sans Redis.");
                     // Créer un client factice pour les autres services qui peuvent gérer l'absence de Redis
                     let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
@@ -146,6 +172,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Err(e) => {
+            log::error!("❌ Redis: Impossible de créer le client - URL: {}... Erreur: {}", redis_url_display, e);
             log::warn!("⚠️ Erreur création client Redis: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
             // Créer un client factice pour les autres services
             let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {

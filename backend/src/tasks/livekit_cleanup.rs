@@ -30,9 +30,20 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
             if err_str.contains("connection refused") 
                 || err_str.contains("connexion refusée")
                 || err_str.contains("tcp connect error")
-                || err_str.contains("service non disponible") {
+                || err_str.contains("service non disponible")
+                || err_str.contains("manquant") {
                 if !connection_error_logged_first.swap(true, Ordering::Relaxed) {
-                    log::info!("ℹ️ LiveKit non disponible (service optionnel). Nettoyage automatique désactivé.");
+                    let config = immediate_state.live_streaming.clone();
+                    let api_url = config.livekit_api_url.as_ref()
+                        .map(|u| format!("{}...", u.chars().take(30).collect::<String>()))
+                        .unwrap_or_else(|| "NON DÉFINIE".to_string());
+                    
+                    if err_str.contains("manquant") {
+                        log::warn!("⚠️ LiveKit: Variables d'environnement manquantes. Vérifiez LIVEKIT_API_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET sur Render.com");
+                    } else {
+                        log::warn!("⚠️ LiveKit: Connexion impossible - URL: {}. Vérifiez que LIVEKIT_API_URL est correcte sur Render.com", api_url);
+                        log::info!("ℹ️ LiveKit non disponible (service optionnel). Nettoyage automatique désactivé.");
+                    }
                 }
             } else {
                 log::warn!("LiveKit cleanup initial failed: {err:?}");
