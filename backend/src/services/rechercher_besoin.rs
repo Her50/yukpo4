@@ -1,5 +1,4 @@
 use crate::core::types::AppResult;
-use chrono::Utc;
 use sqlx::{FromRow, Row};
 
 #[derive(FromRow)]

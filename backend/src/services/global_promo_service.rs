@@ -1062,7 +1062,7 @@ async fn activate_due_events(pool: &PgPool, now: DateTime<Utc>) -> AppResult<usi
     let mut counter = 0usize;
     for row in rows {
         let event_id: Uuid = row.try_get("id")?;
-        let event_name: String = row.try_get("display_name")?;
+        let _event_name: String = row.try_get("display_name")?;
         
         sqlx::query(
             "UPDATE global_promo_events SET status = 'live', updated_at = NOW() WHERE id = $1",
@@ -1303,7 +1303,7 @@ async fn notify_all_prestataires_event_created(
     });
 
     let prestataires_count = prestataires.len();
-    for prestataire_id in prestataires {
+    for prestataire_id in &prestataires {
         // Créer la notification en base
         if let Err(err) = notification_service::create_notification(
             pool,
@@ -1334,7 +1334,7 @@ async fn notify_all_prestataires_event_created(
         }
     }
 
-    info!("Notified {} prestataires about new Black Friday event: {}", prestataires.len(), event.display_name);
+    info!("Notified {} prestataires about new Black Friday event: {}", prestataires_count, event.display_name);
     Ok(())
 }
 
