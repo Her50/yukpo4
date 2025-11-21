@@ -36,7 +36,7 @@ const HomeScreen: React.FC = () => {
     const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
     const { language, setLanguage, t } = useLanguageSafe(); // ✅ SAFE: Context de langue avec traduction (ne crash jamais)
     const { location } = useLocation(); // ✅ NOUVEAU PHASE 9: Pour contextualiser les recherches géographiques
-    const scrollViewRef = React.useRef<ScrollView>(null) as React.RefObject<ScrollView>; // ✅ NOUVEAU: Référence pour scroll automatique
+    const scrollViewRef = React.useRef<ReactNative.ScrollView>(null); // ✅ NOUVEAU: Référence pour scroll automatique
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
