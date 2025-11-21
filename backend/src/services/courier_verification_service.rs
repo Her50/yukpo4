@@ -159,15 +159,16 @@ impl CourierVerificationService {
         );
 
         // Récupérer le code de vérification
+        #[allow(dead_code)]
         struct VerificationRow {
             id: Uuid,
             delivery_id: Uuid,
             order_id: Option<Uuid>,
             courier_id: Option<i32>,
-            _verification_code: String,
+            verification_code: String,
             expires_at: Option<DateTime<Utc>>,
             verified_at: Option<DateTime<Utc>>,
-            _user_id: Option<i32>,
+            user_id: Option<i32>,
             nom_complet: Option<String>,
             nom: Option<String>,
             prenom: Option<String>,

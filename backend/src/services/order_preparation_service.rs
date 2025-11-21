@@ -113,10 +113,11 @@ impl OrderPreparationService {
         );
 
         // Récupérer la configuration de livraison
+        #[allow(dead_code)]
         struct Config {
             preparation_time_minutes: Option<i32>,
             is_immediately_available: Option<bool>,
-            _max_preparation_time_minutes: Option<i32>,
+            max_preparation_time_minutes: Option<i32>,
         }
         
         let config: Option<Config> = sqlx::query(
