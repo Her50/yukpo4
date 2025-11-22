@@ -2,8 +2,15 @@ use std::collections::HashSet;
 
 use chrono::{DateTime, Utc};
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
+
+#[derive(FromRow)]
+struct ServiceInteractionRow {
+    #[sqlx(rename = "user_id")]
+    user_id: i32,
+    last_interaction: chrono::DateTime<chrono::Utc>,
+}
 
 use crate::services::{
     notification_service::{self, NotificationType},
@@ -19,9 +26,9 @@ async fn fetch_recent_audience(
     exclude_user_id: i32,
 ) -> anyhow::Result<Vec<i32>> {
     let lookback_days: i32 = AUDIENCE_LOOKBACK_DAYS as i32;
-    let rows = sqlx::query!(
+    let rows: Vec<ServiceInteractionRow> = sqlx::query_as(
         r#"
-        SELECT user_id AS "user_id!", MAX(created_at) AS last_interaction
+        SELECT user_id, MAX(created_at) AS last_interaction
         FROM service_interactions_tracking
         WHERE service_id = $1
           AND user_id IS NOT NULL
@@ -30,12 +37,12 @@ async fn fetch_recent_audience(
         GROUP BY user_id
         ORDER BY last_interaction DESC
         LIMIT $4
-        "#,
-        service_id,
-        exclude_user_id,
-        lookback_days,
-        AUDIENCE_LIMIT
+        "#
     )
+    .bind(service_id)
+    .bind(exclude_user_id)
+    .bind(lookback_days)
+    .bind(AUDIENCE_LIMIT)
     .fetch_all(pool)
     .await?;
 

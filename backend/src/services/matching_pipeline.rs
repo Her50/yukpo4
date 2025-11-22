@@ -1,7 +1,15 @@
 // Rust: Pipeline de matching dynamique Yukpo (pseudo-code simplifi?)
 use crate::utils::embedding_client::{EmbeddingClient, SearchEmbeddingPineconeRequest};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
+use serde_json::Value;
 // use crate::services::semantic_exclusion::is_excluded_semantic_field;
+
+#[derive(FromRow)]
+struct ServiceDataGpsRow {
+    id: i32,
+    data: Value,
+    gps: Option<String>,
+}
 
 pub struct MatchedService {
     pub service_id: i32,
@@ -132,10 +140,10 @@ pub async fn match_services(
     // Fetch real service data and interaction score
     let mut results = Vec::new();
     for (&service_id, &semantic_score) in &best_scores {
-        let rec = sqlx::query!(
-            "SELECT id, data, gps FROM services WHERE id = $1",
-            service_id
+        let rec: Option<ServiceDataGpsRow> = sqlx::query_as(
+            "SELECT id, data, gps FROM services WHERE id = $1"
         )
+        .bind(service_id)
         .fetch_optional(pool)
         .await?;
         if let Some(svc) = rec {

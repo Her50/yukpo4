@@ -2130,12 +2130,31 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
         if !has_ai_confidence {
             warn!("⚠️ Colonne ai_confidence manquante, ajout en cours...");
             sqlx::query(
-                "ALTER TABLE autocomplete_combinations ADD COLUMN IF NOT EXISTS ai_confidence REAL DEFAULT 0.5"
+                "ALTER TABLE autocomplete_combinations ADD COLUMN IF NOT EXISTS ai_confidence DOUBLE PRECISION DEFAULT 0.5"
             )
             .execute(pool)
             .await?;
 
             info!("✅ Colonne ai_confidence ajoutée");
+        } else {
+            // ✅ CORRECTION : Vérifier et convertir REAL (FLOAT4) en DOUBLE PRECISION (FLOAT8) si nécessaire
+            let current_type = sqlx::query_scalar::<_, String>(
+                "SELECT data_type FROM information_schema.columns WHERE table_name = 'autocomplete_combinations' AND column_name = 'ai_confidence'"
+            )
+            .fetch_optional(pool)
+            .await?;
+
+            if let Some(Some(col_type)) = current_type {
+                if col_type == "real" {
+                    warn!("⚠️ Colonne ai_confidence est REAL, conversion en DOUBLE PRECISION...");
+                    sqlx::query(
+                        "ALTER TABLE autocomplete_combinations ALTER COLUMN ai_confidence TYPE DOUBLE PRECISION USING ai_confidence::DOUBLE PRECISION"
+                    )
+                    .execute(pool)
+                    .await?;
+                    info!("✅ Colonne ai_confidence convertie en DOUBLE PRECISION");
+                }
+            }
         }
 
         // ✅ NOUVEAU 2025-11-05: Recréer la fonction upsert_autocomplete_combination avec les bons paramètres
@@ -2150,7 +2169,7 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
                 p_location_labels TEXT[],
                 p_chosen_location TEXT,
                 p_is_ai_preferred BOOLEAN,
-                p_ai_confidence FLOAT,
+                p_ai_confidence DOUBLE PRECISION,
                 p_session_id TEXT,
                 p_has_variant BOOLEAN,
                 p_variant_dimension TEXT,
@@ -2255,7 +2274,7 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
             location_labels TEXT[] DEFAULT '{}',
             usage_count INTEGER DEFAULT 1,
             is_ai_preferred BOOLEAN DEFAULT FALSE,
-            ai_confidence FLOAT DEFAULT 0.0,
+            ai_confidence DOUBLE PRECISION DEFAULT 0.0,
             session_id TEXT,
             has_variant BOOLEAN DEFAULT FALSE,
             variant_dimension TEXT,

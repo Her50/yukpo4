@@ -4302,6 +4302,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Response complet:', JSON.stringify(response, null, 2));
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Payload qui a causé l\'erreur:', JSON.stringify(servicePayload, null, 2));
 
+                  // ✅ CORRECTION : Réinitialiser le loading AVANT l'Alert pour éviter que le bouton tourne indéfiniment
+                  setIsSubmitting(false);
+                  setLoading(false);
+
                   // ✅ AMÉLIORATION : Construire un log d'erreur détaillé copiable
                   const errorLog = {
                     timestamp: new Date().toISOString(),
@@ -4360,7 +4364,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       { text: 'OK', style: 'cancel' }
                     ]
                   );
-                  throw new Error(`Erreur création service: ${errorMessage}`);
+                  return; // ✅ CORRECTION : Retourner au lieu de throw pour éviter le catch
                 }
 
                 const result: any = response.data;

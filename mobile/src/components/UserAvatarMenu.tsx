@@ -22,6 +22,12 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             description: 'Voir mon historique de transactions'
         },
         {
+            title: 'Devenir coursier dans yukpo',
+            icon: '🚴',
+            route: 'CourierRegistration',
+            description: 'Rejoignez notre équipe de coursiers'
+        },
+        {
             title: 'Contacter le Support',
             icon: '💬',
             route: 'Contact',

@@ -17,7 +17,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import NativeDatePicker from '../../components/NativeDatePicker';
 import NativeTimePicker from '../../components/NativeTimePicker';
 import SafeIcon from '../../components/SafeIcon';
-import { VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT } from '../../config/deliveryConfig';
+import { VEHICLE_TRANSPORT_OPTIONS, VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT } from '../../config/deliveryConfig';
 import { useLocation } from '../../contexts/LocationContext';
 import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -49,6 +49,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
     // État informations colis
     const [parcelType, setParcelType] = useState<'document' | 'package' | 'moving' | 'cake' | 'other'>('package');
     const [transportMode, setTransportMode] = useState<string>(''); // Mode de transport souhaité
+    const [showTransportModal, setShowTransportModal] = useState(false); // Modal de sélection du transport
     const [weight, setWeight] = useState<string>('');
     const [volume, setVolume] = useState<string>('');
     const [declaredValue, setDeclaredValue] = useState<string>('');
@@ -646,18 +647,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             <TouchableOpacity
                                 style={styles.pickerButton}
                                 onPress={() => {
-                                    // ✅ CORRECTION : Utiliser la constante partagée pour aligner avec la création de coursier
-                                    Alert.alert(
-                                        'Mode de transport',
-                                        'Choisissez le mode de transport souhaité pour cette livraison',
-                                        [
-                                            ...VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT.map(opt => ({
-                                                text: opt.label,
-                                                onPress: () => setTransportMode(opt.value),
-                                            })),
-                                            { text: 'Aucune préférence', onPress: () => setTransportMode(''), style: 'cancel' },
-                                        ]
-                                    );
+                                    // ✅ NOUVEAU : Utiliser un modal personnalisé pour afficher toutes les options
+                                    setShowTransportModal(true);
                                 }}
                             >
                                 <Text style={styles.pickerText}>
@@ -1131,6 +1122,82 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                 title="Sélectionner le point de livraison"
                 allowZoneSelection={false}
             />
+
+            {/* ✅ NOUVEAU : Modal de sélection du mode de transport avec toutes les options */}
+            <Modal
+                visible={showTransportModal}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowTransportModal(false)}
+            >
+                <View style={styles.transportModalOverlay}>
+                    <View style={styles.transportModalContent}>
+                        <View style={styles.transportModalHeader}>
+                            <Text style={styles.transportModalTitle}>Mode de transport</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowTransportModal(false)}
+                                style={styles.transportModalCloseButton}
+                            >
+                                <SafeIcon name="x" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.transportModalSubtitle}>
+                            Choisissez le mode de transport souhaité pour cette livraison
+                        </Text>
+                        <ScrollView style={styles.transportModalScroll} showsVerticalScrollIndicator={true}>
+                            {VEHICLE_TRANSPORT_OPTIONS.map((option) => (
+                                <TouchableOpacity
+                                    key={option.value}
+                                    style={[
+                                        styles.transportOption,
+                                        transportMode === option.value && styles.transportOptionSelected,
+                                    ]}
+                                    onPress={() => {
+                                        setTransportMode(option.value);
+                                        setShowTransportModal(false);
+                                    }}
+                                >
+                                    <Text style={styles.transportOptionIcon}>{option.icon}</Text>
+                                    <Text
+                                        style={[
+                                            styles.transportOptionLabel,
+                                            transportMode === option.value && styles.transportOptionLabelSelected,
+                                        ]}
+                                    >
+                                        {option.label}
+                                    </Text>
+                                    {transportMode === option.value && (
+                                        <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                            <TouchableOpacity
+                                style={[
+                                    styles.transportOption,
+                                    transportMode === '' && styles.transportOptionSelected,
+                                ]}
+                                onPress={() => {
+                                    setTransportMode('');
+                                    setShowTransportModal(false);
+                                }}
+                            >
+                                <Text style={styles.transportOptionIcon}>🚫</Text>
+                                <Text
+                                    style={[
+                                        styles.transportOptionLabel,
+                                        transportMode === '' && styles.transportOptionLabelSelected,
+                                    ]}
+                                >
+                                    Aucune préférence
+                                </Text>
+                                {transportMode === '' && (
+                                    <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                )}
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </>
     );
 };
@@ -1452,6 +1519,74 @@ const styles = StyleSheet.create({
         // Réduction de l'espace pour MediaUploadManager
         transform: [{ scale: 0.95 }],
         marginHorizontal: -4,
+    },
+    // ✅ NOUVEAU : Styles pour le modal de sélection du transport
+    transportModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    transportModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '80%',
+        paddingBottom: 20,
+    },
+    transportModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    transportModalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    transportModalCloseButton: {
+        padding: 4,
+    },
+    transportModalSubtitle: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        paddingBottom: 8,
+    },
+    transportModalScroll: {
+        maxHeight: 400,
+    },
+    transportOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        marginHorizontal: 20,
+        marginVertical: 4,
+        borderRadius: 12,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    transportOptionSelected: {
+        backgroundColor: '#EFF6FF',
+        borderColor: modernColors.primary,
+    },
+    transportOptionIcon: {
+        fontSize: 28,
+        marginRight: 12,
+    },
+    transportOptionLabel: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '500',
+        color: modernColors.text,
+    },
+    transportOptionLabelSelected: {
+        color: modernColors.primary,
+        fontWeight: '600',
     },
     textArea: {
         minHeight: 100,

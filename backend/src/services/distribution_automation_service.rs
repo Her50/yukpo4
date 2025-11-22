@@ -3,7 +3,18 @@ use std::sync::Arc;
 use chrono::Utc;
 use log::{error, info, warn};
 use serde_json::{json, Value};
+use sqlx::FromRow;
 use tokio::time::{sleep, Duration};
+
+#[derive(FromRow)]
+struct MediaServiceContextRow {
+    path: String,
+    ai_description: Option<String>,
+    ai_tags: Option<Vec<String>>,
+    ai_metadata: Option<Value>,
+    #[sqlx(rename = "service_data")]
+    service_data: Value,
+}
 
 use crate::{
     core::types::{AppError, AppResult},
@@ -110,22 +121,22 @@ async fn fetch_distribution_context(
     product_index: i32,
     provided_snapshot: Option<ProductConnectorSnapshot>,
 ) -> AppResult<DistributionContext> {
-    let row = sqlx::query!(
+    let row: MediaServiceContextRow = sqlx::query_as(
         r#"
         SELECT
             m.path,
             m.ai_description,
             m.ai_tags,
             m.ai_metadata,
-            s.data                AS "service_data: serde_json::Value"
+            s.data AS service_data
         FROM media m
         JOIN services s ON s.id = m.service_id
         WHERE m.id = $1
           AND s.id = $2
-        "#,
-        media_id,
-        service_id
+        "#
     )
+    .bind(media_id)
+    .bind(service_id)
     .fetch_one(&state.pg)
     .await
     .map_err(|err| {
@@ -237,7 +248,7 @@ async fn mark_distribution_processing(
         }
     }
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE media_distribution
         SET status = 'processing',
@@ -245,11 +256,11 @@ async fn mark_distribution_processing(
             updated_at = NOW()
         WHERE media_id = $2
           AND target = $3
-        "#,
-        merged,
-        media_id,
-        target
+        "#
     )
+    .bind(merged)
+    .bind(media_id)
+    .bind(target)
     .execute(&state.pg)
     .await
     .map_err(AppError::from)?;
@@ -270,7 +281,7 @@ async fn update_missing_connector(
         "product_snapshot": product_snapshot.map(product_snapshot_summary),
     });
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE media_distribution
         SET status = 'waiting_connector',
@@ -278,11 +289,11 @@ async fn update_missing_connector(
             updated_at = NOW()
         WHERE media_id = $2
           AND target = $3
-        "#,
-        payload,
-        media_id,
-        target
+        "#
     )
+    .bind(payload)
+    .bind(media_id)
+    .bind(target)
     .execute(&state.pg)
     .await
     .map_err(AppError::from)?;

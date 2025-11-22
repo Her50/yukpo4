@@ -1,9 +1,23 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use serde_json::{json, Value};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 
 use crate::core::types::{AppError, AppResult};
+
+#[derive(FromRow)]
+struct ProductLifecycleServiceRow {
+    id: i32,
+    product_nom: String,
+    product_type: String,
+    is_active: Option<bool>,
+    auto_deactivate_at: Option<DateTime<Utc>>,
+    last_reactivated_at: Option<DateTime<Utc>>,
+    reactivation_cost: Option<i64>,
+    deactivation_count: Option<i32>,
+    #[sqlx(rename = "service_data")]
+    service_data: Value,
+}
 
 #[derive(Clone)]
 pub struct CommerceConnectorService {
@@ -20,7 +34,7 @@ impl CommerceConnectorService {
         service_id: i32,
         product_index: i32,
     ) -> AppResult<ProductConnectorSnapshot> {
-        let row = sqlx::query!(
+        let row: Option<ProductLifecycleServiceRow> = sqlx::query_as(
             r#"
             SELECT
                 pl.id,
@@ -31,15 +45,15 @@ impl CommerceConnectorService {
                 pl.last_reactivated_at,
                 pl.reactivation_cost,
                 pl.deactivation_count,
-                s.data AS "service_data: serde_json::Value"
+                s.data AS service_data
             FROM products_lifecycle pl
             JOIN services s ON s.id = pl.service_id
             WHERE pl.service_id = $1
               AND pl.product_index = $2
-            "#,
-            service_id,
-            product_index
+            "#
         )
+        .bind(service_id)
+        .bind(product_index)
         .fetch_optional(&self.pool)
         .await
         .map_err(AppError::from)?;

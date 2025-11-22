@@ -3,8 +3,18 @@ use std::sync::Arc;
 use chrono::Utc;
 use reqwest::Client;
 use serde_json::Value;
+use sqlx::FromRow;
+use uuid::Uuid;
 
 use crate::{core::types::AppResult, state::AppState};
+
+#[derive(FromRow)]
+struct DeliverySlaRow {
+    id: Uuid,
+    requested_at: Option<chrono::DateTime<chrono::Utc>>,
+    delivered_at: Option<chrono::DateTime<chrono::Utc>>,
+    metadata: Option<Value>,
+}
 
 #[derive(Clone, Debug)]
 pub struct DeliverySlaMonitorConfig {
@@ -68,7 +78,7 @@ impl DeliverySlaMonitor {
     }
 
     pub async fn run_once(&self) -> AppResult<()> {
-        let rows = sqlx::query!(
+        let rows: Vec<DeliverySlaRow> = sqlx::query_as(
             r#"
             SELECT
                 id,
@@ -78,9 +88,9 @@ impl DeliverySlaMonitor {
             FROM deliveries
             WHERE delivered_at IS NOT NULL
               AND delivered_at >= NOW() - ($1::int * INTERVAL '1 minute')
-            "#,
-            self.config.lookback_minutes as i32
+            "#
         )
+        .bind(self.config.lookback_minutes as i32)
         .fetch_all(&self.state.pg)
         .await?;
 

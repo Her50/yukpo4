@@ -170,10 +170,10 @@ pub async fn enregistrer_consultation(
 
     // 4. Si solde <= 0, désactiver tous les services du prestataire (PostgreSQL)
     if tokens_after <= 0 {
-        sqlx::query!(
-            "UPDATE services SET is_active = FALSE WHERE user_id = $1",
-            provider_id
+        sqlx::query(
+            "UPDATE services SET is_active = FALSE WHERE user_id = $1"
         )
+        .bind(provider_id)
         .execute(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur désactivation services: {}", e)))?;
@@ -434,24 +434,38 @@ async fn fetch_service_and_provider_snapshot(
     pool: &PgPool,
     service_id: i32,
 ) -> AppResult<Option<(ServiceHistorySnapshot, UserHistorySnapshot)>> {
-    let record = sqlx::query!(
+    #[derive(sqlx::FromRow)]
+    struct ServiceProviderSnapshotRow {
+        user_id: i32,
+        #[sqlx(rename = "data")]
+        data: serde_json::Value,
+        is_active: bool,
+        category: Option<String>,
+        provider_nom: Option<String>,
+        provider_prenom: Option<String>,
+        provider_nom_complet: Option<String>,
+        provider_avatar_url: Option<String>,
+        provider_tokens_balance: i64,
+    }
+    
+    let record: Option<ServiceProviderSnapshotRow> = sqlx::query_as(
         r#"
             SELECT
                 s.user_id,
-                s.data                        AS "data: serde_json::Value",
+                s.data,
                 s.is_active,
                 s.category,
                 u.nom               AS provider_nom,
                 u.prenom            AS provider_prenom,
                 u.nom_complet       AS provider_nom_complet,
                 u.avatar_url        AS provider_avatar_url,
-                u.tokens_balance    AS "provider_tokens_balance: i64"
+                u.tokens_balance    AS provider_tokens_balance
             FROM services s
             JOIN users u ON u.id = s.user_id
             WHERE s.id = $1
-        "#,
-        service_id
+        "#
     )
+    .bind(service_id)
     .fetch_optional(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération service: {}", e)))?;

@@ -294,15 +294,15 @@ const VideoCreationIntroScreen: React.FC = () => {
 
                 <Animated.View style={[styles.benefits, fadeUp(contentAnim, 14)]}>
                     <View style={styles.benefitItem}>
-                        <Text style={styles.benefitIcon}>📱</Text>
+                        <Text style={styles.benefitIcon}>🎬</Text>
                         <Text style={styles.benefitText}>{t('video.intro.benefit.timeline')}</Text>
                     </View>
                     <View style={styles.benefitItem}>
-                        <Text style={styles.benefitIcon}>📱</Text>
+                        <Text style={styles.benefitIcon}>✨</Text>
                         <Text style={styles.benefitText}>{t('video.intro.benefit.broll')}</Text>
                     </View>
                     <View style={styles.benefitItem}>
-                        <Text style={styles.benefitIcon}>📱</Text>
+                        <Text style={styles.benefitIcon}>🔊</Text>
                         <Text style={styles.benefitText}>{t('video.intro.benefit.audio')}</Text>
                     </View>
                 </Animated.View>

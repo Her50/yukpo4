@@ -5,7 +5,17 @@ use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use bigdecimal::{BigDecimal, FromPrimitive};
 use reqwest::{Client, StatusCode};
-use sqlx::{types::Uuid, PgConnection, PgPool};
+use sqlx::{types::Uuid, FromRow, PgConnection, PgPool};
+
+#[derive(FromRow)]
+struct LiveSessionUpdateRow {
+    #[sqlx(rename = "id")]
+    id: Uuid,
+    #[sqlx(rename = "peak_viewers")]
+    peak_viewers: i32,
+    #[sqlx(rename = "total_watch_time_seconds")]
+    total_watch_time_seconds: i64,
+}
 
 use crate::{
     config::live_streaming::LiveStreamingConfig, state::AppState,
@@ -179,7 +189,7 @@ async fn update_session_metrics(
 ) -> Result<()> {
     let mut tx = pool.begin().await?;
 
-    let record = sqlx::query!(
+    let record: Option<LiveSessionUpdateRow> = sqlx::query_as(
         r#"
         UPDATE live_sessions
         SET
@@ -192,14 +202,12 @@ async fn update_session_metrics(
             END,
             updated_at = NOW()
         WHERE livekit_room_name = $1
-        RETURNING id                              AS "id: Uuid",
-                  peak_viewers                    AS "peak_viewers: i32",
-                  total_watch_time_seconds        AS "total_watch_time_seconds: i64"
-        "#,
-        room_name,
-        viewers,
-        interval_secs
+        RETURNING id, peak_viewers, total_watch_time_seconds
+        "#
     )
+    .bind(room_name)
+    .bind(viewers)
+    .bind(interval_secs)
     .fetch_optional(&mut *tx)
     .await?;
 
@@ -243,7 +251,7 @@ async fn upsert_analytics(
         BigDecimal::from_f64(average_watch).unwrap_or_else(|| BigDecimal::from(0));
     let revenue_cfa_bd = BigDecimal::from_f64(revenue_cfa).unwrap_or_else(|| BigDecimal::from(0));
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO live_session_analytics (
             live_session_id,
@@ -267,16 +275,16 @@ async fn upsert_analytics(
             conversions = EXCLUDED.conversions,
             revenue_cfa = EXCLUDED.revenue_cfa,
             last_synced_at = NOW()
-        "#,
-        session_id,
-        webrtc_viewers,
-        peak_viewers,
-        webrtc_viewers,
-        total_watch,
-        average_watch_bd,
-        conversions,
-        revenue_cfa_bd,
+        "#
     )
+    .bind(session_id)
+    .bind(webrtc_viewers)
+    .bind(peak_viewers)
+    .bind(webrtc_viewers)
+    .bind(total_watch)
+    .bind(average_watch_bd)
+    .bind(conversions)
+    .bind(revenue_cfa_bd)
     .execute(conn)
     .await?;
 

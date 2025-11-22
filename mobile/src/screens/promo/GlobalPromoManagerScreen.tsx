@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -10,7 +11,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import useGlobalPromos from '../../hooks/useGlobalPromos';
@@ -500,7 +500,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                     <Text style={styles.emptyText}>
                                         {loadingEntries
                                             ? 'Chargement des produits...'
-                                            : 'Aucun produit n'est rattaché à cette campagne.'}
+                                            : "Aucun produit n'est rattaché à cette campagne."}
                                     </Text>
                                 )}
                             </View>

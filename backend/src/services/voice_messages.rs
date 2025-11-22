@@ -1,11 +1,11 @@
 use crate::core::types::AppResult;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use std::path::PathBuf;
 use tokio::fs;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct VoiceMessage {
     pub id: String,
     pub user_id: i32,
@@ -91,8 +91,7 @@ impl VoiceMessageService {
         fs::write(&file_path, audio_data).await?;
 
         // Enregistrer en base de données
-        let voice_message = sqlx::query_as!(
-            VoiceMessage,
+        let voice_message: VoiceMessage = sqlx::query_as(
             r#"
             INSERT INTO voice_messages (
                 id, user_id, chat_id, file_path, duration_seconds, 
@@ -100,16 +99,16 @@ impl VoiceMessageService {
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, false)
             RETURNING id, user_id, chat_id, file_path, duration_seconds, 
-                      file_size_bytes, mime_type, created_at, is_processed, transcription
-            "#,
-            file_id.to_string(),
-            user_id,
-            request.chat_id,
-            file_path.to_string_lossy(),
-            request.duration_seconds,
-            audio_data.len() as i64, // Changed from u64 to i64
-            request.mime_type,
+                      file_size_bytes, mime_type, created_at, updated_at, is_processed, transcription
+            "#
         )
+        .bind(file_id.to_string())
+        .bind(user_id)
+        .bind(&request.chat_id)
+        .bind(file_path.to_string_lossy().to_string())
+        .bind(request.duration_seconds)
+        .bind(audio_data.len() as i64)
+        .bind(&request.mime_type)
         .fetch_one(&self.pool)
         .await?;
 
@@ -126,11 +125,10 @@ impl VoiceMessageService {
 
     /// Récupérer un message vocal
     pub async fn get_voice_message(&self, message_id: &str) -> AppResult<VoiceMessage> {
-        let voice_message = sqlx::query_as!(
-            VoiceMessage,
-            "SELECT id, user_id, chat_id, file_path, duration_seconds, file_size_bytes, mime_type, created_at, updated_at, is_processed, transcription FROM voice_messages WHERE id = $1",
-            message_id
+        let voice_message: VoiceMessage = sqlx::query_as(
+            "SELECT id, user_id, chat_id, file_path, duration_seconds, file_size_bytes, mime_type, created_at, updated_at, is_processed, transcription FROM voice_messages WHERE id = $1"
         )
+        .bind(message_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -139,11 +137,10 @@ impl VoiceMessageService {
 
     /// Récupérer tous les messages vocaux d'un chat
     pub async fn get_chat_voice_messages(&self, chat_id: &str) -> AppResult<Vec<VoiceMessage>> {
-        let voice_messages = sqlx::query_as!(
-            VoiceMessage,
-            "SELECT id, user_id, chat_id, file_path, duration_seconds, file_size_bytes, mime_type, created_at, updated_at, is_processed, transcription FROM voice_messages WHERE chat_id = $1 ORDER BY created_at DESC",
-            chat_id
+        let voice_messages: Vec<VoiceMessage> = sqlx::query_as(
+            "SELECT id, user_id, chat_id, file_path, duration_seconds, file_size_bytes, mime_type, created_at, updated_at, is_processed, transcription FROM voice_messages WHERE chat_id = $1 ORDER BY created_at DESC"
         )
+        .bind(chat_id)
         .fetch_all(&self.pool)
         .await?;
 
@@ -153,12 +150,11 @@ impl VoiceMessageService {
     /// Supprimer un message vocal
     pub async fn delete_voice_message(&self, message_id: &str, user_id: i32) -> AppResult<()> {
         // Vérifier que l'utilisateur est le propriétaire
-        let voice_message = sqlx::query_as!(
-            VoiceMessage,
-            "SELECT id, user_id, chat_id, file_path, duration_seconds, file_size_bytes, mime_type, created_at, updated_at, is_processed, transcription FROM voice_messages WHERE id = $1 AND user_id = $2",
-            message_id,
-            user_id
+        let voice_message: VoiceMessage = sqlx::query_as(
+            "SELECT id, user_id, chat_id, file_path, duration_seconds, file_size_bytes, mime_type, created_at, updated_at, is_processed, transcription FROM voice_messages WHERE id = $1 AND user_id = $2"
         )
+        .bind(message_id)
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -169,7 +165,8 @@ impl VoiceMessageService {
         }
 
         // Supprimer de la base de données
-        sqlx::query!("DELETE FROM voice_messages WHERE id = $1", message_id)
+        sqlx::query("DELETE FROM voice_messages WHERE id = $1")
+            .bind(message_id)
             .execute(&self.pool)
             .await?;
 
@@ -180,10 +177,10 @@ impl VoiceMessageService {
     /// Traiter un message vocal (transcription, compression, etc.)
     pub async fn process_voice_message(&self, message_id: &str) -> AppResult<()> {
         // Marquer comme en cours de traitement
-        sqlx::query!(
-            "UPDATE voice_messages SET is_processed = true WHERE id = $1",
-            message_id
+        sqlx::query(
+            "UPDATE voice_messages SET is_processed = true WHERE id = $1"
         )
+        .bind(message_id)
         .execute(&self.pool)
         .await?;
 
@@ -196,7 +193,15 @@ impl VoiceMessageService {
 
     /// Obtenir les statistiques des messages vocaux
     pub async fn get_voice_message_stats(&self, user_id: i32) -> AppResult<serde_json::Value> {
-        let stats = sqlx::query!(
+        #[derive(FromRow)]
+        struct VoiceMessageStatsRow {
+            total_messages: Option<i64>,
+            total_duration: Option<f64>,
+            total_size: Option<i64>,
+            avg_duration: Option<f64>,
+        }
+        
+        let stats: VoiceMessageStatsRow = sqlx::query_as(
             r#"
             SELECT 
                 COUNT(*) as total_messages,
@@ -205,9 +210,9 @@ impl VoiceMessageService {
                 AVG(duration_seconds) as avg_duration
             FROM voice_messages 
             WHERE user_id = $1
-            "#,
-            user_id
+            "#
         )
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await?;
 

@@ -1,6 +1,17 @@
 use crate::core::types::AppError;
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+
+#[derive(FromRow)]
+struct ServiceIdRow {
+    id: i32,
+}
+
+#[derive(FromRow)]
+struct ServiceDataRow {
+    data: serde_json::Value,
+}
 
 /// ? Statut d'embedding d'un service
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -145,10 +156,10 @@ impl EmbeddingTracker {
         &self,
         user_id: i32,
     ) -> Result<Vec<EmbeddingStatus>, AppError> {
-        let services = sqlx::query!(
-            "SELECT id FROM services WHERE user_id = $1 ORDER BY created_at DESC",
-            user_id
+        let services: Vec<ServiceIdRow> = sqlx::query_as(
+            "SELECT id FROM services WHERE user_id = $1 ORDER BY created_at DESC"
         )
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur requ?te services: {}", e)))?;
@@ -169,11 +180,11 @@ impl EmbeddingTracker {
         _user_id: i32,
     ) -> Result<EmbeddingStatus, AppError> {
         // V?rifier que l'utilisateur est propri?taire du service
-        let service = sqlx::query!(
-            "SELECT data FROM services WHERE id = $1 AND user_id = $2",
-            service_id,
-            _user_id
+        let service: Option<ServiceDataRow> = sqlx::query_as(
+            "SELECT data FROM services WHERE id = $1 AND user_id = $2"
         )
+        .bind(service_id)
+        .bind(_user_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur v?rification propri?taire: {}", e)))?;

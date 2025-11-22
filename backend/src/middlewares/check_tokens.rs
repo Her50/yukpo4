@@ -338,10 +338,16 @@ pub async fn check_tokens(
             let cout_en_tokens = convertir_cout_xaf_en_tokens(cout_reel_xaf);
 
             // V?rifier ? nouveau le solde avec le co?t en tokens
-            let solde_final_result =
-                sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user_id)
-                    .fetch_one(&state.pg)
-                    .await;
+            #[derive(sqlx::FromRow)]
+            struct UserBalanceFinalRow {
+                tokens_balance: i64,
+            }
+            let solde_final_result: Result<UserBalanceFinalRow, _> = sqlx::query_as(
+                "SELECT tokens_balance FROM users WHERE id = $1"
+            )
+            .bind(user_id)
+            .fetch_one(&state.pg)
+            .await;
 
             if let Ok(user_final) = solde_final_result {
                 if user_final.tokens_balance >= cout_en_tokens {

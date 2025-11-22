@@ -2,6 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use log::{error, info};
 use serde::Serialize;
+use sqlx::FromRow;
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
@@ -10,6 +11,16 @@ use crate::{
     middlewares::jwt::AuthenticatedUser,
     state::AppState,
 };
+
+#[derive(FromRow)]
+struct ServiceUserIdRow {
+    user_id: i32,
+}
+
+#[derive(FromRow)]
+struct MediaIdRow {
+    id: i32,
+}
 
 #[derive(Debug, Serialize, Clone)]
 pub struct CuratedAudioLoop {
@@ -71,12 +82,17 @@ pub async fn attach_loop_to_service(
     service_id: i32,
     loop_id: &str,
 ) -> AppResult<i32> {
-    let service_owner =
-        sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
-            .fetch_optional(&state.pg)
-            .await
-            .map_err(AppError::from)?
-            .ok_or_else(|| AppError::NotFound("Service introuvable".to_string()))?;
+    let service_owner: Option<ServiceUserIdRow> = sqlx::query_as(
+        "SELECT user_id FROM services WHERE id = $1"
+    )
+    .bind(service_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(AppError::from)?;
+    
+    let service_owner = service_owner
+        .ok_or_else(|| AppError::NotFound("Service introuvable".to_string()))?
+        .user_id;
 
     if service_owner != user.id {
         return Err(AppError::Unauthorized(
@@ -137,7 +153,7 @@ pub async fn attach_loop_to_service(
 
     let normalized_path = relative_path.to_string_lossy().replace('\\', "/");
 
-    let inserted = sqlx::query!(
+    let inserted: MediaIdRow = sqlx::query_as(
         "INSERT INTO media (
             service_id,
             type,
@@ -150,18 +166,18 @@ pub async fn attach_loop_to_service(
             uploaded_at
         )
         VALUES ($1, 'audio', 'audio', $2, $3, $4, $5, $6, NOW())
-        RETURNING id",
-        service_id,
-        normalized_path,
-        bytes.len() as i64,
-        file_extension,
-        format!("Boucle audio: {} ({})", audio_loop.title, audio_loop.genre),
-        &vec![
-            "audio".to_string(),
-            audio_loop.genre.to_string(),
-            audio_loop.mood.to_string()
-        ],
+        RETURNING id"
     )
+    .bind(service_id)
+    .bind(&normalized_path)
+    .bind(bytes.len() as i64)
+    .bind(file_extension)
+    .bind(format!("Boucle audio: {} ({})", audio_loop.title, audio_loop.genre))
+    .bind(&vec![
+        "audio".to_string(),
+        audio_loop.genre.to_string(),
+        audio_loop.mood.to_string()
+    ])
     .fetch_one(&state.pg)
     .await
     .map_err(|err| {

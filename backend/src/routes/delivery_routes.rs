@@ -78,6 +78,52 @@ struct BillingModeRow {
     billing_mode: Option<String>,
 }
 
+#[derive(FromRow)]
+struct ProductDeliveryConfigPickupRow {
+    pickup_latitude: Option<f64>,
+    pickup_longitude: Option<f64>,
+}
+
+#[derive(FromRow)]
+struct ServiceGpsRow {
+    gps: Option<String>,
+}
+
+#[derive(FromRow)]
+struct CourierWithStatsRow {
+    id: i32,
+    user_id: i32,
+    #[sqlx(rename = "status")]
+    status: crate::models::delivery_model::DeliveryCourierStatus,
+    rating_average: Option<f64>,
+    rating_count: Option<i32>,
+    bio: Option<String>,
+    nom_complet: Option<String>,
+    avatar_url: Option<String>,
+    email: Option<String>,
+    completed_deliveries: Option<i64>,
+    cancelled_deliveries: Option<i64>,
+    avg_delivery_time_minutes: Option<f64>,
+}
+
+#[derive(FromRow)]
+struct ProductDeliveryConfigOwnerRow {
+    service_id: i32,
+    user_id: i32,
+}
+
+#[derive(FromRow)]
+struct DeliveryCreatorRow {
+    creator_id: i32,
+}
+
+#[derive(FromRow)]
+struct ProductDeliveryConfigPickupLocationRow {
+    pickup_address: Option<String>,
+    pickup_latitude: Option<f64>,
+    pickup_longitude: Option<f64>,
+}
+
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::{jwt_auth, AuthenticatedUser},
@@ -1593,27 +1639,31 @@ async fn estimate_delivery_costs(
     let delivery_cost_cents = if let Some(dropoff) = payload.dropoff {
         // Récupérer la configuration de livraison pour obtenir le pickup
         let pickup = if let Some(product_index) = payload.product_index {
-            let config = sqlx::query!(
+            let config: Option<ProductDeliveryConfigPickupRow> = sqlx::query_as(
                 "SELECT pickup_latitude, pickup_longitude FROM product_delivery_config 
-                 WHERE service_id = $1 AND product_index = $2",
-                payload.service_id,
-                product_index
+                 WHERE service_id = $1 AND product_index = $2"
             )
+            .bind(payload.service_id)
+            .bind(product_index)
             .fetch_optional(&state.pg)
             .await?;
 
             if let Some(c) = config {
-                LocationInput {
-                    latitude: c.pickup_latitude,
-                    longitude: c.pickup_longitude,
-                    address: None,
+                if let (Some(lat), Some(lng)) = (c.pickup_latitude, c.pickup_longitude) {
+                    LocationInput {
+                        latitude: lat,
+                        longitude: lng,
+                        address: None,
+                    }
+                } else {
+                    return Err(crate::core::types::AppError::BadRequest("Coordonnées GPS manquantes dans la configuration de livraison".into()));
                 }
             } else {
                 // Fallback : récupérer depuis le service
-                let service_data = sqlx::query!(
-                    "SELECT gps FROM services WHERE id = $1",
-                    payload.service_id
+                let service_data: Option<ServiceGpsRow> = sqlx::query_as(
+                    "SELECT gps FROM services WHERE id = $1"
                 )
+                .bind(payload.service_id)
                 .fetch_optional(&state.pg)
                 .await?;
 
@@ -2272,12 +2322,12 @@ async fn list_available_couriers(
         .map(|i| i as i32);
 
     // Récupérer les coursiers actifs avec leurs stats
-    let couriers = sqlx::query!(
+    let couriers: Vec<CourierWithStatsRow> = sqlx::query_as(
         r#"
         SELECT 
             c.id,
             c.user_id,
-            c.status AS "status: crate::models::delivery_model::DeliveryCourierStatus",
+            c.status AS "status",
             c.rating_average,
             c.rating_count,
             c.bio,
@@ -2702,10 +2752,10 @@ async fn get_product_zones(
     Path((service_id, product_index)): Path<(i32, i32)>,
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est propriétaire du service
-    let service = sqlx::query!(
-        "SELECT user_id FROM services WHERE id = $1",
-        service_id
+    let service: Option<ServiceUserIdRow> = sqlx::query_as(
+        "SELECT user_id FROM services WHERE id = $1"
     )
+    .bind(service_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur vérification service: {}", e)))?;
@@ -2779,10 +2829,10 @@ async fn save_product_zones(
     Json(payload): Json<SaveProductZonesPayload>,
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est propriétaire du service
-    let service = sqlx::query!(
-        "SELECT user_id FROM services WHERE id = $1",
-        service_id
+    let service: Option<ServiceUserIdRow> = sqlx::query_as(
+        "SELECT user_id FROM services WHERE id = $1"
     )
+    .bind(service_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur vérification service: {}", e)))?;
@@ -2877,15 +2927,15 @@ async fn update_stock(
     Json(payload): Json<UpdateStockPayload>,
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est propriétaire du produit
-    let config = sqlx::query!(
+    let config: Option<ProductDeliveryConfigOwnerRow> = sqlx::query_as(
         r#"
         SELECT pdc.service_id, s.user_id
         FROM product_delivery_config pdc
         INNER JOIN services s ON s.id = pdc.service_id
         WHERE pdc.id = $1
-        "#,
-        config_id
+        "#
     )
+    .bind(config_id)
     .fetch_optional(&state.pg)
     .await?;
 
@@ -2928,15 +2978,15 @@ async fn delete_stock_location(
     Path((config_id, location_id)): Path<(i32, i32)>,
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est propriétaire du produit
-    let config = sqlx::query!(
+    let config: Option<ProductDeliveryConfigOwnerRow> = sqlx::query_as(
         r#"
         SELECT pdc.service_id, s.user_id
         FROM product_delivery_config pdc
         INNER JOIN services s ON s.id = pdc.service_id
         WHERE pdc.id = $1
-        "#,
-        config_id
+        "#
     )
+    .bind(config_id)
     .fetch_optional(&state.pg)
     .await?;
 
@@ -2975,10 +3025,10 @@ async fn verify_courier(
     Json(payload): Json<VerifyCourierPayload>,
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est le prestataire (créateur de la livraison)
-    let delivery = sqlx::query!(
-        "SELECT creator_id FROM deliveries WHERE id = $1",
-        delivery_id
+    let delivery: Option<DeliveryCreatorRow> = sqlx::query_as(
+        "SELECT creator_id FROM deliveries WHERE id = $1"
     )
+    .bind(delivery_id)
     .fetch_optional(&state.pg)
     .await?;
 
@@ -3068,7 +3118,7 @@ async fn get_pickup_locations(
     Extension(_user): Extension<AuthenticatedUser>,
     Path(config_id): Path<i32>,
 ) -> AppResult<Json<Value>> {
-    let config = sqlx::query!(
+    let config: Option<ProductDeliveryConfigPickupLocationRow> = sqlx::query_as(
         r#"
         SELECT 
             pickup_address,
@@ -3076,9 +3126,9 @@ async fn get_pickup_locations(
             pickup_longitude
         FROM product_delivery_config
         WHERE id = $1
-        "#,
-        config_id
+        "#
     )
+    .bind(config_id)
     .fetch_optional(&state.pg)
     .await?;
 

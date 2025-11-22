@@ -14,8 +14,46 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::BigDecimal;
-use sqlx::{postgres::PgQueryResult, PgPool, Postgres, QueryBuilder};
+use sqlx::{postgres::PgQueryResult, FromRow, PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
+
+// Structs pour les requêtes migrées
+#[derive(FromRow)]
+struct UserPreviewRow {
+    id: i32,
+    nom: Option<String>,
+    prenom: Option<String>,
+    nom_complet: Option<String>,
+    avatar_url: Option<String>,
+}
+
+#[derive(FromRow)]
+struct DeliveryIdRow {
+    id: Uuid,
+}
+
+#[derive(FromRow)]
+struct DeliveryStatusEventRow {
+    id: i32,
+    delivery_id: Uuid,
+    #[sqlx(rename = "status")]
+    status: DeliveryStatus,
+    occurred_at: DateTime<Utc>,
+    #[sqlx(rename = "payload")]
+    payload: Value,
+    recorded_by: Option<i32>,
+}
+
+#[derive(FromRow)]
+struct DeliveryRecipientUpdateRow {
+    id: i32,
+    delivery_id: Uuid,
+    submitted_by: Option<i32>,
+    latitude: f64,
+    longitude: f64,
+    address: Option<String>,
+    created_at: DateTime<Utc>,
+}
 
 /// Repository centralisant les accès base de données pour le service de livraison
 #[derive(Clone)]
@@ -58,7 +96,7 @@ impl DeliveryRepository {
 
     /// Informations minimales sur un utilisateur (affichage front)
     pub async fn get_user_preview(&self, user_id: i32) -> AppResult<Option<UserPreview>> {
-        let record = sqlx::query!(
+        let record: Option<UserPreviewRow> = sqlx::query_as(
             r#"
             SELECT
                 id,
@@ -68,9 +106,9 @@ impl DeliveryRepository {
                 avatar_url
             FROM users
             WHERE id = $1
-            "#,
-            user_id
+            "#
         )
+        .bind(user_id)
         .fetch_optional(&self.pool)
         .await?;
 

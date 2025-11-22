@@ -41,7 +41,7 @@ pub async fn upsert_social_account(
 ) -> AppResult<()> {
     let metadata = payload.metadata.unwrap_or_else(|| serde_json::json!({}));
 
-    sqlx::query!(
+    sqlx::query(
         "INSERT INTO social_accounts (user_id, platform, account_handle, access_token, refresh_token, expires_at, scope, metadata, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
          ON CONFLICT (user_id, platform)
@@ -51,16 +51,16 @@ pub async fn upsert_social_account(
                        scope = EXCLUDED.scope,
                        metadata = EXCLUDED.metadata,
                        account_handle = EXCLUDED.account_handle,
-                       updated_at = NOW()",
-        user_id,
-        payload.platform,
-        payload.account_handle,
-        payload.access_token,
-        payload.refresh_token,
-        payload.expires_at,
-        payload.scope,
-        metadata,
+                       updated_at = NOW()"
     )
+    .bind(user_id)
+    .bind(&payload.platform)
+    .bind(payload.account_handle.as_ref())
+    .bind(&payload.access_token)
+    .bind(payload.refresh_token.as_ref())
+    .bind(payload.expires_at)
+    .bind(payload.scope.as_ref())
+    .bind(metadata)
     .execute(&state.pg)
     .await
     .map_err(|err| {
@@ -79,44 +79,26 @@ pub async fn list_social_accounts(
     state: Arc<AppState>,
     user_id: i32,
 ) -> AppResult<Vec<SocialAccountRecord>> {
-    let rows = sqlx::query!(
+    let rows: Vec<SocialAccountRecord> = sqlx::query_as(
         r#"SELECT id,
                   user_id,
                   platform,
                   account_handle,
-                  expires_at       AS "expires_at: Option<DateTime<Utc>>",
-                  scope            AS "scope: Option<String>",
-                  metadata         AS "metadata: Option<serde_json::Value>",
-                  created_at       AS "created_at: DateTime<Utc>",
-                  updated_at       AS "updated_at: DateTime<Utc>"
+                  expires_at,
+                  scope,
+                  metadata,
+                  created_at,
+                  updated_at
           FROM social_accounts
           WHERE user_id = $1
-          ORDER BY platform"#,
-        user_id
+          ORDER BY platform"#
     )
+    .bind(user_id)
     .fetch_all(&state.pg)
     .await
     .map_err(AppError::from)?;
 
-    let records = rows
-        .into_iter()
-        .map(|row| SocialAccountRecord {
-            id: row.id,
-            user_id: row.user_id,
-            platform: row.platform,
-            account_handle: row.account_handle,
-            expires_at: row.expires_at.flatten(),
-            scope: row.scope.flatten(),
-            metadata: row
-                .metadata
-                .flatten()
-                .unwrap_or_else(|| serde_json::Value::Object(Default::default())),
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        })
-        .collect::<Vec<_>>();
-
-    Ok(records)
+    Ok(rows)
 }
 
 pub async fn list_accounts_for_platforms(
@@ -130,45 +112,31 @@ pub async fn list_accounts_for_platforms(
 
     let normalized: Vec<String> = platforms.iter().map(|p| p.to_lowercase()).collect();
 
-    let rows = sqlx::query!(
+    let rows: Vec<SocialAccountRecord> = sqlx::query_as(
         r#"
         SELECT id,
                user_id,
                platform,
                account_handle,
-               expires_at       AS "expires_at: Option<DateTime<Utc>>",
-               scope            AS "scope: Option<String>",
-               metadata         AS "metadata: Option<serde_json::Value>",
-               created_at       AS "created_at: DateTime<Utc>",
-               updated_at       AS "updated_at: DateTime<Utc>"
+               expires_at,
+               scope,
+               metadata,
+               created_at,
+               updated_at
         FROM social_accounts
         WHERE user_id = $1
           AND lower(platform) = ANY($2)
-        "#,
-        user_id,
-        &normalized
+        "#
     )
+    .bind(user_id)
+    .bind(&normalized)
     .fetch_all(&state.pg)
     .await
     .map_err(AppError::from)?;
 
     let mut map = HashMap::new();
     for row in rows {
-        let record = SocialAccountRecord {
-            id: row.id,
-            user_id: row.user_id,
-            platform: row.platform.clone(),
-            account_handle: row.account_handle,
-            expires_at: row.expires_at.flatten(),
-            scope: row.scope.flatten(),
-            metadata: row
-                .metadata
-                .flatten()
-                .unwrap_or_else(|| serde_json::Value::Object(Default::default())),
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        };
-        map.insert(row.platform.to_lowercase(), record);
+        map.insert(row.platform.to_lowercase(), row);
     }
 
     Ok(map)

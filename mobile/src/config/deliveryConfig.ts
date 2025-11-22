@@ -26,7 +26,7 @@ export const VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT: Array<{ value: VehicleType; la
     { value: 'motorcycle', label: '🏍️ Moto' },
     { value: 'tricycle', label: '🛺 Tricycle' },
     { value: 'car', label: '🚗 Voiture' },
-    { value: 'pickup', label: '🚛 Pick-up' },
+    { value: 'pickup', label: '🛻 Pick-up' },
     { value: 'van', label: '🚐 Fourgonnette' },
     { value: 'truck', label: '🚚 Camion' },
     { value: 'walking', label: '🚶 Piéton' },

@@ -831,7 +831,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         handleFieldChange('sous_caracteristiques', updatedSousCaracs);
                                     }
                                 }}
-                                sousCaracteristiques={formValues.sous_caracteristiques || {
+                                sousCaracteristiques={formValues.sous_caracteristiques || sous_caracteristiques || {
                                     // Caractéristiques essentielles
                                     marque: [],
                                     modele: [],

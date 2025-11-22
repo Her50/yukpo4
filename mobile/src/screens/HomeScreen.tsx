@@ -988,11 +988,12 @@ const styles = StyleSheet.create({
     },
     // ✅ CORRIGÉ : Conteneur pour le titre équilibré et visible
     brandTitleContainer: {
-        flex: 2, // ✅ CORRIGÉ : Plus d'espace pour le texte (flex: 2 au lieu de 1)
+        flex: 1, // ✅ Réduit pour mieux équilibrer avec les éléments de gauche et droite
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 8, // ✅ CORRIGÉ : Plus de padding pour éviter le masquage
-        paddingLeft: 12, // ✅ CORRIGÉ : Décale légèrement vers la gauche pour équilibrer
+        paddingHorizontal: 4, // ✅ Réduit le padding horizontal pour plus d'espace
+        paddingLeft: 0, // ✅ Supprimé pour centrer naturellement
+        marginLeft: -8, // ✅ Décale vers la gauche pour équilibrer visuellement
         flexShrink: 1, // ✅ Permet de rétrécir si nécessaire mais priorité au texte
         minWidth: 80, // ✅ Largeur minimale pour afficher "Yukpo" complet
     },
@@ -1072,7 +1073,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end', // ✅ Aligner à droite
         minWidth: 90, // ✅ CORRIGÉ : Réduit de 100 à 90 pour plus d'espace au centre
         maxWidth: 120, // ✅ CORRIGÉ : Réduit de 130 à 120 pour plus d'espace au centre
-        paddingLeft: 8, // ✅ CORRIGÉ : Padding pour éviter que les boutons touchent le texte
+        paddingLeft: 4, // ✅ Réduit pour équilibrer avec le décalage du texte
         flexShrink: 1, // ✅ Permet de rétrécir si nécessaire
     },
     headerButtonCompact: {

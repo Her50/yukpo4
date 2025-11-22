@@ -1,0 +1,44 @@
+warning: in the working copy of 'backend/src/middlewares/check_tokens.rs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/routers/router_yukpo.rs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/services/alert_service.rs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/services/autocomplete_combinations_service.rs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/services/background_combination_generator.rs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/services/cost_service.rs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/services/creer_service.rs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/services/live_stream_service.rs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/components/NotificationHistoryModal.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/components/ProductCommentsSection.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/components/UserAvatarMenu.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/hooks/useGlobalPromos.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/navigation/AppNavigator.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/screens/AjouterProduitSimpleScreen.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/screens/FormulaireYukpoIntelligentScreen.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/screens/HomeScreen.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/screens/MesServicesScreen.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/screens/delivery/CourierRegistrationScreen.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/screens/delivery/DeliveryShoppingFlow.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile/src/screens/video/VideoCreationIntroScreen.tsx', LF will be replaced by CRLF the next time Git touches it
+ backend/src/middlewares/check_tokens.rs            |  29 [32m++[m[31m-[m
+ backend/src/routers/router_yukpo.rs                |   8 [32m+[m[31m-[m
+ backend/src/services/alert_service.rs              |   3 [32m+[m[31m-[m
+ .../services/autocomplete_combinations_service.rs  |  13 [32m+[m[31m-[m
+ .../services/background_combination_generator.rs   |   2 [32m+[m[31m-[m
+ backend/src/services/cost_service.rs               |  19 [32m+[m[31m-[m
+ backend/src/services/creer_service.rs              |  29 [32m+++[m
+ backend/src/services/live_stream_service.rs        | 111 [32m+++++++[m[31m----[m
+ mobile/src/components/NotificationHistoryModal.tsx |   4 [32m+[m[31m-[m
+ mobile/src/components/ProductCommentsSection.tsx   |  53 [32m+++++[m[31m-[m
+ mobile/src/components/ServiceTeamManager.tsx       | 126 [32m+++++++[m[31m------[m
+ mobile/src/components/UserAvatarMenu.tsx           |  12 [32m+[m[31m-[m
+ mobile/src/hooks/useGlobalPromos.ts                | 205 [32m++++++++++++++++++[m[31m---[m
+ mobile/src/navigation/AppNavigator.tsx             |   6 [32m+[m
+ mobile/src/screens/AjouterProduitSimpleScreen.tsx  |  40 [32m++++[m
+ .../screens/FormulaireYukpoIntelligentScreen.tsx   |  36 [32m++++[m
+ mobile/src/screens/HomeScreen.tsx                  |  43 [32m+++[m[31m--[m
+ mobile/src/screens/MesServicesScreen.tsx           |  24 [32m+[m[31m--[m
+ .../screens/delivery/CourierRegistrationScreen.tsx |  15 [32m+[m[31m-[m
+ mobile/src/screens/delivery/DeliveryParcelFlow.tsx |  25 [32m+[m[31m--[m
+ .../src/screens/delivery/DeliveryShoppingFlow.tsx  |  12 [32m+[m[31m-[m
+ .../src/screens/video/VideoCreationIntroScreen.tsx |  39 [32m++[m[31m--[m
+ mobile/src/types/GlobalPromo.ts                    |  71 [32m++++++[m[31m-[m
+ 23 files changed, 687 insertions(+), 238 deletions(-)
