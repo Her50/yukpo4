@@ -293,6 +293,46 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
     const [formValues, setFormValues] = useState<any>(initialFormValues);
 
+    // ✅ NOUVEAU 2025-11-21: Charger les combinaisons préférées par l'IA via session_id
+    React.useEffect(() => {
+        const loadAIPreferredCombinations = async () => {
+            // Vérifier si on a un session_id et que produits n'est pas déjà rempli
+            const sessionId = suggestionIA?.session_id || suggestionIA?.data?.session_id;
+            if (sessionId && (!formValues.produits || formValues.produits.length === 0)) {
+                try {
+                    const combinationsResponse = await apiGet(`/api/combinations/session/${sessionId}`);
+                    if (combinationsResponse?.combinations && Array.isArray(combinationsResponse.combinations)) {
+                        // Trouver la combinaison préférée par l'IA (is_ai_preferred = true)
+                        const preferred = combinationsResponse.combinations.find((c: any) => c.is_ai_preferred);
+
+                        if (preferred && preferred.product_vector && Array.isArray(preferred.product_vector) && preferred.product_vector.length > 0) {
+                            // Construire la valeur au format attendu (string concaténée avec séparateur)
+                            const separateur = preferred.separateur || ',';
+                            const combinationString = preferred.product_vector.join(separateur);
+
+                            // Mettre à jour formValues avec la combinaison préférée
+                            setFormValues((prev: any) => ({
+                                ...prev,
+                                produits: [combinationString],
+                                sous_caracteristiques: preferred.product_labels || prev.sous_caracteristiques || {}
+                            }));
+
+                            console.log('[AjouterProduitSimple] ✅ Combinaison préférée IA chargée:', {
+                                combinationString,
+                                sous_caracteristiques: Object.keys(preferred.product_labels || {}).length
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[AjouterProduitSimple] ⚠️ Erreur chargement combinaisons IA:', error);
+                    // Ne pas bloquer le formulaire si l'API échoue
+                }
+            }
+        };
+
+        loadAIPreferredCombinations();
+    }, [suggestionIA?.session_id, suggestionIA?.data?.session_id]);
+
     const currentModalites = Array.isArray(formValues.variabilite_prix?.modalites)
         ? formValues.variabilite_prix.modalites
         : Array.isArray(formValues.variabilite_prix)

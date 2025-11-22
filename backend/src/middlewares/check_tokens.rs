@@ -41,11 +41,18 @@ pub async fn update_jwt_with_new_balance(
     new_balance: i64,
     state: &Arc<AppState>,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    #[derive(sqlx::FromRow)]
+    struct UserDataRow {
+        email: String,
+        role: String,
+        nom_complet: Option<String>,
+    }
+    
     // R?cup?rer les informations utilisateur
-    let user_data = sqlx::query!(
-        "SELECT email, role, nom_complet FROM users WHERE id = $1",
-        user_id
+    let user_data: UserDataRow = sqlx::query_as(
+        "SELECT email, role, nom_complet FROM users WHERE id = $1"
     )
+    .bind(user_id)
     .fetch_one(&state.pg)
     .await?;
 
@@ -246,8 +253,14 @@ pub async fn check_tokens(
         user_id, intention
     );
 
+    #[derive(sqlx::FromRow)]
+    struct UserBalanceRow {
+        tokens_balance: i64,
+    }
+    
     // V?rifier le solde avant traitement
-    let solde_result = sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user_id)
+    let solde_result: Result<UserBalanceRow, _> = sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user_id)
         .fetch_one(&state.pg)
         .await;
 
@@ -334,11 +347,11 @@ pub async fn check_tokens(
                 if user_final.tokens_balance >= cout_en_tokens {
                     // D?duire le co?t en tokens (pas en XAF)
                     let nouveau_solde = user_final.tokens_balance - cout_en_tokens;
-                    let update_result = sqlx::query!(
-                        "UPDATE users SET tokens_balance = $1 WHERE id = $2",
-                        nouveau_solde,
-                        user_id
+                    let update_result = sqlx::query(
+                        "UPDATE users SET tokens_balance = $1 WHERE id = $2"
                     )
+                    .bind(nouveau_solde)
+                    .bind(user_id)
                     .execute(&state.pg)
                     .await;
 

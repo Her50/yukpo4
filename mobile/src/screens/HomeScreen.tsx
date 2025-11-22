@@ -968,8 +968,9 @@ const styles = StyleSheet.create({
     },
     headerRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'space-between', // ✅ Garde l'espacement entre les éléments
         alignItems: 'center',
+        paddingHorizontal: 12, // ✅ CORRIGÉ : Ajoute du padding horizontal pour éviter les bords
         gap: 8,
     },
     avatarContainer: {
@@ -977,23 +978,23 @@ const styles = StyleSheet.create({
         height: 44,
         marginRight: 8,
     },
-    // ✅ NOUVEAU: Colonne gauche avec avatar + langue
+    // ✅ CORRIGÉ: Colonne gauche avec avatar + langue
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        flex: 1,
-        minWidth: 100, // ✅ Réduit de 120 à 100 pour plus d'espace au centre
-        maxWidth: 140, // ✅ Limite la largeur maximale
+        flexShrink: 0, // ✅ CORRIGÉ : Ne pas rétrécir pour garder sa taille naturelle
+        // ✅ SUPPRIMÉ : flex: 1 qui prenait trop de place
+        // ✅ SUPPRIMÉ : minWidth et maxWidth qui causaient des problèmes
     },
-    // ✅ Conteneur pour le titre équilibré - légèrement décalé à gauche
+    // ✅ CORRIGÉ : Conteneur pour le titre équilibré et visible
     brandTitleContainer: {
-        flex: 1,
-        alignItems: 'flex-start',
+        flex: 2, // ✅ CORRIGÉ : Plus d'espace pour le texte (flex: 2 au lieu de 1)
+        alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 4,
-        paddingLeft: 20, // ✅ Décalage à gauche pour équilibrer visuellement
-        maxWidth: 120, // ✅ Limite la largeur maximale pour éviter le débordement
-        minWidth: 60, // ✅ Largeur minimale pour garantir l'affichage
+        paddingHorizontal: 8, // ✅ CORRIGÉ : Plus de padding pour éviter le masquage
+        paddingLeft: 12, // ✅ CORRIGÉ : Décale légèrement vers la gauche pour équilibrer
+        flexShrink: 1, // ✅ Permet de rétrécir si nécessaire mais priorité au texte
+        minWidth: 80, // ✅ Largeur minimale pour afficher "Yukpo" complet
     },
     headerTop: {
         flexDirection: 'row',
@@ -1066,12 +1067,13 @@ const styles = StyleSheet.create({
     },
     headerActionsCompact: {
         flexDirection: 'row',
-        gap: 6, // ✅ Réduit de 8 à 6 pour plus d'espace
+        gap: 4, // ✅ CORRIGÉ : Réduit de 6 à 4 pour plus d'espace pour le texte
         flex: 1,
         justifyContent: 'flex-end', // ✅ Aligner à droite
-        minWidth: 100, // ✅ Réduit de 110 à 100 pour plus d'espace au centre
-        maxWidth: 130, // ✅ Limite la largeur maximale
-        paddingLeft: 4, // ✅ Réduit de 8 à 4 pour plus d'espace
+        minWidth: 90, // ✅ CORRIGÉ : Réduit de 100 à 90 pour plus d'espace au centre
+        maxWidth: 120, // ✅ CORRIGÉ : Réduit de 130 à 120 pour plus d'espace au centre
+        paddingLeft: 8, // ✅ CORRIGÉ : Padding pour éviter que les boutons touchent le texte
+        flexShrink: 1, // ✅ Permet de rétrécir si nécessaire
     },
     headerButtonCompact: {
         width: 38, // ✅ Réduit de 40 à 38 pour plus d'espace
@@ -1154,13 +1156,14 @@ const styles = StyleSheet.create({
         textShadowRadius: 4,
     },
     brandTitleCompact: {
-        fontSize: 20, // ✅ Réduit de 22 à 20 pour mieux s'adapter à l'espace
+        width: '100%', // ✅ Prend toute la largeur disponible
+        fontSize: 20,
         fontWeight: '900',
-        textAlign: 'center',
-        letterSpacing: -0.3, // ✅ Ajusté pour meilleur équilibre visuel
+        textAlign: 'center', // ✅ Centrer le texte à l'intérieur
+        letterSpacing: -0.3,
         includeFontPadding: false, // ✅ Évite le padding supplémentaire Android
         textAlignVertical: 'center', // ✅ Centre verticalement sur Android
-        flexShrink: 1, // ✅ Permet au texte de rétrécir si nécessaire
+        flexShrink: 0, // ✅ CORRIGÉ : Ne pas rétrécir pour éviter la troncature
     },
     brandYuk: {
         color: '#EAB308', // text-yellow-500 du frontend

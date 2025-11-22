@@ -15,11 +15,10 @@ import {
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { VEHICLE_TRANSPORT_OPTIONS, type VehicleType } from '../../config/deliveryConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-
-type VehicleType = 'bike' | 'motorcycle' | 'tricycle' | 'car' | 'pickup' | 'van' | 'truck' | 'walking';
 
 interface DocumentFile {
     uri: string;
@@ -349,16 +348,8 @@ const CourierRegistrationScreen: React.FC = () => {
         { value: 'sunday', label: 'Dim' },
     ];
 
-    const vehicleTypes: Array<{ value: VehicleType; label: string; icon: string; requiresLicense: boolean }> = [
-        { value: 'bike', label: 'Vélo', icon: '🚲', requiresLicense: false },
-        { value: 'motorcycle', label: 'Moto', icon: '🏍️', requiresLicense: true },
-        { value: 'tricycle', label: 'Tricycle', icon: '🛺', requiresLicense: true },
-        { value: 'car', label: 'Voiture', icon: '🚗', requiresLicense: true },
-        { value: 'pickup', label: 'Pickup', icon: '🛻', requiresLicense: true },
-        { value: 'van', label: 'Fourgonnette', icon: '🚐', requiresLicense: true },
-        { value: 'truck', label: 'Camion', icon: '🚚', requiresLicense: true },
-        { value: 'walking', label: 'À pied', icon: '🚶', requiresLicense: false },
-    ];
+    // ✅ CORRECTION : Utiliser la constante partagée pour aligner avec les options de commande
+    const vehicleTypes = VEHICLE_TRANSPORT_OPTIONS;
 
     if (checkingStatus) {
         return (

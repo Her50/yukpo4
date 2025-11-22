@@ -185,7 +185,7 @@ async fn save_combinations_batch(
                 .push_bind(location_labels)
                 .push_bind(duplicates) // usage_count initial = occurrences dans le batch
                 .push_bind(false) // is_ai_preferred
-                .push_bind(0.0_f32) // ai_confidence
+                .push_bind(0.0_f64) // ai_confidence
                 .push_bind(chrono::Utc::now())
                 .push_bind(chrono::Utc::now());
         },

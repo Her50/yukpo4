@@ -28,10 +28,10 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             description: 'Besoin d\'aide ?'
         },
         {
-            title: '🔥 Configuration Black Friday',
+            title: '🔥 Configuration Lancement Black Friday',
             icon: '🔥',
-            route: 'BlackFridayConfig', // ✅ NOUVEAU : Lien vers la configuration Black Friday
-            description: 'Configurer les campagnes Black Friday',
+            route: 'BlackFridayAdminConfig', // ✅ NOUVEAU : Lien vers la configuration de lancement Black Friday (admin)
+            description: 'Gérer le lancement des campagnes Black Friday (Admin)',
             highlighted: true // ✅ Mettre en évidence
         },
         {
@@ -47,9 +47,9 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
 
         if (item.route === 'logout') {
             logout();
-        } else if (item.route === 'BlackFridayConfig') {
-            // ✅ NOUVEAU : Navigation vers la configuration Black Friday (utilise GlobalPromoSubmission en mode admin)
-            onNavigate('GlobalPromoSubmission'); // Pour l'instant, utiliser le même écran (fallback)
+        } else if (item.route === 'BlackFridayAdminConfig') {
+            // ✅ NOUVEAU : Navigation vers la configuration de lancement Black Friday (admin)
+            onNavigate('GlobalPromoManager');
         } else {
             onNavigate(item.route);
         }

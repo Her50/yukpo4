@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
+import { VEHICLE_TRANSPORT_OPTIONS } from '../../config/deliveryConfig';
 import { useLocation } from '../../contexts/LocationContext';
 import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -884,16 +885,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                 Choisissez le type de véhicule pour votre livraison
                             </Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.vehicleTypeScroll}>
-                                {[
-                                    { value: 'bike', label: 'Vélo', icon: '🚲' },
-                                    { value: 'motorcycle', label: 'Moto', icon: '🏍️' },
-                                    { value: 'tricycle', label: 'Tricycle', icon: '🛺' },
-                                    { value: 'car', label: 'Voiture', icon: '🚗' },
-                                    { value: 'pickup', label: 'Pickup', icon: '🛻' },
-                                    { value: 'van', label: 'Fourgonnette', icon: '🚐' },
-                                    { value: 'truck', label: 'Camion', icon: '🚚' },
-                                    { value: 'walking', label: 'À pied', icon: '🚶' },
-                                ].map((type) => (
+                                {VEHICLE_TRANSPORT_OPTIONS.map((type) => (
                                     <TouchableOpacity
                                         key={type.value}
                                         style={[

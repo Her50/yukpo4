@@ -294,15 +294,15 @@ const VideoCreationIntroScreen: React.FC = () => {
 
                 <Animated.View style={[styles.benefits, fadeUp(contentAnim, 14)]}>
                     <View style={styles.benefitItem}>
-                        <SafeIcon name="film" size={28} color={modernColors.primary} />
+                        <Text style={styles.benefitIcon}>📱</Text>
                         <Text style={styles.benefitText}>{t('video.intro.benefit.timeline')}</Text>
                     </View>
                     <View style={styles.benefitItem}>
-                        <SafeIcon name="sparkle" size={28} color={modernColors.primary} />
+                        <Text style={styles.benefitIcon}>📱</Text>
                         <Text style={styles.benefitText}>{t('video.intro.benefit.broll')}</Text>
                     </View>
                     <View style={styles.benefitItem}>
-                        <SafeIcon name="volume" size={28} color={modernColors.primary} />
+                        <Text style={styles.benefitIcon}>📱</Text>
                         <Text style={styles.benefitText}>{t('video.intro.benefit.audio')}</Text>
                     </View>
                 </Animated.View>
@@ -369,13 +369,13 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        padding: 24,
-        paddingBottom: 32, // ✅ Espace en bas pour permettre le scroll jusqu'en bas
+        padding: 20, // ✅ CORRIGÉ : Réduit de 24 à 20 pour réduire les espaces
+        paddingBottom: 24, // ✅ CORRIGÉ : Réduit de 32 à 24 pour réduire l'espace en bas
     },
     header: {
-        marginBottom: 16,
-        gap: 12,
-        paddingHorizontal: 4, // ✅ Ajout de padding pour éviter le débordement
+        marginBottom: 12, // ✅ CORRIGÉ : Réduit de 16 à 12 pour réduire l'espace
+        gap: 8, // ✅ CORRIGÉ : Réduit de 12 à 8 pour réduire l'espace entre les éléments
+        paddingHorizontal: 4,
     },
     title: {
         fontSize: 28,
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
         height: 200,
         borderRadius: 24,
         overflow: 'hidden',
-        marginBottom: 24,
+        marginBottom: 12, // ✅ CORRIGÉ : Réduit de 24 à 12 pour réduire l'espace vide
     },
     heroImage: {
         width: '100%',
@@ -417,13 +417,18 @@ const styles = StyleSheet.create({
         lineHeight: 20,
     },
     benefits: {
-        marginBottom: 32,
-        gap: 18,
+        marginBottom: 16, // ✅ CORRIGÉ : Réduit de 32 à 16 pour réduire l'espace vide
+        gap: 12, // ✅ CORRIGÉ : Réduit de 18 à 12 pour réduire l'espace entre les items
     },
     benefitItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 10, // ✅ CORRIGÉ : Réduit de 12 à 10 pour réduire l'espace entre icône et texte
+    },
+    benefitIcon: {
+        fontSize: 24, // ✅ CORRIGÉ : Taille d'icône adaptée pour les emojis
+        lineHeight: 24,
+        marginRight: 2, // ✅ Ajustement pour l'espacement
     },
     benefitText: {
         fontSize: 15,
@@ -431,9 +436,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     actions: {
-        marginTop: 24, // ✅ Espace au-dessus des boutons au lieu de marginTop: 'auto'
-        gap: 12,
-        paddingBottom: 16, // ✅ Espace supplémentaire en bas
+        marginTop: 12, // ✅ CORRIGÉ : Réduit de 24 à 12 pour réduire l'espace au-dessus des boutons
+        gap: 10, // ✅ CORRIGÉ : Réduit de 12 à 10 pour réduire l'espace entre les boutons
+        paddingBottom: 8, // ✅ CORRIGÉ : Réduit de 16 à 8 pour réduire l'espace en bas
     },
     heroFallback: {
         width: '100%',
@@ -453,10 +458,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        padding: 12,
+        padding: 10, // ✅ CORRIGÉ : Réduit de 12 à 10 pour réduire le padding
         backgroundColor: '#F0FDF4',
         borderRadius: 12,
-        marginBottom: 16,
+        marginBottom: 12, // ✅ CORRIGÉ : Réduit de 16 à 12 pour réduire l'espace en bas
         borderWidth: 1,
         borderColor: '#BBF7D0',
     },

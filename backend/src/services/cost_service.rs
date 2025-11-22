@@ -122,7 +122,13 @@ impl CostEstimator {
             .estimate_video_generation_cost(user_id, script_outline_len)
             .await?;
 
-        let balance_row = sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user_id)
+        #[derive(sqlx::FromRow)]
+        struct UserBalanceRow {
+            tokens_balance: i64,
+        }
+        
+        let balance_row: UserBalanceRow = sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+            .bind(user_id)
             .fetch_one(&self.pool)
             .await
             .map_err(AppError::from)?;
@@ -183,14 +189,19 @@ impl CostEstimator {
     }
 
     async fn average_tokens_for_intention(&self, intention: &str) -> AppResult<i64> {
-        let row = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct AvgTokensRow {
+            avg_tokens: Option<i64>,
+        }
+        
+        let row: AvgTokensRow = sqlx::query_as(
             r#"
             SELECT COALESCE(AVG(tokens_ia_consumed)::numeric, 0)::BIGINT AS avg_tokens
             FROM token_usage_logs
             WHERE intention = $1
-            "#,
-            intention
+            "#
         )
+        .bind(intention)
         .fetch_one(&self.pool)
         .await
         .map_err(AppError::from)?;

@@ -672,7 +672,15 @@ const MesServicesScreen: React.FC = () => {
               <Text style={styles.subtitle}>{services.length} produit{services.length !== 1 ? 's' : ''}</Text>
             </View>
             <View style={styles.headerActions}>
-              {/* ✅ NOUVEAU : Bouton participation Black Friday */}
+              {/* Bouton Vidéo */}
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => (navigation as any).navigate('Video')}
+              >
+                <SafeIcon name="video" size={20} color="#fff" />
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU : Bouton participation Black Friday (entre vidéo et menu) */}
               <TouchableOpacity
                 style={styles.headerButton}
                 onPress={() => (navigation as any).navigate('GlobalPromoSubmission')}
@@ -680,20 +688,12 @@ const MesServicesScreen: React.FC = () => {
                 <SafeIcon name="dollar-sign" size={20} color="#fff" />
               </TouchableOpacity>
 
-              {/* ✅ Menu global avec actions */}
+              {/* ✅ Menu global avec actions (après vidéo et Black Friday) */}
               <TouchableOpacity
                 style={[styles.headerButton, styles.menuButton]}
                 onPress={() => setShowGlobalMenu(!showGlobalMenu)}
               >
                 <SafeIcon name="more-vertical" size={20} color="#fff" />
-              </TouchableOpacity>
-
-              {/* Bouton Vidéo */}
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => (navigation as any).navigate('Video')}
-              >
-                <SafeIcon name="video" size={20} color="#fff" />
               </TouchableOpacity>
 
               {/* Bouton Paramètres */}
@@ -982,7 +982,7 @@ const MesServicesScreen: React.FC = () => {
       </ScrollView>
 
       {/* ✅ NOUVEAU : Modal Gestion d'équipe */}
-      {showTeamManager && selectedService && (
+      {showTeamManager && (
         <Modal
           visible={showTeamManager}
           animationType="slide"
@@ -990,7 +990,7 @@ const MesServicesScreen: React.FC = () => {
           onRequestClose={() => setShowTeamManager(false)}
         >
           <ServiceTeamManager
-            serviceId={selectedService.id.toString()}
+            serviceId={selectedService ? selectedService.id.toString() : undefined}
             onClose={() => {
               setShowTeamManager(false);
               setSelectedService(null);

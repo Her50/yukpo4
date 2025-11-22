@@ -7,8 +7,47 @@ use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Client;
 use serde::Serialize;
 use serde_json::{json, Value};
-use sqlx::{PgPool, Postgres, Row, Transaction};
+use sqlx::{FromRow, PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
+
+#[derive(FromRow)]
+struct LiveSessionAnalyticsRow {
+    id: uuid::Uuid,
+    host_user_id: i32,
+    service_id: Option<i32>,
+    title: String,
+    description: Option<String>,
+    status: String,
+    start_at: chrono::DateTime<Utc>,
+    end_at: Option<chrono::DateTime<Utc>>,
+    livekit_room_name: Option<String>,
+    livekit_participant_identity: Option<String>,
+    livekit_ingress_id: Option<String>,
+    livekit_ingress_url: Option<String>,
+    stream_key: Option<String>,
+    webrtc_url: Option<String>,
+    hls_url: Option<String>,
+    fallback_rtmp_url: Option<String>,
+    fallback_hls_url: Option<String>,
+    current_viewers: i32,
+    peak_viewers: i32,
+    total_watch_time_seconds: i64,
+    metadata: Value,
+    created_at: chrono::DateTime<Utc>,
+    updated_at: chrono::DateTime<Utc>,
+    analytics_live_session_id: uuid::Uuid,
+    #[sqlx(try_from = "i64")]
+    analytics_total_viewers: i32,
+    #[sqlx(try_from = "i64")]
+    analytics_hls_viewers: i32,
+    #[sqlx(try_from = "i64")]
+    analytics_webrtc_viewers: i32,
+    analytics_total_watch_time_seconds: i64,
+    analytics_average_watch_time_seconds: f64,
+    analytics_conversions: i32,
+    analytics_revenue_cfa: f64,
+    analytics_last_synced_at: chrono::DateTime<Utc>,
+}
 
 use crate::{
     config::live_streaming::{LiveKitIngressMode, LiveStreamingConfig},
@@ -376,48 +415,48 @@ impl LiveStreamingService {
         pool: &PgPool,
         limit: i64,
     ) -> AppResult<Vec<(LiveSession, LiveSessionAnalytics)>> {
-        let rows = sqlx::query!(
+        let rows: Vec<LiveSessionAnalyticsRow> = sqlx::query_as(
             r#"
             SELECT
-                ls.id AS "id!",
-                ls.host_user_id AS "host_user_id!",
-                ls.service_id AS "service_id?",
-                ls.title AS "title!",
-                ls.description AS "description?",
-                ls.status AS "status!",
-                ls.start_at AS "start_at!",
-                ls.end_at AS "end_at?",
-                ls.livekit_room_name AS "livekit_room_name?",
-                ls.livekit_participant_identity AS "livekit_participant_identity?",
-                ls.livekit_ingress_id AS "livekit_ingress_id?",
-                ls.livekit_ingress_url AS "livekit_ingress_url?",
-                ls.stream_key AS "stream_key?",
-                ls.webrtc_url AS "webrtc_url?",
-                ls.hls_url AS "hls_url?",
-                ls.fallback_rtmp_url AS "fallback_rtmp_url?",
-                ls.fallback_hls_url AS "fallback_hls_url?",
-                ls.current_viewers AS "current_viewers!",
-                ls.peak_viewers AS "peak_viewers!",
-                ls.total_watch_time_seconds AS "total_watch_time_seconds!",
-                ls.metadata AS "metadata!",
-                ls.created_at AS "created_at!",
-                ls.updated_at AS "updated_at!",
-                lsa.live_session_id AS "analytics_live_session_id!",
-                lsa.total_viewers AS "analytics_total_viewers!",
-                lsa.hls_viewers AS "analytics_hls_viewers!",
-                lsa.webrtc_viewers AS "analytics_webrtc_viewers!",
-                lsa.total_watch_time_seconds AS "analytics_total_watch_time_seconds!",
-                (lsa.average_watch_time_seconds)::FLOAT8 AS "analytics_average_watch_time_seconds!: f64",
-                lsa.conversions AS "analytics_conversions!",
-                (lsa.revenue_cfa)::FLOAT8 AS "analytics_revenue_cfa!: f64",
-                lsa.last_synced_at AS "analytics_last_synced_at!"
+                ls.id,
+                ls.host_user_id,
+                ls.service_id,
+                ls.title,
+                ls.description,
+                ls.status,
+                ls.start_at,
+                ls.end_at,
+                ls.livekit_room_name,
+                ls.livekit_participant_identity,
+                ls.livekit_ingress_id,
+                ls.livekit_ingress_url,
+                ls.stream_key,
+                ls.webrtc_url,
+                ls.hls_url,
+                ls.fallback_rtmp_url,
+                ls.fallback_hls_url,
+                ls.current_viewers,
+                ls.peak_viewers,
+                ls.total_watch_time_seconds,
+                ls.metadata,
+                ls.created_at,
+                ls.updated_at,
+                lsa.live_session_id AS analytics_live_session_id,
+                lsa.total_viewers AS analytics_total_viewers,
+                lsa.hls_viewers AS analytics_hls_viewers,
+                lsa.webrtc_viewers AS analytics_webrtc_viewers,
+                lsa.total_watch_time_seconds AS analytics_total_watch_time_seconds,
+                (lsa.average_watch_time_seconds)::FLOAT8 AS analytics_average_watch_time_seconds,
+                lsa.conversions AS analytics_conversions,
+                (lsa.revenue_cfa)::FLOAT8 AS analytics_revenue_cfa,
+                lsa.last_synced_at AS analytics_last_synced_at
             FROM live_sessions ls
             JOIN live_session_analytics lsa ON lsa.live_session_id = ls.id
             ORDER BY lsa.last_synced_at DESC
             LIMIT $1
-            "#,
-            limit.max(1)
+            "#
         )
+        .bind(limit.max(1))
         .fetch_all(pool)
         .await?;
 

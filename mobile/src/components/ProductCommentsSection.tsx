@@ -130,12 +130,61 @@ const parseMentions = (text: string): React.ReactNode[] => {
     return parts;
 };
 
+// ✅ FONCTION UTILITAIRE : Nettoyer le nom utilisateur pour éviter les doublons
+const cleanUserName = (name: string | undefined | null): string => {
+    if (!name) return 'Utilisateur';
+    const trimmed = name.trim();
+
+    // ✅ CORRECTION : Détecter et supprimer les doublons (ex: "LELE Hernandez LELE Hernandez" -> "LELE Hernandez")
+    // Méthode 1: Vérifier si le nom est répété exactement (mots séparés par espace)
+    const words = trimmed.split(/\s+/);
+    if (words.length >= 2) {
+        const midPoint = Math.ceil(words.length / 2);
+        const firstHalf = words.slice(0, midPoint).join(' ');
+        const secondHalf = words.slice(midPoint).join(' ');
+
+        // Si les deux moitiés sont identiques, retourner seulement la première
+        if (firstHalf === secondHalf) {
+            return firstHalf;
+        }
+
+        // Méthode 2: Vérifier si le nom complet est répété (ex: "LELE Hernandez LELE Hernandez")
+        // Diviser en deux parties égales et comparer
+        const fullLength = trimmed.length;
+        if (fullLength % 2 === 0) {
+            const firstPart = trimmed.substring(0, fullLength / 2).trim();
+            const secondPart = trimmed.substring(fullLength / 2).trim();
+            if (firstPart === secondPart) {
+                return firstPart;
+            }
+        }
+    }
+
+    // Méthode 3: Détecter les patterns répétitifs (ex: "Nom Nom" ou "Nom Nom Nom")
+    // Si le nom contient le même mot plusieurs fois consécutivement, ne garder qu'une occurrence
+    const uniqueWords: string[] = [];
+    let lastWord = '';
+    for (const word of words) {
+        if (word !== lastWord) {
+            uniqueWords.push(word);
+            lastWord = word;
+        }
+    }
+
+    // Si on a réduit le nombre de mots, c'est qu'il y avait des répétitions
+    if (uniqueWords.length < words.length && uniqueWords.length > 0) {
+        return uniqueWords.join(' ');
+    }
+
+    return trimmed;
+};
+
 const normalizeComments = (items: any[]): ProductComment[] =>
     (items || []).map((item) => ({
         id: item.id,
         service_id: item.service_id,
         user_id: item.user_id,
-        user_name: item.user_name,
+        user_name: cleanUserName(item.user_name), // ✅ CORRECTION : Nettoyer le nom pour éviter les doublons
         user_avatar: item.user_avatar ?? undefined,
         parent_comment_id: item.parent_comment_id ?? null,
         rating: item.rating ?? null,
@@ -143,7 +192,7 @@ const normalizeComments = (items: any[]): ProductComment[] =>
         mentions: item.mentions ?? [],
         mention_users: (item.mention_users || []).map((mention: any) => ({
             id: mention.id,
-            name: mention.name,
+            name: cleanUserName(mention.name), // ✅ CORRECTION : Nettoyer aussi les noms dans les mentions
             avatar_url: mention.avatar_url ?? undefined,
         })),
         reaction_counts: item.reaction_counts ?? {},

@@ -987,6 +987,35 @@ pub async fn creer_service(
         );
     }
 
+    // ✅ CRITIQUE: Supprimer base64_image du data_obj AVANT insertion (évite erreur index PostgreSQL)
+    // Les images seront sauvegardées dans la table media plus tard
+    if let Some(data_obj_map) = data_obj.as_object_mut() {
+        let removed_keys: Vec<String> = [
+            "base64_image",
+            "audio_base64",
+            "video_base64",
+            "doc_base64",
+            "excel_base64",
+        ]
+        .iter()
+        .filter_map(|key| {
+            if data_obj_map.contains_key(*key) {
+                data_obj_map.remove(*key);
+                Some(key.to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+        if !removed_keys.is_empty() {
+            log::info!(
+                "[creer_service] ✅ Nettoyage des médias base64 du data_obj (clés supprimées: {:?})",
+                removed_keys
+            );
+        }
+    }
+
     log::info!(
         "[creer_service] Token tracker après ajout validation: {:?}",
         token_tracker

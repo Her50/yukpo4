@@ -1753,6 +1753,42 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales:', initialValues);
 
+        // ✅ NOUVEAU 2025-11-21: Charger les combinaisons préférées par l'IA via session_id
+        if (suggestion?.session_id && !initialValues.produits?.valeur?.length) {
+          try {
+            const combinationsResponse = await apiGet(`/api/combinations/session/${suggestion.session_id}`);
+            if (combinationsResponse?.combinations && Array.isArray(combinationsResponse.combinations)) {
+              // Trouver la combinaison préférée par l'IA (is_ai_preferred = true)
+              const preferred = combinationsResponse.combinations.find((c: any) => c.is_ai_preferred);
+
+              if (preferred && preferred.product_vector && Array.isArray(preferred.product_vector) && preferred.product_vector.length > 0) {
+                // Construire la valeur au format attendu (string concaténée avec séparateur)
+                const separateur = preferred.separateur || ',';
+                const combinationString = preferred.product_vector.join(separateur);
+
+                // Mettre à jour initialValues.produits avec la combinaison préférée
+                initialValues.produits = {
+                  type_donnee: 'autocomplete',
+                  valeur: [combinationString],
+                  separateur: separateur,
+                  sous_caracteristiques: preferred.product_labels || {},
+                  identifiant_base: 'produits',
+                  filtrable: true,
+                  origine_champs: 'ia'
+                };
+
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ Combinaison préférée IA chargée:', {
+                  combinationString,
+                  sous_caracteristiques: Object.keys(preferred.product_labels || {}).length
+                });
+              }
+            }
+          } catch (error) {
+            console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur chargement combinaisons IA:', error);
+            // Ne pas bloquer le chargement du formulaire si l'API échoue
+          }
+        }
+
         // ✅ CRITIQUE 2025-11-03: Organiser les blocs directement avec initialValues
         // Au lieu d'attendre que useEffect se déclenche avec valeursFormulaire vide
         const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);

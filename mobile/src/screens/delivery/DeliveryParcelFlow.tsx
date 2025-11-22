@@ -17,6 +17,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import NativeDatePicker from '../../components/NativeDatePicker';
 import NativeTimePicker from '../../components/NativeTimePicker';
 import SafeIcon from '../../components/SafeIcon';
+import { VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT } from '../../config/deliveryConfig';
 import { useLocation } from '../../contexts/LocationContext';
 import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -645,21 +646,12 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             <TouchableOpacity
                                 style={styles.pickerButton}
                                 onPress={() => {
-                                    const transportOptions = [
-                                        { value: 'bike', label: '🚲 Vélo cargo' },
-                                        { value: 'motorcycle', label: '🏍️ Moto' },
-                                        { value: 'tricycle', label: '🛺 Tricycle' },
-                                        { value: 'car', label: '🚗 Voiture' },
-                                        { value: 'pickup', label: '🚛 Pick-up' },
-                                        { value: 'van', label: '🚐 Fourgonnette' },
-                                        { value: 'truck', label: '🚚 Camion' },
-                                        { value: 'walking', label: '🚶 Piéton' },
-                                    ];
+                                    // ✅ CORRECTION : Utiliser la constante partagée pour aligner avec la création de coursier
                                     Alert.alert(
                                         'Mode de transport',
                                         'Choisissez le mode de transport souhaité pour cette livraison',
                                         [
-                                            ...transportOptions.map(opt => ({
+                                            ...VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT.map(opt => ({
                                                 text: opt.label,
                                                 onPress: () => setTransportMode(opt.value),
                                             })),
@@ -670,16 +662,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             >
                                 <Text style={styles.pickerText}>
                                     {transportMode
-                                        ? [
-                                            { value: 'bike', label: '🚲 Vélo cargo' },
-                                            { value: 'motorcycle', label: '🏍️ Moto' },
-                                            { value: 'tricycle', label: '🛺 Tricycle' },
-                                            { value: 'car', label: '🚗 Voiture' },
-                                            { value: 'pickup', label: '🚛 Pick-up' },
-                                            { value: 'van', label: '🚐 Fourgonnette' },
-                                            { value: 'truck', label: '🚚 Camion' },
-                                            { value: 'walking', label: '🚶 Piéton' },
-                                        ].find(opt => opt.value === transportMode)?.label || 'Sélectionner...'
+                                        ? VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT.find(opt => opt.value === transportMode)?.label || 'Sélectionner...'
                                         : 'Aucune préférence'}
                                 </Text>
                                 <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />

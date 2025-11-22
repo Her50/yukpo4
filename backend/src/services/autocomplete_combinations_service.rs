@@ -16,7 +16,7 @@ pub struct AutocompleteCombination {
     pub chosen_location: Option<String>,
     pub usage_count: i32,
     pub is_ai_preferred: bool,
-    pub ai_confidence: f32,
+    pub ai_confidence: f64,
     pub session_id: Option<String>,
     pub has_variant: bool,
     pub variant_dimension: Option<String>,
@@ -124,7 +124,7 @@ pub async fn upsert_combination(
     full_vector: &[String],
     chosen_location: Option<&str>,
     is_ai_preferred: bool,
-    ai_confidence: f32,
+    ai_confidence: f64,
     session_id: Option<&str>,
     has_variant: bool,
     variant_dimension: Option<&str>,
@@ -526,8 +526,7 @@ pub fn extract_combinations_from_ai_response(
 
     let preferred_confidence = preferred_match
         .and_then(|pm| pm.get("confidence"))
-        .and_then(|c| c.as_f64())
-        .map(|f| f as f32);
+        .and_then(|c| c.as_f64());
 
     if let Some(ref expl) = preferred_explanation {
         log::info!(
@@ -592,7 +591,7 @@ pub fn extract_combinations_from_ai_response(
             let ai_confidence = if index == 0 && preferred_confidence.is_some() {
                 preferred_confidence.unwrap()
             } else {
-                1.0 - (index as f32 * 0.05)
+                1.0 - (index as f64 * 0.05)
             };
 
             // Location labels (vide pour l'instant, sera rempli par le prestataire)
@@ -647,7 +646,7 @@ pub struct AICombinationInput {
     pub location_labels: Vec<String>, // ✅ NOUVEAU : Labels de localisation
     pub full_vector: Vec<String>,
     pub chosen_location: Option<String>,
-    pub ai_confidence: f32,
+    pub ai_confidence: f64,
     pub has_variant: bool,
     pub variant_dimension: Option<String>,
     pub variant_value: Option<String>,
@@ -655,7 +654,7 @@ pub struct AICombinationInput {
     pub devise: Option<String>,
     pub stock: Option<i32>,
     pub preferred_explanation: Option<String>, // ✅ NOUVEAU 2025-11-03: Explication choix préféré
-    pub preferred_match_confidence: Option<f32>, // ✅ NOUVEAU 2025-11-03: Confiance du match
+    pub preferred_match_confidence: Option<f64>, // ✅ NOUVEAU 2025-11-03: Confiance du match
 }
 
 /// Calcul du score de localisation (version Rust, miroir de la fonction SQL)

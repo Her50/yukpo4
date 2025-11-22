@@ -314,7 +314,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>
+            <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
               🔔 Notifications
             </Text>
             {unreadCount > 0 && (
@@ -556,11 +556,13 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+    minWidth: 0,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.colors.text,
+    flexShrink: 1,
   },
   unreadBadge: {
     backgroundColor: '#F44336',

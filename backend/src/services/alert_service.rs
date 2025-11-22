@@ -34,7 +34,8 @@ pub async fn get_alerts(pool: &PgPool, user_id: i32) -> Result<Vec<Alert>, sqlx:
 }
 
 pub async fn mark_alert_read(pool: &PgPool, alert_id: i32) -> Result<(), sqlx::Error> {
-    sqlx::query!("UPDATE alerts SET is_read = TRUE WHERE id = $1", alert_id)
+    sqlx::query("UPDATE alerts SET is_read = TRUE WHERE id = $1")
+        .bind(alert_id)
         .execute(pool)
         .await?;
     Ok(())

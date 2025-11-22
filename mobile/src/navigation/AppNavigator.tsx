@@ -44,6 +44,7 @@ import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntellig
 import MesProduitsScreen from '../screens/MesProduitsScreen';
 import OrderStatusScreen from '../screens/OrderStatusScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
+import GlobalPromoManagerScreen from '../screens/promo/GlobalPromoManagerScreen';
 import GlobalPromoSubmissionScreen from '../screens/promo/GlobalPromoSubmissionScreen';
 import ProviderOrderManagementScreen from '../screens/ProviderOrderManagementScreen';
 import PubliciteDashboardScreen from '../screens/PubliciteDashboardScreen';
@@ -88,6 +89,7 @@ const VideoCreationIntroScreenWithSafeArea = withNavigatorSafeArea(VideoCreation
 const VideoCreationWizardScreenWithSafeArea = withNavigatorSafeArea(VideoCreationWizardScreen);
 const VideoGenerationResultScreenWithSafeArea = withNavigatorSafeArea(VideoGenerationResultScreen);
 const GlobalPromoSubmissionScreenWithSafeArea = withNavigatorSafeArea(GlobalPromoSubmissionScreen);
+const GlobalPromoManagerScreenWithSafeArea = withNavigatorSafeArea(GlobalPromoManagerScreen);
 const DeliveryHomeScreenWithSafeArea = withNavigatorSafeArea(DeliveryHomeScreen);
 const ShoppingBasketScreenWithSafeArea = withNavigatorSafeArea(ShoppingBasketScreen);
 const ShoppingBudgetScreenWithSafeArea = withNavigatorSafeArea(ShoppingBudgetScreen);
@@ -300,6 +302,10 @@ const SecondaryStack = () => {
         <Stack.Screen
           name="GlobalPromoSubmission"
           component={GlobalPromoSubmissionScreenWithSafeArea}
+        />
+        <Stack.Screen
+          name="GlobalPromoManager"
+          component={GlobalPromoManagerScreenWithSafeArea}
         />
         <Stack.Screen
           name="AnalyticsDashboard"

@@ -1673,8 +1673,14 @@ async fn handle_optimization_metrics(
         user_id
     );
 
+    #[derive(sqlx::FromRow)]
+    struct UserBalanceRow {
+        tokens_balance: i64,
+    }
+    
     // R?cup?rer le solde actuel de l'utilisateur
-    let solde_result = sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user_id)
+    let solde_result: Result<UserBalanceRow, _> = sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user_id)
         .fetch_one(&state.pg)
         .await;
 

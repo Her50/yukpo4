@@ -67,8 +67,13 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             if (response.success) {
                 // ✅ CORRECTION: Vérifier que data existe et est un objet
                 const data = response.data || {};
-                setMembers(Array.isArray(data.members) ? data.members : []);
-                setInvitations(Array.isArray(data.invitations) ? data.invitations : []);
+
+                // ✅ PROTECTION: S'assurer que members et invitations sont des tableaux valides
+                const membersData = data.members || data.members_list || [];
+                const invitationsData = data.invitations || data.invitations_list || [];
+
+                setMembers(Array.isArray(membersData) ? membersData.filter(m => m && m.id) : []);
+                setInvitations(Array.isArray(invitationsData) ? invitationsData.filter(i => i && i.id) : []);
             } else {
                 // Si l'API retourne une erreur, initialiser avec des tableaux vides
                 setMembers([]);
@@ -76,6 +81,9 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             }
         } catch (error) {
             console.error('Erreur chargement équipe:', error);
+            // ✅ PROTECTION: En cas d'erreur, initialiser avec des tableaux vides
+            setMembers([]);
+            setInvitations([]);
             Alert.alert('Erreur', 'Impossible de charger les données de l\'équipe');
         } finally {
             setLoading(false);
@@ -159,60 +167,72 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
         }
     };
 
-    const renderMember = ({ item }: { item: ServiceTeamMember }) => (
-        <NativeCard style={styles.memberCard}>
-            <View style={styles.memberHeader}>
-                <View style={styles.memberInfo}>
-                    <Image
-                        source={{ uri: item.userAvatar || 'https://via.placeholder.com/40' }}
-                        style={styles.memberAvatar}
-                    />
-                    <View style={styles.memberDetails}>
-                        <Text style={styles.memberName}>{item.userName}</Text>
-                        <Text style={styles.memberEmail}>{item.userEmail}</Text>
+    const renderMember = ({ item }: { item: ServiceTeamMember }) => {
+        // ✅ PROTECTION: Vérifier que item existe et a les propriétés nécessaires
+        if (!item || !item.id) {
+            return null;
+        }
+
+        const role = item.role || SERVICE_TEAM_ROLES[3]; // Fallback vers 'viewer' si role est undefined
+        const permissions = item.permissions || [];
+
+        return (
+            <NativeCard style={styles.memberCard}>
+                <View style={styles.memberHeader}>
+                    <View style={styles.memberInfo}>
+                        <Image
+                            source={{ uri: item.userAvatar || 'https://via.placeholder.com/40' }}
+                            style={styles.memberAvatar}
+                        />
+                        <View style={styles.memberDetails}>
+                            <Text style={styles.memberName}>{item.userName || 'Utilisateur inconnu'}</Text>
+                            <Text style={styles.memberEmail}>{item.userEmail || 'Email inconnu'}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.memberActions}>
+                        <TouchableOpacity
+                            style={[styles.roleBadge, { backgroundColor: (role.color || '#6B7280') + '20' }]}
+                            onPress={() => {
+                                setSelectedRole(role);
+                                setShowRoleModal(true);
+                            }}
+                        >
+                            <SafeIcon name={role.icon || 'user'} size={16} color={role.color || '#6B7280'} />
+                            <Text style={[styles.roleText, { color: role.color || '#6B7280' }]}>
+                                {role.name || 'Rôle inconnu'}
+                            </Text>
+                        </TouchableOpacity>
+                        {item.userId !== user?.id && (
+                            <TouchableOpacity
+                                style={styles.removeButton}
+                                onPress={() => handleRemoveMember(item.id)}
+                            >
+                                <SafeIcon name="trash" size={16} color="#DC2626" />
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
-                <View style={styles.memberActions}>
-                    <TouchableOpacity
-                        style={[styles.roleBadge, { backgroundColor: item.role.color + '20' }]}
-                        onPress={() => {
-                            setSelectedRole(item.role);
-                            setShowRoleModal(true);
-                        }}
-                    >
-                        <SafeIcon name={item.role.icon} size={16} color={item.role.color} />
-                        <Text style={[styles.roleText, { color: item.role.color }]}>
-                            {item.role.name}
-                        </Text>
-                    </TouchableOpacity>
-                    {item.userId !== user?.id && (
-                        <TouchableOpacity
-                            style={styles.removeButton}
-                            onPress={() => handleRemoveMember(item.id)}
-                        >
-                            <SafeIcon name="trash" size={16} color="#DC2626" />
-                        </TouchableOpacity>
-                    )}
-                </View>
-            </View>
 
-            <View style={styles.permissionsContainer}>
-                <Text style={styles.permissionsTitle}>Permissions :</Text>
-                <View style={styles.permissionsList}>
-                    {item.permissions.slice(0, 3).map(permission => (
-                        <View key={permission.id} style={styles.permissionTag}>
-                            <Text style={styles.permissionText}>{permission.name}</Text>
+                {permissions && Array.isArray(permissions) && permissions.length > 0 && (
+                    <View style={styles.permissionsContainer}>
+                        <Text style={styles.permissionsTitle}>Permissions :</Text>
+                        <View style={styles.permissionsList}>
+                            {permissions.slice(0, 3).map((permission, idx) => (
+                                <View key={permission?.id || `perm-${idx}`} style={styles.permissionTag}>
+                                    <Text style={styles.permissionText}>{permission?.name || 'Permission'}</Text>
+                                </View>
+                            ))}
+                            {permissions.length > 3 && (
+                                <Text style={styles.morePermissions}>
+                                    +{permissions.length - 3} autres
+                                </Text>
+                            )}
                         </View>
-                    ))}
-                    {item.permissions.length > 3 && (
-                        <Text style={styles.morePermissions}>
-                            +{item.permissions.length - 3} autres
-                        </Text>
-                    )}
-                </View>
-            </View>
-        </NativeCard>
-    );
+                    </View>
+                )}
+            </NativeCard>
+        );
+    };
 
     const renderRoleModal = () => (
         <Modal
@@ -358,11 +378,11 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             <ScrollView style={styles.content}>
                 <View style={styles.statsContainer}>
                     <NativeCard style={styles.statCard}>
-                        <Text style={styles.statNumber}>{members.length}</Text>
+                        <Text style={styles.statNumber}>{Array.isArray(members) ? members.length : 0}</Text>
                         <Text style={styles.statLabel}>Membres actifs</Text>
                     </NativeCard>
                     <NativeCard style={styles.statCard}>
-                        <Text style={styles.statNumber}>{invitations.length}</Text>
+                        <Text style={styles.statNumber}>{Array.isArray(invitations) ? invitations.length : 0}</Text>
                         <Text style={styles.statLabel}>Invitations en attente</Text>
                     </NativeCard>
                 </View>
@@ -371,9 +391,9 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                     <Text style={styles.sectionTitle}>Membres de l'équipe</Text>
                     {members && Array.isArray(members) && members.length > 0 ? (
                         <FlatList
-                            data={members}
+                            data={members.filter(m => m && m.id)} // ✅ PROTECTION: Filtrer les membres invalides
                             renderItem={renderMember}
-                            keyExtractor={item => item.id || `member-${item.userId}`}
+                            keyExtractor={(item, index) => item?.id || `member-${item?.userId || index}`}
                             scrollEnabled={false}
                             showsVerticalScrollIndicator={false}
                         />
