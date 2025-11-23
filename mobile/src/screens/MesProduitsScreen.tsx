@@ -238,12 +238,22 @@ const MesProduitsScreen: React.FC = () => {
                 servicesData.forEach((service: any) => {
                     const serviceId = service.id.toString();
                     const serviceTitre = service.data?.titre_service?.valeur || service.titre || 'Service sans titre';
-                    const produits = service.data?.produits?.valeur;
+                    // ✅ CORRIGÉ: Extraire les produits de différentes structures possibles
+                    const produits = service.data?.produits?.valeur
+                        || service.data?.produits
+                        || service.produits?.valeur
+                        || service.produits
+                        || (Array.isArray(service.data?.produits) ? service.data.produits : null);
+
+                    console.log('[MesProduitsScreen] 🔍 Service:', serviceId, 'Titre:', serviceTitre);
+                    console.log('[MesProduitsScreen] 🔍 Produits trouvés:', produits ? (Array.isArray(produits) ? produits.length : 'non-array') : 'null/undefined');
+
                     const serviceCreatedAtTs = parseDateToTimestamp(
                         service.created_at || service.createdAt || service.data?.created_at
                     );
 
-                    if (produits && Array.isArray(produits)) {
+                    if (produits && Array.isArray(produits) && produits.length > 0) {
+                        console.log('[MesProduitsScreen] ✅ Ajout de', produits.length, 'produits du service', serviceId);
                         produits.forEach((product: any, index: number) => {
                             const productIndex = typeof product.product_index === 'number'
                                 ? product.product_index
@@ -1246,17 +1256,26 @@ const MesProduitsScreen: React.FC = () => {
                             subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
                             rightSlot={(
                                 <View style={styles.headerActions}>
-                                    <TouchableOpacity
-                                        style={styles.headerMenuButton}
-                                        onPress={() => setShowMenuModal(true)}
-                                    >
-                                        <SafeIcon name="more-vertical" size={18} color={modernColors.primary} />
-                                    </TouchableOpacity>
+                                    {/* ✅ ORDRE CORRIGÉ : Vidéo → Black Friday → Menu (trois points) */}
                                     <TouchableOpacity
                                         style={styles.headerIconButton}
                                         onPress={openVideoCreatorGlobal}
                                     >
                                         <SafeIcon name="video" size={18} color={modernColors.primary} />
+                                    </TouchableOpacity>
+                                    {/* ✅ NOUVEAU : Bouton participation Black Friday */}
+                                    <TouchableOpacity
+                                        style={styles.headerBlackFridayButton}
+                                        onPress={() => (navigation as any).navigate('GlobalPromoSubmission')}
+                                    >
+                                        <Text style={styles.headerBlackFridayIcon}>🔥</Text>
+                                    </TouchableOpacity>
+                                    {/* ✅ Menu (trois points) à la fin */}
+                                    <TouchableOpacity
+                                        style={styles.headerMenuButton}
+                                        onPress={() => setShowMenuModal(true)}
+                                    >
+                                        <SafeIcon name="more-vertical" size={18} color={modernColors.primary} />
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -1484,6 +1503,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: '#BBF7D0',
+    },
+    headerBlackFridayButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#FEF3C7',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+    },
+    headerBlackFridayIcon: {
+        fontSize: 18,
     },
     statsRowContainer: {
         backgroundColor: '#FFFFFF',

@@ -391,6 +391,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
       service?.data?.nom_entreprise?.valeur,
       service?.data?.responsable_nom?.valeur,
       service?.data?.representant_nom?.valeur,
+      service?.user?.name,
+      service?.user?.username,
+      service?.user?.display_name,
     ) || 'Prestataire';
 
   const prestataireAvatar = firstNonEmptyString(
@@ -632,10 +635,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const countryFlag = getCountryFlag(pays);
   const showCountryBadge = countryFlag && countryFlag !== '🌍';
 
-  // Debug: afficher le pays extrait
-  if (pays) {
-    console.log('[ProductCard] Pays extrait:', pays, 'Drapeau:', countryFlag);
-  }
+  // Debug: afficher les données extraites
+  console.log('[ProductCard] DEBUG - prestataireName:', prestataireName);
+  console.log('[ProductCard] DEBUG - chosenLocation:', chosenLocation);
+  console.log('[ProductCard] DEBUG - locationVector:', locationVector);
+  console.log('[ProductCard] DEBUG - pays:', pays, 'countryFlag:', countryFlag);
+  console.log('[ProductCard] DEBUG - product.adresse:', product.adresse);
+  console.log('[ProductCard] DEBUG - product.ville:', product.ville);
+  console.log('[ProductCard] DEBUG - product.region:', product.region);
 
   const commentServiceId = Number(product._serviceId || product.service_id || service?.id || 0);
   const serviceTitleForComments =
@@ -989,8 +996,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
               </Text>
 
-              {/* ✅ AMÉLIORÉ: Prestataire cliquable - S'assure d'afficher le vrai nom */}
-              {prestataireName && prestataireName !== 'Prestataire' && (
+              {/* ✅ CORRIGÉ: Prestataire - Toujours afficher si disponible */}
+              {prestataireName && (
                 <TouchableOpacity
                   style={styles.prestataireRow}
                   onPress={() => {
@@ -998,6 +1005,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
                     }
                   }}
+                  activeOpacity={0.7}
                 >
                   {prestataireAvatar ? (
                     <Image
@@ -1016,16 +1024,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </TouchableOpacity>
               )}
 
-              {/* ✅ CORRIGÉ: Localisation hiérarchique détaillée - Affiche le drapeau avec l'adresse */}
-              {(chosenLocation || locationVector.length > 0 || pays) && (
+              {/* ✅ CORRIGÉ: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
+              {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region) && (
                 <View style={styles.locationSection}>
                   <View style={styles.locationRow}>
                     <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
                     <Text style={styles.locationTextPrimary} numberOfLines={2}>
-                      {chosenLocation || locationVector[0] || 'Localisation disponible'}
+                      {chosenLocation || locationVector[0] || product.adresse || product.ville || product.region || 'Localisation disponible'}
                     </Text>
-                    {/* ✅ CORRIGÉ : Toujours afficher le drapeau si disponible */}
-                    {countryFlag && countryFlag !== '🌍' && (
+                    {/* ✅ CORRIGÉ : Afficher le drapeau si disponible, même si générique */}
+                    {countryFlag && (
                       <Text style={styles.locationFlag} numberOfLines={1}>
                         {countryFlag}
                       </Text>

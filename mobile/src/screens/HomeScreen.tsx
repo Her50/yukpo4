@@ -968,32 +968,37 @@ const styles = StyleSheet.create({
     },
     headerRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between', // ✅ Garde l'espacement entre les éléments
+        justifyContent: 'space-between', // ✅ Espacement équilibré entre les trois colonnes
         alignItems: 'center',
-        paddingHorizontal: 8, // ✅ CORRIGÉ : Réduit le padding pour plus d'espace au centre
-        gap: 4, // ✅ CORRIGÉ : Réduit le gap pour plus d'espace
+        paddingHorizontal: 8,
     },
     avatarContainer: {
         width: 44,
         height: 44,
         marginRight: 8,
     },
-    // ✅ CORRIGÉ: Colonne gauche avec avatar + langue
+    // ✅ ÉQUILIBRÉ: Colonne gauche avec avatar + langue - Largeur fixe pour équilibrer
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        flexShrink: 1, // ✅ CORRIGÉ : Permet de rétrécir si nécessaire pour laisser de la place au centre
-        maxWidth: 120, // ✅ CORRIGÉ : Limite la largeur maximale pour laisser de la place au centre
+        width: 100, // ✅ Largeur fixe pour équilibrer avec la droite
+        justifyContent: 'flex-start', // ✅ Aligner à gauche
     },
-    // ✅ CORRIGÉ : Conteneur pour le titre équilibré et visible
+    // ✅ PARFAITEMENT CENTRÉ : Conteneur pour le titre équilibré
     brandTitleContainer: {
         flex: 1, // ✅ Prend l'espace disponible au centre
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 12, // ✅ CORRIGÉ : Augmenté pour plus d'espace
-        flexShrink: 0, // ✅ CORRIGÉ : Ne pas rétrécir pour éviter la troncature
-        minWidth: 120, // ✅ CORRIGÉ : Largeur minimale augmentée pour afficher "Yukpo" complet (5 lettres + espace)
-        maxWidth: 200, // ✅ CORRIGÉ : Largeur maximale augmentée
+        paddingHorizontal: 8,
+        flexShrink: 0,
+    },
+    // ✅ ÉQUILIBRÉ: Colonne droite avec les actions - Largeur fixe pour équilibrer
+    headerActionsCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: 100, // ✅ Même largeur que la gauche pour équilibrer
+        justifyContent: 'flex-end', // ✅ Aligner à droite
+        gap: 4,
     },
     headerTop: {
         flexDirection: 'row',
@@ -1063,16 +1068,6 @@ const styles = StyleSheet.create({
         marginHorizontal: 2,
         marginLeft: 8, // ✅ Équilibré
         marginRight: 8,
-    },
-    headerActionsCompact: {
-        flexDirection: 'row',
-        gap: 4, // ✅ CORRIGÉ : Réduit de 6 à 4 pour plus d'espace pour le texte
-        flex: 1,
-        justifyContent: 'flex-end', // ✅ Aligner à droite
-        minWidth: 85, // ✅ CORRIGÉ : Réduit pour plus d'espace au centre
-        maxWidth: 110, // ✅ CORRIGÉ : Réduit pour plus d'espace au centre
-        paddingLeft: 4, // ✅ Réduit pour équilibrer avec le décalage du texte
-        flexShrink: 1, // ✅ Permet de rétrécir si nécessaire
     },
     headerButtonCompact: {
         width: 38, // ✅ Réduit de 40 à 38 pour plus d'espace

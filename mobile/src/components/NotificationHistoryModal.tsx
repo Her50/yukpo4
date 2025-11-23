@@ -314,7 +314,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+            <Text style={styles.headerTitle} numberOfLines={1}>
               🔔 Notifications
             </Text>
             {unreadCount > 0 && (
@@ -550,22 +550,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
+    paddingHorizontal: 12, // ✅ Réduit le padding horizontal pour plus d'espace
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   headerLeft: {
     flex: 1,
-    minWidth: 0,
-    marginRight: 8, // ✅ CORRIGÉ : Espacement pour éviter la troncature
+    minWidth: 120, // ✅ Largeur minimale pour afficher "Notifications"
+    marginRight: 12, // ✅ Espacement pour éviter la troncature
+    flexShrink: 0, // ✅ Ne pas rétrécir
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.colors.text,
-    flexShrink: 1,
-    flex: 1, // ✅ CORRIGÉ : Prend l'espace disponible
-    paddingRight: 8, // ✅ CORRIGÉ : Padding pour éviter la troncature
   },
   unreadBadge: {
     backgroundColor: '#F44336',
@@ -583,10 +582,13 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1, // ✅ Peut rétrécir si nécessaire
+    marginLeft: 8, // ✅ Espacement depuis le texte
+    maxWidth: '60%', // ✅ Limite la largeur maximale pour laisser de l'espace au texte
   },
   refreshButton: {
-    padding: 8,
-    marginRight: 8,
+    padding: 6, // ✅ Réduit de 8 à 6
+    marginRight: 6, // ✅ Réduit de 8 à 6
     borderRadius: 20,
     backgroundColor: '#F5F5F5',
   },
@@ -600,17 +602,20 @@ const styles = StyleSheet.create({
   markAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 6, // ✅ Réduit de 8 à 6
+    flexShrink: 1, // ✅ Peut rétrécir si nécessaire
   },
   markAllText: {
-    fontSize: 12,
-    marginLeft: 4,
+    fontSize: 11, // ✅ Réduit de 12 à 11
+    marginLeft: 3, // ✅ Réduit de 4 à 3
+    flexShrink: 1, // ✅ Peut rétrécir si nécessaire
   },
   checkIcon: {
     fontSize: 16,
   },
   closeIconButton: {
-    padding: 8,
+    padding: 6, // ✅ Réduit de 8 à 6
+    marginLeft: 4, // ✅ Espacement depuis le bouton précédent
   },
   closeIconText: {
     fontSize: 24,

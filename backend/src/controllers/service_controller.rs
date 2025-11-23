@@ -1085,21 +1085,69 @@ pub async fn get_services_for_prestataire(
         user_id
     );
 
-    // Log des 5 derniers services cr??s pour debug
-    let _debug_rows: Vec<ServiceIdCreatedRow> = match sqlx::query_as(
+    // ✅ DEBUG: Vérifier si l'utilisateur existe et est provider
+    let user_is_provider: Option<bool> = match sqlx::query_scalar::<_, bool>(
+        r#"SELECT is_provider FROM users WHERE id = $1"#
+    )
+    .bind(user_id)
+    .fetch_optional(pg_pool)
+    .await {
+        Ok(Some(is_provider)) => {
+            info!(
+                "[get_services_for_prestataire] ✅ Utilisateur {} trouvé: is_provider={}",
+                user_id, is_provider
+            );
+            Some(is_provider)
+        },
+        Ok(None) => {
+            error!("[get_services_for_prestataire] ❌ Utilisateur {} introuvable dans la base de données", user_id);
+            None
+        },
+        Err(e) => {
+            error!("[get_services_for_prestataire] ❌ Erreur vérification utilisateur: {}", e);
+            None
+        }
+    };
+
+    // ✅ DEBUG: Log des 5 derniers services créés pour debug
+    let debug_rows: Vec<ServiceIdCreatedRow> = match sqlx::query_as(
         r#"SELECT id, created_at FROM services WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5"#
     )
     .bind(user_id)
     .fetch_all(pg_pool)
     .await {
-        Ok(r) => r,
+        Ok(r) => {
+            info!(
+                "[get_services_for_prestataire] 🔍 DEBUG - {} service(s) trouvé(s) dans la requête de debug (derniers 5)",
+                r.len()
+            );
+            for row in &r {
+                info!("[get_services_for_prestataire] 🔍   - Service ID: {}, créé le: {}", row.id, row.created_at);
+            }
+            r
+        },
         Err(e) => {
             error!("[get_services_for_prestataire] Erreur requ?te debug SQL: {}", e);
             Vec::new()
         }
     };
 
-    // Debug lines removed for compilation
+    // ✅ DEBUG: Compter tous les services (actifs et inactifs)
+    let total_services_count: i64 = match sqlx::query_scalar::<_, i64>(
+        r#"SELECT COUNT(*) FROM services WHERE user_id = $1"#
+    )
+    .bind(user_id)
+    .fetch_one(pg_pool)
+    .await {
+        Ok(count) => {
+            info!("[get_services_for_prestataire] 📊 Total services dans DB pour user {}: {}", user_id, count);
+            count
+        },
+        Err(e) => {
+            error!("[get_services_for_prestataire] Erreur comptage services: {}", e);
+            0
+        }
+    };
 
     let rows: Vec<ServiceIdActiveRow> = match sqlx::query_as(
         r#"SELECT id, data, is_active, created_at FROM services WHERE user_id = $1 ORDER BY created_at DESC"#

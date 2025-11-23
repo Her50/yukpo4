@@ -263,6 +263,64 @@ fn parse_lat_lng_from_str(input: &str) -> Option<(f64, f64)> {
     Some((lat, lng))
 }
 
+/// Fonction récursive pour nettoyer tous les médias base64 dans une structure JSON
+/// Supprime les clés médias directes et les objets avec type_donnee: "media"
+fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mut usize) {
+    match value {
+        serde_json::Value::Object(obj) => {
+            // Liste des clés à supprimer complètement (médias bruts)
+            let media_keys = [
+                "base64_image",
+                "audio_base64",
+                "video_base64",
+                "doc_base64",
+                "excel_base64",
+                "images_base64",
+                "image_base64",
+            ];
+            
+            // Supprimer les clés médias directes
+            for key in &media_keys {
+                if obj.remove(*key).is_some() {
+                    *removed_count += 1;
+                }
+            }
+            
+            // Nettoyer les objets avec type_donnee: "media"
+            let keys_to_check: Vec<String> = obj.keys().cloned().collect();
+            for key in keys_to_check {
+                if let Some(v) = obj.get_mut(&key) {
+                    // Si c'est un objet avec type_donnee: "media", supprimer tout l'objet
+                    if let Some(media_obj) = v.as_object_mut() {
+                        if media_obj.get("type_donnee")
+                            .and_then(|t| t.as_str())
+                            .map(|s| s == "media")
+                            .unwrap_or(false)
+                        {
+                            // Supprimer tout l'objet média (il sera sauvegardé dans la table media)
+                            if obj.remove(&key).is_some() {
+                                *removed_count += 1;
+                            }
+                        } else {
+                            // Nettoyer récursivement dans les sous-objets
+                            clean_media_recursive_final(v, removed_count);
+                        }
+                    } else {
+                        // Nettoyer récursivement
+                        clean_media_recursive_final(v, removed_count);
+                    }
+                }
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for item in arr.iter_mut() {
+                clean_media_recursive_final(item, removed_count);
+            }
+        }
+        _ => {}
+    }
+}
+
 fn extract_string_field(
     map: &serde_json::Map<String, serde_json::Value>,
     key: &str,
@@ -989,31 +1047,14 @@ pub async fn creer_service(
 
     // ✅ CRITIQUE: Supprimer base64_image du data_obj AVANT insertion (évite erreur index PostgreSQL)
     // Les images seront sauvegardées dans la table media plus tard
-    if let Some(data_obj_map) = data_obj.as_object_mut() {
-        let removed_keys: Vec<String> = [
-            "base64_image",
-            "audio_base64",
-            "video_base64",
-            "doc_base64",
-            "excel_base64",
-        ]
-        .iter()
-        .filter_map(|key| {
-            if data_obj_map.contains_key(*key) {
-                data_obj_map.remove(*key);
-                Some(key.to_string())
-            } else {
-                None
-            }
-        })
-        .collect();
-
-        if !removed_keys.is_empty() {
-            log::info!(
-                "[creer_service] ✅ Nettoyage des médias base64 du data_obj (clés supprimées: {:?})",
-                removed_keys
-            );
-        }
+    let mut removed_count_initial = 0;
+    clean_media_recursive_final(&mut data_obj, &mut removed_count_initial);
+    
+    if removed_count_initial > 0 {
+        log::info!(
+            "[creer_service] ✅ Nettoyage initial des médias base64 ({} médias supprimés)",
+            removed_count_initial
+        );
     }
 
     log::info!(
@@ -1116,74 +1157,31 @@ pub async fn creer_service(
 
     // ✅ NETTOYAGE FINAL AVANT INSERTION : Supprimer TOUTES les données volumineuses
     // Ce nettoyage est critique pour éviter l'erreur "index row requires X bytes, maximum size is 8191"
-    if let Some(data_obj_map) = data_obj.as_object_mut() {
-        // Supprimer tous les médias base64
-        let media_keys = [
-            "base64_image",
-            "audio_base64",
-            "video_base64",
-            "doc_base64",
-            "excel_base64",
-        ];
-        let mut removed_media: Vec<String> = Vec::new();
-        for key in &media_keys {
-            if data_obj_map.contains_key(*key) {
-                data_obj_map.remove(*key);
-                removed_media.push(key.to_string());
-            }
-        }
-        
-        // Nettoyer récursivement dans les produits
-        if let Some(produits_array) = data_obj_map.get_mut("produits").and_then(|v| v.as_array_mut()) {
-            for produit in produits_array.iter_mut() {
-                if let Some(prod_obj) = produit.as_object_mut() {
-                    for key in &media_keys {
-                        prod_obj.remove(*key);
-                    }
-                    // Supprimer aussi les variantes de noms
-                    prod_obj.remove("images_base64");
-                    prod_obj.remove("image_base64");
-                }
-            }
-        }
-        
-        // Nettoyer dans tous les champs qui pourraient contenir des médias
-        for (_key, value) in data_obj_map.iter_mut() {
-            if let Some(obj) = value.as_object_mut() {
-                for media_key in &media_keys {
-                    obj.remove(*media_key);
-                }
-                // Nettoyer récursivement dans les sous-objets
-                if let Some(valeur_obj) = obj.get_mut("valeur").and_then(|v| v.as_object_mut()) {
-                    for media_key in &media_keys {
-                        valeur_obj.remove(*media_key);
-                    }
-                }
-            }
-        }
-        
-        if !removed_media.is_empty() {
-            log::info!(
-                "[creer_service] ✅ Nettoyage final avant insertion (médias supprimés: {:?})",
-                removed_media
-            );
-        }
-        
-        // Vérifier la taille du JSON après nettoyage
-        let json_size = serde_json::to_string(data_obj_map)
-            .map(|s| s.len())
-            .unwrap_or(0);
+    
+    let mut removed_count = 0;
+    clean_media_recursive_final(&mut data_obj, &mut removed_count);
+    
+    if removed_count > 0 {
         log::info!(
-            "[creer_service] 📊 Taille du JSON après nettoyage: {} bytes (max recommandé: ~8000 bytes)",
+            "[creer_service] ✅ Nettoyage final avant insertion ({} médias supprimés)",
+            removed_count
+        );
+    }
+    
+    // Vérifier la taille du JSON après nettoyage
+    let json_size = serde_json::to_string(&data_obj)
+        .map(|s| s.len())
+        .unwrap_or(0);
+    log::info!(
+        "[creer_service] 📊 Taille du JSON après nettoyage: {} bytes (max recommandé: ~8000 bytes)",
+        json_size
+    );
+    
+    if json_size > 10000 {
+        log::warn!(
+            "[creer_service] ⚠️ JSON encore volumineux après nettoyage ({} bytes). Risque d'erreur d'insertion.",
             json_size
         );
-        
-        if json_size > 10000 {
-            log::warn!(
-                "[creer_service] ⚠️ JSON encore volumineux après nettoyage ({} bytes). Risque d'erreur d'insertion.",
-                json_size
-            );
-        }
     }
 
     let mut tx = pool
