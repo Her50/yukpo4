@@ -52,6 +52,7 @@ struct ServiceFullRow {
 }
 
 #[derive(FromRow)]
+#[derive(sqlx::FromRow)]
 struct ServiceIdCreatedRow {
     id: i32,
     created_at: sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,
@@ -1110,7 +1111,7 @@ pub async fn get_services_for_prestataire(
     };
 
     // ✅ DEBUG: Log des 5 derniers services créés pour debug
-    let debug_rows: Vec<ServiceIdCreatedRow> = match sqlx::query_as(
+    let debug_rows: Vec<ServiceIdCreatedRow> = match sqlx::query_as::<_, ServiceIdCreatedRow>(
         r#"SELECT id, created_at FROM services WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5"#
     )
     .bind(user_id)
