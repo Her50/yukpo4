@@ -1148,7 +1148,7 @@ pub async fn creer_service(
         }
         
         // Nettoyer dans tous les champs qui pourraient contenir des médias
-        for (key, value) in data_obj_map.iter_mut() {
+        for (_key, value) in data_obj_map.iter_mut() {
             if let Some(obj) = value.as_object_mut() {
                 for media_key in &media_keys {
                     obj.remove(*media_key);
@@ -2317,7 +2317,7 @@ pub async fn creer_service(
         // Créer une tâche asynchrone pour chaque embedding
         let embedding_task = {
             let embedding_client = embedding_client.clone();
-            let pinecone_enabled = pinecone_enabled;
+            let _pinecone_enabled = pinecone_enabled;
             let k = k.clone();
             let value_str = value_str.clone();
             let type_donnee = type_donnee.to_string();

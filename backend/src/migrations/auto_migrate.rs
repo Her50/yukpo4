@@ -2144,7 +2144,7 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
             .fetch_optional(pool)
             .await?;
 
-            if let Some(Some(col_type)) = current_type {
+            if let Some(col_type) = current_type {
                 if col_type == "real" {
                     warn!("⚠️ Colonne ai_confidence est REAL, conversion en DOUBLE PRECISION...");
                     sqlx::query(
