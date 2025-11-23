@@ -129,8 +129,19 @@ async fn debit_service_provider(
     interacting_user_id: i32,
     interaction_type: &str,
 ) {
+    #[derive(sqlx::FromRow)]
+    struct ServiceUserIdRow {
+        user_id: i32,
+    }
+
+    #[derive(sqlx::FromRow)]
+    struct UserBalanceRow {
+        tokens_balance: i64,
+    }
+
     // R?cup?rer l'ID du prestataire (propri?taire du service)
-    let provider_result = sqlx::query!("SELECT user_id FROM services WHERE id = $1", service_id)
+    let provider_result: Result<Option<ServiceUserIdRow>, _> = sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
+        .bind(service_id)
         .fetch_optional(pool)
         .await;
 
@@ -145,10 +156,10 @@ async fn debit_service_provider(
             }
 
             // V?rifier le solde du prestataire
-            let balance_result = sqlx::query!(
-                "SELECT tokens_balance FROM users WHERE id = $1",
-                provider_id
+            let balance_result: Result<Option<UserBalanceRow>, _> = sqlx::query_as(
+                "SELECT tokens_balance FROM users WHERE id = $1"
             )
+            .bind(provider_id)
             .fetch_optional(pool)
             .await;
 
@@ -158,11 +169,11 @@ async fn debit_service_provider(
                         // D?biter le prestataire
                         let nouveau_solde =
                             user.tokens_balance - COUT_INTERACTION_SERVICE_XAF_DIXIEME;
-                        let update_result = sqlx::query!(
-                            "UPDATE users SET tokens_balance = $1 WHERE id = $2",
-                            nouveau_solde,
-                            provider_id
+                        let update_result = sqlx::query(
+                            "UPDATE users SET tokens_balance = $1 WHERE id = $2"
                         )
+                        .bind(nouveau_solde)
+                        .bind(provider_id)
                         .execute(pool)
                         .await;
 

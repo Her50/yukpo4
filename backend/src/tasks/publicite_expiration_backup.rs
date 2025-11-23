@@ -2,6 +2,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
 use log;
+use chrono;
 
 /// Tâche périodique pour désactiver les publicités expirées
 /// S'exécute toutes les heures
@@ -44,7 +45,7 @@ pub async fn start_publicite_expiration_task(pool: Arc<PgPool>) {
 
 /// Désactive les publicités expirées
 async fn check_and_deactivate_expired_publicites(pool: &PgPool) -> Result<u64, sqlx::Error> {
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
         UPDATE publicites
         SET status = 'expired'
@@ -58,9 +59,18 @@ async fn check_and_deactivate_expired_publicites(pool: &PgPool) -> Result<u64, s
     Ok(result.rows_affected())
 }
 
+#[derive(sqlx::FromRow)]
+struct ExpiringPubliciteRow {
+    id: i32,
+    user_id: i32,
+    titre: String,
+    date_fin: chrono::DateTime<chrono::Utc>,
+    jours_restants: Option<i32>,
+}
+
 /// Vérifie les publicités qui expirent bientôt et envoie des notifications
 async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<u64, sqlx::Error> {
-    let expiring_publicites = sqlx::query!(
+    let expiring_publicites: Vec<ExpiringPubliciteRow> = sqlx::query_as(
         r#"
         SELECT id, user_id, titre, date_fin,
                EXTRACT(DAY FROM (date_fin - NOW()))::integer as jours_restants
@@ -99,15 +109,15 @@ async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<u64, sqlx::Erro
             "date_fin": pub_record.date_fin
         });
 
-        match sqlx::query!(
+        match sqlx::query(
             r#"
             INSERT INTO notifications (user_id, notification_type, message, metadata)
             VALUES ($1, 'publicite_expiring', $2, $3)
-            "#,
-            pub_record.user_id,
-            message,
-            metadata
+            "#
         )
+        .bind(pub_record.user_id)
+        .bind(&message)
+        .bind(metadata)
         .execute(pool)
         .await
         {

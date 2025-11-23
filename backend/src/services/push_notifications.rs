@@ -164,7 +164,8 @@ impl PushNotificationService {
 
     /// Supprimer une subscription
     pub async fn remove_subscription(&self, user_id: i32) -> AppResult<()> {
-        sqlx::query!("DELETE FROM push_subscriptions WHERE user_id = $1", user_id)
+        sqlx::query("DELETE FROM push_subscriptions WHERE user_id = $1")
+            .bind(user_id)
             .execute(&self.pool)
             .await?;
 

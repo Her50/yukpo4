@@ -4,9 +4,10 @@ use axum::{
     response::Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, FromRow};
 use std::sync::Arc;
 use log;
+use chrono;
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePubliciteRequest {

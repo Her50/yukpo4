@@ -17,8 +17,18 @@ impl PubliciteSearchService {
             return Ok(());
         }
 
+        #[derive(sqlx::FromRow)]
+        struct PubliciteRow {
+            id: i32,
+            produits_indexes: Vec<String>,
+            zone_geographique: String,
+            pub_lng: Option<f64>,
+            pub_lat: Option<f64>,
+            rayon_km: Option<i32>,
+        }
+        
         // Récupérer toutes les publicités actives avec leurs produits
-        let active_publicites = sqlx::query!(
+        let active_publicites: Vec<PubliciteRow> = sqlx::query_as(
             r#"
             SELECT 
                 id,

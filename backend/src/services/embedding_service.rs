@@ -37,18 +37,19 @@ async fn update_embedding_status(
     error_message: Option<String>,
 ) -> Result<(), AppError> {
     let status_str: String = status.into();
+    let status_str_clone = status_str.clone();
 
-    sqlx::query!(
+    sqlx::query(
         "UPDATE services SET 
          embedding_status = $1, 
          embedding_error = $2, 
          embedding_last_attempt = NOW(),
          updated_at = NOW()
-         WHERE id = $3",
-        status_str,
-        error_message,
-        service_id
+         WHERE id = $3"
     )
+    .bind(status_str)
+    .bind(error_message.as_ref())
+    .bind(service_id)
     .execute(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur mise ? jour statut embedding: {}", e)))?;
@@ -56,7 +57,7 @@ async fn update_embedding_status(
     log::info!(
         "[EMBEDDING_SERVICE] ?? Statut embedding mis ? jour pour service {}: {}",
         service_id,
-        status_str
+        status_str_clone
     );
 
     Ok(())

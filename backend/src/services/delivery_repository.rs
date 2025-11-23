@@ -34,7 +34,7 @@ struct DeliveryIdRow {
 
 #[derive(FromRow)]
 struct DeliveryStatusEventRow {
-    id: i32,
+    id: i64,
     delivery_id: Uuid,
     #[sqlx(rename = "status")]
     status: DeliveryStatus,
@@ -46,7 +46,7 @@ struct DeliveryStatusEventRow {
 
 #[derive(FromRow)]
 struct DeliveryRecipientUpdateRow {
-    id: i32,
+    id: i64,
     delivery_id: Uuid,
     submitted_by: Option<i32>,
     latitude: f64,
@@ -73,7 +73,7 @@ struct ParcelTypeRow {
 
 #[derive(FromRow)]
 struct CourierApplicationRow {
-    id: i32,
+    id: Uuid,
     user_id: i32,
     #[sqlx(rename = "status")]
     status: DeliveryApplicationStatus,
@@ -106,7 +106,7 @@ struct CourierRow {
 
 #[derive(FromRow)]
 struct CourierAssetRow {
-    id: i32,
+    id: Uuid,
     courier_id: Uuid,
     #[sqlx(rename = "engine_type")]
     engine_type: DeliveryEngineType,
@@ -124,7 +124,7 @@ struct CourierAssetRow {
 #[derive(FromRow)]
 struct DeliveryParcelRow {
     id: Uuid,
-    type_id: i32,
+    type_id: Option<i32>,
     weight_kg: Option<BigDecimal>,
     volume_cm3: Option<BigDecimal>,
     declared_value: Option<BigDecimal>,
@@ -193,7 +193,7 @@ struct DeliveryRecipientUpdateReturnRow {
 
 #[derive(FromRow)]
 struct DeliveryPricingRow {
-    id: i32,
+    id: Uuid,
     delivery_id: Uuid,
     base_price_cents: i32,
     distance_price_cents: i32,
@@ -243,7 +243,7 @@ struct DeliverySummaryRow {
 
 #[derive(FromRow)]
 struct ShoppingOrderRow {
-    id: i32,
+    id: Uuid,
     delivery_id: Uuid,
     #[sqlx(rename = "status")]
     status: ShoppingStatus,
@@ -262,7 +262,7 @@ struct ShoppingOrderRow {
 
 #[derive(FromRow)]
 struct ShoppingOrderItemRow {
-    id: i32,
+    id: Uuid,
     shopping_order_id: Uuid,
     product_id: Option<Uuid>,
     product_name: String,
@@ -280,9 +280,9 @@ struct ShoppingOrderItemRow {
 
 #[derive(FromRow)]
 struct DeliveryTrackingPointRow {
-    id: i32,
+    id: i64,
     delivery_id: Uuid,
-    courier_id: Option<Uuid>,
+    courier_id: Uuid,
     captured_at: DateTime<Utc>,
     lat: f64,
     lng: f64,
@@ -293,35 +293,35 @@ struct DeliveryTrackingPointRow {
 
 #[derive(FromRow)]
 struct DeliveryMatchingQueueItemRow {
-    id: i32,
+    id: i64,
     delivery_id: Uuid,
-    zone_id: Option<i32>,
+    zone_id: Option<Uuid>,
     #[sqlx(rename = "status")]
     status: DeliveryMatchingStatus,
-    priority: i32,
+    priority: i16,
     attempt_count: i32,
     payload: Value,
-    next_attempt_at: Option<DateTime<Utc>>,
+    next_attempt_at: DateTime<Utc>,
     enqueued_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
 
 #[derive(FromRow)]
 struct DeliveryMatchingEventRow {
-    id: i32,
+    id: i64,
     delivery_id: Uuid,
     courier_id: Option<Uuid>,
     #[sqlx(rename = "status")]
     status: DeliveryMatchingStatus,
-    score: Option<f64>,
+    score: Option<BigDecimal>,
     reason: Option<String>,
-    metadata: Option<Value>,
+    metadata: Value,
     created_at: DateTime<Utc>,
 }
 
 #[derive(FromRow)]
 struct CourierRatingRow {
-    id: i32,
+    id: i64,
     delivery_id: Uuid,
     courier_id: Uuid,
     rater_id: i32,
@@ -333,7 +333,7 @@ struct CourierRatingRow {
 
 #[derive(FromRow)]
 struct ClientRatingRow {
-    id: i32,
+    id: i64,
     delivery_id: Uuid,
     client_id: i32,
     courier_id: Uuid,
@@ -1190,8 +1190,7 @@ impl DeliveryRepository {
         &self,
         payload: NewStatusEvent,
     ) -> AppResult<DeliveryStatusEvent> {
-        let record = sqlx::query_as!(
-            DeliveryStatusEvent,
+        let record: DeliveryStatusEventRow = sqlx::query_as(
             r#"
             INSERT INTO delivery_status_events (
                 delivery_id,
@@ -1203,22 +1202,29 @@ impl DeliveryRepository {
             RETURNING
                 id,
                 delivery_id,
-                status AS "status: DeliveryStatus",
+                status,
                 occurred_at,
                 payload,
                 recorded_by
-            "#,
-            payload.delivery_id,
-            payload.status as DeliveryStatus,
-            payload
-                .payload
-                .unwrap_or_else(|| Value::Object(Default::default())),
-            payload.recorded_by
+            "#
         )
+        .bind(payload.delivery_id)
+        .bind(payload.status as DeliveryStatus)
+        .bind(payload
+            .payload
+            .unwrap_or_else(|| Value::Object(Default::default())))
+        .bind(payload.recorded_by)
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(record)
+        Ok(DeliveryStatusEvent {
+            id: record.id,
+            delivery_id: record.delivery_id,
+            status: record.status,
+            occurred_at: record.occurred_at,
+            payload: record.payload,
+            recorded_by: record.recorded_by,
+        })
     }
 
     /// Met à jour les informations du destinataire
@@ -1301,8 +1307,7 @@ impl DeliveryRepository {
 
         let extras = recipient
             .metadata
-            .as_ref()
-            .and_then(|meta| meta.get("recipient_extras"))
+            .get("recipient_extras")
             .cloned()
             .unwrap_or_else(|| Value::Object(Default::default()));
 
@@ -1416,8 +1421,7 @@ impl DeliveryRepository {
 
         let extras = recipient
             .metadata
-            .as_ref()
-            .and_then(|meta| meta.get("recipient_extras"))
+            .get("recipient_extras")
             .cloned()
             .unwrap_or_else(|| Value::Object(Default::default()));
 
@@ -2040,12 +2044,12 @@ impl DeliveryRepository {
             .bind(order.id)
             .bind(item.product_id)
             .bind(&item.product_name)
-            .bind(item.characteristics)
-            .bind(item.quantity)
+            .bind(item.characteristics.clone())
+            .bind(item.quantity.clone())
             .bind(&item.unit)
             .bind(item.estimated_price_cents)
             .bind(item.status as ShoppingItemStatus)
-            .bind(item.metadata)
+            .bind(item.metadata.clone())
             .fetch_one(&mut *tx)
             .await?;
 
@@ -2457,7 +2461,18 @@ impl DeliveryRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(record)
+        Ok(DeliveryMatchingQueueItem {
+            id: record.id,
+            delivery_id: record.delivery_id,
+            zone_id: record.zone_id,
+            status: record.status,
+            priority: record.priority,
+            attempt_count: record.attempt_count,
+            payload: record.payload,
+            next_attempt_at: record.next_attempt_at,
+            enqueued_at: record.enqueued_at,
+            updated_at: record.updated_at,
+        })
     }
 
     /// Met à jour le statut de file (retry, planning, etc.)
@@ -2535,7 +2550,7 @@ impl DeliveryRepository {
             status: record.status,
             score: record.score,
             reason: record.reason,
-            metadata: record.metadata.unwrap_or_else(|| Value::Object(Default::default())),
+            metadata: record.metadata,
             created_at: record.created_at,
         })
     }

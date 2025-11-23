@@ -218,25 +218,25 @@ impl FileSharingService {
 
         // Enregistrer le téléchargement
         let download_id = Uuid::new_v4();
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO file_downloads (id, file_id, user_id, ip_address, user_agent)
             VALUES ($1, $2, $3, $4, $5)
-            "#,
-            download_id.to_string(),
-            file_id,
-            user_id,
-            ip_address,
-            user_agent
+            "#
         )
+        .bind(download_id.to_string())
+        .bind(file_id)
+        .bind(user_id)
+        .bind(ip_address.as_ref())
+        .bind(user_agent.as_ref())
         .execute(&self.pool)
         .await?;
 
         // Incrémenter le compteur de téléchargements
-        sqlx::query!(
-            "UPDATE shared_files SET download_count = download_count + 1 WHERE id = $1",
-            file_id
+        sqlx::query(
+            "UPDATE shared_files SET download_count = download_count + 1 WHERE id = $1"
         )
+        .bind(file_id)
         .execute(&self.pool)
         .await?;
 
@@ -281,12 +281,14 @@ impl FileSharingService {
         }
 
         // Supprimer de la base de données
-        sqlx::query!("DELETE FROM shared_files WHERE id = $1", file_id)
+        sqlx::query("DELETE FROM shared_files WHERE id = $1")
+            .bind(file_id)
             .execute(&self.pool)
             .await?;
 
         // Supprimer les enregistrements de téléchargement
-        sqlx::query!("DELETE FROM file_downloads WHERE file_id = $1", file_id)
+        sqlx::query("DELETE FROM file_downloads WHERE file_id = $1")
+            .bind(file_id)
             .execute(&self.pool)
             .await?;
 
@@ -294,9 +296,17 @@ impl FileSharingService {
         Ok(())
     }
 
+    #[derive(sqlx::FromRow)]
+    struct FileStatsRow {
+        total_files: Option<i64>,
+        total_size: Option<i64>,
+        avg_size: Option<f64>,
+        total_downloads: Option<i64>,
+    }
+
     /// Obtenir les statistiques des fichiers
     pub async fn get_file_stats(&self, user_id: i32) -> AppResult<serde_json::Value> {
-        let stats = sqlx::query!(
+        let stats: FileStatsRow = sqlx::query_as(
             r#"
             SELECT 
                 COUNT(*) as total_files,
@@ -305,9 +315,9 @@ impl FileSharingService {
                 SUM(download_count) as total_downloads
             FROM shared_files 
             WHERE user_id = $1
-            "#,
-            user_id
+            "#
         )
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -344,7 +354,8 @@ impl FileSharingService {
             }
 
             // Supprimer de la base de données
-            if let Err(e) = sqlx::query!("DELETE FROM shared_files WHERE id = $1", file.id)
+            if let Err(e) = sqlx::query("DELETE FROM shared_files WHERE id = $1")
+                .bind(&file.id)
                 .execute(&self.pool)
                 .await
             {

@@ -7,8 +7,14 @@ pub async fn check_and_update_service_status(pool: &PgPool) -> Result<(), AppErr
     // Correction des types pour correspondre aux attentes
     let now: chrono::DateTime<Utc> = Utc::now();
 
+    #[derive(sqlx::FromRow)]
+    struct ExpiredServiceRow {
+        id: i32,
+        user_id: i32,
+    }
+
     // 1. R?cup?rer les services expir?s ? d?sactiver
-    let expired_services = sqlx::query!(
+    let expired_services: Vec<ExpiredServiceRow> = sqlx::query_as(
         r#"
         SELECT id, user_id
         FROM services
@@ -17,24 +23,24 @@ pub async fn check_and_update_service_status(pool: &PgPool) -> Result<(), AppErr
           AND auto_deactivate_at < $1
           -- OPTIONNEL : filtrer par type ou cat?gorie
           -- AND category = 'premium'
-        "#,
-        now
+        "#
     )
+    .bind(now)
     .fetch_all(pool)
     .await
     .map_err(AppError::from)?;
 
     // 2. Mettre ? jour les statuts
-    let affected = sqlx::query!(
+    let affected = sqlx::query(
         r#"
         UPDATE services
         SET is_active = FALSE
         WHERE is_active = TRUE
           AND auto_deactivate_at IS NOT NULL
           AND auto_deactivate_at < $1
-        "#,
-        now
+        "#
     )
+    .bind(now)
     .execute(pool)
     .await
     .map_err(AppError::from)?
@@ -44,14 +50,14 @@ pub async fn check_and_update_service_status(pool: &PgPool) -> Result<(), AppErr
 
     // 3. Logger chaque d?sactivation
     for service in expired_services {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO service_logs (service_id, user_id, action, reason, created_at)
             VALUES ($1, $2, 'auto_deactivation', 'Expiration de la période active', NOW())
-            "#,
-            service.id,
-            service.user_id
+            "#
         )
+        .bind(service.id)
+        .bind(service.user_id)
         .execute(pool)
         .await
         .map_err(AppError::from)?;
@@ -67,13 +73,13 @@ pub async fn enregistrer_modification_service(
     modification: &str,
     pool: &PgPool,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query!(
-        "INSERT INTO service_logs (service_id, user_id, modification, created_at) VALUES ($1, $2, $3, $4)",
-        service_id,
-        user_id,
-        modification,
-        Utc::now().naive_utc()
+    sqlx::query(
+        "INSERT INTO service_logs (service_id, user_id, modification, created_at) VALUES ($1, $2, $3, $4)"
     )
+    .bind(service_id)
+    .bind(user_id)
+    .bind(modification)
+    .bind(Utc::now().naive_utc())
     .execute(pool)
     .await?;
 
