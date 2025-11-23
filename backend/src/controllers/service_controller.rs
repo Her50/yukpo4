@@ -52,7 +52,6 @@ struct ServiceFullRow {
 }
 
 #[derive(FromRow)]
-#[derive(sqlx::FromRow)]
 struct ServiceIdCreatedRow {
     id: i32,
     created_at: sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,
