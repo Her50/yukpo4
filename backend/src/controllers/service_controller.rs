@@ -118,65 +118,42 @@ pub async fn creer_service(
             let mut response =
                 (StatusCode::CREATED, Json(service_creation_result.clone())).into_response();
 
-            // Calculer le co?t r?el bas? sur l'intention et les tokens consomm?s
-            // Pour l'endpoint /api/services/create, l'intention est toujours "creation_service"
-            let base_token_cost = 0.004; // Co?t de base par token en FCFA
-            let multiplier = 100.0; // Multiplicateur pour création de service
-            let cost_xaf = (tokens_consumed as f64) * base_token_cost * multiplier;
-
-            info!(
-                "[creer_service] Calcul coût: {} tokens × {} FCFA × {} = {} FCFA",
-                tokens_consumed, base_token_cost, multiplier, cost_xaf
-            );
-
-            // ?? NOUVEAU : Déduire le coût du solde de l'utilisateur
-            let cost_in_tokens = cost_xaf as i64; // 1 FCFA = 1 token dans le système
-            let deduction_result: Option<UserBalanceRow> = sqlx::query_as(
-                "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 AND tokens_balance >= $1 RETURNING tokens_balance"
+            // ✅ CORRECTION : Le débit du solde est déjà fait dans creer_service.rs
+            // On récupère juste le solde actuel pour mettre à jour le JWT
+            let current_balance_result: Option<UserBalanceRow> = sqlx::query_as(
+                "SELECT tokens_balance FROM users WHERE id = $1"
             )
-            .bind(cost_in_tokens)
             .bind(payload.user_id)
             .fetch_optional(&state.pg)
             .await
             .unwrap_or(None);
 
-            match deduction_result {
-                Some(user_data) => {
-                    let nouveau_solde = user_data.tokens_balance;
-                    info!(
-                        "[creer_service] ? Solde déduit pour utilisateur {}: {} FCFA ({}→{})",
+            if let Some(user_data) = current_balance_result {
+                let nouveau_solde = user_data.tokens_balance;
+                info!(
+                    "[creer_service] ✅ Solde actuel pour utilisateur {}: {} FCFA (débit déjà effectué dans creer_service)",
+                    payload.user_id,
+                    nouveau_solde
+                );
+
+                // Mettre à jour le JWT avec le nouveau solde
+                if let Ok(new_jwt) =
+                    crate::middlewares::check_tokens::update_jwt_with_new_balance(
                         payload.user_id,
-                        cost_xaf,
-                        nouveau_solde + cost_in_tokens,
+                        nouveau_solde,
+                        &state,
+                    )
+                    .await
+                {
+                    response.headers_mut().insert(
+                        "x-new-jwt",
+                        axum::http::HeaderValue::from_str(&new_jwt)
+                            .unwrap_or_else(|_| axum::http::HeaderValue::from_static("")),
+                    );
+                    info!(
+                        "[creer_service] ?? JWT mis à jour avec le nouveau solde: {}",
                         nouveau_solde
                     );
-
-                    // Mettre à jour le JWT avec le nouveau solde
-                    if let Ok(new_jwt) =
-                        crate::middlewares::check_tokens::update_jwt_with_new_balance(
-                            payload.user_id,
-                            nouveau_solde,
-                            &state,
-                        )
-                        .await
-                    {
-                        response.headers_mut().insert(
-                            "x-new-jwt",
-                            axum::http::HeaderValue::from_str(&new_jwt)
-                                .unwrap_or_else(|_| axum::http::HeaderValue::from_static("")),
-                        );
-                        info!(
-                            "[creer_service] ?? JWT mis à jour avec le nouveau solde: {}",
-                            nouveau_solde
-                        );
-                    }
-                }
-                None => {
-                    warn!(
-                        "[creer_service] ⚠️ Solde insuffisant pour utilisateur {} (coût: {} FCFA)",
-                        payload.user_id, cost_xaf
-                    );
-                    // Service créé mais solde non déduit
                 }
             }
 

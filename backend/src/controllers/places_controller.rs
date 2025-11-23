@@ -195,9 +195,72 @@ pub async fn enrich_location(
             }));
         }
         Err(error) => {
+            let error_msg = error.to_string();
+            
+            // ✅ NOUVEAU: Détecter les erreurs critiques (billing, API key, etc.)
+            let is_critical_error = error_msg.contains("BILLING_DISABLED") 
+                || error_msg.contains("API_KEY_INVALID") 
+                || error_msg.contains("PERMISSION_DENIED")
+                || error_msg.contains("indisponible");
+            
+            if is_critical_error {
+                warn!(
+                    "⚠️ Google Places API indisponible pour '{}' ({}), tentative fallback base locale",
+                    params.place_name, error_msg
+                );
+            } else {
+                info!(
+                    "⚠️ Lieu '{}' introuvable dans Google Places ({}), tentative fallback base locale",
+                    params.place_name, error_msg
+                );
+            }
+            
+            // ✅ NOUVEAU: Fallback vers base de données locale (AfricanLocationsService)
+            let african_service = AfricanLocationsService::new();
+            if let Ok(Some(local_data)) = african_service
+                .search_location(pool, &params.place_name, params.country.as_deref())
+                .await
+            {
+                info!("✅ Lieu '{}' trouvé dans la base locale", params.place_name);
+                
+                let parents = if local_data.location_vector.len() > 1 {
+                    local_data.location_vector[1..].to_vec()
+                } else {
+                    vec![]
+                };
+                
+                let children = african_service
+                    .get_children(pool, &params.place_name, "city")
+                    .await;
+                
+                return Ok(Json(EnrichLocationResponse {
+                    place_name: params.place_name.clone(),
+                    geoname_id: local_data.geoname_id,
+                    display_name: local_data.display_name.clone(),
+                    location_vector: local_data.location_vector.clone(),
+                    hierarchy: LocationHierarchy {
+                        parents,
+                        children,
+                        is_leaf: local_data.is_leaf,
+                        admin_level: local_data.admin_level,
+                    },
+                    coordinates: Coordinates {
+                        lat: local_data.coordinates.lat,
+                        lng: local_data.coordinates.lng,
+                    },
+                    metadata: LocationMetadata {
+                        country: local_data.country,
+                        country_code: local_data.country_code,
+                        population: local_data.population,
+                        timezone: local_data.timezone,
+                    },
+                }));
+            }
+            
+            // ✅ Fallback final : retourner données minimales
             info!(
-                "⚠️ Lieu '{}' introuvable dans Google Places ({}), retour données minimales",
-                params.place_name, error
+                "⚠️ Lieu '{}' introuvable (Google Places et base locale), retour données minimales",
+                params.place_name
             );
             return Ok(Json(EnrichLocationResponse {
                 place_name: params.place_name.clone(),

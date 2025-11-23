@@ -7,6 +7,7 @@ import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, DeviceEventEmitter, Dimensions, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeButton, NativeCard } from '../components/NativeDesign';
+import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
 import ServiceCardModern from '../components/ServiceCardModern';
 import ServiceProductSelector from '../components/ServiceProductSelector';
@@ -14,6 +15,8 @@ import ServiceTeamManager from '../components/ServiceTeamManager';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors, modernStyles } from '../theme/modernTheme';
+import { ManagedProduct } from '../types/ManagedProduct';
+import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
 
 const { width } = Dimensions.get('window');
@@ -46,6 +49,10 @@ const MesServicesScreen: React.FC = () => {
   const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
   // ✅ NOUVEAU: État pour le menu global
   const [showGlobalMenu, setShowGlobalMenu] = useState(false);
+  // ✅ NOUVEAU: États pour le modal de création de vidéo
+  const [showVideoCreationModal, setShowVideoCreationModal] = useState(false);
+  const [productsForVideoCreation, setProductsForVideoCreation] = useState<ManagedProduct[]>([]);
+  const [selectedServiceForVideo, setSelectedServiceForVideo] = useState<Service | null>(null);
 
   const loadServices = useCallback(async (isRefresh = false) => {
     try {
@@ -523,14 +530,25 @@ const MesServicesScreen: React.FC = () => {
     setShowTeamManager(true);
   };
 
-  const handleCreateVideo = (service: any) => {
-    const produits = service.data?.produits?.valeur || service.data?.produits || [];
-    const serviceId = service.service_id || service.id;
+  const handleCreateVideo = (productItem: any) => {
+    // ✅ CORRECTION: productItem est en fait un produit (car services contient les produits)
+    // Il faut regrouper tous les produits du même service_id
+    const serviceId = productItem.service_id || productItem.data?.serviceId || productItem.id?.split('_')[0];
 
-    if (!Array.isArray(produits) || produits.length === 0) {
+    console.log('[MesServicesScreen] handleCreateVideo - Service ID:', serviceId, 'Produit:', productItem.id);
+
+    // Regrouper tous les produits du même service
+    const produitsDuService = services.filter((s: Service) => {
+      const sServiceId = s.service_id || s.data?.serviceId || s.id?.split('_')[0];
+      return sServiceId === serviceId;
+    });
+
+    console.log('[MesServicesScreen] handleCreateVideo - Produits du service trouvés:', produitsDuService.length);
+
+    if (produitsDuService.length === 0) {
       Alert.alert(
         'Produit requis',
-        'Ce service n\'a pas encore de produit. Créez d\'abord un produit pour pouvoir créer une vidéo.',
+        'Aucun produit trouvé pour ce service. Créez d\'abord un produit pour pouvoir créer une vidéo.',
         [
           { text: 'Annuler', style: 'cancel' },
           {
@@ -548,28 +566,44 @@ const MesServicesScreen: React.FC = () => {
       return;
     }
 
+    // Convertir les produits en ManagedProduct pour le modal
+    const managedProducts: ManagedProduct[] = produitsDuService.map((product: any) => ({
+      id: product.id || `prod_${product.product_index || 0}`,
+      serviceId: serviceId.toString(),
+      product_index: product.product_index || product.data?.product_index || 0,
+      nom: product.title || product.data?.nom || product.nom || 'Produit',
+      description: product.description || product.data?.description || '',
+      prix: product.data?.prix || product.prix || product.price,
+      devise: product.data?.devise || product.devise || product.currency || 'XAF',
+      type: product.data?.type || product.type || product.categorie || 'produit',
+      serviceTitre: product.service_title || product.data?.serviceTitre || product.title || `Service #${serviceId}`,
+      ...product.data,
+      ...product
+    }));
+
     // Si un seul produit → Navigation directe
-    if (produits.length === 1) {
-      const product = produits[0];
+    if (managedProducts.length === 1) {
+      const product = managedProducts[0];
       navigateToVideoWizard(navigation, {
         serviceId: Number(serviceId),
-        productIndex: 0,
-        productName: product.nom || product.name || product.title || 'Produit'
+        productIndex: product.product_index || 0,
+        productName: product.nom || 'Produit'
       });
       return;
     }
 
-    // Plusieurs produits → Afficher le sélecteur
-    const serviceName = service.data?.titre_service?.valeur || service.title || `Service #${serviceId}`;
-    const productsList = produits.map((product: any, index: number) => ({
-      serviceId: Number(serviceId),
-      productIndex: index,
-      productName: product.nom || product.name || product.title || `Produit ${index + 1}`,
-      serviceName: serviceName
-    }));
+    // Plusieurs produits → Afficher le modal ProductVideoCreationModal
+    setSelectedServiceForVideo(productItem);
+    setProductsForVideoCreation(managedProducts);
+    setShowVideoCreationModal(true);
+  };
 
-    setProductsForSelection(productsList);
-    setShowProductSelector(true);
+  const handleVideoCreationSuccess = async (result: GeneratedVideoResponse) => {
+    console.log('[MesServicesScreen] ✅ Vidéo créée avec succès:', result);
+    setShowVideoCreationModal(false);
+    setProductsForVideoCreation([]);
+    setSelectedServiceForVideo(null);
+    Alert.alert('✅ Succès', 'Votre vidéo a été créée avec succès !');
   };
 
   const handlePromotionService = (service: any) => {
@@ -1021,6 +1055,21 @@ const MesServicesScreen: React.FC = () => {
           setProductsForSelection([]);
         }}
       />
+
+      {/* ✅ NOUVEAU: Modal de création de vidéo avec produits */}
+      {showVideoCreationModal && productsForVideoCreation.length > 0 && (
+        <ProductVideoCreationModal
+          visible={showVideoCreationModal}
+          primaryProduct={productsForVideoCreation[0]}
+          products={productsForVideoCreation}
+          onClose={() => {
+            setShowVideoCreationModal(false);
+            setProductsForVideoCreation([]);
+            setSelectedServiceForVideo(null);
+          }}
+          onSuccess={handleVideoCreationSuccess}
+        />
+      )}
     </View>
   );
 };

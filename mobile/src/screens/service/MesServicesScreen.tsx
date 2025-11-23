@@ -10,6 +10,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { servicesApi } from '../../services/api';
 import { theme } from '../../theme/theme';
 
+interface Product {
+    nom?: string;
+    description?: string;
+    is_active?: boolean;
+    [key: string]: any;
+}
+
 interface Service {
     id: string;
     title: string;
@@ -18,6 +25,8 @@ interface Service {
     createdAt: string;
     views: number;
     interactions: number;
+    products?: Product[];
+    rawData?: any;
 }
 
 const MesServicesScreen: React.FC = () => {
@@ -30,10 +39,10 @@ const MesServicesScreen: React.FC = () => {
         loadServices();
     }, []);
 
-    // ? NOUVEAU: Rafraîchir la liste quand on revient sur l'écran
+    // ? NOUVEAU: Rafraï¿½chir la liste quand on revient sur l'ï¿½cran
     useFocusEffect(
         React.useCallback(() => {
-            console.log('[MesServices] ?? Écran focus - Rafraîchissement de la liste...');
+            console.log('[MesServices] ?? ï¿½cran focus - Rafraï¿½chissement de la liste...');
             loadServices();
         }, [])
     );
@@ -43,34 +52,70 @@ const MesServicesScreen: React.FC = () => {
             setLoading(true);
             console.log('[MesServices] Chargement des services...');
 
-            // Charger les vraies données depuis l'API
+            // Charger les vraies donnï¿½es depuis l'API
             const response = await servicesApi.getUserServices();
 
-            console.log('[MesServices] Réponse API:', response);
+            console.log('[MesServices] Rï¿½ponse API:', response);
 
             if (response.success && response.data) {
                 const servicesData = Array.isArray(response.data) ? response.data : [];
 
                 // Convertir au format Service
-                const formattedServices: Service[] = servicesData.map((service: any) => ({
-                    id: service.id?.toString() || '',
-                    title: service.titre || service.title || 'Sans titre',
-                    description: service.description || '',
-                    status: service.is_active ? 'active' : 'inactive',
-                    createdAt: service.created_at || new Date().toISOString(),
-                    views: service.views || 0,
-                    interactions: service.interactions || 0,
-                }));
+                const formattedServices: Service[] = servicesData.map((service: any) => {
+                    // âœ… CORRECTION: Extraire les donnÃ©es depuis service.data
+                    const data = service.data || {};
 
-                console.log('[MesServices] Services formatés:', formattedServices.length);
+                    // Extraire le titre depuis data.titre_service ou data.titre
+                    const titreObj = data.titre_service || data.titre;
+                    const titre = titreObj?.valeur || titreObj || service.titre || service.title || 'Sans titre';
+
+                    // Extraire la description depuis data.description
+                    const descObj = data.description;
+                    const description = descObj?.valeur || descObj || service.description || '';
+
+                    // âœ… NOUVEAU: Extraire les produits depuis data.produits
+                    let products: Product[] = [];
+                    const produitsObj = data.produits;
+                    if (produitsObj) {
+                        if (produitsObj.type_donnee === 'listeproduit' && produitsObj.valeur) {
+                            // Format listeproduit
+                            products = Array.isArray(produitsObj.valeur) ? produitsObj.valeur : [];
+                        } else if (Array.isArray(produitsObj)) {
+                            // Format tableau direct
+                            products = produitsObj;
+                        } else if (Array.isArray(produitsObj.valeur)) {
+                            // Format avec valeur
+                            products = produitsObj.valeur;
+                        }
+                    }
+
+                    // Filtrer les produits actifs (par dÃ©faut tous sont actifs sauf si is_active = false)
+                    products = products.filter((p: any) => p.is_active !== false);
+
+                    console.log(`[MesServices] Service ${service.id}: ${products.length} produit(s) trouvÃ©(s)`);
+
+                    return {
+                        id: service.id?.toString() || '',
+                        title: titre,
+                        description: description,
+                        status: service.actif !== false ? 'active' : 'inactive',
+                        createdAt: service.created_at || new Date().toISOString(),
+                        views: service.views || 0,
+                        interactions: service.interactions || 0,
+                        products: products,
+                        rawData: data,
+                    };
+                });
+
+                console.log('[MesServices] Services formatï¿½s:', formattedServices.length);
                 setServices(formattedServices);
             } else {
-                console.warn('[MesServices] Aucun service trouvé');
+                console.warn('[MesServices] Aucun service trouvï¿½');
                 setServices([]);
             }
         } catch (error: any) {
             console.error('[MesServices] Erreur chargement services:', error);
-            console.error('[MesServices] Détails:', error.message);
+            console.error('[MesServices] Dï¿½tails:', error.message);
             setServices([]);
             // Ne pas afficher d'alerte pour ne pas bloquer l'utilisateur
         } finally {
@@ -126,14 +171,14 @@ const MesServicesScreen: React.FC = () => {
                         <Ionicons name="briefcase-outline" size={64} color="#9E9E9E" />
                         <Text style={styles.emptyTitle}>Aucun service</Text>
                         <Text style={styles.emptyText}>
-                            Vous n'avez pas encore créé de service. Créez votre premier service pour commencer.
+                            Vous n'avez pas encore crï¿½ï¿½ de service. Crï¿½ez votre premier service pour commencer.
                         </Text>
                         <TouchableOpacity
                             mode="contained"
                             onPress={() => navigation.navigate('CreateService' as never)}
                             style={styles.createButton}
                         >
-                            Créer un service
+                            Crï¿½er un service
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -150,6 +195,27 @@ const MesServicesScreen: React.FC = () => {
                                 <Paragraph style={styles.serviceDescription}>
                                     {service.description}
                                 </Paragraph>
+
+                                {/* âœ… NOUVEAU: Afficher les produits */}
+                                {service.products && service.products.length > 0 && (
+                                    <View style={styles.productsContainer}>
+                                        <Text style={styles.productsTitle}>
+                                            ðŸ“¦ Produits ({service.products.length})
+                                        </Text>
+                                        {service.products.map((product: Product, index: number) => (
+                                            <View key={index} style={styles.productItem}>
+                                                <Text style={styles.productName}>
+                                                    {product.nom || `Produit ${index + 1}`}
+                                                </Text>
+                                                {product.description && (
+                                                    <Text style={styles.productDescription} numberOfLines={2}>
+                                                        {product.description}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
 
                                 <View style={styles.serviceStats}>
                                     <View style={styles.statItem}>
@@ -177,8 +243,8 @@ const MesServicesScreen: React.FC = () => {
                                     <TouchableOpacity
                                         mode="outlined"
                                         onPress={() => {
-                                            // TODO: Implémenter l'édition
-                                            Alert.alert('Édition', 'Fonctionnalité d\'édition à implémenter');
+                                            // TODO: Implï¿½menter l'ï¿½dition
+                                            Alert.alert('ï¿½dition', 'Fonctionnalitï¿½ d\'ï¿½dition ï¿½ implï¿½menter');
                                         }}
                                         style={styles.actionButton}
                                     >
@@ -311,6 +377,35 @@ const styles = StyleSheet.create({
     actionButton: {
         flex: 1,
         marginHorizontal: 4,
+    },
+    productsContainer: {
+        marginTop: 12,
+        marginBottom: 12,
+        padding: 12,
+        backgroundColor: '#f5f5f5',
+        borderRadius: 8,
+    },
+    productsTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.text,
+        marginBottom: 8,
+    },
+    productItem: {
+        marginBottom: 8,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    productName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.text,
+        marginBottom: 4,
+    },
+    productDescription: {
+        fontSize: 12,
+        color: theme.colors.textSecondary,
     },
 });
 

@@ -1766,12 +1766,34 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 const separateur = preferred.separateur || ',';
                 const combinationString = preferred.product_vector.join(separateur);
 
+                // ✅ CORRECTION: Convertir product_labels (tableau) en objet pour sous_caracteristiques
+                // product_labels est un tableau qui correspond à l'ordre de product_vector
+                // On doit le convertir en objet { dimension: [valeurs] } pour sous_caracteristiques
+                const sousCaracsObj: Record<string, string[]> = {};
+                if (Array.isArray(preferred.product_labels) && preferred.product_labels.length > 0) {
+                  // Grouper les labels par dimension
+                  preferred.product_vector.forEach((value: string, index: number) => {
+                    const label = preferred.product_labels[index];
+                    if (label && typeof label === 'string') {
+                      if (!sousCaracsObj[label]) {
+                        sousCaracsObj[label] = [];
+                      }
+                      if (!sousCaracsObj[label].includes(value)) {
+                        sousCaracsObj[label].push(value);
+                      }
+                    }
+                  });
+                }
+
                 // Mettre à jour initialValues.produits avec la combinaison préférée
                 initialValues.produits = {
                   type_donnee: 'autocomplete',
                   valeur: [combinationString],
                   separateur: separateur,
-                  sous_caracteristiques: preferred.product_labels || {},
+                  sous_caracteristiques: Object.keys(sousCaracsObj).length > 0 ? sousCaracsObj : (preferred.product_labels || {}),
+                  // ✅ NOUVEAU: Stocker product_vector et product_labels (tableaux) pour l'ordre correct
+                  product_vector: preferred.product_vector,
+                  product_labels: preferred.product_labels || [],
                   identifiant_base: 'produits',
                   filtrable: true,
                   origine_champs: 'ia'
@@ -1779,7 +1801,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Combinaison préférée IA chargée:', {
                   combinationString,
-                  sous_caracteristiques: Object.keys(preferred.product_labels || {}).length
+                  product_vector: preferred.product_vector,
+                  product_labels: preferred.product_labels,
+                  sous_caracteristiques: Object.keys(sousCaracsObj).length > 0 ? Object.keys(sousCaracsObj) : Object.keys(preferred.product_labels || {})
                 });
               }
             }
@@ -2299,8 +2323,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             value={descriptionProduit}
             onChangeText={(text) => handleFieldChange('description_produit', text)}
             multiline
-            minLines={3}
-            style={[styles.fieldInput, styles.textareaInput]}
+            minLines={2}
+            style={[styles.fieldInput, styles.textareaInputProduct]}
             inputStyle={styles.productDescriptionText}
           />
           {fieldErrors['description_produit'] && (
@@ -2501,6 +2525,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ field.separateur manquant/invalide pour', field.name, '- utilisation fallback ","');
       }
 
+      // ✅ NOUVEAU: Extraire product_vector et product_labels si disponibles (pour l'ordre correct)
+      let productVector: string[] | undefined;
+      let productLabels: string[] | undefined;
+      if (fieldValue && typeof fieldValue === 'object' && 'product_vector' in fieldValue) {
+        productVector = Array.isArray(fieldValue.product_vector) ? fieldValue.product_vector : undefined;
+        productLabels = Array.isArray(fieldValue.product_labels) ? fieldValue.product_labels : undefined;
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ product_vector et product_labels extraits pour', field.name, {
+          product_vector: productVector?.length,
+          product_labels: productLabels?.length
+        });
+      }
+
       const nbModalites = currentValues.length;
       const nbCaracteristiques = Object.keys(currentSousCaracs).length;
 
@@ -2509,7 +2545,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         nbCaracteristiques,
         currentValues,
         nbSousCaracsDisponibles: Object.keys(currentSousCaracs).length,
-        separateur: safeSeparateur
+        separateur: safeSeparateur,
+        hasProductVector: !!productVector,
+        hasProductLabels: !!productLabels
       });
 
       return (
@@ -2538,6 +2576,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             sousCaracteristiques={currentSousCaracs || {}} // ✅ PROTECTION: Garantir objet valide
             separateur={safeSeparateur} // ✅ PROTECTION ULTIME: Garantit string valide
             value={currentValues || []} // ✅ PROTECTION: Garantir array de strings valides
+            productVector={productVector} // ✅ NOUVEAU: Passer product_vector pour l'ordre correct
+            productLabels={productLabels} // ✅ NOUVEAU: Passer product_labels pour l'ordre correct
             contextValues={
               (field.identifiantBase || field.name) === 'produits'
                 ? [
@@ -2894,8 +2934,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       case 'textarea':
         const isProductDescField = field.name === 'description_produit';
-        // ✅ CORRECTION: Utiliser les mêmes propriétés que le champ description générale (3 lignes au lieu de 8)
-        const linesMinimum = 3;
+        // ✅ CORRECTION: Réduire la hauteur pour description_produit (2 lignes au lieu de 3)
+        const linesMinimum = isProductDescField ? 2 : 3;
         const normalizedValue = formatMultilineValue(valeursFormulaire[field.name] || '');
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
@@ -2919,8 +2959,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               }}
               style={[
                 styles.fieldInput,
-                styles.textareaInput,
-                // ✅ CORRECTION: Utiliser textareaInput pour tous les textarea, y compris description_produit
+                isProductDescField ? styles.textareaInputProduct : styles.textareaInput,
+                // ✅ CORRECTION: Utiliser textareaInputProduct pour description_produit (hauteur réduite)
                 dynamicTextareaHeights[field.name] ? { minHeight: dynamicTextareaHeights[field.name] } : null
               ]}
             />
@@ -5232,6 +5272,11 @@ const styles = StyleSheet.create({
   textareaInput: {
     minHeight: 220,
     paddingTop: 16,
+  },
+  textareaInputProduct: {
+    // ✅ CORRIGÉ : Hauteur réduite pour le champ description_produit
+    minHeight: 100,
+    paddingTop: 12,
   },
   productDescriptionInput: {
     // ✅ CORRECTION: Utiliser la même hauteur que textareaInput (220px au lieu de 300px)

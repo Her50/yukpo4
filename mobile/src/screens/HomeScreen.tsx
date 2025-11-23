@@ -615,7 +615,7 @@ const HomeScreen: React.FC = () => {
 
                         {/* Titre principal PARFAITEMENT centré */}
                         <View style={styles.brandTitleContainer}>
-                            <Text style={styles.brandTitleCompact} numberOfLines={1}>
+                            <Text style={styles.brandTitleCompact} numberOfLines={1} ellipsizeMode="clip">
                                 <Text style={styles.brandYuk}>Yuk</Text>
                                 <Text style={styles.brandPo}>po</Text>
                             </Text>
@@ -970,8 +970,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between', // ✅ Garde l'espacement entre les éléments
         alignItems: 'center',
-        paddingHorizontal: 12, // ✅ CORRIGÉ : Ajoute du padding horizontal pour éviter les bords
-        gap: 8,
+        paddingHorizontal: 8, // ✅ CORRIGÉ : Réduit le padding pour plus d'espace au centre
+        gap: 4, // ✅ CORRIGÉ : Réduit le gap pour plus d'espace
     },
     avatarContainer: {
         width: 44,
@@ -982,20 +982,18 @@ const styles = StyleSheet.create({
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        flexShrink: 0, // ✅ CORRIGÉ : Ne pas rétrécir pour garder sa taille naturelle
-        // ✅ SUPPRIMÉ : flex: 1 qui prenait trop de place
-        // ✅ SUPPRIMÉ : minWidth et maxWidth qui causaient des problèmes
+        flexShrink: 1, // ✅ CORRIGÉ : Permet de rétrécir si nécessaire pour laisser de la place au centre
+        maxWidth: 120, // ✅ CORRIGÉ : Limite la largeur maximale pour laisser de la place au centre
     },
     // ✅ CORRIGÉ : Conteneur pour le titre équilibré et visible
     brandTitleContainer: {
-        flex: 1, // ✅ Réduit pour mieux équilibrer avec les éléments de gauche et droite
+        flex: 1, // ✅ Prend l'espace disponible au centre
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 4, // ✅ Réduit le padding horizontal pour plus d'espace
-        paddingLeft: 0, // ✅ Supprimé pour centrer naturellement
-        marginLeft: -8, // ✅ Décale vers la gauche pour équilibrer visuellement
-        flexShrink: 1, // ✅ Permet de rétrécir si nécessaire mais priorité au texte
-        minWidth: 80, // ✅ Largeur minimale pour afficher "Yukpo" complet
+        paddingHorizontal: 12, // ✅ CORRIGÉ : Augmenté pour plus d'espace
+        flexShrink: 0, // ✅ CORRIGÉ : Ne pas rétrécir pour éviter la troncature
+        minWidth: 120, // ✅ CORRIGÉ : Largeur minimale augmentée pour afficher "Yukpo" complet (5 lettres + espace)
+        maxWidth: 200, // ✅ CORRIGÉ : Largeur maximale augmentée
     },
     headerTop: {
         flexDirection: 'row',
@@ -1071,8 +1069,8 @@ const styles = StyleSheet.create({
         gap: 4, // ✅ CORRIGÉ : Réduit de 6 à 4 pour plus d'espace pour le texte
         flex: 1,
         justifyContent: 'flex-end', // ✅ Aligner à droite
-        minWidth: 90, // ✅ CORRIGÉ : Réduit de 100 à 90 pour plus d'espace au centre
-        maxWidth: 120, // ✅ CORRIGÉ : Réduit de 130 à 120 pour plus d'espace au centre
+        minWidth: 85, // ✅ CORRIGÉ : Réduit pour plus d'espace au centre
+        maxWidth: 110, // ✅ CORRIGÉ : Réduit pour plus d'espace au centre
         paddingLeft: 4, // ✅ Réduit pour équilibrer avec le décalage du texte
         flexShrink: 1, // ✅ Permet de rétrécir si nécessaire
     },
@@ -1158,10 +1156,10 @@ const styles = StyleSheet.create({
     },
     brandTitleCompact: {
         width: '100%', // ✅ Prend toute la largeur disponible
-        fontSize: 20,
+        fontSize: 19, // ✅ CORRIGÉ : Légèrement réduit pour s'assurer que tout le texte est visible
         fontWeight: '900',
         textAlign: 'center', // ✅ Centrer le texte à l'intérieur
-        letterSpacing: -0.3,
+        letterSpacing: -0.2, // ✅ CORRIGÉ : Réduit pour économiser de l'espace
         includeFontPadding: false, // ✅ Évite le padding supplémentaire Android
         textAlignVertical: 'center', // ✅ Centre verticalement sur Android
         flexShrink: 0, // ✅ CORRIGÉ : Ne pas rétrécir pour éviter la troncature

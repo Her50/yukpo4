@@ -463,7 +463,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                         )}
 
                         {/* ✅ CORRIGÉ : Texte notification avec retour à la ligne contrôlé */}
-                        <Text style={styles.notificationMessage}>
+                        <Text style={styles.notificationMessage} numberOfLines={0}>
                           {notification.message}
                         </Text>
 
@@ -557,12 +557,15 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
     minWidth: 0,
+    marginRight: 8, // ✅ CORRIGÉ : Espacement pour éviter la troncature
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.colors.text,
     flexShrink: 1,
+    flex: 1, // ✅ CORRIGÉ : Prend l'espace disponible
+    paddingRight: 8, // ✅ CORRIGÉ : Padding pour éviter la troncature
   },
   unreadBadge: {
     backgroundColor: '#F44336',
@@ -778,6 +781,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     // ✅ CORRIGÉ : Le texte s'adapte naturellement avec les retours à la ligne
     flexShrink: 1, // ✅ CORRIGÉ : Permettre au texte de se rétrécir si nécessaire
+    flexWrap: 'wrap', // ✅ CORRIGÉ : Permettre le retour à la ligne
   },
   notificationMeta: {
     flexDirection: 'row',

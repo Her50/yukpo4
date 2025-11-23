@@ -4,6 +4,27 @@
 
 use log::warn;
 use sqlx::PgPool;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LocalLocationData {
+    pub display_name: String,
+    pub location_vector: Vec<String>,
+    pub coordinates: LocalCoordinates,
+    pub geoname_id: Option<i64>,
+    pub is_leaf: bool,
+    pub admin_level: i32,
+    pub country: String,
+    pub country_code: Option<String>,
+    pub population: Option<i32>,
+    pub timezone: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LocalCoordinates {
+    pub lat: f64,
+    pub lng: f64,
+}
 
 /// Service pour récupérer les enfants géographiques depuis la BDD
 pub struct AfricanLocationsService;
@@ -107,6 +128,111 @@ impl AfricanLocationsService {
         }
 
         "unknown"
+    }
+
+    /// ✅ NOUVEAU: Recherche un lieu dans la base de données locale (fallback)
+    pub async fn search_location(
+        &self,
+        pool: &PgPool,
+        place_name: &str,
+        country_hint: Option<&str>,
+    ) -> Result<Option<LocalLocationData>, sqlx::Error> {
+        let place_lower = place_name.to_lowercase();
+        
+        // Construire la requête SQL avec filtrage par pays si fourni
+        let row = if let Some(country) = country_hint {
+            let country_lower = country.to_lowercase();
+            sqlx::query(
+                "SELECT 
+                    COALESCE(quartier, ville, pays) as display_name,
+                    quartier,
+                    ville,
+                    pays,
+                    lat,
+                    lng
+                 FROM african_locations 
+                 WHERE (LOWER(quartier) = $1 OR LOWER(ville) = $1 OR LOWER(pays) = $1)
+                   AND LOWER(pays) = $2
+                 LIMIT 1"
+            )
+            .bind(&place_lower)
+            .bind(&country_lower)
+            .fetch_optional(pool)
+            .await?
+        } else {
+            sqlx::query(
+                "SELECT 
+                    COALESCE(quartier, ville, pays) as display_name,
+                    quartier,
+                    ville,
+                    pays,
+                    lat,
+                    lng
+                 FROM african_locations 
+                 WHERE LOWER(quartier) = $1 OR LOWER(ville) = $1 OR LOWER(pays) = $1
+                 LIMIT 1"
+            )
+            .bind(&place_lower)
+            .fetch_optional(pool)
+            .await?
+        };
+
+        if let Some(row) = row {
+            let display_name: String = row.get(0);
+            let quartier: Option<String> = row.get(1);
+            let ville: Option<String> = row.get(2);
+            let pays: Option<String> = row.get(3);
+            let lat: Option<f64> = row.get(4);
+            let lng: Option<f64> = row.get(5);
+            
+            // Construire le location_vector
+            let mut location_vector = Vec::new();
+            if let Some(q) = &quartier {
+                location_vector.push(q.clone());
+            }
+            if let Some(v) = &ville {
+                if !location_vector.contains(v) {
+                    location_vector.push(v.clone());
+                }
+            }
+            
+            let country = pays
+                .or_else(|| country_hint.map(|c| c.to_string()))
+                .unwrap_or_else(|| "Inconnu".to_string());
+            
+            if !location_vector.contains(&country) {
+                location_vector.push(country.clone());
+            }
+            
+            // Déterminer admin_level et is_leaf
+            let admin_level = if quartier.is_some() {
+                8 // Quartier
+            } else if ville.is_some() {
+                6 // Ville
+            } else {
+                0 // Pays
+            };
+            
+            let is_leaf = admin_level >= 7;
+            
+            Ok(Some(LocalLocationData {
+                display_name,
+                location_vector,
+                coordinates: LocalCoordinates {
+                    lat: lat.unwrap_or(0.0),
+                    lng: lng.unwrap_or(0.0),
+                },
+                geoname_id: None,
+                is_leaf,
+                admin_level,
+                country,
+                country_code: None,
+                population: None,
+                timezone: None,
+            }))
+        } else {
+            Ok(None)
+        }
     }
 }
 

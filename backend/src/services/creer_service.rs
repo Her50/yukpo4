@@ -1114,6 +1114,78 @@ pub async fn creer_service(
     //     return Ok(serde_json::from_str(&cached_result)?);
     // }
 
+    // ✅ NETTOYAGE FINAL AVANT INSERTION : Supprimer TOUTES les données volumineuses
+    // Ce nettoyage est critique pour éviter l'erreur "index row requires X bytes, maximum size is 8191"
+    if let Some(data_obj_map) = data_obj.as_object_mut() {
+        // Supprimer tous les médias base64
+        let media_keys = [
+            "base64_image",
+            "audio_base64",
+            "video_base64",
+            "doc_base64",
+            "excel_base64",
+        ];
+        let mut removed_media: Vec<String> = Vec::new();
+        for key in &media_keys {
+            if data_obj_map.contains_key(*key) {
+                data_obj_map.remove(*key);
+                removed_media.push(key.to_string());
+            }
+        }
+        
+        // Nettoyer récursivement dans les produits
+        if let Some(produits_array) = data_obj_map.get_mut("produits").and_then(|v| v.as_array_mut()) {
+            for produit in produits_array.iter_mut() {
+                if let Some(prod_obj) = produit.as_object_mut() {
+                    for key in &media_keys {
+                        prod_obj.remove(*key);
+                    }
+                    // Supprimer aussi les variantes de noms
+                    prod_obj.remove("images_base64");
+                    prod_obj.remove("image_base64");
+                }
+            }
+        }
+        
+        // Nettoyer dans tous les champs qui pourraient contenir des médias
+        for (key, value) in data_obj_map.iter_mut() {
+            if let Some(obj) = value.as_object_mut() {
+                for media_key in &media_keys {
+                    obj.remove(*media_key);
+                }
+                // Nettoyer récursivement dans les sous-objets
+                if let Some(valeur_obj) = obj.get_mut("valeur").and_then(|v| v.as_object_mut()) {
+                    for media_key in &media_keys {
+                        valeur_obj.remove(*media_key);
+                    }
+                }
+            }
+        }
+        
+        if !removed_media.is_empty() {
+            log::info!(
+                "[creer_service] ✅ Nettoyage final avant insertion (médias supprimés: {:?})",
+                removed_media
+            );
+        }
+        
+        // Vérifier la taille du JSON après nettoyage
+        let json_size = serde_json::to_string(data_obj_map)
+            .map(|s| s.len())
+            .unwrap_or(0);
+        log::info!(
+            "[creer_service] 📊 Taille du JSON après nettoyage: {} bytes (max recommandé: ~8000 bytes)",
+            json_size
+        );
+        
+        if json_size > 10000 {
+            log::warn!(
+                "[creer_service] ⚠️ JSON encore volumineux après nettoyage ({} bytes). Risque d'erreur d'insertion.",
+                json_size
+            );
+        }
+    }
+
     let mut tx = pool
         .begin()
         .await
@@ -1136,11 +1208,21 @@ pub async fn creer_service(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| {
+        // Log détaillé pour diagnostiquer l'erreur
+        let json_size = serde_json::to_string(&data_obj)
+            .map(|s| s.len())
+            .unwrap_or(0);
+        let has_base64_image = data_obj
+            .as_object()
+            .and_then(|m| m.get("base64_image"))
+            .is_some();
+        
         log::error!(
-            "[creer_service] Erreur SQL lors de l'insertion: {} | user_id={} | data_obj={:?}",
+            "[creer_service] Erreur SQL lors de l'insertion: {} | user_id={} | json_size={} bytes | has_base64_image={}",
             e,
             user_id,
-            data_obj
+            json_size,
+            has_base64_image
         );
         AppError::Internal(format!("Échec insertion service: {}", e))
     })?;
@@ -1174,6 +1256,8 @@ pub async fn creer_service(
 
     // ✅ AMÉLIORATION : Sauvegarder les images PAR PRODUIT (avec product_index)
     // ✅ PHASE 10: Extraire d'abord les images du service pour les ajouter au premier produit
+    // ⚠️ IMPORTANT: On utilise data_processed (qui contient encore les médias base64) pour sauvegarder les médias
+    // data_obj a été nettoyé pour l'insertion, mais data_processed conserve les médias pour la sauvegarde
     let service_images: Vec<String> = data_processed
         .get("base64_image")
         .and_then(|v| v.as_array())
@@ -1182,6 +1266,22 @@ pub async fn creer_service(
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect()
         })
+        .unwrap_or_default();
+    
+    log::info!(
+        "[creer_service] 💾 Début sauvegarde médias pour service {} ({} images globales trouvées dans data_processed)",
+        service_id,
+        service_images.len()
+    );
+
+    // ✅ CRITIQUE: Extraire les produits depuis data_processed (qui contient encore les médias base64)
+    // data_obj a été nettoyé, donc on doit utiliser data_processed pour récupérer les médias
+    let produits_array_from_processed = data_processed
+        .get("produits")
+        .and_then(|v| v.as_object())
+        .and_then(|obj| obj.get("valeur"))
+        .and_then(|v| v.as_array())
+        .cloned()
         .unwrap_or_default();
 
     if let Some(produits_array) = produits_array_mut(&mut data_obj) {
@@ -1218,6 +1318,11 @@ pub async fn creer_service(
                     .unwrap_or("Sans nom")
             );
 
+            // ✅ CRITIQUE: Extraire les médias depuis data_processed (non nettoyé) au lieu de data_obj
+            let produit_from_processed = produits_array_from_processed
+                .get(product_index)
+                .and_then(|v| v.as_object());
+
             let mut images_to_process: Vec<String> = Vec::new();
             if product_index == 0 && !service_images.is_empty() {
                 log::info!(
@@ -1227,15 +1332,33 @@ pub async fn creer_service(
                 images_to_process.extend(service_images.clone());
             }
 
-            if let Some(product_images) = produit_obj.get("images").and_then(|v| v.as_array()) {
-                images_to_process.extend(
-                    product_images
-                        .iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string())),
-                );
+            // Extraire depuis data_processed (contient les médias base64)
+            if let Some(prod_processed) = produit_from_processed {
+                // Chercher dans "images" (URLs ou base64)
+                if let Some(product_images) = prod_processed.get("images").and_then(|v| v.as_array()) {
+                    images_to_process.extend(
+                        product_images
+                            .iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                    );
+                }
+                // Chercher dans "images_base64" ou "image_base64" (base64)
+                if let Some(images_base64) = prod_processed.get("images_base64").and_then(|v| v.as_array()) {
+                    images_to_process.extend(
+                        images_base64
+                            .iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                    );
+                }
+                if let Some(image_base64) = prod_processed.get("image_base64").and_then(|v| v.as_str()) {
+                    images_to_process.push(image_base64.to_string());
+                }
             }
 
+            // Nettoyer data_obj (supprimer les médias pour l'insertion)
             produit_obj.remove("images");
+            produit_obj.remove("images_base64");
+            produit_obj.remove("image_base64");
 
             let mut saved_paths_for_product: Vec<String> = Vec::new();
 
@@ -2027,16 +2150,35 @@ pub async fn creer_service(
 
     if files_saved > 0 {
         log::info!(
-            "[creer_service] Total de {} fichiers sauvegardés pour le service {}",
+            "[creer_service] ✅ Total de {} fichiers sauvegardés pour le service {} (images: {}, audios: {}, videos: {}, docs: {}, excels: {})",
             files_saved,
+            service_id,
+            saved_service_images.len(),
+            saved_service_audios.len(),
+            saved_service_videos.len(),
+            saved_service_docs.len(),
+            saved_service_excels.len()
+        );
+    } else {
+        log::warn!(
+            "[creer_service] ⚠️ Aucun fichier média sauvegardé pour le service {} (vérifier data_processed)",
             service_id
         );
     }
 
-    // Initialisation du client d'embedding pour Pinecone
-    log::info!("[EMBEDDING_DEBUG] ?? Initialisation du client d'embedding...");
-    let embedding_client = crate::utils::embedding_client::EmbeddingClient::new("", "");
-    log::info!("[EMBEDDING_DEBUG] ? Client d'embedding initialisé");
+    // ✅ NOTE: PINECONE SUSPENDU - Vérifier si le service est disponible
+    let pinecone_enabled = std::env::var("PINECONE_ENABLED")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse::<bool>()
+        .unwrap_or(false);
+    
+    let embedding_client = if pinecone_enabled {
+        log::info!("[EMBEDDING_DEBUG] ?? Initialisation du client d'embedding (Pinecone activé)...");
+        Some(crate::utils::embedding_client::EmbeddingClient::new("", ""))
+    } else {
+        log::info!("[EMBEDDING_DEBUG] ⚠️ Pinecone désactivé (PINECONE_ENABLED=false ou non défini)");
+        None
+    };
     // Calcul GPS optimal (service ou fallback prestataire)
     let (_gps_lat, _gps_lon) = {
         // 1. Nouveau format : gps avec lat/lon directement
@@ -2175,6 +2317,7 @@ pub async fn creer_service(
         // Créer une tâche asynchrone pour chaque embedding
         let embedding_task = {
             let embedding_client = embedding_client.clone();
+            let pinecone_enabled = pinecone_enabled;
             let k = k.clone();
             let value_str = value_str.clone();
             let type_donnee = type_donnee.to_string();
@@ -2225,24 +2368,31 @@ pub async fn creer_service(
                     devise: meta_devise,
                 };
 
-                log::info!(
-                    "[PINECONE][SERVICE] Appel add_embedding_pinecone ({}): {:?}",
-                    type_donnee,
-                    embedding_request
-                );
+                // ✅ Vérifier si Pinecone est activé avant d'appeler
+                if let Some(ref client) = embedding_client {
+                    log::info!(
+                        "[PINECONE][SERVICE] Appel add_embedding_pinecone ({}): {:?}",
+                        type_donnee,
+                        embedding_request
+                    );
 
-                match embedding_client
-                    .add_embedding_pinecone(&embedding_request)
-                    .await
-                {
-                    Ok(result) => {
-                        log::info!("[PINECONE][SERVICE] Embedding {} ajouté?: champ='{}', service_id={}, retour={:?}", type_donnee, k, service_id, result);
-                        Ok(result)
+                    match client
+                        .add_embedding_pinecone(&embedding_request)
+                        .await
+                    {
+                        Ok(result) => {
+                            log::info!("[PINECONE][SERVICE] Embedding {} ajouté?: champ='{}', service_id={}, retour={:?}", type_donnee, k, service_id, result);
+                            Ok(result)
+                        }
+                        Err(e) => {
+                            log::error!("[PINECONE][SERVICE] Erreur embedding {}: champ='{}', service_id={}, erreur={:?}", type_donnee, k, service_id, e);
+                            Err(e)
+                        }
                     }
-                    Err(e) => {
-                        log::error!("[PINECONE][SERVICE] Erreur embedding {}: champ='{}', service_id={}, erreur={:?}", type_donnee, k, service_id, e);
-                        Err(e)
-                    }
+                } else {
+                    log::info!("[PINECONE][SERVICE] ⚠️ Pinecone désactivé - Embedding ignoré pour champ '{}'", k);
+                    // Retourner un résultat vide pour ne pas bloquer le processus
+                    Ok(serde_json::json!({"status": "skipped", "reason": "pinecone_disabled"}))
                 }
             })
         };

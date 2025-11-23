@@ -310,16 +310,40 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             const separateur = preferred.separateur || ',';
                             const combinationString = preferred.product_vector.join(separateur);
 
+                            // ✅ CORRECTION: Convertir product_labels (tableau) en objet pour sous_caracteristiques
+                            // product_labels est un tableau qui correspond à l'ordre de product_vector
+                            // On doit le convertir en objet { dimension: [valeurs] } pour sous_caracteristiques
+                            const sousCaracsObj: Record<string, string[]> = {};
+                            if (Array.isArray(preferred.product_labels) && preferred.product_labels.length > 0) {
+                                // Grouper les labels par dimension
+                                preferred.product_vector.forEach((value: string, index: number) => {
+                                    const label = preferred.product_labels[index];
+                                    if (label && typeof label === 'string') {
+                                        if (!sousCaracsObj[label]) {
+                                            sousCaracsObj[label] = [];
+                                        }
+                                        if (!sousCaracsObj[label].includes(value)) {
+                                            sousCaracsObj[label].push(value);
+                                        }
+                                    }
+                                });
+                            }
+
                             // Mettre à jour formValues avec la combinaison préférée
                             setFormValues((prev: any) => ({
                                 ...prev,
                                 produits: [combinationString],
-                                sous_caracteristiques: preferred.product_labels || prev.sous_caracteristiques || {}
+                                sous_caracteristiques: Object.keys(sousCaracsObj).length > 0 ? sousCaracsObj : (preferred.product_labels || prev.sous_caracteristiques || {}),
+                                // ✅ NOUVEAU: Stocker product_vector et product_labels (tableaux) pour l'ordre correct
+                                product_vector: preferred.product_vector,
+                                product_labels: preferred.product_labels || []
                             }));
 
                             console.log('[AjouterProduitSimple] ✅ Combinaison préférée IA chargée:', {
                                 combinationString,
-                                sous_caracteristiques: Object.keys(preferred.product_labels || {}).length
+                                product_vector: preferred.product_vector,
+                                product_labels: preferred.product_labels,
+                                sous_caracteristiques: Object.keys(sousCaracsObj).length > 0 ? Object.keys(sousCaracsObj) : Object.keys(preferred.product_labels || {})
                             });
                         }
                     }
@@ -831,6 +855,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         handleFieldChange('sous_caracteristiques', updatedSousCaracs);
                                     }
                                 }}
+                                productVector={Array.isArray(formValues.product_vector) ? formValues.product_vector : undefined}
+                                productLabels={Array.isArray(formValues.product_labels) ? formValues.product_labels : undefined}
                                 sousCaracteristiques={formValues.sous_caracteristiques || sous_caracteristiques || {
                                     // Caractéristiques essentielles
                                     marque: [],

@@ -34,6 +34,8 @@ interface LinearAutocompleteEditorProps {
     filtrable?: boolean; // ✅ AJOUT: Support pour champs filtrables
     contextValues?: string[]; // ✅ NOUVEAU 2025-11-08 : Textes contextuels (description, titre, etc.)
     categoryValue?: string; // ✅ NOUVEAU 2025-11-08 : Catégorie principale saisie par le prestataire
+    productVector?: string[]; // ✅ NOUVEAU: Tableau des valeurs dans l'ordre exact (depuis la base)
+    productLabels?: string[]; // ✅ NOUVEAU: Tableau des labels dans l'ordre exact (depuis la base)
 }
 
 interface ChipData {
@@ -515,6 +517,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     filtrable = true,
     contextValues = [],
     categoryValue,
+    productVector, // ✅ NOUVEAU: Tableau des valeurs dans l'ordre exact
+    productLabels, // ✅ NOUVEAU: Tableau des labels dans l'ordre exact
 }) => {
     // ✅ PROTECTION CRITIQUE 2025-11-06: Valider TOUTES les props critiques au début
     try {
@@ -1381,12 +1385,23 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     };
 
     const applyIaCombination = (combo: string, draftKey: string) => {
-        const parts = smartSplit(combo || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
-        const fallbackRows = buildLabeledPairs(parts, labelOrder, labelOrder, {
-            maxValuesPerLabel: 2,
-            contextTokens,
-            categoryTokens,
-        });
+        // ✅ CORRECTION: Utiliser product_vector et product_labels si disponibles (ordre correct)
+        let fallbackRows: Array<{ label: string; value: string }>;
+        if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
+            // Utiliser directement product_vector et product_labels pour l'ordre correct
+            fallbackRows = productVector.map((val, idx) => ({
+                label: productLabels[idx] || `Caractéristique ${idx + 1}`,
+                value: val
+            })).filter(row => row.value && row.value.trim().length > 0);
+        } else {
+            // Fallback: Parser la string (ancienne méthode)
+            const parts = smartSplit(combo || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
+            fallbackRows = buildLabeledPairs(parts, labelOrder, labelOrder, {
+                maxValuesPerLabel: 2,
+                contextTokens,
+                categoryTokens,
+            });
+        }
         applySuggestionDraft(draftKey, fallbackRows);
     };
 
@@ -1477,15 +1492,34 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
 
             const draftKey = getIaSuggestionKey(value, index);
-            const parts = smartSplit(value || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
-            const fallbackRows = buildLabeledPairs(parts, labelOrder, labelOrder, {
-                maxValuesPerLabel: 2,
-                contextTokens,
-                categoryTokens,
-            });
+
+            // ✅ CORRECTION: Utiliser product_vector et product_labels si disponibles (ordre correct)
+            let fallbackRows: Array<{ label: string; value: string }>;
+            if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
+                // Utiliser directement product_vector et product_labels pour l'ordre correct
+                fallbackRows = productVector.map((val, idx) => ({
+                    label: productLabels[idx] || `Caractéristique ${idx + 1}`,
+                    value: val
+                })).filter(row => row.value && row.value.trim().length > 0);
+                console.log('[LinearAutocompleteEditor] ✅ Utilisation product_vector/product_labels pour combinaison IA:', {
+                    product_vector: productVector.length,
+                    product_labels: productLabels.length,
+                    rows: fallbackRows.length
+                });
+            } else {
+                // Fallback: Parser la string (ancienne méthode)
+                const parts = smartSplit(value || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
+                fallbackRows = buildLabeledPairs(parts, labelOrder, labelOrder, {
+                    maxValuesPerLabel: 2,
+                    contextTokens,
+                    categoryTokens,
+                });
+            }
+
             const rows = suggestionDrafts[draftKey] && suggestionDrafts[draftKey].length > 0
                 ? suggestionDrafts[draftKey]
                 : fallbackRows;
+            const parts = productVector || smartSplit(value || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
             const score = computeIaSuggestionScore(parts, activeTokens, categoryTokens) + 4;
 
             items.push({
@@ -1498,57 +1532,72 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             });
         });
 
-        // ✅ NOUVEAU: Créer un candidat directement à partir des sous_caracteristiques préférées de l'IA
-        // Ce candidat doit TOUJOURS être créé si les sous_caracteristiques sont disponibles,
-        // même s'il y a d'autres candidats, car ce sont les choix préférés de l'IA
-        if (sousCaracteristiques && typeof sousCaracteristiques === 'object') {
+        // ✅ CORRECTION: Créer un candidat directement à partir de product_vector/product_labels si disponibles
+        // Sinon, utiliser sous_caracteristiques (fallback)
+        const draftKey = 'ia-sous-caracteristiques-preferred';
+        let preferredRows: Array<{ label: string; value: string }> = [];
+
+        // ✅ PRIORITÉ 1: Utiliser product_vector et product_labels (ordre correct)
+        if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
+            preferredRows = productVector.map((val, idx) => ({
+                label: productLabels[idx] || `Caractéristique ${idx + 1}`,
+                value: val
+            })).filter(row => row.value && row.value.trim().length > 0);
+            console.log('[LinearAutocompleteEditor] ✅ Création candidat IA préféré depuis product_vector/product_labels:', {
+                rows: preferredRows.length
+            });
+        }
+        // ✅ PRIORITÉ 2: Utiliser sous_caracteristiques (fallback)
+        else if (sousCaracteristiques && typeof sousCaracteristiques === 'object') {
             const sousCaracsKeys = Object.keys(sousCaracteristiques);
             if (sousCaracsKeys.length > 0) {
-                const draftKey = 'ia-sous-caracteristiques-preferred';
-                const rows: Array<{ label: string; value: string }> = [];
-
+                // ✅ CORRECTION: Prendre TOUTES les valeurs de chaque dimension, pas seulement la première
                 sousCaracsKeys.forEach((key) => {
                     const values = sousCaracteristiques[key];
                     if (Array.isArray(values) && values.length > 0) {
-                        // Prendre la première valeur comme valeur par défaut (choix préféré de l'IA)
-                        rows.push({
-                            label: key,
-                            value: values[0],
+                        // Prendre toutes les valeurs de cette dimension
+                        values.forEach((val) => {
+                            if (typeof val === 'string' && val.trim().length > 0) {
+                                preferredRows.push({
+                                    label: key,
+                                    value: val,
+                                });
+                            }
                         });
                     } else if (typeof values === 'string' && values.trim().length > 0) {
-                        rows.push({
+                        preferredRows.push({
                             label: key,
                             value: values,
                         });
                     }
                 });
+            }
+        }
 
-                if (rows.length > 0) {
-                    const finalRows = suggestionDrafts[draftKey] && suggestionDrafts[draftKey].length > 0
-                        ? suggestionDrafts[draftKey]
-                        : rows;
+        if (preferredRows.length > 0) {
+            const finalRows = suggestionDrafts[draftKey] && suggestionDrafts[draftKey].length > 0
+                ? suggestionDrafts[draftKey]
+                : preferredRows;
 
-                    // Vérifier si ce candidat n'existe pas déjà
-                    const existingIndex = items.findIndex(item => item.key === draftKey);
-                    if (existingIndex === -1) {
-                        items.push({
-                            key: draftKey,
-                            source: 'ia',
-                            rows: finalRows,
-                            score: 15, // Score très élevé pour les caractéristiques préférées de l'IA (priorité maximale)
-                            title: 'Caractéristiques suggérées par l\'IA',
-                            isPreferred: true,
-                        });
-                    } else {
-                        // Mettre à jour le candidat existant
-                        items[existingIndex] = {
-                            ...items[existingIndex],
-                            rows: finalRows,
-                            score: 15, // S'assurer que le score reste élevé
-                            isPreferred: true,
-                        };
-                    }
-                }
+            // Vérifier si ce candidat n'existe pas déjà
+            const existingIndex = items.findIndex(item => item.key === draftKey);
+            if (existingIndex === -1) {
+                items.push({
+                    key: draftKey,
+                    source: 'ia',
+                    rows: finalRows,
+                    score: 15, // Score très élevé pour les caractéristiques préférées de l'IA (priorité maximale)
+                    title: 'Caractéristiques suggérées par l\'IA',
+                    isPreferred: true,
+                });
+            } else {
+                // Mettre à jour le candidat existant
+                items[existingIndex] = {
+                    ...items[existingIndex],
+                    rows: finalRows,
+                    score: 15, // S'assurer que le score reste élevé
+                    isPreferred: true,
+                };
             }
         }
 
@@ -1568,6 +1617,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         suggestionDrafts,
         formatPriceDisplay,
         sousCaracteristiques,
+        productVector, // ✅ NOUVEAU: Dépendance ajoutée
+        productLabels, // ✅ NOUVEAU: Dépendance ajoutée
     ]);
 
     const bestSuggestionCandidate = suggestionCandidates.length > 0 ? suggestionCandidates[0] : null;

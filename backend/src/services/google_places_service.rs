@@ -228,11 +228,39 @@ impl GooglePlacesService {
                 .text()
                 .await
                 .unwrap_or_else(|_| "<no body>".to_string());
+            
+            // ✅ NOUVEAU: Analyser le type d'erreur
+            let error_type = if text.contains("BILLING_DISABLED") || text.contains("billing_disabled") {
+                "BILLING_DISABLED"
+            } else if text.contains("API_KEY_INVALID") || text.contains("api_key_invalid") {
+                "API_KEY_INVALID"
+            } else if text.contains("PERMISSION_DENIED") || text.contains("permission_denied") {
+                "PERMISSION_DENIED"
+            } else if status == 403 {
+                "FORBIDDEN"
+            } else if status == 429 {
+                "RATE_LIMIT"
+            } else {
+                "UNKNOWN"
+            };
+            
             error!(
-                "[Places] Recherche échouée (HTTP {}): {}",
+                "[Places] Recherche échouée (HTTP {}): {} - Type: {}",
                 status.as_u16(),
-                text
+                text,
+                error_type
             );
+            
+            // ✅ Retourner une erreur structurée au lieu de Ok(None) pour les erreurs critiques
+            if error_type == "BILLING_DISABLED" || error_type == "API_KEY_INVALID" || error_type == "PERMISSION_DENIED" {
+                return Err(AppError::Internal(format!(
+                    "Google Places API indisponible ({}): {}. Veuillez activer la facturation ou vérifier la clé API.",
+                    error_type,
+                    text.chars().take(200).collect::<String>()
+                )));
+            }
+            
+            // Pour les autres erreurs (rate limit, etc.), retourner None pour permettre le fallback
             return Ok(None);
         }
 
@@ -281,11 +309,39 @@ impl GooglePlacesService {
                 .text()
                 .await
                 .unwrap_or_else(|_| "<no body>".to_string());
+            
+            // ✅ NOUVEAU: Analyser le type d'erreur
+            let error_type = if text.contains("BILLING_DISABLED") || text.contains("billing_disabled") {
+                "BILLING_DISABLED"
+            } else if text.contains("API_KEY_INVALID") || text.contains("api_key_invalid") {
+                "API_KEY_INVALID"
+            } else if text.contains("PERMISSION_DENIED") || text.contains("permission_denied") {
+                "PERMISSION_DENIED"
+            } else if status == 403 {
+                "FORBIDDEN"
+            } else if status == 429 {
+                "RATE_LIMIT"
+            } else {
+                "UNKNOWN"
+            };
+            
             error!(
-                "[Places] Détails échoués (HTTP {}): {}",
+                "[Places] Détails échoués (HTTP {}): {} - Type: {}",
                 status.as_u16(),
-                text
+                text,
+                error_type
             );
+            
+            // ✅ Retourner une erreur structurée au lieu de Ok(None) pour les erreurs critiques
+            if error_type == "BILLING_DISABLED" || error_type == "API_KEY_INVALID" || error_type == "PERMISSION_DENIED" {
+                return Err(AppError::Internal(format!(
+                    "Google Places API indisponible ({}): {}. Veuillez activer la facturation ou vérifier la clé API.",
+                    error_type,
+                    text.chars().take(200).collect::<String>()
+                )));
+            }
+            
+            // Pour les autres erreurs (rate limit, etc.), retourner None pour permettre le fallback
             return Ok(None);
         }
 
