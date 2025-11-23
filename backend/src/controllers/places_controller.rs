@@ -7,7 +7,7 @@ use axum::{
     extract::{Query, State},
     Json,
 };
-use log::info;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 

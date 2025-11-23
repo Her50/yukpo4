@@ -3,7 +3,7 @@
 // ✅ NOUVEAU 2025-11-06: Lit depuis la table PostgreSQL african_locations
 
 use log::warn;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

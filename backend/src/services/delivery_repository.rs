@@ -1105,10 +1105,9 @@ impl DeliveryRepository {
             "#
         )
         .bind(delivery_row.id)
-            payload.initial_status as DeliveryStatus,
-            payload.initial_event_payload,
-            payload.initial_status_author
-        )
+        .bind(payload.initial_status as DeliveryStatus)
+        .bind(payload.initial_event_payload)
+        .bind(payload.initial_status_author)
         .execute(&mut *tx)
         .await?;
 

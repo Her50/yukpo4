@@ -157,6 +157,24 @@ pub async fn creer_service(
                 }
             }
 
+            // ✅ CORRIGÉ : Calculer le coût depuis les tokens IA du payload
+            let ia_tokens_consumed = payload.data
+                .get("tokens_ia_externe")
+                .and_then(|v| v.as_u64())
+                .or_else(|| payload.data.get("tokens_consumed").and_then(|v| v.as_u64()))
+                .unwrap_or(0) as i64;
+            
+            // Déterminer si c'est le premier produit (si tokens IA > 0)
+            let is_first_product = ia_tokens_consumed > 0;
+            
+            // Calculer le coût en utilisant la même logique que creer_service
+            let cost_xaf = if is_first_product {
+                let cost = (ia_tokens_consumed as f64) * 0.004 * 100.0;
+                cost.round() as i64
+            } else {
+                3000 // COST_NEW_PRODUCT_DUPLICATE_XAF
+            };
+
             // Ajouter les headers avec les vraies valeurs
             response.headers_mut().insert(
                 "x-tokens-consumed",
@@ -171,7 +189,7 @@ pub async fn creer_service(
             );
 
             info!(
-                "[creer_service] Headers ajout?s: x-tokens-consumed={}, x-tokens-cost-xaf={}",
+                "[creer_service] Headers ajoutés: x-tokens-consumed={}, x-tokens-cost-xaf={}",
                 tokens_consumed, cost_xaf
             );
 
