@@ -326,24 +326,26 @@ fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mu
                                     media_obj.insert("valeur".to_string(), serde_json::Value::Null);
                                     *removed_count += 1;
                                 }
-                                serde_json::Value::Array(arr) => {
+                                serde_json::Value::Array(_) => {
                                     // Nettoyer les tableaux de base64
                                     let mut cleaned = false;
-                                    for item in arr.iter_mut() {
-                                        if let serde_json::Value::String(s) = item {
-                                            if is_base64_media(s) {
-                                                *item = serde_json::Value::Null;
-                                                cleaned = true;
-                                                *removed_count += 1;
+                                    if let Some(arr) = media_obj.get_mut("valeur").and_then(|v| v.as_array_mut()) {
+                                        for item in arr.iter_mut() {
+                                            if let serde_json::Value::String(s) = item {
+                                                if is_base64_media(s) {
+                                                    *item = serde_json::Value::Null;
+                                                    cleaned = true;
+                                                    *removed_count += 1;
+                                                }
                                             }
                                         }
-                                    }
-                                    if cleaned && arr.iter().all(|v| v.is_null()) {
-                                        // Si toutes les valeurs sont null, supprimer l'objet
-                                        if obj.remove(&key).is_some() {
-                                            *removed_count += 1;
+                                        if cleaned && arr.iter().all(|v| v.is_null()) {
+                                            // Si toutes les valeurs sont null, supprimer l'objet
+                                            if obj.remove(&key).is_some() {
+                                                *removed_count += 1;
+                                            }
+                                            continue;
                                         }
-                                        continue;
                                     }
                                 }
                                 _ => {}
@@ -3010,7 +3012,7 @@ fn extract_product_vector_from_object(
             match value {
                 serde_json::Value::String(s) => {
                     let trimmed = s.trim();
-                    if !trimmed.is_empty() && !parts.contains(&trimmed) {
+                    if !trimmed.is_empty() && !parts.contains(&trimmed.to_string()) {
                         parts.push(trimmed.to_string());
                     }
                 }
@@ -3034,7 +3036,7 @@ fn extract_product_vector_from_object(
         if let Some(value) = obj.get(*key) {
             if let Some(s) = value.as_str() {
                 let trimmed = s.trim();
-                if !trimmed.is_empty() && !parts.contains(&trimmed) {
+                if !trimmed.is_empty() && !parts.contains(&trimmed.to_string()) {
                     parts.push(trimmed.to_string());
                 }
             }
@@ -3440,6 +3442,13 @@ pub async fn save_autocomplete_combination(
             .map_err(|e| AppError::Internal(format!("Erreur parsing service data: {}", e)))?;
 
         // ✅ CORRECTION 2025-11-04: Ajouter le vecteur COMPLET (produit + lieu) au champ produits
+        // Construire combination_string à partir de product_vector
+        let combination_string = if !product_vector.is_empty() {
+            Some(product_vector.join(separateur))
+        } else {
+            None
+        };
+        
         if let Some(produits_obj) = service_data
             .get_mut("produits")
             .and_then(|p| p.as_object_mut())
