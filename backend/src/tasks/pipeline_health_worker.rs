@@ -111,13 +111,6 @@ async fn send_webhook(
 ) -> Result<(), reqwest::Error> {
     // Convertir stale_jobs en format compatible Slack (tableau de IDs ou nombre)
     let stale_jobs_count = status.job_queue.stale_jobs.len();
-    let stale_jobs_ids: Vec<String> = status
-        .job_queue
-        .stale_jobs
-        .iter()
-        .take(10) // Limiter à 10 pour éviter un payload trop gros
-        .map(|job| job.job_id.clone())
-        .collect();
 
     let payload = serde_json::json!({
         "text": format!(
@@ -165,8 +158,8 @@ async fn send_webhook(
         .send()
         .await?;
 
-    // Log la réponse pour debug si erreur
-    if !response.status().is_success() {
+    // Vérifier le statut et créer l'erreur avant de consommer la réponse
+    if let Err(e) = response.error_for_status_ref() {
         let status_code = response.status();
         let body = response.text().await.unwrap_or_default();
         log::warn!(
@@ -174,8 +167,7 @@ async fn send_webhook(
             status_code,
             body
         );
-        // Retourner une erreur avec le statut HTTP
-        return Err(response.error_for_status().unwrap_err());
+        return Err(e);
     }
 
     Ok(())
@@ -223,7 +215,8 @@ async fn send_recovery_webhook(
         .send()
         .await?;
 
-    if !response.status().is_success() {
+    // Vérifier le statut et créer l'erreur avant de consommer la réponse
+    if let Err(e) = response.error_for_status_ref() {
         let status_code = response.status();
         let body = response.text().await.unwrap_or_default();
         log::warn!(
@@ -231,8 +224,7 @@ async fn send_recovery_webhook(
             status_code,
             body
         );
-        // Retourner une erreur avec le statut HTTP
-        return Err(response.error_for_status().unwrap_err());
+        return Err(e);
     }
 
     Ok(())
