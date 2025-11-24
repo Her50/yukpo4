@@ -309,7 +309,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
             axum::routing::post(fournitures_axum_handler),
         )
         .layer(axum::middleware::from_fn(cors_middleware)) // CORS middleware
-        .layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // ✅ CRITIQUE: Augmenter limite à 10MB (de 2MB par défaut)
+        .layer(DefaultBodyLimit::max(100 * 1024 * 1024)) // ✅ CRITIQUE: Augmenter limite à 100MB pour permettre upload médias (images/vidéos)
         .with_state(state); // Ajouter les routes WebSocket s?par?ment
                             // let app = app.merge(websocket);
     app
