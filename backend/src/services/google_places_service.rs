@@ -297,7 +297,7 @@ impl GooglePlacesService {
             .header("X-Goog-Api-Key", &self.api_key)
             .header(
                 "X-Goog-FieldMask",
-                "id,displayName,formattedAddress,location,types,primaryType,primaryTypeDisplayName,googleMapsUri,websiteUri,rating,userRatingCount,priceLevel,businessStatus,editorialSummary,currentOpeningHours,regularOpeningHours,nationalPhoneNumber,internationalPhoneNumber,addressComponents,photos,servesCuisine",
+                "id,displayName,formattedAddress,location,types,primaryType,primaryTypeDisplayName,googleMapsUri,websiteUri,rating,userRatingCount,priceLevel,businessStatus,editorialSummary,currentOpeningHours,regularOpeningHours,nationalPhoneNumber,internationalPhoneNumber,addressComponents,photos",
             )
             .send()
             .await

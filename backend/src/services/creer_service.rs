@@ -263,8 +263,18 @@ fn parse_lat_lng_from_str(input: &str) -> Option<(f64, f64)> {
     Some((lat, lng))
 }
 
+/// Fonction utilitaire pour détecter si une string est du base64 (média)
+fn is_base64_media(s: &str) -> bool {
+    // Détecter les strings base64 de médias (très longues, commençant par data:)
+    (s.starts_with("data:image/") || 
+     s.starts_with("data:video/") || 
+     s.starts_with("data:audio/") ||
+     s.starts_with("data:application/")) && 
+    s.len() > 1000 // Les médias base64 sont toujours très longs
+}
+
 /// Fonction récursive pour nettoyer tous les médias base64 dans une structure JSON
-/// Supprime les clés médias directes et les objets avec type_donnee: "media"
+/// Supprime les clés médias directes, les objets avec type_donnee médias, et les strings base64 longues
 fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mut usize) {
     match value {
         serde_json::Value::Object(obj) => {
@@ -277,6 +287,7 @@ fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mu
                 "excel_base64",
                 "images_base64",
                 "image_base64",
+                "pdf_base64",
             ];
             
             // Supprimer les clés médias directes
@@ -286,24 +297,66 @@ fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mu
                 }
             }
             
-            // Nettoyer les objets avec type_donnee: "media"
+            // Nettoyer les objets avec type_donnee médias (media, image, video, audio, document, file, excel)
             let keys_to_check: Vec<String> = obj.keys().cloned().collect();
             for key in keys_to_check {
                 if let Some(v) = obj.get_mut(&key) {
-                    // Si c'est un objet avec type_donnee: "media", supprimer tout l'objet
+                    // Si c'est un objet avec type_donnee médias, supprimer tout l'objet
                     if let Some(media_obj) = v.as_object_mut() {
-                        if media_obj.get("type_donnee")
+                        let should_remove = media_obj.get("type_donnee")
                             .and_then(|t| t.as_str())
-                            .map(|s| s == "media")
-                            .unwrap_or(false)
-                        {
+                            .map(|s| {
+                                matches!(s, "media" | "image" | "video" | "audio" | "document" | "file" | "excel" | "pdf")
+                            })
+                            .unwrap_or(false);
+                        
+                        if should_remove {
                             // Supprimer tout l'objet média (il sera sauvegardé dans la table media)
                             if obj.remove(&key).is_some() {
                                 *removed_count += 1;
                             }
-                        } else {
-                            // Nettoyer récursivement dans les sous-objets
-                            clean_media_recursive_final(v, removed_count);
+                            continue;
+                        }
+                        
+                        // Vérifier aussi si la valeur contient du base64
+                        if let Some(val) = media_obj.get("valeur") {
+                            match val {
+                                serde_json::Value::String(s) if is_base64_media(s) => {
+                                    // Remplacer par null au lieu de supprimer pour garder la structure
+                                    media_obj.insert("valeur".to_string(), serde_json::Value::Null);
+                                    *removed_count += 1;
+                                }
+                                serde_json::Value::Array(arr) => {
+                                    // Nettoyer les tableaux de base64
+                                    let mut cleaned = false;
+                                    for item in arr.iter_mut() {
+                                        if let serde_json::Value::String(s) = item {
+                                            if is_base64_media(s) {
+                                                *item = serde_json::Value::Null;
+                                                cleaned = true;
+                                                *removed_count += 1;
+                                            }
+                                        }
+                                    }
+                                    if cleaned && arr.iter().all(|v| v.is_null()) {
+                                        // Si toutes les valeurs sont null, supprimer l'objet
+                                        if obj.remove(&key).is_some() {
+                                            *removed_count += 1;
+                                        }
+                                        continue;
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        
+                        // Nettoyer récursivement dans les sous-objets
+                        clean_media_recursive_final(v, removed_count);
+                    } else if let Some(s) = v.as_str() {
+                        // Détecter et supprimer les strings base64 directes
+                        if is_base64_media(s) {
+                            *v = serde_json::Value::Null;
+                            *removed_count += 1;
                         }
                     } else {
                         // Nettoyer récursivement
@@ -313,8 +366,29 @@ fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mu
             }
         }
         serde_json::Value::Array(arr) => {
-            for item in arr.iter_mut() {
-                clean_media_recursive_final(item, removed_count);
+            // Nettoyer les tableaux : supprimer les strings base64
+            let mut indices_to_remove = Vec::new();
+            for (idx, item) in arr.iter_mut().enumerate() {
+                match item {
+                    serde_json::Value::String(s) if is_base64_media(s) => {
+                        *removed_count += 1;
+                        indices_to_remove.push(idx);
+                    }
+                    _ => {
+                        clean_media_recursive_final(item, removed_count);
+                    }
+                }
+            }
+            // Retirer les éléments base64 en ordre décroissant
+            for &idx in indices_to_remove.iter().rev() {
+                arr.remove(idx);
+            }
+        }
+        serde_json::Value::String(s) => {
+            // Si la valeur elle-même est du base64, la remplacer par null
+            if is_base64_media(s) {
+                *value = serde_json::Value::Null;
+                *removed_count += 1;
             }
         }
         _ => {}
@@ -1177,9 +1251,23 @@ pub async fn creer_service(
         json_size
     );
     
-    if json_size > 10000 {
+    // ✅ CRITIQUE: Vérifier que le JSON n'est pas trop volumineux pour PostgreSQL (limite index: 8191 bytes)
+    // Limite à 8000 bytes pour laisser une marge de sécurité
+    if json_size > 8000 {
+        // Si le JSON est encore trop volumineux après nettoyage, on refuse l'insertion
+        log::error!(
+            "[creer_service] ❌ JSON trop volumineux après nettoyage ({} bytes). Limite PostgreSQL: 8191 bytes.",
+            json_size
+        );
+        return Err(AppError::Internal(format!(
+            "Les données du service sont trop volumineuses ({} bytes). Veuillez retirer certaines images ou fichiers volumineux et réessayer.",
+            json_size
+        )));
+    }
+    
+    if json_size > 5000 {
         log::warn!(
-            "[creer_service] ⚠️ JSON encore volumineux après nettoyage ({} bytes). Risque d'erreur d'insertion.",
+            "[creer_service] ⚠️ JSON volumineux après nettoyage ({} bytes). Proche de la limite.",
             json_size
         );
     }
@@ -2878,6 +2966,107 @@ async fn save_ia_combinations_to_db(
     Ok(())
 }
 
+/// ✅ OPTIMISATION : Extraire directement product_vector depuis un objet JSON (sans passer par chaîne)
+/// Cette fonction génère directement un Vec<String> au lieu d'une chaîne concaténée
+fn extract_product_vector_from_object(
+    obj: &serde_json::Map<String, serde_json::Value>,
+) -> Vec<String> {
+    // 1. Si characteristic_vector existe, l'utiliser directement
+    if let Some(vector_array) = obj.get("characteristic_vector").and_then(|v| v.as_array()) {
+        let items: Vec<String> = vector_array
+            .iter()
+            .filter_map(|value| value.as_str().map(|s| s.trim().to_string()))
+            .filter(|s| !s.is_empty())
+            .collect();
+        if !items.is_empty() {
+            return items;
+        }
+    }
+
+    // 2. Si combinaison_brute existe, la splitter
+    if let Some(raw) = obj.get("combinaison_brute").and_then(|v| v.as_str()) {
+        let items: Vec<String> = raw
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if !items.is_empty() {
+            return items;
+        }
+    }
+
+    // 3. Extraire depuis les champs structurés (format recommandé)
+    let mut parts: Vec<String> = Vec::new();
+    
+    // Champs prioritaires (format structuré)
+    let priority_keys = [
+        "nom_produit", "nom",
+        "categorie_produit", "categorie",
+        "description_produit", "description",
+    ];
+    
+    for key in priority_keys.iter() {
+        if let Some(value) = obj.get(*key) {
+            match value {
+                serde_json::Value::String(s) => {
+                    let trimmed = s.trim();
+                    if !trimmed.is_empty() && !parts.contains(&trimmed) {
+                        parts.push(trimmed.to_string());
+                    }
+                }
+                serde_json::Value::Number(num) => {
+                    let num_str = num.to_string();
+                    if !parts.contains(&num_str) {
+                        parts.push(num_str);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    
+    // Autres champs optionnels
+    let optional_keys = [
+        "marque", "modele", "taille", "style", "couleur", "etat",
+    ];
+    
+    for key in optional_keys.iter() {
+        if let Some(value) = obj.get(*key) {
+            if let Some(s) = value.as_str() {
+                let trimmed = s.trim();
+                if !trimmed.is_empty() && !parts.contains(&trimmed) {
+                    parts.push(trimmed.to_string());
+                }
+            }
+        }
+    }
+
+    // Prix et devise
+    if let Some(prix_val) = obj.get("prix").or_else(|| obj.get("prix_produit")) {
+        match prix_val {
+            serde_json::Value::String(s) => {
+                let trimmed = s.trim();
+                if !trimmed.is_empty() {
+                    parts.push(trimmed.to_string());
+                }
+            }
+            serde_json::Value::Number(num) => parts.push(num.to_string()),
+            _ => {}
+        }
+    }
+
+    if let Some(devise_val) = obj.get("devise").or_else(|| obj.get("devise_produit")) {
+        if let Some(devise_str) = devise_val.as_str() {
+            let trimmed = devise_str.trim();
+            if !trimmed.is_empty() {
+                parts.push(trimmed.to_string());
+            }
+        }
+    }
+
+    parts
+}
+
 /// Sauvegarde les combinaisons autocomplete avec vecteurs produit et localisation
 /// LOGIQUE:
 /// - autocomplete_combinations : Toutes les combinaisons possibles (IA) pour aider prestataire
@@ -2915,7 +3104,6 @@ pub async fn save_autocomplete_combination(
         .and_then(|v| v.as_str())
         .unwrap_or(",");
 
-    let mut combination_string: Option<String> = None;
     let mut product_vector: Vec<String> = Vec::new();
     let mut product_labels: Vec<String> = if let Some(sous_caracs) = produits_field
         .get("sous_caracteristiques")
@@ -2929,85 +3117,15 @@ pub async fn save_autocomplete_combination(
         produits_field.get("variation_prix").cloned();
     let mut embedded_product_object: Option<serde_json::Value> = None;
 
-    let extract_combination_from_object = |obj: &serde_json::Map<String, serde_json::Value>,
-                                           separator: &str|
-     -> Option<String> {
-        if let Some(raw) = obj.get("combinaison_brute").and_then(|v| v.as_str()) {
-            return Some(raw.to_string());
-        }
-
-        if let Some(vector_array) = obj.get("characteristic_vector").and_then(|v| v.as_array()) {
-            let items: Vec<String> = vector_array
-                .iter()
-                .filter_map(|value| value.as_str().map(|s| s.trim().to_string()))
-                .filter(|s| !s.is_empty())
-                .collect();
-
-            if !items.is_empty() {
-                return Some(items.join(separator));
-            }
-        }
-
-        let mut parts: Vec<String> = Vec::new();
-        let candidate_keys = [
-            "nom",
-            "categorie",
-            "marque",
-            "modele",
-            "description",
-            "taille",
-            "style",
-            "couleur",
-            "etat",
-        ];
-
-        for key in candidate_keys.iter() {
-            if let Some(value) = obj.get(*key) {
-                match value {
-                    serde_json::Value::String(s) => {
-                        let trimmed = s.trim();
-                        if !trimmed.is_empty() {
-                            parts.push(trimmed.to_string());
-                        }
-                    }
-                    serde_json::Value::Number(num) => parts.push(num.to_string()),
-                    _ => {}
-                }
-            }
-        }
-
-        if let Some(prix_val) = obj.get("prix") {
-            match prix_val {
-                serde_json::Value::String(s) => {
-                    let trimmed = s.trim();
-                    if !trimmed.is_empty() {
-                        parts.push(trimmed.to_string());
-                    }
-                }
-                serde_json::Value::Number(num) => parts.push(num.to_string()),
-                _ => {}
-            }
-        }
-
-        if let Some(devise_val) = obj.get("devise").and_then(|v| v.as_str()) {
-            let trimmed = devise_val.trim();
-            if !trimmed.is_empty() {
-                parts.push(trimmed.to_string());
-            }
-        }
-
-        if parts.is_empty() {
-            None
-        } else {
-            Some(parts.join(separator))
-        }
-    };
-
+    // ✅ OPTIMISATION : Extraire product_vector directement depuis les objets JSON
     if type_donnee == "listeproduit" {
         if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
             if let Some(first) = valeur_array.first() {
                 if let Some(obj) = first.as_object() {
-                    combination_string = extract_combination_from_object(obj, separateur);
+                    // Générer product_vector directement depuis l'objet JSON
+                    product_vector = extract_product_vector_from_object(obj);
+                    
+                    // Extraire product_labels si disponibles
                     if product_labels.is_empty() {
                         if let Some(labels_array) =
                             obj.get("product_labels").and_then(|v| v.as_array())
@@ -3018,35 +3136,41 @@ pub async fn save_autocomplete_combination(
                                 .collect();
                         }
                     }
+                    
+                    // Extraire variation_prix
                     if variation_prix_node.is_none() {
                         variation_prix_node = obj
                             .get("variabilite_prix")
                             .cloned()
-                            .or_else(|| obj.get("variation_prix").cloned());
+                            .or_else(|| obj.get("variation_prix").cloned())
+                            .or_else(|| obj.get("price_variant").cloned());
                     }
+                    
+                    embedded_product_object = Some(first.clone());
                 }
-                embedded_product_object = Some(first.clone());
             }
         }
     } else {
+        // ✅ RÉTROCOMPATIBILITÉ : Gérer les anciennes chaînes concaténées
         if let Some(valeur_str) = produits_field.get("valeur").and_then(|v| v.as_str()) {
-            combination_string = Some(valeur_str.to_string());
-        } else if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
-            combination_string = valeur_array
-                .iter()
-                .filter_map(|v| v.as_str())
-                .next()
-                .map(|s| s.to_string());
-        }
-    }
-
-    if product_vector.is_empty() {
-        if let Some(ref combo) = combination_string {
-            product_vector = combo
+            product_vector = valeur_str
                 .split(separateur)
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
+        } else if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+            // Si c'est un array de chaînes (ancien format)
+            if let Some(first_str) = valeur_array
+                .iter()
+                .filter_map(|v| v.as_str())
+                .next()
+            {
+                product_vector = first_str
+                    .split(separateur)
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+            }
         }
     }
 
