@@ -511,29 +511,26 @@ pub async fn rechercher_besoin_direct(
         .ok()
         .flatten();
 
-        // Construire l'objet utilisateur
-        let user_obj = if let Some((user_id, nom_complet, avatar_url)) = user_info {
-            json!({
+        // Construire l'objet utilisateur et prestataire
+        let (user_obj, prestataire_obj) = if let Some((user_id, nom_complet, avatar_url)) = user_info {
+            let nom_complet_clone = nom_complet.clone();
+            let avatar_url_clone = avatar_url.clone();
+            let user_obj = json!({
                 "id": user_id,
                 "nom_complet": nom_complet,
                 "avatar_url": avatar_url
-            })
-        } else {
-            json!(null)
-        };
-
-        // Construire l'objet prestataire
-        let prestataire_obj = if let Some((user_id, nom_complet, avatar_url)) = user_info {
-            json!({
+            });
+            let prestataire_obj = json!({
                 "user_id": user_id,
-                "nom": nom_complet.unwrap_or_else(|| "Prestataire".to_string()),
-                "nom_complet": nom_complet,
-                "avatar_url": avatar_url
-            })
+                "nom": nom_complet_clone.clone().unwrap_or_else(|| "Prestataire".to_string()),
+                "nom_complet": nom_complet_clone,
+                "avatar_url": avatar_url_clone
+            });
+            (user_obj, prestataire_obj)
         } else {
-            json!({
+            (json!(null), json!({
                 "nom": "Prestataire"
-            })
+            }))
         };
 
         // Extraire les informations de produit
