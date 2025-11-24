@@ -968,41 +968,38 @@ const styles = StyleSheet.create({
     },
     headerRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between', // ✅ Espacement équilibré entre les trois colonnes
         alignItems: 'center',
         paddingHorizontal: 8,
-        position: 'relative', // ✅ Pour permettre le positionnement absolu du titre
+        width: '100%',
+        justifyContent: 'space-between', // ✅ Espacement entre les sections
     },
     avatarContainer: {
         width: 44,
         height: 44,
         marginRight: 8,
     },
-    // ✅ ÉQUILIBRÉ: Colonne gauche avec avatar + langue - Largeur fixe pour équilibrer
+    // ✅ Colonne gauche avec avatar + langue
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        width: 100, // ✅ Largeur fixe pour équilibrer avec la droite
-        justifyContent: 'flex-start', // ✅ Aligner à gauche
-        zIndex: 1, // ✅ Au-dessus du titre pour l'interaction
+        justifyContent: 'flex-start',
+        minWidth: 0,
     },
-    // ✅ PARFAITEMENT CENTRÉ : Conteneur pour le titre équilibré entre drapeau et icône livraison
+    // ✅ Titre centré entre le drapeau et l'icône voiture
     brandTitleContainer: {
-        position: 'absolute', // ✅ Position absolue pour centrer par rapport à toute la largeur
-        left: 0,
-        right: 0,
+        flex: 1, // ✅ Prend l'espace restant au centre
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 0, // ✅ En dessous des colonnes gauche/droite
+        paddingHorizontal: 8, // ✅ Espacement horizontal pour équilibrer
+        minWidth: 0,
     },
-    // ✅ ÉQUILIBRÉ: Colonne droite avec les actions - Largeur fixe pour équilibrer
+    // ✅ Colonne droite avec les actions (voiture, chat, notifications)
     headerActionsCompact: {
         flexDirection: 'row',
         alignItems: 'center',
-        width: 100, // ✅ Même largeur que la gauche pour équilibrer
-        justifyContent: 'flex-end', // ✅ Aligner à droite
+        justifyContent: 'flex-end',
         gap: 4,
-        zIndex: 1, // ✅ Au-dessus du titre pour l'interaction
+        minWidth: 0,
     },
     headerTop: {
         flexDirection: 'row',

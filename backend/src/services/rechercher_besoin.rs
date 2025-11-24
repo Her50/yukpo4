@@ -430,6 +430,13 @@ pub async fn rechercher_besoin_direct(
         }
     };
 
+    // ✅ Stocker les distances avant conversion
+    use std::collections::HashMap;
+    let mut distance_map: HashMap<i32, Option<f64>> = HashMap::new();
+    for result in &native_results {
+        distance_map.insert(result.service_id, result.distance_km);
+    }
+
     // Convertir les résultats natifs en format MatchedService pour compatibilité
     let mut matches: Vec<crate::services::matching_pipeline::MatchedService> = native_results
         .into_iter()
@@ -461,20 +468,117 @@ pub async fn rechercher_besoin_direct(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    // Convertir en format de réponse
-    let results_array: Vec<Value> = matches
-        .into_iter()
-        .map(|matched_service| {
+    // ✅ ENRICHIR les résultats avec les informations utilisateur, produit et localisation
+    let mut enriched_results = Vec::new();
+    for matched_service in matches {
+        let service_id = matched_service.service_id;
+        
+        // Récupérer les informations de l'utilisateur depuis la table users
+        let user_info: Option<(i32, Option<String>, Option<String>)> = sqlx::query_as::<_, (i32, Option<String>, Option<String>)>(
+            r#"
+            SELECT u.id, u.nom_complet, u.avatar_url
+            FROM services s
+            INNER JOIN users u ON u.id = s.user_id
+            WHERE s.id = $1
+            "#
+        )
+        .bind(service_id)
+        .fetch_optional(&pool)
+        .await
+        .ok()
+        .flatten();
+
+        // Récupérer les informations de produit depuis autocomplete_characteristics
+        let product_info: Option<(Option<Vec<String>>, Option<Vec<String>>, Option<Vec<String>>, Option<String>, Option<i64>)> = sqlx::query_as::<_, (Option<Vec<String>>, Option<Vec<String>>, Option<Vec<String>>, Option<String>, Option<i64>)>(
+            r#"
+            SELECT 
+                ac.characteristic_vector as product_vector,
+                ac.product_labels,
+                ac.location_vector,
+                ac.chosen_location,
+                ac.usage_count
+            FROM autocomplete_characteristics ac
+            WHERE ac.service_id = $1
+            AND ac.is_real_product = TRUE
+            AND ac.identifiant_base = 'produits'
+            ORDER BY ac.usage_count DESC NULLS LAST
+            LIMIT 1
+            "#
+        )
+        .bind(service_id)
+        .fetch_optional(&pool)
+        .await
+        .ok()
+        .flatten();
+
+        // Construire l'objet utilisateur
+        let user_obj = if let Some((user_id, nom_complet, avatar_url)) = user_info {
             json!({
-                "service_id": matched_service.service_id,
-                "data": matched_service.data,
-                "score": matched_service.score,
-                "semantic_score": matched_service.semantic_score,
-                "interaction_score": matched_service.interaction_score,
-                "gps": matched_service.gps
+                "id": user_id,
+                "nom_complet": nom_complet,
+                "avatar_url": avatar_url
             })
-        })
-        .collect();
+        } else {
+            json!(null)
+        };
+
+        // Construire l'objet prestataire
+        let prestataire_obj = if let Some((user_id, nom_complet, avatar_url)) = user_info {
+            json!({
+                "user_id": user_id,
+                "nom": nom_complet.unwrap_or_else(|| "Prestataire".to_string()),
+                "nom_complet": nom_complet,
+                "avatar_url": avatar_url
+            })
+        } else {
+            json!({
+                "nom": "Prestataire"
+            })
+        };
+
+        // Extraire les informations de produit
+        let (product_vector, product_labels, location_vector, chosen_location, usage_count) = 
+            product_info.unwrap_or((None, None, None, None, None));
+
+        // Construire le résultat enrichi
+        let mut enriched_result = json!({
+            "service_id": service_id,
+            "data": matched_service.data,
+            "score": matched_service.score,
+            "semantic_score": matched_service.semantic_score,
+            "interaction_score": matched_service.interaction_score,
+            "gps": matched_service.gps,
+            "user": user_obj,
+            "prestataire": prestataire_obj,
+        });
+
+        // Ajouter les informations de produit si disponibles
+        if let Some(pv) = product_vector {
+            enriched_result["product_vector"] = json!(pv);
+        }
+        if let Some(pl) = product_labels {
+            enriched_result["product_labels"] = json!(pl);
+        }
+        if let Some(lv) = location_vector {
+            enriched_result["location_vector"] = json!(lv);
+        }
+        if let Some(cl) = chosen_location {
+            enriched_result["chosen_location"] = json!(cl);
+        }
+        if let Some(uc) = usage_count {
+            enriched_result["usage_count"] = json!(uc);
+        }
+
+        // Ajouter la distance si disponible
+        if let Some(distance) = distance_map.get(&service_id).and_then(|d| *d) {
+            enriched_result["distance_km"] = json!(distance);
+        }
+
+        enriched_results.push(enriched_result);
+    }
+
+    // Convertir en format de réponse
+    let results_array: Vec<Value> = enriched_results;
 
     log_info(&format!(
         "[RECHERCHE_DIRECTE] {} résultats convertis",

@@ -22,7 +22,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             description: 'Voir mon historique de transactions'
         },
         {
-            title: 'Devenir coursier yukpo',
+            title: 'Devenir coursier Yukpo',
             icon: '🚴',
             route: 'CourierRegistration',
             description: 'Rejoignez notre équipe de coursiers'
@@ -62,12 +62,25 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
     };
 
     const getInitials = (name: string) => {
-        if (!name) return 'U';
-        const words = name.split(' ');
+        if (!name || typeof name !== 'string') return 'U';
+        // ✅ CORRIGÉ: Filtrer les mots vides et s'assurer qu'ils ont au moins un caractère
+        const words = name.trim().split(/\s+/).filter(word => word.length > 0);
         if (words.length >= 2) {
-            return (words[0][0] + words[1][0]).toUpperCase();
+            // ✅ CORRIGÉ: Prendre uniquement les deux premières lettres (une par mot)
+            const firstLetter = words[0] && words[0].length > 0 ? words[0][0] : '';
+            const secondLetter = words[1] && words[1].length > 0 ? words[1][0] : '';
+            return (firstLetter + secondLetter).toUpperCase().slice(0, 2);
         }
-        return name[0].toUpperCase();
+        // ✅ CORRIGÉ: Si un seul mot, prendre les deux premières lettres
+        if (words.length === 1 && words[0].length >= 2) {
+            return words[0].substring(0, 2).toUpperCase();
+        }
+        // ✅ CORRIGÉ: Si un seul mot avec une seule lettre, prendre cette lettre
+        if (words.length === 1 && words[0].length === 1) {
+            return words[0].toUpperCase();
+        }
+        // ✅ Fallback
+        return name.trim()[0]?.toUpperCase() || 'U';
     };
 
     return (
@@ -77,8 +90,8 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                 style={styles.avatarContainer}
                 onPress={() => setShowMenu(true)}
             >
-                {user?.avatar ? (
-                    <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                {user?.avatar || user?.photo ? (
+                    <Image source={{ uri: user.avatar || user.photo }} style={styles.avatarImage} />
                 ) : (
                     <View style={styles.avatarPlaceholder}>
                         <Text style={styles.avatarText}>
@@ -104,8 +117,8 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                         {/* Header du menu */}
                         <View style={styles.menuHeader}>
                             <View style={styles.menuAvatar}>
-                                {user?.avatar ? (
-                                    <Image source={{ uri: user.avatar }} style={styles.menuAvatarImage} />
+                                {user?.avatar || user?.photo ? (
+                                    <Image source={{ uri: user.avatar || user.photo }} style={styles.menuAvatarImage} />
                                 ) : (
                                     <View style={styles.menuAvatarPlaceholder}>
                                         <Text style={styles.menuAvatarText}>

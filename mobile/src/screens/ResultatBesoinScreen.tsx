@@ -141,24 +141,97 @@ const extractSearchResults = (response: any): Product[] => {
     return [];
   }
 
+  // Extraire le tableau de résultats
+  let resultsArray: any[] = [];
+
   if (Array.isArray(data)) {
-    return data as Product[];
-  }
+    resultsArray = data;
+  } else {
+    const nestedCandidates = [
+      data?.resultats?.resultats,
+      data?.resultats,
+      data?.data,
+      data?.items,
+    ];
 
-  const nestedCandidates = [
-    data?.resultats?.resultats,
-    data?.resultats,
-    data?.data,
-    data?.items,
-  ];
-
-  for (const candidate of nestedCandidates) {
-    if (Array.isArray(candidate)) {
-      return candidate as Product[];
+    for (const candidate of nestedCandidates) {
+      if (Array.isArray(candidate)) {
+        resultsArray = candidate;
+        break;
+      }
     }
   }
 
-  return [];
+  if (!Array.isArray(resultsArray) || resultsArray.length === 0) {
+    return [];
+  }
+
+  // ✅ Transformer les résultats enrichis en format Product
+  return resultsArray.map((item: any) => {
+    // Extraire le nom du produit depuis data
+    const nom = item?.data?.titre_service?.valeur ||
+      item?.data?.titre_service ||
+      item?.nom ||
+      item?.data?.nom?.valeur ||
+      item?.data?.nom ||
+      'Produit';
+
+    // Extraire location_vector et chosen_location (priorité aux données enrichies)
+    const location_vector = item.location_vector ||
+      item?.data?.location_vector ||
+      [];
+    const chosen_location = item.chosen_location ||
+      item?.data?.chosen_location ||
+      location_vector[0]; // Utiliser le premier élément si chosen_location n'est pas disponible
+
+    // Construire l'objet Product avec les données enrichies
+    const product: Product = {
+      service_id: item.service_id || item.id || 0,
+      nom,
+      product_vector: item.product_vector || item?.data?.product_vector || [],
+      product_labels: item.product_labels || item?.data?.product_labels || [],
+      location_vector,
+      full_vector: item.full_vector || item?.data?.full_vector || [],
+      chosen_location,
+      usage_count: item.usage_count || item?.data?.usage_count,
+      distance_km: item.distance_km || item?.data?.distance_km || undefined,
+      prestataire: {
+        nom: item.prestataire?.nom ||
+          item.user?.nom_complet ||
+          item.user?.nom ||
+          'Prestataire',
+        avatar_url: item.prestataire?.avatar_url ||
+          item.user?.avatar_url,
+        user_id: item.prestataire?.user_id ||
+          item.user?.id ||
+          item.user_id ||
+          0,
+      },
+      has_variant: item.has_variant || item?.data?.has_variant || false,
+      variants: item.variants || item?.data?.variants,
+      prix: item.prix || item?.data?.prix,
+      devise: item.devise || item?.data?.devise || 'XAF',
+      image: item.image || item?.data?.image,
+      coordinates: item.coordinates || item?.data?.coordinates,
+      // ✅ Ajouter les données brutes pour ProductCard (avec priorité aux données enrichies)
+      chosen_location, // S'assurer que chosen_location est au niveau racine
+      location_vector, // S'assurer que location_vector est au niveau racine
+      ...item,
+    };
+
+    // ✅ DEBUG: Logger la distance pour vérifier qu'elle est bien présente
+    if (product.distance_km !== undefined) {
+      console.log(`[ResultatBesoinScreen] ✅ Distance trouvée pour service ${product.service_id}: ${product.distance_km}km`);
+    } else {
+      console.warn(`[ResultatBesoinScreen] ⚠️ Pas de distance pour service ${product.service_id}`, {
+        hasDistanceKm: !!item.distance_km,
+        hasDataDistanceKm: !!item?.data?.distance_km,
+        itemKeys: Object.keys(item),
+      });
+    }
+
+    return product;
+  });
 };
 
 const convertFileToBase64 = async (uri: string): Promise<string> => {
@@ -752,12 +825,16 @@ const ResultatBesoinScreen: React.FC = () => {
       };
 
       // Ajouter localisation utilisateur si disponible
-      if (location && typeof location === 'object') {
-        const loc = location as any;
-        if (loc.latitude && loc.longitude) {
-          payload.gps_mobile = `${loc.latitude},${loc.longitude}`;
-          console.log('[ResultatBesoinScreen] 📍 Position ajoutée:', payload.gps_mobile);
-        }
+      if (location?.coords?.latitude && location?.coords?.longitude) {
+        payload.gps_mobile = `${location.coords.latitude},${location.coords.longitude}`;
+        console.log('[ResultatBesoinScreen] 📍 Position ajoutée:', payload.gps_mobile);
+      } else {
+        console.warn('[ResultatBesoinScreen] ⚠️ GPS non disponible:', {
+          hasLocation: !!location,
+          hasCoords: !!location?.coords,
+          latitude: location?.coords?.latitude,
+          longitude: location?.coords?.longitude,
+        });
       }
 
       if (searchImages.length > 0) {
@@ -865,11 +942,8 @@ const ResultatBesoinScreen: React.FC = () => {
         const searchText = filters.join(' ');
         const payload: any = { texte: searchText };
 
-        if (location && typeof location === 'object') {
-          const loc = location as any;
-          if (loc.latitude && loc.longitude) {
-            payload.gps_mobile = `${loc.latitude},${loc.longitude}`;
-          }
+        if (location?.coords?.latitude && location?.coords?.longitude) {
+          payload.gps_mobile = `${location.coords.latitude},${location.coords.longitude}`;
         }
 
         const apiResponse = await apiPost('/api/search/direct', payload);
@@ -1468,7 +1542,12 @@ const ResultatBesoinScreen: React.FC = () => {
           >
             <ProductCard
               product={item}
-              service={item as any}
+              service={{
+                ...item,
+                data: item.data || {},
+                user: item.user || null,
+                prestataire: item.prestataire || null,
+              } as any}
             />
           </TouchableOpacity>
         )}

@@ -11,9 +11,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { apiPost } from '../../services/api';
+import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import ModernGPSModal from '../ModernGPSModal';
+import NativeDatePicker from '../NativeDatePicker';
+import NativeTimePicker from '../NativeTimePicker';
 import SafeIcon from '../SafeIcon';
 
 interface OrderDeliveryModalProps {
@@ -95,7 +97,8 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     const [showGPSModal, setShowGPSModal] = useState(false); // ✅ NOUVEAU : Pour ouvrir le modal GPS
 
     // ✅ Phase 3 - Amélioration 7 : Préférences de livraison
-    const [preferredDeliveryDate, setPreferredDeliveryDate] = useState<string>('');
+    const [preferredDeliveryDate, setPreferredDeliveryDate] = useState<string>(''); // Format YYYY-MM-DD pour l'API
+    const [preferredDeliveryDateDisplay, setPreferredDeliveryDateDisplay] = useState<string>(''); // Format JJ/MM/AAAA pour l'affichage
     const [preferredDeliveryTimeStart, setPreferredDeliveryTimeStart] = useState<string>('');
     const [preferredDeliveryTimeEnd, setPreferredDeliveryTimeEnd] = useState<string>('');
     const [isFlexible, setIsFlexible] = useState<boolean>(true);
@@ -136,7 +139,8 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
     const loadUserGPS = async () => {
         try {
-            const response = await apiPost('/api/user/me', {}) as ApiResponse<UserMeResponse>;
+            // ✅ CORRIGÉ: Utiliser GET au lieu de POST pour récupérer les infos utilisateur
+            const response = await apiGet('/api/user/me') as ApiResponse<UserMeResponse>;
             if (response.success && response.data?.gps) {
                 const [lng, lat] = response.data.gps.split(',').map(parseFloat);
                 const location = { latitude: lat, longitude: lng };
@@ -154,7 +158,8 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
         setLoadingProducts(true);
         try {
-            const response = await apiPost(`/api/services/${serviceId}`, {}) as ApiResponse<ServiceResponse>;
+            // ✅ CORRIGÉ: Utiliser GET au lieu de POST pour récupérer un service
+            const response = await apiGet(`/api/services/${serviceId}`) as ApiResponse<ServiceResponse>;
             if (response.success && response.data) {
                 const service = response.data;
                 const products = (service.data?.produits && typeof service.data.produits === 'object' && 'valeur' in service.data.produits
@@ -778,12 +783,27 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         <View style={styles.preferencesGrid}>
                             {/* Date de livraison */}
                             <View style={styles.preferenceItem}>
-                                <Text style={styles.preferenceLabel}>Date de livraison</Text>
-                                <TextInput
-                                    style={styles.preferenceInput}
-                                    placeholder="YYYY-MM-DD"
-                                    value={preferredDeliveryDate}
-                                    onChangeText={setPreferredDeliveryDate}
+                                <NativeDatePicker
+                                    label="Date de livraison"
+                                    value={preferredDeliveryDateDisplay}
+                                    onChange={(dateString: string) => {
+                                        // dateString est au format JJ/MM/AAAA
+                                        setPreferredDeliveryDateDisplay(dateString);
+                                        // Convertir en format YYYY-MM-DD pour l'API
+                                        if (dateString) {
+                                            const parts = dateString.split('/');
+                                            if (parts.length === 3) {
+                                                const day = parts[0];
+                                                const month = parts[1];
+                                                const year = parts[2];
+                                                setPreferredDeliveryDate(`${year}-${month}-${day}`);
+                                            }
+                                        } else {
+                                            setPreferredDeliveryDate('');
+                                        }
+                                    }}
+                                    minimumDate={new Date()} // Ne pas permettre les dates passées
+                                    placeholder="Sélectionner une date"
                                 />
                             </View>
 
@@ -818,21 +838,19 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         {preferredDeliveryDate && (
                             <View style={styles.preferencesGrid}>
                                 <View style={styles.preferenceItem}>
-                                    <Text style={styles.preferenceLabel}>Heure de début</Text>
-                                    <TextInput
-                                        style={styles.preferenceInput}
-                                        placeholder="HH:MM"
+                                    <NativeTimePicker
+                                        label="Heure de début"
                                         value={preferredDeliveryTimeStart}
-                                        onChangeText={setPreferredDeliveryTimeStart}
+                                        onChange={setPreferredDeliveryTimeStart}
+                                        placeholder="Sélectionner l'heure de début"
                                     />
                                 </View>
                                 <View style={styles.preferenceItem}>
-                                    <Text style={styles.preferenceLabel}>Heure de fin</Text>
-                                    <TextInput
-                                        style={styles.preferenceInput}
-                                        placeholder="HH:MM"
+                                    <NativeTimePicker
+                                        label="Heure de fin"
                                         value={preferredDeliveryTimeEnd}
-                                        onChangeText={setPreferredDeliveryTimeEnd}
+                                        onChange={setPreferredDeliveryTimeEnd}
+                                        placeholder="Sélectionner l'heure de fin"
                                     />
                                 </View>
                             </View>

@@ -664,12 +664,71 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // Par défaut, si le type n'est pas défini, on considère que c'est un produit
   const isProduct = product.type !== 'prestation_service';
 
+  // ✅ CORRECTION 2025-11-24: Extraire le prix depuis service.data.produits si product.prix n'est pas disponible
+  const extractPriceFromProductData = (serviceData: any, productIndex: number = 0): { prix: number; devise: string } => {
+    if (!serviceData || typeof serviceData !== 'object') return { prix: 0, devise: 'XAF' };
+
+    const produits = serviceData.produits;
+    if (!produits) return { prix: 0, devise: 'XAF' };
+
+    let targetProduct: any = null;
+
+    // Si c'est un array, prendre le produit à l'index spécifié
+    if (Array.isArray(produits) && produits.length > productIndex) {
+      targetProduct = produits[productIndex];
+    }
+    // Si c'est un object avec valeur (array)
+    else if (typeof produits === 'object' && produits.valeur && Array.isArray(produits.valeur) && produits.valeur.length > productIndex) {
+      targetProduct = produits.valeur[productIndex];
+    }
+
+    if (!targetProduct) return { prix: 0, devise: 'XAF' };
+
+    // Si le produit est une chaîne (format concaténé), parser
+    if (typeof targetProduct === 'string') {
+      const parts = targetProduct.split(',').map(p => p.trim());
+      // Format: "nom,categorie,description,prix" ou "nom,categorie,description,prix,devise"
+      // Chercher le dernier élément numérique (prix)
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const numericValue = parseFloat(parts[i]);
+        if (!isNaN(numericValue) && numericValue > 0) {
+          // La devise peut être après le prix ou par défaut XAF
+          const devise = parts[i + 1] || 'XAF';
+          return { prix: numericValue, devise };
+        }
+      }
+      return { prix: 0, devise: 'XAF' };
+    }
+    // Si c'est un objet, extraire prix et devise
+    else if (typeof targetProduct === 'object') {
+      const prix = targetProduct.prix ||
+        targetProduct.prix_produit ||
+        (typeof targetProduct.prix === 'string' ? parseFloat(targetProduct.prix) : 0);
+      const devise = targetProduct.devise ||
+        targetProduct.devise_produit ||
+        targetProduct.currency ||
+        'XAF';
+      return {
+        prix: typeof prix === 'number' ? prix : (typeof prix === 'string' ? parseFloat(prix) || 0 : 0),
+        devise: typeof devise === 'string' ? devise : 'XAF'
+      };
+    }
+
+    return { prix: 0, devise: 'XAF' };
+  };
+
+  // Extraire le prix depuis service.data.produits si nécessaire
+  const extractedPriceData = extractPriceFromProductData(service?.data, productIndex);
+
   // Prix
   const displayPrice = hasVariant && variants.length > 0
     ? Math.min(...variants.map((v: any) => v.prix || 0))
-    : product.prix || 0;
+    : product.prix || extractedPriceData.prix || 0;
 
-  const devise = product.devise || variants[0]?.devise || 'XAF';
+  const devise = product.devise ||
+    variants[0]?.devise ||
+    extractedPriceData.devise ||
+    'XAF';
 
   // Distance
   const rawDistance = product.distance_km
@@ -679,9 +738,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
     ?? product.distance_user
     ?? product.distance_user_km
     ?? product.distanceFromUser
-    ?? product.distance_text;
+    ?? product.distance_text
+    ?? service?.distance_km
+    ?? service?.distanceKm
+    ?? service?.distance;
   const distanceKm = parseDistanceToKm(rawDistance);
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm);
+
+  // ✅ DEBUG: Logger la distance pour vérifier qu'elle est bien extraite
+  if (hasDistance) {
+    console.log(`[ProductCard] ✅ Distance extraite pour service ${product.service_id}: ${distanceKm}km`);
+  } else {
+    console.warn(`[ProductCard] ⚠️ Pas de distance pour service ${product.service_id}`, {
+      rawDistance,
+      productDistanceKm: product.distance_km,
+      serviceDistanceKm: service?.distance_km,
+    });
+  }
   const formattedDistance = hasDistance
     ? distanceKm! < 1
       ? `${Math.round(distanceKm! * 1000)}m`
