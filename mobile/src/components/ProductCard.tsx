@@ -298,7 +298,55 @@ const ProductCard: React.FC<ProductCardProps> = ({
       : [];
 
   // ✅ AMÉLIORATION: Afficher quartier en priorité, puis ville, puis région
+  // ✅ CORRIGÉ: Vérifier aussi dans service directement (pas seulement service.data)
+  // ✅ CORRIGÉ: Vérifier aussi dans les produits du service.data.produits
+  const extractLocationFromProductData = (serviceData: any): string | undefined => {
+    if (!serviceData || typeof serviceData !== 'object') return undefined;
+
+    // Vérifier dans data.produits (array ou object)
+    const produits = serviceData.produits;
+    if (produits) {
+      // Si c'est un array, prendre le premier produit
+      if (Array.isArray(produits) && produits.length > 0) {
+        const firstProduct = produits[0];
+        if (typeof firstProduct === 'object') {
+          return firstNonEmptyString(
+            firstProduct.adresse,
+            firstProduct.adresse_complete,
+            firstProduct.localisation,
+            firstProduct.lieu,
+            firstProduct.ville,
+            firstProduct.quartier,
+            firstProduct.region,
+            firstProduct.location,
+            firstProduct.chosen_location,
+          );
+        }
+      }
+      // Si c'est un object avec valeur (array)
+      if (typeof produits === 'object' && produits.valeur && Array.isArray(produits.valeur) && produits.valeur.length > 0) {
+        const firstProduct = produits.valeur[0];
+        if (typeof firstProduct === 'object') {
+          return firstNonEmptyString(
+            firstProduct.adresse,
+            firstProduct.adresse_complete,
+            firstProduct.localisation,
+            firstProduct.lieu,
+            firstProduct.ville,
+            firstProduct.quartier,
+            firstProduct.region,
+            firstProduct.location,
+            firstProduct.chosen_location,
+          );
+        }
+      }
+    }
+
+    return undefined;
+  };
+
   const chosenLocation = firstNonEmptyString(
+    // ✅ CORRIGÉ: Priorité 1 - Données produit directes
     product.chosen_location,
     product.location?.primary,
     product.location?.address,
@@ -321,6 +369,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
     product.address,
     product.localisation,
     product.site,
+    // ✅ CORRIGÉ: Priorité 2 - Extraire depuis service.data.produits
+    extractLocationFromProductData(service?.data),
+    // ✅ CORRIGÉ: Priorité 3 - service directement
+    service?.adresse_complete,
+    service?.adresse,
+    service?.adresse_service,
+    service?.adresse_prestataire,
+    service?.localisation,
+    service?.lieu,
+    service?.ville,
+    service?.quartier,
+    service?.region,
+    // ✅ CORRIGÉ: Priorité 4 - service.data (champs dynamiques)
     service?.data?.adresse_complete?.valeur,
     service?.data?.adresse?.valeur,
     service?.data?.adresse_service?.valeur,
@@ -330,16 +391,45 @@ const ProductCard: React.FC<ProductCardProps> = ({
     service?.data?.ville?.valeur,
     service?.data?.quartier?.valeur,
     service?.data?.region?.valeur,
+    // ✅ CORRIGÉ: Priorité 5 - service.data.location (objet)
+    service?.data?.location?.address,
+    service?.data?.location?.formatted_address,
+    service?.data?.location?.full_address,
+    service?.data?.location?.primary,
   ) || '';
 
   const hasVariant = product.has_variant || false;
   const variants = product.variants || [];
+  // ✅ CORRIGÉ: Construire le nom du prestataire depuis service.user si disponible
+  const buildPrestataireNameFromUser = (user: any): string | undefined => {
+    if (!user) return undefined;
+    // Priorité 1: nom_complet
+    if (user.nom_complet && typeof user.nom_complet === 'string' && user.nom_complet.trim()) {
+      return user.nom_complet.trim();
+    }
+    // Priorité 2: nom + prenom
+    const nom = user.nom || '';
+    const prenom = user.prenom || '';
+    if (nom || prenom) {
+      return `${prenom} ${nom}`.trim();
+    }
+    // Priorité 3: email (première partie)
+    if (user.email && typeof user.email === 'string') {
+      return user.email.split('@')[0];
+    }
+    return undefined;
+  };
+
   const rawPrestataire =
     prestataireFromProps ||
     product.prestataire ||
     service?.prestataire ||
     {
-      nom: service?.data?.nom_prestataire?.valeur ||
+      nom: buildPrestataireNameFromUser(service?.user) ||
+        service?.prestataire?.name || // ✅ CORRIGÉ: Vérifier aussi 'name' (format API)
+        service?.prestataire?.nom ||
+        service?.prestataire?.nom_complet ||
+        service?.data?.nom_prestataire?.valeur ||
         service?.data?.prestataire_nom?.valeur ||
         service?.data?.contact_nom?.valeur ||
         service?.data?.nom_prestataire ||
@@ -349,12 +439,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
         product?.owner_name ||
         product?.vendor_name ||
         'Prestataire',
-      user_id: service?.user_id,
-      avatar_url: service?.data?.photo_prestataire?.valeur,
+      user_id: service?.user_id || service?.user?.id,
+      avatar_url: service?.prestataire?.photo || service?.prestataire?.avatar_url || service?.user?.avatar_url || service?.user?.photo_profil || service?.data?.photo_prestataire?.valeur,
     };
 
   const prestataireName =
     firstNonEmptyString(
+      // ✅ CORRIGÉ: Priorité 1 - Construire depuis service.user (source de vérité)
+      buildPrestataireNameFromUser(service?.user),
+      // ✅ CORRIGÉ: Priorité 2 - Vérifier service.prestataire.name (format API)
+      service?.prestataire?.name,
+      service?.prestataire?.nom,
+      service?.prestataire?.nom_complet,
+      // Priorité 3 - rawPrestataire (déjà construit)
       rawPrestataire?.nom,
       rawPrestataire?.nom_complet,
       rawPrestataire?.name,
@@ -362,15 +459,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
       rawPrestataire?.display_name,
       rawPrestataire?.full_name,
       rawPrestataire?.raison_sociale,
+      // Priorité 4 - product.prestataire
+      product.prestataire?.nom,
+      product.prestataire?.nom_complet,
+      product.prestataire?.name,
       product.prestataire_nom,
       product.prestataire_nom_affiche,
       product.prestataire_nom_commercial,
       product.prestataire_nom_complet,
       product.prestataire_name,
       product.prestataire_fullname,
-      product.prestataire?.nom,
-      product.prestataire?.nom_complet,
-      product.prestataire?.name,
+      // Priorité 5 - product.owner/vendor
       product.owner?.nom,
       product.owner?.nom_complet,
       product.owner?.name,
@@ -382,8 +481,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       product.contact_name,
       product.responsable_nom,
       product.gerant_nom,
-      service?.prestataire?.nom,
-      service?.prestataire?.nom_complet,
+      // Priorité 6 - service.data (champs dynamiques)
       service?.data?.nom_prestataire?.valeur,
       service?.data?.prestataire_nom?.valeur,
       service?.data?.contact_nom?.valeur,
@@ -391,23 +489,33 @@ const ProductCard: React.FC<ProductCardProps> = ({
       service?.data?.nom_entreprise?.valeur,
       service?.data?.responsable_nom?.valeur,
       service?.data?.representant_nom?.valeur,
+      // Priorité 7 - service.user (autres champs)
       service?.user?.name,
       service?.user?.username,
       service?.user?.display_name,
     ) || 'Prestataire';
 
   const prestataireAvatar = firstNonEmptyString(
+    // ✅ CORRIGÉ: Priorité 1 - service.user (source de vérité)
+    service?.user?.avatar_url,
+    service?.user?.photo_profil,
+    // ✅ CORRIGÉ: Priorité 2 - service.prestataire
+    service?.prestataire?.avatar_url,
+    service?.prestataire?.photo,
+    service?.prestataire?.avatar,
+    // Priorité 3 - rawPrestataire
     rawPrestataire?.avatar_url,
     rawPrestataire?.photo_profil,
     rawPrestataire?.photo,
     rawPrestataire?.avatar,
     rawPrestataire?.image_url,
+    // Priorité 4 - product.prestataire
     product.prestataire_avatar,
     product.prestataire?.avatar_url,
     product.prestataire?.avatar,
     product.owner?.avatar,
     product.vendor?.avatar_url,
-    service?.prestataire?.avatar_url,
+    // Priorité 5 - service.data (champs dynamiques)
     service?.data?.photo_prestataire?.valeur,
     service?.data?.photo_profil?.valeur,
   );
@@ -626,6 +734,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
     product.country_label,
     product.location?.country,
     product.location?.country_code,
+    // ✅ CORRIGÉ: Vérifier aussi dans service directement
+    service?.pays,
+    service?.country,
+    service?.country_name,
+    service?.country_code,
     service?.data?.pays?.valeur,
     service?.data?.pays_origine?.valeur,
     service?.data?.country?.valeur,
@@ -637,12 +750,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   // Debug: afficher les données extraites
   console.log('[ProductCard] DEBUG - prestataireName:', prestataireName);
+  console.log('[ProductCard] DEBUG - rawPrestataire:', rawPrestataire);
+  console.log('[ProductCard] DEBUG - service?.user:', service?.user);
+  console.log('[ProductCard] DEBUG - service?.prestataire:', service?.prestataire);
+  console.log('[ProductCard] DEBUG - product.prestataire:', product.prestataire);
   console.log('[ProductCard] DEBUG - chosenLocation:', chosenLocation);
   console.log('[ProductCard] DEBUG - locationVector:', locationVector);
   console.log('[ProductCard] DEBUG - pays:', pays, 'countryFlag:', countryFlag);
   console.log('[ProductCard] DEBUG - product.adresse:', product.adresse);
   console.log('[ProductCard] DEBUG - product.ville:', product.ville);
   console.log('[ProductCard] DEBUG - product.region:', product.region);
+  console.log('[ProductCard] DEBUG - service?.data?.produits:', service?.data?.produits);
 
   const commentServiceId = Number(product._serviceId || product.service_id || service?.id || 0);
   const serviceTitleForComments =

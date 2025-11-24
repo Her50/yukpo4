@@ -239,6 +239,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const [mentionQuery, setMentionQuery] = useState('');
     const [showMentionPicker, setShowMentionPicker] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    // ✅ NOUVEAU: État pour vérifier si l'utilisateur a déjà donné un avis
+    const [userHasRated, setUserHasRated] = useState(false);
 
     const isFullMode = mode === 'full' || modalVisible;
 
@@ -249,12 +251,20 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             const response = await commentsApi.getProductComments(serviceId);
             if (response.success && response.data) {
                 const payload: any = response.data;
-                setComments(normalizeComments(payload.comments));
+                const normalizedComments = normalizeComments(payload.comments);
+                setComments(normalizedComments);
                 setStats({
                     total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
                     rating_count: payload.stats?.rating_count ?? 0,
                     average_rating: payload.stats?.average_rating ?? 0,
                 });
+                // ✅ NOUVEAU: Vérifier si l'utilisateur a déjà donné un avis (rating non null)
+                if (currentUserId) {
+                    const userHasRating = normalizedComments.some(
+                        (comment) => comment.user_id === currentUserId && comment.rating !== null && comment.rating !== undefined
+                    );
+                    setUserHasRated(userHasRating);
+                }
             } else {
                 setError(response.error || 'Impossible de charger les commentaires');
             }
@@ -265,7 +275,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             setLoading(false);
             setRefreshing(false);
         }
-    }, [serviceId, refreshing]);
+    }, [serviceId, refreshing, currentUserId]);
 
     useEffect(() => {
         loadComments();
@@ -293,8 +303,10 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             return;
         }
 
-        if (!replyTarget && (composerRating === null || composerRating === undefined)) {
-            Alert.alert('Note requise', 'Ajoutez une note (0-5) pour votre avis principal');
+        // ✅ CORRIGÉ: Exiger un rating seulement si c'est le premier avis de l'utilisateur
+        // Si l'utilisateur a déjà donné un avis, il peut commenter sans rating
+        if (!replyTarget && !userHasRated && (composerRating === null || composerRating === undefined)) {
+            Alert.alert('Note requise', 'Ajoutez une note (0-5) pour votre premier avis');
             return;
         }
 
@@ -328,6 +340,10 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 if (!response.success) {
                     Alert.alert('Erreur', response.error || 'Impossible de publier le commentaire');
                 } else {
+                    // ✅ NOUVEAU: Mettre à jour userHasRated si un rating a été fourni
+                    if (composerRating !== null && composerRating !== undefined && !replyTarget) {
+                        setUserHasRated(true);
+                    }
                     await loadComments();
                     resetComposer();
                 }

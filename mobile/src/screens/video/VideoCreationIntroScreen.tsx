@@ -195,13 +195,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                 return;
             }
 
-            // Si un seul produit → Navigation directe
-            if (allProducts.length === 1) {
-                navigateToVideoWizard(navigation, allProducts[0]);
-                return;
-            }
-
-            // Plusieurs produits → Afficher le sélecteur
+            // ✅ CORRIGÉ: Toujours afficher le sélecteur, même pour un seul produit
+            // Cela permet à l'utilisateur de voir et confirmer son choix avant de naviguer
             setAvailableProducts(allProducts);
             setShowProductSelector(true);
             return;

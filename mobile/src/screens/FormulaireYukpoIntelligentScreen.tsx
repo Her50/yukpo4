@@ -369,7 +369,69 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   };
 
   // Fonction pour organiser les champs en blocs (alignée sur le frontend)
-  const organizeFieldsIntoBlocks = (fields: DynamicField[], formValues: Record<string, any> = {}) => {
+  const organizeFieldsIntoBlocks = (fields: DynamicField[], formValues: Record<string, any> = {}, suggestionData?: any) => {
+    // ✅ CORRECTION: Fonction helper pour extraire les sous_caracteristiques depuis la COMBINAISON PRÉFÉRÉE de l'IA
+    // IMPORTANT: On veut afficher uniquement les valeurs de la combinaison préférée, pas toutes les valeurs possibles
+    const getSousCaracteristiquesFromIA = (): Record<string, string[]> => {
+      // 1. PRIORITÉ: Construire depuis product_vector et product_labels de la combinaison préférée
+      // C'est la combinaison spécifique choisie par l'IA, pas toutes les valeurs possibles
+      if (formValues.produits?.product_vector && Array.isArray(formValues.produits.product_vector) &&
+        formValues.produits.product_labels && Array.isArray(formValues.produits.product_labels) &&
+        formValues.produits.product_vector.length > 0 && formValues.produits.product_vector.length === formValues.produits.product_labels.length) {
+
+        const sousCaracsFromPreferred: Record<string, string[]> = {};
+        formValues.produits.product_vector.forEach((value: string, index: number) => {
+          const label = formValues.produits.product_labels[index];
+          if (label && typeof label === 'string' && value && typeof value === 'string') {
+            if (!sousCaracsFromPreferred[label]) {
+              sousCaracsFromPreferred[label] = [];
+            }
+            // Ajouter uniquement la valeur de la combinaison préférée
+            if (!sousCaracsFromPreferred[label].includes(value)) {
+              sousCaracsFromPreferred[label].push(value);
+            }
+          }
+        });
+
+        if (Object.keys(sousCaracsFromPreferred).length > 0) {
+          console.log('[organizeFieldsIntoBlocks] ✅ Utilisation sous_caracteristiques depuis combinaison préférée (product_vector/product_labels):', sousCaracsFromPreferred);
+          return sousCaracsFromPreferred;
+        }
+      }
+
+      // 2. Fallback: Utiliser sous_caracteristiques si product_vector/product_labels non disponibles
+      // Mais seulement si c'est déjà la combinaison préférée (pas toutes les valeurs possibles)
+      if (formValues.produits?.sous_caracteristiques && typeof formValues.produits.sous_caracteristiques === 'object' && Object.keys(formValues.produits.sous_caracteristiques).length > 0) {
+        // Vérifier si c'est une combinaison spécifique (une seule valeur par dimension) ou toutes les valeurs possibles
+        const isSpecificCombination = Object.values(formValues.produits.sous_caracteristiques).every((vals: any) =>
+          Array.isArray(vals) && vals.length === 1
+        );
+
+        if (isSpecificCombination) {
+          console.log('[organizeFieldsIntoBlocks] ✅ Utilisation sous_caracteristiques (combinaison spécifique) depuis formValues.produits:', formValues.produits.sous_caracteristiques);
+          return formValues.produits.sous_caracteristiques;
+        } else {
+          console.log('[organizeFieldsIntoBlocks] ⚠️ sous_caracteristiques contient toutes les valeurs possibles, pas la combinaison préférée');
+        }
+      }
+
+      // 3. Fallback: Essayer depuis suggestionData.data.produits (mais seulement si c'est une combinaison spécifique)
+      if (suggestionData?.data?.produits?.sous_caracteristiques && typeof suggestionData.data.produits.sous_caracteristiques === 'object') {
+        const isSpecificCombination = Object.values(suggestionData.data.produits.sous_caracteristiques).every((vals: any) =>
+          Array.isArray(vals) && vals.length === 1
+        );
+
+        if (isSpecificCombination) {
+          console.log('[organizeFieldsIntoBlocks] ✅ Utilisation sous_caracteristiques (combinaison spécifique) depuis suggestionData.data.produits:', suggestionData.data.produits.sous_caracteristiques);
+          return suggestionData.data.produits.sous_caracteristiques;
+        }
+      }
+
+      // 4. Dernier fallback: objet vide (pas de valeurs par défaut hardcodées)
+      console.log('[organizeFieldsIntoBlocks] ⚠️ Aucune combinaison préférée trouvée, utilisation objet vide');
+      return {};
+    };
+
     const blocks = [
       {
         id: 'general',
@@ -508,6 +570,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const typeOffre = formValues.type_offre || formValues.nature_offre || 'produit';
       const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
 
+      const sousCaracteristiquesIA = getSousCaracteristiquesFromIA();
+
       const defaultProductsFields: DynamicField[] = [
         {
           name: 'nom_produit',
@@ -547,22 +611,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
-          sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
-            // Caractéristiques essentielles
-            marque: [],
-            modele: [],
-            couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
-
-            // Caractéristiques secondaires
-            annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
-            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
-            version: [],
-
-            // Caractéristiques prestations
-            competences: [],
-            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
-            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
-          },
+          sousCaracteristiques: sousCaracteristiquesIA,
           separateur: ',',
           filtrable: true,
           allowCustomModality: true
@@ -640,22 +689,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
-          sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
-            // Caractéristiques essentielles
-            marque: [],
-            modele: [],
-            couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
-
-            // Caractéristiques secondaires
-            annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
-            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
-            version: [],
-
-            // Caractéristiques prestations
-            competences: [],
-            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
-            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
-          },
+          sousCaracteristiques: sousCaracteristiquesIA,
           separateur: ',',
           filtrable: true,
           allowCustomModality: true
@@ -754,20 +788,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
-          sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
-            // Caractéristiques essentielles
-            marque: [],
-            modele: [],
-            couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
-            // Caractéristiques secondaires
-            annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
-            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
-            version: [],
-            // Caractéristiques prestations
-            competences: [],
-            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
-            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
-          },
+          sousCaracteristiques: getSousCaracteristiquesFromIA(),
           separateur: ',',
           filtrable: true,
           allowCustomModality: true,
@@ -1475,7 +1496,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales automatiques:', initialValues);
 
         // ✅ CRITIQUE 2025-11-03: Organiser les blocs directement avec initialValues
-        const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);
+        const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues, suggestion);
 
         // ✅ CORRECTION CRITIQUE 2025-11-06: Extraire aussi les field.value des composants générés
         // Les champs nom_produit, categorie_produit, description_produit ont leurs valeurs dans field.value
@@ -1583,7 +1604,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   // Organiser les champs en blocs quand les composants ou valeursFormulaire changent
   useEffect(() => {
     if (composants.length > 0) {
-      const organizedBlocks = organizeFieldsIntoBlocks(composants, valeursFormulaire);
+      const organizedBlocks = organizeFieldsIntoBlocks(composants, valeursFormulaire, suggestion);
       setBlocks(organizedBlocks);
       console.log('[FormulaireYukpoIntelligentScreen] Blocs organisés avec valeurs:', organizedBlocks);
     }
@@ -1815,7 +1836,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         // ✅ CRITIQUE 2025-11-03: Organiser les blocs directement avec initialValues
         // Au lieu d'attendre que useEffect se déclenche avec valeursFormulaire vide
-        const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);
+        const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues, suggestion);
 
         // ✅ CORRECTION CRITIQUE 2025-11-06: Extraire aussi les field.value des composants générés
         const componentValues: Record<string, any> = {};
@@ -3896,7 +3917,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         Alert.alert(
           '💸 Solde insuffisant',
           `Coût réel : ${coutReel.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte avant de créer ce service.`,
-          [{ text: 'OK' }]
+          [{
+            text: 'OK',
+            onPress: () => {
+              setLoading(false); // ✅ Remettre loading à false
+              setIsSubmitting(false);
+            }
+          }]
         );
         return;
       }
@@ -3911,13 +3938,23 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             style: 'cancel',
             onPress: () => {
               setLoading(false); // ✅ Remettre loading à false si annulé
+              setIsSubmitting(false);
             }
           },
           {
             text: 'Confirmer',
             onPress: async () => {
+              // ✅ Protection : Réinitialiser loading si l'utilisateur ferme l'alerte sans action
+              // (ne devrait pas arriver mais sécurité)
+              const timeoutId = setTimeout(() => {
+                console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Timeout sécurité - réinitialisation loading');
+                setLoading(false);
+                setIsSubmitting(false);
+              }, 300000); // 5 minutes max
+
               // ✅ Protection contre double-clic sur le bouton Confirmer
               if (isSubmitting) {
+                clearTimeout(timeoutId);
                 console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Création déjà en cours, ignorée');
                 return;
               }
@@ -4423,6 +4460,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 DeviceEventEmitter.emit('service:refresh');
 
                 // ✅ Marquer la soumission comme terminée
+                clearTimeout(timeoutId);
                 setIsSubmitting(false);
                 setLoading(false);
 
@@ -4436,6 +4474,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 }, 3000);
 
               } catch (innerError: any) {
+                // ✅ Nettoyer le timeout en cas d'erreur
+                clearTimeout(timeoutId);
                 console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur création:', innerError);
 
                 // ✅ AMÉLIORATION : Log d'erreur détaillé avec copie automatique

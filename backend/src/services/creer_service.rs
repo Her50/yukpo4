@@ -1256,6 +1256,12 @@ pub async fn creer_service(
     // ✅ PHASE 10: Extraire d'abord les images du service pour les ajouter au premier produit
     // ⚠️ IMPORTANT: On utilise data_processed (qui contient encore les médias base64) pour sauvegarder les médias
     // data_obj a été nettoyé pour l'insertion, mais data_processed conserve les médias pour la sauvegarde
+    //
+    // 📋 RÈGLES DE LIAISON DES MÉDIAS :
+    // - Médias de produits (images/vidéos dans produits[]) : product_id + product_index (SANS AMBIGUÏTÉ)
+    // - Médias globaux du service (logo/bannière/audio/vidéo/doc/excel) : product_id = NULL, product_index = NULL (liés au service)
+    // - GPS : Au niveau service (services.gps ou services.data->'location'), pas dans media
+    // - Localisation produit : Dans service.data->'produits'[index]->'lieu_produit' (quartier, ville, pays)
     let service_images: Vec<String> = data_processed
         .get("base64_image")
         .and_then(|v| v.as_array())
@@ -1474,6 +1480,9 @@ pub async fn creer_service(
                         serde_json::Value::Null,
                     );
 
+                    // ✅ MÉDIA DE PRODUIT : Image liée à un produit spécifique
+                    // Liaison SANS AMBIGUÏTÉ via (service_id, product_index)
+                    // product_id = ID du produit (ex: "prod_0"), product_index = index dans service.data->'produits'[]
                     if let Err(e) = sqlx::query(
                         r#"
                         INSERT INTO media (
@@ -1644,6 +1653,9 @@ pub async fn creer_service(
                             format!("video_{}_{}.mp4", service_id, Uuid::new_v4())
                         };
 
+                        // ✅ MÉDIA DE PRODUIT : Vidéo liée à un produit spécifique
+                        // Liaison SANS AMBIGUÏTÉ via (service_id, product_index)
+                        // product_id = ID du produit (ex: "prod_0"), product_index = index dans service.data->'produits'[]
                         if let Err(e) = sqlx::query(
                             r#"
                             INSERT INTO media (
@@ -1815,6 +1827,8 @@ pub async fn creer_service(
                         serde_json::Value::Null,
                     );
 
+                    // ✅ MÉDIA GLOBAL DU SERVICE : Logo/Bannière lié au service (pas à un produit spécifique)
+                    // product_id = NULL, product_index = NULL (normal pour médias globaux)
                     if let Err(e) = sqlx::query(
                         r#"
                         INSERT INTO media (service_id, type, path, uploaded_at, image_signature, image_hash, image_metadata) 
@@ -1893,6 +1907,8 @@ pub async fn creer_service(
                 };
 
                 let path = stored.path;
+                // ✅ MÉDIA GLOBAL DU SERVICE : Audio lié au service (pas à un produit spécifique)
+                // product_id = NULL, product_index = NULL (normal pour médias globaux)
                 if let Err(e) = sqlx::query(
                     "INSERT INTO media (service_id, type, path, uploaded_at) VALUES ($1, $2, $3, $4)",
                 )
@@ -1956,6 +1972,9 @@ pub async fn creer_service(
                 };
 
                 let path = stored.path;
+                // ✅ MÉDIA GLOBAL DU SERVICE : Vidéo liée au service (pas à un produit spécifique)
+                // product_id = NULL, product_index = NULL (normal pour médias globaux)
+                // Note: Les vidéos de produits sont sauvegardées plus haut avec product_index (ligne ~1649)
                 if let Err(e) = sqlx::query(
                     "INSERT INTO media (service_id, type, path, uploaded_at) VALUES ($1, $2, $3, $4)",
                 )
@@ -2020,6 +2039,8 @@ pub async fn creer_service(
                 };
 
                 let path = stored.path;
+                // ✅ MÉDIA GLOBAL DU SERVICE : Document lié au service (pas à un produit spécifique)
+                // product_id = NULL, product_index = NULL (normal pour médias globaux)
                 if let Err(e) = sqlx::query(
                     "INSERT INTO media (service_id, type, path, uploaded_at) VALUES ($1, $2, $3, $4)",
                 )
@@ -2083,6 +2104,8 @@ pub async fn creer_service(
                 };
 
                 let path = stored.path;
+                // ✅ MÉDIA GLOBAL DU SERVICE : Fichier Excel lié au service (pas à un produit spécifique)
+                // product_id = NULL, product_index = NULL (normal pour médias globaux)
                 if let Err(e) = sqlx::query(
                     "INSERT INTO media (service_id, type, path, uploaded_at) VALUES ($1, $2, $3, $4)",
                 )

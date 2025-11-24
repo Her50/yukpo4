@@ -971,6 +971,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between', // ✅ Espacement équilibré entre les trois colonnes
         alignItems: 'center',
         paddingHorizontal: 8,
+        position: 'relative', // ✅ Pour permettre le positionnement absolu du titre
     },
     avatarContainer: {
         width: 44,
@@ -983,14 +984,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: 100, // ✅ Largeur fixe pour équilibrer avec la droite
         justifyContent: 'flex-start', // ✅ Aligner à gauche
+        zIndex: 1, // ✅ Au-dessus du titre pour l'interaction
     },
-    // ✅ PARFAITEMENT CENTRÉ : Conteneur pour le titre équilibré
+    // ✅ PARFAITEMENT CENTRÉ : Conteneur pour le titre équilibré entre drapeau et icône livraison
     brandTitleContainer: {
-        flex: 1, // ✅ Prend l'espace disponible au centre
+        position: 'absolute', // ✅ Position absolue pour centrer par rapport à toute la largeur
+        left: 0,
+        right: 0,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 8,
-        flexShrink: 0,
+        zIndex: 0, // ✅ En dessous des colonnes gauche/droite
     },
     // ✅ ÉQUILIBRÉ: Colonne droite avec les actions - Largeur fixe pour équilibrer
     headerActionsCompact: {
@@ -999,6 +1002,7 @@ const styles = StyleSheet.create({
         width: 100, // ✅ Même largeur que la gauche pour équilibrer
         justifyContent: 'flex-end', // ✅ Aligner à droite
         gap: 4,
+        zIndex: 1, // ✅ Au-dessus du titre pour l'interaction
     },
     headerTop: {
         flexDirection: 'row',

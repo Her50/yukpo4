@@ -857,22 +857,50 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 }}
                                 productVector={Array.isArray(formValues.product_vector) ? formValues.product_vector : undefined}
                                 productLabels={Array.isArray(formValues.product_labels) ? formValues.product_labels : undefined}
-                                sousCaracteristiques={formValues.sous_caracteristiques || sous_caracteristiques || {
-                                    // Caractéristiques essentielles
-                                    marque: [],
-                                    modele: [],
-                                    couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
+                                sousCaracteristiques={(() => {
+                                    // ✅ CORRECTION: Utiliser uniquement les valeurs de la COMBINAISON PRÉFÉRÉE de l'IA
+                                    // 1. PRIORITÉ: Construire depuis product_vector et product_labels de la combinaison préférée
+                                    if (formValues.product_vector && Array.isArray(formValues.product_vector) &&
+                                        formValues.product_labels && Array.isArray(formValues.product_labels) &&
+                                        formValues.product_vector.length > 0 && formValues.product_vector.length === formValues.product_labels.length) {
 
-                                    // Caractéristiques secondaires
-                                    annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
-                                    etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
-                                    version: [],
+                                        const sousCaracsFromPreferred: Record<string, string[]> = {};
+                                        formValues.product_vector.forEach((value: string, index: number) => {
+                                            const label = formValues.product_labels[index];
+                                            if (label && typeof label === 'string' && value && typeof value === 'string') {
+                                                if (!sousCaracsFromPreferred[label]) {
+                                                    sousCaracsFromPreferred[label] = [];
+                                                }
+                                                // Ajouter uniquement la valeur de la combinaison préférée
+                                                if (!sousCaracsFromPreferred[label].includes(value)) {
+                                                    sousCaracsFromPreferred[label].push(value);
+                                                }
+                                            }
+                                        });
 
-                                    // Caractéristiques prestations
-                                    competences: [],
-                                    experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
-                                    niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
-                                }}
+                                        if (Object.keys(sousCaracsFromPreferred).length > 0) {
+                                            console.log('[AjouterProduitSimple] ✅ Utilisation sous_caracteristiques depuis combinaison préférée (product_vector/product_labels):', sousCaracsFromPreferred);
+                                            return sousCaracsFromPreferred;
+                                        }
+                                    }
+
+                                    // 2. Fallback: Utiliser sous_caracteristiques si product_vector/product_labels non disponibles
+                                    // Mais seulement si c'est une combinaison spécifique (une seule valeur par dimension)
+                                    if (formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object' && Object.keys(formValues.sous_caracteristiques).length > 0) {
+                                        const isSpecificCombination = Object.values(formValues.sous_caracteristiques).every((vals: any) =>
+                                            Array.isArray(vals) && vals.length === 1
+                                        );
+
+                                        if (isSpecificCombination) {
+                                            console.log('[AjouterProduitSimple] ✅ Utilisation sous_caracteristiques (combinaison spécifique) depuis formValues:', formValues.sous_caracteristiques);
+                                            return formValues.sous_caracteristiques;
+                                        }
+                                    }
+
+                                    // 3. Fallback: objet vide (pas de valeurs par défaut hardcodées)
+                                    console.log('[AjouterProduitSimple] ⚠️ Aucune combinaison préférée trouvée, utilisation objet vide');
+                                    return {};
+                                })()}
                                 separateur=","
                                 allowCustomModality={true}
                                 placeholder="Tapez pour voir les suggestions..."
