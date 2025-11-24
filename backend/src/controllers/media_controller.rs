@@ -189,11 +189,11 @@ pub async fn get_service_media(
     Extension(pool): Extension<PgPool>,
 ) -> AppResult<Json<Vec<MediaItem>>> {
     info!("[get_service_media] Called for service_id={}", service_id);
-    let rows = match sqlx::query_as!(
-        MediaItem,
-        r#"SELECT id, service_id, type, path, uploaded_at AS "uploaded_at: Option<NaiveDateTime>" FROM media WHERE service_id = $1 ORDER BY uploaded_at DESC"#,
-        service_id
+    // Utiliser query_as au lieu de query_as! pour gérer correctement les types optionnels
+    let rows = match sqlx::query_as::<_, MediaItem>(
+        r#"SELECT id, service_id, type, path, uploaded_at FROM media WHERE service_id = $1 ORDER BY uploaded_at DESC"#
     )
+    .bind(service_id)
     .fetch_all(&pool)
     .await {
         Ok(r) => r,

@@ -109,26 +109,74 @@ async fn send_webhook(
     status: &PipelineHealthStatus,
     client: &Client,
 ) -> Result<(), reqwest::Error> {
+    // Convertir stale_jobs en format compatible Slack (tableau de IDs ou nombre)
+    let stale_jobs_count = status.job_queue.stale_jobs.len();
+    let stale_jobs_ids: Vec<String> = status
+        .job_queue
+        .stale_jobs
+        .iter()
+        .take(10) // Limiter à 10 pour éviter un payload trop gros
+        .map(|job| job.job_id.clone())
+        .collect();
+
     let payload = serde_json::json!({
-        "type": "pipeline-alert",
-        "status": status.status,
-        "timestamp": status.timestamp.to_rfc3339(),
-        "job_queue": {
-            "queued": status.job_queue.queued,
-            "running": status.job_queue.running,
-            "completed_last_24h": status.job_queue.completed_last_24h,
-            "failed_last_24h": status.job_queue.failed_last_24h,
-            "stale_jobs": status.job_queue.stale_jobs,
-        },
-        "components": status.components,
+        "text": format!(
+            "⚠️ Pipeline Alert: Status={} | Stale={} | Failed24h={}",
+            status.status, stale_jobs_count, status.job_queue.failed_last_24h
+        ),
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": format!(
+                        "*Pipeline Health Alert*\n*Status:* {}\n*Stale Jobs:* {}\n*Failed (24h):* {}\n*Queued:* {}\n*Running:* {}",
+                        status.status,
+                        stale_jobs_count,
+                        status.job_queue.failed_last_24h,
+                        status.job_queue.queued,
+                        status.job_queue.running
+                    )
+                }
+            }
+        ],
+        "attachments": [
+            {
+                "color": if status.status == "degraded" { "warning" } else { "danger" },
+                "fields": [
+                    {
+                        "title": "Timestamp",
+                        "value": status.timestamp.to_rfc3339(),
+                        "short": true
+                    },
+                    {
+                        "title": "Completed (24h)",
+                        "value": status.job_queue.completed_last_24h.to_string(),
+                        "short": true
+                    }
+                ]
+            }
+        ]
     });
 
-    client
+    let response = client
         .post(url)
         .json(&payload)
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
+
+    // Log la réponse pour debug si erreur
+    if !response.status().is_success() {
+        let status_code = response.status();
+        let body = response.text().await.unwrap_or_default();
+        log::warn!(
+            "[PipelineWorker] Webhook retourné {}: {}",
+            status_code,
+            body
+        );
+        // Retourner une erreur avec le statut HTTP
+        return Err(response.error_for_status().unwrap_err());
+    }
 
     Ok(())
 }
@@ -139,19 +187,53 @@ async fn send_recovery_webhook(
     client: &Client,
 ) -> Result<(), reqwest::Error> {
     let payload = serde_json::json!({
-        "type": "pipeline-recovery",
-        "status": status.status,
-        "timestamp": Utc::now().to_rfc3339(),
-        "queued": status.job_queue.queued,
-        "running": status.job_queue.running,
+        "text": "✅ Pipeline Recovery: Status retourné à OK",
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": format!(
+                        "*Pipeline Recovery*\n*Status:* {}\n*Queued:* {}\n*Running:* {}\n*Completed (24h):* {}",
+                        status.status,
+                        status.job_queue.queued,
+                        status.job_queue.running,
+                        status.job_queue.completed_last_24h
+                    )
+                }
+            }
+        ],
+        "attachments": [
+            {
+                "color": "good",
+                "fields": [
+                    {
+                        "title": "Timestamp",
+                        "value": Utc::now().to_rfc3339(),
+                        "short": true
+                    }
+                ]
+            }
+        ]
     });
 
-    client
+    let response = client
         .post(url)
         .json(&payload)
         .send()
-        .await?
-        .error_for_status()?;
+        .await?;
+
+    if !response.status().is_success() {
+        let status_code = response.status();
+        let body = response.text().await.unwrap_or_default();
+        log::warn!(
+            "[PipelineWorker] Recovery webhook retourné {}: {}",
+            status_code,
+            body
+        );
+        // Retourner une erreur avec le statut HTTP
+        return Err(response.error_for_status().unwrap_err());
+    }
 
     Ok(())
 }

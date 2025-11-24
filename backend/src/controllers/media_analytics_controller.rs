@@ -42,18 +42,26 @@ pub struct OverviewQuery {
 
 pub async fn track_view(
     State(state): State<Arc<AppState>>,
-    Path(media_id): Path<i32>,
+    Path(media_id): Path<String>,
     Extension(user): Extension<Option<AuthenticatedUser>>,
     Json(payload): Json<EngagementPayload>,
 ) -> AppResult<Json<serde_json::Value>> {
+    // Valider que media_id est un entier valide
+    let media_id_int = media_id.parse::<i32>().map_err(|_| {
+        crate::core::types::AppError::BadRequest(format!(
+            "media_id invalide: '{}'. Doit être un entier.",
+            media_id
+        ))
+    })?;
+
     info!(
         "[MediaAnalytics] Tracking view media_id={} channel={:?}",
-        media_id, payload.channel
+        media_id_int, payload.channel
     );
 
     record_engagement(
         state,
-        media_id,
+        media_id_int,
         "view",
         payload.channel,
         user.map(|u| u.id),
