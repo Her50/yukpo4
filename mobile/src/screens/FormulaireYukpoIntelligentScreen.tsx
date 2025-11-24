@@ -5046,7 +5046,7 @@ return (
 
     {/* ✅ SUPPRIMÉ: Modal de duplication de produit - Les produits sont maintenant gérés via les champs dynamiques */}
   </View>
-);
+  );
 };
 
 const styles = StyleSheet.create({
