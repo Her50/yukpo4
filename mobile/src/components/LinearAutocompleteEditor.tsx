@@ -560,24 +560,28 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // ✅ PROTECTION ULTIME 2025-11-06: S'assurer que displayValue est TOUJOURS une string
     const displayValue = (() => {
         if (!value || !Array.isArray(value) || value.length === 0) {
+            console.warn('[LinearAutocompleteEditor] ⚠️ value est vide ou invalide:', value);
             return '';
         }
 
         const firstValue = value[0];
 
         // ✅ CRITIQUE: Vérifier que firstValue est une STRING
-        if (typeof firstValue === 'string') {
+        if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+            console.log('[LinearAutocompleteEditor] ✅ displayValue extrait depuis value[0]:', firstValue.substring(0, 100));
             return firstValue;
         } else if (firstValue && typeof firstValue === 'object') {
             // Si c'est un objet, essayer de le stringifier
-            console.warn('[LinearAutocompleteEditor] ⚠️ value[0] est un objet, conversion en string');
-            return JSON.stringify(firstValue);
+            console.warn('[LinearAutocompleteEditor] ⚠️ value[0] est un objet, conversion en string:', firstValue);
+            const stringified = JSON.stringify(firstValue);
+            return stringified;
         } else if (firstValue !== null && firstValue !== undefined) {
             // Si c'est un nombre ou autre, le convertir
-            console.warn('[LinearAutocompleteEditor] ⚠️ value[0] n\'est pas une string, conversion');
+            console.warn('[LinearAutocompleteEditor] ⚠️ value[0] n\'est pas une string, conversion:', firstValue);
             return String(firstValue);
         }
 
+        console.warn('[LinearAutocompleteEditor] ⚠️ Impossible d\'extraire displayValue depuis value:', value);
         return '';
     })();
 
@@ -819,7 +823,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
 
             onChange([result.vector], result.sousCaracs);
+            // ✅ CORRIGÉ: Réinitialiser tous les états pour fermer le modal de suggestion
             setSearchQuery('');
+            setSuggestions([]);
+            setCombinationSuggestions([]);
+            setLoadingSuggestions(false);
+            setLoadingCombinationSuggestions(false);
+            setCombinationError(null);
+            setSuggestionDrafts({});
         },
         [createVectorFromRows, onChange, suggestionDrafts]
     );
@@ -951,10 +962,13 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     // ✅ CORRECTION: Utiliser useMemo pour que chips se mette à jour quand value change
     const chips = useMemo(() => {
-        if (!displayValue || typeof displayValue !== 'string') {
+        if (!displayValue || typeof displayValue !== 'string' || displayValue.trim().length === 0) {
+            console.warn('[LinearAutocompleteEditor] ⚠️ displayValue vide, aucun chip créé. displayValue:', displayValue, 'value:', value);
             return [];
         }
-        return parseVectorToChips(displayValue, labelOrder);
+        const parsedChips = parseVectorToChips(displayValue, labelOrder);
+        console.log('[LinearAutocompleteEditor] ✅ Chips créés:', parsedChips.length, 'depuis displayValue:', displayValue.substring(0, 100));
+        return parsedChips;
     }, [displayValue, labelOrder]);
 
     const fetchSuggestionsForQuery = useCallback(
@@ -1548,22 +1562,21 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             });
         }
         // ✅ PRIORITÉ 2: Utiliser sous_caracteristiques (fallback)
+        // ✅ CORRIGÉ: Prendre uniquement la PREMIÈRE valeur de chaque dimension (combinaison préférée)
         else if (sousCaracteristiques && typeof sousCaracteristiques === 'object') {
             const sousCaracsKeys = Object.keys(sousCaracteristiques);
             if (sousCaracsKeys.length > 0) {
-                // ✅ CORRECTION: Prendre TOUTES les valeurs de chaque dimension, pas seulement la première
                 sousCaracsKeys.forEach((key) => {
                     const values = sousCaracteristiques[key];
                     if (Array.isArray(values) && values.length > 0) {
-                        // Prendre toutes les valeurs de cette dimension
-                        values.forEach((val) => {
-                            if (typeof val === 'string' && val.trim().length > 0) {
-                                preferredRows.push({
-                                    label: key,
-                                    value: val,
-                                });
-                            }
-                        });
+                        // ✅ CORRIGÉ: Prendre uniquement la première valeur (combinaison préférée de l'IA)
+                        const firstValue = values[0];
+                        if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+                            preferredRows.push({
+                                label: key,
+                                value: firstValue,
+                            });
+                        }
                     } else if (typeof values === 'string' && values.trim().length > 0) {
                         preferredRows.push({
                             label: key,
