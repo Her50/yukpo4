@@ -6,6 +6,7 @@ use serde_json::Value;
 
 #[derive(FromRow)]
 struct ServiceDataGpsRow {
+    #[allow(dead_code)]
     id: i32,
     data: Value,
     gps: Option<String>,

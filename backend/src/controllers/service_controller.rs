@@ -1086,7 +1086,7 @@ pub async fn get_services_for_prestataire(
     );
 
     // ✅ DEBUG: Vérifier si l'utilisateur existe et est provider
-    let user_is_provider: Option<bool> = match sqlx::query_scalar::<_, bool>(
+    let _user_is_provider: Option<bool> = match sqlx::query_scalar::<_, bool>(
         r#"SELECT is_provider FROM users WHERE id = $1"#
     )
     .bind(user_id)
@@ -1110,7 +1110,7 @@ pub async fn get_services_for_prestataire(
     };
 
     // ✅ DEBUG: Log des 5 derniers services créés pour debug
-    let debug_rows: Vec<ServiceIdCreatedRow> = match sqlx::query_as::<_, ServiceIdCreatedRow>(
+    let _debug_rows: Vec<ServiceIdCreatedRow> = match sqlx::query_as::<_, ServiceIdCreatedRow>(
         r#"SELECT id, created_at FROM services WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5"#
     )
     .bind(user_id)
@@ -1133,7 +1133,7 @@ pub async fn get_services_for_prestataire(
     };
 
     // ✅ DEBUG: Compter tous les services (actifs et inactifs)
-    let total_services_count: i64 = match sqlx::query_scalar::<_, i64>(
+    let _total_services_count: i64 = match sqlx::query_scalar::<_, i64>(
         r#"SELECT COUNT(*) FROM services WHERE user_id = $1"#
     )
     .bind(user_id)

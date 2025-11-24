@@ -9,6 +9,7 @@ use uuid::Uuid;
 struct ServiceInteractionRow {
     #[sqlx(rename = "user_id")]
     user_id: i32,
+    #[allow(dead_code)]
     last_interaction: chrono::DateTime<chrono::Utc>,
 }
 

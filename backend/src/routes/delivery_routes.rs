@@ -120,7 +120,9 @@ struct DeliveryCreatorRow {
 #[derive(FromRow)]
 struct ProductDeliveryConfigPickupLocationRow {
     pickup_address: Option<String>,
+    #[allow(dead_code)]
     pickup_latitude: Option<f64>,
+    #[allow(dead_code)]
     pickup_longitude: Option<f64>,
 }
 
@@ -238,77 +240,79 @@ struct PublicDropoffResponse<T> {
 
 pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/delivery/parcel-types", get(list_parcel_types))
-        .route("/delivery/product-config", post(save_product_delivery_config))
-        .route("/delivery/product-config/{service_id}/{product_index}", get(get_product_delivery_config))
+        // ✅ CORRIGÉ: Ajouter le préfixe /api/ pour toutes les routes delivery
+        .route("/api/delivery/parcel-types", get(list_parcel_types))
+        .route("/api/delivery/product-config", post(save_product_delivery_config))
+        .route("/api/delivery/product-config/{service_id}/{product_index}", get(get_product_delivery_config))
         // ✅ Phase 9 - Amélioration : Routes pour gérer les zones de livraison des produits
-        .route("/products/{service_id}/{product_index}/zones", get(get_product_zones).post(save_product_zones))
+        .route("/api/products/{service_id}/{product_index}/zones", get(get_product_zones).post(save_product_zones))
         // ✅ Phase 9 - Amélioration 32 : Routes pour gérer les lieux de stock
-        .route("/delivery/storage-locations", get(list_storage_locations).post(create_storage_location))
-        .route("/delivery/storage-locations/{id}", get(get_storage_location).put(update_storage_location).delete(delete_storage_location))
+        .route("/api/delivery/storage-locations", get(list_storage_locations).post(create_storage_location))
+        .route("/api/delivery/storage-locations/{id}", get(get_storage_location).put(update_storage_location).delete(delete_storage_location))
         // ✅ Phase 9 - Amélioration : Route pour lister les zones de livraison
-        .route("/delivery/zones", get(list_delivery_zones))
+        .route("/api/delivery/zones", get(list_delivery_zones))
         // ✅ Phase 9 - Amélioration : Routes pour les médias de preuve de livraison
-        .route("/delivery/{id}/proof-media", get(list_proof_media).post(upload_proof_media))
-        .route("/delivery/{id}/proof-media/{media_id}", delete(delete_proof_media))
-        .route("/delivery/product-validation/{service_id}/{product_index}", get(validate_product))
-        .route("/delivery/preferences", post(save_client_delivery_preferences))
-        .route("/delivery/preferences/{delivery_id}", get(get_client_delivery_preferences))
-        .route("/delivery", post(create_delivery))
-        .route("/delivery/client-order", post(create_client_order))
-        .route("/delivery/estimate-costs", post(estimate_delivery_costs)) // ✅ Phase 7 - Amélioration 23
-        .route("/delivery/{id}", get(get_delivery_summary))
-        .route("/delivery/{id}/navigation", get(get_courier_navigation)) // ✅ NOUVEAU : Navigation pour coursier
-        .route("/delivery/{id}/status", post(update_delivery_status))
-        .route("/delivery/{id}/confirm-proximity", post(confirm_proximity_suggestion)) // ✅ Phase 6 - Amélioration 20
-        .route("/delivery/{id}/pricing", post(upsert_pricing))
-        .route("/delivery/{id}/tracking", post(add_tracking_point))
-        .route("/delivery/{id}/rate-courier", post(rate_courier))
-        .route("/delivery/{id}/rate-client", post(rate_client))
-        .route("/delivery/{id}/ws", get(delivery_tracking_ws))
+        .route("/api/delivery/{id}/proof-media", get(list_proof_media).post(upload_proof_media))
+        .route("/api/delivery/{id}/proof-media/{media_id}", delete(delete_proof_media))
+        .route("/api/delivery/product-validation/{service_id}/{product_index}", get(validate_product))
+        .route("/api/delivery/preferences", post(save_client_delivery_preferences))
+        .route("/api/delivery/preferences/{delivery_id}", get(get_client_delivery_preferences))
+        .route("/api/delivery", post(create_delivery))
+        .route("/api/delivery/client-order", post(create_client_order))
+        .route("/api/delivery/estimate-costs", post(estimate_delivery_costs)) // ✅ Phase 7 - Amélioration 23
+        .route("/api/delivery/{id}", get(get_delivery_summary))
+        .route("/api/delivery/{id}/navigation", get(get_courier_navigation)) // ✅ NOUVEAU : Navigation pour coursier
+        .route("/api/delivery/{id}/status", post(update_delivery_status))
+        .route("/api/delivery/{id}/confirm-proximity", post(confirm_proximity_suggestion)) // ✅ Phase 6 - Amélioration 20
+        .route("/api/delivery/{id}/pricing", post(upsert_pricing))
+        .route("/api/delivery/{id}/tracking", post(add_tracking_point))
+        .route("/api/delivery/{id}/rate-courier", post(rate_courier))
+        .route("/api/delivery/{id}/rate-client", post(rate_client))
+        .route("/api/delivery/{id}/ws", get(delivery_tracking_ws))
         .route(
-            "/delivery/{id}/recipient",
+            "/api/delivery/{id}/recipient",
             get(get_delivery_recipient).post(assign_delivery_recipient),
         )
         .route(
-            "/delivery/{id}/recipient/location",
+            "/api/delivery/{id}/recipient/location",
             post(update_recipient_location),
         )
         .route(
-            "/delivery/{id}/pickup-location",
+            "/api/delivery/{id}/pickup-location",
             post(update_pickup_location),
         )
-        .route("/delivery/{id}/share-dropoff", post(share_dropoff_link))
-        .route("/deliveries/active", get(list_frontend_deliveries))
-        .route("/deliveries/{id}", get(get_frontend_delivery))
+        .route("/api/delivery/{id}/share-dropoff", post(share_dropoff_link))
+        .route("/api/deliveries/active", get(list_frontend_deliveries))
+        .route("/api/deliveries/{id}", get(get_frontend_delivery))
         .route(
-            "/deliveries/{id}/recipient/updates",
+            "/api/deliveries/{id}/recipient/updates",
             get(get_frontend_recipient_updates),
         )
-        .route("/wallet/debit", post(debit_wallet_for_delivery))
-        .route("/wallet/refund", post(refund_wallet_for_delivery))
-        .route("/courier/applications", post(submit_courier_application))
-        .route("/courier/me", get(get_my_courier_status)) // ✅ NOUVEAU : Vérifier statut coursier de l'utilisateur
-        .route("/courier/{id}/assets", post(upsert_courier_asset))
-        .route("/delivery/{id}/assign-courier", post(assign_courier)) // ✅ Phase 9 - Amélioration 28
-        .route("/couriers/available", get(list_available_couriers)) // ✅ Phase 9 - Amélioration 28
+        .route("/api/wallet/debit", post(debit_wallet_for_delivery))
+        .route("/api/wallet/refund", post(refund_wallet_for_delivery))
+        .route("/api/courier/applications", post(submit_courier_application))
+        .route("/api/courier/me", get(get_my_courier_status)) // ✅ NOUVEAU : Vérifier statut coursier de l'utilisateur
+        .route("/api/courier/{id}/assets", post(upsert_courier_asset))
+        .route("/api/delivery/{id}/assign-courier", post(assign_courier)) // ✅ Phase 9 - Amélioration 28
+        .route("/api/couriers/available", get(list_available_couriers)) // ✅ Phase 9 - Amélioration 28
         // ✅ NOUVEAU : Routes pour gestion de stock
-        .route("/delivery/stock/{config_id}", axum::routing::put(update_stock))
-        .route("/delivery/stock/{config_id}/location/{location_id}", axum::routing::delete(delete_stock_location))
+        .route("/api/delivery/stock/{config_id}", axum::routing::put(update_stock))
+        .route("/api/delivery/stock/{config_id}/location/{location_id}", axum::routing::delete(delete_stock_location))
         // ✅ NOUVEAU : Routes pour vérification coursier
-        .route("/delivery/{id}/verify-courier", post(verify_courier))
-        .route("/delivery/{id}/verification-code", get(get_verification_code))
+        .route("/api/delivery/{id}/verify-courier", post(verify_courier))
+        .route("/api/delivery/{id}/verification-code", get(get_verification_code))
         // ✅ NOUVEAU : Route pour lieux pickup
-        .route("/delivery/config/{config_id}/pickup-locations", get(get_pickup_locations))
+        .route("/api/delivery/config/{config_id}/pickup-locations", get(get_pickup_locations))
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }
 
 pub fn delivery_public_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/delivery/public/{token}", get(get_public_dropoff_snapshot))
+        // ✅ CORRIGÉ: Ajouter le préfixe /api/ pour les routes publiques
+        .route("/api/delivery/public/{token}", get(get_public_dropoff_snapshot))
         .route(
-            "/delivery/public/{token}/dropoff",
+            "/api/delivery/public/{token}/dropoff",
             post(submit_public_dropoff),
         )
         .with_state(state)

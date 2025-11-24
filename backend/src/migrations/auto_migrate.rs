@@ -3296,6 +3296,196 @@ pub async fn ensure_geo_hierarchy_table(pool: &PgPool) -> Result<(), sqlx::Error
     Ok(())
 }
 
+/// ✅ NOUVEAU 2025-11-24 : Migration des produits de format chaîne vers JSON structuré
+/// Convertit les produits stockés comme chaînes concaténées vers des objets JSON
+pub async fn ensure_products_json_format(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification du format JSON des produits...");
+
+    // Vérifier s'il y a des produits en format chaîne à migrer
+    let string_count: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM services
+        WHERE jsonb_typeof(data->'produits'->'valeur') = 'array'
+        AND EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(data->'produits'->'valeur') AS elem
+            WHERE jsonb_typeof(elem) = 'string'
+        )
+        "#,
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    if string_count == 0 {
+        info!("✅ Tous les produits sont déjà en format JSON structuré");
+        return Ok(());
+    }
+
+    info!(
+        "🔄 {} services avec produits en format chaîne détectés, migration nécessaire",
+        string_count
+    );
+
+    // Vérifier si la fonction helper existe
+    let function_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM pg_proc WHERE proname = 'parse_product_string')",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+
+    if !function_exists {
+        info!("📝 Création de la fonction helper parse_product_string...");
+        sqlx::query(
+            r#"
+            CREATE OR REPLACE FUNCTION parse_product_string(product_string TEXT)
+            RETURNS JSONB
+            LANGUAGE plpgsql
+            IMMUTABLE
+            AS $$
+            DECLARE
+                parts TEXT[];
+                result JSONB;
+                nom TEXT;
+                categorie TEXT;
+                description TEXT;
+                prix TEXT;
+                devise TEXT;
+                last_numeric_index INTEGER;
+                i INTEGER;
+            BEGIN
+                parts := string_to_array(product_string, ',');
+                
+                FOR i IN 1..array_length(parts, 1) LOOP
+                    parts[i] := trim(parts[i]);
+                END LOOP;
+                
+                IF array_length(parts, 1) < 2 THEN
+                    RETURN jsonb_build_object(
+                        'nom_produit', COALESCE(parts[1], 'Produit'),
+                        'description_produit', '',
+                        'prix', '0',
+                        'devise', 'XAF'
+                    );
+                END IF;
+                
+                nom := parts[1];
+                categorie := parts[2];
+                
+                last_numeric_index := NULL;
+                FOR i IN array_length(parts, 1) DOWNTO 1 LOOP
+                    IF parts[i] ~ '^\d+\.?\d*$' THEN
+                        last_numeric_index := i;
+                        EXIT;
+                    END IF;
+                END LOOP;
+                
+                IF last_numeric_index IS NOT NULL THEN
+                    prix := parts[last_numeric_index];
+                    IF last_numeric_index < array_length(parts, 1) THEN
+                        devise := parts[last_numeric_index + 1];
+                    ELSE
+                        devise := 'XAF';
+                    END IF;
+                    IF last_numeric_index > 2 THEN
+                        description := array_to_string(parts[3:last_numeric_index-1], ', ');
+                    ELSIF array_length(parts, 1) >= 3 THEN
+                        description := parts[3];
+                    ELSE
+                        description := '';
+                    END IF;
+                ELSE
+                    prix := '0';
+                    devise := 'XAF';
+                    IF array_length(parts, 1) >= 3 THEN
+                        description := array_to_string(parts[3:], ', ');
+                    ELSE
+                        description := '';
+                    END IF;
+                END IF;
+                
+                result := jsonb_build_object(
+                    'nom_produit', COALESCE(nom, 'Produit'),
+                    'categorie_produit', COALESCE(categorie, ''),
+                    'description_produit', COALESCE(description, ''),
+                    'prix', COALESCE(prix, '0'),
+                    'devise', COALESCE(devise, 'XAF')
+                );
+                
+                RETURN result;
+            END;
+            $$;
+            "#,
+        )
+        .execute(pool)
+        .await?;
+        info!("✅ Fonction parse_product_string créée");
+    }
+
+    // Exécuter la migration
+    info!("🔄 Exécution de la migration des produits...");
+    sqlx::query(
+        r#"
+        DO $$
+        DECLARE
+            service_record RECORD;
+            produits_array JSONB;
+            new_produits_array JSONB;
+            elem JSONB;
+            converted_count INTEGER := 0;
+            error_count INTEGER := 0;
+        BEGIN
+            FOR service_record IN
+                SELECT id, data
+                FROM services
+                WHERE jsonb_typeof(data->'produits'->'valeur') = 'array'
+                AND EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements(data->'produits'->'valeur') AS elem
+                    WHERE jsonb_typeof(elem) = 'string'
+                )
+            LOOP
+                BEGIN
+                    produits_array := service_record.data->'produits'->'valeur';
+                    new_produits_array := '[]'::JSONB;
+                    
+                    FOR elem IN SELECT * FROM jsonb_array_elements(produits_array)
+                    LOOP
+                        IF jsonb_typeof(elem) = 'string' THEN
+                            new_produits_array := new_produits_array || jsonb_build_array(
+                                parse_product_string(elem::TEXT)
+                            );
+                        ELSE
+                            new_produits_array := new_produits_array || jsonb_build_array(elem);
+                        END IF;
+                    END LOOP;
+                    
+                    UPDATE services
+                    SET data = jsonb_set(
+                        data,
+                        '{produits,valeur}',
+                        new_produits_array
+                    ),
+                    updated_at = NOW()
+                    WHERE id = service_record.id;
+                    
+                    converted_count := converted_count + 1;
+                EXCEPTION WHEN OTHERS THEN
+                    error_count := error_count + 1;
+                END;
+            END LOOP;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Migration des produits vers format JSON terminée");
+    Ok(())
+}
+
 /// Exécute toutes les migrations automatiques nécessaires
 /// Migration 0.5: Table african_locations pour base locale géographique (✅ NOUVEAU 2025-11-06)
 pub async fn ensure_african_locations_table(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -5006,7 +5196,7 @@ pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
             order_id UUID REFERENCES product_orders(id) ON DELETE CASCADE,
-            courier_id INTEGER NOT NULL REFERENCES couriers(id),
+            courier_id UUID NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
             verification_code VARCHAR(6) NOT NULL UNIQUE,
             qr_code_data TEXT,
             expires_at TIMESTAMPTZ NOT NULL,
@@ -5286,6 +5476,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_african_locations_table(pool).await {
         Ok(_) => info!("✅ Migration auto: african_locations OK"),
         Err(e) => error!("❌ Erreur migration auto african_locations: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-11-24 : Migration des produits vers format JSON structuré
+    match ensure_products_json_format(pool).await {
+        Ok(_) => info!("✅ Migration auto: products JSON format OK"),
+        Err(e) => error!("❌ Erreur migration auto products JSON format: {}", e),
     }
 
     // Migration 1: Fonction extract_all_product_text (✅ NOUVEAU 2025-11-05)
