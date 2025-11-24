@@ -655,6 +655,11 @@ const VideoCreationWizardScreen: React.FC = () => {
     }, [isGenerating, modalScale]);
 
     // ✅ PHASE 3: Animation de transition améliorée avec fade + slide + scale
+    // ✅ CORRIGÉ: Initialiser l'opacité à 1 pour éviter les écrans vides
+    useEffect(() => {
+        stepTransition.setValue(1); // ✅ Initialiser à 1 pour que le contenu soit visible dès le départ
+    }, []);
+
     const stepAnimatedStyle = useMemo(
         () => ({
             opacity: stepTransition,
@@ -664,13 +669,13 @@ const VideoCreationWizardScreen: React.FC = () => {
                         inputRange: [0, 1],
                         outputRange: [20, 0],
                     }),
-                },
+                } as any,
                 {
                     scale: stepTransition.interpolate({
                         inputRange: [0, 1],
                         outputRange: [0.95, 1],
                     }),
-                },
+                } as any,
             ],
         }),
         [stepTransition],
@@ -2095,15 +2100,16 @@ const styles = StyleSheet.create({
     stepContent: {
         padding: 20,
         gap: 20,
-        paddingBottom: 100, // Espace pour le bouton fixe
+        paddingBottom: Platform.OS === 'ios' ? 110 : 100, // ✅ Espace pour le bouton fixe + safe area
     },
     fixedBottomButton: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        padding: 20,
-        paddingBottom: 40,
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: Platform.OS === 'ios' ? 34 : 20, // ✅ Ajuster pour safe area iOS (home indicator)
         backgroundColor: modernColors.background,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: modernColors.border,
@@ -2112,6 +2118,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 5,
+        zIndex: 1000, // ✅ S'assurer que les boutons sont au-dessus
+        minHeight: Platform.OS === 'ios' ? 90 : 76, // ✅ Hauteur minimale pour garantir la visibilité
     },
     pickerButton: {
         flexDirection: 'row',

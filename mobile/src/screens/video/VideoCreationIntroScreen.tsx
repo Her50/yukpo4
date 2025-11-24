@@ -319,12 +319,21 @@ const VideoCreationIntroScreen: React.FC = () => {
                 </Animated.View>
             </ScrollView>
 
-            {/* ✅ NOUVEAU: Sélecteur de produit */}
+            {/* ✅ NOUVEAU: Sélecteur de produit avec sélection multiple */}
             <ServiceProductSelector
                 visible={showProductSelector}
                 products={availableProducts}
+                allowMultiple={true} // ✅ Permettre sélection multiple
                 onSelect={(product) => {
+                    // Mode unique (fallback)
                     navigateToVideoWizard(navigation, product);
+                }}
+                onSelectMultiple={(selectedProducts) => {
+                    // ✅ Mode multiple : naviguer avec le premier produit pour l'instant
+                    // TODO: Adapter navigateToVideoWizard pour gérer plusieurs produits
+                    if (selectedProducts.length > 0) {
+                        navigateToVideoWizard(navigation, selectedProducts[0]);
+                    }
                 }}
                 onClose={() => {
                     setShowProductSelector(false);

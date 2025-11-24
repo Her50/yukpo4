@@ -15,23 +15,63 @@ interface ServiceProductSelectorProps {
     visible: boolean;
     products: Product[];
     onSelect: (product: Product) => void;
+    onSelectMultiple?: (products: Product[]) => void; // ✅ NOUVEAU : Support sélection multiple
     onClose: () => void;
+    allowMultiple?: boolean; // ✅ NOUVEAU : Permettre sélection multiple
 }
 
 const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
     visible,
     products,
     onSelect,
+    onSelectMultiple,
     onClose,
+    allowMultiple = false, // ✅ Par défaut, sélection unique pour compatibilité
 }) => {
-    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set()); // ✅ NOUVEAU : Set pour sélection multiple
 
     const handleConfirm = () => {
-        if (selectedProduct) {
-            onSelect(selectedProduct);
-            setSelectedProduct(null);
-            onClose();
+        if (allowMultiple && onSelectMultiple) {
+            // ✅ Mode sélection multiple
+            const selected = products.filter((product) =>
+                selectedProducts.has(`${product.serviceId}-${product.productIndex}`)
+            );
+            if (selected.length > 0) {
+                onSelectMultiple(selected);
+                setSelectedProducts(new Set());
+                onClose();
+            }
+        } else {
+            // ✅ Mode sélection unique (compatibilité)
+            const selected = products.find((product) =>
+                selectedProducts.has(`${product.serviceId}-${product.productIndex}`)
+            );
+            if (selected) {
+                onSelect(selected);
+                setSelectedProducts(new Set());
+                onClose();
+            }
         }
+    };
+
+    const toggleProductSelection = (product: Product) => {
+        const key = `${product.serviceId}-${product.productIndex}`;
+        setSelectedProducts((prev) => {
+            const next = new Set(prev);
+            if (allowMultiple) {
+                // ✅ Mode multiple : toggle
+                if (next.has(key)) {
+                    next.delete(key);
+                } else {
+                    next.add(key);
+                }
+            } else {
+                // ✅ Mode unique : remplace la sélection
+                next.clear();
+                next.add(key);
+            }
+            return next;
+        });
     };
 
     // Grouper par service
@@ -67,8 +107,17 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                     </View>
 
                     <Text style={styles.subtitle}>
-                        Choisissez le produit pour lequel vous souhaitez créer une vidéo
+                        {allowMultiple
+                            ? 'Choisissez un ou plusieurs produits pour lesquels vous souhaitez créer une vidéo'
+                            : 'Choisissez le produit pour lequel vous souhaitez créer une vidéo'}
                     </Text>
+                    {allowMultiple && selectedProducts.size > 0 && (
+                        <View style={styles.selectionCount}>
+                            <Text style={styles.selectionCountText}>
+                                {selectedProducts.size} produit(s) sélectionné(s)
+                            </Text>
+                        </View>
+                    )}
 
                     <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                         {services.map((service, serviceIndex) => (
@@ -79,8 +128,8 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                                 </View>
 
                                 {service.products.map((product, productIndex) => {
-                                    const isSelected = selectedProduct?.serviceId === product.serviceId &&
-                                        selectedProduct?.productIndex === product.productIndex;
+                                    const productKey = `${product.serviceId}-${product.productIndex}`;
+                                    const isSelected = selectedProducts.has(productKey);
 
                                     return (
                                         <TouchableOpacity
@@ -89,7 +138,7 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                                                 styles.productItem,
                                                 isSelected && styles.productItemSelected,
                                             ]}
-                                            onPress={() => setSelectedProduct(product)}
+                                            onPress={() => toggleProductSelection(product)}
                                             activeOpacity={0.7}
                                         >
                                             <View style={styles.productContent}>
@@ -123,11 +172,13 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                             style={styles.cancelButton}
                         />
                         <NativeButton
-                            title="Créer la vidéo"
+                            title={allowMultiple
+                                ? `Créer la vidéo${selectedProducts.size > 0 ? ` (${selectedProducts.size})` : ''}`
+                                : 'Créer la vidéo'}
                             variant="primary"
                             size="medium"
                             onPress={handleConfirm}
-                            disabled={!selectedProduct}
+                            disabled={selectedProducts.size === 0}
                             style={styles.confirmButton}
                         />
                     </View>
@@ -170,7 +221,20 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 14,
         color: modernColors.textSecondary,
-        marginBottom: 20,
+        marginBottom: 12,
+    },
+    selectionCount: {
+        backgroundColor: modernColors.primary + '15',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginBottom: 16,
+        alignSelf: 'flex-start',
+    },
+    selectionCountText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
     scrollView: {
         maxHeight: 400,

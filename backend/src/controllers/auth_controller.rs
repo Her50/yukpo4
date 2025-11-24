@@ -16,7 +16,7 @@ use crate::{
 
 use crate::state::AppState;
 
-const INITIAL_TOKENS: i64 = 10000;
+const INITIAL_TOKENS: i64 = 100000;
 
 #[derive(Deserialize)]
 pub struct LoginInput {
