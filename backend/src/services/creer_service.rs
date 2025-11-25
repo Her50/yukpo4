@@ -6,7 +6,7 @@ use crate::utils::currency::{auto_fill_currencies, extract_country};
 use crate::utils::embedding_client::AddEmbeddingPineconeRequest;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
-use log::{info, warn, error};
+use log::{info, warn};
 use sqlx::{FromRow, PgPool, Row};
 use reqwest::Client;
 

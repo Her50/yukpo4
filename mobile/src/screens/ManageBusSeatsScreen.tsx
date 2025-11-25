@@ -16,9 +16,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { apiGet, apiPost } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../components/SafeIcon';
+import { apiGet, apiPost } from '../services/api';
+import { modernColors } from '../theme/modernTheme';
 
 interface SeatBlock {
     id: string;

@@ -20,9 +20,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { apiGet } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../components/SafeIcon';
+import { apiGet } from '../services/api';
+import { modernColors } from '../theme/modernTheme';
 
 interface BusTicket {
     payment_id: string;

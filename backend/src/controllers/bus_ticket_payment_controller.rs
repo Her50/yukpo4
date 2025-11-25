@@ -104,7 +104,7 @@ pub async fn process_ticket_payment(
         AppError::Internal(format!("Erreur récupération produit: {}", e))
     })?;
 
-    let (product_name, agency_user_id, bus_number, metadata) = match product_row {
+    let (_product_name, agency_user_id, bus_number, metadata) = match product_row {
         Some(row) => (
             row.try_get::<String, _>("name").unwrap_or_default(),
             row.try_get::<i32, _>("agency_user_id").unwrap_or(0),
