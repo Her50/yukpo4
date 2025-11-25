@@ -170,15 +170,16 @@ impl GooglePlacesService {
         Self { api_key, client }
     }
 
-    pub async fn search_and_enrich(
+    /// Recherche Google Places et retourne plusieurs résultats pour comparaison
+    pub async fn search_places(
         &self,
         query: &str,
         country_hint: Option<&str>,
         language_code: Option<&str>,
         coordinates: Option<(f64, f64)>,
-    ) -> Result<Option<GooglePlaceEnriched>, AppError> {
+    ) -> Result<Vec<SearchPlace>, AppError> {
         if query.trim().is_empty() {
-            return Ok(None);
+            return Ok(Vec::new());
         }
 
         let mut body = serde_json::json!({
@@ -229,7 +230,6 @@ impl GooglePlacesService {
                 .await
                 .unwrap_or_else(|_| "<no body>".to_string());
             
-            // ✅ NOUVEAU: Analyser le type d'erreur
             let error_type = if text.contains("BILLING_DISABLED") || text.contains("billing_disabled") {
                 "BILLING_DISABLED"
             } else if text.contains("API_KEY_INVALID") || text.contains("api_key_invalid") {
@@ -251,7 +251,6 @@ impl GooglePlacesService {
                 error_type
             );
             
-            // ✅ Retourner une erreur structurée au lieu de Ok(None) pour les erreurs critiques
             if error_type == "BILLING_DISABLED" || error_type == "API_KEY_INVALID" || error_type == "PERMISSION_DENIED" {
                 return Err(AppError::Internal(format!(
                     "Google Places API indisponible ({}): {}. Veuillez activer la facturation ou vérifier la clé API.",
@@ -260,8 +259,7 @@ impl GooglePlacesService {
                 )));
             }
             
-            // Pour les autres erreurs (rate limit, etc.), retourner None pour permettre le fallback
-            return Ok(None);
+            return Ok(Vec::new());
         }
 
         let search_payload: PlacesSearchResponse = search_response
@@ -269,22 +267,15 @@ impl GooglePlacesService {
             .await
             .map_err(|e| AppError::Internal(format!("Erreur parsing Places search: {}", e)))?;
 
-        let first_place = match search_payload.places.and_then(|mut p| p.pop()) {
-            Some(place) => place,
-            None => {
-                info!("[Places] Aucun résultat pour '{}'", query);
-                return Ok(None);
-            }
-        };
+        Ok(search_payload.places.unwrap_or_default())
+    }
 
-        let place_id = match first_place.id {
-            Some(id) => id,
-            None => {
-                warn!("[Places] Résultat sans ID pour '{}'", query);
-                return Ok(None);
-            }
-        };
-
+    /// Enrichit un lieu Google Places avec ses détails complets
+    async fn enrich_place_details(
+        &self,
+        place_id: &str,
+        language_code: Option<&str>,
+    ) -> Result<GooglePlaceEnriched, AppError> {
         let detail_url = format!(
             "{}/{}?languageCode={}",
             PLACES_URL,
@@ -310,7 +301,6 @@ impl GooglePlacesService {
                 .await
                 .unwrap_or_else(|_| "<no body>".to_string());
             
-            // ✅ NOUVEAU: Analyser le type d'erreur
             let error_type = if text.contains("BILLING_DISABLED") || text.contains("billing_disabled") {
                 "BILLING_DISABLED"
             } else if text.contains("API_KEY_INVALID") || text.contains("api_key_invalid") {
@@ -332,7 +322,6 @@ impl GooglePlacesService {
                 error_type
             );
             
-            // ✅ Retourner une erreur structurée au lieu de Ok(None) pour les erreurs critiques
             if error_type == "BILLING_DISABLED" || error_type == "API_KEY_INVALID" || error_type == "PERMISSION_DENIED" {
                 return Err(AppError::Internal(format!(
                     "Google Places API indisponible ({}): {}. Veuillez activer la facturation ou vérifier la clé API.",
@@ -341,8 +330,7 @@ impl GooglePlacesService {
                 )));
             }
             
-            // Pour les autres erreurs (rate limit, etc.), retourner None pour permettre le fallback
-            return Ok(None);
+            return Err(AppError::Internal(format!("Erreur récupération détails: {}", text)));
         }
 
         let details: PlaceDetails = details_response
@@ -354,7 +342,7 @@ impl GooglePlacesService {
             .display_name
             .as_ref()
             .map(|v| v.text.clone())
-            .unwrap_or_else(|| query.to_string());
+            .unwrap_or_else(|| "".to_string());
 
         let location_vector = build_location_vector(details.address_components.as_ref());
         let country = location_vector.last().cloned().or_else(|| {
@@ -393,7 +381,7 @@ impl GooglePlacesService {
             .collect::<Vec<_>>();
 
         let enriched = GooglePlaceEnriched {
-            place_id,
+            place_id: details.id.unwrap_or_default(),
             display_name,
             formatted_address: details.formatted_address,
             location_vector,
@@ -420,8 +408,167 @@ impl GooglePlacesService {
                 .and_then(|c| infer_country_code(c).map(|code| code.to_string())),
         };
 
+        Ok(enriched)
+    }
+
+    /// Recherche et enrichit un lieu (ancienne méthode, gardée pour compatibilité)
+    /// Utilise maintenant search_places et enrich_place_details
+    pub async fn search_and_enrich(
+        &self,
+        query: &str,
+        country_hint: Option<&str>,
+        language_code: Option<&str>,
+        coordinates: Option<(f64, f64)>,
+    ) -> Result<Option<GooglePlaceEnriched>, AppError> {
+        let places = self.search_places(query, country_hint, language_code, coordinates).await?;
+        
+        if places.is_empty() {
+            return Ok(None);
+        }
+
+        // Prendre le premier résultat (comportement original)
+        let first_place = places.into_iter().next().unwrap();
+        let place_id = match first_place.id {
+            Some(id) => id,
+            None => {
+                warn!("[Places] Résultat sans ID pour '{}'", query);
+                return Ok(None);
+            }
+        };
+
+        let enriched = self.enrich_place_details(&place_id, language_code).await?;
         Ok(Some(enriched))
     }
+
+    /// Recherche plusieurs lieux et retourne le meilleur match selon critères
+    pub async fn search_and_select_best_match(
+        &self,
+        query: &str,
+        country_hint: Option<&str>,
+        language_code: Option<&str>,
+        coordinates: Option<(f64, f64)>,
+        prestataire_name: Option<&str>,
+        max_distance_km: f64,
+    ) -> Result<Option<GooglePlaceEnriched>, AppError> {
+        let places = self.search_places(query, country_hint, language_code, coordinates).await?;
+        
+        if places.is_empty() {
+            info!("[Places] Aucun résultat pour '{}'", query);
+            return Ok(None);
+        }
+
+        // Limiter à 5 résultats pour éviter trop d'appels API
+        let places_to_check = places.into_iter().take(5).collect::<Vec<_>>();
+        
+        let mut best_match: Option<(GooglePlaceEnriched, f64)> = None; // (enriched, score)
+        
+        for place in places_to_check {
+            let place_id = match place.id {
+                Some(id) => id,
+                None => continue,
+            };
+
+            // Enrichir avec les détails complets
+            let enriched = match self.enrich_place_details(&place_id, language_code).await {
+                Ok(e) => e,
+                Err(e) => {
+                    warn!("[Places] Erreur enrichissement place_id {}: {}", place_id, e);
+                    continue;
+                }
+            };
+
+            // Calculer le score de matching
+            let mut score = 0.0;
+
+            // 1. Validation de la distance (critère obligatoire si coordonnées fournies)
+            if let Some((lat, lng)) = coordinates {
+                if let Some(place_coords) = enriched.coordinates.as_ref() {
+                    let distance_km = calculate_distance_haversine(
+                        lat, lng,
+                        place_coords.lat, place_coords.lng
+                    );
+                    
+                    if distance_km > max_distance_km {
+                        warn!(
+                            "[Places] Lieu {} trop éloigné: {} km (max: {} km)",
+                            place_id, distance_km, max_distance_km
+                        );
+                        continue; // Ignorer ce lieu
+                    }
+                    
+                    // Score inversement proportionnel à la distance (plus proche = meilleur)
+                    score += (max_distance_km - distance_km) / max_distance_km * 50.0;
+                } else {
+                    // Pas de coordonnées pour le lieu → pénalité
+                    score -= 20.0;
+                }
+            }
+
+            // 2. Matching du nom du prestataire (critère important)
+            if let Some(prestataire) = prestataire_name {
+                let display_name_lower = enriched.display_name.to_lowercase();
+                let prestataire_lower = prestataire.to_lowercase();
+                
+                if display_name_lower.contains(&prestataire_lower) {
+                    score += 40.0; // Correspondance exacte du nom
+                } else {
+                    // Vérifier correspondance partielle (mots individuels)
+                    let prestataire_words: Vec<&str> = prestataire_lower.split_whitespace().collect();
+                    let matching_words = prestataire_words.iter()
+                        .filter(|word| display_name_lower.contains(*word))
+                        .count();
+                    
+                    if matching_words > 0 {
+                        score += (matching_words as f64 / prestataire_words.len() as f64) * 30.0;
+                    }
+                }
+            }
+
+            // 3. Rating (bonus)
+            if let Some(rating) = enriched.rating {
+                score += rating * 5.0; // Bonus jusqu'à 25 points (rating max 5.0)
+            }
+
+            // 4. Nombre d'avis (crédibilité)
+            if let Some(rating_count) = enriched.rating_count {
+                if rating_count > 10 {
+                    score += 10.0; // Bonus pour lieux avec beaucoup d'avis
+                }
+            }
+
+            // Garder le meilleur match
+            if best_match.is_none() || score > best_match.as_ref().unwrap().1 {
+                best_match = Some((enriched, score));
+            }
+        }
+
+        if let Some((enriched, score)) = best_match {
+            info!(
+                "[Places] Meilleur match sélectionné pour '{}': {} (score: {:.2})",
+                query, enriched.display_name, score
+            );
+            Ok(Some(enriched))
+        } else {
+            warn!("[Places] Aucun match valide trouvé pour '{}'", query);
+            Ok(None)
+        }
+    }
+}
+
+/// Calcule la distance entre deux points GPS en km (formule de Haversine)
+fn calculate_distance_haversine(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
+    let r = 6371.0; // Rayon de la Terre en km
+
+    let dlat = (lat2 - lat1).to_radians();
+    let dlng = (lng2 - lng1).to_radians();
+
+    let a = (dlat / 2.0).sin().powi(2)
+        + lat1.to_radians().cos() * lat2.to_radians().cos() * (dlng / 2.0).sin().powi(2);
+
+    let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
+
+    r * c
+}
 }
 
 fn build_location_vector(components: Option<&Vec<AddressComponent>>) -> Vec<String> {
