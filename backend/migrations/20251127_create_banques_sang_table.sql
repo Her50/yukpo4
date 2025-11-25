@@ -77,11 +77,25 @@ CREATE INDEX IF NOT EXISTS idx_banques_sang_ville ON banques_sang(ville);
 CREATE INDEX IF NOT EXISTS idx_banques_sang_quartier ON banques_sang(quartier);
 
 -- Index GPS (GIST pour recherche géographique)
+-- Note: Utilisation d'une fonction IMMUTABLE pour éviter l'erreur dans l'index
+CREATE OR REPLACE FUNCTION parse_gps_to_point(gps_text TEXT)
+RETURNS geography AS $$
+BEGIN
+    IF gps_text IS NULL OR gps_text = '' THEN
+        RETURN NULL;
+    END IF;
+    RETURN ST_SetSRID(ST_MakePoint(
+        SPLIT_PART(gps_text, ',', 2)::DOUBLE PRECISION,
+        SPLIT_PART(gps_text, ',', 1)::DOUBLE PRECISION
+    ), 4326)::geography;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN NULL;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 CREATE INDEX IF NOT EXISTS idx_banques_sang_gps ON banques_sang USING GIST(
-    ST_MakePoint(
-        SPLIT_PART(gps, ',', 2)::DOUBLE PRECISION,
-        SPLIT_PART(gps, ',', 1)::DOUBLE PRECISION
-    )::geography
+    parse_gps_to_point(gps)
 ) WHERE gps IS NOT NULL AND gps != '';
 
 -- Trigger pour updated_at

@@ -9,13 +9,13 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import BusModelForm, { BusModel } from '../../components/bus/BusModelForm';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import BusModelForm, { BusModel } from '../../components/bus/BusModelForm';
 
 const AgenceVoyageFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -48,7 +48,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const [selectedCompagnies, setSelectedCompagnies] = useState<string[]>([]);
     const [selectedDestinations, setSelectedDestinations] = useState<string[]>([]);
     const [selectedAffiliees, setSelectedAffiliees] = useState<string[]>([]);
-    
+
     // Gestion des modèles de bus
     const [busModels, setBusModels] = useState<BusModel[]>([]);
     const [showBusModelForm, setShowBusModelForm] = useState(false);
@@ -470,6 +470,28 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     </Text>
                 </NativeButton>
             </View>
+
+            <BusModelForm
+                visible={showBusModelForm}
+                onClose={() => {
+                    setShowBusModelForm(false);
+                    setEditingModelIndex(null);
+                }}
+                onSave={(model) => {
+                    if (editingModelIndex !== null) {
+                        // Modifier modèle existant
+                        const updated = [...busModels];
+                        updated[editingModelIndex] = model;
+                        setBusModels(updated);
+                    } else {
+                        // Ajouter nouveau modèle
+                        setBusModels([...busModels, { ...model, id: Date.now().toString() }]);
+                    }
+                    setShowBusModelForm(false);
+                    setEditingModelIndex(null);
+                }}
+                initialModel={editingModelIndex !== null ? busModels[editingModelIndex] : undefined}
+            />
         </ScrollView>
     );
 };
@@ -549,6 +571,97 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    busModelsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    addModelButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        gap: 6,
+    },
+    addModelButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    emptyModelsContainer: {
+        padding: 20,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderStyle: 'dashed',
+        alignItems: 'center',
+    },
+    emptyModelsText: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    emptyModelsHint: {
+        fontSize: 12,
+        color: '#9CA3AF',
+    },
+    modelsList: {
+        gap: 12,
+    },
+    modelCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    modelCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+    },
+    modelName: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    modelDetails: {
+        fontSize: 13,
+        color: '#6B7280',
+    },
+    modelActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    editButton: {
+        padding: 8,
+    },
+    deleteButton: {
+        padding: 8,
+    },
+    equipementsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 8,
+    },
+    equipementChip: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 12,
+    },
+    equipementText: {
+        fontSize: 11,
+        color: '#1E40AF',
+        fontWeight: '500',
     },
 });
 

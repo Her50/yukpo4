@@ -24,7 +24,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(pharmacy_controller::get_pharmacies_on_duty),
         )
         .route(
-            "/api/pharmacies/:id",
+            "/api/pharmacies/{id}",
             get(pharmacy_controller::get_pharmacy),
         )
         // Routes protégées (création) - middleware appliqué au Router
@@ -58,7 +58,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(blood_bank_controller::search_blood_banks),
         )
         .route(
-            "/api/banques-sang/:id",
+            "/api/banques-sang/{id}",
             get(blood_bank_controller::get_blood_bank),
         )
         .route(
@@ -66,7 +66,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(blood_bank_controller::create_blood_bank),
         )
         .route(
-            "/api/banques-sang/:id/stocks",
+            "/api/banques-sang/{id}/stocks",
             post(blood_bank_controller::update_blood_bank_stocks),
         )
         // Routes Tickets Bus (publiques pour recherche, protégées pour liaison)
@@ -75,7 +75,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(bus_ticket_controller::search_bus_tickets),
         )
         .route(
-            "/api/bus-tickets/:product_id/availability",
+            "/api/bus-tickets/{product_id}/availability",
             get(bus_ticket_controller::get_seat_availability),
         )
         .route(

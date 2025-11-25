@@ -8242,9 +8242,8 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20251126_create_specialized_services_tables.sql");
     
-    // Exécuter la migration SQL complète
-    // Note: La migration est déjà compatible SQLx offline (pas de SELECT retournant des résultats)
-    sqlx::query(migration_sql).execute(pool).await?;
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
     
     info!("✅ Tables services spécialisés créées/mises à jour");
     Ok(())
@@ -8274,8 +8273,8 @@ pub async fn ensure_banques_sang_table(pool: &PgPool) -> Result<(), sqlx::Error>
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20251127_create_banques_sang_table.sql");
     
-    // Exécuter la migration SQL complète
-    sqlx::query(migration_sql).execute(pool).await?;
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
     
     info!("✅ Table banques_sang créée/mise à jour");
     Ok(())
@@ -8289,8 +8288,8 @@ pub async fn ensure_bus_tickets_integration(pool: &PgPool) -> Result<(), sqlx::E
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20251127_integrate_bus_tickets_with_agences_voyage.sql");
     
-    // Exécuter la migration SQL complète
-    sqlx::query(migration_sql).execute(pool).await?;
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
     
     info!("✅ Intégration tickets bus avec agences_voyage créée/mise à jour");
     Ok(())

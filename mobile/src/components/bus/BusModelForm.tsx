@@ -14,8 +14,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import SafeIcon from '../SafeIcon';
 import { modernColors } from '../../theme/modernTheme';
+import SafeIcon from '../SafeIcon';
 
 export interface BusModel {
     id?: string;
@@ -261,7 +261,7 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
                                     style={[
                                         styles.chip,
                                         selectedEquipements.includes(equipement) &&
-                                            styles.chipSelected,
+                                        styles.chipSelected,
                                     ]}
                                     onPress={() => toggleEquipement(equipement)}
                                 >
@@ -269,7 +269,7 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
                                         style={[
                                             styles.chipText,
                                             selectedEquipements.includes(equipement) &&
-                                                styles.chipTextSelected,
+                                            styles.chipTextSelected,
                                         ]}
                                     >
                                         {equipement}

@@ -274,6 +274,7 @@ DECLARE
     v_available_seats JSONB;
     v_seat_map JSONB;
     v_seat JSONB;
+    v_reserved_count INTEGER;
 BEGIN
     -- Récupérer le produit
     SELECT 
@@ -308,11 +309,17 @@ BEGIN
         v_seat_map := v_product.seat_map;
     END IF;
     
+    -- Calculer le nombre de places réservées (gérer NULL)
+    v_reserved_count := COALESCE(
+        CASE WHEN v_reserved_seats IS NULL THEN 0 ELSE array_length(v_reserved_seats, 1) END,
+        0
+    );
+    
     -- Marquer les places comme réservées ou disponibles
     v_available_seats := jsonb_build_object(
         'total_seats', v_product.total_seats,
-        'reserved_count', COALESCE(array_length(v_reserved_seats, 1), 0),
-        'available_count', GREATEST(0, COALESCE(v_product.total_seats, 0) - COALESCE(array_length(v_reserved_seats, 1), 0)),
+        'reserved_count', v_reserved_count,
+        'available_count', GREATEST(0, COALESCE(v_product.total_seats, 0) - v_reserved_count),
         'reserved_seats', COALESCE(to_jsonb(v_reserved_seats), '[]'::jsonb),
         'seats', v_seat_map
     );

@@ -57,6 +57,20 @@ Ce dossier contient tous les documents nécessaires pour candidater à des conco
    - Comparaison avec développement traditionnel
    - Cas d'étude : Yukpomnang
 
+9. **GUIDE_CV_DEVELOPPEMENT_IA.md** ⭐ **NOUVEAU**
+   - Guide complet pour structurer votre CV
+   - Profil professionnel recommandé
+   - Compétences techniques et soft skills
+   - Exemples de formulations
+   - Mots-clés pour ATS
+   - Métriques à mettre en avant
+
+10. **EXEMPLE_CV.md** ⭐ **NOUVEAU**
+    - Template de CV prêt à utiliser
+    - Exemple complet basé sur Yukpomnang
+    - Sections pré-remplies avec vos réalisations
+    - Format professionnel et ATS-friendly
+
 ---
 
 ## 🚀 DÉMARRAGE RAPIDE
