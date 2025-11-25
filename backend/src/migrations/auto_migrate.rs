@@ -5462,6 +5462,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto geographic indexes: {}", e),
     }
 
+    // ✅ 2025-11-25 : Correction de l'index idx_services_search_optimized (suppression INCLUDE data)
+    match ensure_services_search_optimized_index_fix(pool).await {
+        Ok(_) => info!("✅ Migration auto: services_search_optimized index fix OK"),
+        Err(e) => error!("❌ Erreur migration auto services_search_optimized index fix: {}", e),
+    }
+
     match ensure_live_streaming_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: live streaming tables OK"),
         Err(e) => error!("❌ Erreur migration auto live streaming: {}", e),
@@ -7338,5 +7344,46 @@ pub async fn ensure_delivery_proof_media_table(pool: &PgPool) -> Result<(), sqlx
     .execute(pool)
     .await?;
     
+    Ok(())
+}
+
+/// ✅ 2025-11-25 : Corrige l'index idx_services_search_optimized en supprimant INCLUDE (data)
+/// pour éviter l'erreur "index row size exceeds btree maximum"
+/// Migration: 20251125_fix_idx_services_search_optimized.sql
+pub async fn ensure_services_search_optimized_index_fix(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/correction de l'index idx_services_search_optimized...");
+    
+    // 1. Supprimer l'ancien index problématique s'il existe avec INCLUDE (data)
+    sqlx::query(
+        "DROP INDEX IF EXISTS idx_services_search_optimized"
+    )
+    .execute(pool)
+    .await?;
+    
+    // 2. Recréer l'index sans INCLUDE (data) pour éviter l'erreur de taille
+    //    On garde seulement user_id dans INCLUDE car c'est un INTEGER (petit, ~4 bytes)
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_services_search_optimized 
+        ON services (is_active, created_at DESC) 
+        INCLUDE (user_id)
+        WHERE is_active = true
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // 3. Ajouter un commentaire pour documenter la modification
+    sqlx::query(
+        r#"
+        COMMENT ON INDEX idx_services_search_optimized IS 
+        'Index optimisé pour recherche active (sans INCLUDE data pour éviter erreur taille B-tree). 
+        Performance: 10-50ms par requête (acceptable). Voir EXPLICATION_INDEX_INCLUDE_DATA.md pour détails.'
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Index idx_services_search_optimized corrigé (sans INCLUDE data)");
     Ok(())
 }

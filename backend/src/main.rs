@@ -16,6 +16,7 @@ use yukpomnang_backend::services::gpu_optimizer::GPUOptimizer;
 use yukpomnang_backend::services::massive_load_handler::MassiveLoadHandler;
 use yukpomnang_backend::services::social_distribution_service;
 use yukpomnang_backend::tasks;
+use sqlx::PgPool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -78,7 +79,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 🔄 Exécuter les migrations SQLx standard au démarrage
     log::info!("🚀 Application des migrations SQLx standard...");
     match sqlx::migrate!("./migrations").run(&pg_pool).await {
-        Ok(_) => log::info!("✅ Migrations SQLx standard appliquées avec succès"),
+        Ok(_) => {
+            log::info!("✅ Migrations SQLx standard appliquées avec succès");
+            
+            // Vérifier si la migration 20251125_fix_idx_services_search_optimized a été appliquée
+            check_index_migration(&pg_pool).await;
+        }
         Err(e) => {
             log::error!("❌ Erreur lors de l'application des migrations SQLx standard: {}", e);
             // On continue quand même, certaines migrations peuvent déjà être appliquées
@@ -282,4 +288,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     serve(listener, app).await?;
 
     Ok(())
+}
+
+/// Vérifie si la migration 20251125_fix_idx_services_search_optimized a été appliquée
+/// en vérifiant que l'index existe et n'inclut pas la colonne data
+async fn check_index_migration(pool: &PgPool) {
+    log::info!("🔍 Vérification de la migration idx_services_search_optimized...");
+    
+    // Vérifier si l'index existe et récupérer sa définition
+    match sqlx::query_scalar::<_, Option<String>>(
+        r#"
+        SELECT indexdef 
+        FROM pg_indexes 
+        WHERE indexname = 'idx_services_search_optimized'
+        LIMIT 1
+        "#
+    )
+    .fetch_optional(pool)
+    .await
+    {
+        Ok(Some(def)) => {
+            // Vérifier si l'index contient "INCLUDE (data" (ancienne version problématique)
+            if def.contains("INCLUDE (data") {
+                log::warn!("⚠️ [MIGRATION] idx_services_search_optimized contient encore INCLUDE (data) - La migration 20251125 n'a peut-être pas été appliquée");
+                log::warn!("   Index actuel: {}", def.chars().take(150).collect::<String>());
+            } else if def.contains("INCLUDE (user_id)") && !def.contains("INCLUDE (data") {
+                log::info!("✅ [MIGRATION] idx_services_search_optimized correctement migré (sans INCLUDE data)");
+                log::debug!("   Index: {}", def.chars().take(150).collect::<String>());
+            } else {
+                log::info!("ℹ️ [MIGRATION] idx_services_search_optimized existe mais structure inattendue");
+                log::debug!("   Index: {}", def.chars().take(150).collect::<String>());
+            }
+        }
+        Ok(None) => {
+            log::warn!("⚠️ [MIGRATION] idx_services_search_optimized n'existe pas encore");
+        }
+        Err(e) => {
+            log::warn!("⚠️ [MIGRATION] Erreur lors de la vérification de idx_services_search_optimized: {}", e);
+        }
+    }
 }

@@ -615,7 +615,7 @@ const HomeScreen: React.FC = () => {
 
                         {/* Titre principal PARFAITEMENT centré */}
                         <View style={styles.brandTitleContainer}>
-                            <Text style={styles.brandTitleCompact} numberOfLines={1} ellipsizeMode="clip">
+                            <Text style={styles.brandTitleCompact} numberOfLines={1} ellipsizeMode="tail">
                                 <Text style={styles.brandYuk}>Yuk</Text>
                                 <Text style={styles.brandPo}>po</Text>
                             </Text>
@@ -969,14 +969,15 @@ const styles = StyleSheet.create({
     headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 8,
+        paddingHorizontal: 4, // ✅ Réduit le padding horizontal pour plus d'espace
         width: '100%',
         justifyContent: 'space-between', // ✅ Espacement entre les sections
+        gap: 4, // ✅ Ajoute un espacement minimal entre les sections
     },
     avatarContainer: {
-        width: 44,
-        height: 44,
-        marginRight: 8,
+        width: 40, // ✅ Réduit de 44 à 40 pour libérer de l'espace
+        height: 40, // ✅ Réduit de 44 à 40 pour libérer de l'espace
+        marginRight: 6, // ✅ Réduit de 8 à 6 pour libérer de l'espace
     },
     // ✅ Colonne gauche avec avatar + langue
     headerLeft: {
@@ -984,14 +985,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-start',
         minWidth: 0,
+        maxWidth: '35%', // ✅ Limite la largeur pour laisser de l'espace au centre
+        flexShrink: 1, // ✅ Permet de rétrécir si nécessaire
     },
     // ✅ Titre centré entre le drapeau et l'icône voiture
     brandTitleContainer: {
         flex: 1, // ✅ Prend l'espace restant au centre
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 8, // ✅ Espacement horizontal pour équilibrer
-        minWidth: 0,
+        paddingHorizontal: 4, // ✅ Réduit l'espacement horizontal
+        minWidth: 70, // ✅ Largeur minimale pour garantir la visibilité de "Yukpo" complet
+        flexShrink: 0, // ✅ Ne pas rétrécir pour éviter la troncature
     },
     // ✅ Colonne droite avec les actions (voiture, chat, notifications)
     headerActionsCompact: {
@@ -1000,6 +1004,8 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         gap: 4,
         minWidth: 0,
+        maxWidth: '35%', // ✅ Limite la largeur pour laisser de l'espace au centre
+        flexShrink: 1, // ✅ Permet de rétrécir si nécessaire
     },
     headerTop: {
         flexDirection: 'row',
@@ -1071,9 +1077,9 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     headerButtonCompact: {
-        width: 38, // ✅ Réduit de 40 à 38 pour plus d'espace
-        height: 38, // ✅ Réduit de 40 à 38 pour plus d'espace
-        borderRadius: 19,
+        width: 36, // ✅ Réduit de 38 à 36 pour plus d'espace
+        height: 36, // ✅ Réduit de 38 à 36 pour plus d'espace
+        borderRadius: 18,
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
@@ -1082,7 +1088,7 @@ const styles = StyleSheet.create({
         borderColor: '#E5E7EB',
     },
     headerButtonIconCompact: {
-        fontSize: 18, // ✅ Réduit de 20 à 18 pour plus d'espace
+        fontSize: 16, // ✅ Réduit de 18 à 16 pour plus d'espace
         color: '#374151',
     },
     notificationBadgeCompact: {
@@ -1152,13 +1158,14 @@ const styles = StyleSheet.create({
     },
     brandTitleCompact: {
         width: '100%', // ✅ Prend toute la largeur disponible
-        fontSize: 19, // ✅ CORRIGÉ : Légèrement réduit pour s'assurer que tout le texte est visible
+        fontSize: 19, // ✅ Taille optimale pour afficher "Yukpo" complet
         fontWeight: '900',
         textAlign: 'center', // ✅ Centrer le texte à l'intérieur
-        letterSpacing: -0.2, // ✅ CORRIGÉ : Réduit pour économiser de l'espace
+        letterSpacing: -0.2, // ✅ Espacement ajusté pour "Yukpo"
         includeFontPadding: false, // ✅ Évite le padding supplémentaire Android
         textAlignVertical: 'center', // ✅ Centre verticalement sur Android
-        flexShrink: 0, // ✅ CORRIGÉ : Ne pas rétrécir pour éviter la troncature
+        flexShrink: 0, // ✅ Ne pas rétrécir pour éviter la troncature
+        overflow: 'visible', // ✅ Permet au texte de dépasser si nécessaire
     },
     brandYuk: {
         color: '#EAB308', // text-yellow-500 du frontend

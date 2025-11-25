@@ -8,9 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import SafeIcon from './SafeIcon';
 import { modernColors } from '../theme/modernTheme';
+import SafeIcon from './SafeIcon';
 
 // 7 langues les plus parlées au monde
 export const LANGUAGES = [
@@ -169,19 +168,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 8, // ✅ Réduit de 12 à 8 pour libérer de l'espace
+    paddingVertical: 6, // ✅ Réduit de 8 à 6 pour libérer de l'espace
     borderRadius: 20,
-    gap: 6,
+    gap: 4, // ✅ Réduit de 6 à 4 pour libérer de l'espace
   },
   flagEmoji: {
     fontSize: 18,
   },
   languageCode: {
-    fontSize: 12,
+    fontSize: 11, // ✅ Réduit de 12 à 11 pour libérer de l'espace
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3, // ✅ Réduit de 0.5 à 0.3 pour libérer de l'espace
   },
 
   // Modal
