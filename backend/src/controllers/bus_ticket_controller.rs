@@ -13,6 +13,7 @@ use axum::{
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sqlx::Row;
 use std::sync::Arc;
 
 // ============================================================================
@@ -297,12 +298,15 @@ pub async fn link_bus_product_to_agency(
 
     // Mettre à jour la config
     let updated_config = if let Some(mut config) = current_config {
+        // S'assurer que modeles_bus existe
+        if !config.get("modeles_bus").is_some() {
+            config["modeles_bus"] = json!([]);
+        }
+        
+        // Obtenir la référence mutable aux modèles
         let modeles = config.get_mut("modeles_bus")
             .and_then(|v| v.as_array_mut())
-            .unwrap_or_else(|| {
-                config["modeles_bus"] = json!([]);
-                config["modeles_bus"].as_array_mut().unwrap()
-            });
+            .expect("modeles_bus devrait être un tableau");
         
         // Vérifier si le produit est déjà lié
         if let Some(existing) = modeles.iter_mut().find(|m| m.get("product_id") == Some(&json!(payload.product_id))) {
