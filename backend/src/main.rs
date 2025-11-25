@@ -307,7 +307,7 @@ async fn check_index_migration(pool: &PgPool) {
     .fetch_optional(pool)
     .await
     {
-        Ok(Some(def)) => {
+        Ok(Some(Some(def))) => {
             // Vérifier si l'index contient "INCLUDE (data" (ancienne version problématique)
             if def.contains("INCLUDE (data") {
                 log::warn!("⚠️ [MIGRATION] idx_services_search_optimized contient encore INCLUDE (data) - La migration 20251125 n'a peut-être pas été appliquée");
@@ -320,7 +320,7 @@ async fn check_index_migration(pool: &PgPool) {
                 log::debug!("   Index: {}", def.chars().take(150).collect::<String>());
             }
         }
-        Ok(None) => {
+        Ok(Some(None)) | Ok(None) => {
             log::warn!("⚠️ [MIGRATION] idx_services_search_optimized n'existe pas encore");
         }
         Err(e) => {
