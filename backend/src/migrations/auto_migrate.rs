@@ -3355,14 +3355,36 @@ pub async fn ensure_products_json_format(pool: &PgPool) -> Result<(), sqlx::Erro
                 devise TEXT;
                 last_numeric_index INTEGER;
                 i INTEGER;
+                parts_length INTEGER;
             BEGIN
-                parts := string_to_array(product_string, ',');
+                -- Gérer le cas où product_string est NULL
+                IF product_string IS NULL OR product_string = '' THEN
+                    RETURN jsonb_build_object(
+                        'nom_produit', 'Produit',
+                        'description_produit', '',
+                        'prix', '0',
+                        'devise', 'XAF'
+                    );
+                END IF;
                 
-                FOR i IN 1..array_length(parts, 1) LOOP
+                parts := string_to_array(product_string, ',');
+                parts_length := COALESCE(array_length(parts, 1), 0);
+                
+                -- Si le tableau est vide ou NULL
+                IF parts_length = 0 THEN
+                    RETURN jsonb_build_object(
+                        'nom_produit', 'Produit',
+                        'description_produit', '',
+                        'prix', '0',
+                        'devise', 'XAF'
+                    );
+                END IF;
+                
+                FOR i IN 1..parts_length LOOP
                     parts[i] := trim(parts[i]);
                 END LOOP;
                 
-                IF array_length(parts, 1) < 2 THEN
+                IF parts_length < 2 THEN
                     RETURN jsonb_build_object(
                         'nom_produit', COALESCE(parts[1], 'Produit'),
                         'description_produit', '',
@@ -3375,7 +3397,7 @@ pub async fn ensure_products_json_format(pool: &PgPool) -> Result<(), sqlx::Erro
                 categorie := parts[2];
                 
                 last_numeric_index := NULL;
-                FOR i IN array_length(parts, 1) DOWNTO 1 LOOP
+                FOR i IN parts_length DOWNTO 1 LOOP
                     IF parts[i] ~ '^\d+\.?\d*$' THEN
                         last_numeric_index := i;
                         EXIT;
@@ -3384,14 +3406,14 @@ pub async fn ensure_products_json_format(pool: &PgPool) -> Result<(), sqlx::Erro
                 
                 IF last_numeric_index IS NOT NULL THEN
                     prix := parts[last_numeric_index];
-                    IF last_numeric_index < array_length(parts, 1) THEN
+                    IF last_numeric_index < parts_length THEN
                         devise := parts[last_numeric_index + 1];
                     ELSE
                         devise := 'XAF';
                     END IF;
                     IF last_numeric_index > 2 THEN
                         description := array_to_string(parts[3:last_numeric_index-1], ', ');
-                    ELSIF array_length(parts, 1) >= 3 THEN
+                    ELSIF parts_length >= 3 THEN
                         description := parts[3];
                     ELSE
                         description := '';
@@ -3399,7 +3421,7 @@ pub async fn ensure_products_json_format(pool: &PgPool) -> Result<(), sqlx::Erro
                 ELSE
                     prix := '0';
                     devise := 'XAF';
-                    IF array_length(parts, 1) >= 3 THEN
+                    IF parts_length >= 3 THEN
                         description := array_to_string(parts[3:], ', ');
                     ELSE
                         description := '';
