@@ -441,6 +441,12 @@ async fn enrich_service_with_google(
                     nom_prestataire.as_ref().unwrap()
                 );
             }
+            Ok(Some(Some(name))) if name.trim().is_empty() => {
+                log::debug!(
+                    "[enrich_service_with_google] Nom trouvé mais vide dans users pour user_id {}",
+                    user_id
+                );
+            }
             Ok(Some(None)) | Ok(None) => {
                 log::debug!(
                     "[enrich_service_with_google] Aucun nom trouvé dans users pour user_id {}",
