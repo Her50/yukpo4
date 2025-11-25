@@ -223,6 +223,13 @@ const ProfileScreen: React.FC = () => {
 
   const profileActions = [
     {
+      title: 'Mes Services Spécialisés',
+      icon: '🏥',
+      color: '#6366F1',
+      route: 'MesServicesSpecialises',
+      description: 'Gérer vos services de santé et transport'
+    },
+    {
       title: 'Devenir coursier Yukpo',
       icon: 'bicycle-outline',
       color: '#10B981',

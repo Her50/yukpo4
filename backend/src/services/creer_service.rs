@@ -434,18 +434,19 @@ async fn enrich_service_with_google(
         .fetch_optional(pool)
         .await
         {
-            Ok(Some(Some(name))) if !name.trim().is_empty() => {
-                nom_prestataire = Some(name.trim().to_string());
-                log::info!(
-                    "[enrich_service_with_google] Nom prestataire récupéré depuis users: {}",
-                    nom_prestataire.as_ref().unwrap()
-                );
-            }
-            Ok(Some(Some(name))) if name.trim().is_empty() => {
-                log::debug!(
-                    "[enrich_service_with_google] Nom trouvé mais vide dans users pour user_id {}",
-                    user_id
-                );
+            Ok(Some(Some(name))) => {
+                if !name.trim().is_empty() {
+                    nom_prestataire = Some(name.trim().to_string());
+                    log::info!(
+                        "[enrich_service_with_google] Nom prestataire récupéré depuis users: {}",
+                        nom_prestataire.as_ref().unwrap()
+                    );
+                } else {
+                    log::debug!(
+                        "[enrich_service_with_google] Nom trouvé mais vide dans users pour user_id {}",
+                        user_id
+                    );
+                }
             }
             Ok(Some(None)) | Ok(None) => {
                 log::debug!(
@@ -1031,7 +1032,7 @@ pub async fn creer_service(
     _redis_client: &redis::Client, // Ajout de Redis pour le caching (désactivé)
 ) -> Result<(serde_json::Value, u32), AppError> {
     // Initialiser le tracking des tokens
-    let mut token_tracker = ServiceCreationTokens::new();
+    let token_tracker = ServiceCreationTokens::new();
 
     // ?? Déballage automatique du champ 'data' à la racine pour compatibilité nouvelle structure IA
     let mut data_processed = data.clone();

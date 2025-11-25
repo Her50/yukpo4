@@ -68,6 +68,7 @@ use crate::routes::{
     recommendation_routes::recommendation_routes,       // ✅ NOUVEAU: Routes recommandations
     search_history_routes::search_history_routes,       // ✅ NOUVEAU: Routes historique recherche
     service_routes::service_routes,
+    specialized_services_routes::specialized_services_routes, // ✅ 2025-11-26: Routes services spécialisés
     shopping_routes::shopping_routes,
     system_health_routes::system_health_routes,
     health_routes::health_routes, // ✅ Phase 10 - Routes de santé
@@ -244,6 +245,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU 2025-11-06: Routes debug pour vérification des tables
     let debug = debug_routes(state.clone());
 
+    // ✅ 2025-11-26: Routes services spécialisés (pharmacies, hôpitaux, laboratoires, agences, covoiturage, taxi)
+    let specialized_services = specialized_services_routes(state.clone());
+
     // ✅ Automatisation IA pour les lives produits
     let live_ai = live_ai_routes(state.clone());
     let live = live_routes(state.clone());
@@ -301,6 +305,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(orders) // ✅ NOUVEAU : Routes pour commandes produits
         .merge(provider_analytics) // ✅ NOUVEAU : Routes analytics prestataire
         .merge(metrics_tracking) // ✅ Routes de tracking métriques frontend
+        .merge(specialized_services) // ✅ 2025-11-26: Routes services spécialisés
         .nest_service("/uploads", uploads_service)
         // .merge(modalities)  // ✅ Routes des modalités personnalisées (déjà dans router_yukpo)
         .nest("/api", recommendation_routes()) // ✅ NOUVEAU : Routes recommandations

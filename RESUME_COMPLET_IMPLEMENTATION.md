@@ -1,81 +1,130 @@
-# ✅ Résumé Complet : Toutes les Modifications Complétées
+# ✅ Résumé Complet : Implémentation Services Spécialisés
 
-## 🎯 Toutes les tâches complétées
+## 📋 État d'Avancement
 
-### Backend ✅
-1. ✅ Système timeout validation étapes
-2. ✅ Système prix négociés (service, routes, table)
-3. ✅ Intégration prix négociés dans ProductPriceService
-4. ✅ Modifications delivery_routes.rs pour prix négociés
-5. ✅ Modifications delivery_service.rs pour stocker suggestions
+### ✅ Backend (100%)
+- [x] Migration SQL créée (6 tables)
+- [x] Intégration dans `0000_create_all_tables.sql`
+- [x] Intégration dans `auto_migrate.rs`
+- [x] Contrôleurs Rust créés :
+  - `pharmacy_controller.rs` (4 fonctions)
+  - `specialized_services_controller.rs` (5 fonctions)
+- [x] Routes API créées (`specialized_services_routes.rs`)
+- [x] Intégration dans `lib.rs` (build_app)
+- [x] Middleware JWT correctement appliqué
 
-### Frontend ✅
-1. ✅ Composant NegotiatedPriceModal créé
-2. ✅ Intégration dans ChatModal
-3. ✅ Modifications OrderDeliveryModal pour prix négociés
+### ✅ Mobile (60%)
+- [x] Page "Mes Services Spécialisés" créée
+- [x] Intégration dans navigation
+- [x] Lien dans ProfileScreen
+- [x] `PharmacieFormScreen.tsx` créé
+- [x] `HopitalFormScreen.tsx` créé
+- [ ] `LaboratoireFormScreen.tsx` (à créer)
+- [ ] `AgenceVoyageFormScreen.tsx` (à créer)
+- [ ] `CovoiturageFormScreen.tsx` (à créer)
+- [ ] `TaxiFormScreen.tsx` (à créer)
+- [x] Routes navigation pour Pharmacie et Hôpital
+- [ ] Routes navigation pour les 4 autres
 
-### Mobile ✅
-1. ✅ Composant NegotiatedPriceModal créé
-2. ✅ Intégration dans ChatModalMobile
-3. ✅ Modifications OrderDeliveryModal pour prix négociés
+### ⏳ Frontend (0%)
+- [ ] Page `MesServicesSpecialisesPage.tsx`
+- [ ] 6 formulaires frontend
+- [ ] Intégration dans routes frontend
 
-## 📋 Fichiers créés/modifiés
+### ⏳ Recherche avec Moment (0%)
+- [ ] Vérifier `native_search_service.rs` (déjà fait, utilise `NOW()`)
+- [ ] Vérifier `scheduling_search_service.rs` (déjà fait)
+- [ ] Ajouter détection spécialisée (pharmacie, hôpital, etc.)
+- [ ] Redirection vers tables spécialisées
 
-### Backend (12 fichiers)
-1. ✅ `backend/src/migrations/auto_migrate.rs`
-2. ✅ `backend/src/tasks/delivery_timeout_monitor.rs` (créé)
-3. ✅ `backend/src/tasks/mod.rs`
-4. ✅ `backend/src/main.rs`
-5. ✅ `backend/src/services/negotiated_price_service.rs` (créé)
-6. ✅ `backend/src/services/mod.rs`
-7. ✅ `backend/src/services/product_price_service.rs`
-8. ✅ `backend/src/services/delivery_service.rs`
-9. ✅ `backend/src/routes/negotiated_price_routes.rs` (créé)
-10. ✅ `backend/src/routes/mod.rs`
-11. ✅ `backend/src/routes/delivery_routes.rs`
-12. ✅ `backend/src/lib.rs`
+### ⏳ Composants d'Affichage (0%)
+- [ ] `PharmacieResultCard.tsx`
+- [ ] `HopitalResultCard.tsx`
+- [ ] `LaboratoireResultCard.tsx`
+- [ ] `AgenceVoyageResultCard.tsx`
+- [ ] `CovoiturageResultCard.tsx`
+- [ ] `TaxiResultCard.tsx`
+- [ ] Modification `ResultatBesoinScreen.tsx` pour affichage conditionnel
 
-### Frontend (3 fichiers)
-1. ✅ `frontend/src/components/chat/ChatModal.tsx`
-2. ✅ `frontend/src/components/delivery/OrderDeliveryModal.tsx`
-3. ✅ `frontend/src/components/chat/NegotiatedPriceModal.tsx` (créé)
+---
 
-### Mobile (3 fichiers)
-1. ✅ `mobile/src/components/ChatModalMobile.tsx`
-2. ✅ `mobile/src/components/delivery/OrderDeliveryModal.tsx`
-3. ✅ `mobile/src/components/chat/NegotiatedPriceModal.tsx` (créé)
+## 🔍 Recherche avec Moment - Analyse
 
-## 🎉 Fonctionnalités implémentées
+### Ce qui existe déjà
 
-### 1. Système de prix négociés
-- ✅ Prestataire peut proposer un prix négocié dans le chat
-- ✅ Client peut accepter/rejeter l'offre
-- ✅ Prix négocié pris en compte lors de la commande (priorité absolue)
-- ✅ Intégration complète frontend et mobile
+1. **`native_search_service.rs`** :
+   - `fulltext_search_with_gps()` appelle `SchedulingSearchService::analyze_search_intent()`
+   - Si intent détecté, utilise `search_with_scheduling()` qui utilise `NOW()`
+   - ✅ **Le moment est déjà intégré !**
 
-### 2. Timeout validation étapes
-- ✅ Auto-confirmation après 30 secondes
-- ✅ Notifications d'alerte après 2 minutes
-- ✅ Stockage des suggestions dans la base de données
+2. **`scheduling_search_service.rs`** :
+   - `analyze_search_intent()` détecte :
+     - `PharmacyOnDuty` (pharmacie + garde/urgent/nuit/24h)
+     - `MedicalServiceAvailable` (médecin/docteur/hôpital + disponible/ouvert/maintenant)
+     - `TimeConstrained` (maintenant/urgent/immédiat)
+   - `search_with_scheduling()` utilise `NOW()` par défaut
 
-### 3. Intégration dans le flux de commande
-- ✅ `conversationId` et `clientUserId` passés dans tous les appels API
-- ✅ Prix négocié vérifié automatiquement lors du calcul du prix
-- ✅ Priorité : Prix négocié > Promotion produit > Promotion globale > Prix de base
+### Ce qu'il faut ajouter
 
-## 📝 Notes importantes
+1. **Détection spécialisée** :
+   - Détecter "pharmacie" → chercher dans table `pharmacies`
+   - Détecter "hôpital"/"clinique" → chercher dans table `hopitaux_cliniques`
+   - Détecter "laboratoire"/"imagerie" → chercher dans table `laboratoires_imagerie`
+   - Détecter "agence voyage"/"ticket bus" → chercher dans table `agences_voyage`
+   - Détecter "covoiturage" → chercher dans table `covoiturages`
+   - Détecter "taxi" → chercher dans table `taxis_ville`
 
-- **Priorité prix** : Prix négocié > Promotion produit > Promotion globale > Prix de base
-- **Timeout** : Auto-confirmation après 30 secondes, notifications d'alerte après 2 minutes
-- **Bouton négociation** : Visible uniquement pour le prestataire dans le chat
-- **TODO optionnel** : 
-  - Récupérer l'ID utilisateur depuis le contexte/auth dans NegotiatedPriceModal
-  - Améliorer la sélection du produit pour la négociation (actuellement hardcodé)
-  - Vérifier/créer l'endpoint `/api/negotiated-prices/pending` si nécessaire
+2. **Fonctions SQL de recherche spécialisées** :
+   - Créer `search_pharmacies_with_moment(query, gps, radius)`
+   - Créer `search_hospitals_with_moment(query, gps, radius)`
+   - Créer `search_laboratories_with_moment(query, gps, radius)`
+   - Créer `search_travel_agencies_with_moment(query, gps, radius)`
+   - Créer `search_covoiturages_with_moment(query, gps, radius, date_depart)`
+   - Créer `search_taxis_with_moment(query, gps, radius)`
 
-## ✅ Statut final
+3. **Modifier `native_search_service.rs`** :
+   - Après `analyze_search_intent()`, ajouter détection spécialisée
+   - Si spécialisé détecté, appeler fonction SQL correspondante
+   - Fusionner résultats avec recherche générale
 
-**Toutes les modifications backend et frontend/mobile sont complétées !**
+---
 
-Le système de prix négociés est maintenant entièrement fonctionnel et intégré dans le chat (frontend et mobile). Les prix négociés sont automatiquement pris en compte lors de la création de commandes de livraison.
+## 📝 Prochaines Étapes Prioritaires
 
+1. **Créer les 4 formulaires mobile restants** (rapide, pattern identique)
+2. **Créer fonctions SQL de recherche spécialisées** (important pour moment)
+3. **Modifier `native_search_service.rs`** pour détection spécialisée
+4. **Créer composants d'affichage** (6 ResultCard)
+5. **Créer formulaires frontend** (pattern identique mobile)
+6. **Créer page frontend** (pattern identique mobile)
+
+---
+
+## 🎯 Architecture Recherche avec Moment
+
+```
+User Search Query
+    ↓
+native_search_service.fulltext_search_with_gps()
+    ↓
+1. analyze_search_intent() → SchedulingIntent?
+    ↓ YES → search_with_scheduling() (utilise NOW())
+    ↓ NO
+2. detect_specialized_type() → SpecializedType?
+    ↓ YES → search_specialized_with_moment() (utilise NOW())
+    ↓ NO
+3. search_services_gps_final() (recherche générale)
+    ↓
+Merge Results (spécialisés + généraux)
+    ↓
+Return SearchResult[]
+```
+
+---
+
+## ✅ Points Clés
+
+- **Moment systématique** : Toutes les recherches spécialisées utilisent `NOW()`
+- **Détection flexible** : IA + mots-clés pour identifier le type
+- **Enrichissement** : Résultats spécialisés enrichissent résultats généraux
+- **Performance** : Index optimisés pour recherches avec moment

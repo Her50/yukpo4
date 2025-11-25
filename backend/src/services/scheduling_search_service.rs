@@ -343,7 +343,53 @@ impl SchedulingSearchService {
     pub fn analyze_search_intent(&self, query: &str) -> SearchIntent {
         let query_lower = query.to_lowercase();
 
-        // Détection de recherche de pharmacie de garde
+        // ✅ NOUVEAU 2025-11-26 : Détection spécialisée (prioritaire)
+        // Pharmacie (simple mention, pas forcément garde)
+        if query_lower.contains("pharmacie") && !query_lower.contains("garde") && !query_lower.contains("urgent") {
+            return SearchIntent::SpecializedPharmacy;
+        }
+
+        // Hôpital/Clinique (simple mention)
+        if query_lower.contains("hôpital") || query_lower.contains("hopital") || query_lower.contains("clinique") {
+            return SearchIntent::SpecializedHospital;
+        }
+
+        // Laboratoire/Imagerie
+        if query_lower.contains("laboratoire") || query_lower.contains("imagerie") || query_lower.contains("analyse") {
+            return SearchIntent::SpecializedLaboratory;
+        }
+
+        // Agence de voyage / Ticket bus
+        if query_lower.contains("agence") && (query_lower.contains("voyage") || query_lower.contains("bus") || query_lower.contains("ticket")) {
+            return SearchIntent::SpecializedTravelAgency;
+        }
+
+        // Covoiturage
+        if query_lower.contains("covoiturage") || query_lower.contains("covoit") {
+            return SearchIntent::SpecializedCovoiturage;
+        }
+
+        // Taxi
+        if query_lower.contains("taxi") {
+            return SearchIntent::SpecializedTaxi;
+        }
+
+        // ✅ NOUVEAU 2025-11-27 : Détection de recherche de banque de sang
+        if query_lower.contains("banque de sang")
+            || query_lower.contains("don de sang")
+            || query_lower.contains("groupe sanguin")
+            || (query_lower.contains("sang") && (
+                query_lower.contains("o+") || query_lower.contains("o-")
+                || query_lower.contains("a+") || query_lower.contains("a-")
+                || query_lower.contains("b+") || query_lower.contains("b-")
+                || query_lower.contains("ab+") || query_lower.contains("ab-")
+                || query_lower.contains("rh+") || query_lower.contains("rh-")
+            ))
+        {
+            return SearchIntent::SpecializedBloodBank;
+        }
+
+        // Détection de recherche de pharmacie de garde (avec contrainte temporelle)
         if query_lower.contains("pharmacie")
             && (query_lower.contains("garde")
                 || query_lower.contains("urgent")
@@ -353,14 +399,12 @@ impl SchedulingSearchService {
             return SearchIntent::PharmacyOnDuty;
         }
 
-        // Détection de recherche de service médical
+        // Détection de recherche de service médical (avec contrainte temporelle)
         if (query_lower.contains("médecin")
             || query_lower.contains("docteur")
             || query_lower.contains("gynécologue")
             || query_lower.contains("cardiologue")
-            || query_lower.contains("urgences")
-            || query_lower.contains("hôpital")
-            || query_lower.contains("clinique"))
+            || query_lower.contains("urgences"))
             && (query_lower.contains("disponible")
                 || query_lower.contains("ouvert")
                 || query_lower.contains("maintenant")
@@ -380,6 +424,110 @@ impl SchedulingSearchService {
 
         SearchIntent::General
     }
+
+    /// ✅ NOUVEAU 2025-11-26 : Détecte si c'est une recherche spécialisée
+    pub fn is_specialized_search(intent: &SearchIntent) -> bool {
+        matches!(
+            intent,
+            SearchIntent::SpecializedPharmacy
+                | SearchIntent::SpecializedHospital
+                | SearchIntent::SpecializedLaboratory
+                | SearchIntent::SpecializedTravelAgency
+                | SearchIntent::SpecializedCovoiturage
+                | SearchIntent::SpecializedTaxi
+                | SearchIntent::SpecializedBloodBank
+        )
+    }
+
+    /// ✅ NOUVEAU 2025-11-27 : Recherche de banques de sang avec moment
+    pub async fn search_banques_sang_with_moment(
+        &self,
+        query: &str,
+        user_lat: Option<f64>,
+        user_lng: Option<f64>,
+        radius_km: Option<f64>,
+    ) -> Result<Vec<SchedulingSearchResult>, String> {
+        let radius = radius_km.unwrap_or(50.0);
+        let user_gps = if let (Some(lat), Some(lng)) = (user_lat, user_lng) {
+            Some(format!("{},{}", lat, lng))
+        } else {
+            None
+        };
+
+        let sql = r#"
+            SELECT 
+                banque_id as id,
+                service_id,
+                nom,
+                adresse,
+                quartier,
+                ville,
+                gps,
+                telephone,
+                telephone_urgence,
+                whatsapp,
+                stocks_groupes_sanguins,
+                accepte_dons,
+                accepte_demandes,
+                urgence_24h,
+                is_available_now,
+                distance_km,
+                relevance_score
+            FROM search_banques_sang_with_moment($1, $2, $3, NULL, FALSE, FALSE)
+        "#;
+
+        let rows = sqlx::query(sql)
+            .bind(query)
+            .bind(user_gps)
+            .bind(radius as i32)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| format!("Erreur recherche banques de sang: {}", e))?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            let service_id: i32 = row.get("service_id");
+            let nom: String = row.get("nom");
+            let distance: Option<f64> = row.get("distance_km");
+            let score: f64 = row.get("relevance_score");
+            let is_available: bool = row.get("is_available_now");
+            let stocks: serde_json::Value = row.get("stocks_groupes_sanguins");
+            let urgence_24h: bool = row.get("urgence_24h");
+
+            let data = serde_json::json!({
+                "titre_service": {"valeur": nom},
+                "type": "banque_sang",
+                "is_available_now": is_available,
+                "urgence_24h": urgence_24h,
+                "stocks_groupes_sanguins": stocks,
+                "accepte_dons": row.get::<bool, _>("accepte_dons"),
+                "accepte_demandes": row.get::<bool, _>("accepte_demandes"),
+                "adresse": row.get::<Option<String>, _>("adresse"),
+                "quartier": row.get::<Option<String>, _>("quartier"),
+                "ville": row.get::<Option<String>, _>("ville"),
+                "telephone": row.get::<Option<String>, _>("telephone"),
+                "telephone_urgence": row.get::<Option<String>, _>("telephone_urgence"),
+                "whatsapp": row.get::<Option<String>, _>("whatsapp"),
+            });
+
+            results.push(SchedulingSearchResult {
+                service_id,
+                product_data: data,
+                relevance_score: score,
+                distance_km: distance,
+                is_available_now: is_available,
+                availability_info: if urgence_24h {
+                    "Urgence 24h/24".to_string()
+                } else if is_available {
+                    "Disponible maintenant".to_string()
+                } else {
+                    "Fermé".to_string()
+                },
+            });
+        }
+
+        Ok(results)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -388,6 +536,15 @@ pub enum SearchIntent {
     MedicalServiceAvailable,
     TimeConstrained,
     General,
+    // ✅ NOUVEAU 2025-11-26 : Intentions spécialisées
+    SpecializedPharmacy,
+    SpecializedHospital,
+    SpecializedLaboratory,
+    SpecializedTravelAgency,
+    SpecializedCovoiturage,
+    SpecializedTaxi,
+    // ✅ NOUVEAU 2025-11-27 : Banque de sang (service spécialisé isolé)
+    SpecializedBloodBank,
 }
 
 impl SearchIntent {

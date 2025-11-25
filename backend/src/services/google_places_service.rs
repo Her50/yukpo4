@@ -84,7 +84,7 @@ struct AddressComponent {
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct SearchPlace {
+pub struct SearchPlace {
     id: Option<String>,
     display_name: Option<TextValue>,
     formatted_address: Option<String>,

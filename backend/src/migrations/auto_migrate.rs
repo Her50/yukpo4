@@ -5300,6 +5300,81 @@ pub async fn ensure_product_stock_management(pool: &PgPool) -> Result<(), sqlx::
     Ok(())
 }
 
+/// Vérifie et crée la table google_places_data si elle n'existe pas
+pub async fn ensure_google_places_data_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table google_places_data...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS google_places_data (
+            id SERIAL PRIMARY KEY,
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            place_id TEXT NOT NULL,
+            display_name TEXT,
+            formatted_address TEXT,
+            location_vector TEXT[],
+            latitude DOUBLE PRECISION,
+            longitude DOUBLE PRECISION,
+            types TEXT[],
+            primary_type TEXT,
+            primary_type_display_name TEXT,
+            rating DOUBLE PRECISION,
+            rating_count INTEGER,
+            price_level TEXT,
+            business_status TEXT,
+            serves_cuisine TEXT[],
+            website_uri TEXT,
+            google_maps_uri TEXT,
+            international_phone_number TEXT,
+            national_phone_number TEXT,
+            editorial_summary TEXT,
+            current_opening_hours JSONB,
+            regular_opening_hours JSONB,
+            photos JSONB,
+            country TEXT,
+            country_code TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            CONSTRAINT unique_service_place UNIQUE (service_id, place_id)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_google_places_data_service_id ON google_places_data(service_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_google_places_data_place_id ON google_places_data(place_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_google_places_data_location_vector ON google_places_data USING GIN(location_vector)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_google_places_data_types ON google_places_data USING GIN(types)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_google_places_data_cuisine ON google_places_data USING GIN(serves_cuisine)",
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 pub async fn run_auto_migrations(pool: &PgPool) {
     info!("🚀 Démarrage des migrations automatiques...");
 
@@ -5307,6 +5382,11 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_geo_hierarchy_table(pool).await {
         Ok(_) => info!("✅ Migration auto: geo_hierarchy OK"),
         Err(e) => error!("❌ Erreur migration auto geo_hierarchy: {}", e),
+    }
+
+    match ensure_google_places_data_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: google_places_data OK"),
+        Err(e) => error!("❌ Erreur migration auto google_places_data: {}", e),
     }
 
     match ensure_media_analytics_tables(pool).await {
@@ -5490,6 +5570,24 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_scheduling_search_functions(pool).await {
         Ok(_) => info!("✅ Migration auto: scheduling search functions OK"),
         Err(e) => error!("❌ Erreur migration auto scheduling search functions: {}", e),
+    }
+
+    // ✅ 2025-11-26 : Tables pour services spécialisés (Santé et Transport)
+    match ensure_specialized_services_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: specialized services tables OK"),
+        Err(e) => error!("❌ Erreur migration auto specialized services tables: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Table banques de sang (service spécialisé isolé)
+    match ensure_banques_sang_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: banques_sang table OK"),
+        Err(e) => error!("❌ Erreur migration auto banques_sang table: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Intégration tickets bus avec agences de voyage
+    match ensure_bus_tickets_integration(pool).await {
+        Ok(_) => info!("✅ Migration auto: bus tickets integration OK"),
+        Err(e) => error!("❌ Erreur migration auto bus tickets integration: {}", e),
     }
 
     match ensure_live_streaming_tables(pool).await {
@@ -8133,5 +8231,67 @@ pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sql
     .await?;
     
     info!("✅ Fonctions de recherche avec planification créées/mises à jour");
+    Ok(())
+}
+
+/// ✅ 2025-11-26 : Crée les tables pour services spécialisés (Santé et Transport)
+/// Compatible SQLx offline mode
+pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification et création des tables services spécialisés...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251126_create_specialized_services_tables.sql");
+    
+    // Exécuter la migration SQL complète
+    // Note: La migration est déjà compatible SQLx offline (pas de SELECT retournant des résultats)
+    sqlx::query(migration_sql).execute(pool).await?;
+    
+    info!("✅ Tables services spécialisés créées/mises à jour");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-11-26 : Créer les fonctions de recherche spécialisées avec moment
+pub async fn ensure_specialized_search_functions(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des fonctions de recherche spécialisées avec moment...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251126_search_specialized_services_with_moment.sql");
+    
+    // Exécuter la migration
+    sqlx::query(migration_sql)
+        .execute(pool)
+        .await?;
+    
+    info!("✅ Fonctions de recherche spécialisées créées/mises à jour");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-11-27 : Créer la table banques_sang (service spécialisé isolé)
+/// Compatible SQLx offline mode
+pub async fn ensure_banques_sang_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification et création de la table banques_sang...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251127_create_banques_sang_table.sql");
+    
+    // Exécuter la migration SQL complète
+    sqlx::query(migration_sql).execute(pool).await?;
+    
+    info!("✅ Table banques_sang créée/mise à jour");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-11-27 : Intégrer tickets bus avec agences de voyage
+/// Compatible SQLx offline mode
+pub async fn ensure_bus_tickets_integration(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification et intégration tickets bus avec agences_voyage...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251127_integrate_bus_tickets_with_agences_voyage.sql");
+    
+    // Exécuter la migration SQL complète
+    sqlx::query(migration_sql).execute(pool).await?;
+    
+    info!("✅ Intégration tickets bus avec agences_voyage créée/mise à jour");
     Ok(())
 }

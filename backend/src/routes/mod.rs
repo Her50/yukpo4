@@ -58,6 +58,7 @@ pub mod vehicle_model_routes;
 pub mod weather_routes;
 pub mod webhook_routes;
 pub mod webrtc_routes; // ✅ Routes WebRTC pour appels // ✅ NOUVEAU 2025-11-06: Routes de debug pour vérification tables autocomplete/localisation
+pub mod specialized_services_routes; // ✅ 2025-11-26: Routes pour services spécialisés (pharmacies, hôpitaux, laboratoires, agences, covoiturage, taxi)
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

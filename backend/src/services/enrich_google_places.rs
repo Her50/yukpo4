@@ -2,7 +2,7 @@
 use crate::core::types::AppError;
 use log::warn;
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 /// Enrichit un service avec les données Google Places complètes depuis google_places_data
 /// Remplace le place_id dans services.data.google_place par les données complètes
@@ -83,11 +83,6 @@ pub async fn enrich_service_with_google_places_data(
             if let Some(data_obj) = service_data.as_object_mut() {
                 data_obj.insert("google_place".to_string(), gp_data);
             }
-        }
-        
-        // Remplacer le place_id par l'objet complet dans service_data
-        if let Some(data_obj) = service_data.as_object_mut() {
-            data_obj.insert("google_place".to_string(), Value::Object(google_place_obj));
         }
     } else {
         warn!(

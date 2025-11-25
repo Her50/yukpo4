@@ -43,6 +43,7 @@ pub mod product_enrichment_service; // ✅ NOUVEAU : Enrichissement produits ave
 pub mod embedding_client;
 pub mod embedding_service;
 pub mod embedding_tracker;
+pub mod enrich_google_places; // ✅ NOUVEAU: Enrichissement services avec données Google Places complètes
 pub mod exhaustive_combination_generator;
 pub mod file_extractor;
 pub mod fournitures_service;

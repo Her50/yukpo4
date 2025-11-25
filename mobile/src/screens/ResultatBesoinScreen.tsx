@@ -28,6 +28,13 @@ import ModernGPSModal from '../components/ModernGPSModal';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
+// ✅ NOUVEAU 2025-11-26 : Composants spécialisés
+import AgenceVoyageResultCard from '../components/specialized/AgenceVoyageResultCard';
+import CovoiturageResultCard from '../components/specialized/CovoiturageResultCard';
+import HopitalResultCard from '../components/specialized/HopitalResultCard';
+import LaboratoireResultCard from '../components/specialized/LaboratoireResultCard';
+import PharmacieResultCard from '../components/specialized/PharmacieResultCard';
+import TaxiResultCard from '../components/specialized/TaxiResultCard';
 import { useLocation } from '../contexts/LocationContext';
 import { apiPost } from '../services/api';
 import { trackNavigation } from '../services/metricsTracking';
@@ -1529,28 +1536,211 @@ const ResultatBesoinScreen: React.FC = () => {
       <Animated.FlatList
         data={listData}
         keyExtractor={(item) => `${item.service_id}`}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => {
-              // ✅ Tracking métriques : Clic sur produit
-              trackNavigation('click', {
-                itemType: 'product',
-                itemId: item.service_id?.toString(),
-              });
-            }}
-          >
-            <ProductCard
-              product={item}
-              service={{
-                ...item,
-                data: item.data || {},
-                user: item.user || null,
-                prestataire: item.prestataire || null,
-              } as any}
-            />
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => {
+          // ✅ NOUVEAU 2025-11-26 : Détecter le type de résultat et utiliser le composant spécialisé
+          const searchMethod = (item as any).search_method || '';
+          const data = item.data || {};
+          const type = data.type || (item as any).type || '';
+
+          // Détecter le type spécialisé
+          if (searchMethod.includes('specialized_pharmacy') || type === 'pharmacie') {
+            return (
+              <PharmacieResultCard
+                pharmacy={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  nom: data.titre_service?.valeur || item.nom || '',
+                  adresse: data.adresse,
+                  quartier: data.quartier,
+                  ville: data.ville,
+                  telephone: data.telephone,
+                  whatsapp: data.whatsapp,
+                  is_on_duty_now: data.is_on_duty_now,
+                  distance_km: item.distance_km,
+                  services: data.services,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'pharmacy',
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          if (searchMethod.includes('specialized_hospital') || type === 'hopital_clinique') {
+            return (
+              <HopitalResultCard
+                hospital={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  nom: data.titre_service?.valeur || item.nom || '',
+                  type_etablissement: data.type_etablissement,
+                  adresse: data.adresse,
+                  quartier: data.quartier,
+                  ville: data.ville,
+                  telephone: data.telephone,
+                  whatsapp: data.whatsapp,
+                  is_available_now: data.is_available_now,
+                  distance_km: item.distance_km,
+                  prestations_medicales: data.prestations_medicales,
+                  urgences_disponible: data.urgences_disponible,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'hospital',
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          if (searchMethod.includes('specialized_laboratory') || type === 'laboratoire_imagerie') {
+            return (
+              <LaboratoireResultCard
+                laboratory={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  nom: data.titre_service?.valeur || item.nom || '',
+                  type_laboratoire: data.type_laboratoire,
+                  quartier: data.quartier,
+                  ville: data.ville,
+                  telephone: data.telephone,
+                  whatsapp: data.whatsapp,
+                  is_available_now: data.is_available_now,
+                  distance_km: item.distance_km,
+                  analyses_disponibles: data.analyses_disponibles,
+                  imagerie_disponible: data.imagerie_disponible,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'laboratory',
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          if (searchMethod.includes('specialized_travel_agency') || type === 'agence_voyage') {
+            return (
+              <AgenceVoyageResultCard
+                agency={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  nom_agence: data.titre_service?.valeur || item.nom || '',
+                  quartier: data.quartier,
+                  ville: data.ville,
+                  telephone: data.telephone,
+                  whatsapp: data.whatsapp,
+                  peut_emettre_tickets_bus: data.peut_emettre_tickets_bus,
+                  distance_km: item.distance_km,
+                  services_voyage: data.services_voyage,
+                  compagnies_bus: data.compagnies_bus,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'travel_agency',
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          if (searchMethod.includes('specialized_covoiturage') || type === 'covoiturage') {
+            return (
+              <CovoiturageResultCard
+                covoiturage={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  depart: data.depart || '',
+                  destination: data.destination || '',
+                  date_depart: data.date_depart || '',
+                  heure_depart: data.heure_depart || '',
+                  nombre_places: data.nombre_places || 4,
+                  places_disponibles: data.places_disponibles || 0,
+                  prix_par_place: data.prix_par_place || 0,
+                  devise: data.devise || 'XAF',
+                  distance_km: item.distance_km,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'covoiturage',
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          if (searchMethod.includes('specialized_taxi') || type === 'taxi_ville') {
+            return (
+              <TaxiResultCard
+                taxi={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  nom_chauffeur: data.titre_service?.valeur || data.nom_chauffeur,
+                  telephone: data.telephone || '',
+                  whatsapp: data.whatsapp,
+                  zone_intervention: data.zone_intervention,
+                  is_available_now: data.is_available_now,
+                  is_on_duty: data.is_on_duty,
+                  distance_km: item.distance_km,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'taxi',
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          // Par défaut, utiliser ProductCard pour les résultats généraux
+          return (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                trackNavigation('click', {
+                  itemType: 'product',
+                  itemId: item.service_id?.toString(),
+                });
+              }}
+            >
+              <ProductCard
+                product={item}
+                service={{
+                  ...item,
+                  data: item.data || {},
+                  user: item.user || null,
+                  prestataire: item.prestataire || null,
+                } as any}
+              />
+            </TouchableOpacity>
+          );
+        }}
         ListHeaderComponent={listHeaderComponent}
         ListFooterComponent={renderListFooter}
         ListEmptyComponent={renderEmptyComponent}

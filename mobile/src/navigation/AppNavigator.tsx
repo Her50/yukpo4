@@ -22,6 +22,7 @@ import HomeScreen from '../screens/HomeScreen';
 import MesInteractionsScreen from '../screens/MesInteractionsScreen';
 import MesServicesScreen from '../screens/MesServicesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServicesSpecialisesScreen';
 
 // ✅ IMPORTS DIRECTS - Écrans secondaires
 import AjouterProduitSimpleScreen from '../screens/AjouterProduitSimpleScreen';
@@ -42,6 +43,7 @@ import StorageLocationsScreen from '../screens/delivery/StorageLocationsScreen';
 import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
 import MesProduitsScreen from '../screens/MesProduitsScreen';
+import MesServicesSpecialisesScreen from '../screens/MesServicesSpecialisesScreen';
 import OrderStatusScreen from '../screens/OrderStatusScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import GlobalPromoManagerScreen from '../screens/promo/GlobalPromoManagerScreen';
@@ -52,6 +54,13 @@ import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
 import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
+import AgenceVoyageFormScreen from '../screens/specialized/AgenceVoyageFormScreen';
+import BanqueSangFormScreen from '../screens/specialized/BanqueSangFormScreen';
+import CovoiturageFormScreen from '../screens/specialized/CovoiturageFormScreen';
+import HopitalFormScreen from '../screens/specialized/HopitalFormScreen';
+import LaboratoireFormScreen from '../screens/specialized/LaboratoireFormScreen';
+import PharmacieFormScreen from '../screens/specialized/PharmacieFormScreen';
+import TaxiFormScreen from '../screens/specialized/TaxiFormScreen';
 import VideoCreationIntroScreen from '../screens/video/VideoCreationIntroScreen';
 import VideoCreationWizardScreen from '../screens/video/VideoCreationWizardScreen';
 import VideoGenerationResultScreen from '../screens/video/VideoGenerationResultScreen';
@@ -68,6 +77,7 @@ const HomeScreenWithSafeArea = withNavigatorSafeArea(HomeScreen);
 const MesInteractionsScreenWithSafeArea = withNavigatorSafeArea(MesInteractionsScreen);
 const MesServicesScreenWithSafeArea = withNavigatorSafeArea(MesServicesScreen);
 const ProfileScreenWithSafeArea = withNavigatorSafeArea(ProfileScreen);
+const GestionServicesSpecialisesScreenWithSafeArea = withNavigatorSafeArea(GestionServicesSpecialisesScreen);
 const MesProduitsScreenWithSafeArea = withNavigatorSafeArea(MesProduitsScreen);
 const ContactScreenWithSafeArea = withNavigatorSafeArea(ContactScreen);
 const EnhancedSettingsScreenWithSafeArea = withNavigatorSafeArea(EnhancedSettingsScreen);
@@ -83,6 +93,14 @@ const CreatePubliciteScreenWithSafeArea = withNavigatorSafeArea(CreatePubliciteS
 const PubliciteDashboardScreenWithSafeArea = withNavigatorSafeArea(PubliciteDashboardScreen);
 const SoldeDetailScreenWithSafeArea = withNavigatorSafeArea(SoldeDetailScreen);
 const YukpoServicePlaceholderScreenWithSafeArea = withNavigatorSafeArea(YukpoServicePlaceholderScreen);
+const MesServicesSpecialisesScreenWithSafeArea = withNavigatorSafeArea(MesServicesSpecialisesScreen);
+const PharmacieFormScreenWithSafeArea = withNavigatorSafeArea(PharmacieFormScreen);
+const HopitalFormScreenWithSafeArea = withNavigatorSafeArea(HopitalFormScreen);
+const LaboratoireFormScreenWithSafeArea = withNavigatorSafeArea(LaboratoireFormScreen);
+const BanqueSangFormScreenWithSafeArea = withNavigatorSafeArea(BanqueSangFormScreen);
+const AgenceVoyageFormScreenWithSafeArea = withNavigatorSafeArea(AgenceVoyageFormScreen);
+const CovoiturageFormScreenWithSafeArea = withNavigatorSafeArea(CovoiturageFormScreen);
+const TaxiFormScreenWithSafeArea = withNavigatorSafeArea(TaxiFormScreen);
 const VideoFeedScreenWithSafeArea = withNavigatorSafeArea(VideoFeedScreen);
 const VideoAnalyticsScreenWithSafeArea = withNavigatorSafeArea(VideoAnalyticsScreen);
 const VideoCreationIntroScreenWithSafeArea = withNavigatorSafeArea(VideoCreationIntroScreen);
@@ -149,6 +167,7 @@ const MainStack = () => {
   console.log('[AppNavigator] 📱 Rendu MainStack');
   const { user } = useAuth();
   const [isCourier, setIsCourier] = useState(false);
+  const [hasSpecializedServices, setHasSpecializedServices] = useState(false);
 
   // ✅ NOUVEAU : Vérifier si l'utilisateur est coursier
   useEffect(() => {
@@ -170,6 +189,46 @@ const MainStack = () => {
     };
 
     checkCourierStatus();
+  }, [user?.id]);
+
+  // ✅ NOUVEAU 2025-11-26 : Vérifier si l'utilisateur a des services spécialisés
+  useEffect(() => {
+    const checkSpecializedServices = async () => {
+      if (!user?.id) {
+        setHasSpecializedServices(false);
+        return;
+      }
+
+      try {
+        const { apiGet } = require('../services/api');
+        // Vérifier si l'utilisateur a au moins un service spécialisé
+        const [pharmacies, hopitaux, laboratoires, banques_sang, agences, covoiturages, taxis] = await Promise.all([
+          apiGet('/api/pharmacies').catch(() => ({ success: false, data: [] })),
+          apiGet('/api/hopitaux').catch(() => ({ success: false, data: [] })),
+          apiGet('/api/laboratoires').catch(() => ({ success: false, data: [] })),
+          apiGet('/api/banques-sang').catch(() => ({ success: false, data: [] })),
+          apiGet('/api/agences-voyage').catch(() => ({ success: false, data: [] })),
+          apiGet('/api/covoiturages').catch(() => ({ success: false, data: [] })),
+          apiGet('/api/taxis').catch(() => ({ success: false, data: [] })),
+        ]);
+
+        const hasAny =
+          (pharmacies.success && Array.isArray(pharmacies.data) && pharmacies.data.length > 0) ||
+          (hopitaux.success && Array.isArray(hopitaux.data) && hopitaux.data.length > 0) ||
+          (laboratoires.success && Array.isArray(laboratoires.data) && laboratoires.data.length > 0) ||
+          (banques_sang.success && Array.isArray(banques_sang.data) && banques_sang.data.length > 0) ||
+          (agences.success && Array.isArray(agences.data) && agences.data.length > 0) ||
+          (covoiturages.success && Array.isArray(covoiturages.data) && covoiturages.data.length > 0) ||
+          (taxis.success && Array.isArray(taxis.data) && taxis.data.length > 0);
+
+        setHasSpecializedServices(hasAny);
+      } catch (error) {
+        console.error('[AppNavigator] Erreur vérification services spécialisés:', error);
+        setHasSpecializedServices(false);
+      }
+    };
+
+    checkSpecializedServices();
   }, [user?.id]);
 
   return (
@@ -206,14 +265,26 @@ const MainStack = () => {
           tabBarLabel: 'Vidéo',
         }}
       />
-      <Tab.Screen
-        name="Services"
-        component={MesProduitsScreenWithSafeArea}
-        options={{
-          tabBarLabel: 'Mes Services',
-          title: 'Mes Services',
-        }}
-      />
+      {/* ✅ NOUVEAU 2025-11-26 : Remplacer "Mes Services" par "Gestion Services Spécialisés" si l'utilisateur en a */}
+      {hasSpecializedServices ? (
+        <Tab.Screen
+          name="GestionServicesSpecialises"
+          component={GestionServicesSpecialisesScreenWithSafeArea}
+          options={{
+            tabBarLabel: 'Mes Services',
+            title: 'Gestion Services Spécialisés',
+          }}
+        />
+      ) : (
+        <Tab.Screen
+          name="Services"
+          component={MesProduitsScreenWithSafeArea}
+          options={{
+            tabBarLabel: 'Mes Services',
+            title: 'Mes Services',
+          }}
+        />
+      )}
       {/* ✅ NOUVEAU : Masquer l'onglet Historique si l'utilisateur est coursier */}
       {!isCourier && (
         <Tab.Screen name="History" component={MesInteractionsScreenWithSafeArea} options={{ tabBarLabel: 'Historique' }} />
@@ -268,6 +339,15 @@ const SecondaryStack = () => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Main" component={MainStack} />
         <Stack.Screen name="Contact" component={ContactScreenWithSafeArea} />
+        <Stack.Screen name="MesServicesSpecialises" component={MesServicesSpecialisesScreenWithSafeArea} />
+        <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreenWithSafeArea} />
+        <Stack.Screen name="PharmacieForm" component={PharmacieFormScreenWithSafeArea} />
+        <Stack.Screen name="HopitalForm" component={HopitalFormScreenWithSafeArea} />
+        <Stack.Screen name="LaboratoireForm" component={LaboratoireFormScreenWithSafeArea} />
+        <Stack.Screen name="BanqueSangForm" component={BanqueSangFormScreenWithSafeArea} />
+        <Stack.Screen name="AgenceVoyageForm" component={AgenceVoyageFormScreenWithSafeArea} />
+        <Stack.Screen name="CovoiturageForm" component={CovoiturageFormScreenWithSafeArea} />
+        <Stack.Screen name="TaxiForm" component={TaxiFormScreenWithSafeArea} />
         <Stack.Screen name="Settings" component={EnhancedSettingsScreenWithSafeArea} />
         <Stack.Screen name="RechargeTokens" component={RechargeTokensScreenWithSafeArea} />
         <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentWithSafeArea} />

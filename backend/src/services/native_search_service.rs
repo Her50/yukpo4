@@ -261,6 +261,21 @@ impl NativeSearchService {
             }
         }
 
+        // ✅ NOUVEAU: Enrichir tous les résultats avec les données Google Places complètes
+        for result in &mut fulltext_results {
+            if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                &self.pool,
+                result.service_id,
+                &mut result.data
+            ).await {
+                log::warn!(
+                    "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
+                    result.service_id,
+                    e
+                );
+            }
+        }
+
         // Trier les résultats (pas de limite)
         fulltext_results.sort_by(|a, b| {
             b.total_score
@@ -301,9 +316,404 @@ impl NativeSearchService {
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
     ) -> AppResult<Vec<SearchResult>> {
-        // Analyser l'intention de recherche pour détecter les planifications
+        // Analyser l'intention de recherche pour détecter les planifications et services spécialisés
         let scheduling_service = SchedulingSearchService::new(self.pool.clone());
         let intent = scheduling_service.analyze_search_intent(query);
+
+        // ✅ NOUVEAU 2025-11-26 : Si recherche spécialisée, utiliser les tables dédiées
+        if SchedulingSearchService::is_specialized_search(&intent) {
+            log_info(&format!(
+                "[NativeSearch] Recherche spécialisée détectée: {:?}",
+                intent
+            ));
+
+            let radius = search_radius_km.unwrap_or(50);
+            let mut results: Vec<SearchResult> = Vec::new();
+
+            match intent {
+                crate::services::scheduling_search_service::SearchIntent::SpecializedPharmacy => {
+                    let sql = r#"
+                        SELECT 
+                            pharmacy_id as id,
+                            service_id,
+                            nom,
+                            adresse,
+                            quartier,
+                            ville,
+                            gps,
+                            telephone,
+                            whatsapp,
+                            is_on_duty_now,
+                            distance_km,
+                            relevance_score
+                        FROM search_pharmacies_with_moment($1, $2, $3, FALSE)
+                    "#;
+                    let rows = sqlx::query(sql)
+                        .bind(query)
+                        .bind(gps_zone)
+                        .bind(radius)
+                        .fetch_all(&self.pool)
+                        .await
+                        .map_err(|e| format!("Erreur recherche pharmacies: {}", e))?;
+
+                    for row in rows {
+                        let service_id: i32 = row.get("service_id");
+                        let nom: String = row.get("nom");
+                        let is_on_duty: bool = row.get("is_on_duty_now");
+                        let distance: Option<f64> = row.get("distance_km");
+                        let score: f64 = row.get("relevance_score");
+
+                        // Construire data JSONB
+                        let data = serde_json::json!({
+                            "titre_service": {"valeur": nom},
+                            "type": "pharmacie",
+                            "is_on_duty_now": is_on_duty,
+                            "adresse": row.get::<Option<String>, _>("adresse"),
+                            "quartier": row.get::<Option<String>, _>("quartier"),
+                            "ville": row.get::<Option<String>, _>("ville"),
+                            "telephone": row.get::<Option<String>, _>("telephone"),
+                            "whatsapp": row.get::<Option<String>, _>("whatsapp"),
+                        });
+
+                        results.push(SearchResult {
+                            service_id,
+                            data,
+                            total_score: score as f32,
+                            fulltext_score: score as f32,
+                            trigram_score: 0.0,
+                            recency_score: 0.0,
+                            category_score: 0.0,
+                            search_method: "specialized_pharmacy".to_string(),
+                            matched_fields: vec!["nom".to_string(), "is_on_duty_now".to_string()],
+                            distance_km: distance,
+                            gps_coords: None,
+                        });
+                    }
+                }
+                crate::services::scheduling_search_service::SearchIntent::SpecializedHospital => {
+                    let sql = r#"
+                        SELECT 
+                            hospital_id as id,
+                            service_id,
+                            nom,
+                            type_etablissement,
+                            adresse,
+                            quartier,
+                            ville,
+                            gps,
+                            telephone,
+                            whatsapp,
+                            is_available_now,
+                            distance_km,
+                            relevance_score
+                        FROM search_hospitals_with_moment($1, $2, $3, FALSE)
+                    "#;
+                    let rows = sqlx::query(sql)
+                        .bind(query)
+                        .bind(gps_zone)
+                        .bind(radius)
+                        .fetch_all(&self.pool)
+                        .await
+                        .map_err(|e| format!("Erreur recherche hôpitaux: {}", e))?;
+
+                    for row in rows {
+                        let service_id: i32 = row.get("service_id");
+                        let nom: String = row.get("nom");
+                        let is_available: bool = row.get("is_available_now");
+                        let distance: Option<f64> = row.get("distance_km");
+                        let score: f64 = row.get("relevance_score");
+
+                        let data = serde_json::json!({
+                            "titre_service": {"valeur": nom},
+                            "type": "hopital_clinique",
+                            "is_available_now": is_available,
+                            "type_etablissement": row.get::<Option<String>, _>("type_etablissement"),
+                            "adresse": row.get::<Option<String>, _>("adresse"),
+                            "telephone": row.get::<Option<String>, _>("telephone"),
+                        });
+
+                        results.push(SearchResult {
+                            service_id,
+                            data,
+                            total_score: score as f32,
+                            fulltext_score: score as f32,
+                            trigram_score: 0.0,
+                            recency_score: 0.0,
+                            category_score: 0.0,
+                            search_method: "specialized_hospital".to_string(),
+                            matched_fields: vec!["nom".to_string(), "is_available_now".to_string()],
+                            distance_km: distance,
+                            gps_coords: None,
+                        });
+                    }
+                }
+                crate::services::scheduling_search_service::SearchIntent::SpecializedLaboratory => {
+                    let sql = r#"
+                        SELECT 
+                            laboratory_id as id,
+                            service_id,
+                            nom,
+                            type_laboratoire,
+                            adresse,
+                            quartier,
+                            ville,
+                            gps,
+                            telephone,
+                            whatsapp,
+                            is_available_now,
+                            distance_km,
+                            relevance_score
+                        FROM search_laboratories_with_moment($1, $2, $3)
+                    "#;
+                    let rows = sqlx::query(sql)
+                        .bind(query)
+                        .bind(gps_zone)
+                        .bind(radius)
+                        .fetch_all(&self.pool)
+                        .await
+                        .map_err(|e| format!("Erreur recherche laboratoires: {}", e))?;
+
+                    for row in rows {
+                        let service_id: i32 = row.get("service_id");
+                        let nom: String = row.get("nom");
+                        let distance: Option<f64> = row.get("distance_km");
+                        let score: f64 = row.get("relevance_score");
+
+                        let data = serde_json::json!({
+                            "titre_service": {"valeur": nom},
+                            "type": "laboratoire_imagerie",
+                            "type_laboratoire": row.get::<Option<String>, _>("type_laboratoire"),
+                            "adresse": row.get::<Option<String>, _>("adresse"),
+                            "telephone": row.get::<Option<String>, _>("telephone"),
+                        });
+
+                        results.push(SearchResult {
+                            service_id,
+                            data,
+                            total_score: score as f32,
+                            fulltext_score: score as f32,
+                            trigram_score: 0.0,
+                            recency_score: 0.0,
+                            category_score: 0.0,
+                            search_method: "specialized_laboratory".to_string(),
+                            matched_fields: vec!["nom".to_string()],
+                            distance_km: distance,
+                            gps_coords: None,
+                        });
+                    }
+                }
+                crate::services::scheduling_search_service::SearchIntent::SpecializedTravelAgency => {
+                    let sql = r#"
+                        SELECT 
+                            agency_id as id,
+                            service_id,
+                            nom_agence,
+                            adresse,
+                            quartier,
+                            ville,
+                            gps,
+                            telephone,
+                            whatsapp,
+                            peut_emettre_tickets_bus,
+                            distance_km,
+                            relevance_score
+                        FROM search_travel_agencies_with_moment($1, $2, $3)
+                    "#;
+                    let rows = sqlx::query(sql)
+                        .bind(query)
+                        .bind(gps_zone)
+                        .bind(radius)
+                        .fetch_all(&self.pool)
+                        .await
+                        .map_err(|e| format!("Erreur recherche agences: {}", e))?;
+
+                    for row in rows {
+                        let service_id: i32 = row.get("service_id");
+                        let nom: String = row.get("nom_agence");
+                        let distance: Option<f64> = row.get("distance_km");
+                        let score: f64 = row.get("relevance_score");
+
+                        let data = serde_json::json!({
+                            "titre_service": {"valeur": nom},
+                            "type": "agence_voyage",
+                            "peut_emettre_tickets_bus": row.get::<bool, _>("peut_emettre_tickets_bus"),
+                            "adresse": row.get::<Option<String>, _>("adresse"),
+                            "telephone": row.get::<Option<String>, _>("telephone"),
+                        });
+
+                        results.push(SearchResult {
+                            service_id,
+                            data,
+                            total_score: score as f32,
+                            fulltext_score: score as f32,
+                            trigram_score: 0.0,
+                            recency_score: 0.0,
+                            category_score: 0.0,
+                            search_method: "specialized_travel_agency".to_string(),
+                            matched_fields: vec!["nom_agence".to_string()],
+                            distance_km: distance,
+                            gps_coords: None,
+                        });
+                    }
+                }
+                crate::services::scheduling_search_service::SearchIntent::SpecializedCovoiturage => {
+                    let sql = r#"
+                        SELECT 
+                            covoiturage_id as id,
+                            service_id,
+                            depart,
+                            destination,
+                            gps_depart,
+                            date_depart,
+                            heure_depart,
+                            nombre_places,
+                            places_disponibles,
+                            prix_par_place,
+                            devise,
+                            distance_km,
+                            relevance_score
+                        FROM search_covoiturages_with_moment($1, $2, $3, NULL)
+                    "#;
+                    let rows = sqlx::query(sql)
+                        .bind(query)
+                        .bind(gps_zone)
+                        .bind(radius)
+                        .fetch_all(&self.pool)
+                        .await
+                        .map_err(|e| format!("Erreur recherche covoiturages: {}", e))?;
+
+                    for row in rows {
+                        let service_id: i32 = row.get("service_id");
+                        let depart: String = row.get("depart");
+                        let destination: String = row.get("destination");
+                        let distance: Option<f64> = row.get("distance_km");
+                        let score: f64 = row.get("relevance_score");
+
+                        let data = serde_json::json!({
+                            "titre_service": {"valeur": format!("{} → {}", depart, destination)},
+                            "type": "covoiturage",
+                            "depart": depart,
+                            "destination": destination,
+                            "date_depart": row.get::<chrono::DateTime<chrono::Utc>, _>("date_depart").to_rfc3339(),
+                            "places_disponibles": row.get::<i32, _>("places_disponibles"),
+                            "prix_par_place": row.get::<i32, _>("prix_par_place"),
+                        });
+
+                        results.push(SearchResult {
+                            service_id,
+                            data,
+                            total_score: score as f32,
+                            fulltext_score: score as f32,
+                            trigram_score: 0.0,
+                            recency_score: 0.0,
+                            category_score: 0.0,
+                            search_method: "specialized_covoiturage".to_string(),
+                            matched_fields: vec!["depart".to_string(), "destination".to_string()],
+                            distance_km: distance,
+                            gps_coords: None,
+                        });
+                    }
+                }
+                crate::services::scheduling_search_service::SearchIntent::SpecializedTaxi => {
+                    let sql = r#"
+                        SELECT 
+                            taxi_id as id,
+                            service_id,
+                            nom_chauffeur,
+                            telephone,
+                            whatsapp,
+                            zone_intervention,
+                            gps_actuel,
+                            is_available_now,
+                            is_on_duty,
+                            distance_km,
+                            relevance_score
+                        FROM search_taxis_with_moment($1, $2, $3, TRUE)
+                    "#;
+                    let rows = sqlx::query(sql)
+                        .bind(query)
+                        .bind(gps_zone)
+                        .bind(radius)
+                        .fetch_all(&self.pool)
+                        .await
+                        .map_err(|e| format!("Erreur recherche taxis: {}", e))?;
+
+                    for row in rows {
+                        let service_id: i32 = row.get("service_id");
+                        let nom: Option<String> = row.get("nom_chauffeur");
+                        let telephone: String = row.get("telephone");
+                        let distance: Option<f64> = row.get("distance_km");
+                        let score: f64 = row.get("relevance_score");
+
+                        let data = serde_json::json!({
+                            "titre_service": {"valeur": nom.clone().unwrap_or_else(|| format!("Taxi {}", telephone))},
+                            "type": "taxi_ville",
+                            "telephone": telephone,
+                            "is_available_now": row.get::<bool, _>("is_available_now"),
+                            "zone_intervention": row.get::<Option<Vec<String>>, _>("zone_intervention"),
+                        });
+
+                        results.push(SearchResult {
+                            service_id,
+                            data,
+                            total_score: score as f32,
+                            fulltext_score: score as f32,
+                            trigram_score: 0.0,
+                            recency_score: 0.0,
+                            category_score: 0.0,
+                            search_method: "specialized_taxi".to_string(),
+                            matched_fields: vec!["telephone".to_string(), "is_available_now".to_string()],
+                            distance_km: distance,
+                            gps_coords: None,
+                        });
+                    }
+                }
+                crate::services::scheduling_search_service::SearchIntent::SpecializedBloodBank => {
+                    // Utiliser la fonction du service scheduling
+                    let scheduling_service = SchedulingSearchService::new(self.pool.clone());
+                    let (user_lat, user_lng) = if let Some(zone) = gps_zone {
+                        if let Some((lat_str, lng_str)) = zone.split_once(',') {
+                            (lat_str.parse().ok(), lng_str.parse().ok())
+                        } else {
+                            (None, None)
+                        }
+                    } else {
+                        (None, None)
+                    };
+
+                    let specialized_results = scheduling_service
+                        .search_banques_sang_with_moment(query, user_lat, user_lng, Some(radius as f64))
+                        .await
+                        .map_err(|e| format!("Erreur recherche banques de sang: {}", e))?;
+
+                    for r in specialized_results {
+                        results.push(SearchResult {
+                            service_id: r.service_id,
+                            data: r.product_data,
+                            total_score: r.relevance_score as f32,
+                            fulltext_score: r.relevance_score as f32,
+                            trigram_score: 0.0,
+                            recency_score: 0.0,
+                            category_score: 0.0,
+                            search_method: "specialized_blood_bank".to_string(),
+                            matched_fields: vec!["nom".to_string(), "stocks_groupes_sanguins".to_string()],
+                            distance_km: r.distance_km,
+                            gps_coords: None,
+                        });
+                    }
+                }
+                _ => {
+                    // Ne devrait pas arriver ici
+                    log::warn!("[NativeSearch] Intent spécialisé non géré: {:?}", intent);
+                }
+            }
+
+            log_info(&format!(
+                "[NativeSearch] {} résultats spécialisés trouvés",
+                results.len()
+            ));
+            return Ok(results);
+        }
 
         // Si recherche avec planification, utiliser la fonction spécialisée
         if intent.should_use_scheduling_search() {
@@ -352,6 +762,21 @@ impl NativeSearchService {
                     gps_coords: None, // Sera enrichi si nécessaire
                 })
                 .collect();
+
+            // ✅ NOUVEAU: Enrichir tous les résultats avec les données Google Places complètes
+            for result in &mut results {
+                if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                    &self.pool,
+                    result.service_id,
+                    &mut result.data
+                ).await {
+                    log::warn!(
+                        "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
+                        result.service_id,
+                        e
+                    );
+                }
+            }
             
             // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
             if let Some(gps_zone) = gps_zone {
@@ -419,12 +844,25 @@ impl NativeSearchService {
                 let _gps_source: Option<String> = row.get("gps_source");
 
                 // Récupérer les données complètes du service
-                let service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
+                let mut service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
                     .bind(service_id)
                     .fetch_one(&self.pool)
                     .await
                     .map(|row| row.get::<Value, _>("data"))
                     .unwrap_or_else(|_| serde_json::json!({}));
+
+                // ✅ NOUVEAU: Enrichir avec les données Google Places complètes
+                if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                    &self.pool,
+                    service_id,
+                    &mut service_data
+                ).await {
+                    log::warn!(
+                        "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
+                        service_id,
+                        e
+                    );
+                }
 
                 // ✅ Phase 10 - Extraire les coordonnées GPS pour enrichissement Google Maps
                 let gps_coords = _gps_coords.as_ref()
@@ -873,12 +1311,25 @@ SELECT DISTINCT
                 let _gps_source: Option<String> = row.get("gps_source");
 
                 // Récupérer les données complètes du service
-                let service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
+                let mut service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
                     .bind(service_id)
                     .fetch_one(&self.pool)
                     .await
                     .map(|row| row.get::<Value, _>("data"))
                     .unwrap_or_else(|_| serde_json::json!({}));
+
+                // ✅ NOUVEAU: Enrichir avec les données Google Places complètes
+                if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                    &self.pool,
+                    service_id,
+                    &mut service_data
+                ).await {
+                    log::warn!(
+                        "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
+                        service_id,
+                        e
+                    );
+                }
 
                 // ✅ Phase 10 - Extraire les coordonnées GPS
                 let gps_coords = _gps_coords.as_ref()
@@ -1080,12 +1531,25 @@ SELECT DISTINCT
                 let _gps_source: Option<String> = row.get("gps_source");
 
                 // Récupérer les données complètes du service
-                let service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
+                let mut service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
                     .bind(service_id)
                     .fetch_one(&self.pool)
                     .await
                     .map(|row| row.get::<Value, _>("data"))
                     .unwrap_or_else(|_| serde_json::json!({}));
+
+                // ✅ NOUVEAU: Enrichir avec les données Google Places complètes
+                if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                    &self.pool,
+                    service_id,
+                    &mut service_data
+                ).await {
+                    log::warn!(
+                        "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
+                        service_id,
+                        e
+                    );
+                }
 
                 // ✅ Phase 10 - Extraire les coordonnées GPS pour enrichissement Google Maps
                 let gps_coords = _gps_coords.as_ref()

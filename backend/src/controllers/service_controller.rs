@@ -320,6 +320,7 @@ pub async fn filter_services(
 ) -> axum::response::Response {
     info!("[filter_services] Called with params: actif={:?}, category={:?}, min_price={:?}, max_price={:?}", query.actif, query.category, query.min_price, query.max_price);
     let pg_pool = &state.pg;
+    let pg_pool_clone = pg_pool.clone();
     let mut sql = "SELECT id, data, is_active FROM services WHERE 1=1".to_string();
     let mut args: Vec<Value> = Vec::new();
 
@@ -357,16 +358,30 @@ pub async fn filter_services(
         }
     };
 
-    let result: Vec<_> = rows
-        .into_iter()
-        .map(|r| {
-            json!({
-                "id": r.try_get::<i32, _>("id").unwrap_or_default(),
-                "data": r.try_get::<Value, _>("data").unwrap_or(Value::Null),
-                "is_active": r.try_get::<bool, _>("is_active").unwrap_or(false)
-            })
-        })
-        .collect();
+    let mut result: Vec<_> = Vec::new();
+    for r in rows {
+        let service_id = r.try_get::<i32, _>("id").unwrap_or_default();
+        let mut data = r.try_get::<Value, _>("data").unwrap_or(Value::Null);
+        
+        // ✅ NOUVEAU: Enrichir avec les données Google Places complètes
+        if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+            &pg_pool_clone,
+            service_id,
+            &mut data
+        ).await {
+            log::warn!(
+                "[filter_services] Erreur enrichissement Google Places pour service {}: {}",
+                service_id,
+                e
+            );
+        }
+        
+        result.push(json!({
+            "id": service_id,
+            "data": data,
+            "is_active": r.try_get::<bool, _>("is_active").unwrap_or(false)
+        }));
+    }
 
     (StatusCode::OK, Json(serde_json::Value::Array(result))).into_response()
 }
@@ -400,15 +415,28 @@ pub async fn get_related_services(
         }
     };
 
-    let result: Vec<_> = rows
-        .into_iter()
-        .map(|r| {
-            json!({
-                "id": r.id,
-                "data": serde_json::from_value(r.data).unwrap_or(Value::Null)
-            })
-        })
-        .collect();
+    let mut result: Vec<_> = Vec::new();
+    for r in rows {
+        let mut data = serde_json::from_value(r.data).unwrap_or(Value::Null);
+        
+        // ✅ NOUVEAU: Enrichir avec les données Google Places complètes
+        if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+            pg_pool,
+            r.id,
+            &mut data
+        ).await {
+            log::warn!(
+                "[get_related_services] Erreur enrichissement Google Places pour service {}: {}",
+                r.id,
+                e
+            );
+        }
+        
+        result.push(json!({
+            "id": r.id,
+            "data": data
+        }));
+    }
 
     (StatusCode::OK, Json(serde_json::Value::Array(result))).into_response()
 }

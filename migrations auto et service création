@@ -1,0 +1,35 @@
+[1mdiff --git a/backend/src/migrations/auto_migrate.rs b/backend/src/migrations/auto_migrate.rs[m
+[1mindex d93ebbf..afb049f 100644[m
+[1m--- a/backend/src/migrations/auto_migrate.rs[m
+[1m+++ b/backend/src/migrations/auto_migrate.rs[m
+[36m@@ -2144,7 +2144,7 @@[m [mpub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),[m
+             .fetch_optional(pool)[m
+             .await?;[m
+ [m
+[31m-            if let Some(Some(col_type)) = current_type {[m
+[32m+[m[32m            if let Some(col_type) = current_type {[m
+                 if col_type == "real" {[m
+                     warn!("⚠️ Colonne ai_confidence est REAL, conversion en DOUBLE PRECISION...");[m
+                     sqlx::query([m
+[1mdiff --git a/backend/src/services/creer_service.rs b/backend/src/services/creer_service.rs[m
+[1mindex 5f54814..a9ea671 100644[m
+[1m--- a/backend/src/services/creer_service.rs[m
+[1m+++ b/backend/src/services/creer_service.rs[m
+[36m@@ -1148,7 +1148,7 @@[m [mpub async fn creer_service([m
+         }[m
+         [m
+         // Nettoyer dans tous les champs qui pourraient contenir des médias[m
+[31m-        for (key, value) in data_obj_map.iter_mut() {[m
+[32m+[m[32m        for (_key, value) in data_obj_map.iter_mut() {[m
+             if let Some(obj) = value.as_object_mut() {[m
+                 for media_key in &media_keys {[m
+                     obj.remove(*media_key);[m
+[36m@@ -2317,7 +2317,7 @@[m [mpub async fn creer_service([m
+         // Créer une tâche asynchrone pour chaque embedding[m
+         let embedding_task = {[m
+             let embedding_client = embedding_client.clone();[m
+[31m-            let pinecone_enabled = pinecone_enabled;[m
+[32m+[m[32m            let _pinecone_enabled = pinecone_enabled;[m
+             let k = k.clone();[m
+             let value_str = value_str.clone();[m
+             let type_donnee = type_donnee.to_string();[m

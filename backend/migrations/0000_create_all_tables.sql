@@ -115,6 +115,63 @@ COMMENT ON COLUMN media.ai_analyzed_at IS 'Date de la dernière analyse IA';
 COMMENT ON COLUMN media.ai_model_used IS 'Modèle IA utilisé';
 COMMENT ON COLUMN media.ai_confidence IS 'Score de confiance de l''analyse IA';
 
+-- Table google_places_data
+-- Stocke toutes les données Google Places pour éviter de surcharger services.data
+CREATE TABLE IF NOT EXISTS google_places_data (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    place_id TEXT NOT NULL,
+    display_name TEXT,
+    formatted_address TEXT,
+    location_vector TEXT[], -- Array de strings pour la hiérarchie de localisation
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    types TEXT[], -- Array des types de lieu
+    primary_type TEXT,
+    primary_type_display_name TEXT,
+    rating DOUBLE PRECISION,
+    rating_count INTEGER,
+    price_level TEXT,
+    business_status TEXT,
+    serves_cuisine TEXT[], -- Array des cuisines servies
+    website_uri TEXT,
+    google_maps_uri TEXT,
+    international_phone_number TEXT,
+    national_phone_number TEXT,
+    editorial_summary TEXT, -- Résumé éditorial (peut être long)
+    current_opening_hours JSONB, -- Horaires actuels (JSON complexe)
+    regular_opening_hours JSONB, -- Horaires réguliers (JSON complexe)
+    photos JSONB, -- Array de photos avec métadonnées
+    country TEXT,
+    country_code TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Index pour recherche rapide
+    CONSTRAINT unique_service_place UNIQUE (service_id, place_id)
+);
+
+-- Index pour recherche par service
+CREATE INDEX IF NOT EXISTS idx_google_places_data_service_id ON google_places_data(service_id);
+
+-- Index pour recherche par place_id (si besoin de retrouver un lieu)
+CREATE INDEX IF NOT EXISTS idx_google_places_data_place_id ON google_places_data(place_id);
+
+-- Index GIN pour recherche dans location_vector
+CREATE INDEX IF NOT EXISTS idx_google_places_data_location_vector ON google_places_data USING GIN(location_vector);
+
+-- Index GIN pour recherche dans types
+CREATE INDEX IF NOT EXISTS idx_google_places_data_types ON google_places_data USING GIN(types);
+
+-- Index GIN pour recherche dans serves_cuisine
+CREATE INDEX IF NOT EXISTS idx_google_places_data_cuisine ON google_places_data USING GIN(serves_cuisine);
+
+COMMENT ON TABLE google_places_data IS 'Stocke toutes les données Google Places pour éviter de surcharger services.data';
+COMMENT ON COLUMN google_places_data.service_id IS 'Lien vers le service';
+COMMENT ON COLUMN google_places_data.place_id IS 'Identifiant unique Google Places';
+COMMENT ON COLUMN google_places_data.editorial_summary IS 'Résumé éditorial complet (peut être long)';
+COMMENT ON COLUMN google_places_data.photos IS 'Array JSON des photos Google Places avec métadonnées';
+
 -- Table consultation_historique
 CREATE TABLE IF NOT EXISTS consultation_historique (
     id SERIAL PRIMARY KEY,
@@ -2196,3 +2253,582 @@ ADD COLUMN IF NOT EXISTS payout_method_used VARCHAR(50);
 
 CREATE INDEX IF NOT EXISTS idx_users_payment_methods ON users USING GIN (payment_methods) WHERE payment_methods != '{}'::jsonb;
 CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_payout_method ON delivery_payment_reservations(payout_method_used);
+
+-- ============================================================================
+-- SERVICES SPÉCIALISÉS (Santé et Transport)
+-- Migration: 20251126_create_specialized_services_tables.sql
+-- ============================================================================
+
+-- GROUPE 1 : SANTÉ 🏥
+
+-- Table pharmacies
+CREATE TABLE IF NOT EXISTS pharmacies (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nom VARCHAR(255) NOT NULL,
+    adresse TEXT,
+    quartier VARCHAR(255),
+    ville VARCHAR(255),
+    gps VARCHAR(255),
+    jours_garde TEXT,
+    heures_ouverture TIME,
+    heures_fermeture TIME,
+    permanent_24h BOOLEAN DEFAULT FALSE,
+    telephone VARCHAR(50),
+    telephone_urgence VARCHAR(50),
+    whatsapp VARCHAR(50),
+    email VARCHAR(255),
+    services TEXT[],
+    is_active BOOLEAN DEFAULT TRUE,
+    is_on_duty_now BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_pharmacy_service UNIQUE(service_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pharmacies_user_id ON pharmacies(user_id);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_service_id ON pharmacies(service_id);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_is_active ON pharmacies(is_active);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_is_on_duty ON pharmacies(is_on_duty_now) WHERE is_on_duty_now = TRUE;
+CREATE INDEX IF NOT EXISTS idx_pharmacies_ville ON pharmacies(ville);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_quartier ON pharmacies(quartier);
+CREATE INDEX IF NOT EXISTS idx_pharmacies_services_gin ON pharmacies USING GIN(services);
+
+-- Table hopitaux_cliniques
+CREATE TABLE IF NOT EXISTS hopitaux_cliniques (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nom VARCHAR(255) NOT NULL,
+    type_etablissement VARCHAR(50) NOT NULL,
+    adresse TEXT,
+    quartier VARCHAR(255),
+    ville VARCHAR(255),
+    gps VARCHAR(255),
+    prestations_medicales TEXT[],
+    urgences_disponible BOOLEAN DEFAULT FALSE,
+    rdv_en_ligne BOOLEAN DEFAULT FALSE,
+    planning_hebdomadaire JSONB,
+    telephone VARCHAR(50),
+    telephone_urgence VARCHAR(50),
+    whatsapp VARCHAR(50),
+    email VARCHAR(255),
+    site_web VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    is_available_now BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_hospital_service UNIQUE(service_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_hopitaux_user_id ON hopitaux_cliniques(user_id);
+CREATE INDEX IF NOT EXISTS idx_hopitaux_service_id ON hopitaux_cliniques(service_id);
+CREATE INDEX IF NOT EXISTS idx_hopitaux_type ON hopitaux_cliniques(type_etablissement);
+CREATE INDEX IF NOT EXISTS idx_hopitaux_is_active ON hopitaux_cliniques(is_active);
+CREATE INDEX IF NOT EXISTS idx_hopitaux_is_available ON hopitaux_cliniques(is_available_now) WHERE is_available_now = TRUE;
+CREATE INDEX IF NOT EXISTS idx_hopitaux_prestations_gin ON hopitaux_cliniques USING GIN(prestations_medicales);
+CREATE INDEX IF NOT EXISTS idx_hopitaux_planning_gin ON hopitaux_cliniques USING GIN(planning_hebdomadaire);
+
+-- Table laboratoires_imagerie
+CREATE TABLE IF NOT EXISTS laboratoires_imagerie (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nom VARCHAR(255) NOT NULL,
+    type_laboratoire VARCHAR(50) NOT NULL,
+    adresse TEXT,
+    quartier VARCHAR(255),
+    ville VARCHAR(255),
+    gps VARCHAR(255),
+    analyses_disponibles TEXT[],
+    imagerie_disponible TEXT[],
+    planning_hebdomadaire JSONB,
+    rdv_requis BOOLEAN DEFAULT TRUE,
+    resultats_en_ligne BOOLEAN DEFAULT FALSE,
+    telephone VARCHAR(50),
+    whatsapp VARCHAR(50),
+    email VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    is_available_now BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_laboratory_service UNIQUE(service_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_laboratoires_user_id ON laboratoires_imagerie(user_id);
+CREATE INDEX IF NOT EXISTS idx_laboratoires_service_id ON laboratoires_imagerie(service_id);
+CREATE INDEX IF NOT EXISTS idx_laboratoires_type ON laboratoires_imagerie(type_laboratoire);
+CREATE INDEX IF NOT EXISTS idx_laboratoires_analyses_gin ON laboratoires_imagerie USING GIN(analyses_disponibles);
+CREATE INDEX IF NOT EXISTS idx_laboratoires_imagerie_gin ON laboratoires_imagerie USING GIN(imagerie_disponible);
+CREATE INDEX IF NOT EXISTS idx_laboratoires_is_available ON laboratoires_imagerie(is_available_now) WHERE is_available_now = TRUE;
+
+-- GROUPE 2 : TRANSPORT 🚗
+
+-- Table agences_voyage
+CREATE TABLE IF NOT EXISTS agences_voyage (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nom_agence VARCHAR(255) NOT NULL,
+    adresse TEXT,
+    quartier VARCHAR(255),
+    ville VARCHAR(255),
+    gps VARCHAR(255),
+    services_voyage TEXT[],
+    compagnies_bus TEXT[],
+    destinations TEXT[],
+    heures_ouverture TIME,
+    heures_fermeture TIME,
+    jours_ouverture TEXT,
+    telephone VARCHAR(50),
+    whatsapp VARCHAR(50),
+    email VARCHAR(255),
+    site_web VARCHAR(255),
+    peut_emettre_tickets_bus BOOLEAN DEFAULT FALSE,
+    compagnies_affiliees TEXT[],
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_agency_service UNIQUE(service_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agences_user_id ON agences_voyage(user_id);
+CREATE INDEX IF NOT EXISTS idx_agences_service_id ON agences_voyage(service_id);
+CREATE INDEX IF NOT EXISTS idx_agences_tickets_bus ON agences_voyage(peut_emettre_tickets_bus) WHERE peut_emettre_tickets_bus = TRUE;
+CREATE INDEX IF NOT EXISTS idx_agences_services_gin ON agences_voyage USING GIN(services_voyage);
+CREATE INDEX IF NOT EXISTS idx_agences_compagnies_gin ON agences_voyage USING GIN(compagnies_bus);
+CREATE INDEX IF NOT EXISTS idx_agences_destinations_gin ON agences_voyage USING GIN(destinations);
+
+-- Table covoiturages
+CREATE TABLE IF NOT EXISTS covoiturages (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    depart VARCHAR(255) NOT NULL,
+    destination VARCHAR(255) NOT NULL,
+    gps_depart VARCHAR(255),
+    gps_destination VARCHAR(255),
+    date_depart TIMESTAMPTZ NOT NULL,
+    heure_depart TIME NOT NULL,
+    date_arrivee_estimee TIMESTAMPTZ,
+    type_vehicule VARCHAR(50),
+    marque_modele VARCHAR(255),
+    nombre_places INTEGER NOT NULL,
+    places_disponibles INTEGER NOT NULL,
+    prix_par_place INTEGER NOT NULL,
+    devise VARCHAR(3) DEFAULT 'XAF',
+    bagages_autorises BOOLEAN DEFAULT TRUE,
+    animaux_autorises BOOLEAN DEFAULT FALSE,
+    fumeur_autorise BOOLEAN DEFAULT FALSE,
+    climatisation BOOLEAN DEFAULT FALSE,
+    statut VARCHAR(20) NOT NULL DEFAULT 'ouvert' CHECK (statut IN ('ouvert', 'complet', 'annule', 'termine')),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_covoiturage_service UNIQUE(service_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_covoiturages_user_id ON covoiturages(user_id);
+CREATE INDEX IF NOT EXISTS idx_covoiturages_service_id ON covoiturages(service_id);
+CREATE INDEX IF NOT EXISTS idx_covoiturages_date_depart ON covoiturages(date_depart) WHERE is_active = TRUE AND statut = 'ouvert';
+CREATE INDEX IF NOT EXISTS idx_covoiturages_statut ON covoiturages(statut) WHERE statut = 'ouvert';
+CREATE INDEX IF NOT EXISTS idx_covoiturages_depart_destination ON covoiturages(depart, destination);
+CREATE INDEX IF NOT EXISTS idx_covoiturages_places_disponibles ON covoiturages(places_disponibles) WHERE places_disponibles > 0;
+
+-- Table taxis_ville
+CREATE TABLE IF NOT EXISTS taxis_ville (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nom_chauffeur VARCHAR(255),
+    telephone VARCHAR(50) NOT NULL,
+    whatsapp VARCHAR(50),
+    type_vehicule VARCHAR(50),
+    marque_modele VARCHAR(255),
+    immatriculation VARCHAR(50),
+    couleur VARCHAR(50),
+    annee INTEGER,
+    is_available_now BOOLEAN DEFAULT FALSE,
+    zone_intervention TEXT[],
+    gps_actuel VARCHAR(255),
+    tarif_base INTEGER DEFAULT 500,
+    tarif_par_km INTEGER DEFAULT 200,
+    devise VARCHAR(3) DEFAULT 'XAF',
+    paiement_cash BOOLEAN DEFAULT TRUE,
+    paiement_mobile_money BOOLEAN DEFAULT FALSE,
+    paiement_carte BOOLEAN DEFAULT FALSE,
+    climatisation BOOLEAN DEFAULT FALSE,
+    wifi BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_on_duty BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_taxi_service UNIQUE(service_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_taxis_user_id ON taxis_ville(user_id);
+CREATE INDEX IF NOT EXISTS idx_taxis_service_id ON taxis_ville(service_id);
+CREATE INDEX IF NOT EXISTS idx_taxis_is_available ON taxis_ville(is_available_now) WHERE is_available_now = TRUE;
+CREATE INDEX IF NOT EXISTS idx_taxis_is_on_duty ON taxis_ville(is_on_duty) WHERE is_on_duty = TRUE;
+CREATE INDEX IF NOT EXISTS idx_taxis_zone_gin ON taxis_ville USING GIN(zone_intervention);
+
+-- Fonction et triggers pour updated_at automatique
+CREATE OR REPLACE FUNCTION update_specialized_service_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_pharmacies_updated_at ON pharmacies;
+CREATE TRIGGER trigger_pharmacies_updated_at BEFORE UPDATE ON pharmacies FOR EACH ROW EXECUTE FUNCTION update_specialized_service_timestamp();
+
+DROP TRIGGER IF EXISTS trigger_hopitaux_updated_at ON hopitaux_cliniques;
+CREATE TRIGGER trigger_hopitaux_updated_at BEFORE UPDATE ON hopitaux_cliniques FOR EACH ROW EXECUTE FUNCTION update_specialized_service_timestamp();
+
+DROP TRIGGER IF EXISTS trigger_laboratoires_updated_at ON laboratoires_imagerie;
+CREATE TRIGGER trigger_laboratoires_updated_at BEFORE UPDATE ON laboratoires_imagerie FOR EACH ROW EXECUTE FUNCTION update_specialized_service_timestamp();
+
+DROP TRIGGER IF EXISTS trigger_agences_updated_at ON agences_voyage;
+CREATE TRIGGER trigger_agences_updated_at BEFORE UPDATE ON agences_voyage FOR EACH ROW EXECUTE FUNCTION update_specialized_service_timestamp();
+
+DROP TRIGGER IF EXISTS trigger_covoiturages_updated_at ON covoiturages;
+CREATE TRIGGER trigger_covoiturages_updated_at BEFORE UPDATE ON covoiturages FOR EACH ROW EXECUTE FUNCTION update_specialized_service_timestamp();
+
+DROP TRIGGER IF EXISTS trigger_taxis_updated_at ON taxis_ville;
+CREATE TRIGGER trigger_taxis_updated_at BEFORE UPDATE ON taxis_ville FOR EACH ROW EXECUTE FUNCTION update_specialized_service_timestamp();
+
+-- ============================================================================
+-- BANQUE DE SANG 🩸 (Service spécialisé isolé)
+-- ============================================================================
+
+-- Table banques_sang
+CREATE TABLE IF NOT EXISTS banques_sang (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    
+    -- Lien avec établissement (optionnel, peut être indépendant)
+    hopital_id INTEGER REFERENCES hopitaux_cliniques(id) ON DELETE SET NULL,
+    
+    -- Informations de base
+    nom VARCHAR(255) NOT NULL,
+    adresse TEXT,
+    quartier VARCHAR(255),
+    ville VARCHAR(255),
+    gps VARCHAR(255), -- Format: "lat,lng"
+    
+    -- Groupes sanguins disponibles avec stocks
+    stocks_groupes_sanguins JSONB NOT NULL DEFAULT '{}',
+    
+    -- Services
+    accepte_dons BOOLEAN DEFAULT TRUE,
+    accepte_demandes BOOLEAN DEFAULT TRUE,
+    urgence_24h BOOLEAN DEFAULT FALSE,
+    
+    -- Planification
+    planning_hebdomadaire JSONB,
+    horaires_dons TIME[], -- ["08:00", "17:00"] - Horaires pour les dons
+    
+    -- Contact
+    telephone VARCHAR(50),
+    telephone_urgence VARCHAR(50),
+    whatsapp VARCHAR(50),
+    email VARCHAR(255),
+    
+    -- Statut
+    is_active BOOLEAN DEFAULT TRUE,
+    is_available_now BOOLEAN DEFAULT FALSE, -- Calculé automatiquement avec NOW()
+    
+    -- Métadonnées
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    
+    CONSTRAINT unique_banque_service UNIQUE(service_id)
+);
+
+-- Index pour banques_sang
+CREATE INDEX IF NOT EXISTS idx_banques_sang_user_id ON banques_sang(user_id);
+CREATE INDEX IF NOT EXISTS idx_banques_sang_service_id ON banques_sang(service_id);
+CREATE INDEX IF NOT EXISTS idx_banques_sang_hopital_id ON banques_sang(hopital_id);
+CREATE INDEX IF NOT EXISTS idx_banques_sang_is_active ON banques_sang(is_active);
+CREATE INDEX IF NOT EXISTS idx_banques_sang_is_available ON banques_sang(is_available_now) WHERE is_available_now = TRUE;
+CREATE INDEX IF NOT EXISTS idx_banques_sang_urgence_24h ON banques_sang(urgence_24h) WHERE urgence_24h = TRUE;
+CREATE INDEX IF NOT EXISTS idx_banques_sang_accepte_dons ON banques_sang(accepte_dons) WHERE accepte_dons = TRUE;
+CREATE INDEX IF NOT EXISTS idx_banques_sang_accepte_demandes ON banques_sang(accepte_demandes) WHERE accepte_demandes = TRUE;
+CREATE INDEX IF NOT EXISTS idx_banques_sang_stocks_gin ON banques_sang USING GIN(stocks_groupes_sanguins);
+CREATE INDEX IF NOT EXISTS idx_banques_sang_planning_gin ON banques_sang USING GIN(planning_hebdomadaire);
+CREATE INDEX IF NOT EXISTS idx_banques_sang_ville ON banques_sang(ville);
+CREATE INDEX IF NOT EXISTS idx_banques_sang_quartier ON banques_sang(quartier);
+
+-- Index GPS (GIST pour recherche géographique)
+CREATE INDEX IF NOT EXISTS idx_banques_sang_gps ON banques_sang USING GIST(
+    ST_MakePoint(
+        SPLIT_PART(gps, ',', 2)::DOUBLE PRECISION,
+        SPLIT_PART(gps, ',', 1)::DOUBLE PRECISION
+    )::geography
+) WHERE gps IS NOT NULL AND gps != '';
+
+-- Trigger pour updated_at
+CREATE TRIGGER update_banques_sang_updated_at 
+    BEFORE UPDATE ON banques_sang 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_specialized_service_timestamp();
+
+-- ============================================================================
+-- INTÉGRATION TICKETS BUS AVEC AGENCES DE VOYAGE 🚌
+-- ============================================================================
+
+-- Ajouter colonne bus_products_config à agences_voyage
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='agences_voyage' AND column_name='bus_products_config') THEN
+        ALTER TABLE agences_voyage ADD COLUMN bus_products_config JSONB;
+    END IF;
+END $$;
+
+-- Index pour recherche rapide
+CREATE INDEX IF NOT EXISTS idx_agences_bus_products_gin ON agences_voyage USING GIN(bus_products_config) WHERE bus_products_config IS NOT NULL;
+
+-- Commentaire
+COMMENT ON COLUMN agences_voyage.bus_products_config IS 'Configuration des modèles de bus (products de type ticket_voyage) liés à cette agence';
+
+-- Fonction de recherche tickets bus avec disponibilité
+CREATE OR REPLACE FUNCTION search_bus_tickets_with_availability(
+    p_departure_city TEXT DEFAULT NULL,
+    p_arrival_city TEXT DEFAULT NULL,
+    p_departure_date DATE DEFAULT NULL,
+    p_user_lat DOUBLE PRECISION DEFAULT NULL,
+    p_user_lng DOUBLE PRECISION DEFAULT NULL,
+    p_radius_km DOUBLE PRECISION DEFAULT 50.0,
+    p_min_seats INTEGER DEFAULT 1,
+    p_agency_name TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+    agency_id INTEGER,
+    agency_service_id INTEGER,
+    agency_nom VARCHAR,
+    agency_adresse TEXT,
+    agency_quartier VARCHAR,
+    agency_ville VARCHAR,
+    agency_gps VARCHAR,
+    agency_telephone VARCHAR,
+    agency_whatsapp VARCHAR,
+    agency_email VARCHAR,
+    agency_peut_emettre_tickets BOOLEAN,
+    product_id TEXT,
+    product_name TEXT,
+    product_type TEXT,
+    bus_model_name TEXT,
+    total_seats INTEGER,
+    available_seats INTEGER,
+    reserved_seats INTEGER,
+    bus_number VARCHAR,
+    departure_city TEXT,
+    arrival_city TEXT,
+    departure_date DATE,
+    departure_time TIME,
+    ticket_price INTEGER,
+    currency VARCHAR,
+    bus_configuration JSONB,
+    seat_map JSONB,
+    distance_km DOUBLE PRECISION,
+    relevance_score DOUBLE PRECISION
+) AS $$
+DECLARE
+    v_user_point geography;
+BEGIN
+    IF p_user_lat IS NOT NULL AND p_user_lng IS NOT NULL THEN
+        v_user_point := ST_SetSRID(ST_MakePoint(p_user_lng, p_user_lat), 4326)::geography;
+    END IF;
+
+    RETURN QUERY
+    WITH agency_data AS (
+        SELECT 
+            av.id,
+            av.service_id,
+            av.nom,
+            av.adresse,
+            av.quartier,
+            av.ville,
+            av.gps,
+            av.telephone,
+            av.whatsapp,
+            av.email,
+            av.peut_emettre_tickets_bus,
+            av.bus_products_config,
+            CASE 
+                WHEN v_user_point IS NOT NULL AND av.gps IS NOT NULL AND av.gps != '' THEN
+                    calculate_distance_km(
+                        p_user_lat,
+                        p_user_lng,
+                        SPLIT_PART(av.gps, ',', 1)::DOUBLE PRECISION,
+                        SPLIT_PART(av.gps, ',', 2)::DOUBLE PRECISION
+                    )
+                ELSE NULL
+            END AS agency_distance_km
+        FROM agences_voyage av
+        WHERE av.is_active = TRUE
+            AND av.peut_emettre_tickets_bus = TRUE
+            AND (p_agency_name IS NULL OR av.nom ILIKE '%' || p_agency_name || '%')
+            AND (
+                v_user_point IS NULL OR
+                av.gps IS NULL OR
+                av.gps = '' OR
+                ST_DWithin(
+                    ST_SetSRID(ST_MakePoint(
+                        SPLIT_PART(av.gps, ',', 2)::DOUBLE PRECISION,
+                        SPLIT_PART(av.gps, ',', 1)::DOUBLE PRECISION
+                    ), 4326)::geography,
+                    v_user_point,
+                    p_radius_km * 1000
+                )
+            )
+    ),
+    product_data AS (
+        SELECT 
+            p.id::text AS product_id,
+            p.name AS product_name,
+            p.type AS product_type,
+            p.depart AS departure_city,
+            p.destination AS arrival_city,
+            p.date_depart::date AS departure_date,
+            p.date_depart::time AS departure_time,
+            p.price AS ticket_price,
+            p.currency,
+            p.total_seats,
+            p.bus_configuration,
+            p.seat_map,
+            p.numero_bus AS bus_number,
+            p.user_id AS product_user_id,
+            (av.bus_products_config->'modeles_bus'->0->>'nom_modele')::TEXT AS bus_model_name,
+            COALESCE(
+                (SELECT COUNT(*)::INTEGER
+                 FROM bus_reservations br
+                 WHERE br.product_id = p.id::text
+                   AND br.status IN ('pending', 'confirmed')
+                   AND (br.expires_at IS NULL OR br.expires_at > NOW())),
+                0
+            ) AS reserved_seats,
+            GREATEST(
+                0,
+                COALESCE(p.total_seats, 0) - 
+                COALESCE(
+                    (SELECT COUNT(*)::INTEGER
+                     FROM bus_reservations br
+                     WHERE br.product_id = p.id::text
+                       AND br.status IN ('pending', 'confirmed')
+                       AND (br.expires_at IS NULL OR br.expires_at > NOW())),
+                    0
+                )
+            ) AS available_seats
+        FROM products p
+        JOIN services s ON s.id = p.service_id
+        JOIN agency_data av ON av.service_id = s.id
+        WHERE p.type = 'ticket_voyage'
+            AND p.is_active = TRUE
+            AND (p_departure_city IS NULL OR p.depart ILIKE '%' || p_departure_city || '%')
+            AND (p_arrival_city IS NULL OR p.destination ILIKE '%' || p_arrival_city || '%')
+            AND (p_departure_date IS NULL OR p.date_depart::date = p_departure_date)
+            AND (p_departure_date IS NULL OR p.date_depart::date >= CURRENT_DATE)
+    )
+    SELECT 
+        ad.id AS agency_id,
+        ad.service_id AS agency_service_id,
+        ad.nom AS agency_nom,
+        ad.adresse AS agency_adresse,
+        ad.quartier AS agency_quartier,
+        ad.ville AS agency_ville,
+        ad.gps AS agency_gps,
+        ad.telephone AS agency_telephone,
+        ad.whatsapp AS agency_whatsapp,
+        ad.email AS agency_email,
+        ad.peut_emettre_tickets_bus AS agency_peut_emettre_tickets,
+        pd.product_id,
+        pd.product_name,
+        pd.product_type,
+        pd.bus_model_name,
+        pd.total_seats,
+        pd.available_seats,
+        pd.reserved_seats,
+        pd.bus_number,
+        pd.departure_city,
+        pd.arrival_city,
+        pd.departure_date,
+        pd.departure_time,
+        pd.ticket_price,
+        pd.currency,
+        pd.bus_configuration,
+        pd.seat_map,
+        ad.agency_distance_km AS distance_km,
+        (
+            CASE WHEN pd.available_seats >= p_min_seats THEN 10 ELSE 0 END +
+            CASE WHEN pd.departure_date = CURRENT_DATE THEN 5 ELSE 0 END +
+            CASE WHEN pd.departure_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '3 days' THEN 3 ELSE 0 END +
+            CASE WHEN ad.agency_distance_km IS NOT NULL AND ad.agency_distance_km <= 10 THEN 5 ELSE 0 END +
+            CASE WHEN ad.agency_distance_km IS NOT NULL AND ad.agency_distance_km <= 25 THEN 3 ELSE 0 END +
+            CASE WHEN p_departure_city IS NOT NULL AND pd.departure_city ILIKE '%' || p_departure_city || '%' THEN 8 ELSE 0 END +
+            CASE WHEN p_arrival_city IS NOT NULL AND pd.arrival_city ILIKE '%' || p_arrival_city || '%' THEN 8 ELSE 0 END
+        )::DOUBLE PRECISION AS relevance_score
+    FROM agency_data ad
+    JOIN product_data pd ON pd.product_user_id = ad.id
+    WHERE pd.available_seats >= p_min_seats
+    ORDER BY 
+        relevance_score DESC,
+        distance_km ASC NULLS LAST,
+        pd.departure_date ASC,
+        pd.departure_time ASC
+    LIMIT 100;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fonction pour obtenir les places disponibles d'un produit
+CREATE OR REPLACE FUNCTION get_bus_seat_availability(p_product_id TEXT)
+RETURNS JSONB AS $$
+DECLARE
+    v_product RECORD;
+    v_reserved_seats TEXT[];
+    v_available_seats JSONB;
+    v_seat_map JSONB;
+BEGIN
+    SELECT 
+        p.total_seats,
+        p.seat_map,
+        p.bus_configuration
+    INTO v_product
+    FROM products p
+    WHERE p.id::text = p_product_id
+        AND p.type = 'ticket_voyage'
+        AND p.is_active = TRUE;
+    
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', FALSE, 'error', 'Produit non trouvé');
+    END IF;
+    
+    SELECT ARRAY_AGG(br.seat_id)
+    INTO v_reserved_seats
+    FROM bus_reservations br
+    WHERE br.product_id = p_product_id
+        AND br.status IN ('pending', 'confirmed')
+        AND (br.expires_at IS NULL OR br.expires_at > NOW());
+    
+    IF v_product.seat_map IS NULL THEN
+        v_seat_map := jsonb_build_array();
+    ELSE
+        v_seat_map := v_product.seat_map;
+    END IF;
+    
+    v_available_seats := jsonb_build_object(
+        'total_seats', v_product.total_seats,
+        'reserved_count', COALESCE(array_length(v_reserved_seats, 1), 0),
+        'available_count', GREATEST(0, COALESCE(v_product.total_seats, 0) - COALESCE(array_length(v_reserved_seats, 1), 0)),
+        'reserved_seats', COALESCE(to_jsonb(v_reserved_seats), '[]'::jsonb),
+        'seats', v_seat_map
+    );
+    
+    RETURN jsonb_build_object('success', TRUE, 'availability', v_available_seats);
+END;
+$$ LANGUAGE plpgsql;

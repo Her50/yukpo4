@@ -54,5 +54,9 @@ pub mod system_health_controller;
 pub mod vehicle_model_controller; // ✅ NOUVEAU: Contrôleur pour modèles de véhicules (autocomplete)
 pub mod webhook_controller;
 pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels // ✅ NOUVEAU 2025-11-06: Contrôleur pour debug et vérification des tables
+pub mod pharmacy_controller; // ✅ 2025-11-26: Contrôleur pour pharmacies
+pub mod specialized_services_controller; // ✅ 2025-11-26: Contrôleur pour services spécialisés (hôpitaux, laboratoires, agences, covoiturage, taxi)
+pub mod blood_bank_controller; // ✅ 2025-11-27: Contrôleur pour banques de sang (service spécialisé isolé)
+pub mod bus_ticket_controller; // ✅ 2025-11-27: Contrôleur pour tickets bus avec agences de voyage
 
 // pub use service_controller::update_token_debit;
