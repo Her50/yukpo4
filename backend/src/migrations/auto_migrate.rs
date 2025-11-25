@@ -3397,7 +3397,7 @@ pub async fn ensure_products_json_format(pool: &PgPool) -> Result<(), sqlx::Erro
                 categorie := parts[2];
                 
                 last_numeric_index := NULL;
-                FOR i IN parts_length DOWNTO 1 LOOP
+                FOR i IN REVERSE 1..parts_length LOOP
                     IF parts[i] ~ '^\d+\.?\d*$' THEN
                         last_numeric_index := i;
                         EXIT;
