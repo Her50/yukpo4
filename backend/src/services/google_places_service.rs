@@ -457,10 +457,11 @@ impl GooglePlacesService {
             return Ok(None);
         }
 
-        // Limiter à 5 résultats pour éviter trop d'appels API
-        let places_to_check = places.into_iter().take(5).collect::<Vec<_>>();
+        // ✅ AMÉLIORATION: Augmenter à 10 résultats pour améliorer les chances de trouver le bon match
+        let places_to_check = places.into_iter().take(10).collect::<Vec<_>>();
         
-        let mut best_match: Option<(GooglePlaceEnriched, f64)> = None; // (enriched, score)
+        // ✅ NOUVEAU: Garder plusieurs candidats pour gérer les cas de structures similaires au même endroit
+        let mut candidates: Vec<(GooglePlaceEnriched, f64, Option<f64>)> = Vec::new(); // (enriched, score, distance)
         
         for place in places_to_check {
             let place_id = match place.id {
@@ -481,6 +482,7 @@ impl GooglePlacesService {
             let mut score = 0.0;
 
             // 1. Validation de la distance (critère obligatoire si coordonnées fournies)
+            // ✅ AMÉLIORATION: Score de distance plus granulaire pour mieux gérer plusieurs structures proches
             if let Some((lat, lng)) = coordinates {
                 if let Some(place_coords) = enriched.coordinates.as_ref() {
                     let distance_km = calculate_distance_haversine(
@@ -496,8 +498,18 @@ impl GooglePlacesService {
                         continue; // Ignorer ce lieu
                     }
                     
-                    // Score inversement proportionnel à la distance (plus proche = meilleur)
-                    score += (max_distance_km - distance_km) / max_distance_km * 50.0;
+                    // ✅ Score de distance amélioré : plus granulaire pour distinguer les structures proches
+                    let distance_score = if distance_km <= 0.1 {
+                        50.0  // Très proche (< 100m) - priorité maximale
+                    } else if distance_km <= 0.3 {
+                        45.0  // Proche (< 300m)
+                    } else if distance_km <= 0.5 {
+                        40.0  // Assez proche (< 500m)
+                    } else {
+                        // Dans le rayon mais plus loin : score inversement proportionnel
+                        (max_distance_km - distance_km) / max_distance_km * 35.0
+                    };
+                    score += distance_score;
                 } else {
                     // Pas de coordonnées pour le lieu → pénalité
                     score -= 20.0;
@@ -505,49 +517,108 @@ impl GooglePlacesService {
             }
 
             // 2. Matching du nom du prestataire (critère important)
+            // ✅ AMÉLIORATION: Score de nom plus précis pour mieux distinguer les structures similaires
             if let Some(prestataire) = prestataire_name {
                 let display_name_lower = enriched.display_name.to_lowercase();
                 let prestataire_lower = prestataire.to_lowercase();
                 
-                if display_name_lower.contains(&prestataire_lower) {
+                // Correspondance exacte (nom identique)
+                if display_name_lower == prestataire_lower {
                     score += 40.0; // Correspondance exacte du nom
+                } else if display_name_lower.contains(&prestataire_lower) {
+                    score += 35.0; // Contient le nom complet
                 } else {
                     // Vérifier correspondance partielle (mots individuels)
                     let prestataire_words: Vec<&str> = prestataire_lower.split_whitespace().collect();
                     let matching_words = prestataire_words.iter()
-                        .filter(|word| display_name_lower.contains(*word))
+                        .filter(|word| {
+                            // Ignorer les mots trop courts (articles, prépositions)
+                            word.len() > 2 && display_name_lower.contains(*word)
+                        })
                         .count();
                     
                     if matching_words > 0 {
-                        score += (matching_words as f64 / prestataire_words.len() as f64) * 30.0;
+                        // Score proportionnel au nombre de mots correspondants
+                        let word_match_ratio = matching_words as f64 / prestataire_words.len() as f64;
+                        score += word_match_ratio * 30.0;
                     }
                 }
             }
 
-            // 3. Rating (bonus)
+            // 3. Rating (bonus) - ✅ AMÉLIORATION: Score plus nuancé
             if let Some(rating) = enriched.rating {
-                score += rating * 5.0; // Bonus jusqu'à 25 points (rating max 5.0)
+                // Bonus jusqu'à 15 points (rating max 5.0)
+                score += rating * 3.0;
             }
 
-            // 4. Nombre d'avis (crédibilité)
+            // 4. Nombre d'avis (crédibilité) - ✅ AMÉLIORATION: Score plus nuancé
             if let Some(rating_count) = enriched.rating_count {
-                if rating_count > 10 {
-                    score += 10.0; // Bonus pour lieux avec beaucoup d'avis
+                if rating_count > 50 {
+                    score += 10.0; // Beaucoup d'avis (> 50)
+                } else if rating_count > 10 {
+                    score += 5.0;  // Assez d'avis (> 10)
                 }
             }
 
-            // Garder le meilleur match
-            if best_match.is_none() || score > best_match.as_ref().unwrap().1 {
-                best_match = Some((enriched, score));
+            // 5. ✅ NOUVEAU: Type de business (correspondance avec catégorie du service)
+            // Bonus si le type Google Places correspond à la catégorie du service Yukpo
+            // (À implémenter selon les catégories Yukpo si nécessaire)
+            // Pour l'instant, on donne un petit bonus si le type est présent
+            if enriched.primary_type.is_some() {
+                score += 5.0; // Bonus pour avoir un type défini
+            }
+
+            // ✅ NOUVEAU: Stocker tous les candidats valides (score >= seuil minimum)
+            const MIN_SCORE_THRESHOLD: f64 = 50.0;
+            if score >= MIN_SCORE_THRESHOLD {
+                let distance = if let Some((lat, lng)) = coordinates {
+                    enriched.coordinates.as_ref()
+                        .map(|coords| calculate_distance_haversine(lat, lng, coords.lat, coords.lng))
+                } else {
+                    None
+                };
+                candidates.push((enriched, score, distance));
             }
         }
 
-        if let Some((enriched, score)) = best_match {
+        // ✅ NOUVEAU: Gérer les cas de plusieurs structures similaires au même endroit
+        if candidates.is_empty() {
+            warn!("[Places] Aucun match valide trouvé pour '{}' (score < seuil minimum)", query);
+            return Ok(None);
+        }
+
+        // Trier les candidats par score décroissant
+        candidates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Si plusieurs candidats avec un score très proche (différence < 5 points), choisir le plus proche
+        if candidates.len() > 1 {
+            let best_score = candidates[0].1;
+            let similar_candidates: Vec<_> = candidates.iter()
+                .filter(|(_, score, _)| (score - best_score).abs() < 5.0)
+                .collect();
+
+            if similar_candidates.len() > 1 {
+                // Plusieurs candidats avec score similaire : choisir le plus proche
+                if let Some((enriched, score, distance)) = similar_candidates.iter()
+                    .filter_map(|(e, s, d)| d.map(|dist| (e, s, dist)))
+                    .min_by(|a, b| a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal))
+                {
+                    info!(
+                        "[Places] ✅ Match sélectionné parmi {} candidats similaires: {} (score: {:.2}, distance: {:.3} km)",
+                        similar_candidates.len(), enriched.display_name, score, distance
+                    );
+                    return Ok(Some(enriched.clone()));
+                }
+            }
+        }
+
+        // Sinon, prendre le meilleur score (déjà filtré par seuil minimum)
+        if let Some((enriched, score, _)) = candidates.first() {
             info!(
-                "[Places] Meilleur match sélectionné pour '{}': {} (score: {:.2})",
-                query, enriched.display_name, score
+                "[Places] ✅ Meilleur match sélectionné pour '{}': {} (score: {:.2}) parmi {} candidats",
+                query, enriched.display_name, score, candidates.len()
             );
-            Ok(Some(enriched))
+            Ok(Some(enriched.clone()))
         } else {
             warn!("[Places] Aucun match valide trouvé pour '{}'", query);
             Ok(None)

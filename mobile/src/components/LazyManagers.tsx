@@ -1,6 +1,7 @@
 // Gestionnaires chargés à la demande (GPS et Push Notifications)
 // Se chargent APRÈS que l'utilisateur ait commencé à utiliser l'app
 import React, { Component, useEffect, useState } from 'react';
+import BloodDonationAlertManager from './BloodDonationAlertManager';
 import GPSTrackingManager from './GPSTrackingManager';
 import PushNotificationManager from './PushNotificationManager';
 
@@ -65,6 +66,10 @@ const LazyManagers: React.FC = () => {
 
       <ManagerErrorBoundary managerName="PushNotificationManager">
         <PushNotificationManager />
+      </ManagerErrorBoundary>
+
+      <ManagerErrorBoundary managerName="BloodDonationAlertManager">
+        <BloodDonationAlertManager />
       </ManagerErrorBoundary>
     </>
   );

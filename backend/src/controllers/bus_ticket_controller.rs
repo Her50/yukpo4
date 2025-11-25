@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
 use std::sync::Arc;
+use uuid::Uuid;
 
 // ============================================================================
 // RECHERCHE TICKETS BUS
@@ -222,6 +223,94 @@ pub async fn get_seat_availability(
 }
 
 // ============================================================================
+// CRÉER PRODUIT TICKET VOYAGE
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct CreateBusProductRequest {
+    pub service_id: i32,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub product_type: String, // Doit être "ticket_voyage"
+    pub total_seats: i32,
+    pub bus_configuration: serde_json::Value,
+    pub seat_map: serde_json::Value,
+    pub price_cents: Option<i64>,
+    pub currency: Option<String>,
+}
+
+/// Créer un produit de type ticket_voyage
+pub async fn create_bus_product(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<CreateBusProductRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[create_bus_product] User ID: {}, Service ID: {}, Name: {}", user_id, payload.service_id, payload.name);
+
+    // Vérifier que le service existe et appartient à l'utilisateur
+    let service_exists: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM services WHERE id = $1 AND user_id = $2 AND is_active = true"
+    )
+        .bind(payload.service_id)
+        .bind(user_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_bus_product] Erreur vérification service: {}", e);
+            AppError::Internal(format!("Erreur vérification service: {}", e))
+        })?;
+
+    if service_exists.is_none() {
+        return Err(AppError::NotFound("Service non trouvé ou n'appartient pas à l'utilisateur".to_string()));
+    }
+
+    // Vérifier que le type est ticket_voyage
+    if payload.product_type != "ticket_voyage" {
+        return Err(AppError::BadRequest("Le type doit être 'ticket_voyage'".to_string()));
+    }
+
+    // Créer le produit
+    let product_id: uuid::Uuid = sqlx::query_scalar(
+        r#"
+        INSERT INTO products (
+            service_id,
+            name,
+            type,
+            total_seats,
+            bus_configuration,
+            seat_map,
+            price_cents,
+            currency,
+            created_at,
+            updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        RETURNING id
+        "#
+    )
+        .bind(payload.service_id)
+        .bind(&payload.name)
+        .bind(&payload.product_type)
+        .bind(payload.total_seats)
+        .bind(&payload.bus_configuration)
+        .bind(&payload.seat_map)
+        .bind(payload.price_cents)
+        .bind(payload.currency.as_deref().unwrap_or("XAF"))
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_bus_product] Erreur création produit: {}", e);
+            AppError::Internal(format!("Erreur création produit: {}", e))
+        })?;
+
+    Ok((StatusCode::CREATED, Json(json!({
+        "success": true,
+        "id": product_id.to_string(),
+        "message": "Produit créé avec succès"
+    }))))
+}
+
+// ============================================================================
 // LIER PRODUIT À AGENCE
 // ============================================================================
 
@@ -235,6 +324,99 @@ pub struct LinkBusProductRequest {
 }
 
 /// Lier un produit (ticket_voyage) à une agence de voyage
+/// Récupérer tous les tickets (paiements) pour une agence
+pub async fn get_agency_tickets(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[get_agency_tickets] User ID: {}", user_id);
+
+    // Récupérer tous les paiements pour les produits de cette agence
+    let rows = sqlx::query(
+        r#"
+        SELECT 
+            btp.id as payment_id,
+            btp.product_id,
+            p.name as product_name,
+            btp.bus_number,
+            btp.departure_city,
+            btp.arrival_city,
+            btp.departure_date,
+            btp.departure_time,
+            btp.ticket_price,
+            btp.number_of_tickets,
+            btp.subtotal,
+            btp.yukpo_commission,
+            btp.agency_payout,
+            btp.total_amount,
+            btp.booking_fee,
+            btp.currency,
+            btp.payment_status,
+            btp.ticket_pdf_url,
+            btp.reservation_ids,
+            btp.created_at,
+            u.nom_complet as customer_name,
+            u.email as customer_email,
+            -- Statistiques embarquement
+            (
+                SELECT COUNT(*) FROM bus_boarding_status bbs
+                WHERE bbs.payment_id = btp.id AND bbs.is_validated = TRUE
+            ) as boarded_count
+        FROM bus_ticket_payments btp
+        JOIN products p ON p.id::text = btp.product_id
+        JOIN services s ON s.id = p.service_id
+        LEFT JOIN users u ON u.id = btp.user_id
+        WHERE s.user_id = $1
+        ORDER BY btp.created_at DESC
+        "#
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_agency_tickets] Erreur: {}", e);
+        AppError::Internal(format!("Erreur récupération tickets: {}", e))
+    })?;
+
+    let mut tickets = Vec::new();
+    for row in rows {
+        let reservation_ids: Vec<String> = row
+            .try_get::<Vec<String>, _>("reservation_ids")
+            .unwrap_or_default();
+
+        let ticket = json!({
+            "payment_id": row.try_get::<String, _>("payment_id").unwrap_or_default(),
+            "product_id": row.try_get::<String, _>("product_id").unwrap_or_default(),
+            "product_name": row.get::<String, _>("product_name"),
+            "bus_number": row.get::<Option<String>, _>("bus_number"),
+            "departure_city": row.get::<String, _>("departure_city"),
+            "arrival_city": row.get::<String, _>("arrival_city"),
+            "departure_date": row.get::<String, _>("departure_date"),
+            "departure_time": row.get::<String, _>("departure_time"),
+            "ticket_price": row.get::<i32, _>("ticket_price"),
+            "number_of_tickets": row.get::<i32, _>("number_of_tickets"),
+            "subtotal": row.get::<i32, _>("subtotal"),
+            "yukpo_commission": row.get::<Option<i32>, _>("yukpo_commission"),
+            "agency_payout": row.get::<Option<i32>, _>("agency_payout"),
+            "total_amount": row.get::<i32, _>("total_amount"),
+            "booking_fee": row.get::<i32, _>("booking_fee"),
+            "currency": row.get::<String, _>("currency"),
+            "payment_status": row.get::<String, _>("payment_status"),
+            "ticket_pdf_url": row.get::<Option<String>, _>("ticket_pdf_url"),
+            "reservation_ids": reservation_ids,
+            "customer_name": row.get::<Option<String>, _>("customer_name"),
+            "customer_email": row.get::<Option<String>, _>("customer_email"),
+            "boarded_count": row.get::<i64, _>("boarded_count"),
+            "created_at": row
+                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                .to_rfc3339(),
+        });
+        tickets.push(ticket);
+    }
+
+    Ok((StatusCode::OK, Json(json!({ "success": true, "tickets": tickets }))))
+}
+
 pub async fn link_bus_product_to_agency(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
@@ -341,6 +523,179 @@ pub async fn link_bus_product_to_agency(
         "success": true,
         "message": "Produit lié à l'agence avec succès",
         "config": updated_config
+    }))))
+}
+
+// ============================================================================
+// CRÉER RÉSERVATIONS
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct CreateReservationRequest {
+    pub product_id: String,
+    pub seats: Vec<SeatReservationRequest>,
+    pub caution_amount: Option<i32>, // Montant caution par place (défaut 500)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SeatReservationRequest {
+    pub seat_id: String,
+    pub seat_number: i32,
+    pub passenger_name: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ReservationResponse {
+    pub reservation_id: String,
+    pub seat_id: String,
+    pub seat_number: i32,
+    pub expires_at: String,
+}
+
+/// Créer des réservations pour des places de bus
+pub async fn create_reservations(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<CreateReservationRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[create_reservations] User ID: {}, Product ID: {}, Seats: {}", user_id, payload.product_id, payload.seats.len());
+
+    if payload.seats.is_empty() {
+        return Err(AppError::BadRequest("Aucune place sélectionnée".to_string()));
+    }
+
+    let caution_amount = payload.caution_amount.unwrap_or(500);
+
+    // Vérifier que le produit existe
+    let product_exists: Option<String> = sqlx::query_scalar(
+        "SELECT id::text FROM products WHERE id::text = $1 AND type = 'ticket_voyage' AND is_active = TRUE"
+    )
+        .bind(&payload.product_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_reservations] Erreur vérification produit: {}", e);
+            AppError::Internal(format!("Erreur vérification produit: {}", e))
+        })?;
+
+    if product_exists.is_none() {
+        return Err(AppError::NotFound("Produit non trouvé".to_string()));
+    }
+
+    // Vérifier le solde utilisateur
+    let user_balance: i64 = sqlx::query_scalar(
+        "SELECT tokens_balance FROM users WHERE id = $1"
+    )
+        .bind(user_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_reservations] Erreur récupération solde: {}", e);
+            AppError::Internal(format!("Erreur récupération solde: {}", e))
+        })?;
+
+    let total_caution = caution_amount * payload.seats.len() as i32;
+    if user_balance < total_caution as i64 {
+        return Err(AppError::BadRequest(format!(
+            "Solde insuffisant. Requis: {} XAF, Disponible: {} XAF",
+            total_caution, user_balance
+        )));
+    }
+
+    // Créer les réservations
+    let mut reservations = Vec::new();
+    for seat in payload.seats {
+        // Vérifier que la place n'est pas déjà réservée
+        let existing: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT id FROM bus_reservations
+            WHERE product_id = $1 AND seat_id = $2
+                AND status IN ('pending', 'confirmed')
+                AND (expires_at IS NULL OR expires_at > NOW())
+            "#
+        )
+            .bind(&payload.product_id)
+            .bind(&seat.seat_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[create_reservations] Erreur vérification place: {}", e);
+                AppError::Internal(format!("Erreur vérification place: {}", e))
+            })?;
+
+        if existing.is_some() {
+            return Err(AppError::BadRequest(format!("La place {} est déjà réservée", seat.seat_id)));
+        }
+
+        // Créer la réservation
+        let reservation_id: String = sqlx::query_scalar(
+            r#"
+            INSERT INTO bus_reservations (
+                product_id,
+                user_id,
+                seat_id,
+                seat_number,
+                passenger_name,
+                caution_amount,
+                status,
+                payment_status,
+                expires_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, 'pending', 'caution_paid', NOW() + INTERVAL '30 minutes')
+            RETURNING id
+            "#
+        )
+            .bind(&payload.product_id)
+            .bind(user_id)
+            .bind(&seat.seat_id)
+            .bind(seat.seat_number)
+            .bind(&seat.passenger_name)
+            .bind(caution_amount)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[create_reservations] Erreur création réservation: {}", e);
+                AppError::Internal(format!("Erreur création réservation: {}", e))
+            })?;
+
+        // Débiter le solde
+        sqlx::query(
+            "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2"
+        )
+            .bind(caution_amount)
+            .bind(user_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[create_reservations] Erreur débit solde: {}", e);
+                AppError::Internal(format!("Erreur débit solde: {}", e))
+            })?;
+
+        // Récupérer la date d'expiration
+        let expires_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
+            "SELECT expires_at FROM bus_reservations WHERE id = $1"
+        )
+            .bind(&reservation_id)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[create_reservations] Erreur récupération expiration: {}", e);
+                AppError::Internal(format!("Erreur récupération expiration: {}", e))
+            })?;
+
+        reservations.push(ReservationResponse {
+            reservation_id,
+            seat_id: seat.seat_id,
+            seat_number: seat.seat_number,
+            expires_at: expires_at.to_rfc3339(),
+        });
+    }
+
+    Ok((StatusCode::CREATED, Json(json!({
+        "success": true,
+        "reservations": reservations,
+        "total_caution": total_caution,
+        "new_balance": user_balance - total_caution as i64
     }))))
 }
 

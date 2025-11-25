@@ -1634,6 +1634,9 @@ const ResultatBesoinScreen: React.FC = () => {
           }
 
           if (searchMethod.includes('specialized_travel_agency') || type === 'agence_voyage') {
+            // ✅ NOUVEAU : Détecter les tickets bus dans les résultats
+            const busTickets = (item as any).bus_tickets || (item as any).tickets || null;
+
             return (
               <AgenceVoyageResultCard
                 agency={{
@@ -1649,9 +1652,57 @@ const ResultatBesoinScreen: React.FC = () => {
                   services_voyage: data.services_voyage,
                   compagnies_bus: data.compagnies_bus,
                 }}
+                busTickets={busTickets}
                 onPress={() => {
                   trackNavigation('click', {
                     itemType: 'travel_agency',
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          // ✅ NOUVEAU : Détecter les résultats de recherche de tickets bus directement
+          if (searchMethod.includes('bus_tickets') || type === 'bus_ticket') {
+            const busTickets = Array.isArray(item) ? item : [item];
+            const agencyData = (item as any).agency || {};
+
+            return (
+              <AgenceVoyageResultCard
+                agency={{
+                  id: agencyData.agency_id || item.service_id,
+                  service_id: agencyData.agency_service_id || item.service_id,
+                  nom_agence: agencyData.agency_nom || data.titre_service?.valeur || item.nom || '',
+                  quartier: agencyData.agency_quartier || data.quartier,
+                  ville: agencyData.agency_ville || data.ville,
+                  telephone: agencyData.agency_telephone || data.telephone,
+                  whatsapp: agencyData.agency_whatsapp || data.whatsapp,
+                  peut_emettre_tickets_bus: true,
+                  distance_km: (item as any).distance_km || item.distance_km,
+                }}
+                busTickets={busTickets.map((ticket: any) => ({
+                  product_id: ticket.product_id || ticket.id,
+                  product_name: ticket.product_name || ticket.name,
+                  bus_model_name: ticket.bus_model_name,
+                  total_seats: ticket.total_seats,
+                  available_seats: ticket.available_seats || 0,
+                  reserved_seats: ticket.reserved_seats || 0,
+                  bus_number: ticket.bus_number,
+                  departure_city: ticket.departure_city,
+                  arrival_city: ticket.arrival_city,
+                  departure_date: ticket.departure_date,
+                  departure_time: ticket.departure_time,
+                  ticket_price: ticket.ticket_price || ticket.price,
+                  currency: ticket.currency || 'XAF',
+                  distance_km: ticket.distance_km,
+                }))}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'bus_ticket',
                     itemId: item.service_id?.toString(),
                   });
                   (navigation as any).navigate('ServiceDetail', {

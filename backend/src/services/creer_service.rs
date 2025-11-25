@@ -6,8 +6,9 @@ use crate::utils::currency::{auto_fill_currencies, extract_country};
 use crate::utils::embedding_client::AddEmbeddingPineconeRequest;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
-use log::{info, warn};
+use log::{info, warn, error};
 use sqlx::{FromRow, PgPool, Row};
+use reqwest::Client;
 
 #[derive(FromRow)]
 struct UserGpsRow {
@@ -83,15 +84,43 @@ fn infer_extension_from_data(data: &str, default_ext: &str) -> String {
     default_ext.to_string()
 }
 
+/// ✅ AMÉLIORATION: Détection améliorée des formats base64
+/// Vérifie si une chaîne est probablement du base64 ou une URL
 fn is_probable_base64(data: &str) -> bool {
+    // 1. Format data: URI (data:image/png;base64,...)
     if data.starts_with("data:") {
         return true;
     }
+    
+    // 2. URL HTTP/HTTPS - ne pas traiter comme base64
+    if data.starts_with("http://") || data.starts_with("https://") {
+        return false;
+    }
+    
+    // 3. Base64 pur (minimum 80 caractères pour être valide)
     if data.len() < 80 {
         return false;
     }
-    data.chars()
-        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=' | '\n' | '\r'))
+    
+    // 4. Vérifier que tous les caractères sont valides pour base64
+    let valid_chars = data.chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=' | '\n' | '\r' | ' '));
+    
+    // 5. Vérifier qu'il y a au moins quelques caractères base64 typiques
+    let has_base64_chars = data.contains('+') || data.contains('/') || data.contains('=');
+    
+    // 6. Vérifier le ratio de caractères base64 (au moins 80% de caractères valides)
+    let base64_char_count = data.chars()
+        .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '='))
+        .count();
+    let base64_ratio = base64_char_count as f64 / data.len() as f64;
+    
+    valid_chars && has_base64_chars && base64_ratio >= 0.8
+}
+
+/// ✅ NOUVEAU: Vérifie si une chaîne est une URL HTTP/HTTPS
+fn is_url(data: &str) -> bool {
+    data.starts_with("http://") || data.starts_with("https://")
 }
 
 fn produits_array_mut(data_obj: &mut serde_json::Value) -> Option<&mut Vec<serde_json::Value>> {
@@ -144,6 +173,155 @@ async fn persist_base64_media(
         path: path_str,
         bytes,
     })
+}
+
+/// ✅ NOUVEAU: Télécharge et sauvegarde une image depuis une URL HTTP/HTTPS
+async fn download_and_save_image(
+    storage_root: &Path,
+    service_id: i32,
+    image_url: &str,
+    subdir: &str,
+) -> AppResult<StoredMedia> {
+    log::info!(
+        "[creer_service] 📥 Téléchargement image depuis URL: {}",
+        image_url
+    );
+
+    // Créer un client HTTP avec timeout
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| AppError::Internal(format!("Erreur création client HTTP: {}", e)))?;
+
+    // Télécharger l'image
+    let response = client
+        .get(image_url)
+        .send()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("Erreur téléchargement image depuis {}: {}", image_url, e)))?;
+
+    if !response.status().is_success() {
+        return Err(AppError::BadRequest(format!(
+            "Erreur HTTP {} lors du téléchargement de l'image",
+            response.status()
+        )));
+    }
+
+    // Sauvegarder les headers avant de consommer la réponse
+    let content_type = response
+        .headers()
+        .get("content-type")
+        .and_then(|ct| ct.to_str().ok())
+        .map(|s| s.to_string());
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("Erreur lecture image: {}", e)))?
+        .to_vec();
+
+    // Déterminer l'extension depuis le Content-Type ou l'URL
+    let extension = content_type
+        .as_deref()
+        .and_then(|ct| {
+            if ct.contains("image/png") {
+                Some("png")
+            } else if ct.contains("image/jpeg") || ct.contains("image/jpg") {
+                Some("jpg")
+            } else if ct.contains("image/gif") {
+                Some("gif")
+            } else if ct.contains("image/webp") {
+                Some("webp")
+            } else if ct.contains("image/svg") {
+                Some("svg")
+            } else {
+                None
+            }
+        })
+        .or_else(|| {
+            // Essayer depuis l'URL
+            if let Some(dot_pos) = image_url.rfind('.') {
+                let ext = &image_url[dot_pos + 1..];
+                match ext.to_lowercase().as_str() {
+                    "png" => Some("png"),
+                    "jpg" | "jpeg" => Some("jpg"),
+                    "gif" => Some("gif"),
+                    "webp" => Some("webp"),
+                    "svg" => Some("svg"),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .or_else(|| {
+            // Essayer d'extraire depuis l'URL
+            infer_extension_from_url(image_url)
+        })
+        .unwrap_or("jpg"); // Par défaut jpg
+
+    // Sauvegarder le fichier
+    let service_dir = storage_root
+        .join("services")
+        .join(service_id.to_string())
+        .join(subdir);
+    fs::create_dir_all(&service_dir).await?;
+
+    let file_name = format!(
+        "{}_{}.{}",
+        subdir.trim_end_matches('s'),
+        Uuid::new_v4(),
+        extension
+    );
+    let disk_path = service_dir.join(&file_name);
+    fs::write(&disk_path, &bytes).await?;
+
+    let relative_path = Path::new("uploads")
+        .join("services")
+        .join(service_id.to_string())
+        .join(subdir)
+        .join(&file_name);
+    let path_str = relative_path.to_string_lossy().replace('\\', "/");
+
+    log::info!(
+        "[creer_service] ✅ Image téléchargée et sauvegardée: {}",
+        path_str
+    );
+
+    Ok(StoredMedia {
+        path: path_str,
+        bytes,
+    })
+}
+
+/// ✅ NOUVEAU: Infère l'extension depuis une URL
+fn infer_extension_from_url(url: &str) -> Option<&'static str> {
+    // Extraire l'extension depuis l'URL
+    if let Some(query_start) = url.find('?') {
+        let url_without_query = &url[..query_start];
+        if let Some(dot_pos) = url_without_query.rfind('.') {
+            let ext = &url_without_query[dot_pos + 1..];
+            return match ext.to_lowercase().as_str() {
+                "png" => Some("png"),
+                "jpg" | "jpeg" => Some("jpg"),
+                "gif" => Some("gif"),
+                "webp" => Some("webp"),
+                "svg" => Some("svg"),
+                _ => None,
+            };
+        }
+    } else if let Some(dot_pos) = url.rfind('.') {
+        let ext = &url[dot_pos + 1..];
+        return match ext.to_lowercase().as_str() {
+            "png" => Some("png"),
+            "jpg" | "jpeg" => Some("jpg"),
+            "gif" => Some("gif"),
+            "webp" => Some("webp"),
+            "svg" => Some("svg"),
+            _ => None,
+        };
+    }
+    None
 }
 
 fn extract_value_string(value: &serde_json::Value) -> Option<String> {
@@ -526,7 +704,8 @@ async fn enrich_service_with_google(
     
     // ✅ NOUVEAU: Utiliser search_and_select_best_match avec validation distance et comparaison multiple
     let nom_prestataire_str = nom_prestataire.as_deref();
-    let max_distance_km = 10.0; // Distance maximale acceptée : 10 km
+    // ✅ AMÉLIORATION: Réduire la distance maximale à 1 km pour plus de précision (au lieu de 10 km)
+    let max_distance_km = 1.0; // Distance maximale acceptée : 1 km (précision maximale pour matching)
     
     match places_service
         .search_and_select_best_match(
@@ -1081,7 +1260,7 @@ pub async fn creer_service(
         .await;
 
     let current_balance = match current_balance_result {
-        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
+        Ok(row) => row.get::<i64, _>("tokens_balance"),
         Err(e) => {
             log::error!(
                 "[creer_service] ❌ Impossible de récupérer le solde utilisateur {}: {}",
@@ -1335,7 +1514,7 @@ pub async fn creer_service(
     .await;
 
     let new_balance = match debit_result {
-        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
+        Ok(row) => row.get::<i64, _>("tokens_balance"),
         Err(e) => {
             log::error!(
                 "[creer_service] ❌ Échec débit solde pour user {}: {}",
@@ -1407,13 +1586,12 @@ pub async fn creer_service(
             .fetch_one(&pool_clone)
             .await {
                 Ok(refund_row) => {
-                    if let Ok(refunded_balance) = refund_row.try_get::<i64, _>("tokens_balance") {
-                        log::info!(
-                            "[creer_service] ✅ Solde remboursé : {} FCFA (nouveau solde: {})",
-                            cout_reel_xaf_clone,
-                            refunded_balance
-                        );
-                    }
+                    let refunded_balance = refund_row.get::<i64, _>("tokens_balance");
+                    log::info!(
+                        "[creer_service] ✅ Solde remboursé : {} FCFA (nouveau solde: {})",
+                        cout_reel_xaf_clone,
+                        refunded_balance
+                    );
                 }
                 Err(refund_err) => {
                     log::error!(
@@ -1429,9 +1607,7 @@ pub async fn creer_service(
         AppError::Internal(format!("Échec insertion service: {}", e))
     })?;
 
-    let service_id: i32 = row
-        .try_get("service_id")
-        .map_err(|e| AppError::Internal(format!("Échec lecture service_id: {}", e)))?;
+    let service_id: i32 = row.get::<i32, _>("service_id");
 
     // Étape 2 : UPDATE users pour activer le provider (pas bloquant si déjà TRUE)
     let _ = sqlx::query(
@@ -1480,6 +1656,25 @@ pub async fn creer_service(
         "[creer_service] 💾 Début sauvegarde médias pour service {} ({} images globales trouvées dans data_processed)",
         service_id,
         service_images.len()
+    );
+    
+    // ✅ DIAGNOSTIC: Log détaillé pour comprendre pourquoi les médias ne sont pas sauvegardés
+    log::debug!(
+        "[creer_service] 🔍 DIAGNOSTIC MÉDIAS - service_id={}, data_processed keys: {:?}",
+        service_id,
+        data_processed.as_object().map(|o| o.keys().collect::<Vec<_>>()).unwrap_or_default()
+    );
+    
+    // Vérifier la présence de différents champs de médias dans data_processed
+    let has_base64_image = data_processed.get("base64_image").is_some();
+    let has_images_realisations = data_processed.get("images_realisations").is_some();
+    let has_videos = data_processed.get("videos_base64").is_some() || data_processed.get("videos").is_some();
+    let has_audio = data_processed.get("audio_base64").is_some();
+    let has_produits = data_processed.get("produits").is_some();
+    
+    log::info!(
+        "[creer_service] 🔍 DIAGNOSTIC MÉDIAS - service_id={} - Présence médias: base64_image={}, images_realisations={}, videos={}, audio={}, produits={}",
+        service_id, has_base64_image, has_images_realisations, has_videos, has_audio, has_produits
     );
 
     // ✅ CRITIQUE: Extraire les produits depuis data_processed (qui contient encore les médias base64)
@@ -1592,11 +1787,15 @@ pub async fn creer_service(
                         &image_data[..image_data.len().min(50)]
                     );
 
-                    let stored = if image_data.starts_with("http") {
-                        Ok(StoredMedia {
-                            path: image_data.to_string(),
-                            bytes: Vec::new(),
-                        })
+                    // ✅ AMÉLIORATION: Gérer les URLs HTTP/HTTPS en téléchargeant et sauvegardant l'image
+                    let stored = if is_url(image_data) {
+                        download_and_save_image(
+                            storage_root.as_path(),
+                            service_id,
+                            image_data,
+                            "images",
+                        )
+                        .await
                     } else if is_probable_base64(image_data) {
                         persist_base64_media(
                             storage_root.as_path(),
@@ -1608,8 +1807,9 @@ pub async fn creer_service(
                         .await
                     } else {
                         log::warn!(
-                            "[creer_service] Image ignorée (format non supporté) pour produit {}",
-                            product_index
+                            "[creer_service] Image ignorée (format non supporté) pour produit {}: {}",
+                            product_index,
+                            &image_data[..image_data.len().min(100)]
                         );
                         continue;
                     };
@@ -2389,6 +2589,74 @@ pub async fn creer_service(
             "[creer_service] ⚠️ Aucun fichier média sauvegardé pour le service {} (vérifier data_processed)",
             service_id
         );
+        
+        // ✅ DIAGNOSTIC: Log détaillé pour comprendre pourquoi aucun média n'a été sauvegardé
+        log::warn!(
+            "[creer_service] 🔍 DIAGNOSTIC MÉDIAS ÉCHEC - service_id={}",
+            service_id
+        );
+        
+        // Vérifier les différents champs possibles pour les médias
+        if let Some(obj) = data_processed.as_object() {
+            let media_fields = vec![
+                "base64_image", "images_realisations", "videos", "videos_base64",
+                "audio_base64", "doc_base64", "excel_base64"
+            ];
+            
+            for field in media_fields {
+                if let Some(value) = obj.get(field) {
+                    match value {
+                        serde_json::Value::Array(arr) => {
+                            log::warn!(
+                                "[creer_service] 🔍 DIAGNOSTIC - Champ '{}' présent: {} éléments (type: array)",
+                                field, arr.len()
+                            );
+                        }
+                        serde_json::Value::String(s) => {
+                            log::warn!(
+                                "[creer_service] 🔍 DIAGNOSTIC - Champ '{}' présent: valeur string (longueur: {})",
+                                field, s.len()
+                            );
+                        }
+                        _ => {
+                            log::warn!(
+                                "[creer_service] 🔍 DIAGNOSTIC - Champ '{}' présent mais type non traité: {:?}",
+                                field, value
+                            );
+                        }
+                    }
+                }
+            }
+            
+            // Vérifier les produits
+            if let Some(produits) = obj.get("produits") {
+                log::warn!(
+                    "[creer_service] 🔍 DIAGNOSTIC - Champ 'produits' présent: {:?}",
+                    produits
+                );
+                if let Some(produits_obj) = produits.as_object() {
+                    if let Some(valeur) = produits_obj.get("valeur") {
+                        if let Some(produits_array) = valeur.as_array() {
+                            log::warn!(
+                                "[creer_service] 🔍 DIAGNOSTIC - produits.valeur contient {} éléments",
+                                produits_array.len()
+                            );
+                            for (idx, produit) in produits_array.iter().enumerate() {
+                                if let Some(prod_obj) = produit.as_object() {
+                                    let has_images = prod_obj.get("images").is_some() 
+                                        || prod_obj.get("images_base64").is_some()
+                                        || prod_obj.get("image_base64").is_some();
+                                    log::warn!(
+                                        "[creer_service] 🔍 DIAGNOSTIC - Produit {} a images: {}",
+                                        idx, has_images
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // ✅ NOTE: PINECONE SUSPENDU - Vérifier si le service est disponible
@@ -2997,13 +3265,12 @@ pub async fn creer_service(
                 .fetch_one(&pool_clone)
                 .await {
                     Ok(refund_row) => {
-                        if let Ok(refunded_balance) = refund_row.try_get::<i64, _>("tokens_balance") {
-                            log::info!(
-                                "[creer_service] ✅ Solde remboursé après échec commit : {} FCFA (nouveau solde: {})",
-                                cout_reel_xaf_clone,
-                                refunded_balance
-                            );
-                        }
+                        let refunded_balance = refund_row.get::<i64, _>("tokens_balance");
+                        log::info!(
+                            "[creer_service] ✅ Solde remboursé après échec commit : {} FCFA (nouveau solde: {})",
+                            cout_reel_xaf_clone,
+                            refunded_balance
+                        );
                     }
                     Err(refund_err) => {
                         log::error!(
@@ -3765,9 +4032,7 @@ pub async fn save_autocomplete_combination(
         .map_err(|e| AppError::Internal(format!("Erreur récupération service data: {}", e)))?;
 
     if let Some(row) = current_data_row {
-        let mut service_data: serde_json::Value = row
-            .try_get("data")
-            .map_err(|e| AppError::Internal(format!("Erreur parsing service data: {}", e)))?;
+        let mut service_data: serde_json::Value = row.get::<serde_json::Value, _>("data");
 
         // ✅ CORRECTION 2025-11-04: Ajouter le vecteur COMPLET (produit + lieu) au champ produits
         // Construire combination_string à partir de product_vector

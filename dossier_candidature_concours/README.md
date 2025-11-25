@@ -71,6 +71,33 @@ Ce dossier contient tous les documents nécessaires pour candidater à des conco
     - Sections pré-remplies avec vos réalisations
     - Format professionnel et ATS-friendly
 
+11. **ANALYSE_PROPRIETE_INTELLECTUELLE.md** ⭐ **NOUVEAU**
+    - Analyse complète des innovations brevetables
+    - 6 innovations identifiées comme vraiment brevetables
+    - Guide complet : où déposer les demandes (US, EU, PCT, OAPI, Chine)
+    - Stratégie de protection par phases
+    - Estimation des coûts
+    - Plan d'action immédiat
+    - Checklist de dépôt
+
+12. **ANALYSE_COMPARATIVE_APPROFONDIE.md** ⭐ **NOUVEAU**
+    - Analyse comparative approfondie avec concurrents et géants de la tech
+    - Vérification de l'unicité internationale de chaque innovation
+    - Comparaison détaillée : Google, Amazon, Uber, etc.
+    - 4 innovations vraiment uniques identifiées
+    - 3 innovations potentiellement uniques à évaluer
+    - Recommandations finales par innovation
+    - Analyse de tous les composants (vidéo, livraison, etc.)
+
+13. **ANALYSE_NON_EVIDENCE_ET_IMPLEMENTATION.md** ⭐ **NOUVEAU**
+    - Analyse détaillée du critère de non-évidence pour chaque innovation
+    - Vérification que les innovations respectent le critère légal
+    - Impact de l'implémentation complète avec IA sur la brevetabilité
+    - Distinction entre innovation technique et méthode de développement
+    - 4 innovations vraiment non-évidentes confirmées
+    - 3 innovations partiellement non-évidentes à évaluer
+    - Réponses aux questions sur non-évidence et implémentation IA
+
 ---
 
 ## 🚀 DÉMARRAGE RAPIDE

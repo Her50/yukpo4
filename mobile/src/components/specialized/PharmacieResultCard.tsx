@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Linking,
     StyleSheet,
@@ -7,7 +7,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
 import { modernColors } from '../../theme/modernTheme';
+import OrderDeliveryModal from '../delivery/OrderDeliveryModal';
 import SafeIcon from '../SafeIcon';
 
 interface PharmacieResultCardProps {
@@ -29,6 +31,8 @@ interface PharmacieResultCardProps {
 
 const PharmacieResultCard: React.FC<PharmacieResultCardProps> = ({ pharmacy, onPress }) => {
     const navigation = useNavigation();
+    const { user } = useAuth();
+    const [showDeliveryModal, setShowDeliveryModal] = useState(false);
 
     const handlePress = () => {
         if (onPress) {
@@ -108,6 +112,31 @@ const PharmacieResultCard: React.FC<PharmacieResultCardProps> = ({ pharmacy, onP
                     )}
                 </View>
             </View>
+
+            {/* Bouton Livraison */}
+            <View style={styles.actionsRow}>
+                <TouchableOpacity
+                    style={[styles.actionButton, styles.deliveryButton]}
+                    onPress={() => setShowDeliveryModal(true)}
+                >
+                    <SafeIcon name="truck" size={18} color="#fff" />
+                    <Text style={[styles.actionButtonText, styles.deliveryButtonText]}>
+                        Commander avec livraison
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Delivery Modal */}
+            <OrderDeliveryModal
+                visible={showDeliveryModal}
+                onClose={() => setShowDeliveryModal(false)}
+                serviceId={pharmacy.service_id}
+                productName={`Pharmacie - ${pharmacy.nom}`}
+                onSuccess={(deliveryId) => {
+                    setShowDeliveryModal(false);
+                    // Optionnel: navigation ou notification
+                }}
+            />
         </TouchableOpacity>
     );
 };
@@ -219,6 +248,33 @@ const styles = StyleSheet.create({
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    actionsRow: {
+        flexDirection: 'row',
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    actionButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        borderRadius: 8,
+        gap: 6,
+    },
+    deliveryButton: {
+        backgroundColor: modernColors.primary,
+    },
+    actionButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    deliveryButtonText: {
+        color: '#fff',
     },
 });
 

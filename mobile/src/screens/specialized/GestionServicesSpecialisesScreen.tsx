@@ -299,6 +299,17 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 </View>
             )}
 
+            {/* Bouton spécial pour agences de voyage : Gérer les tickets */}
+            {item.type === 'agence_voyage' && (
+                <TouchableOpacity
+                    style={styles.ticketsButton}
+                    onPress={() => (navigation as any).navigate('AgencyTicketManagement')}
+                >
+                    <SafeIcon name="ticket" size={18} color="#fff" />
+                    <Text style={styles.ticketsButtonText}>Gérer les tickets</Text>
+                </TouchableOpacity>
+            )}
+
             <View style={styles.actionsRow}>
                 <TouchableOpacity
                     style={[styles.actionButton, styles.editButton]}
@@ -583,6 +594,21 @@ const styles = StyleSheet.create({
     },
     availabilityText: {
         fontSize: 11,
+        fontWeight: '700',
+        color: '#fff',
+    },
+    ticketsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary,
+        marginBottom: 12,
+        gap: 8,
+    },
+    ticketsButtonText: {
+        fontSize: 14,
         fontWeight: '700',
         color: '#fff',
     },

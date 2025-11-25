@@ -58,5 +58,9 @@ pub mod pharmacy_controller; // ✅ 2025-11-26: Contrôleur pour pharmacies
 pub mod specialized_services_controller; // ✅ 2025-11-26: Contrôleur pour services spécialisés (hôpitaux, laboratoires, agences, covoiturage, taxi)
 pub mod blood_bank_controller; // ✅ 2025-11-27: Contrôleur pour banques de sang (service spécialisé isolé)
 pub mod bus_ticket_controller; // ✅ 2025-11-27: Contrôleur pour tickets bus avec agences de voyage
+pub mod bus_ticket_payment_controller; // ✅ 2025-11-27: Contrôleur pour paiement tickets bus avec commission
+pub mod bus_ticket_validation_controller; // ✅ 2025-11-27: Contrôleur pour validation tickets bus avec QR code
+pub mod bus_seat_management_controller; // ✅ 2025-11-27: Contrôleur pour gestion manuelle places non disponibles
+pub mod blood_donation_matching_controller; // ✅ 2025-11-27: Contrôleur pour système intelligent matching banque de sang
 
 // pub use service_controller::update_token_debit;

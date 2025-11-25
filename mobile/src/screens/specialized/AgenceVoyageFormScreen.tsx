@@ -91,6 +91,45 @@ const AgenceVoyageFormScreen: React.FC = () => {
         );
     };
 
+    // Fonction pour générer le seat_map automatiquement
+    const generateSeatMap = (model: BusModel): any[] => {
+        const seatMap: any[] = [];
+        const rows = model.rows || Math.ceil(model.total_seats / 4);
+        const seatsPerRow = model.seatsPerRow || 4;
+        const firstRowSeats = model.firstRowSeats || 2;
+        let seatNumber = 1;
+
+        // Première rangée (nombre de places différent)
+        for (let col = 1; col <= firstRowSeats; col++) {
+            seatMap.push({
+                row: 1,
+                col: col,
+                seat_id: `1-${col}`,
+                seat_number: seatNumber++,
+                type: 'standard',
+                available: true,
+            });
+        }
+
+        // Rangées suivantes
+        for (let row = 2; row <= rows; row++) {
+            for (let col = 1; col <= seatsPerRow; col++) {
+                if (seatNumber <= model.total_seats) {
+                    seatMap.push({
+                        row: row,
+                        col: col,
+                        seat_id: `${row}-${col}`,
+                        seat_number: seatNumber++,
+                        type: 'standard',
+                        available: true,
+                    });
+                }
+            }
+        }
+
+        return seatMap;
+    };
+
     const handleSubmit = async () => {
         if (!serviceId) {
             Alert.alert('Erreur', 'Service ID manquant. Veuillez créer un service d\'abord.');
@@ -131,11 +170,90 @@ const AgenceVoyageFormScreen: React.FC = () => {
             const response = await apiPost('/api/agences-voyage', payload);
 
             if (response.success) {
-                Alert.alert(
-                    'Succès',
-                    'Agence de voyage enregistrée avec succès !',
-                    [{ text: 'OK', onPress: () => navigation.goBack() }]
-                );
+                const agencyId = response.data?.id;
+
+                // Si l'agence peut émettre des tickets bus et qu'il y a des modèles
+                if (formData.peut_emettre_tickets_bus && busModels.length > 0 && agencyId) {
+                    let successCount = 0;
+                    let errorCount = 0;
+
+                    // Créer un produit pour chaque modèle de bus
+                    for (const model of busModels) {
+                        try {
+                            // Générer le seat_map
+                            const seatMap = generateSeatMap(model);
+
+                            // Créer le produit
+                            const productPayload = {
+                                service_id: serviceId,
+                                name: model.nom_modele,
+                                type: 'ticket_voyage',
+                                total_seats: model.total_seats,
+                                bus_configuration: {
+                                    rows: model.rows || Math.ceil(model.total_seats / 4),
+                                    seatsPerRow: model.seatsPerRow || 4,
+                                    firstRowSeats: model.firstRowSeats || 2,
+                                    allSeatsAvailable: true,
+                                },
+                                seat_map: seatMap,
+                                price_cents: model.prix_base * 100, // Convertir en centimes
+                                currency: 'XAF',
+                            };
+
+                            const productResponse = await apiPost('/api/bus-tickets/create-product', productPayload);
+
+                            if (productResponse.success && productResponse.data?.id) {
+                                const productId = productResponse.data.id;
+
+                                // Lier le produit à l'agence
+                                const linkResponse = await apiPost('/api/bus-tickets/link', {
+                                    agency_id: agencyId,
+                                    product_id: productId,
+                                    nom_modele: model.nom_modele,
+                                    classe: model.classe,
+                                    equipements: model.equipements,
+                                });
+
+                                if (linkResponse.success) {
+                                    successCount++;
+                                } else {
+                                    errorCount++;
+                                    console.error('Erreur liaison produit:', linkResponse.error);
+                                }
+                            } else {
+                                errorCount++;
+                                console.error('Erreur création produit:', productResponse.error);
+                            }
+                        } catch (error: any) {
+                            errorCount++;
+                            console.error('Erreur traitement modèle:', error);
+                        }
+                    }
+
+                    // Afficher le résultat
+                    if (successCount > 0) {
+                        const message = errorCount > 0
+                            ? `Agence créée avec succès !\n${successCount} modèle(s) de bus créé(s).\n${errorCount} erreur(s) lors de la création.`
+                            : `Agence créée avec succès !\n${successCount} modèle(s) de bus créé(s) et lié(s).`;
+
+                        Alert.alert('Succès', message, [
+                            { text: 'OK', onPress: () => navigation.goBack() }
+                        ]);
+                    } else {
+                        Alert.alert(
+                            'Agence créée',
+                            'L\'agence a été créée, mais aucun modèle de bus n\'a pu être créé.',
+                            [{ text: 'OK', onPress: () => navigation.goBack() }]
+                        );
+                    }
+                } else {
+                    // Pas de modèles de bus, juste confirmer la création de l'agence
+                    Alert.alert(
+                        'Succès',
+                        'Agence de voyage enregistrée avec succès !',
+                        [{ text: 'OK', onPress: () => navigation.goBack() }]
+                    );
+                }
             } else {
                 Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer l\'agence');
             }

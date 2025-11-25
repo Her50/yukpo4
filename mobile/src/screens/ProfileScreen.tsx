@@ -230,6 +230,20 @@ const ProfileScreen: React.FC = () => {
       description: 'Gérer vos services de santé et transport'
     },
     {
+      title: 'Mes tickets de voyage',
+      icon: '🎫',
+      color: '#8B5CF6',
+      route: 'MyBusTickets',
+      description: 'Voir et gérer vos tickets de bus'
+    },
+    {
+      title: 'Don de sang',
+      icon: '🩸',
+      color: '#DC2626',
+      route: 'BloodGroupManagement',
+      description: 'Enregistrer votre groupe sanguin et être notifié en cas d\'urgence'
+    },
+    {
       title: 'Devenir coursier Yukpo',
       icon: 'bicycle-outline',
       color: '#10B981',

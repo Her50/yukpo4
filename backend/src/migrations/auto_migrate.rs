@@ -5612,6 +5612,96 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto bus tickets integration: {}", e),
     }
 
+    // ✅ 2025-11-27 : Commission et reversement tickets bus
+    match ensure_bus_ticket_commission_system(pool).await {
+        Ok(_) => info!("✅ Migration auto: bus ticket commission system OK"),
+        Err(e) => error!("❌ Erreur migration auto bus ticket commission: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Système validation tickets bus
+    match ensure_bus_ticket_validation_system(pool).await {
+        Ok(_) => info!("✅ Migration auto: bus ticket validation system OK"),
+        Err(e) => error!("❌ Erreur migration auto bus ticket validation: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Gestion manuelle places non disponibles
+    match ensure_bus_seat_blocks_system(pool).await {
+        Ok(_) => info!("✅ Migration auto: bus seat blocks system OK"),
+        Err(e) => error!("❌ Erreur migration auto bus seat blocks: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-11-27 : Système Intelligent de Matching Banque de Sang
+    match ensure_blood_donation_matching_system(pool).await {
+        Ok(_) => info!("✅ Migration auto: blood donation matching system OK"),
+        Err(e) => error!("❌ Erreur migration auto blood donation matching: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Tables token_consumption_logs et purchase_history
+    match ensure_token_consumption_and_purchase_history_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: token_consumption_logs et purchase_history OK"),
+        Err(e) => error!("❌ Erreur migration auto token_consumption/purchase_history: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Table products (critique)
+    match ensure_products_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: products table OK"),
+        Err(e) => error!("❌ Erreur migration auto products: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Table echanges (critique)
+    match ensure_echanges_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: echanges table OK"),
+        Err(e) => error!("❌ Erreur migration auto echanges: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Tables de chat (critique)
+    match ensure_chat_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: chat tables OK"),
+        Err(e) => error!("❌ Erreur migration auto chat tables: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Table user_push_tokens (critique)
+    match ensure_push_tokens_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: user_push_tokens OK"),
+        Err(e) => error!("❌ Erreur migration auto user_push_tokens: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Table image_analyses
+    match ensure_image_analyses_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: image_analyses OK"),
+        Err(e) => error!("❌ Erreur migration auto image_analyses: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Table programmes_scolaires
+    match ensure_programmes_scolaires_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: programmes_scolaires OK"),
+        Err(e) => error!("❌ Erreur migration auto programmes_scolaires: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Tables de modèles produits
+    match ensure_product_models_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: product models tables OK"),
+        Err(e) => error!("❌ Erreur migration auto product models: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Table visibility_tracking
+    match ensure_visibility_tracking_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: visibility_tracking OK"),
+        Err(e) => error!("❌ Erreur migration auto visibility_tracking: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Tables service_team_management
+    match ensure_service_team_management_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: service_team_management OK"),
+        Err(e) => error!("❌ Erreur migration auto service_team_management: {}", e),
+    }
+
+    // ✅ 2025-11-27 : Table bus_return_trips
+    match ensure_bus_return_trips_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: bus_return_trips OK"),
+        Err(e) => error!("❌ Erreur migration auto bus_return_trips: {}", e),
+    }
+
     match ensure_live_streaming_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: live streaming tables OK"),
         Err(e) => error!("❌ Erreur migration auto live streaming: {}", e),
@@ -7061,6 +7151,227 @@ pub async fn ensure_delivery_payment_reservations_table(pool: &PgPool) -> Result
     Ok(())
 }
 
+/// Vérifie et crée les tables token_consumption_logs et purchase_history si elles n'existent pas
+pub async fn ensure_token_consumption_and_purchase_history_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables token_consumption_logs et purchase_history...");
+    
+    let token_consumption_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'token_consumption_logs')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    let purchase_history_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'purchase_history')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !token_consumption_exists || !purchase_history_exists {
+        warn!("⚠️ Tables token_consumption_logs ou purchase_history manquantes (seront créées par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Tables token_consumption_logs et purchase_history présentes");
+    }
+    
+    Ok(())
+}
+
+/// Vérifie que la table products existe (créée via 0000_create_all_tables.sql)
+pub async fn ensure_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table products...");
+    
+    let products_lifecycle_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'products_lifecycle')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !products_lifecycle_exists {
+        warn!("⚠️ Table products_lifecycle manquante (sera créée par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Table products_lifecycle présente");
+    }
+    
+    Ok(())
+}
+
+/// Vérifie que la table echanges existe (créée via 0000_create_all_tables.sql)
+pub async fn ensure_echanges_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table echanges...");
+    
+    let echanges_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'echanges')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !echanges_exists {
+        warn!("⚠️ Table echanges manquante (sera créée par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Table echanges présente");
+    }
+    
+    Ok(())
+}
+
+/// Vérifie que les tables de chat existent (créées via 0000_create_all_tables.sql)
+pub async fn ensure_chat_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables de chat...");
+    
+    let conversations_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'conversations')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    let chat_messages_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'chat_messages')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !conversations_exists || !chat_messages_exists {
+        warn!("⚠️ Tables de chat manquantes (seront créées par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Tables de chat présentes");
+    }
+    
+    Ok(())
+}
+
+/// Vérifie que la table user_push_tokens existe (créée via 0000_create_all_tables.sql)
+pub async fn ensure_push_tokens_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table user_push_tokens...");
+    
+    let push_tokens_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'user_push_tokens')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !push_tokens_exists {
+        warn!("⚠️ Table user_push_tokens manquante (sera créée par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Table user_push_tokens présente");
+    }
+    
+    Ok(())
+}
+
+/// Vérifie que la table image_analyses existe (créée via 0000_create_all_tables.sql)
+pub async fn ensure_image_analyses_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table image_analyses...");
+    
+    let image_analyses_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'image_analyses')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !image_analyses_exists {
+        warn!("⚠️ Table image_analyses manquante (sera créée par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Table image_analyses présente");
+    }
+    
+    Ok(())
+}
+
+/// Vérifie que la table programmes_scolaires existe (créée via 0000_create_all_tables.sql)
+pub async fn ensure_programmes_scolaires_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table programmes_scolaires...");
+    
+    let programmes_scolaires_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'programmes_scolaires')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !programmes_scolaires_exists {
+        warn!("⚠️ Table programmes_scolaires manquante (sera créée par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Table programmes_scolaires présente");
+    }
+    
+    Ok(())
+}
+
+/// Vérifie que les tables de modèles produits existent (créées via 0000_create_all_tables.sql)
+pub async fn ensure_product_models_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables de modèles produits...");
+    
+    let product_models_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'product_models')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !product_models_exists {
+        warn!("⚠️ Tables de modèles produits manquantes (seront créées par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Tables de modèles produits présentes");
+    }
+    
+    Ok(())
+}
+
+/// Vérifie que la table visibility_tracking existe (créée via 0000_create_all_tables.sql)
+pub async fn ensure_visibility_tracking_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table visibility_tracking...");
+    
+    let visibility_tracking_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'content_visibility_tracking')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !visibility_tracking_exists {
+        warn!("⚠️ Table visibility_tracking manquante (sera créée par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Table visibility_tracking présente");
+    }
+    
+    Ok(())
+}
+
+/// Vérifie que les tables service_team_management existent (créées via 0000_create_all_tables.sql)
+pub async fn ensure_service_team_management_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables service_team_management...");
+    
+    let service_team_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'service_team_members')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !service_team_exists {
+        warn!("⚠️ Tables service_team_management manquantes (seront créées par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Tables service_team_management présentes");
+    }
+    
+    Ok(())
+}
+
+/// Vérifie que la table bus_return_trips existe (créée via 0000_create_all_tables.sql)
+pub async fn ensure_bus_return_trips_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table bus_return_trips...");
+    
+    let bus_return_trips_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'return_trip_requests')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !bus_return_trips_exists {
+        warn!("⚠️ Table bus_return_trips manquante (sera créée par 0000_create_all_tables.sql)");
+    } else {
+        info!("✅ Table bus_return_trips présente");
+    }
+    
+    Ok(())
+}
+
 /// ✅ Phase 5 - Matching Intelligent : Ajoute les colonnes pour matching modes de paiement
 pub async fn ensure_payment_methods_matching_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des colonnes payment_methods_matching...");
@@ -8333,5 +8644,62 @@ pub async fn ensure_bus_tickets_integration(pool: &PgPool) -> Result<(), sqlx::E
     execute_multiple_sql_commands(pool, migration_sql).await?;
     
     info!("✅ Intégration tickets bus avec agences_voyage créée/mise à jour");
+    Ok(())
+}
+
+/// Vérifie et crée le système de commission et reversement pour tickets bus
+pub async fn ensure_bus_ticket_commission_system(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification système commission et reversement tickets bus...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251127_add_commission_to_bus_payments.sql");
+    
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    
+    info!("✅ Système commission et reversement tickets bus créé/mis à jour");
+    Ok(())
+}
+
+/// Vérifie et crée le système de validation de tickets bus
+pub async fn ensure_bus_ticket_validation_system(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification système validation tickets bus...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251127_bus_ticket_validation_system.sql");
+    
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    
+    info!("✅ Système validation tickets bus créé/mis à jour");
+    Ok(())
+}
+
+/// Vérifie et crée le système de gestion manuelle des places non disponibles
+pub async fn ensure_bus_seat_blocks_system(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification système blocage places bus...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251127_bus_manual_seat_blocks.sql");
+    
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    
+    info!("✅ Système blocage places bus créé/mis à jour");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-11-27 : Système Intelligent de Matching Banque de Sang
+/// Compatible SQLx offline mode
+pub async fn ensure_blood_donation_matching_system(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification système matching intelligent banque de sang...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251127_blood_donation_matching_system.sql");
+    
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    
+    info!("✅ Système matching intelligent banque de sang créé/mis à jour");
     Ok(())
 }

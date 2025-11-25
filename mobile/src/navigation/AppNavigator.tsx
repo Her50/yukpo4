@@ -25,7 +25,10 @@ import ProfileScreen from '../screens/ProfileScreen';
 import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServicesSpecialisesScreen';
 
 // ✅ IMPORTS DIRECTS - Écrans secondaires
+import AgencyTicketManagementScreen from '../screens/AgencyTicketManagementScreen';
 import AjouterProduitSimpleScreen from '../screens/AjouterProduitSimpleScreen';
+import BloodGroupManagementScreen from '../screens/BloodGroupManagementScreen';
+import BusBoardingManagementScreen from '../screens/BusBoardingManagementScreen';
 import ContactScreen from '../screens/ContactScreen';
 import CreatePubliciteScreen from '../screens/CreatePubliciteScreen';
 import AnalyticsDashboardScreen from '../screens/dashboard/AnalyticsDashboardScreen'; // ✅ Phase 10 - Analytics Dashboard
@@ -42,8 +45,10 @@ import ShoppingSummaryScreen from '../screens/delivery/ShoppingSummaryScreen';
 import StorageLocationsScreen from '../screens/delivery/StorageLocationsScreen';
 import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
+import ManageBusSeatsScreen from '../screens/ManageBusSeatsScreen';
 import MesProduitsScreen from '../screens/MesProduitsScreen';
 import MesServicesSpecialisesScreen from '../screens/MesServicesSpecialisesScreen';
+import MyBusTicketsScreen from '../screens/MyBusTicketsScreen';
 import OrderStatusScreen from '../screens/OrderStatusScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import GlobalPromoManagerScreen from '../screens/promo/GlobalPromoManagerScreen';
@@ -348,6 +353,11 @@ const SecondaryStack = () => {
         <Stack.Screen name="AgenceVoyageForm" component={AgenceVoyageFormScreenWithSafeArea} />
         <Stack.Screen name="CovoiturageForm" component={CovoiturageFormScreenWithSafeArea} />
         <Stack.Screen name="TaxiForm" component={TaxiFormScreenWithSafeArea} />
+        <Stack.Screen name="MyBusTickets" component={withNavigatorSafeArea(MyBusTicketsScreen)} />
+        <Stack.Screen name="BloodGroupManagement" component={withNavigatorSafeArea(BloodGroupManagementScreen)} />
+        <Stack.Screen name="AgencyTicketManagement" component={withNavigatorSafeArea(AgencyTicketManagementScreen)} />
+        <Stack.Screen name="BusBoardingManagement" component={withNavigatorSafeArea(BusBoardingManagementScreen)} />
+        <Stack.Screen name="ManageBusSeats" component={withNavigatorSafeArea(ManageBusSeatsScreen)} />
         <Stack.Screen name="Settings" component={EnhancedSettingsScreenWithSafeArea} />
         <Stack.Screen name="RechargeTokens" component={RechargeTokensScreenWithSafeArea} />
         <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentWithSafeArea} />

@@ -1,5 +1,5 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     ScrollView,
@@ -14,7 +14,7 @@ import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { apiPost } from '../../services/api';
+import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 const GROUPES_SANGUINS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
@@ -42,9 +42,62 @@ const BanqueSangFormScreen: React.FC = () => {
     });
 
     const [loading, setLoading] = useState(false);
+    const [loadingData, setLoadingData] = useState(false);
+    const banqueId = (route.params as any)?.banqueId; // Si on édite
     const [stocks, setStocks] = useState<Record<string, { quantite: string; unite: string }>>({});
 
+    // Charger les données existantes si on édite
+    useEffect(() => {
+        if (banqueId) {
+            loadBanqueData();
+        }
+    }, [banqueId]);
+
+    const loadBanqueData = async () => {
+        try {
+            setLoadingData(true);
+            const response = await apiGet(`/api/banques-sang/${banqueId}`);
+            if (response.success && response.data) {
+                const data = response.data;
+                setFormData({
+                    nom: data.nom || '',
+                    adresse: data.adresse || '',
+                    quartier: data.quartier || '',
+                    ville: data.ville || '',
+                    accepte_dons: data.accepte_dons ?? true,
+                    accepte_demandes: data.accepte_demandes ?? true,
+                    urgence_24h: data.urgence_24h ?? false,
+                    telephone: data.telephone || '',
+                    telephone_urgence: data.telephone_urgence || '',
+                    whatsapp: data.whatsapp || '',
+                    email: data.email || '',
+                });
+
+                // Charger les stocks existants
+                if (data.stocks_groupes_sanguins) {
+                    const loadedStocks: Record<string, { quantite: string; unite: string }> = {};
+                    Object.entries(data.stocks_groupes_sanguins).forEach(([groupe, stock]: [string, any]) => {
+                        loadedStocks[groupe] = {
+                            quantite: String(stock.quantite || ''),
+                            unite: stock.unite || 'poches',
+                        };
+                    });
+                    setStocks(loadedStocks);
+                }
+            }
+        } catch (error: any) {
+            console.error('Erreur chargement banque:', error);
+        } finally {
+            setLoadingData(false);
+        }
+    };
+
     const updateStock = (groupe: string, field: 'quantite' | 'unite', value: string) => {
+        // Validation : seulement des nombres pour la quantité
+        if (field === 'quantite' && value && !/^\d+$/.test(value)) {
+            return; // Ignorer les caractères non numériques
+        }
+
         setStocks((prev) => ({
             ...prev,
             [groupe]: {
@@ -55,6 +108,31 @@ const BanqueSangFormScreen: React.FC = () => {
             },
         }));
     };
+
+    const getStockStatus = (quantite: string): 'disponible' | 'moyen' | 'faible' | 'vide' => {
+        const qty = parseInt(quantite) || 0;
+        if (qty === 0) return 'vide';
+        if (qty <= 5) return 'faible';
+        if (qty <= 10) return 'moyen';
+        return 'disponible';
+    };
+
+    const getStockStatusColor = (status: string) => {
+        switch (status) {
+            case 'disponible':
+                return '#10B981';
+            case 'moyen':
+                return '#F59E0B';
+            case 'faible':
+                return '#EF4444';
+            default:
+                return '#9CA3AF';
+        }
+    };
+
+    const totalStocks = Object.values(stocks).reduce((sum, stock) => {
+        return sum + (parseInt(stock.quantite) || 0);
+    }, 0);
 
     const handleSubmit = async () => {
         if (!serviceId) {
@@ -170,32 +248,96 @@ const BanqueSangFormScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Stocks par Groupe Sanguin</Text>
-                    <Text style={styles.sectionSubtitle}>
-                        Indiquez les quantités disponibles pour chaque groupe
-                    </Text>
-                    {GROUPES_SANGUINS.map((groupe) => (
-                        <View key={groupe} style={styles.stockRow}>
-                            <View style={styles.stockLabel}>
-                                <Text style={styles.stockGroupe}>{groupe}</Text>
+                    <View style={styles.sectionHeader}>
+                        <View>
+                            <Text style={styles.sectionTitle}>Stocks par Groupe Sanguin</Text>
+                            <Text style={styles.sectionSubtitle}>
+                                Indiquez les quantités disponibles pour chaque groupe
+                            </Text>
+                        </View>
+                        {totalStocks > 0 && (
+                            <View style={styles.totalStocksBadge}>
+                                <Text style={styles.totalStocksText}>
+                                    {totalStocks} poches totales
+                                </Text>
                             </View>
-                            <View style={styles.stockInputs}>
-                                <TextInput
-                                    style={styles.stockInput}
-                                    value={stocks[groupe]?.quantite || ''}
-                                    onChangeText={(text) => updateStock(groupe, 'quantite', text)}
-                                    placeholder="0"
-                                    keyboardType="numeric"
-                                />
-                                <TextInput
-                                    style={[styles.stockInput, { flex: 0.6 }]}
-                                    value={stocks[groupe]?.unite || 'poches'}
-                                    onChangeText={(text) => updateStock(groupe, 'unite', text)}
-                                    placeholder="poches"
-                                />
+                        )}
+                    </View>
+
+                    {GROUPES_SANGUINS.map((groupe) => {
+                        const quantite = stocks[groupe]?.quantite || '';
+                        const status = getStockStatus(quantite);
+                        const statusColor = getStockStatusColor(status);
+
+                        return (
+                            <View key={groupe} style={styles.stockRow}>
+                                <View style={styles.stockLabel}>
+                                    <Text style={styles.stockGroupe}>{groupe}</Text>
+                                    {quantite && (
+                                        <View
+                                            style={[
+                                                styles.stockStatusIndicator,
+                                                { backgroundColor: statusColor },
+                                            ]}
+                                        />
+                                    )}
+                                </View>
+                                <View style={styles.stockInputs}>
+                                    <View style={styles.quantiteContainer}>
+                                        <TextInput
+                                            style={[
+                                                styles.stockInput,
+                                                quantite && {
+                                                    borderColor: statusColor,
+                                                    backgroundColor: `${statusColor}10`,
+                                                },
+                                            ]}
+                                            value={quantite}
+                                            onChangeText={(text) => updateStock(groupe, 'quantite', text)}
+                                            placeholder="0"
+                                            keyboardType="numeric"
+                                        />
+                                        {quantite && (
+                                            <Text style={[styles.stockStatusText, { color: statusColor }]}>
+                                                {status === 'disponible'
+                                                    ? '✓'
+                                                    : status === 'moyen'
+                                                        ? '⚠'
+                                                        : status === 'faible'
+                                                            ? '⚠⚠'
+                                                            : ''}
+                                            </Text>
+                                        )}
+                                    </View>
+                                    <TextInput
+                                        style={[styles.stockInput, styles.uniteInput]}
+                                        value={stocks[groupe]?.unite || 'poches'}
+                                        onChangeText={(text) => updateStock(groupe, 'unite', text)}
+                                        placeholder="poches"
+                                    />
+                                </View>
+                            </View>
+                        );
+                    })}
+
+                    {/* Résumé des stocks */}
+                    {totalStocks > 0 && (
+                        <View style={styles.stocksSummary}>
+                            <Text style={styles.summaryTitle}>Résumé des stocks</Text>
+                            <View style={styles.summaryRow}>
+                                <View style={styles.summaryItem}>
+                                    <Text style={styles.summaryLabel}>Total poches</Text>
+                                    <Text style={styles.summaryValue}>{totalStocks}</Text>
+                                </View>
+                                <View style={styles.summaryItem}>
+                                    <Text style={styles.summaryLabel}>Groupes renseignés</Text>
+                                    <Text style={styles.summaryValue}>
+                                        {Object.values(stocks).filter((s) => parseInt(s.quantite) > 0).length}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
-                    ))}
+                    )}
                 </View>
 
                 <View style={styles.switchGroup}>
@@ -376,6 +518,75 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E5E7EB',
         fontSize: 14,
+        color: '#111827',
+    },
+    uniteInput: {
+        flex: 0.6,
+    },
+    quantiteContainer: {
+        flex: 1,
+        position: 'relative',
+    },
+    stockStatusIndicator: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginTop: 4,
+    },
+    stockStatusText: {
+        position: 'absolute',
+        right: 8,
+        top: 10,
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 16,
+    },
+    totalStocksBadge: {
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    totalStocksText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    stocksSummary: {
+        marginTop: 16,
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    summaryTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    summaryRow: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    summaryItem: {
+        flex: 1,
+    },
+    summaryLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    summaryValue: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.primary,
     },
     submitButton: {
         marginTop: 24,

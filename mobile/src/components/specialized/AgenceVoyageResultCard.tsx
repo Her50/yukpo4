@@ -1,6 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
+import React, { useState } from 'react';
 import {
+    Alert,
     Linking,
     StyleSheet,
     Text,
@@ -8,6 +9,8 @@ import {
     View,
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
+import BusSeatSelector, { SelectedSeat } from '../bus/BusSeatSelector';
+import BusTicketCard, { BusTicketData } from '../bus/BusTicketCard';
 import SafeIcon from '../SafeIcon';
 
 interface AgenceVoyageResultCardProps {
@@ -24,11 +27,22 @@ interface AgenceVoyageResultCardProps {
         services_voyage?: string[];
         compagnies_bus?: string[];
     };
+    busTickets?: BusTicketData[];
     onPress?: () => void;
+    onViewSeats?: (ticket: BusTicketData) => void;
+    onReserve?: (ticket: BusTicketData) => void;
 }
 
-const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({ agency, onPress }) => {
+const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
+    agency,
+    busTickets,
+    onPress,
+    onViewSeats,
+    onReserve,
+}) => {
     const navigation = useNavigation();
+    const [showSeatSelector, setShowSeatSelector] = useState(false);
+    const [selectedTicket, setSelectedTicket] = useState<BusTicketData | null>(null);
 
     const handlePress = () => {
         if (onPress) {
@@ -37,6 +51,63 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({ agency,
             (navigation as any).navigate('ServiceDetail', {
                 serviceId: agency.service_id,
             });
+        }
+    };
+
+    const handleViewSeats = (ticket: BusTicketData) => {
+        setSelectedTicket(ticket);
+        setShowSeatSelector(true);
+        if (onViewSeats) {
+            onViewSeats(ticket);
+        }
+    };
+
+    const handleReserve = (ticket: BusTicketData) => {
+        setSelectedTicket(ticket);
+        setShowSeatSelector(true);
+        if (onReserve) {
+            onReserve(ticket);
+        }
+    };
+
+    const handleSeatSelectorReserve = async (selectedSeats: SelectedSeat[], totalPrice: number) => {
+        if (!selectedTicket || selectedSeats.length === 0) {
+            return;
+        }
+
+        try {
+            // Créer les réservations
+            const { apiPost } = await import('../../services/api');
+            const reservationResponse = await apiPost('/api/bus-tickets/reservations', {
+                product_id: selectedTicket.product_id,
+                seats: selectedSeats.map(seat => ({
+                    seat_id: seat.seat_id,
+                    seat_number: seat.seat_number,
+                    passenger_name: null, // Peut être ajouté plus tard
+                })),
+                caution_amount: 500, // Montant caution par défaut
+            });
+
+            if (reservationResponse.success && reservationResponse.reservations) {
+                const reservationIds = reservationResponse.reservations.map((r: any) => r.reservation_id);
+
+                // Naviguer vers l'écran de paiement avec les réservations
+                (navigation as any).navigate('BusTicketPayment', {
+                    productId: selectedTicket.product_id,
+                    reservationIds,
+                    ticketPrice: selectedTicket.ticket_price || 0,
+                    numberOfTickets: selectedSeats.length,
+                    totalPrice,
+                });
+            } else {
+                Alert.alert('Erreur', reservationResponse.error || 'Impossible de créer les réservations');
+            }
+        } catch (error: any) {
+            console.error('Erreur création réservations:', error);
+            Alert.alert('Erreur', error.message || 'Une erreur est survenue lors de la réservation');
+        } finally {
+            setShowSeatSelector(false);
+            setSelectedTicket(null);
         }
     };
 
@@ -86,6 +157,21 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({ agency,
                 </View>
             )}
 
+            {/* Afficher les tickets bus disponibles si présents */}
+            {busTickets && busTickets.length > 0 && (
+                <View style={styles.ticketsSection}>
+                    <Text style={styles.ticketsSectionTitle}>Tickets disponibles</Text>
+                    {busTickets.map((ticket, index) => (
+                        <BusTicketCard
+                            key={ticket.product_id || index}
+                            ticket={ticket}
+                            onViewSeats={() => handleViewSeats(ticket)}
+                            onReserve={() => handleReserve(ticket)}
+                        />
+                    ))}
+                </View>
+            )}
+
             <View style={styles.footer}>
                 {agency.distance_km && (
                     <View style={styles.distanceRow}>
@@ -117,6 +203,21 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({ agency,
                     )}
                 </View>
             </View>
+
+            {/* Modal sélection de places */}
+            {selectedTicket && (
+                <BusSeatSelector
+                    visible={showSeatSelector}
+                    onClose={() => {
+                        setShowSeatSelector(false);
+                        setSelectedTicket(null);
+                    }}
+                    productId={selectedTicket.product_id}
+                    ticketPrice={selectedTicket.ticket_price || 0}
+                    currency={selectedTicket.currency}
+                    onReserve={handleSeatSelectorReserve}
+                />
+            )}
         </TouchableOpacity>
     );
 };
@@ -252,6 +353,19 @@ const styles = StyleSheet.create({
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    ticketsSection: {
+        marginTop: 16,
+        marginBottom: 12,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    ticketsSectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 12,
     },
 });
 
