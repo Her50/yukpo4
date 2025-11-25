@@ -1,6 +1,6 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { useUser } from '@/hooks/useUser';
-import { Building2, Car, Droplet, Heart, Microscope, Plane, Stethoscope } from 'lucide-react';
+import { Building2, Car, Clock, Droplet, Heart, Microscope, Plane, Stethoscope } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface ServiceSpecialise {
@@ -137,15 +137,26 @@ export default function MesServicesSpecialisesPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {servicesTransport.map((service) => (
-                                <button
-                                    key={service.id}
-                                    onClick={() => handleServiceClick(service)}
-                                    className={`${service.bgColor} rounded-lg p-6 text-left hover:shadow-lg transition-all border-2 border-transparent hover:border-${service.color.split('-')[1]}-300`}
-                                >
-                                    <div className={`${service.color} mb-4`}>{service.icon}</div>
-                                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.name}</h3>
-                                    <p className="text-gray-600 text-sm">{service.description}</p>
-                                </button>
+                                <div key={service.id} className="relative">
+                                    <button
+                                        onClick={() => handleServiceClick(service)}
+                                        className={`${service.bgColor} rounded-lg p-6 text-left hover:shadow-lg transition-all border-2 border-transparent hover:border-${service.color.split('-')[1]}-300 w-full`}
+                                    >
+                                        <div className={`${service.color} mb-4`}>{service.icon}</div>
+                                        <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.name}</h3>
+                                        <p className="text-gray-600 text-sm">{service.description}</p>
+                                    </button>
+                                    {/* ✅ NOUVEAU: Bouton spécial pour agences de voyage - Gérer les horaires */}
+                                    {service.id === 'agence' && (
+                                        <button
+                                            onClick={() => navigate('/agency/schedules')}
+                                            className="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <Clock className="w-4 h-4" />
+                                            Gérer les horaires de départ
+                                        </button>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     </div>

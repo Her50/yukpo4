@@ -1,6 +1,6 @@
 use axum::{
     middleware,
-    routing::{get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use std::sync::Arc;
@@ -13,6 +13,7 @@ use crate::controllers::bus_ticket_controller;
 use crate::controllers::bus_ticket_payment_controller;
 use crate::controllers::bus_ticket_validation_controller;
 use crate::controllers::bus_seat_management_controller;
+use crate::controllers::agency_schedule_controller;
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
 
@@ -108,7 +109,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(bus_ticket_payment_controller::get_user_tickets),
         )
         .route(
-            "/api/bus-tickets/ticket/:payment_id",
+            "/api/bus-tickets/ticket/{payment_id}",
             get(bus_ticket_payment_controller::get_ticket_details),
         )
         // Routes validation tickets bus (protégées JWT)
@@ -117,11 +118,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(bus_ticket_validation_controller::validate_ticket_qr),
         )
         .route(
-            "/api/bus-tickets/boarding/:product_id/summary",
+            "/api/bus-tickets/boarding/{product_id}/summary",
             get(bus_ticket_validation_controller::get_boarding_summary),
         )
         .route(
-            "/api/bus-tickets/boarding/:product_id/passengers",
+            "/api/bus-tickets/boarding/{product_id}/passengers",
             get(bus_ticket_validation_controller::get_bus_passengers_list),
         )
         .route(
@@ -138,11 +139,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(bus_seat_management_controller::unblock_seat),
         )
         .route(
-            "/api/bus-tickets/seats/:product_id/blocks",
+            "/api/bus-tickets/seats/{product_id}/blocks",
             get(bus_seat_management_controller::get_blocked_seats),
         )
         .route(
-            "/api/bus-tickets/seats/:product_id/availability",
+            "/api/bus-tickets/seats/{product_id}/availability",
             get(bus_seat_management_controller::get_seat_availability_with_blocks),
         )
         // Routes Système Intelligent Matching Banque de Sang (protégées JWT)
@@ -155,7 +156,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(blood_donation_matching_controller::list_active_requests),
         )
         .route(
-            "/api/blood-donation/requests/:request_id/matches",
+            "/api/blood-donation/requests/{request_id}/matches",
             get(blood_donation_matching_controller::list_matches_for_request),
         )
         .route(
@@ -177,6 +178,27 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/blood-donation/donor/blood-group",
             post(blood_donation_matching_controller::create_or_update_blood_group),
+        )
+        // ✅ NOUVEAU: Routes horaires d'agence (publiques pour consultation, protégées pour gestion)
+        .route(
+            "/api/bus-tickets/agencies/{agency_id}/schedules",
+            get(agency_schedule_controller::get_available_times),
+        )
+        .route(
+            "/api/bus-tickets/agencies/schedules",
+            post(agency_schedule_controller::create_schedule),
+        )
+        .route(
+            "/api/bus-tickets/agencies/schedules",
+            get(agency_schedule_controller::get_agency_schedules),
+        )
+        .route(
+            "/api/bus-tickets/agencies/schedules/{schedule_id}",
+            put(agency_schedule_controller::update_schedule),
+        )
+        .route(
+            "/api/bus-tickets/agencies/schedules/{schedule_id}",
+            delete(agency_schedule_controller::delete_schedule),
         )
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)

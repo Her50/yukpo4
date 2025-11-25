@@ -32,7 +32,7 @@ interface BloodDonationAlertModalProps {
         patient_name?: string;
         hospital_name?: string;
     };
-    onAccept?: () => void;
+    onAccept?: (shouldPromptBloodGroup?: boolean) => void;
     onDecline?: () => void;
 }
 
@@ -81,6 +81,16 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
             });
 
             if (response.success) {
+                // ✅ NOUVEAU: Vérifier si on doit proposer de renseigner le groupe sanguin
+                const shouldPrompt = response.should_prompt_blood_group === true;
+
+                if (shouldPrompt) {
+                    // Fermer ce modal et laisser le parent afficher le modal de groupe sanguin
+                    onAccept?.(true);
+                    onClose();
+                    return;
+                }
+
                 Alert.alert(
                     '✅ Merci !',
                     'Votre acceptation a été enregistrée. La banque de sang vous contactera bientôt.',
@@ -88,7 +98,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
                         {
                             text: 'OK',
                             onPress: () => {
-                                onAccept?.();
+                                onAccept?.(false);
                                 onClose();
                             },
                         },

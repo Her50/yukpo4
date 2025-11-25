@@ -556,44 +556,55 @@ pub async fn update_match_status(
         return Err(AppError::BadRequest(error_msg.to_string()));
     }
 
+    // ✅ NOUVEAU: Vérifier si l'utilisateur a un groupe sanguin renseigné
+    let has_blood_group: (Option<String>, Option<String>) = sqlx::query_as(
+        r#"
+        SELECT 
+            ubg.groupe_sanguin as blood_group_from_table,
+            u.groupe_sanguin as blood_group_from_user
+        FROM blood_donation_matches bdm
+        LEFT JOIN user_blood_groups ubg ON ubg.id = bdm.donor_blood_group_id
+        JOIN users u ON u.id = bdm.donor_user_id
+        WHERE bdm.id = $1
+        "#
+    )
+    .bind(&payload.match_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[update_match_status] Erreur vérification groupe: {}", e);
+    })
+    .ok()
+    .unwrap_or((None, None));
+
+    let (blood_group_from_table, blood_group_from_user) = has_blood_group;
+    let should_prompt_blood_group = blood_group_from_table.is_none() && blood_group_from_user.is_none();
+
     // Si accepté, mettre à jour la disponibilité du donneur
     if payload.new_status == "accepted" {
-        // Récupérer le groupe sanguin du donneur
-        let blood_group: Option<(String,)> = sqlx::query_as(
-            r#"
-            SELECT ubg.groupe_sanguin
-            FROM blood_donation_matches bdm
-            JOIN user_blood_groups ubg ON ubg.id = bdm.donor_blood_group_id
-            WHERE bdm.id = $1
-            "#
-        )
-        .bind(&payload.match_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[update_match_status] Erreur récupération groupe: {}", e);
-        })
-        .ok()
-        .flatten();
+        // Utiliser le groupe sanguin de user_blood_groups ou users.groupe_sanguin
+        let groupe_sanguin = blood_group_from_table.or(blood_group_from_user);
 
-        if let Some((groupe_sanguin,)) = blood_group {
-            // Marquer le donneur comme non disponible (sera mis à jour après le don effectif)
-            sqlx::query(
-                r#"
-                UPDATE user_blood_groups
-                SET is_available_for_donation = FALSE,
-                    updated_at = NOW()
-                WHERE user_id = $1 AND groupe_sanguin = $2
-                "#
-            )
-            .bind(user_id)
-            .bind(&groupe_sanguin)
-            .execute(&state.pg)
-            .await
-            .map_err(|e| {
-                warn!("[update_match_status] Erreur mise à jour disponibilité: {}", e);
-            })
-            .ok();
+        if let Some(ref groupe) = groupe_sanguin {
+            // Si existe dans user_blood_groups, mettre à jour disponibilité
+            if blood_group_from_table.is_some() {
+                sqlx::query(
+                    r#"
+                    UPDATE user_blood_groups
+                    SET is_available_for_donation = FALSE,
+                        updated_at = NOW()
+                    WHERE user_id = $1 AND groupe_sanguin = $2
+                    "#
+                )
+                .bind(user_id)
+                .bind(groupe)
+                .execute(&state.pg)
+                .await
+                .map_err(|e| {
+                    warn!("[update_match_status] Erreur mise à jour disponibilité: {}", e);
+                })
+                .ok();
+            }
         }
     }
 
@@ -602,7 +613,9 @@ pub async fn update_match_status(
         Json(json!({
             "success": true,
             "match_id": payload.match_id,
-            "new_status": payload.new_status
+            "new_status": payload.new_status,
+            // ✅ NOUVEAU: Flag pour proposer de renseigner le groupe sanguin
+            "should_prompt_blood_group": should_prompt_blood_group && payload.new_status == "accepted"
         })),
     ))
 }
@@ -882,6 +895,7 @@ pub struct CreateOrUpdateBloodGroupRequest {
 }
 
 /// Créer ou mettre à jour le groupe sanguin d'un utilisateur
+/// ✅ AMÉLIORÉ: Met à jour aussi users.groupe_sanguin pour faciliter le matching
 pub async fn create_or_update_blood_group(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
@@ -899,6 +913,23 @@ pub async fn create_or_update_blood_group(
             "Groupe sanguin invalide. Valeurs acceptées: O+, O-, A+, A-, B+, B-, AB+, AB-".to_string(),
         ));
     }
+
+    // ✅ NOUVEAU: Mettre à jour aussi users.groupe_sanguin
+    sqlx::query(
+        r#"
+        UPDATE users
+        SET groupe_sanguin = $1, updated_at = NOW()
+        WHERE id = $2
+        "#
+    )
+    .bind(&payload.groupe_sanguin)
+    .bind(user_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_or_update_blood_group] Erreur mise à jour users: {}", e);
+        AppError::Internal(format!("Erreur mise à jour groupe sanguin: {}", e))
+    })?;
 
     // Créer ou mettre à jour
     let result = sqlx::query(

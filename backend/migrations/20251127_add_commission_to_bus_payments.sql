@@ -10,35 +10,30 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name='bus_ticket_payments' AND column_name='yukpo_commission') THEN
         ALTER TABLE bus_ticket_payments ADD COLUMN yukpo_commission INTEGER;
-        RAISE NOTICE 'Colonne yukpo_commission ajoutée';
     END IF;
     
     -- Montant reversé à l'agence (subtotal - commission)
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name='bus_ticket_payments' AND column_name='agency_payout') THEN
         ALTER TABLE bus_ticket_payments ADD COLUMN agency_payout INTEGER;
-        RAISE NOTICE 'Colonne agency_payout ajoutée';
     END IF;
     
     -- Statut reversement
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name='bus_ticket_payments' AND column_name='payout_status') THEN
         ALTER TABLE bus_ticket_payments ADD COLUMN payout_status VARCHAR(20) DEFAULT 'pending';
-        RAISE NOTICE 'Colonne payout_status ajoutée';
     END IF;
     
     -- Date reversement
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name='bus_ticket_payments' AND column_name='payout_at') THEN
         ALTER TABLE bus_ticket_payments ADD COLUMN payout_at TIMESTAMPTZ;
-        RAISE NOTICE 'Colonne payout_at ajoutée';
     END IF;
     
     -- URL ticket PDF généré
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name='bus_ticket_payments' AND column_name='ticket_pdf_url') THEN
         ALTER TABLE bus_ticket_payments ADD COLUMN ticket_pdf_url TEXT;
-        RAISE NOTICE 'Colonne ticket_pdf_url ajoutée';
     END IF;
 END $$;
 

@@ -6,11 +6,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { setupForegroundNotificationHandler, setupNotificationResponseHandler } from '../services/pushNotifications';
 import BloodDonationAlertModal from './blood/BloodDonationAlertModal';
+import BloodGroupPromptModal from './blood/BloodGroupPromptModal';
 
 const BloodDonationAlertManager: React.FC = () => {
     const { user } = useAuth();
     const [alertData, setAlertData] = useState<any>(null);
     const [showAlert, setShowAlert] = useState(false);
+    const [showBloodGroupPrompt, setShowBloodGroupPrompt] = useState(false);
     const notificationListener = useRef<any>();
     const responseListener = useRef<any>();
 
@@ -80,28 +82,50 @@ const BloodDonationAlertManager: React.FC = () => {
         setAlertData(null);
     };
 
-    const handleAccept = () => {
-        console.log('[BloodDonationAlertManager] ✅ Demande acceptée');
-        // Le modal gère déjà l'API call
-    };
 
     const handleDecline = () => {
         console.log('[BloodDonationAlertManager] ❌ Demande refusée');
         // Le modal gère déjà l'API call
     };
 
-    if (!alertData || !showAlert) {
-        return null;
-    }
+    // ✅ NOUVEAU: Callback pour gérer l'affichage du prompt de groupe sanguin
+    const handleAccept = (shouldPromptBloodGroup?: boolean) => {
+        setShowAlert(false);
+        if (shouldPromptBloodGroup) {
+            setShowBloodGroupPrompt(true);
+        } else {
+            setAlertData(null);
+        }
+    };
+
+    const handleBloodGroupPromptClose = () => {
+        setShowBloodGroupPrompt(false);
+        setAlertData(null);
+    };
+
+    const handleBloodGroupPromptSuccess = () => {
+        console.log('[BloodDonationAlertManager] ✅ Groupe sanguin enregistré');
+        setShowBloodGroupPrompt(false);
+        setAlertData(null);
+    };
 
     return (
-        <BloodDonationAlertModal
-            visible={showAlert}
-            onClose={handleClose}
-            requestData={alertData}
-            onAccept={handleAccept}
-            onDecline={handleDecline}
-        />
+        <>
+            {alertData && showAlert && (
+                <BloodDonationAlertModal
+                    visible={showAlert}
+                    onClose={handleClose}
+                    requestData={alertData}
+                    onAccept={handleAccept}
+                    onDecline={handleDecline}
+                />
+            )}
+            <BloodGroupPromptModal
+                visible={showBloodGroupPrompt}
+                onClose={handleBloodGroupPromptClose}
+                onSuccess={handleBloodGroupPromptSuccess}
+            />
+        </>
     );
 };
 

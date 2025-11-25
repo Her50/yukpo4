@@ -299,15 +299,24 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 </View>
             )}
 
-            {/* Bouton spécial pour agences de voyage : Gérer les tickets */}
+            {/* Boutons spéciaux pour agences de voyage */}
             {item.type === 'agence_voyage' && (
-                <TouchableOpacity
-                    style={styles.ticketsButton}
-                    onPress={() => (navigation as any).navigate('AgencyTicketManagement')}
-                >
-                    <SafeIcon name="ticket" size={18} color="#fff" />
-                    <Text style={styles.ticketsButtonText}>Gérer les tickets</Text>
-                </TouchableOpacity>
+                <View style={styles.agencyButtonsContainer}>
+                    <TouchableOpacity
+                        style={[styles.ticketsButton, styles.agencyButton]}
+                        onPress={() => (navigation as any).navigate('AgencyTicketManagement')}
+                    >
+                        <SafeIcon name="ticket" size={18} color="#fff" />
+                        <Text style={styles.ticketsButtonText}>Gérer les tickets</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.ticketsButton, styles.agencyButton, { backgroundColor: modernColors.primary }]}
+                        onPress={() => (navigation as any).navigate('ManageAgencySchedules')}
+                    >
+                        <SafeIcon name="clock" size={18} color="#fff" />
+                        <Text style={styles.ticketsButtonText}>Horaires de départ</Text>
+                    </TouchableOpacity>
+                </View>
             )}
 
             <View style={styles.actionsRow}>
@@ -597,6 +606,14 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#fff',
     },
+    agencyButtonsContainer: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 12,
+    },
+    agencyButton: {
+        flex: 1,
+    },
     ticketsButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -604,7 +621,6 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 8,
         backgroundColor: modernColors.primary,
-        marginBottom: 12,
         gap: 8,
     },
     ticketsButtonText: {

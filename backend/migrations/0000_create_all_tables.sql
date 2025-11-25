@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     gps VARCHAR(255),
-    gps_consent BOOLEAN DEFAULT TRUE
+    gps_consent BOOLEAN DEFAULT TRUE,
+    -- ✅ 2025-11-27 : Groupe sanguin (optionnel, peut être renseigné volontairement)
+    groupe_sanguin VARCHAR(5) CHECK (groupe_sanguin IS NULL OR groupe_sanguin IN ('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'))
 );
 ALTER TABLE users ALTER COLUMN gps_consent SET DEFAULT TRUE;
 
@@ -3762,3 +3764,52 @@ JOIN banques_sang bs ON bs.id = bdr.banque_sang_id
 LEFT JOIN blood_donation_matches bdm ON bdm.request_id = bdr.id
 WHERE bdr.status = 'active'
 GROUP BY bdr.id, bs.nom;
+
+-- ✅ 2025-11-27 : Ajout champ groupe_sanguin dans users (optionnel, pour faciliter matching)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='users' AND column_name='groupe_sanguin') THEN
+        ALTER TABLE users ADD COLUMN groupe_sanguin VARCHAR(5) 
+            CHECK (groupe_sanguin IS NULL OR groupe_sanguin IN ('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'));
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_users_blood_group ON users(groupe_sanguin) WHERE groupe_sanguin IS NOT NULL;
+
+-- ✅ 2025-11-27 : Table agency_departure_schedules (horaires de départ par agence/ville)
+CREATE TABLE IF NOT EXISTS agency_departure_schedules (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    agency_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    departure_city TEXT NOT NULL,
+    arrival_city TEXT NOT NULL,
+    departure_times TIME[] NOT NULL,
+    day_of_week INTEGER,
+    is_active BOOLEAN DEFAULT TRUE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(agency_user_id, departure_city, arrival_city, day_of_week)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agency_schedules_route ON agency_departure_schedules(departure_city, arrival_city);
+CREATE INDEX IF NOT EXISTS idx_agency_schedules_agency ON agency_departure_schedules(agency_user_id);
+CREATE INDEX IF NOT EXISTS idx_agency_schedules_active ON agency_departure_schedules(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_agency_schedules_day ON agency_departure_schedules(day_of_week) WHERE day_of_week IS NOT NULL;
+
+-- ✅ 2025-11-27 : Ajouter colonnes return_date et return_time à bus_ticket_payments
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='bus_ticket_payments' AND column_name='return_date') THEN
+        ALTER TABLE bus_ticket_payments ADD COLUMN return_date VARCHAR(20);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='bus_ticket_payments' AND column_name='return_time') THEN
+        ALTER TABLE bus_ticket_payments ADD COLUMN return_time VARCHAR(10);
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_bus_payments_return_date ON bus_ticket_payments(return_date) WHERE return_date IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_bus_payments_return_time ON bus_ticket_payments(return_time) WHERE return_time IS NOT NULL;

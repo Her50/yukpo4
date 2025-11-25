@@ -62,5 +62,6 @@ pub mod bus_ticket_payment_controller; // ✅ 2025-11-27: Contrôleur pour paiem
 pub mod bus_ticket_validation_controller; // ✅ 2025-11-27: Contrôleur pour validation tickets bus avec QR code
 pub mod bus_seat_management_controller; // ✅ 2025-11-27: Contrôleur pour gestion manuelle places non disponibles
 pub mod blood_donation_matching_controller; // ✅ 2025-11-27: Contrôleur pour système intelligent matching banque de sang
+pub mod agency_schedule_controller; // ✅ 2025-11-27: Contrôleur pour gestion horaires de départ par agence/ville
 
 // pub use service_controller::update_token_debit;

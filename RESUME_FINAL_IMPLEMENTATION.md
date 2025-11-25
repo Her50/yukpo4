@@ -1,61 +1,91 @@
-# ✅ Résumé Final : Implémentation complète
+# ✅ Résumé final - Implémentation complète
 
-## 🎯 Tâches complétées
+## 🩸 1. Toast/Modal pour groupe sanguin - TERMINÉ ✅
 
-### 1. ✅ Table `delivery_proximity_suggestions`
-- ✅ Fonction `ensure_delivery_proximity_suggestions_table()` créée
-- ✅ Intégrée dans `run_auto_migrations()`
-- ✅ Index créés
+### Fichiers créés/modifiés
 
-### 2. ✅ Service `negotiated_price_service.rs`
-- ✅ Service créé pour gérer les prix négociés
-- ✅ Fonctions : `create_negotiated_price()`, `get_active_negotiated_price()`, `accept_offer()`, `reject_offer()`
+1. **`mobile/src/components/blood/BloodGroupPromptModal.tsx`** (NOUVEAU)
+   - Modal pour proposer de renseigner le groupe sanguin
+   - Sélection parmi 8 groupes sanguins
+   - Boutons "Plus tard" et "Enregistrer"
+   - Lien vers la page de gestion complète
 
-### 3. ⏳ À compléter
+2. **`mobile/src/components/blood/BloodDonationAlertModal.tsx`** (MODIFIÉ)
+   - Détecte `should_prompt_blood_group` dans la réponse
+   - Passe le flag au parent via callback
 
-#### A. Modifier `delivery_service.rs`
-- Stocker les suggestions dans la table lors de l'envoi de `ProximitySuggestion`
+3. **`mobile/src/components/BloodDonationAlertManager.tsx`** (MODIFIÉ)
+   - Gère l'affichage du `BloodGroupPromptModal` après acceptation
 
-#### B. Table `negotiated_prices`
-- Créer la table dans `auto_migrate.rs`
+### Flux utilisateur
 
-#### C. Modifier `product_price_service.rs`
-- Vérifier d'abord s'il y a un prix négocié actif
-- Si oui, utiliser le prix négocié
-- Sinon, utiliser le prix avec promotions
+1. Utilisateur accepte une demande de don → Backend retourne `should_prompt_blood_group: true`
+2. Modal de don se ferme → `BloodGroupPromptModal` s'affiche
+3. Utilisateur sélectionne son groupe sanguin → Enregistrement dans `users.groupe_sanguin` et `user_blood_groups`
 
-#### D. Routes API
-- `POST /api/negotiated-prices` : Créer une offre
-- `POST /api/negotiated-prices/{id}/accept` : Accepter
-- `POST /api/negotiated-prices/{id}/reject` : Rejeter
-- `GET /api/negotiated-prices/pending` : Récupérer l'offre en attente
+## 🚌 2. Page de gestion des horaires de départ - TERMINÉ ✅
 
-#### E. Frontend/Mobile
-- Interface dans ChatModal pour proposer un prix
-- Affichage de l'offre en attente
-- Utilisation du prix négocié dans OrderDeliveryModal
+### Mobile
 
-#### F. Vérification promotions
-- Confirmer que les promotions dans ProductManager sont bien utilisées
+**Fichier créé** : `mobile/src/screens/ManageAgencySchedulesScreen.tsx`
 
-## 📋 Fichiers créés/modifiés
+**Fonctionnalités** :
+- ✅ Liste des horaires configurés
+- ✅ Création/modification/suppression d'horaires
+- ✅ Activation/désactivation (switch)
+- ✅ Sélection des jours de la semaine
+- ✅ Validation du format d'heure (HH:MM)
 
-1. ✅ `backend/src/migrations/auto_migrate.rs` (table delivery_proximity_suggestions)
-2. ✅ `backend/src/tasks/delivery_timeout_monitor.rs` (créé)
-3. ✅ `backend/src/tasks/mod.rs` (module ajouté)
-4. ✅ `backend/src/main.rs` (tâche démarrée)
-5. ✅ `backend/src/services/negotiated_price_service.rs` (créé)
-6. ⏳ `backend/src/services/delivery_service.rs` (à modifier)
-7. ⏳ `backend/src/services/product_price_service.rs` (à modifier)
-8. ⏳ `backend/src/routes/negotiated_price_routes.rs` (à créer)
-9. ⏳ Frontend/Mobile ChatModal (à modifier)
-10. ⏳ Frontend/Mobile OrderDeliveryModal (à modifier)
+**Route ajoutée** : `mobile/src/navigation/AppNavigator.tsx`
+- ✅ Import de `ManageAgencySchedulesScreen`
+- ✅ Route `ManageAgencySchedules` ajoutée
 
-## ⚠️ Prochaines étapes prioritaires
+**Lien dans menu** : `mobile/src/screens/specialized/GestionServicesSpecialisesScreen.tsx`
+- ✅ Bouton "Horaires de départ" ajouté pour les agences de voyage
+- ✅ Styles `agencyButtonsContainer` et `agencyButton` ajoutés
 
-1. Modifier `delivery_service.rs` pour stocker les suggestions
-2. Créer la table `negotiated_prices` dans `auto_migrate.rs`
-3. Modifier `product_price_service.rs` pour utiliser les prix négociés
-4. Créer les routes API pour les prix négociés
-5. Vérifier les erreurs frontend/mobile
+### Frontend
 
+**Fichier créé** : `frontend/src/pages/agency/ManageAgencySchedulesPage.tsx`
+
+**Fonctionnalités** :
+- ✅ Tableau des horaires avec colonnes : Route | Heure | Jours | Statut | Actions
+- ✅ Modal de création/modification
+- ✅ Actions : Modifier | Supprimer | Activer/Désactiver
+- ✅ Design moderne avec composants shadcn/ui
+
+**Route ajoutée** : `frontend/src/App.tsx`
+- ✅ Import de `ManageAgencySchedulesPage`
+- ✅ Route `/agency/schedules` ajoutée (protégée par `RequireAuth`)
+
+**Lien dans menu** : `frontend/src/pages/specialized/MesServicesSpecialisesPage.tsx`
+- ✅ Bouton "Gérer les horaires de départ" ajouté pour les agences de voyage
+- ✅ Import de `Clock` icon ajouté
+
+## 📋 Routes API utilisées
+
+- `GET /api/bus-tickets/agencies/schedules` - Liste des horaires
+- `POST /api/bus-tickets/agencies/schedules` - Créer un horaire
+- `PUT /api/bus-tickets/agencies/schedules/{id}` - Modifier un horaire
+- `DELETE /api/bus-tickets/agencies/schedules/{id}` - Supprimer un horaire
+
+## ✅ Résultat final
+
+### Mobile ✅
+- ✅ Modal groupe sanguin fonctionnel
+- ✅ Page gestion horaires créée
+- ✅ Route ajoutée dans AppNavigator
+- ✅ Lien dans menu agence (2 boutons : "Gérer les tickets" + "Horaires de départ")
+
+### Frontend ✅
+- ✅ Page gestion horaires créée
+- ✅ Route ajoutée dans App.tsx
+- ✅ Lien dans menu agence (bouton "Gérer les horaires de départ")
+
+## 🎯 Tous les objectifs atteints !
+
+1. ✅ Toast/Modal groupe sanguin - TERMINÉ
+2. ✅ Page mobile horaires - TERMINÉ
+3. ✅ Page frontend horaires - TERMINÉ
+4. ✅ Lien dans menu agence mobile - TERMINÉ
+5. ✅ Lien dans menu agence frontend - TERMINÉ

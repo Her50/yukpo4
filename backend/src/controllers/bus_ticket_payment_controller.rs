@@ -29,6 +29,10 @@ pub struct ProcessTicketPaymentRequest {
     pub number_of_tickets: i32,
     pub booking_fee: Option<i32>, // Optionnel, défaut 500
     pub currency: Option<String>, // Optionnel, défaut XAF
+    // ✅ NOUVEAU: Informations retour pour tickets aller-retour
+    pub return_date: Option<String>, // Date de retour (format DD/MM/YYYY)
+    pub return_time: Option<String>, // Heure de retour (format HH:MM)
+    pub is_round_trip: Option<bool>, // Indique si c'est un aller-retour
 }
 
 #[derive(Debug, Serialize)]
@@ -55,6 +59,10 @@ pub struct UserTicket {
     pub arrival_city: String,
     pub departure_date: String,
     pub departure_time: String,
+    // ✅ NOUVEAU: Informations retour
+    pub return_date: Option<String>,
+    pub return_time: Option<String>,
+    pub is_round_trip: Option<bool>,
     pub ticket_price: i32,
     pub number_of_tickets: i32,
     pub total_amount: i32,
@@ -171,6 +179,11 @@ pub async fn process_ticket_payment(
     let booking_fee = payload.booking_fee.unwrap_or(500);
     let currency = payload.currency.unwrap_or_else(|| "XAF".to_string());
 
+    // ✅ NOUVEAU: Récupérer les informations de retour si c'est un aller-retour
+    let return_date = payload.return_date.clone();
+    let return_time = payload.return_time.clone();
+    let is_round_trip = payload.is_round_trip.unwrap_or(false);
+
     sqlx::query(
         r#"
         INSERT INTO bus_ticket_payments (
@@ -190,10 +203,12 @@ pub async fn process_ticket_payment(
             arrival_city,
             departure_date,
             departure_time,
+            return_date,
+            return_time,
             payment_status,
             created_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'completed', NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'completed', NOW())
         "#
     )
     .bind(&payment_id)
@@ -212,6 +227,8 @@ pub async fn process_ticket_payment(
     .bind(&arrival_city)
     .bind(&departure_date)
     .bind(&departure_time)
+    .bind(&return_date)
+    .bind(&return_time)
     .execute(&state.pg)
     .await
     .map_err(|e| {
@@ -336,6 +353,8 @@ pub async fn get_user_tickets(
             btp.arrival_city,
             btp.departure_date,
             btp.departure_time,
+            btp.return_date,
+            btp.return_time,
             btp.ticket_price,
             btp.number_of_tickets,
             btp.total_amount,
@@ -364,6 +383,10 @@ pub async fn get_user_tickets(
             .try_get::<Vec<String>, _>("reservation_ids")
             .unwrap_or_default();
 
+        let return_date: Option<String> = row.try_get::<Option<String>, _>("return_date").ok().flatten();
+        let return_time: Option<String> = row.try_get::<Option<String>, _>("return_time").ok().flatten();
+        let is_round_trip = return_date.is_some() || return_time.is_some();
+
         let ticket = UserTicket {
             payment_id: row.get::<String, _>("payment_id"),
             product_id: row.get::<String, _>("product_id"),
@@ -373,6 +396,9 @@ pub async fn get_user_tickets(
             arrival_city: row.get::<String, _>("arrival_city"),
             departure_date: row.get::<String, _>("departure_date"),
             departure_time: row.get::<String, _>("departure_time"),
+            return_date,
+            return_time,
+            is_round_trip: Some(is_round_trip),
             ticket_price: row.get::<i32, _>("ticket_price"),
             number_of_tickets: row.get::<i32, _>("number_of_tickets"),
             total_amount: row.get::<i32, _>("total_amount"),
@@ -413,6 +439,8 @@ pub async fn get_ticket_details(
             btp.arrival_city,
             btp.departure_date,
             btp.departure_time,
+            btp.return_date,
+            btp.return_time,
             btp.ticket_price,
             btp.number_of_tickets,
             btp.subtotal,
@@ -459,6 +487,10 @@ pub async fn get_ticket_details(
                 .get::<Vec<String>, _>("reservation_ids");
             let reservations_details: Option<Value> = row.get::<Option<Value>, _>("reservations_details");
 
+            let return_date: Option<String> = row.try_get::<Option<String>, _>("return_date").ok().flatten();
+            let return_time: Option<String> = row.try_get::<Option<String>, _>("return_time").ok().flatten();
+            let is_round_trip = return_date.is_some() || return_time.is_some();
+
             let ticket_details = json!({
                 "success": true,
                 "ticket": {
@@ -470,6 +502,9 @@ pub async fn get_ticket_details(
                     "arrival_city": row.get::<String, _>("arrival_city"),
                     "departure_date": row.get::<String, _>("departure_date"),
                     "departure_time": row.get::<String, _>("departure_time"),
+                    "return_date": return_date,
+                    "return_time": return_time,
+                    "is_round_trip": is_round_trip,
                     "ticket_price": row.get::<i32, _>("ticket_price"),
                     "number_of_tickets": row.get::<i32, _>("number_of_tickets"),
                     "subtotal": row.get::<i32, _>("subtotal"),

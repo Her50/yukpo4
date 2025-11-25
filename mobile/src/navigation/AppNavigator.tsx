@@ -45,6 +45,7 @@ import ShoppingSummaryScreen from '../screens/delivery/ShoppingSummaryScreen';
 import StorageLocationsScreen from '../screens/delivery/StorageLocationsScreen';
 import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
+import ManageAgencySchedulesScreen from '../screens/ManageAgencySchedulesScreen';
 import ManageBusSeatsScreen from '../screens/ManageBusSeatsScreen';
 import MesProduitsScreen from '../screens/MesProduitsScreen';
 import MesServicesSpecialisesScreen from '../screens/MesServicesSpecialisesScreen';
@@ -358,6 +359,7 @@ const SecondaryStack = () => {
         <Stack.Screen name="AgencyTicketManagement" component={withNavigatorSafeArea(AgencyTicketManagementScreen)} />
         <Stack.Screen name="BusBoardingManagement" component={withNavigatorSafeArea(BusBoardingManagementScreen)} />
         <Stack.Screen name="ManageBusSeats" component={withNavigatorSafeArea(ManageBusSeatsScreen)} />
+        <Stack.Screen name="ManageAgencySchedules" component={withNavigatorSafeArea(ManageAgencySchedulesScreen)} />
         <Stack.Screen name="Settings" component={EnhancedSettingsScreenWithSafeArea} />
         <Stack.Screen name="RechargeTokens" component={RechargeTokensScreenWithSafeArea} />
         <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentWithSafeArea} />

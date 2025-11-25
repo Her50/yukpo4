@@ -665,6 +665,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const [suggestionAddValue, setSuggestionAddValue] = useState('');
     const lastContextSignatureRef = useRef<string>('');
     const fetchRequestSeqRef = useRef(0);
+    const autoAppliedRef = useRef(false); // ✅ NOUVEAU: Suivre si l'application automatique a déjà été faite
+    const initialMountRef = useRef(true); // ✅ NOUVEAU: Suivre si c'est le premier montage du composant
     const getPopularSuggestionKey = useCallback(
         (product: PopularProduct, index: number) =>
             `popular-${index}-${sanitizeKey((product?.product_vector || []).join('-') || `p-${index}`)}`,
@@ -1809,6 +1811,103 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         };
     }, [iaCombinaisons, separateur, searchQuery, combinationSuggestions.length, loadingCombinationSuggestions]);
 
+    // ✅ CORRIGÉ: Appliquer automatiquement les caractéristiques préférées de l'IA au chargement initial
+    // ⚠️ IMPORTANT: L'application automatique est SYSTÉMATIQUE au chargement, peu importe si l'utilisateur
+    // clique dans le champ de recherche. Une fois appliquée, l'utilisateur peut rechercher et remplacer
+    // le tableau affiché par un autre tableau de suggestions.
+    useEffect(() => {
+        // ✅ CORRIGÉ: Ne pas vérifier searchQuery - l'application doit être systématique au chargement
+        // Ne pas appliquer automatiquement si :
+        // 1. L'application automatique a déjà été faite (une seule fois au chargement initial)
+        // 2. L'utilisateur a déjà des données (value n'est pas vide) - données déjà présentes
+        // 3. Les suggestions ne sont pas encore prêtes
+        if (autoAppliedRef.current) {
+            return; // Déjà appliqué au chargement initial, ne pas réappliquer
+        }
+
+        if (displayValue && displayValue.trim().length > 0) {
+            // Si l'utilisateur a déjà des données, ne pas écraser
+            // Mais marquer comme appliqué pour éviter de réappliquer plus tard
+            autoAppliedRef.current = true;
+            return;
+        }
+
+        if (loadingSuggestions || loadingCombinationSuggestions) {
+            return; // Attendre que les suggestions soient chargées
+        }
+
+        // Chercher la suggestion préférée de l'IA (celle avec isPreferred: true)
+        const preferredCandidate = suggestionCandidates.find(candidate => candidate.isPreferred === true);
+
+        if (!preferredCandidate) {
+            // Si pas de suggestion préférée disponible, marquer comme appliqué pour éviter de réessayer
+            if (initialMountRef.current) {
+                // Seulement au premier montage, attendre un peu pour voir si les suggestions arrivent
+                const timeoutId = setTimeout(() => {
+                    initialMountRef.current = false;
+                }, 2000);
+                return () => clearTimeout(timeoutId);
+            }
+            return;
+        }
+
+        // Vérifier que la suggestion préférée a des données valides
+        if (!preferredCandidate.rows || preferredCandidate.rows.length === 0) {
+            return; // Pas de données dans la suggestion
+        }
+
+        // Marquer comme appliqué AVANT d'appliquer (pour éviter les boucles)
+        // ⚠️ NOTE: Une fois appliqué, le tableau (chips avec label, valeur) s'affiche automatiquement
+        // L'utilisateur peut ensuite :
+        // - Valider le tableau affiché
+        // - Faire une recherche pour remplacer le tableau par un autre tableau de suggestions
+        // - Modifier les chips affichés
+        autoAppliedRef.current = true;
+        initialMountRef.current = false;
+
+        // Appliquer automatiquement la suggestion préférée
+        console.log('[LinearAutocompleteEditor] ✅ Application AUTOMATIQUE SYSTÉMATIQUE des caractéristiques préférées de l\'IA:', {
+            source: preferredCandidate.source,
+            rowsCount: preferredCandidate.rows.length,
+            isPreferred: preferredCandidate.isPreferred,
+            note: 'Le tableau (label, valeur) s\'affiche automatiquement. L\'utilisateur peut valider ou rechercher d\'autres options.'
+        });
+
+        // Utiliser la fonction d'application appropriée selon la source
+        if (preferredCandidate.source === 'ia' && preferredCandidate.iaValue) {
+            applyIaCombination(preferredCandidate.iaValue, preferredCandidate.key);
+        } else if (preferredCandidate.source === 'combination' && preferredCandidate.combination) {
+            applyCombinationSuggestion(preferredCandidate.combination, preferredCandidate.key);
+        } else if (preferredCandidate.source === 'popular' && preferredCandidate.product) {
+            applyPopularSuggestion(preferredCandidate.product, preferredCandidate.key);
+        } else {
+            // Fallback: appliquer directement depuis les rows
+            const result = createVectorFromRows(preferredCandidate.rows);
+            if (result) {
+                onChange([result.vector], result.sousCaracs);
+            }
+        }
+    }, [
+        displayValue,
+        loadingSuggestions,
+        loadingCombinationSuggestions,
+        suggestionCandidates,
+        applyIaCombination,
+        applyCombinationSuggestion,
+        applyPopularSuggestion,
+        createVectorFromRows,
+        onChange
+    ]);
+
+    // ✅ NOUVEAU: Réinitialiser autoAppliedRef quand productVector/productLabels changent (nouvelles données IA)
+    useEffect(() => {
+        if (productVector && productLabels && productVector.length > 0) {
+            // Si on a de nouvelles données IA, réinitialiser pour permettre une nouvelle application automatique
+            autoAppliedRef.current = false;
+            initialMountRef.current = true; // Réinitialiser aussi le flag de montage initial
+        }
+    }, [productVector, productLabels]);
+
     // Modifier une caractéristique
     const handleModifyChip = (chipIndex: number) => {
         setEditingChipIndex(chipIndex);
@@ -1969,6 +2068,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
         }
 
+        // Si des caractéristiques sont déjà affichées, indiquer que la recherche est toujours possible
+        if (displayValue && displayValue.trim().length > 0) {
+            return '🔍 Rechercher d\'autres options...';
+        }
         return '🔍 Tapez pour rechercher ou voir suggestions IA...';
     }, [value, separateur, displayValue, iaCombinaisons, sousCaracteristiques]);
 

@@ -98,6 +98,30 @@ Ce dossier contient tous les documents nécessaires pour candidater à des conco
     - 3 innovations partiellement non-évidentes à évaluer
     - Réponses aux questions sur non-évidence et implémentation IA
 
+14. **PROMPT_CONTINUATION_ALGORITHMES.md** ⭐ **NOUVEAU**
+    - Prompt complet pour continuation dans nouvelle session
+    - Instructions détaillées pour créer `ALGORITHMES_TECHNIQUES_DETAILLES.md`
+    - Instructions détaillées pour créer `OPTIMISATIONS_SPECIFIQUES.md`
+    - Liste complète des fichiers sources à analyser
+    - Structure recommandée pour les documents
+    - Checklist complète
+
+15. **ALGORITHMES_TECHNIQUES_DETAILLES.md** ⭐ **NOUVEAU**
+    - Documentation complète des algorithmes techniques pour les 7 innovations
+    - Code source complet pour chaque algorithme
+    - Complexité algorithmique documentée
+    - Optimisations spécifiques identifiées
+    - Points techniques uniques par innovation
+    - Prêt pour dépôts de brevets
+
+16. **OPTIMISATIONS_SPECIFIQUES.md** ⭐ **NOUVEAU**
+    - Documentation de toutes les optimisations spécifiques découvertes
+    - Impact mesuré pour chaque optimisation
+    - Code source des optimisations
+    - Justification de la non-évidence
+    - Optimisations par catégorie (Performance, Indexation, Algorithme)
+    - Optimisations spécifiques par innovation
+
 ---
 
 ## 🚀 DÉMARRAGE RAPIDE

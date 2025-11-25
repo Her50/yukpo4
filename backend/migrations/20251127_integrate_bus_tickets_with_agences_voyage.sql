@@ -13,7 +13,6 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name='agences_voyage' AND column_name='bus_products_config') THEN
         ALTER TABLE agences_voyage ADD COLUMN bus_products_config JSONB;
-        RAISE NOTICE 'Colonne bus_products_config ajoutée à agences_voyage';
     END IF;
 END $$;
 

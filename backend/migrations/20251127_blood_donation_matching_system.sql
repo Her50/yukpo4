@@ -153,46 +153,88 @@ BEGIN
     END;
     
     -- Trouver les donneurs compatibles disponibles
+    -- ✅ Utilisation d'une CTE pour combiner user_blood_groups et users.groupe_sanguin
     FOR v_donor IN
-        SELECT 
-            ubg.id as blood_group_id,
-            ubg.user_id,
-            ubg.groupe_sanguin,
-            ubg.is_available_for_donation,
-            ubg.next_donation_available_date,
-            u.gps,
-            u.nom_complet,
-            u.telephone,
-            u.whatsapp,
-            -- Extraire latitude/longitude du GPS si disponible
-            CASE 
-                WHEN u.gps IS NOT NULL AND u.gps LIKE '%,%' THEN
-                    SPLIT_PART(u.gps, ',', 1)::DOUBLE PRECISION
-                ELSE NULL
-            END as donor_lat,
-            CASE 
-                WHEN u.gps IS NOT NULL AND u.gps LIKE '%,%' THEN
-                    SPLIT_PART(u.gps, ',', 2)::DOUBLE PRECISION
-                ELSE NULL
-            END as donor_lng
-        FROM user_blood_groups ubg
-        JOIN users u ON u.id = ubg.user_id
-        WHERE ubg.groupe_sanguin = ANY(v_compatible_groups)
-            AND ubg.is_available_for_donation = TRUE
-            AND (ubg.next_donation_available_date IS NULL OR ubg.next_donation_available_date <= CURRENT_DATE)
-            AND u.is_active = TRUE
-            -- Exclure les utilisateurs déjà matchés pour cette demande
-            AND NOT EXISTS (
-                SELECT 1 FROM blood_donation_matches bdm
-                WHERE bdm.request_id = p_request_id
-                    AND bdm.donor_user_id = ubg.user_id
-                    AND bdm.match_status IN ('pending', 'notified', 'accepted')
-            )
+        WITH combined_donors AS (
+            -- 1. Chercher dans user_blood_groups (priorité)
+            SELECT 
+                ubg.id as blood_group_id,
+                ubg.user_id,
+                ubg.groupe_sanguin,
+                ubg.is_available_for_donation,
+                ubg.next_donation_available_date,
+                u.gps,
+                u.nom_complet,
+                u.telephone,
+                u.whatsapp,
+                -- Extraire latitude/longitude du GPS si disponible
+                CASE 
+                    WHEN u.gps IS NOT NULL AND u.gps LIKE '%,%' THEN
+                        SPLIT_PART(u.gps, ',', 1)::DOUBLE PRECISION
+                    ELSE NULL
+                END as donor_lat,
+                CASE 
+                    WHEN u.gps IS NOT NULL AND u.gps LIKE '%,%' THEN
+                        SPLIT_PART(u.gps, ',', 2)::DOUBLE PRECISION
+                    ELSE NULL
+                END as donor_lng
+            FROM user_blood_groups ubg
+            JOIN users u ON u.id = ubg.user_id
+            WHERE ubg.groupe_sanguin = ANY(v_compatible_groups)
+                AND ubg.is_available_for_donation = TRUE
+                AND (ubg.next_donation_available_date IS NULL OR ubg.next_donation_available_date <= CURRENT_DATE)
+                AND u.is_active = TRUE
+                -- Exclure les utilisateurs déjà matchés pour cette demande
+                AND NOT EXISTS (
+                    SELECT 1 FROM blood_donation_matches bdm
+                    WHERE bdm.request_id = p_request_id
+                        AND bdm.donor_user_id = ubg.user_id
+                        AND bdm.match_status IN ('pending', 'notified', 'accepted')
+                )
+            UNION ALL
+            -- ✅ NOUVEAU: Chercher aussi dans users.groupe_sanguin si pas d'entrée dans user_blood_groups
+            SELECT 
+                NULL::INTEGER as blood_group_id, -- Pas d'ID car pas dans user_blood_groups
+                u.id as user_id,
+                u.groupe_sanguin,
+                TRUE as is_available_for_donation, -- Par défaut disponible
+                NULL::DATE as next_donation_available_date,
+                u.gps,
+                u.nom_complet,
+                u.telephone,
+                u.whatsapp,
+                CASE 
+                    WHEN u.gps IS NOT NULL AND u.gps LIKE '%,%' THEN
+                        SPLIT_PART(u.gps, ',', 1)::DOUBLE PRECISION
+                    ELSE NULL
+                END as donor_lat,
+                CASE 
+                    WHEN u.gps IS NOT NULL AND u.gps LIKE '%,%' THEN
+                        SPLIT_PART(u.gps, ',', 2)::DOUBLE PRECISION
+                    ELSE NULL
+                END as donor_lng
+            FROM users u
+            WHERE u.groupe_sanguin = ANY(v_compatible_groups)
+                AND u.is_active = TRUE
+                -- Uniquement si pas d'entrée dans user_blood_groups
+                AND NOT EXISTS (
+                    SELECT 1 FROM user_blood_groups ubg2
+                    WHERE ubg2.user_id = u.id
+                )
+                -- Exclure les utilisateurs déjà matchés pour cette demande
+                AND NOT EXISTS (
+                    SELECT 1 FROM blood_donation_matches bdm
+                    WHERE bdm.request_id = p_request_id
+                        AND bdm.donor_user_id = u.id
+                        AND bdm.match_status IN ('pending', 'notified', 'accepted')
+                )
+        )
+        SELECT * FROM combined_donors
         ORDER BY 
             -- Prioriser donneurs disponibles immédiatement
-            CASE WHEN ubg.next_donation_available_date IS NULL OR ubg.next_donation_available_date <= CURRENT_DATE THEN 0 ELSE 1 END,
+            CASE WHEN combined_donors.next_donation_available_date IS NULL OR combined_donors.next_donation_available_date <= CURRENT_DATE THEN 0 ELSE 1 END,
             -- Prioriser groupes exacts (même groupe)
-            CASE WHEN ubg.groupe_sanguin = p_groupe_sanguin_requis THEN 0 ELSE 1 END
+            CASE WHEN combined_donors.groupe_sanguin = p_groupe_sanguin_requis THEN 0 ELSE 1 END
         LIMIT p_max_results
     LOOP
         -- Calculer distance si GPS disponible
@@ -231,9 +273,11 @@ BEGIN
                 v_relevance_score := v_relevance_score + 10.0;
             END IF;
             
+                    -- ✅ NOUVEAU: Si blood_group_id est NULL, essayer de créer l'entrée dans user_blood_groups
+            -- Note: On ne peut pas créer dans la boucle, on retourne NULL et on créera lors de la création du match
             -- Ajouter au résultat
             v_results := v_results || jsonb_build_object(
-                'blood_group_id', v_donor.blood_group_id,
+                'blood_group_id', v_donor.blood_group_id, -- Peut être NULL si vient de users.groupe_sanguin
                 'user_id', v_donor.user_id,
                 'groupe_sanguin', v_donor.groupe_sanguin,
                 'nom_complet', v_donor.nom_complet,
@@ -287,7 +331,10 @@ DECLARE
     v_request_id TEXT;
     v_matches JSONB;
     v_match_count INTEGER;
-    v_match RECORD;
+    v_match_item JSONB;
+    v_blood_group_id INTEGER;
+    v_user_id INTEGER;
+    v_groupe_sanguin VARCHAR(5);
 BEGIN
     -- Créer la demande
     INSERT INTO blood_donation_requests (
@@ -340,8 +387,22 @@ BEGIN
     
     -- Créer les enregistrements de match
     IF v_match_count > 0 THEN
-        FOR v_match IN SELECT * FROM jsonb_array_elements(v_matches->'donors')
+        FOR v_match_item IN SELECT * FROM jsonb_array_elements(v_matches->'donors')
         LOOP
+            v_user_id := (v_match_item->>'user_id')::INTEGER;
+            v_groupe_sanguin := v_match_item->>'groupe_sanguin';
+            
+            -- Si blood_group_id est NULL, créer une entrée dans user_blood_groups
+            IF (v_match_item->>'blood_group_id') IS NULL OR (v_match_item->>'blood_group_id') = 'null' THEN
+                INSERT INTO user_blood_groups (user_id, groupe_sanguin, is_available_for_donation, created_at, updated_at)
+                VALUES (v_user_id, v_groupe_sanguin, TRUE, NOW(), NOW())
+                ON CONFLICT (user_id, groupe_sanguin) DO UPDATE SET updated_at = NOW()
+                RETURNING id INTO v_blood_group_id;
+            ELSE
+                v_blood_group_id := (v_match_item->>'blood_group_id')::INTEGER;
+            END IF;
+            
+            -- Créer le match
             INSERT INTO blood_donation_matches (
                 request_id,
                 donor_user_id,
@@ -353,12 +414,12 @@ BEGIN
                 match_status
             ) VALUES (
                 v_request_id,
-                (v_match->>'user_id')::INTEGER,
-                (v_match->>'blood_group_id')::INTEGER,
-                (v_match->>'donor_latitude')::DOUBLE PRECISION,
-                (v_match->>'donor_longitude')::DOUBLE PRECISION,
-                (v_match->>'distance_km')::DOUBLE PRECISION,
-                (v_match->>'relevance_score')::DOUBLE PRECISION,
+                v_user_id,
+                v_blood_group_id,
+                (v_match_item->>'donor_latitude')::DOUBLE PRECISION,
+                (v_match_item->>'donor_longitude')::DOUBLE PRECISION,
+                (v_match_item->>'distance_km')::DOUBLE PRECISION,
+                (v_match_item->>'relevance_score')::DOUBLE PRECISION,
                 'pending'
             ) ON CONFLICT (request_id, donor_user_id) DO NOTHING;
         END LOOP;

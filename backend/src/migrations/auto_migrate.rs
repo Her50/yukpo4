@@ -3465,8 +3465,8 @@ pub async fn ensure_products_json_format(pool: &PgPool) -> Result<(), sqlx::Erro
                 WHERE jsonb_typeof(data->'produits'->'valeur') = 'array'
                 AND EXISTS (
                     SELECT 1
-                    FROM jsonb_array_elements(data->'produits'->'valeur') AS elem
-                    WHERE jsonb_typeof(elem) = 'string'
+                    FROM jsonb_array_elements(data->'produits'->'valeur') AS sub_elem
+                    WHERE jsonb_typeof(sub_elem) = 'string'
                 )
             LOOP
                 BEGIN
@@ -5239,7 +5239,7 @@ pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::
     .await?;
     
     sqlx::query(
-        "CREATE INDEX IF NOT EXISTS idx_courier_verification_code ON courier_verification_codes(verification_code) WHERE verified_at IS NULL AND expires_at > NOW()"
+        "CREATE INDEX IF NOT EXISTS idx_courier_verification_code ON courier_verification_codes(verification_code) WHERE verified_at IS NULL"
     )
     .execute(pool)
     .await?;
@@ -5700,6 +5700,30 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_bus_return_trips_table(pool).await {
         Ok(_) => info!("✅ Migration auto: bus_return_trips OK"),
         Err(e) => error!("❌ Erreur migration auto bus_return_trips: {}", e),
+    }
+    
+    // ✅ 2025-11-27 : Table agency_departure_schedules (horaires par agence/ville)
+    match ensure_agency_departure_schedules(pool).await {
+        Ok(_) => info!("✅ Migration auto: agency_departure_schedules OK"),
+        Err(e) => error!("❌ Erreur migration auto agency_departure_schedules: {}", e),
+    }
+    
+    // ✅ 2025-11-27 : Colonnes return_date et return_time dans bus_ticket_payments
+    match ensure_return_time_columns(pool).await {
+        Ok(_) => info!("✅ Migration auto: return_time columns OK"),
+        Err(e) => error!("❌ Erreur migration auto return_time columns: {}", e),
+    }
+    
+    // ✅ 2025-11-27 : Amélioration fonction matching avec heure
+    match ensure_improved_return_matching(pool).await {
+        Ok(_) => info!("✅ Migration auto: improved return matching OK"),
+        Err(e) => error!("❌ Erreur migration auto improved return matching: {}", e),
+    }
+    
+    // ✅ 2025-11-27 : Ajout champ groupe_sanguin dans users
+    match ensure_blood_group_column_in_users(pool).await {
+        Ok(_) => info!("✅ Migration auto: blood_group column in users OK"),
+        Err(e) => error!("❌ Erreur migration auto blood_group column: {}", e),
     }
 
     match ensure_live_streaming_tables(pool).await {
@@ -8570,16 +8594,65 @@ pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sql
 /// Helper pour exécuter plusieurs commandes SQL séparées par des points-virgules
 /// Gère les blocs DO $$ ... $$ comme une seule commande
 async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {
-    // Simple approche : diviser par ";" mais préserver les blocs DO $$
-    let commands: Vec<&str> = sql
-        .split(';')
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty() && !s.starts_with("--"))
-        .collect();
+    // Amélioration : gérer les blocs DO $$...END $$; correctement
+    // Diviser par ";" mais préserver les blocs DO $$...END $$;
+    let mut commands = Vec::new();
+    let mut current = String::new();
+    let mut in_do_block = false;
+    let mut dollar_tags = Vec::new(); // Stack pour gérer les tags $$ imbriqués
     
+    for line in sql.lines() {
+        let trimmed = line.trim();
+        
+        // Détecter début d'un bloc DO $$
+        if trimmed.starts_with("DO $$") || trimmed.matches("DO $$").count() > 0 {
+            in_do_block = true;
+            dollar_tags.push("$$");
+            current.push_str(line);
+            current.push_str("\n");
+            continue;
+        }
+        
+        if in_do_block {
+            current.push_str(line);
+            current.push_str("\n");
+            
+            // Détecter fin du bloc (END $$;)
+            if trimmed.contains("END $$") && trimmed.ends_with("$$;") {
+                dollar_tags.pop();
+                if dollar_tags.is_empty() {
+                    // Fin du bloc DO
+                    commands.push(current.trim().to_string());
+                    current.clear();
+                    in_do_block = false;
+                }
+            }
+        } else {
+            // Commande normale
+            current.push_str(line);
+            current.push_str("\n");
+            
+            // Si la ligne se termine par ;, c'est une commande complète
+            if trimmed.ends_with(';') && !trimmed.contains("$$") {
+                let cmd = current.trim();
+                if !cmd.is_empty() && !cmd.starts_with("--") {
+                    commands.push(cmd.to_string());
+                }
+                current.clear();
+            }
+        }
+    }
+    
+    // Ajouter la dernière commande si elle existe
+    if !current.trim().is_empty() {
+        commands.push(current.trim().to_string());
+    }
+    
+    // Exécuter chaque commande
     for cmd in commands {
-        if !cmd.trim().is_empty() {
-            sqlx::query(cmd).execute(pool).await?;
+        let trimmed_cmd = cmd.trim();
+        if !trimmed_cmd.is_empty() && !trimmed_cmd.starts_with("--") {
+            sqlx::query(trimmed_cmd).execute(pool).await?;
         }
     }
     
@@ -8591,13 +8664,25 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
 pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification et création des tables services spécialisés...");
     
-    // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251126_create_specialized_services_tables.sql");
+    // Vérifier d'abord si les tables existent déjà
+    let pharmacies_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'pharmacies')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
     
-    // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    if !pharmacies_exists {
+        // Lire le contenu de la migration SQL
+        let migration_sql = include_str!("../../migrations/20251126_create_specialized_services_tables.sql");
+        
+        // Exécuter la migration SQL en divisant en commandes individuelles
+        execute_multiple_sql_commands(pool, migration_sql).await?;
+        info!("✅ Tables services spécialisés créées");
+    } else {
+        info!("✅ Tables services spécialisés déjà présentes");
+    }
     
-    info!("✅ Tables services spécialisés créées/mises à jour");
     Ok(())
 }
 
@@ -8622,13 +8707,25 @@ pub async fn ensure_specialized_search_functions(pool: &PgPool) -> Result<(), sq
 pub async fn ensure_banques_sang_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification et création de la table banques_sang...");
     
-    // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251127_create_banques_sang_table.sql");
+    // Vérifier d'abord si la table existe déjà
+    let banques_sang_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'banques_sang')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
     
-    // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    if !banques_sang_exists {
+        // Lire le contenu de la migration SQL
+        let migration_sql = include_str!("../../migrations/20251127_create_banques_sang_table.sql");
+        
+        // Exécuter la migration SQL en divisant en commandes individuelles
+        execute_multiple_sql_commands(pool, migration_sql).await?;
+        info!("✅ Table banques_sang créée");
+    } else {
+        info!("✅ Table banques_sang déjà présente");
+    }
     
-    info!("✅ Table banques_sang créée/mise à jour");
     Ok(())
 }
 
@@ -8665,13 +8762,25 @@ pub async fn ensure_bus_ticket_commission_system(pool: &PgPool) -> Result<(), sq
 pub async fn ensure_bus_ticket_validation_system(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification système validation tickets bus...");
     
-    // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251127_bus_ticket_validation_system.sql");
+    // Vérifier d'abord si la table existe déjà
+    let bus_boarding_status_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'bus_boarding_status')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
     
-    // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    if !bus_boarding_status_exists {
+        // Lire le contenu de la migration SQL
+        let migration_sql = include_str!("../../migrations/20251127_bus_ticket_validation_system.sql");
+        
+        // Exécuter la migration SQL en divisant en commandes individuelles
+        execute_multiple_sql_commands(pool, migration_sql).await?;
+        info!("✅ Système validation tickets bus créé");
+    } else {
+        info!("✅ Système validation tickets bus déjà présent");
+    }
     
-    info!("✅ Système validation tickets bus créé/mis à jour");
     Ok(())
 }
 
@@ -8679,13 +8788,25 @@ pub async fn ensure_bus_ticket_validation_system(pool: &PgPool) -> Result<(), sq
 pub async fn ensure_bus_seat_blocks_system(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification système blocage places bus...");
     
-    // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251127_bus_manual_seat_blocks.sql");
+    // Vérifier d'abord si la table existe déjà
+    let bus_seat_blocks_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'bus_seat_blocks')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
     
-    // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_multiple_sql_commands(pool, migration_sql).await?;
+    if !bus_seat_blocks_exists {
+        // Lire le contenu de la migration SQL
+        let migration_sql = include_str!("../../migrations/20251127_bus_manual_seat_blocks.sql");
+        
+        // Exécuter la migration SQL en divisant en commandes individuelles
+        execute_multiple_sql_commands(pool, migration_sql).await?;
+        info!("✅ Système blocage places bus créé");
+    } else {
+        info!("✅ Système blocage places bus déjà présent");
+    }
     
-    info!("✅ Système blocage places bus créé/mis à jour");
     Ok(())
 }
 
@@ -8694,12 +8815,120 @@ pub async fn ensure_bus_seat_blocks_system(pool: &PgPool) -> Result<(), sqlx::Er
 pub async fn ensure_blood_donation_matching_system(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification système matching intelligent banque de sang...");
     
+    // Vérifier d'abord si la table existe déjà
+    let user_blood_groups_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'user_blood_groups')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    
+    if !user_blood_groups_exists {
+        // Lire le contenu de la migration SQL
+        let migration_sql = include_str!("../../migrations/20251127_blood_donation_matching_system.sql");
+        
+        // Exécuter la migration SQL en divisant en commandes individuelles
+        execute_multiple_sql_commands(pool, migration_sql).await?;
+        info!("✅ Système matching intelligent banque de sang créé");
+    } else {
+        info!("✅ Système matching intelligent banque de sang déjà présent");
+    }
+    
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-11-27 : Vérifie et crée la table agency_departure_schedules
+/// Compatible SQLx offline mode
+pub async fn ensure_agency_departure_schedules(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification table agency_departure_schedules...");
+    
+    // Vérifier d'abord si la table existe déjà
+    let table_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'agency_departure_schedules')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    
+    if !table_exists {
+        // Lire le contenu de la migration SQL
+        let migration_sql = include_str!("../../migrations/20251127_agency_departure_schedules.sql");
+        
+        // Exécuter la migration SQL en divisant en commandes individuelles
+        execute_multiple_sql_commands(pool, migration_sql).await?;
+        info!("✅ Table agency_departure_schedules créée");
+    } else {
+        info!("✅ Table agency_departure_schedules déjà présente");
+    }
+    
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-11-27 : Ajoute les colonnes return_date et return_time à bus_ticket_payments
+/// Compatible SQLx offline mode
+pub async fn ensure_return_time_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification colonnes return_date et return_time...");
+    
+    // Vérifier si les colonnes existent déjà
+    let return_date_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'bus_ticket_payments' AND column_name = 'return_date')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    
+    if !return_date_exists {
+        // Lire le contenu de la migration SQL
+        let migration_sql = include_str!("../../migrations/20251127_add_return_time_to_bus_payments.sql");
+        
+        // Exécuter la migration SQL en divisant en commandes individuelles
+        execute_multiple_sql_commands(pool, migration_sql).await?;
+        info!("✅ Colonnes return_date et return_time ajoutées");
+    } else {
+        info!("✅ Colonnes return_date et return_time déjà présentes");
+    }
+    
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-11-27 : Améliore la fonction match_return_trip_requests pour inclure l'heure
+/// Compatible SQLx offline mode
+pub async fn ensure_improved_return_matching(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification fonction match_return_trip_requests améliorée...");
+    
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251127_blood_donation_matching_system.sql");
+    let migration_sql = include_str!("../../migrations/20251127_improve_return_trip_matching_with_time.sql");
     
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
+    info!("✅ Fonction match_return_trip_requests améliorée avec matching par heure");
     
-    info!("✅ Système matching intelligent banque de sang créé/mis à jour");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-11-27 : Ajoute le champ groupe_sanguin dans users
+/// Compatible SQLx offline mode
+pub async fn ensure_blood_group_column_in_users(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification colonne groupe_sanguin dans users...");
+    
+    // Vérifier si la colonne existe déjà
+    let column_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'groupe_sanguin')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    
+    if !column_exists {
+        // Lire le contenu de la migration SQL
+        let migration_sql = include_str!("../../migrations/20251127_add_blood_group_to_users.sql");
+        
+        // Exécuter la migration SQL en divisant en commandes individuelles
+        execute_multiple_sql_commands(pool, migration_sql).await?;
+        info!("✅ Colonne groupe_sanguin ajoutée dans users");
+    } else {
+        info!("✅ Colonne groupe_sanguin déjà présente dans users");
+    }
+    
     Ok(())
 }
