@@ -182,7 +182,7 @@ pub async fn process_ticket_payment(
     // ✅ NOUVEAU: Récupérer les informations de retour si c'est un aller-retour
     let return_date = payload.return_date.clone();
     let return_time = payload.return_time.clone();
-    let is_round_trip = payload.is_round_trip.unwrap_or(false);
+    let _is_round_trip = payload.is_round_trip.unwrap_or(false);
 
     sqlx::query(
         r#"

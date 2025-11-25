@@ -13,7 +13,7 @@ use axum::{
 use chrono::NaiveTime;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use sqlx::Row;
 use std::sync::Arc;
 
@@ -231,6 +231,9 @@ pub async fn get_agency_schedules(
         params.push(active.to_string());
         param_index += 1;
     }
+    
+    // param_index est utilisé dans les format! ci-dessus pour construire la requête SQL
+    let _ = param_index;
 
     sql.push_str(" ORDER BY departure_city, arrival_city, day_of_week NULLS FIRST");
 
@@ -303,7 +306,7 @@ pub async fn get_available_times(
     );
 
     // Parser la date si fournie
-    let date_param: Option<chrono::NaiveDate> = query.date.and_then(|d| {
+    let date_param: Option<chrono::NaiveDate> = query.date.clone().and_then(|d| {
         chrono::NaiveDate::parse_from_str(&d, "%Y-%m-%d").ok()
     });
 
@@ -388,79 +391,14 @@ pub async fn update_schedule(
         }
     }
 
-    // Construire la requête UPDATE dynamique
-    let mut updates = Vec::new();
-    let mut params: Vec<Box<dyn sqlx::Encode<'_, sqlx::Postgres> + Send + Sync>> = Vec::new();
-    let mut param_index = 1;
-
-    if let Some(ref times) = payload.departure_times {
-        // Valider les horaires
-        let mut validated_times: Vec<NaiveTime> = Vec::new();
-        for time_str in times {
-            match NaiveTime::parse_from_str(time_str, "%H:%M") {
-                Ok(time) => validated_times.push(time),
-                Err(_) => {
-                    return Err(AppError::BadRequest(
-                        format!("Format d'heure invalide: {}. Format attendu: HH:MM", time_str)
-                    ));
-                }
-            }
-        }
-
-        let times_array: Vec<String> = validated_times
-            .iter()
-            .map(|t| t.format("%H:%M:%S").to_string())
-            .collect();
-
-        updates.push(format!("departure_times = ${}::TIME[]", param_index));
-        params.push(Box::new(times_array));
-        param_index += 1;
-    }
-
-    if payload.day_of_week.is_some() {
-        if let Some(day) = payload.day_of_week {
-            if day < 0 || day > 6 {
-                return Err(AppError::BadRequest(
-                    "day_of_week doit être entre 0 (Dimanche) et 6 (Samedi)".to_string()
-                ));
-            }
-        }
-        updates.push(format!("day_of_week = ${}", param_index));
-        params.push(Box::new(payload.day_of_week));
-        param_index += 1;
-    }
-
-    if payload.is_active.is_some() {
-        updates.push(format!("is_active = ${}", param_index));
-        params.push(Box::new(payload.is_active));
-        param_index += 1;
-    }
-
-    if payload.notes.is_some() {
-        updates.push(format!("notes = ${}", param_index));
-        params.push(Box::new(payload.notes.as_ref()));
-        param_index += 1;
-    }
-
-    if updates.is_empty() {
+    // Vérifier qu'au moins un champ est modifié
+    if payload.departure_times.is_none() 
+        && payload.day_of_week.is_none() 
+        && payload.is_active.is_none() 
+        && payload.notes.is_none() {
         return Err(AppError::BadRequest(
             "Aucune modification à effectuer".to_string()
         ));
-    }
-
-    updates.push("updated_at = NOW()".to_string());
-
-    let sql = format!(
-        "UPDATE agency_departure_schedules SET {} WHERE id = ${}",
-        updates.join(", "),
-        param_index
-    );
-
-    // Exécuter la mise à jour
-    let mut query_builder = sqlx::query(&sql);
-    for param in params {
-        // Note: Cette approche nécessite une refactorisation pour gérer les types dynamiques
-        // Pour l'instant, on utilise une approche plus simple avec des requêtes conditionnelles
     }
 
     // Approche simplifiée : requêtes séparées selon les champs modifiés

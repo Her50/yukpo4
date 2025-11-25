@@ -573,8 +573,8 @@ pub async fn update_match_status(
     .await
     .map_err(|e| {
         error!("[update_match_status] Erreur vérification groupe: {}", e);
-    })
-    .ok()
+        AppError::Internal(format!("Erreur vérification groupe sanguin: {}", e))
+    })?
     .unwrap_or((None, None));
 
     let (blood_group_from_table, blood_group_from_user) = has_blood_group;
@@ -583,11 +583,12 @@ pub async fn update_match_status(
     // Si accepté, mettre à jour la disponibilité du donneur
     if payload.new_status == "accepted" {
         // Utiliser le groupe sanguin de user_blood_groups ou users.groupe_sanguin
+        let has_table_group = blood_group_from_table.is_some();
         let groupe_sanguin = blood_group_from_table.or(blood_group_from_user);
 
         if let Some(ref groupe) = groupe_sanguin {
             // Si existe dans user_blood_groups, mettre à jour disponibilité
-            if blood_group_from_table.is_some() {
+            if has_table_group {
                 sqlx::query(
                     r#"
                     UPDATE user_blood_groups
