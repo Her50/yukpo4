@@ -11,6 +11,14 @@ Génère un JSON strictement conforme pour la création d'un service :
     "valeur": "<titre du service>",
     "origine_champs": "<source>"
   },
+  "nom_prestataire": {
+    "type_donnee": "string",
+    "valeur": "<nom du commerce/établissement/prestataire si mentionné dans l'input, sinon omettre>",
+    "origine_champs": "ia"
+  },
+  // Note: nom_prestataire est OPTIONNEL mais recommandé pour améliorer le matching Google Places.
+  // Si un nom de boutique/commerce/établissement est mentionné dans l'input, l'extraire ici.
+  // Si non mentionné, omettre ce champ (le système utilisera users.nom_complet comme fallback).
   "category": {
     "type_donnee": "string", 
     "valeur": "<catégorie métier>",

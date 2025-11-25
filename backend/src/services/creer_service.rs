@@ -404,7 +404,11 @@ fn extract_string_field(
     map.get(key).and_then(|value| extract_value_string(value))
 }
 
-async fn enrich_service_with_google(data_obj: &mut serde_json::Value) -> Result<(), AppError> {
+async fn enrich_service_with_google(
+    data_obj: &mut serde_json::Value,
+    pool: &PgPool,
+    user_id: i32,
+) -> Result<(), AppError> {
     let map = match data_obj.as_object_mut() {
         Some(map) => map,
         None => return Ok(()),
@@ -416,8 +420,48 @@ async fn enrich_service_with_google(data_obj: &mut serde_json::Value) -> Result<
 
     let titre = extract_string_field(map, "titre_service");
     let nom_produit = extract_string_field(map, "nom_produit");
-    let nom_prestataire = extract_string_field(map, "nom_prestataire")
+    
+    // ✅ NOUVEAU: Récupérer le nom du prestataire depuis le JSON OU depuis la table users
+    let mut nom_prestataire = extract_string_field(map, "nom_prestataire")
         .or_else(|| extract_string_field(map, "prestataire_nom"));
+    
+    // Fallback: Récupérer depuis la table users si pas dans le JSON
+    if nom_prestataire.is_none() {
+        match sqlx::query_scalar::<_, Option<String>>(
+            "SELECT COALESCE(NULLIF(TRIM(nom_complet), ''), CONCAT(COALESCE(NULLIF(TRIM(prenom), ''), ''), ' ', COALESCE(NULLIF(TRIM(nom), ''), ''))) FROM users WHERE id = $1"
+        )
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        {
+            Ok(Some(Some(name))) if !name.trim().is_empty() => {
+                nom_prestataire = Some(name.trim().to_string());
+                log::info!(
+                    "[enrich_service_with_google] Nom prestataire récupéré depuis users: {}",
+                    nom_prestataire.as_ref().unwrap()
+                );
+            }
+            Ok(Some(None)) | Ok(None) => {
+                log::debug!(
+                    "[enrich_service_with_google] Aucun nom trouvé dans users pour user_id {}",
+                    user_id
+                );
+            }
+            Err(e) => {
+                log::warn!(
+                    "[enrich_service_with_google] Erreur récupération nom utilisateur {}: {}",
+                    user_id,
+                    e
+                );
+            }
+        }
+    } else {
+        log::info!(
+            "[enrich_service_with_google] Nom prestataire trouvé dans JSON: {}",
+            nom_prestataire.as_ref().unwrap()
+        );
+    }
+    
     let categorie = extract_string_field(map, "categorie_produit")
         .or_else(|| extract_string_field(map, "category"));
 
@@ -472,8 +516,20 @@ async fn enrich_service_with_google(data_obj: &mut serde_json::Value) -> Result<
     };
 
     let places_service = GooglePlacesService::new();
+    
+    // ✅ NOUVEAU: Utiliser search_and_select_best_match avec validation distance et comparaison multiple
+    let nom_prestataire_str = nom_prestataire.as_deref();
+    let max_distance_km = 10.0; // Distance maximale acceptée : 10 km
+    
     match places_service
-        .search_and_enrich(&final_query, country.as_deref(), Some("fr"), coordinates)
+        .search_and_select_best_match(
+            &final_query,
+            country.as_deref(),
+            Some("fr"),
+            coordinates,
+            nom_prestataire_str,
+            max_distance_km,
+        )
         .await
     {
         Ok(Some(google_place)) => {
@@ -492,6 +548,12 @@ async fn enrich_service_with_google(data_obj: &mut serde_json::Value) -> Result<
                 );
                 map.insert("location_vector".to_string(), vector_value);
             }
+            
+            log::info!(
+                "[creer_service] ✅ Google Places match sélectionné: {} (place_id: {})",
+                google_place.display_name,
+                google_place.place_id
+            );
         }
         Ok(None) => {
             info!(
@@ -1005,7 +1067,7 @@ pub async fn creer_service(
         is_first_product
     );
 
-    // ✅ NOUVEAU 2025-11-01 : Vérifier et débiter le solde APRÈS validation
+    // ✅ NOUVEAU 2025-11-01 : Vérifier le solde (mais NE PAS débiter encore)
     let current_balance_result = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
         .bind(user_id)
         .fetch_one(pool)
@@ -1040,54 +1102,6 @@ pub async fn creer_service(
         )));
     }
 
-    // ✅ Débiter le solde
-    let debit_result = sqlx::query(
-        "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
-    )
-    .bind(cout_reel_xaf)
-    .bind(user_id)
-    .fetch_one(pool)
-    .await;
-
-    let new_balance = match debit_result {
-        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
-        Err(e) => {
-            log::error!(
-                "[creer_service] ❌ Échec débit solde pour user {}: {}",
-                user_id,
-                e
-            );
-            return Err(AppError::Internal(format!("Erreur débit solde: {}", e)));
-        }
-    };
-
-    log::info!(
-        "[creer_service] ✅ Solde débité : {} FCFA (ancien: {}, nouveau: {})",
-        cout_reel_xaf,
-        current_balance,
-        new_balance
-    );
-
-    // Ajouter les tokens au tracker pour cohérence (même si déjà débités)
-    if ia_tokens_consumed > 0 {
-        token_tracker.add_enrichment(ia_tokens_consumed);
-        log::info!(
-            "[creer_service] Tokens IA externe extraits depuis les données: {}",
-            ia_tokens_consumed
-        );
-    } else {
-        // Token tracking pour stats (pas pour facturation, déjà facturé ci-dessus)
-        let min_cost_tokens = cout_reel_xaf / 10; // Conversion approximative pour stats
-        token_tracker.add_enrichment(min_cost_tokens);
-        log::info!(
-            "[creer_service] ✅ Tokens équivalents pour stats: {} (coût fixe: {} FCFA)",
-            min_cost_tokens,
-            cout_reel_xaf
-        );
-    }
-    // Ajouter tokens de validation
-    token_tracker.add_validation(2);
-
     // ✅ NOUVEAU: Limiter la taille du JSON pour éviter l'erreur d'index PostgreSQL
     // Supprimer les images base64 du champ produits avant insertion (elles sont déjà dans media)
     if let Some(produits_array) = produits_array_mut(&mut data_obj) {
@@ -1100,12 +1114,13 @@ pub async fn creer_service(
                 produit_obj.remove("doc_base64");
                 produit_obj.remove("excel_base64");
 
+                // ✅ CORRIGÉ: Tronquer les descriptions trop longues (réduire de 5000 à 2000 chars)
                 if let Some(description) = produit_obj.get_mut("description") {
                     if let Some(desc_str) = description.as_str() {
                         let desc_len = desc_str.len();
-                        if desc_len > 5000 {
+                        if desc_len > 2000 {
                             *description = serde_json::Value::String(
-                                desc_str.chars().take(5000).collect::<String>() + "...",
+                                desc_str.chars().take(2000).collect::<String>() + "...",
                             );
                             log::warn!(
                                 "[creer_service] Description produit tronquée (trop longue: {} chars)",
@@ -1206,7 +1221,7 @@ pub async fn creer_service(
     };
     auto_fill_currencies(&mut data_obj);
 
-    if let Err(err) = enrich_service_with_google(&mut data_obj).await {
+    if let Err(err) = enrich_service_with_google(&mut data_obj, pool, user_id).await {
         warn!(
             "[creer_service] Impossible d'enrichir le service via Google Places: {}",
             err
@@ -1234,6 +1249,10 @@ pub async fn creer_service(
     // ✅ NETTOYAGE FINAL AVANT INSERTION : Supprimer TOUTES les données volumineuses
     // Ce nettoyage est critique pour éviter l'erreur "index row requires X bytes, maximum size is 8191"
     
+    // ✅ NOUVEAU: Extraire les données Google Places COMPLÈTES avant nettoyage
+    // Elles seront sauvegardées dans la table google_places_data séparément
+    let google_place_full_data = data_obj.get("google_place").cloned();
+    
     let mut removed_count = 0;
     clean_media_recursive_final(&mut data_obj, &mut removed_count);
     
@@ -1243,6 +1262,30 @@ pub async fn creer_service(
             removed_count
         );
     }
+    
+    // ✅ NOUVEAU: Remplacer google_place par seulement place_id dans services.data
+    // Les données complètes seront dans la table google_places_data
+    if let Some(google_place) = data_obj.get_mut("google_place") {
+        if let Some(gp_obj) = google_place.as_object_mut() {
+            // Extraire seulement place_id pour garder la référence
+            let place_id = gp_obj.get("place_id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            
+            // Remplacer l'objet complet par seulement place_id
+            if let Some(pid) = place_id {
+                *google_place = serde_json::json!({ "place_id": pid });
+                log::info!("[creer_service] ✅ Google Places réduit à place_id seulement dans services.data");
+            } else {
+                // Si pas de place_id, supprimer complètement
+                data_obj.as_object_mut().and_then(|m| m.remove("google_place"));
+                log::warn!("[creer_service] ⚠️ Google Places sans place_id, supprimé de services.data");
+            }
+        }
+    }
+    
+    // ✅ SUPPRIMÉ: Plus de troncature des descriptions
+    // Les descriptions complètes sont maintenant conservées dans services.data
     
     // Vérifier la taille du JSON après nettoyage
     let json_size = serde_json::to_string(&data_obj)
@@ -1273,6 +1316,35 @@ pub async fn creer_service(
             json_size
         );
     }
+
+    // ✅ CRITIQUE 2025-11-25 : Débiter le solde MAINTENANT, APRÈS toutes les validations
+    // Cela évite de débiter si la création échoue à cause de la taille du JSON
+    let debit_result = sqlx::query(
+        "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
+    )
+    .bind(cout_reel_xaf)
+    .bind(user_id)
+    .fetch_one(pool)
+    .await;
+
+    let new_balance = match debit_result {
+        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
+        Err(e) => {
+            log::error!(
+                "[creer_service] ❌ Échec débit solde pour user {}: {}",
+                user_id,
+                e
+            );
+            return Err(AppError::Internal(format!("Erreur débit solde: {}", e)));
+        }
+    };
+
+    log::info!(
+        "[creer_service] ✅ Solde débité : {} FCFA (ancien: {}, nouveau: {})",
+        cout_reel_xaf,
+        current_balance,
+        new_balance
+    );
 
     let mut tx = pool
         .begin()
@@ -1312,6 +1384,41 @@ pub async fn creer_service(
             json_size,
             has_base64_image
         );
+        
+        // ✅ CRITIQUE 2025-11-25 : Rembourser le solde si l'insertion échoue
+        // Le débit a été fait avant, donc on doit rembourser en cas d'échec
+        // Note: On lance le remboursement en arrière-plan pour ne pas bloquer
+        let pool_clone = pool.clone();
+        let user_id_clone = user_id;
+        let cout_reel_xaf_clone = cout_reel_xaf;
+        tokio::spawn(async move {
+            match sqlx::query(
+                "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2 RETURNING tokens_balance"
+            )
+            .bind(cout_reel_xaf_clone)
+            .bind(user_id_clone)
+            .fetch_one(&pool_clone)
+            .await {
+                Ok(refund_row) => {
+                    if let Ok(refunded_balance) = refund_row.try_get::<i64, _>("tokens_balance") {
+                        log::info!(
+                            "[creer_service] ✅ Solde remboursé : {} FCFA (nouveau solde: {})",
+                            cout_reel_xaf_clone,
+                            refunded_balance
+                        );
+                    }
+                }
+                Err(refund_err) => {
+                    log::error!(
+                        "[creer_service] ❌ Échec remboursement solde pour user {} (montant: {} FCFA): {}",
+                        user_id_clone,
+                        cout_reel_xaf_clone,
+                        refund_err
+                    );
+                }
+            }
+        });
+        
         AppError::Internal(format!("Échec insertion service: {}", e))
     })?;
 
@@ -2686,10 +2793,224 @@ pub async fn creer_service(
         }
     }
 
+    // ✅ NOUVEAU: Sauvegarder les données Google Places complètes dans la table dédiée
+    if let Some(google_place_full) = google_place_full_data {
+        if let Some(gp_obj) = google_place_full.as_object() {
+            let place_id = gp_obj.get("place_id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            
+            if let Some(pid) = place_id {
+                // Extraire toutes les données Google Places
+                let display_name = gp_obj.get("display_name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let formatted_address = gp_obj.get("formatted_address")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let location_vector: Vec<String> = gp_obj.get("location_vector")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let coordinates = gp_obj.get("coordinates")
+                    .and_then(|v| v.as_object());
+                let latitude = coordinates
+                    .and_then(|c| c.get("lat"))
+                    .and_then(|v| v.as_f64());
+                let longitude = coordinates
+                    .and_then(|c| c.get("lng"))
+                    .and_then(|v| v.as_f64());
+                let types: Vec<String> = gp_obj.get("types")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let primary_type = gp_obj.get("primary_type")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let primary_type_display_name = gp_obj.get("primary_type_display_name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let rating = gp_obj.get("rating")
+                    .and_then(|v| v.as_f64());
+                let rating_count = gp_obj.get("rating_count")
+                    .and_then(|v| v.as_i64())
+                    .map(|i| i as i32);
+                let price_level = gp_obj.get("price_level")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let business_status = gp_obj.get("business_status")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let serves_cuisine: Vec<String> = gp_obj.get("serves_cuisine")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let website_uri = gp_obj.get("website_uri")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let google_maps_uri = gp_obj.get("google_maps_uri")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let international_phone_number = gp_obj.get("international_phone_number")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let national_phone_number = gp_obj.get("national_phone_number")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let editorial_summary = gp_obj.get("editorial_summary")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let current_opening_hours = gp_obj.get("current_opening_hours").cloned();
+                let regular_opening_hours = gp_obj.get("regular_opening_hours").cloned();
+                let photos = gp_obj.get("photos").cloned();
+                let country = gp_obj.get("country")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let country_code = gp_obj.get("country_code")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+
+                // Insérer dans google_places_data
+                if let Err(e) = sqlx::query(
+                    r#"
+                    INSERT INTO google_places_data (
+                        service_id, place_id, display_name, formatted_address, location_vector,
+                        latitude, longitude, types, primary_type, primary_type_display_name,
+                        rating, rating_count, price_level, business_status, serves_cuisine,
+                        website_uri, google_maps_uri, international_phone_number, national_phone_number,
+                        editorial_summary, current_opening_hours, regular_opening_hours, photos,
+                        country, country_code
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+                    ON CONFLICT (service_id, place_id) DO UPDATE SET
+                        display_name = EXCLUDED.display_name,
+                        formatted_address = EXCLUDED.formatted_address,
+                        location_vector = EXCLUDED.location_vector,
+                        latitude = EXCLUDED.latitude,
+                        longitude = EXCLUDED.longitude,
+                        types = EXCLUDED.types,
+                        primary_type = EXCLUDED.primary_type,
+                        primary_type_display_name = EXCLUDED.primary_type_display_name,
+                        rating = EXCLUDED.rating,
+                        rating_count = EXCLUDED.rating_count,
+                        price_level = EXCLUDED.price_level,
+                        business_status = EXCLUDED.business_status,
+                        serves_cuisine = EXCLUDED.serves_cuisine,
+                        website_uri = EXCLUDED.website_uri,
+                        google_maps_uri = EXCLUDED.google_maps_uri,
+                        international_phone_number = EXCLUDED.international_phone_number,
+                        national_phone_number = EXCLUDED.national_phone_number,
+                        editorial_summary = EXCLUDED.editorial_summary,
+                        current_opening_hours = EXCLUDED.current_opening_hours,
+                        regular_opening_hours = EXCLUDED.regular_opening_hours,
+                        photos = EXCLUDED.photos,
+                        country = EXCLUDED.country,
+                        country_code = EXCLUDED.country_code,
+                        updated_at = NOW()
+                    "#
+                )
+                .bind(service_id)
+                .bind(&pid)
+                .bind(display_name)
+                .bind(formatted_address)
+                .bind(&location_vector)
+                .bind(latitude)
+                .bind(longitude)
+                .bind(&types)
+                .bind(primary_type)
+                .bind(primary_type_display_name)
+                .bind(rating)
+                .bind(rating_count)
+                .bind(price_level)
+                .bind(business_status)
+                .bind(&serves_cuisine)
+                .bind(website_uri)
+                .bind(google_maps_uri)
+                .bind(international_phone_number)
+                .bind(national_phone_number)
+                .bind(editorial_summary)
+                .bind(current_opening_hours)
+                .bind(regular_opening_hours)
+                .bind(photos)
+                .bind(country)
+                .bind(country_code)
+                .execute(&mut *tx)
+                .await
+                {
+                    log::error!(
+                        "[creer_service] ❌ Erreur sauvegarde Google Places pour service {}: {}",
+                        service_id,
+                        e
+                    );
+                    // Ne pas bloquer la création du service si Google Places échoue
+                } else {
+                    log::info!(
+                        "[creer_service] ✅ Données Google Places complètes sauvegardées pour service {} (place_id: {})",
+                        service_id,
+                        pid
+                    );
+                }
+            }
+        }
+    }
+
     // Commit de la transaction AVANT la réponse
     tx.commit()
         .await
-        .map_err(|e| AppError::Internal(format!("?chec commit: {}", e)))?;
+        .map_err(|e| {
+            log::error!(
+                "[creer_service] ❌ Échec commit transaction pour service_id={}: {}",
+                service_id,
+                e
+            );
+            
+            // ✅ CRITIQUE 2025-11-25 : Rembourser le solde si le commit échoue
+            // Le débit a été fait avant, donc on doit rembourser en cas d'échec
+            let pool_clone = pool.clone();
+            let user_id_clone = user_id;
+            let cout_reel_xaf_clone = cout_reel_xaf;
+            tokio::spawn(async move {
+                match sqlx::query(
+                    "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2 RETURNING tokens_balance"
+                )
+                .bind(cout_reel_xaf_clone)
+                .bind(user_id_clone)
+                .fetch_one(&pool_clone)
+                .await {
+                    Ok(refund_row) => {
+                        if let Ok(refunded_balance) = refund_row.try_get::<i64, _>("tokens_balance") {
+                            log::info!(
+                                "[creer_service] ✅ Solde remboursé après échec commit : {} FCFA (nouveau solde: {})",
+                                cout_reel_xaf_clone,
+                                refunded_balance
+                            );
+                        }
+                    }
+                    Err(refund_err) => {
+                        log::error!(
+                            "[creer_service] ❌ Échec remboursement solde après échec commit pour user {} (montant: {} FCFA): {}",
+                            user_id_clone,
+                            cout_reel_xaf_clone,
+                            refund_err
+                        );
+                    }
+                }
+            });
+            
+            AppError::Internal(format!("Échec commit: {}", e))
+        })?;
 
     log::info!("[CREER_SERVICE] ? Transaction commitée avec succès - Service ID: {} maintenant visible en base", service_id);
     log::info!(

@@ -28,6 +28,7 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
     "titre_service": {"type_donnee": "string", "valeur": "[BASÉ SUR INPUT]", "origine_champs": "ia"},
     "category": {"type_donnee": "string", "valeur": "Commerce|Éducation|Services|Transport|Santé|Immobilier", "origine_champs": "ia"},
     "description": {"type_donnee": "string", "valeur": "[BASÉ SUR INPUT]", "origine_champs": "ia"},
+    "nom_prestataire": {"type_donnee": "string", "valeur": "[Nom commerce/établissement si mentionné, sinon omettre]", "origine_champs": "ia"},
     "is_tarissable": {"type_donnee": "boolean", "valeur": true, "origine_champs": "ia"},
     "type_offre": {"type_donnee": "string", "valeur": "produit|prestation", "origine_champs": "ia"}
   }
@@ -35,6 +36,25 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
 ```
 
 **Titre du service** : Si le contexte révèle un nom de boutique/structure, utilise-le tel quel. Sinon, construis un titre descriptif basé sur produit/prestation + localisation.
+
+**nom_prestataire** (OPTIONNEL mais recommandé pour matching Google Places) : 
+- **Si nom de commerce/établissement/prestataire mentionné dans l'input** : Extraire ce nom exactement
+  - Exemple : "Restaurant Chez Marie" → `"valeur": "Restaurant Chez Marie"`
+  - Exemple : "Boutique CM" → `"valeur": "Boutique CM"`
+- **Si pas de nom explicite** : Omettre ce champ (le système utilisera automatiquement `users.nom_complet` comme fallback)
+- **Différence avec `titre_service`** :
+  - `titre_service` : Titre descriptif du service (ex: "Vente de vêtements à Douala")
+  - `nom_prestataire` : Nom commercial/établissement (ex: "Boutique CM")
+
+```json
+{
+  "nom_prestataire": {
+    "type_donnee": "string",
+    "valeur": "[Nom du commerce/établissement]",
+    "origine_champs": "ia"
+  }
+}
+```
 
 **type_offre** : "produit" = biens matériels | "prestation" = services, formations, consultations
 
@@ -348,6 +368,7 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
     "titre_service": {...},
     "category": {...},
     "description": {...},
+    "nom_prestataire": {...},  // OPTIONNEL : Nom du commerce/établissement si mentionné
     "is_tarissable": {...},
     "type_offre": {...},
     "produits": {
