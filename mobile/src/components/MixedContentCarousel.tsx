@@ -177,8 +177,9 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         try {
             console.log('[MixedContentCarousel] Chargement des produits organiques...');
 
+            // ✅ CORRIGÉ: Retirer le paramètre include_products qui cause une erreur 400
             // Essayer d'abord l'API récente
-            let response = await apiGet('/api/services/recent?limit=20&include_products=true');
+            let response = await apiGet('/api/services/recent?limit=20');
 
             // Si ça ne marche pas, essayer l'API standard
             if (!response.success || !response.data || !Array.isArray(response.data)) {

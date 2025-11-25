@@ -144,67 +144,111 @@ pub async fn add_product_to_service(
         cout_ajout, current_balance, new_balance
     ));
 
-    // ✅ Ajouter le produit au JSON du service
-    // ✅ CORRECTION 2025-11-06: Transformer product_data en string concaténée (format attendu par autocomplete)
-    // Format: "nom_produit,categorie,prix,devise,lieu" (comme dans LinearAutocompleteEditor)
-    let product_string = {
-        let mut parts = vec![];
-
-        // Extraire les champs dans l'ordre attendu
-        if let Some(nom) = request
-            .product_data
-            .get("nom_produit")
-            .or_else(|| request.product_data.get("produits"))
-            .and_then(|v| v.as_str())
-        {
-            if !nom.is_empty() {
-                parts.push(nom.to_string());
-            }
-        }
-
-        if let Some(cat) = request
-            .product_data
-            .get("categorie_produit")
-            .and_then(|v| v.as_str())
-        {
-            if !cat.is_empty() {
-                parts.push(cat.to_string());
-            }
-        }
-
-        if let Some(desc) = request
-            .product_data
-            .get("description_produit")
-            .and_then(|v| v.as_str())
-        {
-            if !desc.is_empty() {
-                parts.push(desc.to_string());
-            }
-        }
-
-        if let Some(prix) = request
-            .product_data
-            .get("prix")
-            .or_else(|| request.product_data.get("prix_produit"))
-            .and_then(|v| v.as_str())
-        {
-            if !prix.is_empty() {
-                parts.push(prix.to_string());
-            }
-        }
-
-        if let Some(devise) = request.product_data.get("devise").and_then(|v| v.as_str()) {
-            if !devise.is_empty() {
-                parts.push(devise.to_string());
-            }
-        }
-
-        parts.join(",")
+    // ✅ CORRECTION 2025-11-24: Sauvegarder le produit comme un objet structuré au lieu d'une chaîne
+    // Format attendu par MesServicesScreen: { nom_produit, description_produit, categorie_produit, prix, devise, ... }
+    let extract_string = |value: &Value| -> Option<String> {
+        value.as_str().map(|s| s.to_string()).or_else(|| {
+            value
+                .get("valeur")
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
+        })
     };
 
+    let extract_number = |value: &Value| -> Option<f64> {
+        value.as_f64().or_else(|| {
+            value
+                .get("valeur")
+                .and_then(|v| v.as_f64())
+        })
+    };
+
+    // Construire l'objet produit structuré
+    let mut product_obj = json!({});
+
+    // nom_produit
+    if let Some(nom) = request
+        .product_data
+        .get("nom_produit")
+        .or_else(|| request.product_data.get("produits"))
+        .and_then(extract_string)
+    {
+        if !nom.is_empty() {
+            product_obj["nom_produit"] = json!(nom);
+        }
+    }
+
+    // description_produit
+    if let Some(desc) = request
+        .product_data
+        .get("description_produit")
+        .and_then(extract_string)
+    {
+        if !desc.is_empty() {
+            product_obj["description_produit"] = json!(desc);
+        }
+    }
+
+    // categorie_produit
+    if let Some(cat) = request
+        .product_data
+        .get("categorie_produit")
+        .and_then(extract_string)
+    {
+        if !cat.is_empty() {
+            product_obj["categorie_produit"] = json!(cat);
+        }
+    }
+
+    // prix
+    if let Some(prix) = request
+        .product_data
+        .get("prix")
+        .or_else(|| request.product_data.get("prix_produit"))
+        .and_then(|v| extract_string(v).or_else(|| extract_number(v).map(|n| n.to_string())))
+    {
+        if !prix.is_empty() {
+            product_obj["prix"] = json!(prix);
+        }
+    }
+
+    // devise
+    if let Some(devise) = request
+        .product_data
+        .get("devise")
+        .and_then(extract_string)
+    {
+        if !devise.is_empty() {
+            product_obj["devise"] = json!(devise);
+        }
+    }
+
+    // lieu_produit
+    if let Some(lieu) = request
+        .product_data
+        .get("lieu_produit")
+        .or_else(|| request.product_data.get("lieu_commercial"))
+        .or_else(|| request.product_data.get("lieu_commercialisation"))
+        .and_then(extract_string)
+    {
+        if !lieu.is_empty() {
+            product_obj["lieu_produit"] = json!(lieu);
+        }
+    }
+
+    // Conserver toutes les autres propriétés du product_data
+    if let Some(obj) = request.product_data.as_object() {
+        for (key, value) in obj {
+            if !["nom_produit", "description_produit", "categorie_produit", "prix", "prix_produit", "devise", "lieu_produit", "lieu_commercial", "lieu_commercialisation", "produits"].contains(&key.as_str()) {
+                product_obj[key] = value.clone();
+            }
+        }
+    }
+
+    // ✅ OPTIMISATION : Plus besoin de générer la chaîne concaténée
+    // Les arrays pour la recherche seront générés directement depuis l'objet JSON dans save_autocomplete_combination
     log_info(&format!(
-        "[add_product_to_service] 📝 Product string: '{}'",
-        product_string
+        "[add_product_to_service] 📝 Product object (structured JSON): {:?}",
+        product_obj
     ));
 
     let produits_array = service_data
@@ -215,15 +259,15 @@ pub async fn add_product_to_service(
 
     let product_index = match produits_array {
         Some(arr) => {
-            // Ajouter le nouveau produit au tableau existant (format string)
-            arr.push(json!(product_string.clone()));
+            // ✅ CORRECTION: Ajouter l'objet structuré au lieu de la chaîne
+            arr.push(product_obj.clone());
             arr.len() - 1
         }
         None => {
             // Créer le tableau de produits s'il n'existe pas
             service_data["produits"] = json!({
                 "type_donnee": "autocomplete",
-                "valeur": vec![product_string.clone()],
+                "valeur": vec![product_obj.clone()],
                 "separateur": ",",
                 "sous_caracteristiques": {},
                 "filtrable": true,
@@ -264,6 +308,7 @@ pub async fn add_product_to_service(
 
             // ✅ NOUVEAU 2025-11-06: Sauvegarder dans autocomplete_characteristics et autocomplete_combinations
             // Créer un data_obj temporaire avec SEULEMENT le nouveau produit (pas tous les produits du service)
+            // ✅ CORRECTION 2025-11-24: Utiliser product_string pour autocomplete (format attendu)
             let temp_data_obj = {
                 let mut obj = json!({
                     "produits": {

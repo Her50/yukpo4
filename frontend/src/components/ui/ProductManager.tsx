@@ -1,4 +1,5 @@
 import ProductDeliveryConfigModal from '@/components/delivery/ProductDeliveryConfigModal';
+import { IntelligentCharacteristicsSearch } from '@/components/forms/IntelligentCharacteristicsSearch';
 import { Badge } from '@/components/ui/badge';
 import BusSeatSelector from '@/components/ui/BusSeatSelector';
 import { Button } from '@/components/ui/buttons';
@@ -136,6 +137,18 @@ interface Product {
         prixAPartirDe: string;
         description?: string;
     }>;
+    // ✅ NOUVEAU: Caractéristiques produits (combinaisons préférées IA)
+    characteristics?: string; // Format: "marque,modèle,couleur" (séparateur: virgule)
+    // ✅ NOUVEAU: Variabilité de prix
+    price_variant?: {
+        variable: string; // Ex: "pointure", "taille", "quantité"
+        modalites: Array<{
+            valeur: string; // Ex: "38", "M", "1kg"
+            prix: number;
+            devise: string;
+            stock?: number;
+        }>;
+    };
 
     // ✅ Promotion (pour tous les types de produits)
     promotionActive?: boolean;
@@ -186,6 +199,7 @@ interface ProductManagerProps {
     titreService?: string;
     descriptionService?: string;
     serviceId?: number; // ✅ NOUVEAU: Pour la configuration de livraison
+    sessionId?: string; // ✅ NOUVEAU: ID de session IA pour charger les combinaisons préférées
 }
 
 const PRODUCT_TYPES = [
@@ -330,7 +344,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({
     readonly = false,
     titreService,
     descriptionService,
-    serviceId
+    serviceId,
+    sessionId
 }) => {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [selectedType, setSelectedType] = useState<ProductType>('autre');
@@ -883,6 +898,129 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                                     className="w-full p-2 border border-gray-300 rounded-md min-h-[80px]"
                                                 />
                                             </div>
+
+                                            {/* ✅ NOUVEAU: Caractéristiques produits (combinaisons préférées IA) */}
+                                            {selectedType !== 'prestation_service' && (
+                                                <div>
+                                                    <Label htmlFor="product-characteristics">Caractéristiques du produit</Label>
+                                                    <IntelligentCharacteristicsSearch
+                                                        value={editingProduct.characteristics || ''}
+                                                        onChange={(value) => setEditingProduct(prev => ({
+                                                            ...prev!,
+                                                            characteristics: value
+                                                        }))}
+                                                        sessionId={sessionId}
+                                                        label="Caractéristiques (marque, modèle, couleur, etc.)"
+                                                        separateur=","
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        💡 L'IA vous suggère les combinaisons les plus pertinentes basées sur votre demande
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* ✅ NOUVEAU: Variabilité de prix */}
+                                            {selectedType !== 'prestation_service' && selectedType !== 'pharmacie' && selectedType !== 'hopital_clinique' && (
+                                                <div className="space-y-2">
+                                                    <Label>Variantes de prix (optionnel)</Label>
+                                                    <div className="p-4 border border-gray-300 rounded-lg bg-gray-50">
+                                                        <p className="text-sm text-gray-600 mb-3">
+                                                            Si votre produit a des variantes (taille, pointure, quantité, etc.), vous pouvez définir des prix différents pour chaque variante.
+                                                        </p>
+                                                        {editingProduct.price_variant && editingProduct.price_variant.modalites.length > 0 ? (
+                                                            <div className="space-y-2">
+                                                                {editingProduct.price_variant.modalites.map((mod, index) => (
+                                                                    <div key={index} className="flex items-center gap-2 p-2 bg-white rounded border">
+                                                                        <span className="font-medium">{mod.valeur}</span>
+                                                                        <span className="text-gray-500">-</span>
+                                                                        <span>{mod.prix} {mod.devise}</span>
+                                                                        {mod.stock !== undefined && (
+                                                                            <>
+                                                                                <span className="text-gray-500">-</span>
+                                                                                <span className="text-sm text-gray-600">Stock: {mod.stock}</span>
+                                                                            </>
+                                                                        )}
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            onClick={() => {
+                                                                                const newModalites = editingProduct.price_variant!.modalites.filter((_, i) => i !== index);
+                                                                                setEditingProduct(prev => ({
+                                                                                    ...prev!,
+                                                                                    price_variant: newModalites.length > 0 ? {
+                                                                                        ...prev!.price_variant!,
+                                                                                        modalites: newModalites
+                                                                                    } : undefined
+                                                                                }));
+                                                                            }}
+                                                                        >
+                                                                            <X className="w-4 h-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                ))}
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        const valeur = prompt('Valeur de la variante (ex: 38, M, 1kg):');
+                                                                        const prix = prompt('Prix:');
+                                                                        const devise = editingProduct.currency || 'XAF';
+                                                                        if (valeur && prix) {
+                                                                            const newModalites = [
+                                                                                ...(editingProduct.price_variant?.modalites || []),
+                                                                                {
+                                                                                    valeur,
+                                                                                    prix: parseFloat(prix) || 0,
+                                                                                    devise,
+                                                                                    stock: undefined
+                                                                                }
+                                                                            ];
+                                                                            setEditingProduct(prev => ({
+                                                                                ...prev!,
+                                                                                price_variant: {
+                                                                                    variable: editingProduct.price_variant?.variable || 'variante',
+                                                                                    modalites: newModalites
+                                                                                }
+                                                                            }));
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Plus className="w-4 h-4 mr-2" />
+                                                                    Ajouter une variante
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    const variable = prompt('Type de variante (ex: pointure, taille, quantité):') || 'variante';
+                                                                    const valeur = prompt('Valeur de la variante (ex: 38, M, 1kg):');
+                                                                    const prix = prompt('Prix:');
+                                                                    const devise = editingProduct.currency || 'XAF';
+                                                                    if (valeur && prix) {
+                                                                        setEditingProduct(prev => ({
+                                                                            ...prev!,
+                                                                            price_variant: {
+                                                                                variable,
+                                                                                modalites: [{
+                                                                                    valeur,
+                                                                                    prix: parseFloat(prix) || 0,
+                                                                                    devise,
+                                                                                    stock: undefined
+                                                                                }]
+                                                                            }
+                                                                        }));
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Plus className="w-4 h-4 mr-2" />
+                                                                Ajouter des variantes de prix
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </>
                                     )}
 

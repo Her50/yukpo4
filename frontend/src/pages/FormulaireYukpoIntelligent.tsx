@@ -26,6 +26,8 @@ export default function FormulaireDemandeOuService() {
   const { user, isLoading } = useUser();
   const suggestion = location.state?.suggestion || {};
   const { confidence, tokens_consumed } = suggestion;
+  // ✅ NOUVEAU: Extraire le session_id pour les combinaisons préférées IA
+  const sessionId = suggestion?.session_id || suggestion?.data?.session_id || undefined;
   const mediaData = location.state?.mediaData || {};
   const gpsData = location.state?.gpsData || {}; // ?? NOUVEAU : Récupérer les données GPS
   const type = location.state?.type || '';
@@ -902,6 +904,7 @@ export default function FormulaireDemandeOuService() {
                     onProductsChange={setProducts}
                     readonly={mode === 'readonly'}
                     serviceId={serviceId ? parseInt(serviceId) : undefined}
+                    sessionId={sessionId}
                   />
                 </div>
               </div>

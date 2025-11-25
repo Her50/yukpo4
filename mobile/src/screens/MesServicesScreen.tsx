@@ -137,7 +137,8 @@ const MesServicesScreen: React.FC = () => {
               hasProduits: !!produits,
               produitsType: Array.isArray(produits) ? 'array' : typeof produits,
               produitsLength: Array.isArray(produits) ? produits.length : 0,
-              sample: Array.isArray(produits) && produits.length > 0 ? produits[0] : null
+              sample: Array.isArray(produits) && produits.length > 0 ? produits[0] : null,
+              sampleType: Array.isArray(produits) && produits.length > 0 ? typeof produits[0] : 'none'
             });
 
             if (produits && Array.isArray(produits) && produits.length > 0) {
@@ -145,17 +146,79 @@ const MesServicesScreen: React.FC = () => {
                 const productIndex = typeof product.product_index === 'number' ? product.product_index : index;
 
                 // Créer un "Service" pour chaque produit (pour compatibilité avec l'interface existante)
-                allProducts.push({
-                  id: `${serviceId}_${productIndex}`, // ID unique produit
-                  title: product.nom ||
+                // ✅ CORRECTION 2025-11-24: Gérer les produits qui peuvent être des chaînes ou des objets
+                let productTitle = '';
+                let productDescription = '';
+
+                // ✅ DEBUG: Log du produit pour comprendre sa structure
+                console.log(`[MesServicesScreen] 🔍 Produit ${index}:`, {
+                  type: typeof product,
+                  value: product,
+                  isString: typeof product === 'string',
+                  isObject: typeof product === 'object' && product !== null
+                });
+
+                // Si le produit est une chaîne (format depuis FormulaireYukpoIntelligentScreen)
+                // Format attendu: "nom,categorie,description,prix" ou "nom,categorie,description,prix,devise"
+                if (typeof product === 'string') {
+                  console.log(`[MesServicesScreen] 📝 Parsing chaîne produit: "${product}"`);
+                  const parts = product.split(',').map(p => p.trim());
+                  console.log(`[MesServicesScreen] 📝 Parts extraites:`, parts);
+                  // Le premier élément est toujours le nom
+                  productTitle = parts[0] || `Produit ${index + 1}`;
+                  // La description est généralement à l'index 2 (après nom et categorie)
+                  // Mais si la description contient des virgules, elle peut être plus longue
+                  // On prend tout ce qui est entre la catégorie et le prix (dernier élément numérique)
+                  if (parts.length >= 3) {
+                    // Chercher le dernier élément qui ressemble à un prix (numérique)
+                    let lastNumericIndex = -1;
+                    for (let i = parts.length - 1; i >= 0; i--) {
+                      if (/^\d+/.test(parts[i])) {
+                        lastNumericIndex = i;
+                        break;
+                      }
+                    }
+                    // Si on a trouvé un prix, tout entre l'index 2 et le prix est la description
+                    if (lastNumericIndex > 2) {
+                      productDescription = parts.slice(2, lastNumericIndex).join(', ').trim();
+                    } else if (parts.length >= 3) {
+                      // Sinon, prendre l'élément à l'index 2 comme description
+                      productDescription = parts[2] || 'Aucune description';
+                    } else {
+                      productDescription = parts[1] || 'Aucune description';
+                    }
+                  } else if (parts.length === 2) {
+                    // Si seulement 2 parties, la deuxième est probablement la description
+                    productDescription = parts[1] || 'Aucune description';
+                  } else {
+                    productDescription = 'Aucune description';
+                  }
+                  console.log(`[MesServicesScreen] ✅ Résultat parsing:`, { productTitle, productDescription });
+                } else if (product && typeof product === 'object') {
+                  // Si c'est un objet, extraire les champs normalement
+                  productTitle = product.nom ||
                     product.titre ||
                     product.title ||
-                    product.nom_produit?.valeur ||
-                    `Produit ${index + 1}`,
-                  description: product.description ||
+                    product.nom_produit ||
+                    (typeof product.nom_produit === 'object' && product.nom_produit?.valeur) ||
+                    (typeof product.nom_produit === 'string' && product.nom_produit) ||
+                    `Produit ${index + 1}`;
+                  productDescription = product.description ||
                     product.desc ||
-                    product.description_produit?.valeur ||
-                    'Aucune description',
+                    product.description_produit ||
+                    (typeof product.description_produit === 'object' && product.description_produit?.valeur) ||
+                    (typeof product.description_produit === 'string' && product.description_produit) ||
+                    'Aucune description';
+                } else {
+                  // Fallback si le produit n'est ni une chaîne ni un objet valide
+                  productTitle = `Produit ${index + 1}`;
+                  productDescription = 'Aucune description';
+                }
+
+                allProducts.push({
+                  id: `${serviceId}_${productIndex}`, // ID unique produit
+                  title: productTitle,
+                  description: productDescription,
                   status: (() => {
                     // Le statut du produit (is_active) ou du service
                     if (product.is_active !== undefined) {

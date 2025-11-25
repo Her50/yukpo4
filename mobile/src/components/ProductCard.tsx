@@ -443,57 +443,78 @@ const ProductCard: React.FC<ProductCardProps> = ({
       avatar_url: service?.prestataire?.photo || service?.prestataire?.avatar_url || service?.user?.avatar_url || service?.user?.photo_profil || service?.data?.photo_prestataire?.valeur,
     };
 
-  const prestataireName =
-    firstNonEmptyString(
-      // ✅ CORRIGÉ: Priorité 1 - Construire depuis service.user (source de vérité)
-      buildPrestataireNameFromUser(service?.user),
-      // ✅ CORRIGÉ: Priorité 2 - Vérifier service.prestataire.name (format API)
-      service?.prestataire?.name,
-      service?.prestataire?.nom,
-      service?.prestataire?.nom_complet,
-      // Priorité 3 - rawPrestataire (déjà construit)
-      rawPrestataire?.nom,
-      rawPrestataire?.nom_complet,
-      rawPrestataire?.name,
-      rawPrestataire?.username,
-      rawPrestataire?.display_name,
-      rawPrestataire?.full_name,
-      rawPrestataire?.raison_sociale,
-      // Priorité 4 - product.prestataire
-      product.prestataire?.nom,
-      product.prestataire?.nom_complet,
-      product.prestataire?.name,
-      product.prestataire_nom,
-      product.prestataire_nom_affiche,
-      product.prestataire_nom_commercial,
-      product.prestataire_nom_complet,
-      product.prestataire_name,
-      product.prestataire_fullname,
-      // Priorité 5 - product.owner/vendor
-      product.owner?.nom,
-      product.owner?.nom_complet,
-      product.owner?.name,
-      product.owner?.full_name,
-      product.vendor?.nom,
-      product.vendor?.name,
-      product.user_name,
-      product.contact_nom,
-      product.contact_name,
-      product.responsable_nom,
-      product.gerant_nom,
-      // Priorité 6 - service.data (champs dynamiques)
-      service?.data?.nom_prestataire?.valeur,
-      service?.data?.prestataire_nom?.valeur,
-      service?.data?.contact_nom?.valeur,
-      service?.data?.nom?.valeur,
-      service?.data?.nom_entreprise?.valeur,
-      service?.data?.responsable_nom?.valeur,
-      service?.data?.representant_nom?.valeur,
-      // Priorité 7 - service.user (autres champs)
-      service?.user?.name,
-      service?.user?.username,
-      service?.user?.display_name,
-    ) || 'Prestataire';
+  // ✅ NOUVEAU: Fonction pour nettoyer le nom et éviter les duplications
+  const cleanPrestataireName = (name: string | undefined | null): string | undefined => {
+    if (!name || typeof name !== 'string') return undefined;
+    const trimmed = name.trim();
+    if (!trimmed) return undefined;
+
+    // Détecter et corriger les duplications (ex: "Lélé Hernandez Lélé Hernandez")
+    const words = trimmed.split(/\s+/);
+    if (words.length >= 2) {
+      const firstHalf = words.slice(0, Math.ceil(words.length / 2)).join(' ');
+      const secondHalf = words.slice(Math.ceil(words.length / 2)).join(' ');
+      if (firstHalf === secondHalf) {
+        return firstHalf; // Retourner seulement la première moitié si duplication
+      }
+    }
+
+    return trimmed;
+  };
+
+  const rawPrestataireName = firstNonEmptyString(
+    // ✅ CORRIGÉ: Priorité 1 - Construire depuis service.user (source de vérité)
+    buildPrestataireNameFromUser(service?.user),
+    // ✅ CORRIGÉ: Priorité 2 - Vérifier service.prestataire.name (format API)
+    service?.prestataire?.name,
+    service?.prestataire?.nom,
+    service?.prestataire?.nom_complet,
+    // Priorité 3 - rawPrestataire (déjà construit)
+    rawPrestataire?.nom,
+    rawPrestataire?.nom_complet,
+    rawPrestataire?.name,
+    rawPrestataire?.username,
+    rawPrestataire?.display_name,
+    rawPrestataire?.full_name,
+    rawPrestataire?.raison_sociale,
+    // Priorité 4 - product.prestataire
+    product.prestataire?.nom,
+    product.prestataire?.nom_complet,
+    product.prestataire?.name,
+    product.prestataire_nom,
+    product.prestataire_nom_affiche,
+    product.prestataire_nom_commercial,
+    product.prestataire_nom_complet,
+    product.prestataire_name,
+    product.prestataire_fullname,
+    // Priorité 5 - product.owner/vendor
+    product.owner?.nom,
+    product.owner?.nom_complet,
+    product.owner?.name,
+    product.owner?.full_name,
+    product.vendor?.nom,
+    product.vendor?.name,
+    product.user_name,
+    product.contact_nom,
+    product.contact_name,
+    product.responsable_nom,
+    product.gerant_nom,
+    // Priorité 6 - service.data (champs dynamiques)
+    service?.data?.nom_prestataire?.valeur,
+    service?.data?.prestataire_nom?.valeur,
+    service?.data?.contact_nom?.valeur,
+    service?.data?.nom?.valeur,
+    service?.data?.nom_entreprise?.valeur,
+    service?.data?.responsable_nom?.valeur,
+    service?.data?.representant_nom?.valeur,
+    // Priorité 7 - service.user (autres champs)
+    service?.user?.name,
+    service?.user?.username,
+    service?.user?.display_name,
+  ) || 'Prestataire';
+
+  // ✅ CORRIGÉ: Nettoyer le nom pour éviter les duplications
+  const prestataireName = cleanPrestataireName(rawPrestataireName) || 'Prestataire';
 
   const prestataireAvatar = firstNonEmptyString(
     // ✅ CORRIGÉ: Priorité 1 - service.user (source de vérité)
@@ -1216,15 +1237,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
               )}
 
               {/* ✅ CORRIGÉ: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
-              {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region) && (
+              {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete) && (
                 <View style={styles.locationSection}>
                   <View style={styles.locationRow}>
                     <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
                     <Text style={styles.locationTextPrimary} numberOfLines={2}>
-                      {chosenLocation || locationVector[0] || product.adresse || product.ville || product.region || 'Localisation disponible'}
+                      {chosenLocation || locationVector[0] || product.adresse_complete || product.adresse || product.ville || product.region || service?.adresse_complete || service?.adresse || 'Localisation disponible'}
                     </Text>
                     {/* ✅ CORRIGÉ : Afficher le drapeau si disponible, même si générique */}
-                    {countryFlag && (
+                    {countryFlag && countryFlag !== '🌍' && (
                       <Text style={styles.locationFlag} numberOfLines={1}>
                         {countryFlag}
                       </Text>
@@ -1263,6 +1284,35 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     <View style={styles.locationDistanceChip}>
                       <SafeIcon name="navigation" size={12} color={modernColors.primary} />
                       <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
+                    </View>
+                  )}
+                  {/* ✅ CORRIGÉ: Afficher la distance même si pas dans locationSection */}
+                  {!formattedDistance && hasDistance && distanceKm !== undefined && (
+                    <View style={styles.locationDistanceChip}>
+                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                      <Text style={styles.locationDistanceText}>
+                        {distanceKm < 1
+                          ? `${Math.round(distanceKm * 1000)}m`
+                          : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)}km`}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+              {/* ✅ CORRIGÉ: Afficher la section localisation même si minimal, pour montrer distance/drapeau */}
+              {!chosenLocation && locationVector.length === 0 && !product.adresse && !product.ville && !product.region && !product.adresse_complete && !service?.adresse && !service?.adresse_complete && (formattedDistance || hasDistance || countryFlag) && (
+                <View style={styles.locationSection}>
+                  {formattedDistance && (
+                    <View style={styles.locationDistanceChip}>
+                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                      <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
+                    </View>
+                  )}
+                  {countryFlag && countryFlag !== '🌍' && (
+                    <View style={styles.locationRow}>
+                      <Text style={styles.locationFlag} numberOfLines={1}>
+                        {countryFlag}
+                      </Text>
                     </View>
                   )}
                 </View>

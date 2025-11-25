@@ -5468,6 +5468,30 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto services_search_optimized index fix: {}", e),
     }
 
+    // ✅ 2025-11-25 : Fonctions helper GPS pour recherche
+    match ensure_gps_helper_functions(pool).await {
+        Ok(_) => info!("✅ Migration auto: GPS helper functions OK"),
+        Err(e) => error!("❌ Erreur migration auto GPS helper functions: {}", e),
+    }
+
+    // ✅ 2025-11-25 : Fonction search_services_gps_final pour recherche GPS optimisée
+    match ensure_search_services_gps_final(pool).await {
+        Ok(_) => info!("✅ Migration auto: search_services_gps_final OK"),
+        Err(e) => error!("❌ Erreur migration auto search_services_gps_final: {}", e),
+    }
+
+    // ✅ 2025-11-25 : Fonction hybrid_image_search pour recherche d'images hybride
+    match ensure_hybrid_image_search(pool).await {
+        Ok(_) => info!("✅ Migration auto: hybrid_image_search OK"),
+        Err(e) => error!("❌ Erreur migration auto hybrid_image_search: {}", e),
+    }
+
+    // ✅ 2025-11-25 : Fonctions de recherche avec planification (pharmacie/hôpital)
+    match ensure_scheduling_search_functions(pool).await {
+        Ok(_) => info!("✅ Migration auto: scheduling search functions OK"),
+        Err(e) => error!("❌ Erreur migration auto scheduling search functions: {}", e),
+    }
+
     match ensure_live_streaming_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: live streaming tables OK"),
         Err(e) => error!("❌ Erreur migration auto live streaming: {}", e),
@@ -7385,5 +7409,729 @@ pub async fn ensure_services_search_optimized_index_fix(pool: &PgPool) -> Result
     .await?;
     
     info!("✅ Index idx_services_search_optimized corrigé (sans INCLUDE data)");
+    Ok(())
+}
+
+/// ✅ 2025-11-25 : Crée les fonctions helper GPS nécessaires pour search_services_gps_final
+/// Migration: 20250119003_enhance_product_search_gps.sql, 20250830002_002_add_postgis_geospatial.sql
+pub async fn ensure_gps_helper_functions(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des fonctions helper GPS...");
+    
+    // 1. Fonction get_best_gps_for_service (priorité GPS produit)
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION get_best_gps_for_service(service_data JSONB)
+        RETURNS TEXT AS $$
+        DECLARE
+            product_gps TEXT;
+            service_gps TEXT;
+        BEGIN
+            -- 1. Priorité: GPS des produits immobiliers
+            SELECT product->>'gps'
+            INTO product_gps
+            FROM jsonb_array_elements(
+                CASE 
+                    WHEN jsonb_typeof(service_data->'produits') = 'array' 
+                    THEN service_data->'produits'
+                    WHEN jsonb_typeof(service_data->'produits'->'valeur') = 'array'
+                    THEN service_data->'produits'->'valeur'
+                    ELSE '[]'::jsonb
+                END
+            ) AS product
+            WHERE product->>'gps' IS NOT NULL 
+                AND product->>'gps' != ''
+                AND product->>'gps' != '0,0'
+                AND (product->>'type' = 'immobilier_batiment' OR product->>'type' = 'immobilier_terrain')
+            LIMIT 1;
+            
+            IF product_gps IS NOT NULL THEN
+                RETURN product_gps;
+            END IF;
+            
+            -- 2. Fallback: GPS de n'importe quel produit
+            SELECT product->>'gps'
+            INTO product_gps
+            FROM jsonb_array_elements(
+                CASE 
+                    WHEN jsonb_typeof(service_data->'produits') = 'array' 
+                    THEN service_data->'produits'
+                    WHEN jsonb_typeof(service_data->'produits'->'valeur') = 'array'
+                    THEN service_data->'produits'->'valeur'
+                    ELSE '[]'::jsonb
+                END
+            ) AS product
+            WHERE product->>'gps' IS NOT NULL 
+                AND product->>'gps' != ''
+                AND product->>'gps' != '0,0'
+            LIMIT 1;
+            
+            IF product_gps IS NOT NULL THEN
+                RETURN product_gps;
+            END IF;
+            
+            -- 3. Fallback: GPS du service (gps_fixe en priorité)
+            service_gps := COALESCE(
+                service_data->>'gps_fixe',
+                service_data->'gps_fixe'->>'valeur'
+            );
+            
+            IF service_gps IS NOT NULL AND service_gps != '' AND service_gps != '0,0' THEN
+                RETURN service_gps;
+            END IF;
+            
+            RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // 2. Fonction calculate_intelligent_radius (version double precision)
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION calculate_intelligent_radius(base_radius double precision)
+        RETURNS double precision AS $$
+        BEGIN
+            -- Pour l'instant, retourner le rayon de base
+            -- Peut être amélioré avec logique de densité de population
+            RETURN base_radius;
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // 3. Fonction calculate_distance_km (surcharge avec 2 paramètres TEXT)
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION calculate_distance_km(gps1 TEXT, gps2 TEXT)
+        RETURNS double precision AS $$
+        DECLARE
+            lat1 double precision;
+            lng1 double precision;
+            lat2 double precision;
+            lng2 double precision;
+        BEGIN
+            -- Extraire lat,lng du premier GPS
+            IF gps1 IS NULL OR gps1 = '' OR gps1 = '0,0' THEN
+                RETURN 999999.0;
+            END IF;
+            
+            lat1 := split_part(gps1, ',', 1)::double precision;
+            lng1 := split_part(gps1, ',', 2)::double precision;
+            
+            -- Extraire lat,lng du deuxième GPS
+            IF gps2 IS NULL OR gps2 = '' OR gps2 = '0,0' THEN
+                RETURN 999999.0;
+            END IF;
+            
+            lat2 := split_part(gps2, ',', 1)::double precision;
+            lng2 := split_part(gps2, ',', 2)::double precision;
+            
+            -- Utiliser la fonction calculate_distance_km avec 4 paramètres si elle existe
+            -- Sinon, utiliser la formule Haversine
+            IF EXISTS (
+                SELECT 1 FROM pg_proc 
+                WHERE proname = 'calculate_distance_km' 
+                AND pronargs = 4
+            ) THEN
+                RETURN calculate_distance_km(lat1, lng1, lat2, lng2);
+            ELSE
+                -- Formule Haversine simple
+                RETURN (
+                    6371.0 * acos(
+                        LEAST(1.0, GREATEST(-1.0,
+                            cos(radians(lat1)) * 
+                            cos(radians(lat2)) * 
+                            cos(radians(lng2) - radians(lng1)) + 
+                            sin(radians(lat1)) * 
+                            sin(radians(lat2))
+                        ))
+                    )
+                );
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RETURN 999999.0;
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Fonctions helper GPS créées/mises à jour");
+    Ok(())
+}
+
+/// ✅ 2025-11-25 : Crée les fonctions search_services_gps_final et get_active_products
+/// Migration: 20251123_filter_active_products_in_search_gps_final.sql
+pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création de search_services_gps_final...");
+    
+    // 1. Fonction get_active_products
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION get_active_products(service_data JSONB, p_service_id INTEGER)
+        RETURNS JSONB AS $$
+        DECLARE
+            active_products JSONB := '[]'::JSONB;
+            product JSONB;
+            product_idx INTEGER := 0;
+            is_product_active BOOLEAN;
+            produits_array JSONB;
+        BEGIN
+            -- Déterminer le tableau de produits à utiliser
+            IF jsonb_typeof(service_data->'produits') = 'array' THEN
+                produits_array := service_data->'produits';
+            ELSIF jsonb_typeof(service_data->'produits'->'valeur') = 'array' THEN
+                produits_array := service_data->'produits'->'valeur';
+            ELSE
+                RETURN '[]'::JSONB;
+            END IF;
+            
+            -- Itérer sur les produits
+            FOR product IN SELECT * FROM jsonb_array_elements(produits_array)
+            LOOP
+                -- Vérifier si le produit est actif dans products_lifecycle
+                -- Si pas d'entrée dans products_lifecycle, considérer comme actif (valeur par défaut)
+                SELECT COALESCE(pl.is_active, TRUE) INTO is_product_active
+                FROM products_lifecycle pl
+                WHERE pl.service_id = p_service_id
+                    AND pl.product_index = product_idx;
+                
+                -- Ajouter seulement si actif
+                IF is_product_active THEN
+                    active_products := active_products || jsonb_build_array(product);
+                END IF;
+                
+                product_idx := product_idx + 1;
+            END LOOP;
+            
+            RETURN active_products;
+        END;
+        $$ LANGUAGE plpgsql STABLE;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // 2. Fonction search_services_gps_final (version simplifiée pour auto_migrate)
+    // Note: La version complète est dans la migration 20251123
+    // Cette version crée la fonction de base, la migration SQLx l'améliorera
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION search_services_gps_final(
+            search_query text,
+            user_gps_zone text,
+            radius_km integer DEFAULT 50,
+            max_results integer DEFAULT 100
+        )
+        RETURNS TABLE(
+            service_id integer,
+            titre_service text,
+            category text,
+            gps_coords text,
+            distance_km double precision,
+            relevance_score double precision,
+            gps_source text
+        ) AS $$
+        DECLARE
+            gps_parts text[];
+            lat double precision;
+            lng double precision;
+            radius_adjusted double precision;
+        BEGIN
+            -- Ajuster le rayon
+            radius_adjusted := COALESCE(calculate_intelligent_radius(radius_km::double precision), radius_km::double precision);
+            
+            -- Extraire les coordonnées GPS si fournies
+            IF user_gps_zone IS NOT NULL AND user_gps_zone != '' AND user_gps_zone != 'null' THEN
+                -- Diviser par le séparateur "|" pour gérer les zones polygonales
+                gps_parts := string_to_array(user_gps_zone, '|');
+                
+                -- Pour l'instant, utiliser le premier point comme centre de recherche
+                IF array_length(gps_parts, 1) > 0 THEN
+                    -- Extraire lat,lng du premier point
+                    lat := split_part(gps_parts[1], ',', 1)::double precision;
+                    lng := split_part(gps_parts[1], ',', 2)::double precision;
+                    
+                    -- Recherche avec filtrage GPS et produits actifs
+                    RETURN QUERY
+                    WITH services_with_active_products AS (
+                        SELECT 
+                            s.id,
+                            s.data,
+                            s.category,
+                            s.gps,
+                            s.is_active,
+                            COALESCE(
+                                get_best_gps_for_service(s.data),
+                                s.gps,
+                                '0,0'
+                            ) as best_gps,
+                            get_active_products(s.data, s.id) as active_products
+                        FROM services s
+                        WHERE s.is_active = TRUE
+                            AND jsonb_array_length(get_active_products(s.data, s.id)) > 0
+                    ),
+                    scored_products AS (
+                        SELECT 
+                            s.id as service_id,
+                            COALESCE(
+                                s.data->>'titre_service', 
+                                s.data->'titre_service'->>'valeur', 
+                                'Sans titre'
+                            ) as titre_service,
+                            COALESCE(
+                                s.category, 
+                                s.data->>'category', 
+                                s.data->'category'->>'valeur',
+                                'Non catégorisé'
+                            ) as category,
+                            s.best_gps as gps_coords,
+                            CASE 
+                                WHEN s.best_gps IS NOT NULL AND s.best_gps != '0,0' THEN
+                                    calculate_distance_km(user_gps_zone, s.best_gps)
+                                ELSE 999999.0
+                            END as distance_km,
+                            -- Score basé principalement sur les PRODUITS
+                            (
+                                (
+                                    SELECT COALESCE(SUM(
+                                        CASE 
+                                            WHEN product->>'nom' ILIKE '%' || search_query || '%' THEN 20.0
+                                            WHEN product->>'name' ILIKE '%' || search_query || '%' THEN 20.0
+                                            WHEN product->>'titre' ILIKE '%' || search_query || '%' THEN 18.0
+                                            WHEN product->>'categorie' ILIKE '%' || search_query || '%' THEN 15.0
+                                            WHEN product->>'description' ILIKE '%' || search_query || '%' THEN 12.0
+                                            WHEN product->>'type' ILIKE '%' || search_query || '%' THEN 10.0
+                                            WHEN product->>'marque' ILIKE '%' || search_query || '%' THEN 10.0
+                                            ELSE 0.0
+                                        END
+                                    ), 0.0)
+                                    FROM jsonb_array_elements(s.active_products) AS product
+                                ) +
+                                CASE 
+                                    WHEN s.data->>'titre_service' ILIKE '%' || search_query || '%' THEN 5.0
+                                    ELSE 0.0
+                                END
+                            )::double precision as relevance_score,
+                            CASE 
+                                WHEN s.best_gps = get_best_gps_for_service(s.data) THEN 'produit_gps'
+                                ELSE 'service_gps'
+                            END as gps_source
+                        FROM services_with_active_products s
+                        WHERE 
+                            CASE 
+                                WHEN s.best_gps IS NOT NULL AND s.best_gps != '0,0' THEN
+                                    calculate_distance_km(user_gps_zone, s.best_gps) <= radius_adjusted
+                                ELSE FALSE
+                            END
+                            AND (
+                                search_query IS NULL 
+                                OR search_query = ''
+                                OR EXISTS (
+                                    SELECT 1
+                                    FROM jsonb_array_elements(s.active_products) AS product
+                                    WHERE 
+                                        product->>'nom' ILIKE '%' || search_query || '%'
+                                        OR product->>'name' ILIKE '%' || search_query || '%'
+                                        OR product->>'titre' ILIKE '%' || search_query || '%'
+                                        OR product->>'categorie' ILIKE '%' || search_query || '%'
+                                        OR product->>'description' ILIKE '%' || search_query || '%'
+                                )
+                                OR s.data::TEXT ILIKE '%' || search_query || '%'
+                            )
+                    )
+                    SELECT 
+                        sp.service_id,
+                        sp.titre_service,
+                        sp.category,
+                        sp.gps_coords,
+                        sp.distance_km,
+                        sp.relevance_score,
+                        sp.gps_source
+                    FROM scored_products sp
+                    WHERE sp.relevance_score > 0
+                    ORDER BY 
+                        sp.relevance_score DESC,
+                        sp.distance_km ASC
+                    LIMIT max_results;
+                    
+                    RETURN;
+                END IF;
+            END IF;
+            
+            -- Si pas de GPS, faire une recherche textuelle sur produits actifs uniquement
+            RETURN QUERY
+            WITH services_with_active_products AS (
+                SELECT 
+                    s.id,
+                    s.data,
+                    s.category,
+                    s.gps,
+                    get_active_products(s.data, s.id) as active_products
+                FROM services s
+                WHERE s.is_active = TRUE
+                    AND jsonb_array_length(get_active_products(s.data, s.id)) > 0
+            )
+            SELECT 
+                s.id as service_id,
+                COALESCE(
+                    s.data->>'titre_service', 
+                    s.data->'titre_service'->>'valeur', 
+                    'Sans titre'
+                ) as titre_service,
+                COALESCE(
+                    s.category, 
+                    s.data->>'category', 
+                    s.data->'category'->>'valeur',
+                    'Non catégorisé'
+                ) as category,
+                COALESCE(
+                    get_best_gps_for_service(s.data),
+                    s.gps,
+                    '0,0'
+                ) as gps_coords,
+                0.0 as distance_km,
+                (
+                    (
+                        SELECT COALESCE(SUM(
+                            CASE 
+                                WHEN product->>'nom' ILIKE '%' || search_query || '%' THEN 20.0
+                                WHEN product->>'name' ILIKE '%' || search_query || '%' THEN 20.0
+                                WHEN product->>'titre' ILIKE '%' || search_query || '%' THEN 18.0
+                                WHEN product->>'categorie' ILIKE '%' || search_query || '%' THEN 15.0
+                                WHEN product->>'description' ILIKE '%' || search_query || '%' THEN 12.0
+                                WHEN product->>'type' ILIKE '%' || search_query || '%' THEN 10.0
+                                WHEN product->>'marque' ILIKE '%' || search_query || '%' THEN 10.0
+                                ELSE 0.0
+                            END
+                        ), 0.0)
+                        FROM jsonb_array_elements(s.active_products) AS product
+                    ) +
+                    CASE 
+                        WHEN s.data->>'titre_service' ILIKE '%' || search_query || '%' THEN 5.0
+                        ELSE 0.0
+                    END
+                )::double precision as relevance_score,
+                'no_gps' as gps_source
+            FROM services_with_active_products s
+            WHERE 
+                search_query IS NULL 
+                OR search_query = ''
+                OR EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements(s.active_products) AS product
+                    WHERE 
+                        product->>'nom' ILIKE '%' || search_query || '%'
+                        OR product->>'name' ILIKE '%' || search_query || '%'
+                        OR product->>'titre' ILIKE '%' || search_query || '%'
+                        OR product->>'categorie' ILIKE '%' || search_query || '%'
+                        OR product->>'description' ILIKE '%' || search_query || '%'
+                )
+                OR s.data::TEXT ILIKE '%' || search_query || '%'
+            ORDER BY relevance_score DESC
+            LIMIT max_results;
+        END;
+        $$ LANGUAGE plpgsql STABLE;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // 3. Commentaires
+    sqlx::query(
+        r#"
+        COMMENT ON FUNCTION get_active_products IS 'Filtre et retourne uniquement les produits actifs (is_active = TRUE dans products_lifecycle). Par défaut, si pas d''entrée dans products_lifecycle, le produit est considéré comme actif.';
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    sqlx::query(
+        r#"
+        COMMENT ON FUNCTION search_services_gps_final IS 'Recherche dans les PRODUITS actifs (via products_lifecycle), pas dans les services. Retourne uniquement les services qui ont au moins un produit actif correspondant à la recherche.';
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Fonction search_services_gps_final créée/mise à jour");
+    Ok(())
+}
+
+/// ✅ 2025-11-25 : Crée la fonction hybrid_image_search pour recherche d'images hybride
+/// Migration: 20251027003_create_hybrid_image_search_function.sql
+pub async fn ensure_hybrid_image_search(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création de hybrid_image_search...");
+    
+    // 1. Fonction helper calculate_gps_distance_km_simple
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION calculate_gps_distance_km_simple(
+            lat1 DOUBLE PRECISION,
+            lng1 DOUBLE PRECISION,
+            lat2 DOUBLE PRECISION,
+            lng2 DOUBLE PRECISION
+        )
+        RETURNS DOUBLE PRECISION AS $$
+        BEGIN
+            RETURN (
+                6371.0 * acos(
+                    LEAST(1.0, GREATEST(-1.0,
+                        cos(radians(lat1)) * 
+                        cos(radians(lat2)) * 
+                        cos(radians(lng2) - radians(lng1)) + 
+                        sin(radians(lat1)) * 
+                        sin(radians(lat2))
+                    ))
+                )
+            );
+        EXCEPTION
+            WHEN OTHERS THEN
+                RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // 2. Fonction hybrid_image_search (version simplifiée - la migration SQLx complète l'améliorera)
+    // Note: Cette fonction est complexe, la migration SQLx 20251027003 contient la version complète
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION hybrid_image_search(
+            search_tags TEXT[],
+            search_category TEXT DEFAULT NULL,
+            search_marque TEXT DEFAULT NULL,
+            search_couleur TEXT DEFAULT NULL,
+            search_query_semantic TEXT DEFAULT NULL,
+            gps_lat FLOAT DEFAULT NULL,
+            gps_lng FLOAT DEFAULT NULL,
+            search_radius_km INTEGER DEFAULT 50,
+            max_results INTEGER DEFAULT 20
+        )
+        RETURNS TABLE (
+            service_id INTEGER,
+            analysis_id INTEGER,
+            media_id INTEGER,
+            product_description TEXT,
+            product_tags TEXT[],
+            product_marque TEXT,
+            product_couleurs TEXT[],
+            match_score FLOAT,
+            distance_km FLOAT
+        ) AS $$
+        BEGIN
+            -- Version simplifiée - la migration SQLx 20251027003 contient la version complète
+            -- Cette fonction garantit que l'interface existe même si la migration n'a pas été appliquée
+            RETURN QUERY
+            SELECT 
+                NULL::INTEGER as service_id,
+                NULL::INTEGER as analysis_id,
+                NULL::INTEGER as media_id,
+                NULL::TEXT as product_description,
+                NULL::TEXT[] as product_tags,
+                NULL::TEXT as product_marque,
+                NULL::TEXT[] as product_couleurs,
+                0.0::FLOAT as match_score,
+                NULL::FLOAT as distance_km
+            WHERE FALSE; -- Retourne aucun résultat par défaut
+        END;
+        $$ LANGUAGE plpgsql STABLE;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Fonction hybrid_image_search créée/mise à jour (version de base - migration SQLx complétera)");
+    Ok(())
+}
+
+/// ✅ 2025-11-25 : Crée les fonctions de recherche avec planification (pharmacie/hôpital)
+/// Migration: 20251020003_add_pharmacy_hospital_scheduling_search.sql
+pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des fonctions de recherche avec planification...");
+    
+    // 1. Fonction is_pharmacy_on_duty
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION is_pharmacy_on_duty(
+            pharmacy_data JSONB,
+            search_time TIMESTAMPTZ DEFAULT NOW()
+        )
+        RETURNS BOOLEAN AS $$
+        DECLARE
+            jours_garde TEXT;
+            heures_ouverture TEXT;
+            heures_fermeture TEXT;
+            current_day TEXT;
+            v_current_time TIME;
+            is_garde_day BOOLEAN := FALSE;
+            is_garde_hour BOOLEAN := FALSE;
+        BEGIN
+            jours_garde := pharmacy_data->>'joursGarde';
+            heures_ouverture := pharmacy_data->>'heuresOuverture';
+            heures_fermeture := pharmacy_data->>'heuresFermeture';
+            
+            IF jours_garde IS NULL OR jours_garde = '' THEN
+                RETURN FALSE;
+            END IF;
+            
+            current_day := CASE EXTRACT(DOW FROM search_time)
+                WHEN 0 THEN 'Dimanche'
+                WHEN 1 THEN 'Lundi'
+                WHEN 2 THEN 'Mardi'
+                WHEN 3 THEN 'Mercredi'
+                WHEN 4 THEN 'Jeudi'
+                WHEN 5 THEN 'Vendredi'
+                WHEN 6 THEN 'Samedi'
+            END;
+            
+            v_current_time := search_time::TIME;
+            
+            is_garde_day := (
+                jours_garde ILIKE '%' || current_day || '%' OR
+                jours_garde ILIKE '%Lundi-Dimanche%' OR
+                jours_garde ILIKE '%24h%' OR
+                jours_garde ILIKE '%permanent%'
+            );
+            
+            IF NOT is_garde_day THEN
+                RETURN FALSE;
+            END IF;
+            
+            IF heures_ouverture IS NOT NULL AND heures_fermeture IS NOT NULL THEN
+                IF heures_ouverture = '00:00' AND heures_fermeture = '23:59' THEN
+                    is_garde_hour := TRUE;
+                ELSE
+                    is_garde_hour := (
+                        v_current_time >= heures_ouverture::TIME AND 
+                        v_current_time <= heures_fermeture::TIME
+                    );
+                END IF;
+            ELSE
+                is_garde_hour := TRUE;
+            END IF;
+            
+            RETURN is_garde_day AND is_garde_hour;
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // 2. Fonction is_medical_service_available
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION is_medical_service_available(
+            hospital_data JSONB,
+            search_time TIMESTAMPTZ DEFAULT NOW(),
+            requested_service TEXT DEFAULT NULL
+        )
+        RETURNS BOOLEAN AS $$
+        DECLARE
+            planning_hebdomadaire JSONB;
+            prestations_medicales JSONB;
+            current_day TEXT;
+            v_current_time TIME;
+            day_planning JSONB;
+            service_available BOOLEAN := FALSE;
+            time_available BOOLEAN := FALSE;
+        BEGIN
+            planning_hebdomadaire := hospital_data->'planningHebdomadaire';
+            prestations_medicales := hospital_data->'prestationsMedicales';
+            
+            IF planning_hebdomadaire IS NULL THEN
+                RETURN FALSE;
+            END IF;
+            
+            current_day := CASE EXTRACT(DOW FROM search_time)
+                WHEN 0 THEN 'dimanche'
+                WHEN 1 THEN 'lundi'
+                WHEN 2 THEN 'mardi'
+                WHEN 3 THEN 'mercredi'
+                WHEN 4 THEN 'jeudi'
+                WHEN 5 THEN 'vendredi'
+                WHEN 6 THEN 'samedi'
+            END;
+            
+            v_current_time := search_time::TIME;
+            day_planning := planning_hebdomadaire->current_day;
+            
+            IF day_planning IS NULL THEN
+                RETURN FALSE;
+            END IF;
+            
+            IF requested_service IS NOT NULL AND prestations_medicales IS NOT NULL THEN
+                service_available := (
+                    prestations_medicales ? requested_service OR
+                    prestations_medicales::TEXT ILIKE '%' || requested_service || '%'
+                );
+            ELSE
+                service_available := TRUE;
+            END IF;
+            
+            IF day_planning->>'permanent' = 'true' THEN
+                time_available := TRUE;
+            ELSE
+                time_available := (
+                    v_current_time >= (day_planning->>'debut')::TIME AND 
+                    v_current_time <= (day_planning->>'fin')::TIME
+                );
+            END IF;
+            
+            RETURN service_available AND time_available;
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // 3. Fonction search_products_with_scheduling (version simplifiée)
+    // Note: La migration SQLx 20251020003 contient la version complète
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION search_products_with_scheduling(
+            search_query TEXT,
+            search_time TIMESTAMPTZ DEFAULT NOW(),
+            user_lat FLOAT DEFAULT NULL,
+            user_lng FLOAT DEFAULT NULL,
+            max_distance_km FLOAT DEFAULT 50.0
+        )
+        RETURNS TABLE (
+            service_id INTEGER,
+            product_data JSONB,
+            relevance_score FLOAT,
+            distance_km FLOAT,
+            is_available_now BOOLEAN,
+            availability_info TEXT
+        ) AS $$
+        BEGIN
+            -- Version simplifiée - la migration SQLx 20251020003 contient la version complète
+            RETURN QUERY
+            SELECT 
+                NULL::INTEGER as service_id,
+                NULL::JSONB as product_data,
+                0.0::FLOAT as relevance_score,
+                NULL::FLOAT as distance_km,
+                FALSE::BOOLEAN as is_available_now,
+                NULL::TEXT as availability_info
+            WHERE FALSE;
+        END;
+        $$ LANGUAGE plpgsql;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Fonctions de recherche avec planification créées/mises à jour");
     Ok(())
 }

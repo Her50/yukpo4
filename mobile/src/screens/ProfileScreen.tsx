@@ -1,15 +1,16 @@
 // @ts-nocheck
 // Remplacement des Ionicons par des emojis pour éviter les crashes
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { servicesApi, userApi } from '../services/api';
+import { apiPatch, servicesApi, userApi } from '../services/api';
 import { theme } from '../theme/theme';
 
 const ProfileScreen: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const navigation = useNavigation();
   const [stats, setStats] = useState([
     { label: 'Services', value: '0' },
@@ -17,6 +18,7 @@ const ProfileScreen: React.FC = () => {
     { label: 'Évaluations', value: '0' },
   ]);
   const [loading, setLoading] = useState(true);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [accountInfo, setAccountInfo] = useState({
     memberSince: '',
     accountType: 'Utilisateur',
@@ -99,6 +101,104 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
+  // ✅ NOUVEAU: Fonction pour changer la photo de profil
+  const handleChangePhoto = async () => {
+    try {
+      // Demander les permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à vos photos');
+        return;
+      }
+
+      // Afficher les options (galerie ou caméra)
+      Alert.alert(
+        'Changer la photo de profil',
+        'Choisissez une option',
+        [
+          {
+            text: 'Galerie',
+            onPress: async () => {
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+                base64: true,
+              });
+
+              if (!result.canceled && result.assets[0]) {
+                await uploadPhoto(result.assets[0].base64 || '');
+              }
+            },
+          },
+          {
+            text: 'Caméra',
+            onPress: async () => {
+              const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+              if (cameraStatus.status !== 'granted') {
+                Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
+                return;
+              }
+
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+                base64: true,
+              });
+
+              if (!result.canceled && result.assets[0]) {
+                await uploadPhoto(result.assets[0].base64 || '');
+              }
+            },
+          },
+          { text: 'Annuler', style: 'cancel' },
+        ]
+      );
+    } catch (error) {
+      console.error('Erreur changement photo:', error);
+      Alert.alert('Erreur', 'Impossible de changer la photo');
+    }
+  };
+
+  // ✅ NOUVEAU: Fonction pour uploader la photo
+  const uploadPhoto = async (base64Image: string) => {
+    try {
+      setUploadingPhoto(true);
+
+      // Préparer l'URL de l'image (format data URI)
+      const imageUri = `data:image/jpeg;base64,${base64Image}`;
+
+      // Envoyer la photo via l'API
+      const response = await apiPatch('/api/user/me', {
+        avatar_url: imageUri,
+        photo_profil: imageUri,
+      });
+
+      if (response.success) {
+        // Mettre à jour l'utilisateur dans le contexte
+        updateUser({
+          photo: imageUri,
+          avatar: imageUri,
+        });
+
+        // Recharger les données du profil
+        await loadProfileData();
+
+        Alert.alert('Succès', 'Photo de profil mise à jour avec succès');
+      } else {
+        throw new Error(response.error || 'Erreur lors de la mise à jour');
+      }
+    } catch (error: any) {
+      console.error('Erreur upload photo:', error);
+      Alert.alert('Erreur', error.message || 'Impossible de mettre à jour la photo de profil');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const getActionIcon = (iconName: string) => {
     const iconMap: { [key: string]: string } = {
       'wallet': '💰',
@@ -173,9 +273,36 @@ const ProfileScreen: React.FC = () => {
       {/* Header avec photo de profil */}
       <View style={styles.header}>
         <View style={styles.profileSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'U'}</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={handleChangePhoto}
+            disabled={uploadingPhoto}
+          >
+            {uploadingPhoto ? (
+              <View style={styles.avatar}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              </View>
+            ) : user?.photo || user?.avatar ? (
+              <Image
+                source={{ uri: user.photo || user.avatar }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {user?.name
+                    ?.split(' ')
+                    .map(word => word.charAt(0))
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2) || 'U'}
+                </Text>
+              </View>
+            )}
+            <View style={styles.avatarEditBadge}>
+              <Text style={styles.avatarEditIcon}>📷</Text>
+            </View>
+          </TouchableOpacity>
           <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
           <View style={styles.verificationBadge}>
@@ -287,6 +414,10 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingHorizontal: 20,
   },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
   avatar: {
     width: 80,
     height: 80,
@@ -294,12 +425,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   avatarText: {
     color: theme.colors.primary,
     fontSize: 32,
     fontWeight: 'bold',
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  avatarEditIcon: {
+    fontSize: 14,
   },
   userName: {
     fontSize: 24,
