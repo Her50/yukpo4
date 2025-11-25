@@ -569,7 +569,6 @@ fn calculate_distance_haversine(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f
 
     r * c
 }
-}
 
 fn build_location_vector(components: Option<&Vec<AddressComponent>>) -> Vec<String> {
     let mut vector = Vec::new();
