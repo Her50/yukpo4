@@ -308,7 +308,13 @@ pub async fn add_product_to_service(
 
             // ✅ NOUVEAU 2025-11-06: Sauvegarder dans autocomplete_characteristics et autocomplete_combinations
             // Créer un data_obj temporaire avec SEULEMENT le nouveau produit (pas tous les produits du service)
-            // ✅ CORRECTION 2025-11-24: Utiliser product_string pour autocomplete (format attendu)
+            // ✅ CORRECTION 2025-11-24: Extraire le nom du produit depuis product_obj pour autocomplete
+            let product_string = product_obj
+                .get("nom_produit")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            
             let temp_data_obj = {
                 let mut obj = json!({
                     "produits": {
