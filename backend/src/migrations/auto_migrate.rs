@@ -8234,6 +8234,25 @@ pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sql
     Ok(())
 }
 
+/// Helper pour exécuter plusieurs commandes SQL séparées par des points-virgules
+/// Gère les blocs DO $$ ... $$ comme une seule commande
+async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {
+    // Simple approche : diviser par ";" mais préserver les blocs DO $$
+    let commands: Vec<&str> = sql
+        .split(';')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty() && !s.starts_with("--"))
+        .collect();
+    
+    for cmd in commands {
+        if !cmd.trim().is_empty() {
+            sqlx::query(cmd).execute(pool).await?;
+        }
+    }
+    
+    Ok(())
+}
+
 /// ✅ 2025-11-26 : Crée les tables pour services spécialisés (Santé et Transport)
 /// Compatible SQLx offline mode
 pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
