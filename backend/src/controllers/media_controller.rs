@@ -25,6 +25,7 @@ struct MediaIdTypeRow {
 }
 
 #[derive(FromRow)]
+#[allow(dead_code)] // Structure utilisée pour désérialisation SQLx mais jamais construite directement
 struct MediaPathRow {
     path: String,
     service_id: i32,

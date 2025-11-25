@@ -184,21 +184,24 @@ const VideoCreationTutorial: React.FC<VideoCreationTutorialProps> = ({
                             contentContainerStyle={styles.contentContainer}
                             showsVerticalScrollIndicator={false}
                         >
-                            <Animated.View
-                                style={[
-                                    styles.stepContent,
-                                    {
-                                        opacity: fadeAnim,
-                                        transform: [{ translateX: slideAnim }],
-                                    },
-                                ]}
-                            >
-                                <View style={styles.iconContainer}>
-                                    <SafeIcon name={step.icon as any} size={64} color={modernColors.primary} />
-                                </View>
-                                <Text style={styles.title}>{step.title}</Text>
-                                <Text style={styles.description}>{step.description}</Text>
-                            </Animated.View>
+                            <View style={styles.stepContent}>
+                                <Animated.View
+                                    style={[
+                                        {
+                                            opacity: fadeAnim,
+                                            transform: [{ translateX: slideAnim }],
+                                            alignItems: 'center',
+                                            gap: 20,
+                                        },
+                                    ]}
+                                >
+                                    <View style={styles.iconContainer}>
+                                        <SafeIcon name={step.icon as any} size={64} color={modernColors.primary} />
+                                    </View>
+                                    <Text style={styles.title}>{step.title}</Text>
+                                    <Text style={styles.description}>{step.description}</Text>
+                                </Animated.View>
+                            </View>
                         </ScrollView>
 
                         {/* Indicateurs de pages */}
@@ -258,6 +261,7 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         padding: 24,
         maxHeight: '90%',
+        minHeight: 400, // ✅ CORRIGÉ: Hauteur minimale pour s'assurer que le contenu est visible
     },
     header: {
         marginBottom: 24,
@@ -293,13 +297,17 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
+        minHeight: 200, // ✅ CORRIGÉ: Hauteur minimale pour s'assurer que le contenu est visible
     },
     contentContainer: {
         paddingVertical: 8,
+        flexGrow: 1,
+        justifyContent: 'center', // ✅ CORRIGÉ: Centrer le contenu verticalement
     },
     stepContent: {
         alignItems: 'center',
         gap: 20,
+        paddingVertical: 16, // ✅ CORRIGÉ: Ajouter du padding vertical
     },
     iconContainer: {
         width: 120,

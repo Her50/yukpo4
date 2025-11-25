@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
@@ -69,23 +69,25 @@ const VideoCreationIntroScreen: React.FC = () => {
         ]).start();
     }, [headerAnim, heroAnim, contentAnim, actionsAnim]);
 
-    // ✅ PHASE 3: Vérifier si l'utilisateur a déjà vu le tutoriel
-    useEffect(() => {
-        const checkTutorial = async () => {
-            try {
-                const hasSeenTutorial = await AsyncStorage.getItem('video_creation_tutorial_seen');
-                if (!hasSeenTutorial) {
-                    // Attendre un peu pour que l'écran soit chargé
-                    setTimeout(() => {
-                        setShowTutorial(true);
-                    }, 1000);
-                }
-            } catch (error) {
-                console.error('[VideoCreationIntroScreen] Erreur vérification tutoriel:', error);
-            }
-        };
-        checkTutorial();
-    }, []);
+    // ✅ CORRIGÉ: Ne plus ouvrir automatiquement le tutoriel au montage
+    // Le tutoriel ne s'ouvrira plus automatiquement au premier clic sur le bouton vidéo
+    // Il peut être affiché manuellement si nécessaire via un bouton d'aide
+    // useEffect(() => {
+    //     const checkTutorial = async () => {
+    //         try {
+    //             const hasSeenTutorial = await AsyncStorage.getItem('video_creation_tutorial_seen');
+    //             if (!hasSeenTutorial) {
+    //                 // Attendre un peu pour que l'écran soit chargé
+    //                 setTimeout(() => {
+    //                     setShowTutorial(true);
+    //                 }, 1000);
+    //             }
+    //         } catch (error) {
+    //             console.error('[VideoCreationIntroScreen] Erreur vérification tutoriel:', error);
+    //         }
+    //     };
+    //     checkTutorial();
+    // }, []);
 
     // Charger les services de l'utilisateur avec timeout
     useEffect(() => {
@@ -229,8 +231,25 @@ const VideoCreationIntroScreen: React.FC = () => {
         setShowExampleModal(true);
     };
 
+    const handleShowTutorial = () => {
+        console.log('[VideoCreationIntroScreen] 📚 Affichage du tutoriel manuel');
+        setShowTutorial(true);
+    };
+
     return (
         <SafeNativeView style={styles.container} edges={['top', 'bottom']}>
+            {/* ✅ NOUVEAU: Bouton d'aide dans le header */}
+            <View style={styles.topBar}>
+                <View style={{ flex: 1 }} />
+                <TouchableOpacity
+                    style={styles.helpButton}
+                    onPress={handleShowTutorial}
+                    accessibilityLabel="Afficher l'aide"
+                    accessibilityHint="Ouvre le tutoriel de création vidéo"
+                >
+                    <SafeIcon name="help-circle" size={24} color={modernColors.primary} />
+                </TouchableOpacity>
+            </View>
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
@@ -474,6 +493,23 @@ const styles = StyleSheet.create({
         color: '#166534',
         fontWeight: '500',
         flex: 1,
+    },
+    topBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        paddingBottom: 8,
+    },
+    helpButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: modernColors.primary + '15',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: modernColors.primary + '30',
     },
 });
 

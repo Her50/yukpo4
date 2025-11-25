@@ -35,12 +35,17 @@ struct UserProfileRow {
 #[derive(FromRow)]
 struct UserDetailsRow {
     id: i32,
+    #[allow(dead_code)] // Champ récupéré de la DB mais non utilisé dans la réponse JSON
     email: String,
+    #[allow(dead_code)] // Champ récupéré de la DB mais non utilisé dans la réponse JSON
     role: String,
     is_provider: Option<bool>,
     gps: Option<String>,
+    #[allow(dead_code)] // Champ récupéré de la DB mais non utilisé dans la réponse JSON
     gps_consent: Option<bool>,
+    #[allow(dead_code)] // Champ récupéré de la DB mais non utilisé dans la réponse JSON
     nom: Option<String>,
+    #[allow(dead_code)] // Champ récupéré de la DB mais non utilisé dans la réponse JSON
     prenom: Option<String>,
     nom_complet: Option<String>,
     photo_profil: Option<String>,
@@ -253,6 +258,11 @@ pub async fn deduct_balance(
 #[derive(Deserialize)]
 pub struct UpdateProfileInput {
     pub preferred_lang: Option<String>,
+    pub avatar_url: Option<String>,
+    pub photo_profil: Option<String>,
+    pub nom: Option<String>,
+    pub prenom: Option<String>,
+    pub nom_complet: Option<String>,
 }
 
 /// ? PUT /user/me ? mise à jour du profil
@@ -266,8 +276,13 @@ pub async fn update_user_profile(
         r#"
         UPDATE users
         SET preferred_lang = COALESCE($1, preferred_lang),
+            avatar_url = COALESCE($2, avatar_url),
+            photo_profil = COALESCE($3, photo_profil),
+            nom = COALESCE($4, nom),
+            prenom = COALESCE($5, prenom),
+            nom_complet = COALESCE($6, nom_complet),
             updated_at = NOW()
-        WHERE id = $2
+        WHERE id = $7
         RETURNING id, email, password_hash, role, is_provider, tokens_balance,
                   token_price_user, token_price_provider, commission_pct,
                   preferred_lang, created_at, updated_at, gps, gps_consent,
@@ -275,6 +290,11 @@ pub async fn update_user_profile(
         "#,
     )
     .bind(input.preferred_lang.as_deref())
+    .bind(input.avatar_url.as_deref())
+    .bind(input.photo_profil.as_deref())
+    .bind(input.nom.as_deref())
+    .bind(input.prenom.as_deref())
+    .bind(input.nom_complet.as_deref())
     .bind(user.id)
     .fetch_one(&state.pg)
     .await;

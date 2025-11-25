@@ -24,6 +24,7 @@ struct UserBalanceRow {
 
 #[derive(FromRow)]
 struct ServiceIdRow {
+    #[allow(dead_code)] // Champ récupéré de la DB mais seulement utilisé pour vérifier existence (is_some())
     id: i32,
 }
 

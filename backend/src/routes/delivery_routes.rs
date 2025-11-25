@@ -94,6 +94,7 @@ struct CourierWithStatsRow {
     id: i32,
     user_id: i32,
     #[sqlx(rename = "status")]
+    #[allow(dead_code)] // Champ récupéré de la DB mais non utilisé dans la réponse
     status: crate::models::delivery_model::DeliveryCourierStatus,
     rating_average: Option<f64>,
     rating_count: Option<i32>,
@@ -108,6 +109,7 @@ struct CourierWithStatsRow {
 
 #[derive(FromRow)]
 struct ProductDeliveryConfigOwnerRow {
+    #[allow(dead_code)] // Champ récupéré de la DB mais seulement user_id est utilisé pour vérification
     service_id: i32,
     user_id: i32,
 }
