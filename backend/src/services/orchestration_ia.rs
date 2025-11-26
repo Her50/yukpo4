@@ -1698,9 +1698,9 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
         .to_lowercase()
         // ✅ CORRECTION 2025-11-26 : Remplacer les séparateurs par des espaces AVANT le nettoyage
         // Cela permet de traiter correctement les listes séparées par virgules
-        .replace(',', ' ')  // Virgules → espaces
-        .replace(';', ' ')  // Point-virgules → espaces
-        .replace('|', ' ')  // Pipes → espaces
+        .replace(",", " ")  // Virgules → espaces
+        .replace(";", " ")  // Point-virgules → espaces
+        .replace("|", " ")  // Pipes → espaces
         // Supprimer les expressions de recherche courantes
         .replace("je cherche", "")
         .replace("je voudrais", "")
