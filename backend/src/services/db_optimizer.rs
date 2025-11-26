@@ -34,6 +34,22 @@ impl DbOptimizer {
         Self { pool, redis_client }
     }
 
+    /// ✅ NOUVEAU : Mappe une catégorie vers un type spécialisé si applicable
+    /// Retourne None si c'est une catégorie générique
+    fn map_category_to_specialized_type(category: &str) -> Option<&'static str> {
+        let cat_lower = category.to_lowercase();
+        match cat_lower.as_str() {
+            "pharmacie" | "pharmacy" => Some("pharmacie"),
+            "hopital" | "hôpital" | "clinique" | "hospital" | "clinic" => Some("hopital_clinique"),
+            "laboratoire" | "laboratory" | "imagerie" | "imaging" => Some("laboratoire_imagerie"),
+            "agence de voyage" | "agence_voyage" | "travel agency" => Some("agence_voyage"),
+            "covoiturage" | "carpooling" | "covoit" => Some("covoiturage"),
+            "taxi" | "taxi_ville" => Some("taxi_ville"),
+            "banque de sang" | "banque_sang" | "blood bank" => Some("banque_sang"),
+            _ => None,
+        }
+    }
+
     /// R?cup?re les services avec cache et pagination optimis?e
     pub async fn get_services_optimized(
         &self,
@@ -64,7 +80,7 @@ impl DbOptimizer {
 
         // Construire la requ?te dynamiquement
         let mut query = String::from(
-            "SELECT id, user_id, data->>'category' as category, is_active, gps, created_at 
+            "SELECT id, user_id, data->>'category' as category, specialized_type, is_active, gps, created_at 
              FROM services WHERE 1=1",
         );
 
@@ -72,9 +88,18 @@ impl DbOptimizer {
         let mut param_count = 0;
 
         if let Some(cat) = category {
-            param_count += 1;
-            query.push_str(&format!(" AND data->>'category' = ${}", param_count));
-            params.push(cat.to_string());
+            // ✅ NOUVEAU : Si la catégorie correspond à un type spécialisé, utiliser specialized_type
+            let specialized_type = Self::map_category_to_specialized_type(cat);
+            if let Some(st) = specialized_type {
+                param_count += 1;
+                query.push_str(&format!(" AND specialized_type = ${}", param_count));
+                params.push(st.to_string());
+            } else {
+                // Service générique : utiliser category
+                param_count += 1;
+                query.push_str(&format!(" AND (data->>'category' = ${} OR category = ${}) AND specialized_type IS NULL", param_count, param_count));
+                params.push(cat.to_string());
+            }
         }
 
         if active_only {
@@ -191,14 +216,21 @@ impl DbOptimizer {
 
         // Requ?te avec recherche full-text PostgreSQL
         let mut sql_query = String::from(
-            "SELECT id, user_id, data->>'category' as category, is_active, gps, created_at,
+            "SELECT id, user_id, data->>'category' as category, specialized_type, is_active, gps, created_at,
                     ts_rank(to_tsvector('french', data::text), plainto_tsquery('french', $1)) as rank
              FROM services 
              WHERE to_tsvector('french', data::text) @@ plainto_tsquery('french', $1)"
         );
 
-        if category.is_some() {
-            sql_query.push_str(" AND data->>'category' = $2");
+        if let Some(cat) = category {
+            // ✅ NOUVEAU : Si la catégorie correspond à un type spécialisé, utiliser specialized_type
+            let specialized_type = Self::map_category_to_specialized_type(cat);
+            if let Some(st) = specialized_type {
+                sql_query.push_str(" AND specialized_type = $2");
+            } else {
+                // Service générique : utiliser category
+                sql_query.push_str(" AND (data->>'category' = $2 OR category = $2) AND specialized_type IS NULL");
+            }
         }
 
         sql_query.push_str(" AND is_active = true ORDER BY rank DESC, created_at DESC LIMIT $");

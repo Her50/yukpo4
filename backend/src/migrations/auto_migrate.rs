@@ -5600,6 +5600,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto specialized services tables: {}", e),
     }
 
+    // ✅ 2025-01-28 : Champ specialized_type pour identification sans ambiguïté
+    match ensure_services_specialized_type(pool).await {
+        Ok(_) => info!("✅ Migration auto: services specialized_type OK"),
+        Err(e) => error!("❌ Erreur migration auto services specialized_type: {}", e),
+    }
+
+    // ✅ 2025-01-28 : Triggers pour garantir cohérence specialized_type
+    match ensure_specialized_type_triggers(pool).await {
+        Ok(_) => info!("✅ Migration auto: specialized_type triggers OK"),
+        Err(e) => error!("❌ Erreur migration auto specialized_type triggers: {}", e),
+    }
+
     // ✅ 2025-11-27 : Table banques de sang (service spécialisé isolé)
     match ensure_banques_sang_table(pool).await {
         Ok(_) => info!("✅ Migration auto: banques_sang table OK"),
@@ -8930,5 +8942,163 @@ pub async fn ensure_blood_group_column_in_users(pool: &PgPool) -> Result<(), sql
         info!("✅ Colonne groupe_sanguin déjà présente dans users");
     }
     
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Ajouter champ specialized_type pour identification sans ambiguïté des services spécialisés
+/// Compatible SQLx offline mode
+pub async fn ensure_services_specialized_type(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création du champ specialized_type dans services...");
+    
+    // Vérifier si la colonne existe déjà
+    let column_exists: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'services' AND column_name = 'specialized_type'
+        )
+        "#
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    
+    if !column_exists {
+        info!("📝 Ajout de la colonne specialized_type...");
+        
+        // Ajouter la colonne
+        sqlx::query(
+            "ALTER TABLE services ADD COLUMN specialized_type VARCHAR(50)"
+        )
+        .execute(pool)
+        .await?;
+        
+        info!("✅ Colonne specialized_type ajoutée");
+    } else {
+        info!("✅ Colonne specialized_type déjà présente");
+    }
+    
+    // Remplir depuis les tables spécialisées existantes (en utilisant DO $$ blocks)
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            -- Pharmacies
+            UPDATE services s
+            SET specialized_type = 'pharmacie'
+            WHERE EXISTS (
+                SELECT 1 FROM pharmacies p WHERE p.service_id = s.id
+            )
+            AND specialized_type IS NULL;
+            
+            -- Hôpitaux/Cliniques
+            UPDATE services s
+            SET specialized_type = 'hopital_clinique'
+            WHERE EXISTS (
+                SELECT 1 FROM hopitaux_cliniques h WHERE h.service_id = s.id
+            )
+            AND specialized_type IS NULL;
+            
+            -- Laboratoires/Imagerie
+            UPDATE services s
+            SET specialized_type = 'laboratoire_imagerie'
+            WHERE EXISTS (
+                SELECT 1 FROM laboratoires_imagerie l WHERE l.service_id = s.id
+            )
+            AND specialized_type IS NULL;
+            
+            -- Agences de voyage
+            UPDATE services s
+            SET specialized_type = 'agence_voyage'
+            WHERE EXISTS (
+                SELECT 1 FROM agences_voyage a WHERE a.service_id = s.id
+            )
+            AND specialized_type IS NULL;
+            
+            -- Covoiturages
+            UPDATE services s
+            SET specialized_type = 'covoiturage'
+            WHERE EXISTS (
+                SELECT 1 FROM covoiturages c WHERE c.service_id = s.id
+            )
+            AND specialized_type IS NULL;
+            
+            -- Taxis ville
+            UPDATE services s
+            SET specialized_type = 'taxi_ville'
+            WHERE EXISTS (
+                SELECT 1 FROM taxis_ville t WHERE t.service_id = s.id
+            )
+            AND specialized_type IS NULL;
+            
+            -- Banques de sang
+            UPDATE services s
+            SET specialized_type = 'banque_sang'
+            WHERE EXISTS (
+                SELECT 1 FROM banques_sang b WHERE b.service_id = s.id
+            )
+            AND specialized_type IS NULL;
+        END
+        $$;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // Ajouter contrainte CHECK si elle n'existe pas
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.table_constraints 
+                WHERE constraint_name = 'check_specialized_type' 
+                AND table_name = 'services'
+            ) THEN
+                ALTER TABLE services 
+                ADD CONSTRAINT check_specialized_type 
+                CHECK (
+                    specialized_type IS NULL 
+                    OR specialized_type IN (
+                        'pharmacie',
+                        'hopital_clinique',
+                        'laboratoire_imagerie',
+                        'agence_voyage',
+                        'covoiturage',
+                        'taxi_ville',
+                        'banque_sang'
+                    )
+                );
+            END IF;
+        END
+        $$;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // Créer index si il n'existe pas
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_services_specialized_type ON services(specialized_type) WHERE specialized_type IS NOT NULL"
+    )
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Migration specialized_type terminée");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Créer les triggers pour garantir la cohérence entre specialized_type et les tables spécialisées
+/// Compatible SQLx offline mode
+pub async fn ensure_specialized_type_triggers(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des triggers specialized_type...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250128_add_specialized_type_triggers.sql");
+    
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    
+    info!("✅ Triggers specialized_type créés");
     Ok(())
 }

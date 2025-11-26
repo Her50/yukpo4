@@ -168,6 +168,18 @@ pub async fn create_blood_bank(
         AppError::Internal(format!("Erreur création banque de sang: {}", e))
     })?;
 
+    // ✅ NOUVEAU : Marquer le service comme spécialisé
+    sqlx::query(
+        "UPDATE services SET specialized_type = 'banque_sang' WHERE id = $1"
+    )
+    .bind(payload.service_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_blood_bank] Erreur mise à jour specialized_type: {}", e);
+        AppError::Internal("Erreur mise à jour specialized_type".to_string())
+    })?;
+
     // Mettre à jour is_available_now avec la fonction PostgreSQL
     sqlx::query(
         r#"
@@ -193,7 +205,7 @@ pub async fn create_blood_bank(
         AppError::Internal("Erreur mise à jour disponibilité".to_string())
     })?;
 
-    info!("[create_blood_bank] Banque de sang créée avec succès: id={}", blood_bank_id);
+    info!("[create_blood_bank] Banque de sang créée avec succès: id={}, service_id={} marqué comme spécialisé", blood_bank_id, payload.service_id);
     Ok((StatusCode::CREATED, Json(json!({"message": "Banque de sang créée avec succès", "id": blood_bank_id}))))
 }
 

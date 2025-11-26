@@ -1352,6 +1352,79 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         sousCaracteristiques,
     ]);
 
+    // ✅ NOUVEAU: Charger immédiatement les sous-caractéristiques préférées de l'IA dès qu'elles sont disponibles
+    // Ce useEffect s'exécute indépendamment des autres suggestions pour garantir l'affichage immédiat
+    useEffect(() => {
+        console.log('[LinearAutocompleteEditor] 🔍 useEffect sousCaracteristiques déclenché:', {
+            hasSousCaracteristiques: !!sousCaracteristiques,
+            type: typeof sousCaracteristiques,
+            keys: sousCaracteristiques ? Object.keys(sousCaracteristiques) : [],
+            count: sousCaracteristiques ? Object.keys(sousCaracteristiques).length : 0
+        });
+
+        if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object') {
+            console.log('[LinearAutocompleteEditor] ⚠️ sousCaracteristiques invalide ou vide');
+            return;
+        }
+
+        const sousCaracsKeys = Object.keys(sousCaracteristiques);
+        if (sousCaracsKeys.length === 0) {
+            console.log('[LinearAutocompleteEditor] ⚠️ sousCaracteristiques est un objet vide');
+            return;
+        }
+
+        const key = 'ia-sous-caracteristiques-preferred';
+        const rows: Array<{ label: string; value: string }> = [];
+
+        sousCaracsKeys.forEach((charKey) => {
+            const values = sousCaracteristiques[charKey];
+            if (Array.isArray(values) && values.length > 0) {
+                // Prendre la première valeur (choix préféré de l'IA)
+                const firstValue = values[0];
+                if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+                    rows.push({
+                        label: charKey,
+                        value: firstValue,
+                    });
+                } else {
+                    console.warn('[LinearAutocompleteEditor] ⚠️ Première valeur invalide pour', charKey, ':', firstValue);
+                }
+            } else {
+                console.warn('[LinearAutocompleteEditor] ⚠️ Valeurs invalides pour', charKey, ':', values);
+            }
+        });
+
+        console.log('[LinearAutocompleteEditor] ✅ Rows créées depuis sousCaracteristiques:', {
+            rowsCount: rows.length,
+            rows: rows.map(r => `${r.label}: ${r.value}`)
+        });
+
+        if (rows.length > 0) {
+            setSuggestionDrafts((prev) => {
+                const existing = prev[key];
+                // Vérifier si les données ont changé
+                if (existing && existing.length === rows.length) {
+                    const hasChanged = existing.some((row, idx) => {
+                        const newRow = rows[idx];
+                        return !newRow || row.label !== newRow.label || row.value !== newRow.value;
+                    });
+                    if (!hasChanged) {
+                        console.log('[LinearAutocompleteEditor] ✅ Données identiques, pas de mise à jour nécessaire');
+                        return prev; // Pas de changement, ne pas mettre à jour
+                    }
+                }
+
+                console.log('[LinearAutocompleteEditor] ✅ Mise à jour suggestionDrafts avec', rows.length, 'rows');
+                return {
+                    ...prev,
+                    [key]: rows,
+                };
+            });
+        } else {
+            console.warn('[LinearAutocompleteEditor] ⚠️ Aucune row valide créée depuis sousCaracteristiques');
+        }
+    }, [sousCaracteristiques]);
+
     // ✅ CORRECTION FINALE 2025-11-06 : Recherche progressive SANS useEffect
     // Le useEffect avec searchSuggestions cause des problèmes de closure
     // On va gérer la recherche directement dans onChangeText du TextInput
@@ -1629,6 +1702,34 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     ]);
 
     const bestSuggestionCandidate = suggestionCandidates.length > 0 ? suggestionCandidates[0] : null;
+
+    // ✅ NOUVEAU: Créer un candidat depuis suggestionDrafts si les sous-caractéristiques préférées sont disponibles
+    // mais pas encore dans suggestionCandidates (cas où elles sont chargées mais pas encore intégrées)
+    const preferredDraftCandidate = useMemo(() => {
+        const draftKey = 'ia-sous-caracteristiques-preferred';
+        const draftRows = suggestionDrafts[draftKey];
+
+        // Si on a des rows dans le draft mais pas de candidat préféré dans suggestionCandidates
+        if (draftRows && draftRows.length > 0 && !bestSuggestionCandidate?.isPreferred) {
+            return {
+                key: draftKey,
+                source: 'ia' as SuggestionSource,
+                rows: draftRows,
+                score: 15,
+                title: 'Caractéristiques suggérées par l\'IA',
+                isPreferred: true,
+            } as SuggestionCandidate;
+        }
+        return null;
+    }, [suggestionDrafts, bestSuggestionCandidate]);
+
+    // ✅ PRIORITÉ: Utiliser le candidat préféré du draft s'il existe
+    // Priorité 1: bestSuggestionCandidate s'il est préféré (isPreferred: true)
+    // Priorité 2: preferredDraftCandidate si disponible
+    // Priorité 3: bestSuggestionCandidate normal
+    const displayCandidate = bestSuggestionCandidate?.isPreferred
+        ? bestSuggestionCandidate
+        : (preferredDraftCandidate || bestSuggestionCandidate);
 
     const handleApplySuggestion = useCallback(
         (candidate: SuggestionCandidate | null) => {
@@ -2184,7 +2285,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 )}
             </View>
 
-            {(loadingSuggestions || loadingCombinationSuggestions || bestSuggestionCandidate || combinationError) && (
+            {(loadingSuggestions || loadingCombinationSuggestions || displayCandidate || combinationError) && (
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
 
@@ -2192,35 +2293,35 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         <ActivityIndicator size="small" color={modernColors.primary} style={{ marginVertical: 12 }} />
                     )}
 
-                    {!loadingSuggestions && !loadingCombinationSuggestions && bestSuggestionCandidate && (
-                        <View key={bestSuggestionCandidate.key} style={styles.suggestionCard}>
+                    {!loadingSuggestions && !loadingCombinationSuggestions && displayCandidate && (
+                        <View key={displayCandidate.key} style={styles.suggestionCard}>
                             <View style={styles.suggestionCardHeader}>
                                 <View style={styles.suggestionCardHeaderLeft}>
                                     <SafeIcon
                                         name={
-                                            bestSuggestionCandidate.source === 'popular'
+                                            displayCandidate.source === 'popular'
                                                 ? 'gift'
-                                                : bestSuggestionCandidate.source === 'combination'
+                                                : displayCandidate.source === 'combination'
                                                     ? 'users'
                                                     : 'sparkles'
                                         }
                                         size={16}
                                         color={
-                                            bestSuggestionCandidate.source === 'popular'
+                                            displayCandidate.source === 'popular'
                                                 ? modernColors.primary
-                                                : bestSuggestionCandidate.source === 'combination'
+                                                : displayCandidate.source === 'combination'
                                                     ? '#F97316'
                                                     : modernColors.primary
                                         }
                                     />
-                                    <Text style={styles.suggestionCardTitle}>{bestSuggestionCandidate.title}</Text>
+                                    <Text style={styles.suggestionCardTitle}>{displayCandidate.title}</Text>
                                 </View>
-                                {bestSuggestionCandidate.isTrending && (
+                                {displayCandidate.isTrending && (
                                     <View style={styles.trendingBadge}>
                                         <Text style={styles.trendingText}>📈 TENDANCE</Text>
                                     </View>
                                 )}
-                                {bestSuggestionCandidate.isPreferred && (
+                                {displayCandidate.isPreferred && (
                                     <View style={styles.combinationBadge}>
                                         <SafeIcon name="sparkles" size={12} color={modernColors.primary} />
                                         <Text style={styles.combinationBadgeText}>IA</Text>
@@ -2229,23 +2330,23 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             </View>
 
                             <View style={styles.suggestionTable}>
-                                {bestSuggestionCandidate.rows.length === 0 ? (
+                                {displayCandidate.rows.length === 0 ? (
                                     <Text style={styles.suggestionEmptyRow}>
                                         Aucune modalité. Ajoutez-en pour personnaliser.
                                     </Text>
                                 ) : (
-                                    bestSuggestionCandidate.rows.map((row, rowIndex) => (
+                                    displayCandidate.rows.map((row, rowIndex) => (
                                         <View
-                                            key={`${bestSuggestionCandidate.key}-${row.label}-${rowIndex}`}
+                                            key={`${displayCandidate.key}-${row.label}-${rowIndex}`}
                                             style={[
                                                 styles.suggestionRow,
-                                                rowIndex === bestSuggestionCandidate.rows.length - 1 && styles.suggestionRowLast,
+                                                rowIndex === displayCandidate.rows.length - 1 && styles.suggestionRowLast,
                                             ]}
                                         >
                                             <View style={styles.suggestionRowContent}>
                                                 <Text style={styles.suggestionCellLabel}>{row.label}</Text>
                                                 <TouchableOpacity
-                                                    onPress={() => openSuggestionEditorForRow(bestSuggestionCandidate.key, rowIndex)}
+                                                    onPress={() => openSuggestionEditorForRow(displayCandidate.key, rowIndex)}
                                                     style={styles.suggestionValueTouchable}
                                                 >
                                                     <Text style={styles.suggestionCellValue}>{row.value}</Text>
@@ -2254,13 +2355,13 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                             <View style={styles.suggestionRowActions}>
                                                 <TouchableOpacity
                                                     style={styles.suggestionActionButton}
-                                                    onPress={() => openSuggestionEditorForRow(bestSuggestionCandidate.key, rowIndex)}
+                                                    onPress={() => openSuggestionEditorForRow(displayCandidate.key, rowIndex)}
                                                 >
                                                     <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
                                                 </TouchableOpacity>
                                                 <TouchableOpacity
                                                     style={styles.suggestionActionButton}
-                                                    onPress={() => handleSuggestionRowDelete(bestSuggestionCandidate.key, rowIndex)}
+                                                    onPress={() => handleSuggestionRowDelete(displayCandidate.key, rowIndex)}
                                                 >
                                                     <SafeIcon name="trash-2" size={14} color="#EF4444" />
                                                 </TouchableOpacity>
@@ -2270,27 +2371,27 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                 )}
                             </View>
 
-                            {(bestSuggestionCandidate.sellerCount ||
-                                bestSuggestionCandidate.occurrences ||
-                                bestSuggestionCandidate.priceDisplay) && (
+                            {(displayCandidate.sellerCount ||
+                                displayCandidate.occurrences ||
+                                displayCandidate.priceDisplay) && (
                                     <View style={styles.suggestionMeta}>
                                         <View style={styles.suggestionMetaLeft}>
-                                            {typeof bestSuggestionCandidate.sellerCount === 'number' && bestSuggestionCandidate.sellerCount > 0 && (
+                                            {typeof displayCandidate.sellerCount === 'number' && displayCandidate.sellerCount > 0 && (
                                                 <Text style={styles.suggestionCount}>
-                                                    👥 {bestSuggestionCandidate.sellerCount} prestataire
-                                                    {bestSuggestionCandidate.sellerCount > 1 ? 's' : ''}
+                                                    👥 {displayCandidate.sellerCount} prestataire
+                                                    {displayCandidate.sellerCount > 1 ? 's' : ''}
                                                 </Text>
                                             )}
-                                            {typeof bestSuggestionCandidate.occurrences === 'number' && bestSuggestionCandidate.occurrences > 0 && (
+                                            {typeof displayCandidate.occurrences === 'number' && displayCandidate.occurrences > 0 && (
                                                 <Text style={styles.combinationOccurrence}>
-                                                    🔁 {bestSuggestionCandidate.occurrences} occurrence
-                                                    {bestSuggestionCandidate.occurrences > 1 ? 's' : ''}
+                                                    🔁 {displayCandidate.occurrences} occurrence
+                                                    {displayCandidate.occurrences > 1 ? 's' : ''}
                                                 </Text>
                                             )}
                                         </View>
-                                        {bestSuggestionCandidate.priceDisplay && (
+                                        {displayCandidate.priceDisplay && (
                                             <Text style={styles.suggestionPrice}>
-                                                💰 {bestSuggestionCandidate.priceDisplay}
+                                                💰 {displayCandidate.priceDisplay}
                                             </Text>
                                         )}
                                     </View>
@@ -2299,14 +2400,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             <View style={styles.suggestionFooter}>
                                 <TouchableOpacity
                                     style={styles.suggestionAddButton}
-                                    onPress={() => openSuggestionAddModal(bestSuggestionCandidate.key)}
+                                    onPress={() => openSuggestionAddModal(displayCandidate.key)}
                                 >
                                     <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
                                     <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.suggestionApplyButton}
-                                    onPress={() => handleApplySuggestion(bestSuggestionCandidate)}
+                                    onPress={() => handleApplySuggestion(displayCandidate)}
                                 >
                                     <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
                                     <Text style={styles.suggestionApplyText}>Valider</Text>
@@ -2317,7 +2418,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
                     {!loadingSuggestions &&
                         !loadingCombinationSuggestions &&
-                        !bestSuggestionCandidate &&
+                        !displayCandidate &&
                         !combinationError && (
                             <Text style={styles.noSuggestionsText}>
                                 Aucune caractéristique pertinente trouvée.

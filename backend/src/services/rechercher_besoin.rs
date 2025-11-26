@@ -77,6 +77,7 @@ async fn search_services_fallback(
                 OR s.data->>'description_service' ILIKE $1
                 OR s.data->>'category' ILIKE $1
                 OR s.category ILIKE $1
+                OR s.specialized_type ILIKE $1
                 OR EXISTS (
                     SELECT 1 
                     FROM jsonb_array_elements(

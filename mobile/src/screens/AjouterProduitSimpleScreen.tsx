@@ -289,6 +289,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         documents: initialProductDocuments,
         characteristic_vector: prefill.characteristic_vector ?? suggestionData?.characteristic_vector ?? null,
         combinaison_brute: prefill.combinaison_brute ?? suggestionData?.combinaison_brute ?? null,
+        // ✅ NOUVEAU: Initialiser product_vector et product_labels depuis suggestionData si disponibles
+        product_vector: prefill.product_vector ?? (suggestionData.produits?.product_vector && Array.isArray(suggestionData.produits.product_vector) ? suggestionData.produits.product_vector : undefined),
+        product_labels: prefill.product_labels ?? (suggestionData.produits?.product_labels && Array.isArray(suggestionData.produits.product_labels) ? suggestionData.produits.product_labels : undefined),
     };
 
     const [formValues, setFormValues] = useState<any>(initialFormValues);
@@ -885,19 +888,45 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     }
 
                                     // 2. Fallback: Utiliser sous_caracteristiques si product_vector/product_labels non disponibles
-                                    // Mais seulement si c'est une combinaison spécifique (une seule valeur par dimension)
+                                    // ✅ CORRIGÉ: Prendre la première valeur de chaque dimension comme valeur préférée, même si plusieurs valeurs sont disponibles
                                     if (formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object' && Object.keys(formValues.sous_caracteristiques).length > 0) {
-                                        const isSpecificCombination = Object.values(formValues.sous_caracteristiques).every((vals: any) =>
-                                            Array.isArray(vals) && vals.length === 1
-                                        );
+                                        const sousCaracsObj: Record<string, string[]> = {};
+                                        Object.entries(formValues.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
+                                            if (Array.isArray(vals) && vals.length > 0) {
+                                                // Prendre la première valeur comme valeur préférée
+                                                const firstValue = vals[0];
+                                                if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+                                                    sousCaracsObj[key] = [firstValue];
+                                                }
+                                            }
+                                        });
 
-                                        if (isSpecificCombination) {
-                                            console.log('[AjouterProduitSimple] ✅ Utilisation sous_caracteristiques (combinaison spécifique) depuis formValues:', formValues.sous_caracteristiques);
-                                            return formValues.sous_caracteristiques;
+                                        if (Object.keys(sousCaracsObj).length > 0) {
+                                            console.log('[AjouterProduitSimple] ✅ Utilisation sous_caracteristiques (première valeur de chaque dimension) depuis formValues:', sousCaracsObj);
+                                            return sousCaracsObj;
                                         }
                                     }
 
-                                    // 3. Fallback: objet vide (pas de valeurs par défaut hardcodées)
+                                    // 3. Fallback: Vérifier aussi dans suggestionData si disponible
+                                    if (suggestionData?.produits?.sous_caracteristiques && typeof suggestionData.produits.sous_caracteristiques === 'object' && Object.keys(suggestionData.produits.sous_caracteristiques).length > 0) {
+                                        const sousCaracsObj: Record<string, string[]> = {};
+                                        Object.entries(suggestionData.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
+                                            if (Array.isArray(vals) && vals.length > 0) {
+                                                // Prendre la première valeur comme valeur préférée
+                                                const firstValue = vals[0];
+                                                if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+                                                    sousCaracsObj[key] = [firstValue];
+                                                }
+                                            }
+                                        });
+
+                                        if (Object.keys(sousCaracsObj).length > 0) {
+                                            console.log('[AjouterProduitSimple] ✅ Utilisation sous_caracteristiques (première valeur de chaque dimension) depuis suggestionData:', sousCaracsObj);
+                                            return sousCaracsObj;
+                                        }
+                                    }
+
+                                    // 4. Fallback: objet vide (pas de valeurs par défaut hardcodées)
                                     console.log('[AjouterProduitSimple] ⚠️ Aucune combinaison préférée trouvée, utilisation objet vide');
                                     return {};
                                 })()}

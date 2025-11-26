@@ -376,15 +376,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const values = formValues || valeursFormulaire;
     const suggestion = suggestionData || suggestion;
 
+    console.log('[getSousCaracteristiquesFromIA] 🔍 Début extraction, valeurs disponibles:', {
+      hasFormValues: !!formValues,
+      hasSuggestionData: !!suggestionData,
+      hasValues: !!values,
+      hasSuggestion: !!suggestion,
+      produitsField: values?.produits,
+      suggestionProduits: suggestion?.data?.produits
+    });
+
     // 1. PRIORITÉ: Construire depuis product_vector et product_labels de la combinaison préférée
     // C'est la combinaison spécifique choisie par l'IA, pas toutes les valeurs possibles
-    if (values.produits?.product_vector && Array.isArray(values.produits.product_vector) &&
-      values.produits.product_labels && Array.isArray(values.produits.product_labels) &&
-      values.produits.product_vector.length > 0 && values.produits.product_vector.length === values.produits.product_labels.length) {
+    // ✅ CORRIGÉ: Vérifier aussi dans suggestion.data.produits si pas dans values.produits
+    const produitsData = values.produits || suggestion?.data?.produits;
+
+    if (produitsData?.product_vector && Array.isArray(produitsData.product_vector) &&
+      produitsData.product_labels && Array.isArray(produitsData.product_labels) &&
+      produitsData.product_vector.length > 0 && produitsData.product_vector.length === produitsData.product_labels.length) {
 
       const sousCaracsFromPreferred: Record<string, string[]> = {};
-      values.produits.product_vector.forEach((value: string, index: number) => {
-        const label = values.produits.product_labels[index];
+      produitsData.product_vector.forEach((value: string, index: number) => {
+        const label = produitsData.product_labels[index];
         if (label && typeof label === 'string' && value && typeof value === 'string') {
           if (!sousCaracsFromPreferred[label]) {
             sousCaracsFromPreferred[label] = [];
@@ -403,30 +415,45 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     // 2. Fallback: Utiliser sous_caracteristiques si product_vector/product_labels non disponibles
-    // Mais seulement si c'est déjà la combinaison préférée (pas toutes les valeurs possibles)
-    if (values.produits?.sous_caracteristiques && typeof values.produits.sous_caracteristiques === 'object' && Object.keys(values.produits.sous_caracteristiques).length > 0) {
-      // Vérifier si c'est une combinaison spécifique (une seule valeur par dimension) ou toutes les valeurs possibles
-      const isSpecificCombination = Object.values(values.produits.sous_caracteristiques).every((vals: any) =>
-        Array.isArray(vals) && vals.length === 1
-      );
+    // ✅ CORRIGÉ: Prendre la première valeur de chaque dimension comme valeur préférée, même si plusieurs valeurs sont disponibles
+    // ✅ CORRIGÉ: Vérifier aussi dans suggestion.data.produits si pas dans values.produits
+    const sousCaracsSource = produitsData?.sous_caracteristiques || values.produits?.sous_caracteristiques;
 
-      if (isSpecificCombination) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (combinaison spécifique) depuis values.produits:', values.produits.sous_caracteristiques);
-        return values.produits.sous_caracteristiques;
-      } else {
-        console.log('[getSousCaracteristiquesFromIA] ⚠️ sous_caracteristiques contient toutes les valeurs possibles, pas la combinaison préférée');
+    if (sousCaracsSource && typeof sousCaracsSource === 'object' && Object.keys(sousCaracsSource).length > 0) {
+      const sousCaracsObj: Record<string, string[]> = {};
+      Object.entries(sousCaracsSource).forEach(([key, vals]: [string, any]) => {
+        if (Array.isArray(vals) && vals.length > 0) {
+          // Prendre la première valeur comme valeur préférée
+          const firstValue = vals[0];
+          if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+            sousCaracsObj[key] = [firstValue];
+          }
+        }
+      });
+
+      if (Object.keys(sousCaracsObj).length > 0) {
+        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (première valeur de chaque dimension):', sousCaracsObj);
+        return sousCaracsObj;
       }
     }
 
-    // 3. Fallback: Essayer depuis suggestionData.data.produits (mais seulement si c'est une combinaison spécifique)
+    // 3. Fallback: Essayer depuis suggestionData.data.produits
+    // ✅ CORRIGÉ: Prendre la première valeur de chaque dimension comme valeur préférée
     if (suggestion?.data?.produits?.sous_caracteristiques && typeof suggestion.data.produits.sous_caracteristiques === 'object') {
-      const isSpecificCombination = Object.values(suggestion.data.produits.sous_caracteristiques).every((vals: any) =>
-        Array.isArray(vals) && vals.length === 1
-      );
+      const sousCaracsObj: Record<string, string[]> = {};
+      Object.entries(suggestion.data.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
+        if (Array.isArray(vals) && vals.length > 0) {
+          // Prendre la première valeur comme valeur préférée
+          const firstValue = vals[0];
+          if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+            sousCaracsObj[key] = [firstValue];
+          }
+        }
+      });
 
-      if (isSpecificCombination) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (combinaison spécifique) depuis suggestion.data.produits:', suggestion.data.produits.sous_caracteristiques);
-        return suggestion.data.produits.sous_caracteristiques;
+      if (Object.keys(sousCaracsObj).length > 0) {
+        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (première valeur de chaque dimension) depuis suggestion.data.produits:', sousCaracsObj);
+        return sousCaracsObj;
       }
     }
 
@@ -2321,7 +2348,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // ✅ CORRIGÉ: Utiliser getSousCaracteristiquesFromIA() au lieu de valeurs hardcodées
     // Cela garantit que les caractéristiques préférées par l'IA sont affichées
     if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object' || Object.keys(sousCaracteristiques).length === 0) {
-      const sousCaracsFromIA = getSousCaracteristiquesFromIA();
+      const sousCaracsFromIA = getSousCaracteristiquesFromIA(valeursFormulaire, suggestion);
+      console.log('[FormulaireYukpoIntelligentScreen] 🔍 getSousCaracteristiquesFromIA appelé dans renderProductsBlock:', {
+        hasFormValues: !!valeursFormulaire,
+        hasSuggestion: !!suggestion,
+        produitsField: valeursFormulaire.produits,
+        suggestionData: suggestion?.data,
+        result: sousCaracsFromIA
+      });
       if (sousCaracsFromIA && typeof sousCaracsFromIA === 'object' && Object.keys(sousCaracsFromIA).length > 0) {
         sousCaracteristiques = sousCaracsFromIA;
         console.log('[FormulaireYukpoIntelligentScreen] ✅ Utilisation caractéristiques préférées IA:', sousCaracteristiques);
@@ -2330,6 +2364,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         sousCaracteristiques = {};
         console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Aucune caractéristique IA disponible, utilisation objet vide');
       }
+    } else {
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ sousCaracteristiques déjà disponibles depuis valeursFormulaire:', {
+        keys: Object.keys(sousCaracteristiques),
+        count: Object.keys(sousCaracteristiques).length
+      });
     }
 
     const variantsSource = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant;

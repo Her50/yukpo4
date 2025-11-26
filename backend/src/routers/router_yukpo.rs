@@ -1325,8 +1325,37 @@ async fn handle_creation_service_direct(
     // Utiliser directement le prompt de création de service sans détection d'intention
     let app_ia = state.ia.clone();
 
-    // Construire le prompt de création de service
-    let user_text = input.texte.clone().unwrap_or_default();
+    // ?? NOUVEAU : Transcrire l'audio si présent
+    let mut user_text = input.texte.clone().unwrap_or_default();
+    
+    if has_audios {
+        log::info!("[handle_creation_service_direct] 🎤 Transcription audio en cours...");
+        if let Some(audios) = &input.audio_base64 {
+            if let Some(first_audio) = audios.first() {
+                match crate::services::audio_transcription_service::AudioTranscriptionService::transcribe_audio_base64(first_audio).await {
+                    Ok(transcription) => {
+                        log::info!(
+                            "[handle_creation_service_direct] ✅ Audio transcrit: '{}'",
+                            transcription.text.chars().take(100).collect::<String>()
+                        );
+                        // Combiner le texte existant avec la transcription
+                        if user_text.is_empty() {
+                            user_text = transcription.text;
+                        } else {
+                            user_text = format!("{} {}", user_text, transcription.text);
+                        }
+                    }
+                    Err(e) => {
+                        log::error!(
+                            "[handle_creation_service_direct] ❌ Erreur transcription audio: {}",
+                            e
+                        );
+                        // Continuer avec le texte existant (peut être vide)
+                    }
+                }
+            }
+        }
+    }
 
     // ?? UTILISER LE PROMPT SPÉCIFIQUE EXISTANT depuis le fichier .md
     let prompt_content = match std::fs::read_to_string("ia_prompts/creation_service_prompt.md") {
@@ -1393,7 +1422,11 @@ Format JSON attendu :
             .predict_multimodal(&prompt, input.base64_image.clone())
             .await?
     } else {
-        log::info!("[handle_creation_service_direct] Appel texte uniquement (pas d'images)");
+        if has_audios {
+            log::info!("[handle_creation_service_direct] Appel texte avec audio transcrit (pas d'images)");
+        } else {
+            log::info!("[handle_creation_service_direct] Appel texte uniquement (pas d'images)");
+        }
         app_ia.predict(&prompt).await?
     };
 

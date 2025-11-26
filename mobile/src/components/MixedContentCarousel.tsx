@@ -112,12 +112,22 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     useEffect(() => {
         if (isAutoScrollDisabled) {
             clearAutoScrollTimer();
+            console.log('[MixedContentCarousel] ⏸️ Scroll automatique désactivé (configuration)');
             return;
         }
 
         const safeContent = Array.isArray(content) ? content : [];
+        console.log('[MixedContentCarousel] 🔍 Vérification scroll initial:', {
+            contentLength: safeContent.length,
+            currentIndex,
+            isPaused,
+            isAutoScrollDisabled
+        });
+
         if (safeContent.length > 1 && currentIndex === 0 && !isPaused) {
+            console.log('[MixedContentCarousel] ⏱️ Programmation scroll initial dans 2 secondes...');
             const initialTimer = setTimeout(() => {
+                const safeContent = Array.isArray(content) ? content : [];
                 if (scrollViewRef.current && safeContent.length > 1) {
                     console.log('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial (index 0 → 1)');
                     const offset = SCREEN_PADDING + SNAP_INTERVAL;
@@ -126,12 +136,16 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                         animated: true,
                     });
                     setCurrentIndex(1);
+                } else {
+                    console.warn('[MixedContentCarousel] ⚠️ ScrollView ref null ou contenu insuffisant lors du scroll initial');
                 }
             }, 2000);
 
             return () => clearTimeout(initialTimer);
+        } else if (safeContent.length <= 1) {
+            console.log('[MixedContentCarousel] ⚠️ Pas assez de contenu pour le scroll automatique:', safeContent.length);
         }
-    }, [content.length, isPaused, currentIndex, isAutoScrollDisabled]);
+    }, [content.length, isPaused, currentIndex, isAutoScrollDisabled, content]);
 
     const loadMixedContent = async () => {
         try {
@@ -331,40 +345,68 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         clearAutoScrollTimer();
 
         const safeContent = Array.isArray(content) ? content : [];
-        if (safeContent.length <= 1 || isAutoScrollDisabled) {
+
+        if (isAutoScrollDisabled) {
+            console.log('[MixedContentCarousel] ⏸️ Scroll automatique désactivé (configuration)');
+            return;
+        }
+
+        if (safeContent.length <= 1) {
+            console.log('[MixedContentCarousel] ⚠️ Pas assez de contenu pour le scroll automatique:', safeContent.length);
             return;
         }
 
         if (isPaused) {
+            console.log('[MixedContentCarousel] ⏸️ Scroll automatique en pause');
             return;
         }
 
         const currentItem = safeContent[currentIndex] ?? safeContent[0];
         if (!currentItem) {
+            console.warn('[MixedContentCarousel] ⚠️ Item actuel introuvable:', { currentIndex, contentLength: safeContent.length });
             return;
         }
 
         const delay = Math.max(calculateDelay(currentItem), 3000);
-        console.log('[MixedContentCarousel] ⏱️ Programmation autoscroll', { delay, currentIndex });
+        console.log('[MixedContentCarousel] ⏱️ Programmation autoscroll', {
+            delay,
+            currentIndex,
+            contentLength: safeContent.length,
+            itemType: currentItem.type,
+            isPaid: currentItem.is_paid
+        });
 
         autoScrollTimerRef.current = setTimeout(() => {
             if (!scrollViewRef.current) {
-                console.log('[MixedContentCarousel] ⚠️ ScrollView ref null, scroll annulé');
+                console.warn('[MixedContentCarousel] ⚠️ ScrollView ref null, scroll annulé');
                 return;
             }
 
             const safeContent = Array.isArray(content) ? content : [];
+            if (safeContent.length <= 1) {
+                console.warn('[MixedContentCarousel] ⚠️ Contenu insuffisant lors du scroll:', safeContent.length);
+                return;
+            }
+
             const nextIndex = (currentIndex + 1) % safeContent.length;
             const scrollPosition = SCREEN_PADDING + nextIndex * SNAP_INTERVAL;
 
-            console.log('[MixedContentCarousel] 🎬 Auto scroll', { currentIndex, nextIndex, scrollPosition });
-
-            scrollViewRef.current.scrollTo({
-                x: scrollPosition,
-                animated: true,
+            console.log('[MixedContentCarousel] 🎬 Auto scroll exécuté', {
+                currentIndex,
+                nextIndex,
+                scrollPosition,
+                contentLength: safeContent.length
             });
 
-            setCurrentIndex(nextIndex);
+            try {
+                scrollViewRef.current.scrollTo({
+                    x: scrollPosition,
+                    animated: true,
+                });
+                setCurrentIndex(nextIndex);
+            } catch (error) {
+                console.error('[MixedContentCarousel] ❌ Erreur lors du scroll:', error);
+            }
         }, delay);
 
         return clearAutoScrollTimer;

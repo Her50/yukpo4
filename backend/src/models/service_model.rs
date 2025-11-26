@@ -29,6 +29,9 @@ pub struct Service {
     pub gps: Option<String>,
     /// Cat?gorie du service
     pub category: Option<String>,
+    /// Type de service spécialisé (NULL pour services génériques)
+    /// Permet identification sans ambiguïté même si category est identique
+    pub specialized_type: Option<String>,
     /// Nombre de jours actifs sp?cifi? par le prestataire
     pub active_days: Option<i32>,
     /// Date de dernier envoi d'alerte

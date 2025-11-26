@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS services (
     vitesse_tarissement VARCHAR(255),
     active_days INTEGER,
     category VARCHAR(255),
+    specialized_type VARCHAR(50),
     last_alert_sent_at TIMESTAMP
 );
 

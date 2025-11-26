@@ -193,7 +193,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(Err(e)) => {
                     let err_msg = format!("{}", e);
                     log::warn!("⚠️ Redis: Échec de connexion - URL: {}... Erreur: {}", redis_url_display, err_msg);
-                    if err_msg.contains("Name or service not known") || err_msg.contains("failed to lookup address") {
+                    if err_msg.contains("TLS") || err_msg.contains("tls") || err_msg.contains("feature is not enabled") {
+                        log::warn!("   💡 Erreur TLS détectée. Pour Upstash, utilisez 'rediss://' (avec double 's')");
+                        log::warn!("      Format attendu: rediss://default:[password]@[endpoint].upstash.io:6379");
+                        log::warn!("      La feature TLS a été activée dans Cargo.toml. Vérifiez votre URL Redis.");
+                        log::info!("ℹ️ Redis non disponible (service optionnel). WebSocket fonctionnera sans Redis.");
+                    } else if err_msg.contains("Name or service not known") || err_msg.contains("failed to lookup address") {
                         log::warn!("   💡 Problème DNS détecté. Vérifiez:");
                         log::warn!("      - Que l'endpoint Redis est correct (ex: [instance].upstash.io)");
                         log::warn!("      - Que l'URL utilise 'rediss://' (avec 's') pour Upstash avec TLS");
@@ -225,8 +230,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Err(e) => {
+            let err_msg = format!("{}", e);
             log::error!("❌ Redis: Impossible de créer le client - URL: {}... Erreur: {}", redis_url_display, e);
-            log::warn!("⚠️ Erreur création client Redis: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
+            if err_msg.contains("TLS") || err_msg.contains("tls") || err_msg.contains("feature is not enabled") {
+                log::warn!("   💡 Erreur TLS: Pour Upstash, utilisez 'rediss://' (avec double 's')");
+                log::warn!("      Format: rediss://default:[password]@[endpoint].upstash.io:6379");
+                log::warn!("      La feature TLS est maintenant activée dans Cargo.toml.");
+            } else {
+                log::warn!("⚠️ Erreur création client Redis: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
+            }
             // Créer un client factice pour les autres services
             let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
                 RedisClient::open("redis://localhost:9999/0")

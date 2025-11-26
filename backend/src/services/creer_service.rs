@@ -856,6 +856,74 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
             map.remove(&k);
         }
 
+        // ✅ NOUVEAU : Normaliser les valeurs simples en objets structurés
+        // Parcourir tous les champs et normaliser ceux qui sont des valeurs simples
+        let keys_to_normalize: Vec<String> = map.keys().cloned().collect();
+        for key in keys_to_normalize {
+            // Ignorer les champs qui sont déjà des objets structurés ou des types spéciaux
+            if key == "produits" || key == "gps_fixe" || key == "gps" || key == "gps_coords" {
+                continue;
+            }
+            
+            if let Some(value) = map.get(&key) {
+                // Vérifier si c'est déjà un objet structuré (avec type_donnee et valeur)
+                let is_already_structured = value.as_object()
+                    .map(|obj| obj.contains_key("type_donnee") && obj.contains_key("valeur"))
+                    .unwrap_or(false);
+                
+                if is_already_structured {
+                    continue; // Déjà structuré, ne pas normaliser
+                }
+                
+                // Si c'est une string simple, convertir en objet structuré
+                if value.is_string() {
+                    let string_value = value.as_str().unwrap_or("");
+                    let origine = if key == "titre_service" || key == "description" {
+                        "formulaire"
+                    } else {
+                        "ia"
+                    };
+                    let normalized = serde_json::json!({
+                        "type_donnee": "string",
+                        "valeur": string_value,
+                        "origine_champs": origine
+                    });
+                    map.insert(key.clone(), normalized);
+                    log::info!(
+                        "[valider_service_json] ✅ Normalisation champ '{}': string -> objet structuré",
+                        key
+                    );
+                }
+                // Si c'est un booléen simple, convertir en objet structuré
+                else if value.is_boolean() {
+                    let bool_value = value.as_bool().unwrap_or(false);
+                    let normalized = serde_json::json!({
+                        "type_donnee": "boolean",
+                        "valeur": bool_value,
+                        "origine_champs": "formulaire"
+                    });
+                    map.insert(key.clone(), normalized);
+                    log::info!(
+                        "[valider_service_json] ✅ Normalisation champ '{}': boolean -> objet structuré",
+                        key
+                    );
+                }
+                // Si c'est un nombre simple, convertir en objet structuré
+                else if value.is_number() {
+                    let normalized = serde_json::json!({
+                        "type_donnee": "number",
+                        "valeur": value,
+                        "origine_champs": "formulaire"
+                    });
+                    map.insert(key.clone(), normalized);
+                    log::info!(
+                        "[valider_service_json] ✅ Normalisation champ '{}': number -> objet structuré",
+                        key
+                    );
+                }
+            }
+        }
+
         // ? OPTIMISATION : Normaliser le champ produits s'il est un tableau direct
         if let Some(produits) = map.get("produits") {
             if produits.is_array() {

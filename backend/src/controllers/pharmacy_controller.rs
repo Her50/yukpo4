@@ -132,6 +132,18 @@ pub async fn create_pharmacy(
         AppError::Internal(format!("Erreur création pharmacie: {}", e))
     })?;
 
+    // ✅ NOUVEAU : Marquer le service comme spécialisé
+    sqlx::query(
+        "UPDATE services SET specialized_type = 'pharmacie' WHERE id = $1"
+    )
+    .bind(payload.service_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_pharmacy] Erreur mise à jour specialized_type: {}", e);
+        AppError::Internal("Erreur mise à jour specialized_type".to_string())
+    })?;
+
     // Mettre à jour is_on_duty_now avec la fonction PostgreSQL
     sqlx::query(
         r#"
@@ -155,7 +167,7 @@ pub async fn create_pharmacy(
         AppError::Internal("Erreur mise à jour statut".to_string())
     })?;
 
-    info!("[create_pharmacy] Pharmacie créée avec succès: id={}", pharmacy_id);
+    info!("[create_pharmacy] Pharmacie créée avec succès: id={}, service_id={} marqué comme spécialisé", pharmacy_id, payload.service_id);
 
     Ok((StatusCode::CREATED, Json(json!({
         "success": true,

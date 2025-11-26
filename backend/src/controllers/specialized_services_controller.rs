@@ -99,6 +99,18 @@ pub async fn create_hospital(
         AppError::Internal(format!("Erreur création hôpital: {}", e))
     })?;
 
+    // ✅ NOUVEAU : Marquer le service comme spécialisé
+    sqlx::query(
+        "UPDATE services SET specialized_type = 'hopital_clinique' WHERE id = $1"
+    )
+    .bind(payload.service_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_hospital] Erreur mise à jour specialized_type: {}", e);
+        AppError::Internal("Erreur mise à jour specialized_type".to_string())
+    })?;
+
     // Mettre à jour is_available_now
     sqlx::query(
         r#"
@@ -207,6 +219,18 @@ pub async fn create_laboratory(
         AppError::Internal(format!("Erreur création laboratoire: {}", e))
     })?;
 
+    // ✅ NOUVEAU : Marquer le service comme spécialisé
+    sqlx::query(
+        "UPDATE services SET specialized_type = 'laboratoire_imagerie' WHERE id = $1"
+    )
+    .bind(payload.service_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_laboratory] Erreur mise à jour specialized_type: {}", e);
+        AppError::Internal("Erreur mise à jour specialized_type".to_string())
+    })?;
+
     Ok((StatusCode::CREATED, Json(json!({
         "success": true,
         "id": lab_id,
@@ -306,6 +330,18 @@ pub async fn create_travel_agency(
     .map_err(|e| {
         error!("[create_travel_agency] Erreur insertion: {}", e);
         AppError::Internal(format!("Erreur création agence: {}", e))
+    })?;
+
+    // ✅ NOUVEAU : Marquer le service comme spécialisé
+    sqlx::query(
+        "UPDATE services SET specialized_type = 'agence_voyage' WHERE id = $1"
+    )
+    .bind(payload.service_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_travel_agency] Erreur mise à jour specialized_type: {}", e);
+        AppError::Internal("Erreur mise à jour specialized_type".to_string())
     })?;
 
     Ok((StatusCode::CREATED, Json(json!({
@@ -408,6 +444,18 @@ pub async fn create_covoiturage(
         AppError::Internal(format!("Erreur création covoiturage: {}", e))
     })?;
 
+    // ✅ NOUVEAU : Marquer le service comme spécialisé
+    sqlx::query(
+        "UPDATE services SET specialized_type = 'covoiturage' WHERE id = $1"
+    )
+    .bind(payload.service_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_covoiturage] Erreur mise à jour specialized_type: {}", e);
+        AppError::Internal("Erreur mise à jour specialized_type".to_string())
+    })?;
+
     Ok((StatusCode::CREATED, Json(json!({
         "success": true,
         "id": covoiturage_id,
@@ -505,6 +553,18 @@ pub async fn create_taxi(
     .map_err(|e| {
         error!("[create_taxi] Erreur insertion: {}", e);
         AppError::Internal(format!("Erreur création taxi: {}", e))
+    })?;
+
+    // ✅ NOUVEAU : Marquer le service comme spécialisé
+    sqlx::query(
+        "UPDATE services SET specialized_type = 'taxi_ville' WHERE id = $1"
+    )
+    .bind(payload.service_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_taxi] Erreur mise à jour specialized_type: {}", e);
+        AppError::Internal("Erreur mise à jour specialized_type".to_string())
     })?;
 
     Ok((StatusCode::CREATED, Json(json!({
