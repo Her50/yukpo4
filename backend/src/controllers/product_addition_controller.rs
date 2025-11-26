@@ -10,6 +10,7 @@ use axum::{
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
+#[cfg(feature = "image_search")]
 use md5;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -495,7 +496,7 @@ async fn save_product_media(
     service_id: i32,
     product_index: usize,
     product_data: &Value,
-    product_obj: &Value,
+    _product_obj: &Value,
 ) -> SavedMediaPaths {
     use crate::utils::log::{log_error, log_info, log_warn};
 
@@ -575,7 +576,10 @@ async fn save_product_media(
         };
 
         let file_path = stored.path;
+        #[cfg(feature = "image_search")]
         let image_bytes = stored.bytes;
+        #[cfg(not(feature = "image_search"))]
+        let _image_bytes = stored.bytes;
 
         // Générer signature d'image si disponible
         #[cfg(feature = "image_search")]

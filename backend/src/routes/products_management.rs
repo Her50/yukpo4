@@ -23,7 +23,7 @@ struct ProductIdRow {
 #[derive(FromRow)]
 struct DeletedProductRow {
     _id: i32,
-    service_id: i32,
+    _service_id: i32,
     product_index: Option<i32>,
 }
 

@@ -1660,7 +1660,10 @@ pub async fn creer_service(
                 match persist_base64_media(storage_root.as_path(), service_id, "images", logo_str, "png").await {
                     Ok(stored) => {
                         let file_path = stored.path;
+                        #[cfg(feature = "image_search")]
                         let image_bytes = stored.bytes;
+                        #[cfg(not(feature = "image_search"))]
+                        let _image_bytes = stored.bytes;
                         
                         #[cfg(feature = "image_search")]
                         let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
@@ -1716,7 +1719,10 @@ pub async fn creer_service(
                     match persist_base64_media(storage_root.as_path(), service_id, "images", first_logo, "png").await {
                         Ok(stored) => {
                             let file_path = stored.path;
+                            #[cfg(feature = "image_search")]
                             let image_bytes = stored.bytes;
+                            #[cfg(not(feature = "image_search"))]
+                            let _image_bytes = stored.bytes;
                             
                             #[cfg(feature = "image_search")]
                             let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
@@ -1781,7 +1787,10 @@ pub async fn creer_service(
                 match persist_base64_media(storage_root.as_path(), service_id, "images", banner_str, "jpg").await {
                     Ok(stored) => {
                         let file_path = stored.path;
+                        #[cfg(feature = "image_search")]
                         let image_bytes = stored.bytes;
+                        #[cfg(not(feature = "image_search"))]
+                        let _image_bytes = stored.bytes;
                         
                         #[cfg(feature = "image_search")]
                         let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
@@ -1837,7 +1846,10 @@ pub async fn creer_service(
                     match persist_base64_media(storage_root.as_path(), service_id, "images", first_banner, "jpg").await {
                         Ok(stored) => {
                             let file_path = stored.path;
+                            #[cfg(feature = "image_search")]
                             let image_bytes = stored.bytes;
+                            #[cfg(not(feature = "image_search"))]
+                            let _image_bytes = stored.bytes;
                             
                             #[cfg(feature = "image_search")]
                             let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
