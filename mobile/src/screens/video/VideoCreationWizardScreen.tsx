@@ -1339,6 +1339,8 @@ const VideoCreationWizardScreen: React.FC = () => {
     };
 
     const renderStepContent = () => {
+        // ✅ CORRECTION: Afficher le contenu même si loadingService est true
+        // Le contenu sera affiché avec des skeletons pendant le chargement
         switch (step) {
             case 1:
                 return (
@@ -1578,6 +1580,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                     </Animated.View>
                 );
             case 2:
+                // ✅ CORRECTION: Afficher le contenu même si loadingService est true
                 return (
                     <Animated.View style={stepAnimatedStyle}>
                         <ScrollView
@@ -1589,7 +1592,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 <Text style={styles.sectionTitle}>
                                     {t('videoWizard.sections.media')} ({selectedMediaIds.length})
                                 </Text>
-                                {mediaLoading ? (
+                                {mediaLoading || loadingService ? (
                                     <View style={styles.mediaSkeletonContainer}>
                                         {mediaSkeletonPlaceholders.map((_, index) => (
                                             <LoadingSkeleton

@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { apiPatch, servicesApi, userApi } from '../services/api';
 import { theme } from '../theme/theme';
@@ -199,81 +200,61 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  const getActionIcon = (iconName: string) => {
-    const iconMap: { [key: string]: string } = {
-      'wallet': '💰',
-      'person-outline': '👤',
-      'settings-outline': '⚙️',
-      'help-circle-outline': '❓',
-      'information-circle-outline': 'ℹ️',
-      'shield-checkmark-outline': '🛡️',
-      'star-outline': '⭐',
-      'time-outline': '⏰',
-      'card-outline': '💳',
-      'notifications-outline': '🔔',
-      'chatbubbles-outline': '💬',
-      'analytics-outline': '📊',
-      'document-outline': '📄',
-      'camera-outline': '📷',
-      'location-outline': '📍',
-      'bicycle-outline': '🚴',
-    };
-    return iconMap[iconName] || '❓';
-  };
+  // ✅ SUPPRIMÉ: getActionIcon remplacé par SafeIcon directement
 
   const profileActions = [
     {
       title: 'Mes Services Spécialisés',
-      icon: '🏥',
+      icon: 'stethoscope', // ✅ CORRIGÉ: Icône Lucide pour services de santé
       color: '#6366F1',
       route: 'MesServicesSpecialises',
       description: 'Gérer vos services de santé et transport'
     },
     {
       title: 'Mes tickets de voyage',
-      icon: '🎫',
+      icon: 'ticket', // ✅ CORRIGÉ: Icône Lucide pour tickets
       color: '#8B5CF6',
       route: 'MyBusTickets',
       description: 'Voir et gérer vos tickets de bus'
     },
     {
       title: 'Don de sang',
-      icon: '🩸',
+      icon: 'droplet', // ✅ CORRIGÉ: Icône Lucide pour don de sang
       color: '#DC2626',
       route: 'BloodGroupManagement',
       description: 'Enregistrer votre groupe sanguin et être notifié en cas d\'urgence'
     },
     {
       title: 'Devenir coursier Yukpo',
-      icon: 'bicycle-outline',
+      icon: 'bike', // ✅ CORRIGÉ: Icône Lucide pour coursier
       color: '#10B981',
       route: 'CourierRegistration',
       description: 'Rejoignez notre équipe de coursiers'
     },
     {
       title: 'Mon historique',
-      icon: 'analytics-outline',
+      icon: 'history', // ✅ CORRIGÉ: Icône Lucide pour historique
       color: '#F59E0B',
       route: 'History',
       description: 'Voir mon historique de transactions'
     },
     {
       title: 'Recharger Tokens',
-      icon: 'wallet',
+      icon: 'wallet', // ✅ CORRIGÉ: Icône Lucide pour wallet
       color: '#EC4899',
       route: 'RechargeTokens',
       description: 'Ajouter des tokens à votre compte'
     },
     {
       title: 'Paramètres',
-      icon: 'settings-outline',
+      icon: 'settings', // ✅ CORRIGÉ: Icône Lucide pour paramètres
       color: '#757575',
       route: 'Settings',
       description: 'Configurer votre compte'
     },
     {
       title: 'Contacter le Support',
-      icon: 'chatbubbles-outline',
+      icon: 'message-circle', // ✅ CORRIGÉ: Icône Lucide pour support
       color: '#2196F3',
       route: 'Contact',
       description: 'Besoin d\'aide ?'
@@ -359,9 +340,12 @@ const ProfileScreen: React.FC = () => {
           >
             <View style={styles.actionLeft}>
               <View style={[styles.actionIcon, { backgroundColor: action.color + '20' }]}>
-                <Text style={[styles.actionIconText, { color: action.color }]}>
-                  {getActionIcon(action.icon)}
-                </Text>
+                <SafeIcon
+                  name={action.icon}
+                  size={20}
+                  color={action.color}
+                  type="lucide"
+                />
               </View>
               <View>
                 <Text style={styles.actionTitle}>{action.title}</Text>

@@ -173,7 +173,7 @@ pub async fn creer_service(
                 let cost = (ia_tokens_consumed as f64) * 0.004 * 100.0;
                 cost.round() as i64
             } else {
-                3000 // COST_NEW_PRODUCT_DUPLICATE_XAF
+                2000 // COST_NEW_PRODUCT_DUPLICATE_XAF
             };
 
             // Ajouter les headers avec les vraies valeurs

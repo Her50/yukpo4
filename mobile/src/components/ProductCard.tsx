@@ -202,6 +202,30 @@ const getCountryFlag = (country?: string): string => {
   return '🌍';
 };
 
+// ✅ NOUVEAU 2025-11-26: Helper pour construire l'URL complète d'un média
+const buildMediaUrl = (path: string | undefined | null): string | undefined => {
+  if (!path || typeof path !== 'string') return undefined;
+
+  // Si c'est déjà une URL complète (http/https), la retourner telle quelle
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+
+  // Si c'est un data URI (base64), le retourner tel quel
+  if (path.startsWith('data:')) {
+    return path;
+  }
+
+  // Si c'est un chemin relatif (uploads/...), préfixer avec l'URL de l'API
+  if (path.startsWith('uploads/') || path.startsWith('/uploads/')) {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${config.API_BASE_URL}${cleanPath}`;
+  }
+
+  // Sinon, essayer de construire l'URL complète
+  return path.startsWith('/') ? `${config.API_BASE_URL}${path}` : `${config.API_BASE_URL}/${path}`;
+};
+
 const firstNonEmptyString = (...values: any[]): string | undefined => {
   for (const candidate of values) {
     if (typeof candidate === 'string') {
@@ -567,13 +591,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const rawServiceImages: string[] = Array.isArray(service?.images)
     ? (service?.images as string[]).filter(Boolean)
     : [];
-  const serviceBannerImage = firstNonEmptyString(
-    service?.data?.banner?.valeur,
-    service?.data?.banner,
+  const serviceBannerImage = buildMediaUrl(
+    firstNonEmptyString(
+      service?.data?.banner?.valeur,
+      service?.data?.banner,
+      service?.data?.banniere?.valeur,
+      service?.data?.banniere,
+    )
   );
-  const serviceLogoImage = firstNonEmptyString(
-    service?.data?.logo?.valeur,
-    service?.data?.logo,
+  const serviceLogoImage = buildMediaUrl(
+    firstNonEmptyString(
+      service?.data?.logo?.valeur,
+      service?.data?.logo,
+    )
   );
   const googlePlaceMeta = service?.data?.google_place;
   const googlePhotoUrls: string[] = Array.isArray(googlePlaceMeta?.photos)
@@ -597,8 +627,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const orderedImages: string[] = [];
   const addImage = (uri?: string | null) => {
     if (!uri) return;
-    if (orderedImages.includes(uri)) return;
-    orderedImages.push(uri);
+    // ✅ NOUVEAU 2025-11-26: Construire l'URL complète pour les chemins relatifs
+    const fullUrl = buildMediaUrl(uri);
+    if (!fullUrl) return;
+    if (orderedImages.includes(fullUrl)) return;
+    orderedImages.push(fullUrl);
   };
 
   addImage(serviceBannerImage);

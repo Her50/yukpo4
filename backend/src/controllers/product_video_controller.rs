@@ -13,7 +13,8 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     services::video_generation_service::{
-        estimate_video_cost, generate_product_video, VideoGenerationPayload,
+        estimate_video_cost, generate_product_video, validate_video_generation_prerequisites,
+        VideoGenerationPayload,
     },
     services::video_job_service::VideoGenerationJob,
     state::AppState,
@@ -37,6 +38,10 @@ pub async fn generate_video_for_product(
         user.id, service_id, product_index
     );
 
+    // ✅ VALIDATION PRÉVENTIVE : Vérifier les prérequis AVANT de créer le job
+    validate_video_generation_prerequisites(&state, service_id, product_index, &payload).await?;
+
+    // ✅ Créer le job seulement si la validation réussit
     let job_id = state
         .video_jobs
         .create_job(user.id, service_id, product_index)

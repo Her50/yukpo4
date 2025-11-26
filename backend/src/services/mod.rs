@@ -1,4 +1,5 @@
 pub mod african_locations_service; // ✅ NOUVEAU 2025-11-06: Base locale africaine pour enfants géographiques
+pub mod ai_image_generation_service; // ✅ NOUVEAU 2025-11-25: Génération d'images par IA (DALL-E)
 pub mod alert_service;
 pub mod analytics_service; // ✅ Phase 10 - Service d'analytics pour prestataires
 pub mod app_ia;

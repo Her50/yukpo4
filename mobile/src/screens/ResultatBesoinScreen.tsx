@@ -39,6 +39,9 @@ import { useLocation } from '../contexts/LocationContext';
 import { apiPost } from '../services/api';
 import { trackNavigation } from '../services/metricsTracking';
 import { modernColors } from '../theme/modernTheme';
+import { CacheManager, createCacheKey } from '../utils/cache';
+import { debounce } from '../utils/debounce';
+import { logger } from '../utils/logger';
 
 interface CombinationSuggestion {
   service_id: number;
@@ -228,9 +231,9 @@ const extractSearchResults = (response: any): Product[] => {
 
     // ✅ DEBUG: Logger la distance pour vérifier qu'elle est bien présente
     if (product.distance_km !== undefined) {
-      console.log(`[ResultatBesoinScreen] ✅ Distance trouvée pour service ${product.service_id}: ${product.distance_km}km`);
+      logger.log(`[ResultatBesoinScreen] ✅ Distance trouvée pour service ${product.service_id}: ${product.distance_km}km`);
     } else {
-      console.warn(`[ResultatBesoinScreen] ⚠️ Pas de distance pour service ${product.service_id}`, {
+      logger.warn(`[ResultatBesoinScreen] ⚠️ Pas de distance pour service ${product.service_id}`, {
         hasDistanceKm: !!item.distance_km,
         hasDataDistanceKm: !!item?.data?.distance_km,
         itemKeys: Object.keys(item),
@@ -382,7 +385,7 @@ const ResultatBesoinScreen: React.FC = () => {
         setSearchImages((prev) => [image, ...prev].slice(0, 10));
       }
     } catch (error) {
-      console.error('[ResultatBesoinScreen] Erreur prise de photo:', error);
+      logger.error('[ResultatBesoinScreen] Erreur prise de photo:', error);
       Alert.alert('Erreur', 'Impossible de prendre la photo.');
     }
   }, []);
@@ -411,7 +414,7 @@ const ResultatBesoinScreen: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('[ResultatBesoinScreen] Erreur sélection images:', error);
+      logger.error('[ResultatBesoinScreen] Erreur sélection images:', error);
       Alert.alert('Erreur', 'Impossible de sélectionner des images.');
     }
   }, [requestImagePermissions]);
@@ -430,7 +433,7 @@ const ResultatBesoinScreen: React.FC = () => {
         setSearchDocuments((prev) => [{ name: asset.name ?? 'Document', base64 }, ...prev].slice(0, 5));
       }
     } catch (error) {
-      console.error('[ResultatBesoinScreen] Erreur sélection document:', error);
+      logger.error('[ResultatBesoinScreen] Erreur sélection document:', error);
       Alert.alert('Erreur', 'Impossible de sélectionner le document.');
     }
   }, []);
@@ -471,9 +474,9 @@ const ResultatBesoinScreen: React.FC = () => {
     setSearchGPSString('');
   }, []);
 
-  // ✅ CORRECTION 2025-11-06 : Fonction de recherche stable avec GPS proximité
-  const fetchSuggestions = useCallback(async (query: string) => {
-    if (!query.trim()) {
+  // ✅ OPTIMISATION: Fonction de recherche avec cache
+  const fetchSuggestionsInternal = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
       setDynamicPlaceholder(null);
@@ -483,84 +486,101 @@ const ResultatBesoinScreen: React.FC = () => {
     const words = query.split(' ').filter(w => w.trim());
     setFilters(words);
 
-    if (query.length >= 2) {
-      setLoadingSuggestions(true);
-      setShowSuggestions(true);
+    setLoadingSuggestions(true);
+    setShowSuggestions(true);
 
-      try {
-        // ✅ CORRECTION : Utiliser autocomplete_characteristics (VRAIS produits clients)
-        // PAS autocomplete_combinations (qui est pour prestataires)
-        const payload: any = {
-          query: query,
-          limit: 10,
-        };
+    try {
+      // ✅ OPTIMISATION: Vérifier le cache
+      const cacheKey = createCacheKey('autocomplete', query.toLowerCase().trim());
+      const cached = await CacheManager.get<any[]>(cacheKey, 10 * 60 * 1000); // 10 minutes
+      if (cached) {
+        logger.log('[ResultatBesoinScreen] ✅ Suggestions chargées depuis le cache');
+        setSuggestions(cached);
+        if (cached.length > 0) {
+          const example = buildSuggestionExample(cached[0]);
+          setDynamicPlaceholder(example ? `ex: ${example}` : null);
+        }
+        setLoadingSuggestions(false);
+        return;
+      }
 
-        // ✅ NOUVEAU 2025-11-06: Ajouter coordonnées GPS si disponibles pour tri par proximité
-        if (location?.coords?.latitude && location?.coords?.longitude) {
-          payload.user_lat = location.coords.latitude;
-          payload.user_lng = location.coords.longitude;
-          console.log('[ResultatBesoinScreen] 📍 GPS inclus dans suggestions:', {
-            lat: payload.user_lat,
-            lng: payload.user_lng
+      // ✅ CORRECTION : Utiliser autocomplete_characteristics (VRAIS produits clients)
+      // PAS autocomplete_combinations (qui est pour prestataires)
+      const payload: any = {
+        query: query,
+        limit: 10,
+      };
+
+      // ✅ NOUVEAU 2025-11-06: Ajouter coordonnées GPS si disponibles pour tri par proximité
+      if (location?.coords?.latitude && location?.coords?.longitude) {
+        payload.user_lat = location.coords.latitude;
+        payload.user_lng = location.coords.longitude;
+        logger.log('[ResultatBesoinScreen] 📍 GPS inclus dans suggestions:', {
+          lat: payload.user_lat,
+          lng: payload.user_lng
+        });
+      }
+
+      const response = await apiPost('/api/autocomplete/search-products', payload);
+
+      if (response.success) {
+        const normalized = normalizeAutocompleteResponse(response);
+        const queryText = normalizeText(query.trim());
+
+        let filtered = normalized;
+        if (queryText.length > 0) {
+          filtered = normalized.filter((item) => {
+            const vectorText = normalizeText(getSuggestionVector(item).join(' '));
+            const labelsText = normalizeText(
+              Array.isArray((item as any)?.product_labels)
+                ? (item as any).product_labels.join(' ')
+                : ((item as any)?.product_labels as string)
+            );
+            const titleText = normalizeText(((item as any)?.title || (item as any)?.nom || (item as any)?.name) as string);
+            const aliasText = normalizeText(((item as any)?.combinaison_brute || (item as any)?.full_text) as string);
+
+            return (
+              vectorText.includes(queryText) ||
+              labelsText.includes(queryText) ||
+              titleText.includes(queryText) ||
+              aliasText.includes(queryText)
+            );
           });
+
+          if (filtered.length === 0) {
+            filtered = normalized;
+          }
         }
 
-        const response = await apiPost('/api/autocomplete/search-products', payload);
+        // ✅ OPTIMISATION: Sauvegarder dans le cache
+        await CacheManager.set(cacheKey, filtered);
 
-        if (response.success) {
-          const normalized = normalizeAutocompleteResponse(response);
-          const queryText = normalizeText(query.trim());
+        setSuggestions(filtered);
 
-          let filtered = normalized;
-          if (queryText.length > 0) {
-            filtered = normalized.filter((item) => {
-              const vectorText = normalizeText(getSuggestionVector(item).join(' '));
-              const labelsText = normalizeText(
-                Array.isArray((item as any)?.product_labels)
-                  ? (item as any).product_labels.join(' ')
-                  : ((item as any)?.product_labels as string)
-              );
-              const titleText = normalizeText(((item as any)?.title || (item as any)?.nom || (item as any)?.name) as string);
-              const aliasText = normalizeText(((item as any)?.combinaison_brute || (item as any)?.full_text) as string);
-
-              return (
-                vectorText.includes(queryText) ||
-                labelsText.includes(queryText) ||
-                titleText.includes(queryText) ||
-                aliasText.includes(queryText)
-              );
-            });
-
-            if (filtered.length === 0) {
-              filtered = normalized;
-            }
-          }
-
-          setSuggestions(filtered);
-
-          if (filtered.length > 0) {
-            const example = buildSuggestionExample(filtered[0]);
-            setDynamicPlaceholder(example ? `ex: ${example}` : null);
-          } else {
-            setDynamicPlaceholder(null);
-          }
+        if (filtered.length > 0) {
+          const example = buildSuggestionExample(filtered[0]);
+          setDynamicPlaceholder(example ? `ex: ${example}` : null);
         } else {
-          setSuggestions([]);
           setDynamicPlaceholder(null);
         }
-      } catch (error) {
-        console.error('[ResultatBesoinScreen] Erreur suggestions:', error);
+      } else {
         setSuggestions([]);
         setDynamicPlaceholder(null);
-      } finally {
-        setLoadingSuggestions(false);
       }
-    } else {
+    } catch (error) {
+      logger.error('[ResultatBesoinScreen] Erreur suggestions:', error);
       setSuggestions([]);
-      setShowSuggestions(false);
       setDynamicPlaceholder(null);
+    } finally {
+      setLoadingSuggestions(false);
     }
-  }, [location]); // ✅ CORRECTION: Ajouter location aux dependencies
+  }, [location]);
+
+  // ✅ OPTIMISATION: Debounce de 300ms pour limiter les appels API
+  const fetchSuggestions = useMemo(
+    () => debounce(fetchSuggestionsInternal, 300),
+    [fetchSuggestionsInternal]
+  );
 
   // ✅ Tracking métriques : Vue de l'écran
   useEffect(() => {
@@ -575,7 +595,7 @@ const ResultatBesoinScreen: React.FC = () => {
         return;
       }
 
-      console.log('[ResultatBesoinScreen] 📥 Paramètres de route reçus:', {
+      logger.log('[ResultatBesoinScreen] 📥 Paramètres de route reçus:', {
         hasResults: !!params.results,
         resultsCount: Array.isArray(params.results) ? params.results.length : 0,
         hasSearchQuery: !!params.searchQuery,
@@ -590,18 +610,18 @@ const ResultatBesoinScreen: React.FC = () => {
         // Si c'est déjà un tableau, l'utiliser directement
         if (Array.isArray(params.results)) {
           extractedResults = params.results as Product[];
-          console.log('[ResultatBesoinScreen] ✅ Résultats déjà en tableau:', extractedResults.length);
+          logger.log('[ResultatBesoinScreen] ✅ Résultats déjà en tableau:', extractedResults.length);
         } else {
           // Sinon, utiliser extractSearchResults pour parser la structure
           extractedResults = extractSearchResults(params.results);
-          console.log('[ResultatBesoinScreen] ✅ Résultats extraits depuis structure:', extractedResults.length);
+          logger.log('[ResultatBesoinScreen] ✅ Résultats extraits depuis structure:', extractedResults.length);
         }
 
         if (extractedResults.length > 0) {
           setResults(extractedResults);
-          console.log('[ResultatBesoinScreen] ✅ Résultats initialisés:', extractedResults.length);
+          logger.log('[ResultatBesoinScreen] ✅ Résultats initialisés:', extractedResults.length);
         } else {
-          console.warn('[ResultatBesoinScreen] ⚠️ Aucun résultat valide trouvé dans route.params');
+          logger.warn('[ResultatBesoinScreen] ⚠️ Aucun résultat valide trouvé dans route.params');
         }
 
         // Initialiser les filtres depuis la requête de recherche
@@ -615,33 +635,43 @@ const ResultatBesoinScreen: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('[ResultatBesoinScreen] ❌ Erreur initialisation depuis route.params:', error);
+      logger.error('[ResultatBesoinScreen] ❌ Erreur initialisation depuis route.params:', error);
     }
   }, [route.params]); // ✅ Exécuter une seule fois au montage ou quand les params changent
 
-  // ✅ CORRECTION 2025-11-04 : Suggestions depuis autocomplete_characteristics (VRAIS produits)
+  // ✅ OPTIMISATION: Suggestions avec debounce intégré
   useEffect(() => {
     try {
       // ✅ PROTECTION: Vérifier que fetchSuggestions existe
       if (typeof fetchSuggestions !== 'function') {
-        console.error('[ResultatBesoinScreen] ❌ fetchSuggestions n\'est pas une fonction');
+        logger.error('[ResultatBesoinScreen] ❌ fetchSuggestions n\'est pas une fonction');
         return;
       }
 
       // Ne pas chercher des suggestions si on a déjà des résultats depuis route.params
       const params = route.params as any;
       if (params?.results && Array.isArray(params.results) && params.results.length > 0) {
-        console.log('[ResultatBesoinScreen] ⏭️ Ignorer suggestions car résultats déjà fournis');
+        logger.log('[ResultatBesoinScreen] ⏭️ Ignorer suggestions car résultats déjà fournis');
         return;
       }
 
-      const debounce = setTimeout(() => {
+      // ✅ OPTIMISATION: fetchSuggestions est déjà debounced, appeler directement
+      if (searchQuery.trim().length >= 2) {
         fetchSuggestions(searchQuery);
-      }, 300);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setDynamicPlaceholder(null);
+      }
 
-      return () => clearTimeout(debounce);
+      return () => {
+        // Annuler le debounce si le composant se démonte
+        if (typeof fetchSuggestions === 'function' && 'cancel' in fetchSuggestions) {
+          (fetchSuggestions as any).cancel();
+        }
+      };
     } catch (error) {
-      console.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect fetchSuggestions:', error);
+      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect fetchSuggestions:', error);
     }
   }, [searchQuery, fetchSuggestions, route.params]); // ✅ Ajouter route.params aux dependencies
 
@@ -665,7 +695,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
         // ✅ PROTECTION: Vérifier que labels est un array avec forEach
         if (!Array.isArray(labels)) {
-          console.warn('[ResultatBesoinScreen] ⚠️ product_labels n\'est pas un array:', product);
+          logger.warn('[ResultatBesoinScreen] ⚠️ product_labels n\'est pas un array:', product);
           return;
         }
 
@@ -688,9 +718,9 @@ const ResultatBesoinScreen: React.FC = () => {
       });
 
       setDynamicFilters(meaningfulFilters);
-      console.log('[ResultatBesoinScreen] Filtres dynamiques générés:', Object.keys(meaningfulFilters));
+      logger.log('[ResultatBesoinScreen] Filtres dynamiques générés:', Object.keys(meaningfulFilters));
     } catch (error) {
-      console.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect dynamicFilters:', error);
+      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect dynamicFilters:', error);
       setDynamicFilters({});
     }
   }, [results]);
@@ -700,7 +730,7 @@ const ResultatBesoinScreen: React.FC = () => {
     try {
       // ✅ PROTECTION: Vérifier que results est un array valide
       if (!Array.isArray(results)) {
-        console.error('[ResultatBesoinScreen] ❌ results n\'est pas un array');
+        logger.error('[ResultatBesoinScreen] ❌ results n\'est pas un array');
         setFilteredResults([]);
         return;
       }
@@ -785,7 +815,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
       setFilteredResults(filtered);
     } catch (error) {
-      console.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect filtrage/tri:', error);
+      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect filtrage/tri:', error);
       setFilteredResults(results || []); // Fallback aux résultats bruts
     }
   }, [results, sortBy, filterCategory, selectedFilters, priceFilter]); // ✅ Ajout priceFilter
@@ -799,7 +829,7 @@ const ResultatBesoinScreen: React.FC = () => {
       try {
         return Math.min(...product.variants.map(v => v?.prix || 0));
       } catch (error) {
-        console.warn('[ResultatBesoinScreen] ⚠️ Erreur getPrixMin variants:', error);
+        logger.warn('[ResultatBesoinScreen] ⚠️ Erreur getPrixMin variants:', error);
         return product.prix || 0;
       }
     }
@@ -812,10 +842,10 @@ const ResultatBesoinScreen: React.FC = () => {
       ? input.filter((token) => typeof token === 'string').map((token) => token.trim()).filter(Boolean)
       : input.trim().split(/\s+/).filter(Boolean);
 
-    console.log('[ResultatBesoinScreen] 🔍 searchFinal appelé avec:', finalFilters);
+    logger.log('[ResultatBesoinScreen] 🔍 searchFinal appelé avec:', finalFilters);
 
     if (!finalFilters || finalFilters.length === 0) {
-      console.warn('[ResultatBesoinScreen] ⚠️ Filtres vides ou invalides, abandon de la recherche');
+      logger.warn('[ResultatBesoinScreen] ⚠️ Filtres vides ou invalides, abandon de la recherche');
       return;
     }
 
@@ -825,7 +855,7 @@ const ResultatBesoinScreen: React.FC = () => {
     try {
       // Construire le texte de recherche depuis le vecteur
       const searchText = finalFilters.join(' ');
-      console.log('[ResultatBesoinScreen] 🔍 Recherche avec texte:', searchText);
+      logger.log('[ResultatBesoinScreen] 🔍 Recherche avec texte:', searchText);
 
       const payload: any = {
         texte: searchText,  // "Nike Air Max 42 Douala"
@@ -834,9 +864,9 @@ const ResultatBesoinScreen: React.FC = () => {
       // Ajouter localisation utilisateur si disponible
       if (location?.coords?.latitude && location?.coords?.longitude) {
         payload.gps_mobile = `${location.coords.latitude},${location.coords.longitude}`;
-        console.log('[ResultatBesoinScreen] 📍 Position ajoutée:', payload.gps_mobile);
+        logger.log('[ResultatBesoinScreen] 📍 Position ajoutée:', payload.gps_mobile);
       } else {
-        console.warn('[ResultatBesoinScreen] ⚠️ GPS non disponible:', {
+        logger.warn('[ResultatBesoinScreen] ⚠️ GPS non disponible:', {
           hasLocation: !!location,
           hasCoords: !!location?.coords,
           latitude: location?.coords?.latitude,
@@ -870,23 +900,42 @@ const ResultatBesoinScreen: React.FC = () => {
         }
       }
 
-      console.log('[ResultatBesoinScreen] 📤 Envoi requête API:', payload);
+      logger.log('[ResultatBesoinScreen] 📤 Envoi requête API:', payload);
+
+      // ✅ OPTIMISATION: Vérifier le cache des résultats de recherche
+      const searchCacheKey = createCacheKey('search_results', filters.join('_'), searchGPSString || 'no_gps');
+      const cachedResults = await CacheManager.get<Product[]>(searchCacheKey, 10 * 60 * 1000); // 10 minutes
+      if (cachedResults) {
+        logger.log('[ResultatBesoinScreen] ✅ Résultats chargés depuis le cache');
+        setResults(cachedResults);
+        trackNavigation('search', {
+          queryType: searchGPSString ? 'location' : 'keyword',
+          resultsCount: cachedResults.length,
+          hasResults: cachedResults.length > 0,
+        });
+        setLoadingResults(false);
+        return;
+      }
 
       // ✅ Utiliser la recherche globale (même que HomeScreen)
       const apiResponse = await apiPost('/api/search/direct', payload);
 
-      console.log('[ResultatBesoinScreen] 📥 Réponse API reçue:', apiResponse);
+      logger.log('[ResultatBesoinScreen] 📥 Réponse API reçue');
 
       if (apiResponse?.success === false) {
-        console.warn('[ResultatBesoinScreen] ⚠️ Recherche échouée:', apiResponse?.error);
+        logger.warn('[ResultatBesoinScreen] ⚠️ Recherche échouée:', apiResponse?.error);
         setResults([]);
+        setLoadingResults(false);
         return;
       }
 
       const extractedResults = extractSearchResults(apiResponse);
 
+      // ✅ OPTIMISATION: Sauvegarder dans le cache
+      await CacheManager.set(searchCacheKey, extractedResults);
+
       if (extractedResults.length > 0) {
-        console.log('[ResultatBesoinScreen] ✅ Résultats trouvés:', extractedResults.length);
+        logger.log('[ResultatBesoinScreen] ✅ Résultats trouvés:', extractedResults.length);
         setResults(extractedResults);
         // ✅ Tracking métriques : Recherche avec résultats
         trackNavigation('search', {
@@ -895,7 +944,7 @@ const ResultatBesoinScreen: React.FC = () => {
           hasResults: true,
         });
       } else {
-        console.log('[ResultatBesoinScreen] ⚠️ Aucun résultat trouvé');
+        logger.log('[ResultatBesoinScreen] ⚠️ Aucun résultat trouvé');
         setResults([]);
         // ✅ Tracking métriques : Recherche sans résultats
         trackNavigation('search', {
@@ -904,22 +953,22 @@ const ResultatBesoinScreen: React.FC = () => {
         });
       }
     } catch (error: any) {
-      console.error('[ResultatBesoinScreen] ❌ Erreur recherche:', error);
-      console.error('[ResultatBesoinScreen] ❌ Stack trace:', error?.stack);
+      logger.error('[ResultatBesoinScreen] ❌ Erreur recherche:', error);
+      logger.error('[ResultatBesoinScreen] ❌ Stack trace:', error?.stack);
       setResults([]);
     } finally {
       setLoadingResults(false);
     }
-  }, [location, searchDocuments, searchGPSString, searchImages]);
+  }, [location, searchDocuments, searchGPSString, searchImages, filters]);
 
   // Sélectionner suggestion
   const selectSuggestion = useCallback(async (suggestion: CombinationSuggestion) => {
     try {
-      console.log('[ResultatBesoinScreen] 🎯 Suggestion sélectionnée:', suggestion);
+      logger.log('[ResultatBesoinScreen] 🎯 Suggestion sélectionnée:', suggestion);
 
       const vector = getSuggestionVector(suggestion);
       if (!vector || vector.length === 0) {
-        console.error('[ResultatBesoinScreen] ❌ Suggestion invalide ou vecteur manquant');
+        logger.error('[ResultatBesoinScreen] ❌ Suggestion invalide ou vecteur manquant');
         return;
       }
 
@@ -929,7 +978,7 @@ const ResultatBesoinScreen: React.FC = () => {
       setShowSuggestions(false);
       await searchFinal(vector);
     } catch (error) {
-      console.error('[ResultatBesoinScreen] ❌ Crash selectSuggestion:', error);
+      logger.error('[ResultatBesoinScreen] ❌ Crash selectSuggestion:', error);
     }
   }, [searchFinal]);
 
@@ -940,13 +989,24 @@ const ResultatBesoinScreen: React.FC = () => {
     // Le useEffect se chargera de lancer la recherche
   };
 
-  // ✅ NOUVEAU : Pull-to-Refresh - Recharger les résultats
+  // ✅ OPTIMISATION : Pull-to-Refresh avec cache
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       // Recharger les résultats actuels
       if (filters.length > 0) {
         const searchText = filters.join(' ');
+        const refreshCacheKey = createCacheKey('search_results', searchText, 'refresh');
+
+        // ✅ OPTIMISATION: Vérifier le cache même pour le refresh (mais TTL plus court)
+        const cachedRefresh = await CacheManager.get<Product[]>(refreshCacheKey, 2 * 60 * 1000); // 2 minutes pour refresh
+        if (cachedRefresh) {
+          logger.log('[ResultatBesoinScreen] ✅ Résultats refresh depuis le cache');
+          setResults(cachedRefresh);
+          setRefreshing(false);
+          return;
+        }
+
         const payload: any = { texte: searchText };
 
         if (location?.coords?.latitude && location?.coords?.longitude) {
@@ -956,15 +1016,19 @@ const ResultatBesoinScreen: React.FC = () => {
         const apiResponse = await apiPost('/api/search/direct', payload);
 
         if (apiResponse?.success === false) {
-          console.warn('[ResultatBesoinScreen] ⚠️ Refresh recherche échoué:', apiResponse?.error);
+          logger.warn('[ResultatBesoinScreen] ⚠️ Refresh recherche échoué:', apiResponse?.error);
           setResults([]);
         } else {
           const refreshedResults = extractSearchResults(apiResponse);
+
+          // ✅ OPTIMISATION: Sauvegarder dans le cache
+          await CacheManager.set(refreshCacheKey, refreshedResults);
+
           setResults(refreshedResults);
         }
       }
     } catch (error) {
-      console.error('[ResultatBesoinScreen] Erreur refresh:', error);
+      logger.error('[ResultatBesoinScreen] Erreur refresh:', error);
     } finally {
       setRefreshing(false);
     }
@@ -991,7 +1055,7 @@ const ResultatBesoinScreen: React.FC = () => {
                   setShowSuggestions(false);
                   searchFinal(searchQuery || filters);
                 } catch (error) {
-                  console.error('[ResultatBesoinScreen] ❌ Crash recherche manuelle:', error);
+                  logger.error('[ResultatBesoinScreen] ❌ Crash recherche manuelle:', error);
                 }
               }}
             >
@@ -1082,7 +1146,7 @@ const ResultatBesoinScreen: React.FC = () => {
               setShowSuggestions(false);
               searchFinal(searchQuery || filters);
             } catch (error) {
-              console.error('[ResultatBesoinScreen] ❌ Crash recherche quand même:', error);
+              logger.error('[ResultatBesoinScreen] ❌ Crash recherche quand même:', error);
             }
           }}
         >

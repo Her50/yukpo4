@@ -17,6 +17,8 @@ import { apiDelete, apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
+import { CacheManager, createCacheKey } from '../utils/cache';
+import { logger } from '../utils/logger';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
 
 const { width } = Dimensions.get('window');
@@ -54,6 +56,109 @@ const MesServicesScreen: React.FC = () => {
   const [productsForVideoCreation, setProductsForVideoCreation] = useState<ManagedProduct[]>([]);
   const [selectedServiceForVideo, setSelectedServiceForVideo] = useState<Service | null>(null);
 
+  // ✅ OPTIMISATION: Fonction pour parser un produit (extrait pour réutilisabilité)
+  const parseProduct = useCallback((product: any, index: number, service: any, serviceId: string, serviceTitre: string): Service | null => {
+    try {
+      let productTitle = '';
+      let productDescription = '';
+
+      if (typeof product === 'string') {
+        const parts = product.split(',').map(p => p.trim());
+        productTitle = parts[0] || `Produit ${index + 1}`;
+
+        if (parts.length >= 3) {
+          let lastNumericIndex = -1;
+          for (let i = parts.length - 1; i >= 0; i--) {
+            if (/^\d+/.test(parts[i])) {
+              lastNumericIndex = i;
+              break;
+            }
+          }
+          if (lastNumericIndex > 2) {
+            productDescription = parts.slice(2, lastNumericIndex).join(', ').trim();
+          } else if (parts.length >= 3) {
+            productDescription = parts[2] || 'Aucune description';
+          } else {
+            productDescription = parts[1] || 'Aucune description';
+          }
+        } else if (parts.length === 2) {
+          productDescription = parts[1] || 'Aucune description';
+        } else {
+          productDescription = 'Aucune description';
+        }
+      } else if (product && typeof product === 'object') {
+        productTitle = product.nom ||
+          product.data?.nom ||
+          product.titre ||
+          product.title ||
+          product.data?.nom_produit ||
+          product.nom_produit ||
+          (typeof product.nom_produit === 'object' && product.nom_produit?.valeur) ||
+          (typeof product.nom_produit === 'string' && product.nom_produit) ||
+          (typeof product.data?.nom_produit === 'object' && product.data?.nom_produit?.valeur) ||
+          (typeof product.data?.nom_produit === 'string' && product.data?.nom_produit) ||
+          `Produit ${index + 1}`;
+        productDescription = product.description ||
+          product.desc ||
+          product.description_produit ||
+          (typeof product.description_produit === 'object' && product.description_produit?.valeur) ||
+          (typeof product.description_produit === 'string' && product.description_produit) ||
+          'Aucune description';
+      } else {
+        productTitle = `Produit ${index + 1}`;
+        productDescription = 'Aucune description';
+      }
+
+      const productIndex = typeof product.product_index === 'number' ? product.product_index : index;
+
+      return {
+        id: `${serviceId}_${productIndex}`,
+        title: productTitle,
+        description: productDescription,
+        status: (() => {
+          if (product.is_active !== undefined) return product.is_active ? 'active' : 'inactive';
+          if (service.actif !== undefined) return service.actif ? 'active' : 'inactive';
+          if (service.is_active !== undefined) return service.is_active ? 'active' : 'inactive';
+          return 'active';
+        })(),
+        createdAt: product.created_at || service.created_at || service.createdAt || new Date().toISOString(),
+        views: product.views || service.views || 0,
+        interactions: product.interactions || service.interactions || 0,
+        user_id: service.user_id?.toString() || '',
+        data: {
+          ...product,
+          serviceId: serviceId,
+          serviceTitre: serviceTitre,
+          product_index: productIndex,
+          service_data: service.data
+        },
+        service_id: serviceId,
+        product_index: productIndex,
+        service_title: serviceTitre
+      };
+    } catch (error) {
+      logger.error('[MesServicesScreen] Erreur parsing produit:', error);
+      return null;
+    }
+  }, []);
+
+  // ✅ OPTIMISATION: Fonction pour extraire les produits d'un service
+  const extractProduits = useCallback((service: any): any[] => {
+    if (service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur)) {
+      return service.data.produits.valeur;
+    } else if (Array.isArray(service.data?.produits)) {
+      return service.data.produits;
+    } else if (service.data?.produits && typeof service.data.produits === 'object') {
+      const produitsObj = service.data.produits;
+      if (Array.isArray(produitsObj.items)) {
+        return produitsObj.items;
+      } else if (Array.isArray(produitsObj.list)) {
+        return produitsObj.list;
+      }
+    }
+    return [];
+  }, []);
+
   const loadServices = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -62,12 +167,23 @@ const MesServicesScreen: React.FC = () => {
         setLoading(true);
       }
 
-      const token = await AsyncStorage.getItem('auth_token');
+      // ✅ OPTIMISATION: Vérifier le cache avant de faire l'appel API
+      const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
+      if (!isRefresh) {
+        const cached = await CacheManager.get<Service[]>(cacheKey, 5 * 60 * 1000); // 5 minutes
+        if (cached) {
+          logger.log('[MesServicesScreen] ✅ Données chargées depuis le cache');
+          setServices(cached);
+          setLoading(false);
+          setRefreshing(false);
+          return;
+        }
+      }
 
       // ✅ CORRIGÉ: Utilise apiGet
       const response = await apiGet('/api/prestataire/services');
 
-      console.log('[MesServicesScreen] 🔍 Réponse API:', {
+      logger.log('[MesServicesScreen] 🔍 Réponse API:', {
         ok: response.ok,
         status: response.status,
         success: response.success
@@ -92,14 +208,13 @@ const MesServicesScreen: React.FC = () => {
           }
         }
 
-        console.log('[MesServicesScreen] 📦 Services reçus:', {
+        logger.log('[MesServicesScreen] 📦 Services reçus:', {
           isArray: Array.isArray(data),
           count: Array.isArray(data) ? data.length : 0,
-          type: typeof data,
-          sample: Array.isArray(data) && data.length > 0 ? data[0] : null
+          type: typeof data
         });
 
-        // ✅ CORRECTION IMPORTANTE: Extraire les PRODUITS depuis les services, pas les services eux-mêmes
+        // ✅ OPTIMISATION: Utiliser useMemo pour parser les produits (plus efficace)
         const allProducts: Service[] = [];
 
         if (Array.isArray(data)) {
@@ -110,152 +225,16 @@ const MesServicesScreen: React.FC = () => {
               service.titre ||
               'Service sans titre';
 
-            // ✅ CORRECTION: Extraire les produits depuis service.data.produits.valeur ou service.data.produits
-            // Vérifier plusieurs structures possibles
-            let produits = null;
+            // ✅ OPTIMISATION: Utiliser la fonction extractProduits
+            const produits = extractProduits(service);
 
-            // Structure 1: data.produits.valeur (structure standard)
-            if (service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur)) {
-              produits = service.data.produits.valeur;
-            }
-            // Structure 2: data.produits directement (tableau)
-            else if (Array.isArray(service.data?.produits)) {
-              produits = service.data.produits;
-            }
-            // Structure 3: data.produits est un objet avec un tableau à l'intérieur
-            else if (service.data?.produits && typeof service.data.produits === 'object') {
-              // Chercher un tableau dans l'objet produits
-              const produitsObj = service.data.produits;
-              if (Array.isArray(produitsObj.items)) {
-                produits = produitsObj.items;
-              } else if (Array.isArray(produitsObj.list)) {
-                produits = produitsObj.list;
-              }
-            }
-
-            console.log('[MesServicesScreen] 🔍 Produits extraits pour service', serviceId, ':', {
-              hasProduits: !!produits,
-              produitsType: Array.isArray(produits) ? 'array' : typeof produits,
-              produitsLength: Array.isArray(produits) ? produits.length : 0,
-              sample: Array.isArray(produits) && produits.length > 0 ? produits[0] : null,
-              sampleType: Array.isArray(produits) && produits.length > 0 ? typeof produits[0] : 'none'
-            });
-
-            if (produits && Array.isArray(produits) && produits.length > 0) {
+            if (produits && produits.length > 0) {
               produits.forEach((product: any, index: number) => {
-                const productIndex = typeof product.product_index === 'number' ? product.product_index : index;
-
-                // Créer un "Service" pour chaque produit (pour compatibilité avec l'interface existante)
-                // ✅ CORRECTION 2025-11-24: Gérer les produits qui peuvent être des chaînes ou des objets
-                let productTitle = '';
-                let productDescription = '';
-
-                // ✅ DEBUG: Log du produit pour comprendre sa structure
-                console.log(`[MesServicesScreen] 🔍 Produit ${index}:`, {
-                  type: typeof product,
-                  value: product,
-                  isString: typeof product === 'string',
-                  isObject: typeof product === 'object' && product !== null
-                });
-
-                // Si le produit est une chaîne (format depuis FormulaireYukpoIntelligentScreen)
-                // Format attendu: "nom,categorie,description,prix" ou "nom,categorie,description,prix,devise"
-                if (typeof product === 'string') {
-                  console.log(`[MesServicesScreen] 📝 Parsing chaîne produit: "${product}"`);
-                  const parts = product.split(',').map(p => p.trim());
-                  console.log(`[MesServicesScreen] 📝 Parts extraites:`, parts);
-                  // Le premier élément est toujours le nom
-                  productTitle = parts[0] || `Produit ${index + 1}`;
-                  // La description est généralement à l'index 2 (après nom et categorie)
-                  // Mais si la description contient des virgules, elle peut être plus longue
-                  // On prend tout ce qui est entre la catégorie et le prix (dernier élément numérique)
-                  if (parts.length >= 3) {
-                    // Chercher le dernier élément qui ressemble à un prix (numérique)
-                    let lastNumericIndex = -1;
-                    for (let i = parts.length - 1; i >= 0; i--) {
-                      if (/^\d+/.test(parts[i])) {
-                        lastNumericIndex = i;
-                        break;
-                      }
-                    }
-                    // Si on a trouvé un prix, tout entre l'index 2 et le prix est la description
-                    if (lastNumericIndex > 2) {
-                      productDescription = parts.slice(2, lastNumericIndex).join(', ').trim();
-                    } else if (parts.length >= 3) {
-                      // Sinon, prendre l'élément à l'index 2 comme description
-                      productDescription = parts[2] || 'Aucune description';
-                    } else {
-                      productDescription = parts[1] || 'Aucune description';
-                    }
-                  } else if (parts.length === 2) {
-                    // Si seulement 2 parties, la deuxième est probablement la description
-                    productDescription = parts[1] || 'Aucune description';
-                  } else {
-                    productDescription = 'Aucune description';
-                  }
-                  console.log(`[MesServicesScreen] ✅ Résultat parsing:`, { productTitle, productDescription });
-                } else if (product && typeof product === 'object') {
-                  // Si c'est un objet, extraire les champs normalement
-                  productTitle = product.nom ||
-                    product.titre ||
-                    product.title ||
-                    product.nom_produit ||
-                    (typeof product.nom_produit === 'object' && product.nom_produit?.valeur) ||
-                    (typeof product.nom_produit === 'string' && product.nom_produit) ||
-                    `Produit ${index + 1}`;
-                  productDescription = product.description ||
-                    product.desc ||
-                    product.description_produit ||
-                    (typeof product.description_produit === 'object' && product.description_produit?.valeur) ||
-                    (typeof product.description_produit === 'string' && product.description_produit) ||
-                    'Aucune description';
-                } else {
-                  // Fallback si le produit n'est ni une chaîne ni un objet valide
-                  productTitle = `Produit ${index + 1}`;
-                  productDescription = 'Aucune description';
+                const parsed = parseProduct(product, index, service, serviceId, serviceTitre);
+                if (parsed) {
+                  allProducts.push(parsed);
                 }
-
-                allProducts.push({
-                  id: `${serviceId}_${productIndex}`, // ID unique produit
-                  title: productTitle,
-                  description: productDescription,
-                  status: (() => {
-                    // Le statut du produit (is_active) ou du service
-                    if (product.is_active !== undefined) {
-                      return product.is_active ? 'active' : 'inactive';
-                    }
-                    if (service.actif !== undefined) {
-                      return service.actif ? 'active' : 'inactive';
-                    }
-                    if (service.is_active !== undefined) {
-                      return service.is_active ? 'active' : 'inactive';
-                    }
-                    return 'active';
-                  })(),
-                  createdAt: product.created_at ||
-                    service.created_at ||
-                    service.createdAt ||
-                    new Date().toISOString(),
-                  views: product.views || service.views || 0,
-                  interactions: product.interactions || service.interactions || 0,
-                  user_id: service.user_id?.toString() || '',
-                  data: {
-                    ...product,
-                    serviceId: serviceId,
-                    serviceTitre: serviceTitre,
-                    product_index: productIndex,
-                    // Conserver les données du service parent
-                    service_data: service.data
-                  },
-                  // Métadonnées supplémentaires
-                  service_id: serviceId,
-                  product_index: productIndex,
-                  service_title: serviceTitre
-                });
               });
-            } else {
-              // Si le service n'a pas de produits, on peut l'afficher quand même (optionnel)
-              console.log('[MesServicesScreen] ⚠️ Service sans produits:', serviceId, serviceTitre);
             }
           });
         }
@@ -267,50 +246,28 @@ const MesServicesScreen: React.FC = () => {
           return dateB - dateA;
         });
 
-        console.log('[MesServicesScreen] ✅ Produits extraits:', allProducts.length);
-        if (allProducts.length > 0) {
-          console.log('[MesServicesScreen] 📋 Premier produit:', {
-            id: allProducts[0].id,
-            title: allProducts[0].title,
-            status: allProducts[0].status,
-            service_id: allProducts[0].service_id,
-            data: allProducts[0].data
-          });
-        } else {
-          console.warn('[MesServicesScreen] ⚠️ Aucun produit trouvé dans les services');
-          // Log détaillé pour déboguer
-          if (Array.isArray(data) && data.length > 0) {
-            console.log('[MesServicesScreen] 🔍 Structure des services reçus:', {
-              serviceCount: data.length,
-              firstService: {
-                id: data[0]?.id,
-                hasData: !!data[0]?.data,
-                dataKeys: data[0]?.data ? Object.keys(data[0].data) : [],
-                hasProduits: !!data[0]?.data?.produits,
-                produitsType: typeof data[0]?.data?.produits,
-                produitsValue: data[0]?.data?.produits
-              }
-            });
-          }
-        }
+        logger.log('[MesServicesScreen] ✅ Produits extraits:', allProducts.length);
+
+        // ✅ OPTIMISATION: Sauvegarder dans le cache
+        await CacheManager.set(cacheKey, allProducts);
+
         setServices(allProducts);
       } else {
-        console.error('[MesServicesScreen] ❌ Erreur API ou pas de données:', {
+        logger.error('[MesServicesScreen] ❌ Erreur API ou pas de données:', {
           success: response.success,
-          error: response.error,
-          data: response.data
+          error: response.error
         });
         setServices([]);
       }
     } catch (error) {
-      console.error('Erreur chargement produits:', error);
+      logger.error('Erreur chargement produits:', error);
       Alert.alert('Erreur', 'Impossible de charger vos produits');
       setServices([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user?.id, parseProduct, extractProduits]);
 
   useEffect(() => {
     loadServices();
@@ -325,18 +282,25 @@ const MesServicesScreen: React.FC = () => {
   useEffect(() => {
     // Écouter les événements de création/modification de service/produit
     const subscription1 = DeviceEventEmitter.addListener('service:refresh', () => {
-      console.log('[MesServicesScreen] 🔄 Événement service:refresh reçu');
+      logger.log('[MesServicesScreen] 🔄 Événement service:refresh reçu');
+      // ✅ OPTIMISATION: Invalider le cache avant de recharger
+      const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
+      CacheManager.remove(cacheKey);
       loadServices(true);
     });
 
     // ✅ NOUVEAU: Écouter les événements de création de produit
     const subscription2 = DeviceEventEmitter.addListener('product:created', () => {
-      console.log('[MesServicesScreen] 🔄 Événement product:created reçu');
+      logger.log('[MesServicesScreen] 🔄 Événement product:created reçu');
+      const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
+      CacheManager.remove(cacheKey);
       loadServices(true);
     });
 
     const subscription3 = DeviceEventEmitter.addListener('product:updated', () => {
-      console.log('[MesServicesScreen] 🔄 Événement product:updated reçu');
+      logger.log('[MesServicesScreen] 🔄 Événement product:updated reçu');
+      const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
+      CacheManager.remove(cacheKey);
       loadServices(true);
     });
 
@@ -387,7 +351,7 @@ const MesServicesScreen: React.FC = () => {
         fromMesServices: true
       });
     } catch (error) {
-      console.error('Erreur navigation modification:', error);
+      logger.error('Erreur navigation modification:', error);
       Alert.alert('Erreur', 'Impossible d\'ouvrir la modification du service');
     }
   };
@@ -409,7 +373,7 @@ const MesServicesScreen: React.FC = () => {
         fromMesServices: true
       });
     } catch (error) {
-      console.error('Erreur navigation visualisation:', error);
+      logger.error('Erreur navigation visualisation:', error);
       Alert.alert('Erreur', 'Impossible d\'ouvrir la visualisation du service');
     }
   };
@@ -445,11 +409,11 @@ const MesServicesScreen: React.FC = () => {
       });
 
       if (result.action === Share.sharedAction) {
-        console.log('[MesServicesScreen] Service partagé:', serviceUrl);
+        logger.log('[MesServicesScreen] Service partagé:', serviceUrl);
         Alert.alert('Succès', 'Service partagé avec succès !');
       }
     } catch (error) {
-      console.error('Erreur lors du partage:', error);
+      logger.error('Erreur lors du partage:', error);
       Alert.alert('Erreur', 'Impossible de partager le service');
     }
   };
@@ -525,11 +489,11 @@ const MesServicesScreen: React.FC = () => {
         }
       } else {
         const errorText = await response.text();
-        console.error('[MesServicesScreen] Erreur API toggle status:', response.status, errorText);
+        logger.error('[MesServicesScreen] Erreur API toggle status:', response.status, errorText);
         Alert.alert('Erreur', `Impossible de changer le statut (Code: ${response.status})`);
       }
     } catch (error: any) {
-      console.error('[MesServicesScreen] Erreur toggle status:', error);
+      logger.error('[MesServicesScreen] Erreur toggle status:', error);
       Alert.alert('Erreur', error.message || 'Impossible de changer le statut du service');
     }
   };
@@ -574,7 +538,7 @@ const MesServicesScreen: React.FC = () => {
                 }
               }
             } catch (error: any) {
-              console.error('Erreur suppression:', error);
+              logger.error('Erreur suppression:', error);
               // ✅ AMÉLIORATION: Message d'erreur plus précis
               const message = error.response?.data?.message ||
                 error.message ||
@@ -598,7 +562,7 @@ const MesServicesScreen: React.FC = () => {
     // Il faut regrouper tous les produits du même service_id
     const serviceId = productItem.service_id || productItem.data?.serviceId || productItem.id?.split('_')[0];
 
-    console.log('[MesServicesScreen] handleCreateVideo - Service ID:', serviceId, 'Produit:', productItem.id);
+    logger.log('[MesServicesScreen] handleCreateVideo - Service ID:', serviceId, 'Produit:', productItem.id);
 
     // Regrouper tous les produits du même service
     const produitsDuService = services.filter((s: Service) => {
@@ -606,7 +570,7 @@ const MesServicesScreen: React.FC = () => {
       return sServiceId === serviceId;
     });
 
-    console.log('[MesServicesScreen] handleCreateVideo - Produits du service trouvés:', produitsDuService.length);
+    logger.log('[MesServicesScreen] handleCreateVideo - Produits du service trouvés:', produitsDuService.length);
 
     if (produitsDuService.length === 0) {
       Alert.alert(
@@ -634,7 +598,7 @@ const MesServicesScreen: React.FC = () => {
       id: product.id || `prod_${product.product_index || 0}`,
       serviceId: serviceId.toString(),
       product_index: product.product_index || product.data?.product_index || 0,
-      nom: product.title || product.data?.nom || product.nom || 'Produit',
+      nom: product.nom || product.data?.nom || product.data?.nom_produit || product.nom_produit || product.title || product.data?.title || 'Produit',
       description: product.description || product.data?.description || '',
       prix: product.data?.prix || product.prix || product.price,
       devise: product.data?.devise || product.devise || product.currency || 'XAF',
@@ -662,7 +626,7 @@ const MesServicesScreen: React.FC = () => {
   };
 
   const handleVideoCreationSuccess = async (result: GeneratedVideoResponse) => {
-    console.log('[MesServicesScreen] ✅ Vidéo créée avec succès:', result);
+    logger.log('[MesServicesScreen] ✅ Vidéo créée avec succès:', result);
     setShowVideoCreationModal(false);
     setProductsForVideoCreation([]);
     setSelectedServiceForVideo(null);
@@ -697,7 +661,7 @@ const MesServicesScreen: React.FC = () => {
                 fromMesServices: true
               });
             } catch (error) {
-              console.error('Erreur navigation promotion:', error);
+              logger.error('Erreur navigation promotion:', error);
               Alert.alert('Erreur', 'Impossible d\'ouvrir la gestion des promotions');
             }
           }
@@ -721,7 +685,7 @@ const MesServicesScreen: React.FC = () => {
                 fromMesServices: true
               });
             } catch (error) {
-              console.error('Erreur navigation promotion:', error);
+              logger.error('Erreur navigation promotion:', error);
               Alert.alert('Erreur', 'Impossible d\'ouvrir la gestion des promotions');
             }
           }

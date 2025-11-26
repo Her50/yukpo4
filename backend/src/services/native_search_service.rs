@@ -820,6 +820,7 @@ impl NativeSearchService {
                 .bind(query)
                 .bind(gps_zone_val)
                 .bind(radius)
+                .bind(100i32) // ✅ CORRIGÉ: max_results (4ème paramètre requis)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
@@ -1287,6 +1288,7 @@ SELECT DISTINCT
                 .bind(query)
                 .bind(gps_zone_val)
                 .bind(radius)
+                .bind(100i32) // ✅ CORRIGÉ: max_results (4ème paramètre requis)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
@@ -1507,6 +1509,7 @@ SELECT DISTINCT
                 .bind(query)
                 .bind(gps_zone_val)
                 .bind(radius)
+                .bind(100i32) // ✅ CORRIGÉ: max_results (4ème paramètre requis)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {

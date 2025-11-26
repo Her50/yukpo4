@@ -60,6 +60,7 @@ pub struct ApiResponse {
 /// PATCH /api/products/:id/toggle-status
 pub async fn toggle_product_status(
     State(state): State<Arc<AppState>>,
+    Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
     Path(product_id): Path<String>,
     Json(payload): Json<ToggleProductRequest>,
 ) -> Result<Json<ApiResponse>, StatusCode> {
@@ -75,8 +76,49 @@ pub async fn toggle_product_status(
         }
     );
 
+    // ✅ CORRECTION: Vérifier que l'utilisateur est propriétaire du service du produit
+    let product_id_i32 = product_id.parse::<i32>().map_err(|_| {
+        log::warn!("⚠️ Identifiant produit invalide: {}", product_id);
+        StatusCode::BAD_REQUEST
+    })?;
+
+    // Vérifier que le produit appartient à un service de l'utilisateur
+    let product_owner: Option<(i32, i32)> = sqlx::query_as(
+        r#"
+        SELECT pl.service_id, s.user_id
+        FROM products_lifecycle pl
+        JOIN services s ON pl.service_id = s.id
+        WHERE pl.id = $1
+        "#
+    )
+    .bind(product_id_i32)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        log::error!("❌ Erreur vérification propriétaire produit: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if product_owner.is_none() {
+        log::warn!("⚠️ Produit {} non trouvé", product_id);
+        return Ok(Json(ApiResponse {
+            success: false,
+            message: "Produit non trouvé".to_string(),
+            data: None,
+        }));
+    }
+
+    let (_, service_user_id) = product_owner.unwrap();
+    if service_user_id != user.id {
+        log::warn!("⚠️ Utilisateur {} n'est pas propriétaire du produit {}", user.id, product_id);
+        return Ok(Json(ApiResponse {
+            success: false,
+            message: "Non autorisé".to_string(),
+            data: None,
+        }));
+    }
+
     // Mettre à jour le statut du produit dans products_lifecycle
-    let product_id_i32 = product_id.parse::<i32>().unwrap_or(0);
     let result: Option<ProductIdRow> = sqlx::query_as(
         r#"
         UPDATE products_lifecycle
@@ -96,7 +138,7 @@ pub async fn toggle_product_status(
     })?;
 
     if result.is_none() {
-        log::warn!("⚠️ Produit {} non trouvé", product_id);
+        log::warn!("⚠️ Produit {} non trouvé après vérification", product_id);
         return Ok(Json(ApiResponse {
             success: false,
             message: "Produit non trouvé".to_string(),
@@ -132,6 +174,7 @@ pub async fn toggle_product_status(
 /// DELETE /api/products/:id
 pub async fn delete_product(
     State(state): State<Arc<AppState>>,
+    Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
     Path(product_id): Path<String>,
 ) -> Result<Json<ApiResponse>, StatusCode> {
     let pool = &state.pg;
@@ -141,6 +184,58 @@ pub async fn delete_product(
     let product_id_i32 = product_id.parse::<i32>().map_err(|_| {
         log::warn!("⚠️ Identifiant produit invalide: {}", product_id);
         StatusCode::BAD_REQUEST
+    })?;
+
+    // ✅ CORRECTION: Vérifier que l'utilisateur est propriétaire du service du produit
+    let product_owner: Option<(i32, i32)> = sqlx::query_as(
+        r#"
+        SELECT pl.service_id, s.user_id
+        FROM products_lifecycle pl
+        JOIN services s ON pl.service_id = s.id
+        WHERE pl.id = $1
+        "#
+    )
+    .bind(product_id_i32)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        log::error!("❌ Erreur vérification propriétaire produit: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if product_owner.is_none() {
+        log::warn!("⚠️ Produit {} non trouvé", product_id);
+        return Ok(Json(ApiResponse {
+            success: false,
+            message: "Produit non trouvé".to_string(),
+            data: None,
+        }));
+    }
+
+    let (service_id, service_user_id) = product_owner.unwrap();
+    if service_user_id != user.id {
+        log::warn!("⚠️ Utilisateur {} n'est pas propriétaire du produit {}", user.id, product_id);
+        return Ok(Json(ApiResponse {
+            success: false,
+            message: "Non autorisé".to_string(),
+            data: None,
+        }));
+    }
+
+    // ✅ CORRECTION: Récupérer product_index avant suppression
+    let product_index: Option<i32> = sqlx::query_scalar(
+        r#"
+        SELECT product_index
+        FROM products_lifecycle
+        WHERE id = $1
+        "#
+    )
+    .bind(product_id_i32)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        log::error!("❌ Erreur récupération product_index: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
     // Supprimer le produit de products_lifecycle
@@ -162,7 +257,7 @@ pub async fn delete_product(
     let deleted_row = match result {
         Some(row) => row,
         None => {
-            log::warn!("⚠️ Produit {} non trouvé", product_id);
+            log::warn!("⚠️ Produit {} non trouvé après vérification", product_id);
             return Ok(Json(ApiResponse {
                 success: false,
                 message: "Produit non trouvé".to_string(),
@@ -171,8 +266,13 @@ pub async fn delete_product(
         }
     };
 
-    let service_id = deleted_row.service_id;
-    let removed_index = deleted_row.product_index;
+    // ✅ CORRECTION: Utiliser service_id de la vérification (déjà défini)
+    // service_id est déjà défini depuis product_owner
+    // Utiliser product_index de deleted_row ou celui récupéré avant suppression
+    let removed_index = deleted_row.product_index.or(product_index);
+    
+    // ✅ Utiliser service_id de product_owner (déjà vérifié)
+    // deleted_row.service_id n'est plus nécessaire car on utilise service_id de product_owner
 
     // Supprimer les médias associés au produit supprimé
     if let Some(removed_idx) = removed_index {

@@ -53,7 +53,7 @@ use crate::{
         service_interaction::track_service_interaction,
     },
     routers::router_modalities,
-    routes::products_management::{delete_product, update_product},
+    routes::products_management::{delete_product, toggle_product_status, update_product},
     routes::{
         ai_chat_routes::ai_chat_routes,
         appliance_model_routes::appliance_model_routes,
@@ -306,7 +306,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         // ✅ NOUVEAU: Route pour modifier un produit spécifique (avec historique)
         .route("/api/products/{product_id}/update", patch(update_product))
-        // ✅ NOUVEAU 2025-11-01: Route pour ajouter un produit incrémental (coût fixe 3000 FCFA)
+        // ✅ NOUVEAU 2025-11-01: Route pour ajouter un produit incrémental (coût fixe 2000 FCFA)
         .route(
             "/api/services/{service_id}/products",
             post(add_product_to_service),
@@ -321,6 +321,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(reactivate_product),
         )
         .route("/api/products/{product_id}", delete(delete_product))
+        .route(
+            "/api/products/{product_id}/toggle-status",
+            patch(toggle_product_status).layer(axum::middleware::from_fn(jwt_auth)),
+        )
         .route(
             "/api/media/{media_id}/track-view",
             post(media_analytics_controller::track_view)

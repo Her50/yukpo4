@@ -5,13 +5,20 @@
 use crate::core::types::{AppError, AppResult};
 use crate::state::AppState;
 use axum::{
-    extract::{Path, State},
+    extract::{Path as AxumPath, State},
     Extension, Json,
 };
+use base64::{engine::general_purpose::STANDARD, Engine};
+use chrono::Utc;
+use md5;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tokio::fs;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct AddProductRequest {
@@ -34,7 +41,7 @@ pub struct AddProductResponse {
 pub async fn add_product_to_service(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
-    Path(service_id): Path<i32>,
+    AxumPath(service_id): AxumPath<i32>,
     Json(request): Json<AddProductRequest>,
 ) -> AppResult<Json<Value>> {
     use crate::utils::log::{log_error, log_info};
@@ -82,9 +89,9 @@ pub async fn add_product_to_service(
         ));
     }
 
-    // ✅ Coût fixe : 3000 FCFA pour ajouter un produit dupliqué
+    // ✅ Coût fixe : 2000 FCFA pour ajouter un produit dupliqué
     mod service_costs {
-        pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 3000;
+        pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 2000;
     }
     let cout_ajout = service_costs::COST_NEW_PRODUCT_DUPLICATE_XAF;
 
@@ -174,6 +181,8 @@ pub async fn add_product_to_service(
     {
         if !nom.is_empty() {
             product_obj["nom_produit"] = json!(nom);
+            // ✅ CORRECTION: Ajouter aussi le champ "nom" pour compatibilité avec MesServicesScreen
+            product_obj["nom"] = json!(nom);
         }
     }
 
@@ -251,17 +260,49 @@ pub async fn add_product_to_service(
         product_obj
     ));
 
+    // ✅ NOUVEAU 2025-11-26: Sauvegarder les médias du produit AVANT d'ajouter au service
+    // Cela permet d'obtenir le product_index correct pour lier les médias au produit
     let produits_array = service_data
         .get_mut("produits")
         .and_then(|p| p.as_object_mut())
         .and_then(|obj| obj.get_mut("valeur"))
         .and_then(|v| v.as_array_mut());
 
+    // Calculer le product_index AVANT d'ajouter le produit (pour sauvegarder les médias)
     let product_index = match produits_array {
+        Some(arr) => arr.len(), // Index du nouveau produit (pas encore ajouté)
+        None => 0,
+    };
+
+    // ✅ NOUVEAU 2025-11-26: Sauvegarder les médias du produit
+    let saved_media_paths = save_product_media(
+        &state,
+        service_id,
+        product_index,
+        &request.product_data,
+        &product_obj,
+    )
+    .await;
+
+    // Remplacer les base64 par les chemins de fichiers dans product_obj
+    if let Some(image_paths) = saved_media_paths.images {
+        product_obj["images"] = json!(image_paths);
+    }
+    if let Some(video_paths) = saved_media_paths.videos {
+        product_obj["videos"] = json!(video_paths);
+    }
+
+    // Maintenant ajouter le produit au service_data
+    let produits_array = service_data
+        .get_mut("produits")
+        .and_then(|p| p.as_object_mut())
+        .and_then(|obj| obj.get_mut("valeur"))
+        .and_then(|v| v.as_array_mut());
+
+    match produits_array {
         Some(arr) => {
             // ✅ CORRECTION: Ajouter l'objet structuré au lieu de la chaîne
             arr.push(product_obj.clone());
-            arr.len() - 1
         }
         None => {
             // Créer le tableau de produits s'il n'existe pas
@@ -273,7 +314,6 @@ pub async fn add_product_to_service(
                 "filtrable": true,
                 "origine_champs": "formulaire"
             });
-            0
         }
     };
 
@@ -441,4 +481,491 @@ pub async fn add_product_to_service(
             )))
         }
     }
+}
+
+// ✅ NOUVEAU 2025-11-26: Structure pour stocker les chemins de médias sauvegardés
+struct SavedMediaPaths {
+    images: Option<Vec<String>>,
+    videos: Option<Vec<String>>,
+}
+
+// ✅ NOUVEAU 2025-11-26: Fonction helper pour sauvegarder les médias d'un produit
+async fn save_product_media(
+    state: &Arc<AppState>,
+    service_id: i32,
+    product_index: usize,
+    product_data: &Value,
+    product_obj: &Value,
+) -> SavedMediaPaths {
+    use crate::utils::log::{log_error, log_info, log_warn};
+
+    let storage_root = PathBuf::from(
+        std::env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "./uploads".to_string()),
+    );
+    let product_id = format!("prod_{}", product_index);
+
+    let mut saved_images: Vec<String> = Vec::new();
+    let mut saved_videos: Vec<String> = Vec::new();
+
+    // Extraire les images
+    let mut images_to_process: Vec<String> = Vec::new();
+    
+    // Chercher dans product_data (contient les base64)
+    if let Some(images) = product_data.get("images").and_then(|v| v.as_array()) {
+        for img in images {
+            if let Some(img_str) = img.as_str() {
+                if !img_str.is_empty() {
+                    images_to_process.push(img_str.to_string());
+                }
+            }
+        }
+    }
+    
+    // Chercher dans base64_image (utilisé par le frontend)
+    if let Some(base64_image) = product_data.get("base64_image") {
+        if let Some(base64_array) = base64_image.as_array() {
+            for img in base64_array {
+                if let Some(img_str) = img.as_str() {
+                    if !img_str.is_empty() {
+                        images_to_process.push(img_str.to_string());
+                    }
+                }
+            }
+        } else if let Some(base64_str) = base64_image.as_str() {
+            if !base64_str.is_empty() {
+                images_to_process.push(base64_str.to_string());
+            }
+        }
+    }
+
+    // Sauvegarder les images
+    for (image_index, image_data) in images_to_process.iter().enumerate() {
+        if image_data.is_empty() {
+            continue;
+        }
+
+        let is_main = image_index == 0;
+
+        log_info(&format!(
+            "[add_product_to_service] 🖼️ Sauvegarde image {} de produit {} (main: {})",
+            image_index, product_index, is_main
+        ));
+
+        let stored = if is_url(image_data) {
+            download_and_save_image(storage_root.as_path(), service_id, image_data, "images").await
+        } else if is_probable_base64(image_data) {
+            persist_base64_media(storage_root.as_path(), service_id, "images", image_data, "jpg").await
+        } else {
+            log_warn(&format!(
+                "[add_product_to_service] Image ignorée (format non supporté) pour produit {}",
+                product_index
+            ));
+            continue;
+        };
+
+        let stored = match stored {
+            Ok(value) => value,
+            Err(err) => {
+                log_error(&format!(
+                    "[add_product_to_service] Erreur sauvegarde image produit {}: {}",
+                    product_index, err
+                ));
+                continue;
+            }
+        };
+
+        let file_path = stored.path;
+        let image_bytes = stored.bytes;
+
+        // Générer signature d'image si disponible
+        #[cfg(feature = "image_search")]
+        let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+            match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
+                Ok(signature) => {
+                    let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| {
+                        serde_json::json!({
+                            "width": 0,
+                            "height": 0,
+                            "format": "jpeg",
+                            "file_size": image_bytes.len(),
+                        })
+                    });
+                    let hash = format!("{:x}", md5::compute(&image_bytes));
+                    (
+                        serde_json::to_value(&signature).unwrap_or_default(),
+                        hash,
+                        metadata,
+                    )
+                }
+                Err(e) => {
+                    log_warn(&format!("[add_product_to_service] Erreur signature: {}", e));
+                    (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                }
+            }
+        } else {
+            (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+        };
+
+        #[cfg(not(feature = "image_search"))]
+        let (image_signature, image_hash, image_metadata) = (
+            serde_json::Value::Null,
+            String::new(),
+            serde_json::Value::Null,
+        );
+
+        // Insérer dans la table media
+        if let Err(e) = sqlx::query(
+            r#"
+            INSERT INTO media (
+                service_id, product_id, product_index, type, path,
+                is_main_image, display_order, uploaded_at,
+                image_signature, image_hash, image_metadata
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+        )
+        .bind(service_id)
+        .bind(&product_id)
+        .bind(product_index as i32)
+        .bind("image")
+        .bind(&file_path)
+        .bind(is_main)
+        .bind(image_index as i32)
+        .bind(Utc::now().naive_utc())
+        .bind(image_signature)
+        .bind(image_hash)
+        .bind(image_metadata)
+        .execute(&state.pg)
+        .await
+        {
+            log_error(&format!(
+                "[add_product_to_service] Erreur insertion media image: {}",
+                e
+            ));
+            continue;
+        }
+
+        saved_images.push(file_path);
+        log_info(&format!(
+            "[add_product_to_service] ✅ Image {}/{} du produit {} sauvegardée (main: {})",
+            image_index + 1,
+            images_to_process.len(),
+            product_index,
+            is_main
+        ));
+    }
+
+    // Extraire et sauvegarder les vidéos
+    let mut videos_to_process: Vec<String> = Vec::new();
+    
+    // Chercher dans videos (array)
+    if let Some(videos) = product_data.get("videos").and_then(|v| v.as_array()) {
+        for video in videos {
+            if let Some(video_str) = video.as_str() {
+                if !video_str.is_empty() {
+                    videos_to_process.push(video_str.to_string());
+                }
+            }
+        }
+    }
+    
+    // Chercher dans video_base64 (utilisé par le frontend)
+    if let Some(video_base64) = product_data.get("video_base64") {
+        if let Some(video_array) = video_base64.as_array() {
+            for video in video_array {
+                if let Some(video_str) = video.as_str() {
+                    if !video_str.is_empty() {
+                        videos_to_process.push(video_str.to_string());
+                    }
+                }
+            }
+        } else if let Some(video_str) = video_base64.as_str() {
+            if !video_str.is_empty() {
+                videos_to_process.push(video_str.to_string());
+            }
+        }
+    }
+    
+    if !videos_to_process.is_empty() {
+        for (video_index, video_data) in videos_to_process.iter().enumerate() {
+            let video_str = video_data.as_str();
+            if video_str.is_empty() {
+                continue;
+            }
+
+            let file_path = if is_url(video_str) {
+                video_str.to_string()
+            } else if is_probable_base64(video_str) {
+                match persist_base64_media(storage_root.as_path(), service_id, "videos", video_str, "mp4").await {
+                    Ok(stored) => stored.path,
+                    Err(e) => {
+                        log_error(&format!(
+                            "[add_product_to_service] Erreur sauvegarde vidéo produit {}: {}",
+                            product_index, e
+                        ));
+                        continue;
+                    }
+                }
+            } else {
+                log_warn(&format!(
+                    "[add_product_to_service] Vidéo ignorée (format non supporté) pour produit {}",
+                    product_index
+                ));
+                continue;
+            };
+
+            // Insérer dans la table media
+            if let Err(e) = sqlx::query(
+                r#"
+                INSERT INTO media (
+                    service_id, product_id, product_index, type, path,
+                    is_main_image, display_order, uploaded_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                "#,
+            )
+            .bind(service_id)
+            .bind(&product_id)
+            .bind(product_index as i32)
+            .bind("video")
+            .bind(&file_path)
+            .bind(video_index == 0)
+            .bind(video_index as i32)
+            .bind(Utc::now().naive_utc())
+            .execute(&state.pg)
+            .await
+            {
+                log_error(&format!(
+                    "[add_product_to_service] Erreur insertion media video: {}",
+                    e
+                ));
+                continue;
+            }
+
+            saved_videos.push(file_path);
+            log_info(&format!(
+                "[add_product_to_service] ✅ Vidéo {}/{} du produit {} sauvegardée",
+                video_index + 1,
+                videos_to_process.len(),
+                product_index
+            ));
+        }
+    }
+
+    SavedMediaPaths {
+        images: if saved_images.is_empty() { None } else { Some(saved_images) },
+        videos: if saved_videos.is_empty() { None } else { Some(saved_videos) },
+    }
+}
+
+// ✅ Helper functions (copiées depuis creer_service.rs)
+fn is_probable_base64(data: &str) -> bool {
+    if data.starts_with("data:") {
+        return true;
+    }
+    if data.starts_with("http://") || data.starts_with("https://") {
+        return false;
+    }
+    if data.len() < 80 {
+        return false;
+    }
+    let valid_chars = data.chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=' | '\n' | '\r' | ' '));
+    let has_base64_chars = data.contains('+') || data.contains('/') || data.contains('=');
+    let base64_char_count = data.chars()
+        .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '='))
+        .count();
+    let base64_ratio = base64_char_count as f64 / data.len() as f64;
+    valid_chars && has_base64_chars && base64_ratio >= 0.8
+}
+
+fn is_url(data: &str) -> bool {
+    data.starts_with("http://") || data.starts_with("https://")
+}
+
+fn strip_base64_prefix(data: &str) -> &str {
+    if let Some(idx) = data.find(',') {
+        let (prefix, payload) = data.split_at(idx + 1);
+        if prefix.contains("base64") {
+            return payload;
+        }
+    }
+    data
+}
+
+fn infer_extension_from_data(data: &str, default_ext: &str) -> String {
+    if data.starts_with("data:") {
+        if let Some(end) = data.find(';') {
+            let mime = &data[5..end];
+            return match mime {
+                "image/png" => "png".to_string(),
+                "image/webp" => "webp".to_string(),
+                "image/gif" => "gif".to_string(),
+                "image/jpeg" | "image/jpg" => "jpg".to_string(),
+                "audio/mpeg" | "audio/mp3" => "mp3".to_string(),
+                "audio/wav" => "wav".to_string(),
+                "video/mp4" => "mp4".to_string(),
+                "application/pdf" => "pdf".to_string(),
+                _ => default_ext.to_string(),
+            };
+        }
+    }
+    default_ext.to_string()
+}
+
+struct StoredMedia {
+    path: String,
+    bytes: Vec<u8>,
+}
+
+async fn persist_base64_media(
+    storage_root: &Path,
+    service_id: i32,
+    subdir: &str,
+    base64_data: &str,
+    default_ext: &str,
+) -> AppResult<StoredMedia> {
+    let payload = strip_base64_prefix(base64_data);
+    let cleaned_payload: String = payload.chars().filter(|c| !c.is_whitespace()).collect();
+    let bytes = STANDARD
+        .decode(cleaned_payload.as_bytes())
+        .map_err(|e| AppError::BadRequest(format!("Décodage base64 invalide: {}", e)))?;
+
+    let extension = infer_extension_from_data(base64_data, default_ext);
+    let service_dir = storage_root
+        .join("services")
+        .join(service_id.to_string())
+        .join(subdir);
+    fs::create_dir_all(&service_dir).await?;
+
+    let file_name = format!(
+        "{}_{}.{}",
+        subdir.trim_end_matches('s'),
+        Uuid::new_v4(),
+        extension
+    );
+    let disk_path = service_dir.join(&file_name);
+    fs::write(&disk_path, &bytes).await?;
+
+    let relative_path = Path::new("uploads")
+        .join("services")
+        .join(service_id.to_string())
+        .join(subdir)
+        .join(&file_name);
+    let path_str = relative_path.to_string_lossy().replace('\\', "/");
+
+    Ok(StoredMedia {
+        path: path_str,
+        bytes,
+    })
+}
+
+async fn download_and_save_image(
+    storage_root: &Path,
+    service_id: i32,
+    image_url: &str,
+    subdir: &str,
+) -> AppResult<StoredMedia> {
+    use crate::utils::log::log_info;
+
+    log_info(&format!(
+        "[add_product_to_service] 📥 Téléchargement image depuis URL: {}",
+        image_url
+    ));
+
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| AppError::Internal(format!("Erreur création client HTTP: {}", e)))?;
+
+    let response = client
+        .get(image_url)
+        .send()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("Erreur téléchargement image depuis {}: {}", image_url, e)))?;
+
+    if !response.status().is_success() {
+        return Err(AppError::BadRequest(format!(
+            "Erreur HTTP {} lors du téléchargement de l'image",
+            response.status()
+        )));
+    }
+
+    let content_type = response
+        .headers()
+        .get("content-type")
+        .and_then(|ct| ct.to_str().ok())
+        .map(|s| s.to_string());
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("Erreur lecture image: {}", e)))?
+        .to_vec();
+
+    let extension = content_type
+        .as_deref()
+        .and_then(|ct| {
+            if ct.contains("image/png") {
+                Some("png")
+            } else if ct.contains("image/jpeg") || ct.contains("image/jpg") {
+                Some("jpg")
+            } else if ct.contains("image/gif") {
+                Some("gif")
+            } else if ct.contains("image/webp") {
+                Some("webp")
+            } else if ct.contains("image/svg") {
+                Some("svg")
+            } else {
+                None
+            }
+        })
+        .or_else(|| {
+            if let Some(dot_pos) = image_url.rfind('.') {
+                let ext = &image_url[dot_pos + 1..];
+                match ext.to_lowercase().as_str() {
+                    "png" => Some("png"),
+                    "jpg" | "jpeg" => Some("jpg"),
+                    "gif" => Some("gif"),
+                    "webp" => Some("webp"),
+                    "svg" => Some("svg"),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .unwrap_or("jpg");
+
+    let service_dir = storage_root
+        .join("services")
+        .join(service_id.to_string())
+        .join(subdir);
+    fs::create_dir_all(&service_dir).await?;
+
+    let file_name = format!(
+        "{}_{}.{}",
+        subdir.trim_end_matches('s'),
+        Uuid::new_v4(),
+        extension
+    );
+    let disk_path = service_dir.join(&file_name);
+    fs::write(&disk_path, &bytes).await?;
+
+    let relative_path = Path::new("uploads")
+        .join("services")
+        .join(service_id.to_string())
+        .join(subdir)
+        .join(&file_name);
+    let path_str = relative_path.to_string_lossy().replace('\\', "/");
+
+    log_info(&format!(
+        "[add_product_to_service] ✅ Image téléchargée et sauvegardée: {}",
+        path_str
+    ));
+
+    Ok(StoredMedia {
+        path: path_str,
+        bytes,
+    })
 }

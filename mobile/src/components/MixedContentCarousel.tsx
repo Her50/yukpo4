@@ -172,6 +172,28 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         }
     };
 
+    // ✅ FONCTION: Extraire les produits d'un service (cohérent avec MesServicesScreen)
+    const extractProduits = (service: any): any[] => {
+        // Structure 1: data.produits.valeur (structure standard)
+        if (service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur)) {
+            return service.data.produits.valeur;
+        }
+        // Structure 2: data.produits directement (tableau)
+        else if (Array.isArray(service.data?.produits)) {
+            return service.data.produits;
+        }
+        // Structure 3: data.produits est un objet avec un tableau à l'intérieur
+        else if (service.data?.produits && typeof service.data.produits === 'object') {
+            const produitsObj = service.data.produits;
+            if (Array.isArray(produitsObj.items)) {
+                return produitsObj.items;
+            } else if (Array.isArray(produitsObj.list)) {
+                return produitsObj.list;
+            }
+        }
+        return [];
+    };
+
     // ✅ NOUVEAU: Charger les produits organiques en fallback
     const loadOrganicProducts = async () => {
         try {
@@ -191,15 +213,50 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 const organicContent: ContentItem[] = [];
 
                 response.data.forEach((service: any) => {
-                    if (service.data?.produits && Array.isArray(service.data.produits)) {
-                        service.data.produits.forEach((product: any) => {
+                    // ✅ CORRIGÉ: Utiliser extractProduits pour gérer toutes les structures
+                    const produits = extractProduits(service);
+
+                    if (produits && produits.length > 0) {
+                        produits.forEach((product: any, index: number) => {
+                            // ✅ CORRIGÉ: Parser le produit (peut être une chaîne ou un objet)
+                            let productData: any = {};
+
+                            if (typeof product === 'string') {
+                                // Si le produit est une chaîne, parser (format: "nom,categorie,description,prix")
+                                const parts = product.split(',').map(p => p.trim());
+                                productData = {
+                                    nom: parts[0] || `Produit ${index + 1}`,
+                                    description: parts.length >= 3 ? parts.slice(2, -1).join(', ') : (parts[1] || 'Aucune description'),
+                                    prix: parts[parts.length - 1] || '0',
+                                    devise: 'XAF'
+                                };
+                            } else if (product && typeof product === 'object') {
+                                // Si c'est un objet, utiliser directement
+                                productData = {
+                                    nom: product.nom || product.data?.nom || product.titre || product.title || `Produit ${index + 1}`,
+                                    description: product.description || product.desc || product.description_produit || 'Aucune description',
+                                    prix: product.prix || product.data?.prix || '0',
+                                    devise: product.devise || product.data?.devise || 'XAF',
+                                    ...product
+                                };
+                            } else {
+                                // Fallback
+                                productData = {
+                                    nom: `Produit ${index + 1}`,
+                                    description: 'Aucune description',
+                                    prix: '0',
+                                    devise: 'XAF'
+                                };
+                            }
+
                             organicContent.push({
                                 type: 'organic',
                                 is_paid: false,
                                 data: {
-                                    ...product,
+                                    ...productData,
                                     serviceId: service.id,
-                                    service: service
+                                    service: service,
+                                    product_index: typeof product.product_index === 'number' ? product.product_index : index
                                 }
                             });
                         });
@@ -210,8 +267,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                             is_paid: false,
                             data: {
                                 ...service,
-                                nom: service.titre || service.nom || 'Service',
-                                description: service.description || 'Description du service',
+                                nom: service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.titre || service.nom || 'Service',
+                                description: service.data?.description?.valeur || service.description || 'Description du service',
                                 prix: service.prix || '0',
                                 devise: service.devise || 'XAF'
                             }
@@ -219,14 +276,32 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                     }
                 });
 
-                console.log(`[MixedContentCarousel] ${organicContent.length} produits organiques chargés`);
+                console.log(`[MixedContentCarousel] ✅ ${organicContent.length} produits organiques chargés`);
+                if (organicContent.length === 0) {
+                    console.warn('[MixedContentCarousel] ⚠️ Aucun produit trouvé dans les services. Structure des données:', {
+                        servicesCount: response.data.length,
+                        firstService: response.data[0] ? {
+                            id: response.data[0].id,
+                            hasData: !!response.data[0].data,
+                            dataKeys: response.data[0].data ? Object.keys(response.data[0].data) : [],
+                            hasProduits: !!response.data[0].data?.produits,
+                            produitsType: typeof response.data[0].data?.produits,
+                            produitsValue: response.data[0].data?.produits
+                        } : null
+                    });
+                }
                 setContent(organicContent);
             } else {
-                console.log('[MixedContentCarousel] Aucun produit organique trouvé');
+                console.log('[MixedContentCarousel] ⚠️ Aucun produit organique trouvé - Réponse API invalide:', {
+                    success: response.success,
+                    hasData: !!response.data,
+                    isArray: Array.isArray(response.data),
+                    dataType: typeof response.data
+                });
                 setContent([]);
             }
         } catch (error) {
-            console.error('[MixedContentCarousel] Erreur chargement produits organiques:', error);
+            console.error('[MixedContentCarousel] ❌ Erreur chargement produits organiques:', error);
             setContent([]);
         }
     };
@@ -439,13 +514,13 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 onScroll={handleScrollEvent}
                 scrollEventThrottle={16}
                 style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                nestedScrollEnabled
-                contentInset={{
-                    left: SCREEN_PADDING,
-                    right: SCREEN_PADDING,
-                }}
-                contentOffset={{ x: SCREEN_PADDING, y: 0 }}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    { paddingRight: SCREEN_PADDING } // ✅ CORRIGÉ: Ajouter padding à droite pour le dernier élément
+                ]}
+                nestedScrollEnabled={true}
+                removeClippedSubviews={false} // ✅ CORRIGÉ: Désactiver pour éviter les problèmes de rendu
+                scrollEnabled={true} // ✅ CORRIGÉ: S'assurer que le scroll est activé
             >
                 {safeContent.map((item, index) => (
                     <TouchableOpacity
@@ -593,7 +668,8 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     scrollContent: {
-        paddingHorizontal: SCREEN_PADDING, // ✅ CORRIGÉ: Utiliser constante cohérente
+        paddingLeft: SCREEN_PADDING, // ✅ CORRIGÉ: Padding à gauche seulement (paddingRight dans style inline)
+        alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement les cartes
     },
     card: {
         backgroundColor: '#FFFFFF',

@@ -1064,7 +1064,7 @@ async fn create_client_order(
     // Récupérer le prix du produit et le coût de livraison
     let (product_price_cents, delivery_cost_cents, billing_mode) = if let Some(product_index) = payload.product_index {
         // Récupérer le prix du produit
-        let product_data = sqlx::query(
+        let product_data: Option<ServiceDataRow> = sqlx::query_as(
             "SELECT data FROM services WHERE id = $1"
         )
         .bind(payload.service_id)
@@ -1072,8 +1072,27 @@ async fn create_client_order(
         .await?;
 
         let product_price_cents = if let Some(service_row) = product_data {
-            let service_data: serde_json::Value = service_row.try_get("data")?;
-            if let Some(products) = service_data.get("products").and_then(|v| v.as_array()) {
+            let service_data: serde_json::Value = service_row.data;
+            // ✅ CORRECTION: Chercher produits dans produits.valeur (format standard) ou produits directement
+            let products_array = service_data
+                .get("produits")
+                .and_then(|p| {
+                    // Si produits est un objet avec valeur
+                    if let Some(valeur) = p.get("valeur").and_then(|v| v.as_array()) {
+                        Some(valeur)
+                    } else if let Some(arr) = p.as_array() {
+                        // Si produits est directement un tableau
+                        Some(arr)
+                    } else {
+                        None
+                    }
+                })
+                .or_else(|| {
+                    // Fallback: chercher "products" (format anglais)
+                    service_data.get("products").and_then(|v| v.as_array())
+                });
+            
+            if let Some(products) = products_array {
                 if let Some(product) = products.get(product_index as usize) {
                     // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
                     ProductPriceService::get_real_product_price_cents(
@@ -1087,7 +1106,12 @@ async fn create_client_order(
                     .await
                     .unwrap_or_else(|_| {
                         // Fallback : prix de base si erreur
-                        product.get("price").and_then(|v| v.as_f64()).map(|p| (p * 100.0) as i64).unwrap_or(0)
+                        product.get("price")
+                            .or_else(|| product.get("prix"))
+                            .or_else(|| product.get("prix_produit"))
+                            .and_then(|v| v.as_f64())
+                            .map(|p| (p * 100.0) as i64)
+                            .unwrap_or(0)
                     })
                 } else {
                     0
@@ -1591,7 +1615,26 @@ async fn estimate_delivery_costs(
         .await?;
 
         if let Some(service_row) = product_data {
-            if let Some(products) = service_row.data.get("products").and_then(|v| v.as_array()) {
+            // ✅ CORRECTION: Chercher produits dans produits.valeur (format standard) ou produits directement
+            let products_array = service_row.data
+                .get("produits")
+                .and_then(|p| {
+                    // Si produits est un objet avec valeur
+                    if let Some(valeur) = p.get("valeur").and_then(|v| v.as_array()) {
+                        Some(valeur)
+                    } else if let Some(arr) = p.as_array() {
+                        // Si produits est directement un tableau
+                        Some(arr)
+                    } else {
+                        None
+                    }
+                })
+                .or_else(|| {
+                    // Fallback: chercher "products" (format anglais)
+                    service_row.data.get("products").and_then(|v| v.as_array())
+                });
+            
+            if let Some(products) = products_array {
                 if let Some(product) = products.get(product_index as usize) {
                     // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
                     ProductPriceService::get_real_product_price_cents(
@@ -1605,7 +1648,12 @@ async fn estimate_delivery_costs(
                     .await
                     .unwrap_or_else(|_| {
                         // Fallback : prix de base si erreur
-                        product.get("price").and_then(|v| v.as_f64()).map(|p| (p * 100.0) as i64).unwrap_or(0)
+                        product.get("price")
+                            .or_else(|| product.get("prix"))
+                            .or_else(|| product.get("prix_produit"))
+                            .and_then(|v| v.as_f64())
+                            .map(|p| (p * 100.0) as i64)
+                            .unwrap_or(0)
                     })
                 } else {
                     0

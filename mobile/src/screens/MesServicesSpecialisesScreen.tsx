@@ -1,13 +1,21 @@
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
+import React, { useState } from 'react';
 import {
+    Alert,
+    Dimensions,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
+import { useAuth } from '../contexts/AuthContext';
+import { servicesApi } from '../services/api';
+
+const { width } = Dimensions.get('window');
+const CARD_MARGIN = 12;
+const CARD_WIDTH = (width - (CARD_MARGIN * 3)) / 2; // 2 colonnes avec marges
 
 interface ServiceSpecialise {
     id: string;
@@ -20,12 +28,57 @@ interface ServiceSpecialise {
 
 const MesServicesSpecialisesScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { user } = useAuth();
+    const [creatingService, setCreatingService] = useState<string | null>(null);
+
+    // ✅ Créer automatiquement un service avant la navigation
+    const handleServicePress = async (service: ServiceSpecialise) => {
+        if (creatingService) return; // Éviter les clics multiples
+
+        try {
+            setCreatingService(service.id);
+
+            // Créer un service minimal pour ce type de service spécialisé
+            const serviceData = {
+                titre_service: service.title,
+                description: service.description,
+                category: service.id.includes('pharmacie') || service.id.includes('hopital') || service.id.includes('laboratoire') || service.id.includes('banque_sang')
+                    ? 'sante'
+                    : 'transport',
+            };
+
+            const response = await servicesApi.createService(serviceData);
+
+            if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
+                const serviceId = (response.data as any).id;
+                // Naviguer vers le formulaire avec le serviceId
+                (navigation as any).navigate(service.route, {
+                    serviceId: serviceId
+                });
+            } else {
+                Alert.alert(
+                    'Erreur',
+                    'Impossible de créer le service. Veuillez réessayer.',
+                    [{ text: 'OK' }]
+                );
+            }
+        } catch (error: any) {
+            console.error('[MesServicesSpecialisesScreen] Erreur création service:', error);
+            Alert.alert(
+                'Erreur',
+                error.message || 'Une erreur est survenue lors de la création du service.',
+                [{ text: 'OK' }]
+            );
+        } finally {
+            setCreatingService(null);
+        }
+    };
 
     const servicesSante: ServiceSpecialise[] = [
         {
             id: 'pharmacie',
             title: 'Pharmacie',
-            icon: '💊',
+            icon: 'pill', // ✅ Icône Lucide
             description: 'Enregistrer une pharmacie avec garde',
             route: 'PharmacieForm',
             color: '#10B981', // Vert
@@ -33,7 +86,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'hopital',
             title: 'Hôpital/Clinique',
-            icon: '🏥',
+            icon: 'hospital', // ✅ Icône Lucide
             description: 'Enregistrer un établissement de santé',
             route: 'HopitalForm',
             color: '#EF4444', // Rouge
@@ -41,7 +94,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'laboratoire',
             title: 'Laboratoire/Imagerie',
-            icon: '🔬',
+            icon: 'microscope', // ✅ Icône Lucide
             description: 'Enregistrer un laboratoire',
             route: 'LaboratoireForm',
             color: '#3B82F6', // Bleu
@@ -49,7 +102,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'banque_sang',
             title: 'Banque de Sang',
-            icon: '🩸',
+            icon: 'droplet', // ✅ Icône Lucide
             description: 'Enregistrer une banque de sang',
             route: 'BanqueSangForm',
             color: '#DC2626', // Rouge foncé
@@ -60,7 +113,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'agence_voyage',
             title: 'Agence de Voyage',
-            icon: '🚌',
+            icon: 'bus', // ✅ Icône Lucide
             description: 'Enregistrer une agence de voyage',
             route: 'AgenceVoyageForm',
             color: '#F59E0B', // Orange
@@ -68,7 +121,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'covoiturage',
             title: 'Covoiturage',
-            icon: '🚗',
+            icon: 'users', // ✅ Icône Lucide
             description: 'Proposer un trajet partagé',
             route: 'CovoiturageForm',
             color: '#8B5CF6', // Violet
@@ -76,7 +129,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'taxi',
             title: 'Taxi de Ville',
-            icon: '🚕',
+            icon: 'car', // ✅ Icône Lucide
             description: 'Enregistrer un service de taxi',
             route: 'TaxiForm',
             color: '#F97316', // Orange foncé
@@ -95,7 +148,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             {/* Groupe Santé */}
             <View style={styles.group}>
                 <View style={styles.groupHeader}>
-                    <Text style={styles.groupIcon}>🏥</Text>
+                    <SafeIcon name="heart-pulse" size={24} color="#EF4444" type="lucide" />
                     <Text style={styles.groupTitle}>Santé</Text>
                 </View>
                 <View style={styles.servicesGrid}>
@@ -103,16 +156,23 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                         <TouchableOpacity
                             key={service.id}
                             style={[styles.serviceCard, { borderLeftColor: service.color }]}
-                            onPress={() => (navigation as any).navigate(service.route)}
+                            onPress={() => handleServicePress(service)}
+                            disabled={creatingService === service.id}
                         >
-                            <Text style={styles.serviceIcon}>{service.icon}</Text>
-                            <Text style={styles.serviceTitle}>{service.title}</Text>
-                            <Text style={styles.serviceDescription}>
+                            <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
+                                <SafeIcon
+                                    name={service.icon}
+                                    size={24}
+                                    color={service.color}
+                                    type="lucide"
+                                />
+                            </View>
+                            <Text style={styles.serviceTitle} numberOfLines={2}>
+                                {service.title}
+                            </Text>
+                            <Text style={styles.serviceDescription} numberOfLines={2}>
                                 {service.description}
                             </Text>
-                            <View style={styles.serviceArrow}>
-                                <SafeIcon name="chevron-right" size={20} color={service.color} />
-                            </View>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -121,7 +181,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             {/* Groupe Transport */}
             <View style={styles.group}>
                 <View style={styles.groupHeader}>
-                    <Text style={styles.groupIcon}>🚗</Text>
+                    <SafeIcon name="car" size={24} color="#3B82F6" type="lucide" />
                     <Text style={styles.groupTitle}>Transport</Text>
                 </View>
                 <View style={styles.servicesGrid}>
@@ -129,16 +189,23 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                         <TouchableOpacity
                             key={service.id}
                             style={[styles.serviceCard, { borderLeftColor: service.color }]}
-                            onPress={() => (navigation as any).navigate(service.route)}
+                            onPress={() => handleServicePress(service)}
+                            disabled={creatingService === service.id}
                         >
-                            <Text style={styles.serviceIcon}>{service.icon}</Text>
-                            <Text style={styles.serviceTitle}>{service.title}</Text>
-                            <Text style={styles.serviceDescription}>
+                            <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
+                                <SafeIcon
+                                    name={service.icon}
+                                    size={24}
+                                    color={service.color}
+                                    type="lucide"
+                                />
+                            </View>
+                            <Text style={styles.serviceTitle} numberOfLines={2}>
+                                {service.title}
+                            </Text>
+                            <Text style={styles.serviceDescription} numberOfLines={2}>
                                 {service.description}
                             </Text>
-                            <View style={styles.serviceArrow}>
-                                <SafeIcon name="chevron-right" size={20} color={service.color} />
-                            </View>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -177,10 +244,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 16,
-    },
-    groupIcon: {
-        fontSize: 24,
-        marginRight: 12,
+        gap: 12,
     },
     groupTitle: {
         fontSize: 20,
@@ -188,37 +252,45 @@ const styles = StyleSheet.create({
         color: '#111827',
     },
     servicesGrid: {
-        gap: 12,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginHorizontal: -CARD_MARGIN / 2,
     },
     serviceCard: {
+        width: CARD_WIDTH,
         backgroundColor: '#fff',
-        borderRadius: 12,
+        borderRadius: 16,
         padding: 16,
+        marginBottom: CARD_MARGIN,
+        marginHorizontal: CARD_MARGIN / 2,
         borderLeftWidth: 4,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 3,
+        minHeight: 160, // Hauteur minimale pour uniformité
     },
-    serviceIcon: {
-        fontSize: 32,
-        marginBottom: 8,
+    serviceIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
     },
     serviceTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '700',
         color: '#111827',
-        marginBottom: 4,
+        marginBottom: 6,
+        lineHeight: 20,
     },
     serviceDescription: {
-        fontSize: 14,
+        fontSize: 12,
         color: '#6B7280',
-        marginBottom: 8,
-    },
-    serviceArrow: {
-        alignSelf: 'flex-end',
-        marginTop: 4,
+        lineHeight: 16,
     },
 });
 

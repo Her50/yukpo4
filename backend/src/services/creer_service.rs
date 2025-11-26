@@ -25,7 +25,7 @@ mod service_costs {
     pub const MULTIPLIER_FIRST_PRODUCT: f64 = 100.0;
 
     /// ✅ Coût fixe d'ajout d'un nouveau produit dupliqué (modifié)
-    pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 3000;
+    pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 2000;
 
     /// Coût minimum de création d'un service sans produits
     #[allow(dead_code)]
@@ -1631,6 +1631,8 @@ pub async fn creer_service(
     let mut saved_service_videos: Vec<String> = Vec::new();
     let mut saved_service_docs: Vec<String> = Vec::new();
     let mut saved_service_excels: Vec<String> = Vec::new();
+    let mut saved_logo_path: Option<String> = None;
+    let mut saved_banner_path: Option<String> = None;
 
     // ✅ AMÉLIORATION : Sauvegarder les images PAR PRODUIT (avec product_index)
     // ✅ PHASE 10: Extraire d'abord les images du service pour les ajouter au premier produit
@@ -1642,6 +1644,250 @@ pub async fn creer_service(
     // - Médias globaux du service (logo/bannière/audio/vidéo/doc/excel) : product_id = NULL, product_index = NULL (liés au service)
     // - GPS : Au niveau service (services.gps ou services.data->'location'), pas dans media
     // - Localisation produit : Dans service.data->'produits'[index]->'lieu_produit' (quartier, ville, pays)
+    
+    // ✅ NOUVEAU 2025-11-26: Sauvegarder le logo et la bannière AVANT le nettoyage
+    // Extraire le logo
+    if let Some(logo_value) = data_processed.get("logo") {
+        let logo_data = if let Some(logo_obj) = logo_value.as_object() {
+            logo_obj.get("valeur")
+        } else {
+            Some(logo_value)
+        };
+        
+        if let Some(logo_str) = logo_data.and_then(|v| v.as_str()) {
+            if !logo_str.is_empty() && is_probable_base64(logo_str) {
+                log::info!("[creer_service] 🖼️ Sauvegarde du logo pour le service {}", service_id);
+                match persist_base64_media(storage_root.as_path(), service_id, "images", logo_str, "png").await {
+                    Ok(stored) => {
+                        let file_path = stored.path;
+                        let image_bytes = stored.bytes;
+                        
+                        #[cfg(feature = "image_search")]
+                        let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+                            match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
+                                Ok(sig) => {
+                                    let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| serde_json::json!({}));
+                                    let hash = format!("{:x}", md5::compute(&image_bytes));
+                                    (serde_json::to_value(&sig).unwrap_or_default(), hash, metadata)
+                                }
+                                Err(_) => (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                            }
+                        } else {
+                            (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                        };
+                        
+                        #[cfg(not(feature = "image_search"))]
+                        let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
+                        
+                        if let Err(e) = sqlx::query(
+                            r#"
+                            INSERT INTO media (service_id, type, path, service_media_type, uploaded_at, image_signature, image_hash, image_metadata)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                            "#
+                        )
+                        .bind(service_id)
+                        .bind("image")
+                        .bind(&file_path)
+                        .bind("logo")
+                        .bind(Utc::now().naive_utc())
+                        .bind(image_signature)
+                        .bind(image_hash)
+                        .bind(image_metadata)
+                        .execute(&mut *tx)
+                        .await
+                        {
+                            log::error!("[creer_service] Erreur insertion media logo: {}", e);
+                        } else {
+                            log::info!("[creer_service] ✅ Logo sauvegardé: {}", file_path);
+                            saved_logo_path = Some(file_path.clone());
+                            files_saved += 1;
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("[creer_service] Erreur sauvegarde logo: {}", e);
+                    }
+                }
+            }
+        } else if let Some(logo_array) = logo_data.and_then(|v| v.as_array()) {
+            // Prendre le premier élément si c'est un array
+            if let Some(first_logo) = logo_array.first().and_then(|v| v.as_str()) {
+                if !first_logo.is_empty() && is_probable_base64(first_logo) {
+                    log::info!("[creer_service] 🖼️ Sauvegarde du logo (premier élément du tableau) pour le service {}", service_id);
+                    match persist_base64_media(storage_root.as_path(), service_id, "images", first_logo, "png").await {
+                        Ok(stored) => {
+                            let file_path = stored.path;
+                            let image_bytes = stored.bytes;
+                            
+                            #[cfg(feature = "image_search")]
+                            let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+                                match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
+                                    Ok(sig) => {
+                                        let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| serde_json::json!({}));
+                                        let hash = format!("{:x}", md5::compute(&image_bytes));
+                                        (serde_json::to_value(&sig).unwrap_or_default(), hash, metadata)
+                                    }
+                                    Err(_) => (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                                }
+                            } else {
+                                (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                            };
+                            
+                            #[cfg(not(feature = "image_search"))]
+                            let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
+                            
+                            if let Err(e) = sqlx::query(
+                                r#"
+                                INSERT INTO media (service_id, type, path, service_media_type, uploaded_at, image_signature, image_hash, image_metadata)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                                "#
+                            )
+                            .bind(service_id)
+                            .bind("image")
+                            .bind(&file_path)
+                            .bind("logo")
+                            .bind(Utc::now().naive_utc())
+                            .bind(image_signature)
+                            .bind(image_hash)
+                            .bind(image_metadata)
+                            .execute(&mut *tx)
+                            .await
+                            {
+                                log::error!("[creer_service] Erreur insertion media logo: {}", e);
+                            } else {
+                                log::info!("[creer_service] ✅ Logo sauvegardé: {}", file_path);
+                                files_saved += 1;
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("[creer_service] Erreur sauvegarde logo: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Extraire la bannière
+    if let Some(banner_value) = data_processed.get("banner").or_else(|| data_processed.get("banniere")) {
+        let banner_data = if let Some(banner_obj) = banner_value.as_object() {
+            banner_obj.get("valeur")
+        } else {
+            Some(banner_value)
+        };
+        
+        if let Some(banner_str) = banner_data.and_then(|v| v.as_str()) {
+            if !banner_str.is_empty() && is_probable_base64(banner_str) {
+                log::info!("[creer_service] 🖼️ Sauvegarde de la bannière pour le service {}", service_id);
+                match persist_base64_media(storage_root.as_path(), service_id, "images", banner_str, "jpg").await {
+                    Ok(stored) => {
+                        let file_path = stored.path;
+                        let image_bytes = stored.bytes;
+                        
+                        #[cfg(feature = "image_search")]
+                        let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+                            match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
+                                Ok(sig) => {
+                                    let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| serde_json::json!({}));
+                                    let hash = format!("{:x}", md5::compute(&image_bytes));
+                                    (serde_json::to_value(&sig).unwrap_or_default(), hash, metadata)
+                                }
+                                Err(_) => (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                            }
+                        } else {
+                            (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                        };
+                        
+                        #[cfg(not(feature = "image_search"))]
+                        let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
+                        
+                        if let Err(e) = sqlx::query(
+                            r#"
+                            INSERT INTO media (service_id, type, path, service_media_type, uploaded_at, image_signature, image_hash, image_metadata)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                            "#
+                        )
+                        .bind(service_id)
+                        .bind("image")
+                        .bind(&file_path)
+                        .bind("banniere")
+                        .bind(Utc::now().naive_utc())
+                        .bind(image_signature)
+                        .bind(image_hash)
+                        .bind(image_metadata)
+                        .execute(&mut *tx)
+                        .await
+                        {
+                            log::error!("[creer_service] Erreur insertion media bannière: {}", e);
+                        } else {
+                            log::info!("[creer_service] ✅ Bannière sauvegardée: {}", file_path);
+                            saved_banner_path = Some(file_path.clone());
+                            files_saved += 1;
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("[creer_service] Erreur sauvegarde bannière: {}", e);
+                    }
+                }
+            }
+        } else if let Some(banner_array) = banner_data.and_then(|v| v.as_array()) {
+            // Prendre le premier élément si c'est un array
+            if let Some(first_banner) = banner_array.first().and_then(|v| v.as_str()) {
+                if !first_banner.is_empty() && is_probable_base64(first_banner) {
+                    log::info!("[creer_service] 🖼️ Sauvegarde de la bannière (premier élément du tableau) pour le service {}", service_id);
+                    match persist_base64_media(storage_root.as_path(), service_id, "images", first_banner, "jpg").await {
+                        Ok(stored) => {
+                            let file_path = stored.path;
+                            let image_bytes = stored.bytes;
+                            
+                            #[cfg(feature = "image_search")]
+                            let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+                                match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
+                                    Ok(sig) => {
+                                        let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| serde_json::json!({}));
+                                        let hash = format!("{:x}", md5::compute(&image_bytes));
+                                        (serde_json::to_value(&sig).unwrap_or_default(), hash, metadata)
+                                    }
+                                    Err(_) => (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                                }
+                            } else {
+                                (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                            };
+                            
+                            #[cfg(not(feature = "image_search"))]
+                            let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
+                            
+                            if let Err(e) = sqlx::query(
+                                r#"
+                                INSERT INTO media (service_id, type, path, service_media_type, uploaded_at, image_signature, image_hash, image_metadata)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                                "#
+                            )
+                            .bind(service_id)
+                            .bind("image")
+                            .bind(&file_path)
+                            .bind("banniere")
+                            .bind(Utc::now().naive_utc())
+                            .bind(image_signature)
+                            .bind(image_hash)
+                            .bind(image_metadata)
+                            .execute(&mut *tx)
+                            .await
+                            {
+                                log::error!("[creer_service] Erreur insertion media bannière: {}", e);
+                            } else {
+                                log::info!("[creer_service] ✅ Bannière sauvegardée: {}", file_path);
+                                files_saved += 1;
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("[creer_service] Erreur sauvegarde bannière: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     let service_images: Vec<String> = data_processed
         .get("base64_image")
         .and_then(|v| v.as_array())
@@ -1745,6 +1991,18 @@ pub async fn creer_service(
                             .filter_map(|v| v.as_str().map(|s| s.to_string())),
                     );
                 }
+                // Chercher dans "base64_image" (utilisé par FormulaireYukpoIntelligentScreen)
+                if let Some(base64_image) = prod_processed.get("base64_image") {
+                    if let Some(base64_array) = base64_image.as_array() {
+                        images_to_process.extend(
+                            base64_array
+                                .iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                        );
+                    } else if let Some(base64_str) = base64_image.as_str() {
+                        images_to_process.push(base64_str.to_string());
+                    }
+                }
                 // Chercher dans "images_base64" ou "image_base64" (base64)
                 if let Some(images_base64) = prod_processed.get("images_base64").and_then(|v| v.as_array()) {
                     images_to_process.extend(
@@ -1760,6 +2018,7 @@ pub async fn creer_service(
 
             // Nettoyer data_obj (supprimer les médias pour l'insertion)
             produit_obj.remove("images");
+            produit_obj.remove("base64_image");
             produit_obj.remove("images_base64");
             produit_obj.remove("image_base64");
 
@@ -2048,50 +2307,94 @@ pub async fn creer_service(
 
             saved_image_paths_by_product.push(saved_paths_for_product.clone());
 
-            if let Some(product_videos) = produit_obj.get("videos").and_then(|v| v.as_array()) {
-                for (video_index, vid_url) in product_videos.iter().enumerate() {
-                    if let Some(video_path) = vid_url.as_str() {
-                        let file_path = if video_path.starts_with("http") {
-                            video_path.to_string()
-                        } else {
-                            format!("video_{}_{}.mp4", service_id, Uuid::new_v4())
-                        };
+            // Extraire les vidéos depuis data_processed (contient les médias base64)
+            let mut videos_to_process: Vec<String> = Vec::new();
+            if let Some(prod_processed) = produit_from_processed {
+                // Chercher dans "videos" (URLs ou base64)
+                if let Some(product_videos) = prod_processed.get("videos").and_then(|v| v.as_array()) {
+                    videos_to_process.extend(
+                        product_videos
+                            .iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                    );
+                }
+                // Chercher dans "video_base64" (utilisé par FormulaireYukpoIntelligentScreen)
+                if let Some(video_base64) = prod_processed.get("video_base64") {
+                    if let Some(video_array) = video_base64.as_array() {
+                        videos_to_process.extend(
+                            video_array
+                                .iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                        );
+                    } else if let Some(video_str) = video_base64.as_str() {
+                        videos_to_process.push(video_str.to_string());
+                    }
+                }
+            }
 
-                        // ✅ MÉDIA DE PRODUIT : Vidéo liée à un produit spécifique
-                        // Liaison SANS AMBIGUÏTÉ via (service_id, product_index)
-                        // product_id = ID du produit (ex: "prod_0"), product_index = index dans service.data->'produits'[]
-                        if let Err(e) = sqlx::query(
-                            r#"
-                            INSERT INTO media (
-                                service_id, product_id, product_index, type, path,
-                                is_main_image, display_order, uploaded_at
-                            )
-                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                            "#,
-                        )
-                        .bind(service_id)
-                        .bind(&product_id)
-                        .bind(product_index as i32)
-                        .bind("video")
-                        .bind(&file_path)
-                        .bind(video_index == 0)
-                        .bind(video_index as i32)
-                        .bind(Utc::now().naive_utc())
-                        .execute(&mut *tx)
-                        .await
-                        {
-                            log::error!("[creer_service] Erreur insertion media video: {}", e);
-                            continue;
+            // Nettoyer data_obj (supprimer les vidéos pour l'insertion)
+            produit_obj.remove("videos");
+            produit_obj.remove("video_base64");
+
+            if !videos_to_process.is_empty() {
+                for (video_index, video_data) in videos_to_process.iter().enumerate() {
+                    if video_data.is_empty() {
+                        continue;
+                    }
+
+                    let file_path = if is_url(video_data) {
+                        video_data.to_string()
+                    } else if is_probable_base64(video_data) {
+                        match persist_base64_media(storage_root.as_path(), service_id, "videos", video_data, "mp4").await {
+                            Ok(stored) => stored.path,
+                            Err(e) => {
+                                log::error!(
+                                    "[creer_service] Erreur sauvegarde vidéo produit {}: {}",
+                                    product_index, e
+                                );
+                                continue;
+                            }
                         }
-
-                        files_saved += 1;
-                        log::info!(
-                            "[creer_service] ✅ Vidéo {}/{} du produit {} sauvegardée",
-                            video_index + 1,
-                            product_videos.len(),
+                    } else {
+                        log::warn!(
+                            "[creer_service] Vidéo ignorée (format non supporté) pour produit {}",
                             product_index
                         );
+                        continue;
+                    };
+
+                    // ✅ MÉDIA DE PRODUIT : Vidéo liée à un produit spécifique
+                    if let Err(e) = sqlx::query(
+                        r#"
+                        INSERT INTO media (
+                            service_id, product_id, product_index, type, path,
+                            is_main_image, display_order, uploaded_at
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        "#,
+                    )
+                    .bind(service_id)
+                    .bind(&product_id)
+                    .bind(product_index as i32)
+                    .bind("video")
+                    .bind(&file_path)
+                    .bind(video_index == 0)
+                    .bind(video_index as i32)
+                    .bind(Utc::now().naive_utc())
+                    .execute(&mut *tx)
+                    .await
+                    {
+                        log::error!("[creer_service] Erreur insertion media video: {}", e);
+                        continue;
                     }
+
+                    files_saved += 1;
+                    log::info!(
+                        "[creer_service] ✅ Vidéo {}/{} du produit {} sauvegardée",
+                        video_index + 1,
+                        videos_to_process.len(),
+                        product_index
+                    );
                 }
             }
         }
@@ -2560,6 +2863,30 @@ pub async fn creer_service(
         }
         if !saved_service_excels.is_empty() {
             map.insert("excels".to_string(), to_json_array(&saved_service_excels));
+        }
+        
+        // ✅ NOUVEAU 2025-11-26: Ajouter les chemins logo et bannière dans service.data pour faciliter l'accès
+        if let Some(logo_path) = &saved_logo_path {
+            map.insert("logo".to_string(), serde_json::json!({
+                "type_donnee": "image",
+                "valeur": logo_path,
+                "origine_champs": "formulaire"
+            }));
+            log::info!("[creer_service] ✅ Logo ajouté dans service.data: {}", logo_path);
+        }
+        
+        if let Some(banner_path) = &saved_banner_path {
+            map.insert("banner".to_string(), serde_json::json!({
+                "type_donnee": "image",
+                "valeur": banner_path,
+                "origine_champs": "formulaire"
+            }));
+            map.insert("banniere".to_string(), serde_json::json!({
+                "type_donnee": "image",
+                "valeur": banner_path,
+                "origine_champs": "formulaire"
+            }));
+            log::info!("[creer_service] ✅ Bannière ajoutée dans service.data: {}", banner_path);
         }
 
         for key in [

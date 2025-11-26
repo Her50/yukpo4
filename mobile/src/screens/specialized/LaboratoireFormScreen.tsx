@@ -1,5 +1,5 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     ScrollView,
@@ -9,19 +9,27 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import WeekScheduleSelector from '../../components/WeekScheduleSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { apiPost } from '../../services/api';
+import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+
+interface ScheduleDay {
+    day: number;
+    enabled: boolean;
+    timeSlots: Array<{ start: string; end: string }>;
+}
 
 const LaboratoireFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
     const { location } = useLocation();
-    const serviceId = (route.params as any)?.serviceId;
+    const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
 
     const [formData, setFormData] = useState({
         nom: '',
@@ -41,10 +49,40 @@ const LaboratoireFormScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [selectedAnalyses, setSelectedAnalyses] = useState<string[]>([]);
     const [selectedImagerie, setSelectedImagerie] = useState<string[]>([]);
+    const [showGPSModal, setShowGPSModal] = useState(false);
+    const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
+    const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
 
     const typesLaboratoire = ['Laboratoire', 'Centre d\'imagerie', 'Les deux'];
     const analysesOptions = ['Sang', 'Urine', 'Bactériologie', 'Parasitologie', 'Sérologie', 'Biochimie'];
     const imagerieOptions = ['Radiologie', 'Échographie', 'Scanner', 'IRM', 'Mammographie'];
+
+    // ✅ Créer automatiquement un service si serviceId manquant
+    useEffect(() => {
+        const createServiceIfNeeded = async () => {
+            if (!serviceId && user?.id && formData.nom) {
+                try {
+                    const serviceData = {
+                        titre_service: formData.nom || 'Laboratoire',
+                        description: `Laboratoire: ${formData.type_laboratoire}`,
+                        category: 'sante',
+                    };
+
+                    const response = await servicesApi.createService(serviceData);
+                    if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
+                        setServiceId((response.data as any).id);
+                    }
+                } catch (error: any) {
+                    console.error('[LaboratoireFormScreen] Erreur création service:', error);
+                }
+            }
+        };
+
+        if (!serviceId && formData.nom) {
+            createServiceIfNeeded();
+        }
+    }, [formData.nom, serviceId, user?.id]);
 
     const toggleAnalyse = (analyse: string) => {
         setSelectedAnalyses((prev) =>
@@ -62,32 +100,80 @@ const LaboratoireFormScreen: React.FC = () => {
         );
     };
 
+    const handleGPSSelect = (coordinates: string) => {
+        setSelectedGPS(coordinates);
+        setShowGPSModal(false);
+    };
+
+    const handleScheduleSave = (savedSchedule: ScheduleDay[]) => {
+        setSchedule(savedSchedule);
+        setShowScheduleModal(false);
+    };
+
     const handleSubmit = async () => {
-        if (!serviceId) {
+        // ✅ Créer le service si nécessaire
+        let finalServiceId = serviceId;
+        if (!finalServiceId && user?.id) {
+            try {
+                setLoading(true);
+                const serviceData = {
+                    titre_service: formData.nom || 'Laboratoire',
+                    description: `Laboratoire: ${formData.type_laboratoire}`,
+                    category: 'sante',
+                };
+
+                const response = await servicesApi.createService(serviceData);
+                if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
+                    finalServiceId = (response.data as any).id;
+                    setServiceId(finalServiceId);
+                } else {
+                    Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
+                    setLoading(false);
+                    return;
+                }
+            } catch (error: any) {
+                console.error('[LaboratoireFormScreen] Erreur création service:', error);
+                Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
+                setLoading(false);
+                return;
+            }
+        }
+
+        if (!finalServiceId) {
             Alert.alert('Erreur', 'Service ID manquant. Veuillez créer un service d\'abord.');
+            setLoading(false);
             return;
         }
 
         if (!formData.nom.trim()) {
             Alert.alert('Erreur', 'Le nom du laboratoire est obligatoire');
+            setLoading(false);
             return;
         }
 
         try {
-            setLoading(true);
+            // Construire le planning hebdomadaire depuis schedule
+            const planningHebdomadaire = schedule.length > 0
+                ? schedule.map(day => ({
+                    day: day.day,
+                    enabled: day.enabled,
+                    timeSlots: day.timeSlots
+                }))
+                : null;
 
             const payload = {
-                service_id: serviceId,
+                service_id: finalServiceId,
                 nom: formData.nom,
                 type_laboratoire: formData.type_laboratoire,
                 adresse: formData.adresse || null,
                 quartier: formData.quartier || null,
                 ville: formData.ville || null,
-                gps: location
+                gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
-                    : null,
+                    : null),
                 analyses_disponibles: selectedAnalyses.length > 0 ? selectedAnalyses : null,
                 imagerie_disponible: selectedImagerie.length > 0 ? selectedImagerie : null,
+                planning_hebdomadaire: planningHebdomadaire,
                 rdv_requis: formData.rdv_requis,
                 resultats_en_ligne: formData.resultats_en_ligne,
                 telephone: formData.telephone || null,
@@ -115,189 +201,249 @@ const LaboratoireFormScreen: React.FC = () => {
     };
 
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <SafeIcon name="arrow-left" size={24} color="#111827" />
-                </TouchableOpacity>
-                <Text style={styles.title}>Enregistrer un Laboratoire</Text>
-            </View>
-
-            <View style={styles.form}>
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Nom du laboratoire *</Text>
-                    <NativeInput
-                        value={formData.nom}
-                        onChangeText={(text) => setFormData({ ...formData, nom: text })}
-                        placeholder="Ex: Laboratoire Central"
-                    />
+        <>
+            <ScrollView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <SafeIcon name="arrow-left" size={24} color="#111827" />
+                    </TouchableOpacity>
+                    <Text style={styles.title}>Enregistrer un Laboratoire</Text>
                 </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Type</Text>
-                    <View style={styles.chipsContainer}>
-                        {typesLaboratoire.map((type) => (
-                            <TouchableOpacity
-                                key={type}
-                                style={[
-                                    styles.chip,
-                                    formData.type_laboratoire === type && styles.chipSelected,
-                                ]}
-                                onPress={() => setFormData({ ...formData, type_laboratoire: type })}
-                            >
-                                <Text
-                                    style={[
-                                        styles.chipText,
-                                        formData.type_laboratoire === type && styles.chipTextSelected,
-                                    ]}
-                                >
-                                    {type}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Adresse</Text>
-                    <NativeInput
-                        value={formData.adresse}
-                        onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                        placeholder="Adresse complète"
-                        multiline
-                    />
-                </View>
-
-                <View style={styles.row}>
-                    <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                        <Text style={styles.label}>Quartier</Text>
+                <View style={styles.form}>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Nom du laboratoire *</Text>
                         <NativeInput
-                            value={formData.quartier}
-                            onChangeText={(text) => setFormData({ ...formData, quartier: text })}
-                            placeholder="Quartier"
+                            value={formData.nom}
+                            onChangeText={(text) => setFormData({ ...formData, nom: text })}
+                            placeholder="Ex: Laboratoire Central"
                         />
                     </View>
-                    <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                        <Text style={styles.label}>Ville</Text>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Type</Text>
+                        <View style={styles.chipsContainer}>
+                            {typesLaboratoire.map((type) => (
+                                <TouchableOpacity
+                                    key={type}
+                                    style={[
+                                        styles.chip,
+                                        formData.type_laboratoire === type && styles.chipSelected,
+                                    ]}
+                                    onPress={() => setFormData({ ...formData, type_laboratoire: type })}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.chipText,
+                                            formData.type_laboratoire === type && styles.chipTextSelected,
+                                        ]}
+                                    >
+                                        {type}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* ✅ Localisation avec Google Maps */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Localisation GPS</Text>
+                        <TouchableOpacity
+                            style={styles.gpsButton}
+                            onPress={() => setShowGPSModal(true)}
+                        >
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.gpsButtonText}>
+                                {selectedGPS ? 'Localisation sélectionnée' : 'Sélectionner sur la carte'}
+                            </Text>
+                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
+                        </TouchableOpacity>
+                        {selectedGPS && (
+                            <Text style={styles.gpsText}>{selectedGPS}</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Adresse</Text>
                         <NativeInput
-                            value={formData.ville}
-                            onChangeText={(text) => setFormData({ ...formData, ville: text })}
-                            placeholder="Ville"
+                            value={formData.adresse}
+                            onChangeText={(text) => setFormData({ ...formData, adresse: text })}
+                            placeholder="Adresse complète"
+                            multiline
                         />
                     </View>
-                </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Analyses disponibles</Text>
-                    <View style={styles.chipsContainer}>
-                        {analysesOptions.map((analyse) => (
-                            <TouchableOpacity
-                                key={analyse}
-                                style={[
-                                    styles.chip,
-                                    selectedAnalyses.includes(analyse) && styles.chipSelected,
-                                ]}
-                                onPress={() => toggleAnalyse(analyse)}
-                            >
-                                <Text
+                    <View style={styles.row}>
+                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                            <Text style={styles.label}>Quartier</Text>
+                            <NativeInput
+                                value={formData.quartier}
+                                onChangeText={(text) => setFormData({ ...formData, quartier: text })}
+                                placeholder="Quartier"
+                            />
+                        </View>
+                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                            <Text style={styles.label}>Ville</Text>
+                            <NativeInput
+                                value={formData.ville}
+                                onChangeText={(text) => setFormData({ ...formData, ville: text })}
+                                placeholder="Ville"
+                            />
+                        </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Analyses disponibles</Text>
+                        <View style={styles.chipsContainer}>
+                            {analysesOptions.map((analyse) => (
+                                <TouchableOpacity
+                                    key={analyse}
                                     style={[
-                                        styles.chipText,
-                                        selectedAnalyses.includes(analyse) && styles.chipTextSelected,
+                                        styles.chip,
+                                        selectedAnalyses.includes(analyse) && styles.chipSelected,
                                     ]}
+                                    onPress={() => toggleAnalyse(analyse)}
                                 >
-                                    {analyse}
+                                    <Text
+                                        style={[
+                                            styles.chipText,
+                                            selectedAnalyses.includes(analyse) && styles.chipTextSelected,
+                                        ]}
+                                    >
+                                        {analyse}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Imagerie disponible</Text>
+                        <View style={styles.chipsContainer}>
+                            {imagerieOptions.map((imagerie) => (
+                                <TouchableOpacity
+                                    key={imagerie}
+                                    style={[
+                                        styles.chip,
+                                        selectedImagerie.includes(imagerie) && styles.chipSelected,
+                                    ]}
+                                    onPress={() => toggleImagerie(imagerie)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.chipText,
+                                            selectedImagerie.includes(imagerie) && styles.chipTextSelected,
+                                        ]}
+                                    >
+                                        {imagerie}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* ✅ Planning hebdomadaire */}
+                    <View style={styles.inputGroup}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.label}>Planning hebdomadaire</Text>
+                            <TouchableOpacity
+                                style={styles.planningButton}
+                                onPress={() => setShowScheduleModal(true)}
+                            >
+                                <SafeIcon name="calendar" size={16} color={modernColors.primary} />
+                                <Text style={styles.planningButtonText}>
+                                    {schedule.length > 0 ? 'Modifier' : 'Configurer'}
                                 </Text>
                             </TouchableOpacity>
-                        ))}
+                        </View>
+                        {schedule.length > 0 && (
+                            <Text style={styles.scheduleSummary}>
+                                {schedule.filter(d => d.enabled).length} jour(s) configuré(s)
+                            </Text>
+                        )}
                     </View>
-                </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Imagerie disponible</Text>
-                    <View style={styles.chipsContainer}>
-                        {imagerieOptions.map((imagerie) => (
-                            <TouchableOpacity
-                                key={imagerie}
-                                style={[
-                                    styles.chip,
-                                    selectedImagerie.includes(imagerie) && styles.chipSelected,
-                                ]}
-                                onPress={() => toggleImagerie(imagerie)}
-                            >
-                                <Text
-                                    style={[
-                                        styles.chipText,
-                                        selectedImagerie.includes(imagerie) && styles.chipTextSelected,
-                                    ]}
-                                >
-                                    {imagerie}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                    <View style={styles.switchGroup}>
+                        <Text style={styles.label}>Rendez-vous requis</Text>
+                        <Switch
+                            value={formData.rdv_requis}
+                            onValueChange={(value) => setFormData({ ...formData, rdv_requis: value })}
+                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
+                        />
                     </View>
-                </View>
 
-                <View style={styles.switchGroup}>
-                    <Text style={styles.label}>Rendez-vous requis</Text>
-                    <Switch
-                        value={formData.rdv_requis}
-                        onValueChange={(value) => setFormData({ ...formData, rdv_requis: value })}
-                        trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
+                    <View style={styles.switchGroup}>
+                        <Text style={styles.label}>Résultats en ligne</Text>
+                        <Switch
+                            value={formData.resultats_en_ligne}
+                            onValueChange={(value) => setFormData({ ...formData, resultats_en_ligne: value })}
+                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Téléphone</Text>
+                        <NativeInput
+                            value={formData.telephone}
+                            onChangeText={(text) => setFormData({ ...formData, telephone: text })}
+                            placeholder="+237 6XX XX XX XX"
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>WhatsApp</Text>
+                        <NativeInput
+                            value={formData.whatsapp}
+                            onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
+                            placeholder="+237 6XX XX XX XX"
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Email</Text>
+                        <NativeInput
+                            value={formData.email}
+                            onChangeText={(text) => setFormData({ ...formData, email: text })}
+                            placeholder="labo@example.com"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                        />
+                    </View>
+
+                    {/* ✅ CORRIGÉ: Utiliser title au lieu de children */}
+                    <NativeButton
+                        title={loading ? 'Enregistrement...' : 'Enregistrer le Laboratoire'}
+                        onPress={handleSubmit}
+                        disabled={loading || !formData.nom.trim()}
+                        variant="primary"
+                        size="large"
+                        style={styles.submitButton}
                     />
                 </View>
+            </ScrollView>
 
-                <View style={styles.switchGroup}>
-                    <Text style={styles.label}>Résultats en ligne</Text>
-                    <Switch
-                        value={formData.resultats_en_ligne}
-                        onValueChange={(value) => setFormData({ ...formData, resultats_en_ligne: value })}
-                        trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                    />
-                </View>
+            {/* Modals */}
+            <ModernGPSModal
+                visible={showGPSModal}
+                onClose={() => setShowGPSModal(false)}
+                onSelect={handleGPSSelect}
+                currentLocation={location ? {
+                    lat: location.coords.latitude,
+                    lng: location.coords.longitude
+                } : null}
+                title="Sélectionner la localisation"
+            />
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Téléphone</Text>
-                    <NativeInput
-                        value={formData.telephone}
-                        onChangeText={(text) => setFormData({ ...formData, telephone: text })}
-                        placeholder="+237 6XX XX XX XX"
-                        keyboardType="phone-pad"
-                    />
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>WhatsApp</Text>
-                    <NativeInput
-                        value={formData.whatsapp}
-                        onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
-                        placeholder="+237 6XX XX XX XX"
-                        keyboardType="phone-pad"
-                    />
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Email</Text>
-                    <NativeInput
-                        value={formData.email}
-                        onChangeText={(text) => setFormData({ ...formData, email: text })}
-                        placeholder="labo@example.com"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-                </View>
-
-                <NativeButton
-                    onPress={handleSubmit}
-                    disabled={loading || !formData.nom.trim()}
-                    variant="primary"
-                    style={styles.submitButton}
-                >
-                    <Text style={styles.submitButtonText}>
-                        {loading ? 'Enregistrement...' : 'Enregistrer le Laboratoire'}
-                    </Text>
-                </NativeButton>
-            </View>
-        </ScrollView>
+            <WeekScheduleSelector
+                visible={showScheduleModal}
+                onClose={() => setShowScheduleModal(false)}
+                onSave={handleScheduleSave}
+                initialSchedule={schedule}
+                title="Planning hebdomadaire"
+            />
+        </>
     );
 };
 
@@ -369,13 +515,54 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: '600',
     },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    gpsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        padding: 12,
+        gap: 12,
+    },
+    gpsButtonText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#111827',
+    },
+    gpsText: {
+        marginTop: 8,
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    planningButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: `${modernColors.primary}15`,
+        borderRadius: 8,
+    },
+    planningButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    scheduleSummary: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+    },
     submitButton: {
         marginTop: 24,
-    },
-    submitButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
     },
 });
 

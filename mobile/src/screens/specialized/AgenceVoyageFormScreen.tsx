@@ -1,5 +1,5 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     ScrollView,
@@ -10,19 +10,27 @@ import {
     View
 } from 'react-native';
 import BusModelForm, { BusModel } from '../../components/bus/BusModelForm';
+import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import WeekScheduleSelector from '../../components/WeekScheduleSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { apiPost } from '../../services/api';
+import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+
+interface ScheduleDay {
+    day: number;
+    enabled: boolean;
+    timeSlots: Array<{ start: string; end: string }>;
+}
 
 const AgenceVoyageFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
     const { location } = useLocation();
-    const serviceId = (route.params as any)?.serviceId;
+    const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
 
     const [formData, setFormData] = useState({
         nom_agence: '',
@@ -53,11 +61,41 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const [busModels, setBusModels] = useState<BusModel[]>([]);
     const [showBusModelForm, setShowBusModelForm] = useState(false);
     const [editingModelIndex, setEditingModelIndex] = useState<number | null>(null);
+    const [showGPSModal, setShowGPSModal] = useState(false);
+    const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
+    const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
 
     const servicesOptions = ['Billetterie bus', 'Billetterie avion', 'Organisation voyages', 'Visa'];
     const compagniesOptions = ['Voyages Express', 'Amour Mezam', 'Camair-Co', 'Brussels Airlines', 'Air France'];
     const destinationsOptions = ['Douala', 'Yaoundé', 'Bafoussam', 'Bamenda', 'Garoua', 'Maroua', 'Paris', 'Bruxelles'];
     const compagniesAffilieesOptions = ['Voyages Express', 'Amour Mezam', 'Camair-Co'];
+
+    // ✅ Créer automatiquement un service si serviceId manquant
+    useEffect(() => {
+        const createServiceIfNeeded = async () => {
+            if (!serviceId && user?.id && formData.nom_agence) {
+                try {
+                    const serviceData = {
+                        titre_service: formData.nom_agence || 'Agence de Voyage',
+                        description: 'Agence de voyage',
+                        category: 'transport',
+                    };
+
+                    const response = await servicesApi.createService(serviceData);
+                    if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
+                        setServiceId((response.data as any).id);
+                    }
+                } catch (error: any) {
+                    console.error('[AgenceVoyageFormScreen] Erreur création service:', error);
+                }
+            }
+        };
+
+        if (!serviceId && formData.nom_agence) {
+            createServiceIfNeeded();
+        }
+    }, [formData.nom_agence, serviceId, user?.id]);
 
     const toggleService = (service: string) => {
         setSelectedServices((prev) =>
@@ -130,29 +168,79 @@ const AgenceVoyageFormScreen: React.FC = () => {
         return seatMap;
     };
 
+    const handleGPSSelect = (coordinates: string) => {
+        setSelectedGPS(coordinates);
+        setShowGPSModal(false);
+    };
+
+    const handleScheduleSave = (savedSchedule: ScheduleDay[]) => {
+        setSchedule(savedSchedule);
+        setShowScheduleModal(false);
+    };
+
     const handleSubmit = async () => {
-        if (!serviceId) {
+        // ✅ Créer le service si nécessaire
+        let finalServiceId = serviceId;
+        if (!finalServiceId && user?.id) {
+            try {
+                setLoading(true);
+                const serviceData = {
+                    titre_service: formData.nom_agence || 'Agence de Voyage',
+                    description: 'Agence de voyage',
+                    category: 'transport',
+                };
+
+                const response = await servicesApi.createService(serviceData);
+                if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
+                    finalServiceId = (response.data as any).id;
+                    setServiceId(finalServiceId);
+                } else {
+                    Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
+                    setLoading(false);
+                    return;
+                }
+            } catch (error: any) {
+                console.error('[AgenceVoyageFormScreen] Erreur création service:', error);
+                Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
+                setLoading(false);
+                return;
+            }
+        }
+
+        if (!finalServiceId) {
             Alert.alert('Erreur', 'Service ID manquant. Veuillez créer un service d\'abord.');
+            setLoading(false);
             return;
         }
 
         if (!formData.nom_agence.trim()) {
             Alert.alert('Erreur', 'Le nom de l\'agence est obligatoire');
+            setLoading(false);
             return;
         }
 
         try {
             setLoading(true);
 
+            // Construire le planning hebdomadaire depuis schedule
+            const planningHebdomadaire = schedule.length > 0
+                ? schedule.map(day => ({
+                    day: day.day,
+                    enabled: day.enabled,
+                    timeSlots: day.timeSlots
+                }))
+                : null;
+
             const payload = {
-                service_id: serviceId,
+                service_id: finalServiceId,
                 nom_agence: formData.nom_agence,
                 adresse: formData.adresse || null,
                 quartier: formData.quartier || null,
                 ville: formData.ville || null,
-                gps: location
+                gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
-                    : null,
+                    : null),
+                planning_hebdomadaire: planningHebdomadaire,
                 services_voyage: selectedServices.length > 0 ? selectedServices : null,
                 compagnies_bus: selectedCompagnies.length > 0 ? selectedCompagnies : null,
                 destinations: selectedDestinations.length > 0 ? selectedDestinations : null,
@@ -170,7 +258,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
             const response = await apiPost('/api/agences-voyage', payload);
 
             if (response.success) {
-                const agencyId = response.data?.id;
+                const agencyId = response.data && typeof response.data === 'object' && 'id' in response.data
+                    ? (response.data as any).id
+                    : null;
 
                 // Si l'agence peut émettre des tickets bus et qu'il y a des modèles
                 if (formData.peut_emettre_tickets_bus && busModels.length > 0 && agencyId) {
@@ -202,8 +292,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
 
                             const productResponse = await apiPost('/api/bus-tickets/create-product', productPayload);
 
-                            if (productResponse.success && productResponse.data?.id) {
-                                const productId = productResponse.data.id;
+                            if (productResponse.success && productResponse.data && typeof productResponse.data === 'object' && 'id' in productResponse.data) {
+                                const productId = (productResponse.data as any).id;
 
                                 // Lier le produit à l'agence
                                 const linkResponse = await apiPost('/api/bus-tickets/link', {
@@ -266,351 +356,409 @@ const AgenceVoyageFormScreen: React.FC = () => {
     };
 
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <SafeIcon name="arrow-left" size={24} color="#111827" />
-                </TouchableOpacity>
-                <Text style={styles.title}>Enregistrer une Agence de Voyage</Text>
-            </View>
-
-            <View style={styles.form}>
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Nom de l'agence *</Text>
-                    <NativeInput
-                        value={formData.nom_agence}
-                        onChangeText={(text) => setFormData({ ...formData, nom_agence: text })}
-                        placeholder="Ex: Agence Voyages Express"
-                    />
+        <>
+            <ScrollView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <SafeIcon name="arrow-left" size={24} color="#111827" />
+                    </TouchableOpacity>
+                    <Text style={styles.title}>Enregistrer une Agence de Voyage</Text>
                 </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Adresse</Text>
-                    <NativeInput
-                        value={formData.adresse}
-                        onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                        placeholder="Adresse complète"
-                        multiline
-                    />
-                </View>
-
-                <View style={styles.row}>
-                    <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                        <Text style={styles.label}>Quartier</Text>
-                        <NativeInput
-                            value={formData.quartier}
-                            onChangeText={(text) => setFormData({ ...formData, quartier: text })}
-                            placeholder="Quartier"
-                        />
-                    </View>
-                    <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                        <Text style={styles.label}>Ville</Text>
-                        <NativeInput
-                            value={formData.ville}
-                            onChangeText={(text) => setFormData({ ...formData, ville: text })}
-                            placeholder="Ville"
-                        />
-                    </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Services offerts</Text>
-                    <View style={styles.chipsContainer}>
-                        {servicesOptions.map((service) => (
-                            <TouchableOpacity
-                                key={service}
-                                style={[
-                                    styles.chip,
-                                    selectedServices.includes(service) && styles.chipSelected,
-                                ]}
-                                onPress={() => toggleService(service)}
-                            >
-                                <Text
-                                    style={[
-                                        styles.chipText,
-                                        selectedServices.includes(service) && styles.chipTextSelected,
-                                    ]}
-                                >
-                                    {service}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Compagnies de bus</Text>
-                    <View style={styles.chipsContainer}>
-                        {compagniesOptions.map((compagnie) => (
-                            <TouchableOpacity
-                                key={compagnie}
-                                style={[
-                                    styles.chip,
-                                    selectedCompagnies.includes(compagnie) && styles.chipSelected,
-                                ]}
-                                onPress={() => toggleCompagnie(compagnie)}
-                            >
-                                <Text
-                                    style={[
-                                        styles.chipText,
-                                        selectedCompagnies.includes(compagnie) && styles.chipTextSelected,
-                                    ]}
-                                >
-                                    {compagnie}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Destinations</Text>
-                    <View style={styles.chipsContainer}>
-                        {destinationsOptions.map((destination) => (
-                            <TouchableOpacity
-                                key={destination}
-                                style={[
-                                    styles.chip,
-                                    selectedDestinations.includes(destination) && styles.chipSelected,
-                                ]}
-                                onPress={() => toggleDestination(destination)}
-                            >
-                                <Text
-                                    style={[
-                                        styles.chipText,
-                                        selectedDestinations.includes(destination) && styles.chipTextSelected,
-                                    ]}
-                                >
-                                    {destination}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={styles.row}>
-                    <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                        <Text style={styles.label}>Heure d'ouverture</Text>
-                        <NativeInput
-                            value={formData.heures_ouverture}
-                            onChangeText={(text) => setFormData({ ...formData, heures_ouverture: text })}
-                            placeholder="08:00"
-                        />
-                    </View>
-                    <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                        <Text style={styles.label}>Heure de fermeture</Text>
-                        <NativeInput
-                            value={formData.heures_fermeture}
-                            onChangeText={(text) => setFormData({ ...formData, heures_fermeture: text })}
-                            placeholder="18:00"
-                        />
-                    </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Jours d'ouverture</Text>
-                    <NativeInput
-                        value={formData.jours_ouverture}
-                        onChangeText={(text) => setFormData({ ...formData, jours_ouverture: text })}
-                        placeholder="Ex: Lundi - Samedi"
-                    />
-                </View>
-
-                <View style={styles.switchGroup}>
-                    <Text style={styles.label}>Peut émettre tickets bus</Text>
-                    <Switch
-                        value={formData.peut_emettre_tickets_bus}
-                        onValueChange={(value) => setFormData({ ...formData, peut_emettre_tickets_bus: value })}
-                        trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                    />
-                </View>
-
-                {formData.peut_emettre_tickets_bus && (
+                <View style={styles.form}>
                     <View style={styles.inputGroup}>
-                        <View style={styles.busModelsHeader}>
-                            <Text style={styles.label}>Modèles de bus</Text>
-                            <TouchableOpacity
-                                style={styles.addModelButton}
-                                onPress={() => {
-                                    setEditingModelIndex(null);
-                                    setShowBusModelForm(true);
-                                }}
-                            >
-                                <SafeIcon name="plus" size={20} color="#fff" />
-                                <Text style={styles.addModelButtonText}>Ajouter</Text>
-                            </TouchableOpacity>
-                        </View>
+                        <Text style={styles.label}>Nom de l'agence *</Text>
+                        <NativeInput
+                            value={formData.nom_agence}
+                            onChangeText={(text) => setFormData({ ...formData, nom_agence: text })}
+                            placeholder="Ex: Agence Voyages Express"
+                        />
+                    </View>
 
-                        {busModels.length === 0 ? (
-                            <View style={styles.emptyModelsContainer}>
-                                <Text style={styles.emptyModelsText}>
-                                    Aucun modèle de bus configuré
-                                </Text>
-                                <Text style={styles.emptyModelsHint}>
-                                    Ajoutez un modèle pour permettre la vente de tickets
-                                </Text>
-                            </View>
-                        ) : (
-                            <View style={styles.modelsList}>
-                                {busModels.map((model, index) => (
-                                    <View key={index} style={styles.modelCard}>
-                                        <View style={styles.modelCardHeader}>
-                                            <View>
-                                                <Text style={styles.modelName}>{model.nom_modele}</Text>
-                                                <Text style={styles.modelDetails}>
-                                                    {model.classe} • {model.total_seats} places • {model.prix_base.toLocaleString()} FCFA
-                                                </Text>
-                                            </View>
-                                            <View style={styles.modelActions}>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        setEditingModelIndex(index);
-                                                        setShowBusModelForm(true);
-                                                    }}
-                                                    style={styles.editButton}
-                                                >
-                                                    <SafeIcon name="edit" size={18} color={modernColors.primary} />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        Alert.alert(
-                                                            'Supprimer',
-                                                            `Voulez-vous supprimer le modèle "${model.nom_modele}" ?`,
-                                                            [
-                                                                { text: 'Annuler', style: 'cancel' },
-                                                                {
-                                                                    text: 'Supprimer',
-                                                                    style: 'destructive',
-                                                                    onPress: () => {
-                                                                        setBusModels(busModels.filter((_, i) => i !== index));
-                                                                    },
-                                                                },
-                                                            ]
-                                                        );
-                                                    }}
-                                                    style={styles.deleteButton}
-                                                >
-                                                    <SafeIcon name="trash" size={18} color="#EF4444" />
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                        {model.equipements.length > 0 && (
-                                            <View style={styles.equipementsContainer}>
-                                                {model.equipements.map((eq, eqIndex) => (
-                                                    <View key={eqIndex} style={styles.equipementChip}>
-                                                        <Text style={styles.equipementText}>{eq}</Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        )}
-                                    </View>
-                                ))}
-                            </View>
+                    {/* ✅ Localisation avec Google Maps */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Localisation GPS</Text>
+                        <TouchableOpacity
+                            style={styles.gpsButton}
+                            onPress={() => setShowGPSModal(true)}
+                        >
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.gpsButtonText}>
+                                {selectedGPS ? 'Localisation sélectionnée' : 'Sélectionner sur la carte'}
+                            </Text>
+                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
+                        </TouchableOpacity>
+                        {selectedGPS && (
+                            <Text style={styles.gpsText}>{selectedGPS}</Text>
                         )}
                     </View>
-                )}
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Compagnies affiliées</Text>
-                    <View style={styles.chipsContainer}>
-                        {compagniesAffilieesOptions.map((compagnie) => (
-                            <TouchableOpacity
-                                key={compagnie}
-                                style={[
-                                    styles.chip,
-                                    selectedAffiliees.includes(compagnie) && styles.chipSelected,
-                                ]}
-                                onPress={() => toggleAffiliee(compagnie)}
-                            >
-                                <Text
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Adresse</Text>
+                        <NativeInput
+                            value={formData.adresse}
+                            onChangeText={(text) => setFormData({ ...formData, adresse: text })}
+                            placeholder="Adresse complète"
+                            multiline
+                        />
+                    </View>
+
+                    <View style={styles.row}>
+                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                            <Text style={styles.label}>Quartier</Text>
+                            <NativeInput
+                                value={formData.quartier}
+                                onChangeText={(text) => setFormData({ ...formData, quartier: text })}
+                                placeholder="Quartier"
+                            />
+                        </View>
+                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                            <Text style={styles.label}>Ville</Text>
+                            <NativeInput
+                                value={formData.ville}
+                                onChangeText={(text) => setFormData({ ...formData, ville: text })}
+                                placeholder="Ville"
+                            />
+                        </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Services offerts</Text>
+                        <View style={styles.chipsContainer}>
+                            {servicesOptions.map((service) => (
+                                <TouchableOpacity
+                                    key={service}
                                     style={[
-                                        styles.chipText,
-                                        selectedAffiliees.includes(compagnie) && styles.chipTextSelected,
+                                        styles.chip,
+                                        selectedServices.includes(service) && styles.chipSelected,
                                     ]}
+                                    onPress={() => toggleService(service)}
                                 >
-                                    {compagnie}
+                                    <Text
+                                        style={[
+                                            styles.chipText,
+                                            selectedServices.includes(service) && styles.chipTextSelected,
+                                        ]}
+                                    >
+                                        {service}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Compagnies de bus</Text>
+                        <View style={styles.chipsContainer}>
+                            {compagniesOptions.map((compagnie) => (
+                                <TouchableOpacity
+                                    key={compagnie}
+                                    style={[
+                                        styles.chip,
+                                        selectedCompagnies.includes(compagnie) && styles.chipSelected,
+                                    ]}
+                                    onPress={() => toggleCompagnie(compagnie)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.chipText,
+                                            selectedCompagnies.includes(compagnie) && styles.chipTextSelected,
+                                        ]}
+                                    >
+                                        {compagnie}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Destinations</Text>
+                        <View style={styles.chipsContainer}>
+                            {destinationsOptions.map((destination) => (
+                                <TouchableOpacity
+                                    key={destination}
+                                    style={[
+                                        styles.chip,
+                                        selectedDestinations.includes(destination) && styles.chipSelected,
+                                    ]}
+                                    onPress={() => toggleDestination(destination)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.chipText,
+                                            selectedDestinations.includes(destination) && styles.chipTextSelected,
+                                        ]}
+                                    >
+                                        {destination}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* ✅ Planning hebdomadaire avec sélecteur visuel */}
+                    <View style={styles.inputGroup}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.label}>Planning hebdomadaire</Text>
+                            <TouchableOpacity
+                                style={styles.planningButton}
+                                onPress={() => setShowScheduleModal(true)}
+                            >
+                                <SafeIcon name="calendar" size={16} color={modernColors.primary} />
+                                <Text style={styles.planningButtonText}>
+                                    {schedule.length > 0 ? 'Modifier' : 'Configurer'}
                                 </Text>
                             </TouchableOpacity>
-                        ))}
+                        </View>
+                        {schedule.length > 0 && (
+                            <Text style={styles.scheduleSummary}>
+                                {schedule.filter(d => d.enabled).length} jour(s) configuré(s)
+                            </Text>
+                        )}
+                        <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                                <Text style={styles.label}>Heure d'ouverture (optionnel)</Text>
+                                <NativeInput
+                                    value={formData.heures_ouverture}
+                                    onChangeText={(text) => setFormData({ ...formData, heures_ouverture: text })}
+                                    placeholder="08:00"
+                                />
+                            </View>
+                            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                                <Text style={styles.label}>Heure de fermeture (optionnel)</Text>
+                                <NativeInput
+                                    value={formData.heures_fermeture}
+                                    onChangeText={(text) => setFormData({ ...formData, heures_fermeture: text })}
+                                    placeholder="18:00"
+                                />
+                            </View>
+                        </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Jours d'ouverture (optionnel - texte libre)</Text>
+                            <NativeInput
+                                value={formData.jours_ouverture}
+                                onChangeText={(text) => setFormData({ ...formData, jours_ouverture: text })}
+                                placeholder="Ex: Lundi - Samedi"
+                            />
+                        </View>
                     </View>
-                </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Téléphone</Text>
-                    <NativeInput
-                        value={formData.telephone}
-                        onChangeText={(text) => setFormData({ ...formData, telephone: text })}
-                        placeholder="+237 6XX XX XX XX"
-                        keyboardType="phone-pad"
+                    <View style={styles.switchGroup}>
+                        <Text style={styles.label}>Peut émettre tickets bus</Text>
+                        <Switch
+                            value={formData.peut_emettre_tickets_bus}
+                            onValueChange={(value) => setFormData({ ...formData, peut_emettre_tickets_bus: value })}
+                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
+                        />
+                    </View>
+
+                    {formData.peut_emettre_tickets_bus && (
+                        <View style={styles.inputGroup}>
+                            <View style={styles.busModelsHeader}>
+                                <Text style={styles.label}>Modèles de bus</Text>
+                                <TouchableOpacity
+                                    style={styles.addModelButton}
+                                    onPress={() => {
+                                        setEditingModelIndex(null);
+                                        setShowBusModelForm(true);
+                                    }}
+                                >
+                                    <SafeIcon name="plus" size={20} color="#fff" />
+                                    <Text style={styles.addModelButtonText}>Ajouter</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {busModels.length === 0 ? (
+                                <View style={styles.emptyModelsContainer}>
+                                    <Text style={styles.emptyModelsText}>
+                                        Aucun modèle de bus configuré
+                                    </Text>
+                                    <Text style={styles.emptyModelsHint}>
+                                        Ajoutez un modèle pour permettre la vente de tickets
+                                    </Text>
+                                </View>
+                            ) : (
+                                <View style={styles.modelsList}>
+                                    {busModels.map((model, index) => (
+                                        <View key={index} style={styles.modelCard}>
+                                            <View style={styles.modelCardHeader}>
+                                                <View>
+                                                    <Text style={styles.modelName}>{model.nom_modele}</Text>
+                                                    <Text style={styles.modelDetails}>
+                                                        {model.classe} • {model.total_seats} places • {model.prix_base.toLocaleString()} FCFA
+                                                    </Text>
+                                                </View>
+                                                <View style={styles.modelActions}>
+                                                    <TouchableOpacity
+                                                        onPress={() => {
+                                                            setEditingModelIndex(index);
+                                                            setShowBusModelForm(true);
+                                                        }}
+                                                        style={styles.editButton}
+                                                    >
+                                                        <SafeIcon name="edit" size={18} color={modernColors.primary} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        onPress={() => {
+                                                            Alert.alert(
+                                                                'Supprimer',
+                                                                `Voulez-vous supprimer le modèle "${model.nom_modele}" ?`,
+                                                                [
+                                                                    { text: 'Annuler', style: 'cancel' },
+                                                                    {
+                                                                        text: 'Supprimer',
+                                                                        style: 'destructive',
+                                                                        onPress: () => {
+                                                                            setBusModels(busModels.filter((_, i) => i !== index));
+                                                                        },
+                                                                    },
+                                                                ]
+                                                            );
+                                                        }}
+                                                        style={styles.deleteButton}
+                                                    >
+                                                        <SafeIcon name="trash" size={18} color="#EF4444" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                            {model.equipements.length > 0 && (
+                                                <View style={styles.equipementsContainer}>
+                                                    {model.equipements.map((eq, eqIndex) => (
+                                                        <View key={eqIndex} style={styles.equipementChip}>
+                                                            <Text style={styles.equipementText}>{eq}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            )}
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+                    )}
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Compagnies affiliées</Text>
+                        <View style={styles.chipsContainer}>
+                            {compagniesAffilieesOptions.map((compagnie) => (
+                                <TouchableOpacity
+                                    key={compagnie}
+                                    style={[
+                                        styles.chip,
+                                        selectedAffiliees.includes(compagnie) && styles.chipSelected,
+                                    ]}
+                                    onPress={() => toggleAffiliee(compagnie)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.chipText,
+                                            selectedAffiliees.includes(compagnie) && styles.chipTextSelected,
+                                        ]}
+                                    >
+                                        {compagnie}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Téléphone</Text>
+                        <NativeInput
+                            value={formData.telephone}
+                            onChangeText={(text) => setFormData({ ...formData, telephone: text })}
+                            placeholder="+237 6XX XX XX XX"
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>WhatsApp</Text>
+                        <NativeInput
+                            value={formData.whatsapp}
+                            onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
+                            placeholder="+237 6XX XX XX XX"
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Email</Text>
+                        <NativeInput
+                            value={formData.email}
+                            onChangeText={(text) => setFormData({ ...formData, email: text })}
+                            placeholder="agence@example.com"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Site web</Text>
+                        <NativeInput
+                            value={formData.site_web}
+                            onChangeText={(text) => setFormData({ ...formData, site_web: text })}
+                            placeholder="https://..."
+                            keyboardType="url"
+                            autoCapitalize="none"
+                        />
+                    </View>
+
+                    {/* ✅ CORRIGÉ: Utiliser title au lieu de children */}
+                    <NativeButton
+                        title={loading ? 'Enregistrement...' : 'Enregistrer l\'Agence'}
+                        onPress={handleSubmit}
+                        disabled={loading || !formData.nom_agence.trim()}
+                        variant="primary"
+                        size="large"
+                        style={styles.submitButton}
                     />
                 </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>WhatsApp</Text>
-                    <NativeInput
-                        value={formData.whatsapp}
-                        onChangeText={(text) => setFormData({ ...formData, whatsapp: text })}
-                        placeholder="+237 6XX XX XX XX"
-                        keyboardType="phone-pad"
-                    />
-                </View>
+                <BusModelForm
+                    visible={showBusModelForm}
+                    onClose={() => {
+                        setShowBusModelForm(false);
+                        setEditingModelIndex(null);
+                    }}
+                    onSave={(model) => {
+                        if (editingModelIndex !== null) {
+                            // Modifier modèle existant
+                            const updated = [...busModels];
+                            updated[editingModelIndex] = model;
+                            setBusModels(updated);
+                        } else {
+                            // Ajouter nouveau modèle
+                            setBusModels([...busModels, { ...model, id: Date.now().toString() }]);
+                        }
+                        setShowBusModelForm(false);
+                        setEditingModelIndex(null);
+                    }}
+                    initialModel={editingModelIndex !== null ? busModels[editingModelIndex] : undefined}
+                />
+            </ScrollView>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Email</Text>
-                    <NativeInput
-                        value={formData.email}
-                        onChangeText={(text) => setFormData({ ...formData, email: text })}
-                        placeholder="agence@example.com"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Site web</Text>
-                    <NativeInput
-                        value={formData.site_web}
-                        onChangeText={(text) => setFormData({ ...formData, site_web: text })}
-                        placeholder="https://..."
-                        keyboardType="url"
-                        autoCapitalize="none"
-                    />
-                </View>
-
-                <NativeButton
-                    onPress={handleSubmit}
-                    disabled={loading || !formData.nom_agence.trim()}
-                    variant="primary"
-                    style={styles.submitButton}
-                >
-                    <Text style={styles.submitButtonText}>
-                        {loading ? 'Enregistrement...' : 'Enregistrer l\'Agence'}
-                    </Text>
-                </NativeButton>
-            </View>
-
-            <BusModelForm
-                visible={showBusModelForm}
-                onClose={() => {
-                    setShowBusModelForm(false);
-                    setEditingModelIndex(null);
-                }}
-                onSave={(model) => {
-                    if (editingModelIndex !== null) {
-                        // Modifier modèle existant
-                        const updated = [...busModels];
-                        updated[editingModelIndex] = model;
-                        setBusModels(updated);
-                    } else {
-                        // Ajouter nouveau modèle
-                        setBusModels([...busModels, { ...model, id: Date.now().toString() }]);
-                    }
-                    setShowBusModelForm(false);
-                    setEditingModelIndex(null);
-                }}
-                initialModel={editingModelIndex !== null ? busModels[editingModelIndex] : undefined}
+            {/* Modals */}
+            <ModernGPSModal
+                visible={showGPSModal}
+                onClose={() => setShowGPSModal(false)}
+                onSelect={handleGPSSelect}
+                currentLocation={location ? {
+                    lat: location.coords.latitude,
+                    lng: location.coords.longitude
+                } : null}
+                title="Sélectionner la localisation"
             />
-        </ScrollView>
+
+            <WeekScheduleSelector
+                visible={showScheduleModal}
+                onClose={() => setShowScheduleModal(false)}
+                onSave={handleScheduleSave}
+                initialSchedule={schedule}
+                title="Planning hebdomadaire"
+            />
+        </>
     );
 };
 
@@ -682,13 +830,54 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: '600',
     },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    gpsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        padding: 12,
+        gap: 12,
+    },
+    gpsButtonText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#111827',
+    },
+    gpsText: {
+        marginTop: 8,
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    planningButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: `${modernColors.primary}15`,
+        borderRadius: 8,
+    },
+    planningButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    scheduleSummary: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+    },
     submitButton: {
         marginTop: 24,
-    },
-    submitButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
     },
     busModelsHeader: {
         flexDirection: 'row',

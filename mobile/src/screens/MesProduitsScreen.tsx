@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 import { NativeCard } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
@@ -196,6 +197,8 @@ const MesProduitsScreen: React.FC = () => {
     const [videoCreatorVisible, setVideoCreatorVisible] = useState(false);
     const [videoCreatorProduct, setVideoCreatorProduct] = useState<ManagedProduct | null>(null);
     const [showMenuModal, setShowMenuModal] = useState(false);
+    const [showDeliveryConfigModal, setShowDeliveryConfigModal] = useState(false);
+    const [deliveryConfigProduct, setDeliveryConfigProduct] = useState<ManagedProduct | null>(null);
     const scrollY = useMemo(() => new Animated.Value(0), []);
     const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
 
@@ -552,7 +555,16 @@ const MesProduitsScreen: React.FC = () => {
                                     }
                                 } catch (error: any) {
                                     console.error('[MesProduitsScreen] Erreur réactivation:', error);
-                                    Alert.alert('Erreur', error.message || 'Impossible de réactiver');
+                                    const errorMessage = error?.message || 'Impossible de réactiver';
+                                    const is404 = errorMessage.includes('404') || errorMessage.includes('not found');
+                                    Alert.alert(
+                                        '❌ Erreur',
+                                        is404
+                                            ? 'Produit introuvable. Il a peut-être déjà été supprimé.'
+                                            : errorMessage
+                                    );
+                                    // ✅ CORRECTION: Recharger les produits en cas d'erreur pour restaurer l'état
+                                    await loadProducts(true);
                                 }
                             }
                         }
@@ -589,7 +601,16 @@ const MesProduitsScreen: React.FC = () => {
                                     }
                                 } catch (error: any) {
                                     console.error('[MesProduitsScreen] Erreur désactivation:', error);
-                                    Alert.alert('Erreur', error.message || 'Impossible de désactiver');
+                                    const errorMessage = error?.message || 'Impossible de désactiver';
+                                    const is404 = errorMessage.includes('404') || errorMessage.includes('not found');
+                                    Alert.alert(
+                                        '❌ Erreur',
+                                        is404
+                                            ? 'Produit introuvable. Il a peut-être déjà été supprimé.'
+                                            : errorMessage
+                                    );
+                                    // ✅ CORRECTION: Recharger les produits en cas d'erreur pour restaurer l'état
+                                    await loadProducts(true);
                                 }
                             }
                         }
@@ -603,9 +624,10 @@ const MesProduitsScreen: React.FC = () => {
 
     // Supprimer un produit
     const handleDeleteProduct = async (product: ManagedProduct) => {
+        // ✅ CORRECTION: Afficher la confirmation AVANT toute action
         Alert.alert(
-            'Supprimer le produit',
-            `Êtes-vous sûr de vouloir supprimer "${product.nom}" ?\n\nCette action est irréversible.`,
+            '🗑️ Supprimer le produit',
+            `Êtes-vous sûr de vouloir supprimer "${product.nom || 'ce produit'}" ?\n\n⚠️ Cette action est irréversible et supprimera définitivement le produit.`,
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -617,27 +639,46 @@ const MesProduitsScreen: React.FC = () => {
 
                             if (productIdForDelete === null) {
                                 Alert.alert(
-                                    'Identifiant introuvable',
+                                    '❌ Identifiant introuvable',
                                     'Impossible de supprimer ce produit car son identifiant est manquant.'
                                 );
                                 return;
                             }
 
+                            // ✅ CORRECTION: Supprimer d'abord de l'état local pour feedback immédiat
+                            setProducts(prevProducts => prevProducts.filter((p) => {
+                                const candidateId = resolveNumericId(p.rawProductId ?? p.id);
+                                return candidateId !== productIdForDelete;
+                            }));
+
+                            // ✅ CORRECTION: Appeler l'API après mise à jour de l'état local
                             const response = await apiDelete(`/api/products/${productIdForDelete}`);
 
                             if (response.success) {
-                                setProducts(prevProducts => prevProducts.filter((p) => {
-                                    const candidateId = resolveNumericId(p.rawProductId ?? p.id);
-                                    return candidateId !== productIdForDelete;
-                                }));
+                                // ✅ CORRECTION: Recharger les produits depuis le serveur pour synchronisation
                                 await loadProducts(true);
+                                // ✅ CORRECTION: Afficher le message de succès après rechargement
                                 Alert.alert('✅ Succès', 'Produit supprimé avec succès');
                             } else {
-                                Alert.alert('Erreur', response.error || 'Impossible de supprimer le produit');
+                                // ✅ CORRECTION: En cas d'erreur, recharger pour restaurer l'état
+                                await loadProducts(true);
+                                Alert.alert(
+                                    '❌ Erreur',
+                                    response.error || 'Impossible de supprimer le produit. Le produit a été restauré.'
+                                );
                             }
                         } catch (error: any) {
                             console.error('[MesProduitsScreen] Erreur suppression:', error);
-                            Alert.alert('Erreur', error.message || 'Impossible de supprimer le produit');
+                            // ✅ CORRECTION: Recharger en cas d'erreur pour restaurer l'état
+                            await loadProducts(true);
+                            const errorMessage = error?.message || 'Impossible de supprimer le produit';
+                            const is404 = errorMessage.includes('404') || errorMessage.includes('not found');
+                            Alert.alert(
+                                '❌ Erreur',
+                                is404
+                                    ? 'Produit introuvable. Il a peut-être déjà été supprimé.'
+                                    : errorMessage
+                            );
                         }
                     }
                 }
@@ -917,7 +958,8 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Filtrer les produits
-    const filteredProducts = products.filter(product => {
+    // ✅ CORRECTION: S'assurer que products est toujours un tableau
+    const filteredProducts = (products || []).filter(product => {
         // Filtre par statut
         if (filter === 'actif' && !product.is_active) return false;
         if (filter === 'inactif' && product.is_active) return false;
@@ -929,9 +971,11 @@ const MesProduitsScreen: React.FC = () => {
     });
 
     const categories = useMemo(() => {
+        // ✅ CORRECTION: S'assurer que products est toujours un tableau
+        const productsArray = products || [];
         const map = new Map<string, string>();
 
-        products.forEach((product) => {
+        productsArray.forEach((product) => {
             const key = product.category_key || 'autre';
             if (!map.has(key)) {
                 map.set(key, product.category_label || getProductTypeLabel(key));
@@ -944,10 +988,12 @@ const MesProduitsScreen: React.FC = () => {
         ];
     }, [products]);
 
-    const totalProducts = products.length;
-    const activeProducts = products.filter((p) => p.is_active).length;
+    // ✅ CORRECTION: S'assurer que products est toujours un tableau
+    const productsArray = products || [];
+    const totalProducts = productsArray.length;
+    const activeProducts = productsArray.filter((p) => p.is_active).length;
     const inactiveProducts = Math.max(totalProducts - activeProducts, 0);
-    const totalCategories = Math.max(categories.length - 1, 0);
+    const totalCategories = Math.max((categories || []).length - 1, 0);
 
     const headerSummary = useMemo(() => (
         [
@@ -959,8 +1005,11 @@ const MesProduitsScreen: React.FC = () => {
     ), [totalProducts, activeProducts, inactiveProducts, totalCategories]);
 
     const buildProductPrefill = (product: ManagedProduct) => {
-        const prefill: Record<string, any> = {};
+        // ✅ CORRECTION: Copier TOUS les champs du produit, pas seulement les champs de base
+        // Cela permet de préserver tous les champs spécialisés (typeVetement, marqueVetement, etc.)
+        const prefill: Record<string, any> = { ...product };
 
+        // ✅ Champs de base avec priorités (écrasent les valeurs du spread si présentes)
         prefill.nom_produit = product.nom || product.nom_produit || '';
         prefill.categorie_produit = product.categorie_produit || product.categorie || product.category || '';
         prefill.description_produit = product.description || product.description_produit || '';
@@ -975,6 +1024,7 @@ const MesProduitsScreen: React.FC = () => {
 
         prefill.devise_produit = product.devise_produit || product.devise || 'XAF';
 
+        // ✅ Gestion des produits (autocomplete)
         if (Array.isArray(product.produits)) {
             prefill.produits = product.produits;
         } else if (product.combinaison_brute) {
@@ -983,6 +1033,7 @@ const MesProduitsScreen: React.FC = () => {
             prefill.produits = [product.characteristic_vector.filter(Boolean).join(', ')];
         }
 
+        // ✅ Gestion des sous-caractéristiques
         if (product.sous_caracteristiques) {
             prefill.sous_caracteristiques = product.sous_caracteristiques;
         } else if (Array.isArray(product.product_labels) && Array.isArray(product.characteristic_vector)) {
@@ -1007,6 +1058,7 @@ const MesProduitsScreen: React.FC = () => {
         prefill.variabilite_prix = product.variabilite_prix || product.price_variant || null;
         prefill.lieu_produit = product.lieu_produit || product.lieu || product.location || null;
 
+        // ✅ Médias
         if (Array.isArray(product.images)) {
             prefill.images = product.images;
         }
@@ -1025,6 +1077,27 @@ const MesProduitsScreen: React.FC = () => {
         if (product.combinaison_brute) {
             prefill.combinaison_brute = product.combinaison_brute;
         }
+
+        // ✅ Supprimer les champs métadonnées qui ne doivent pas être dans le prefill
+        // (ces champs sont ajoutés par MesProduitsScreen mais ne font pas partie du produit original)
+        delete prefill.id;
+        delete prefill.rawProductId;
+        delete prefill.product_index;
+        delete prefill.category_key;
+        delete prefill.category_label;
+        delete prefill.serviceId;
+        delete prefill.serviceTitre;
+        delete prefill.is_active;
+        delete prefill.created_at_ts;
+        delete prefill.views;
+        delete prefill.shares;
+        delete prefill.saves;
+        delete prefill.nom; // Utiliser nom_produit à la place
+        delete prefill.prix; // Utiliser prix_produit à la place
+        delete prefill.devise; // Utiliser devise_produit à la place
+        delete prefill.description; // Utiliser description_produit à la place
+        delete prefill.categorie; // Utiliser categorie_produit à la place
+        delete prefill.category; // Utiliser categorie_produit à la place
 
         return prefill;
     };
@@ -1171,6 +1244,18 @@ const MesProduitsScreen: React.FC = () => {
                     >
                         <SafeIcon name="bar-chart-2" size={20} color="#10B981" />
                     </TouchableOpacity>
+                    {/* ✅ NOUVEAU: Bouton configuration livraison (uniquement pour produits, pas prestations) */}
+                    {product.type !== 'prestation_service' && (
+                        <TouchableOpacity
+                            style={styles.iconButton}
+                            onPress={() => {
+                                setDeliveryConfigProduct(product);
+                                setShowDeliveryConfigModal(true);
+                            }}
+                        >
+                            <SafeIcon name="truck" size={20} color="#10B981" />
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => handlePromoteProduct(product)}
@@ -1232,6 +1317,7 @@ const MesProduitsScreen: React.FC = () => {
         },
     ];
 
+    // ✅ CORRECTION: Gérer l'état de chargement sans crasher
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -1240,6 +1326,9 @@ const MesProduitsScreen: React.FC = () => {
             </View>
         );
     }
+
+    // ✅ CORRECTION: S'assurer que products est toujours défini
+    const safeProducts = products || [];
 
     return (
         <View style={styles.container}>
@@ -1288,7 +1377,7 @@ const MesProduitsScreen: React.FC = () => {
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.statsRowContent}
                         >
-                            {headerSummary.map((item) => (
+                            {(headerSummary || []).map((item) => (
                                 <View key={item.label} style={styles.miniStatCard}>
                                     <Text
                                         style={[
@@ -1327,7 +1416,7 @@ const MesProduitsScreen: React.FC = () => {
                         </ScrollView>
 
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-                            {categories.map(({ key, label }) => (
+                            {(categories || []).map(({ key, label }) => (
                                 <TouchableOpacity
                                     key={key}
                                     style={[
@@ -1371,7 +1460,7 @@ const MesProduitsScreen: React.FC = () => {
                     </View>
                 ) : categoryFilter === 'tous' ? (
                     <View style={styles.productsList}>
-                        {categories.slice(1).map(({ key, label }) => {
+                        {(categories || []).slice(1).map(({ key, label }) => {
                             const categoryProducts = filteredProducts.filter(
                                 (product) => (product.category_key || 'autre') === key
                             );
@@ -1391,24 +1480,42 @@ const MesProduitsScreen: React.FC = () => {
                                         </View>
                                     </View>
 
-                                    {categoryProducts.map(renderProductCard)}
+                                    {(categoryProducts || []).map(renderProductCard)}
                                 </View>
                             );
                         })}
                     </View>
                 ) : (
                     <View style={styles.productsList}>
-                        {filteredProducts.map(renderProductCard)}
+                        {(filteredProducts || []).map(renderProductCard)}
                     </View>
                 )}
             </Animated.ScrollView>
             <ProductVideoCreationModal
                 visible={videoCreatorVisible}
                 primaryProduct={videoCreatorProduct}
-                products={products}
+                products={products || []}
                 onClose={closeVideoCreator}
                 onSuccess={handleVideoCreatorSuccess}
             />
+            {/* ✅ NOUVEAU: Modal configuration livraison */}
+            {deliveryConfigProduct && (
+                <ProductDeliveryConfigModal
+                    visible={showDeliveryConfigModal}
+                    onClose={() => {
+                        setShowDeliveryConfigModal(false);
+                        setDeliveryConfigProduct(null);
+                    }}
+                    serviceId={parseInt(deliveryConfigProduct.serviceId, 10)}
+                    productIndex={deliveryConfigProduct.product_index ?? 0}
+                    productName={deliveryConfigProduct.nom || 'Produit'}
+                    onSuccess={() => {
+                        setShowDeliveryConfigModal(false);
+                        setDeliveryConfigProduct(null);
+                        loadProducts(true); // Recharger les produits après configuration
+                    }}
+                />
+            )}
             <Modal
                 visible={showTeamManager}
                 animationType="slide"
@@ -1437,7 +1544,7 @@ const MesProduitsScreen: React.FC = () => {
                     onPress={() => setShowMenuModal(false)}
                 >
                     <View style={styles.menuModalContent}>
-                        {menuActions.map((action, index) => (
+                        {(menuActions || []).map((action, index) => (
                             <TouchableOpacity
                                 key={action.label}
                                 style={[

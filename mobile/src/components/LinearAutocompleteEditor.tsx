@@ -1670,18 +1670,53 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             return;
         }
 
-        if (iaCombinaisons.length === 0) {
-            return;
+        // ✅ CORRECTION: Déclencher le chargement même si iaCombinaisons est vide
+        // Utiliser sous_caracteristiques ou contextValues comme point de départ
+        let seedQuery: string | null = null;
+        let contextTokens: string[] = [];
+
+        // PRIORITÉ 1: Utiliser iaCombinaisons si disponible
+        if (iaCombinaisons.length > 0) {
+            const firstCombo = iaCombinaisons[0];
+            if (firstCombo && typeof firstCombo === 'string') {
+                const parts = smartSplit(firstCombo, separateur || ',').map(part => part.trim()).filter(Boolean);
+                seedQuery = parts[0];
+                contextTokens = buildSearchTokens(parts.join(' '));
+            }
         }
 
-        const firstCombo = iaCombinaisons[0];
-        if (!firstCombo || typeof firstCombo !== 'string') {
-            return;
+        // PRIORITÉ 2: Utiliser sous_caracteristiques si disponible (première valeur de la première dimension)
+        if (!seedQuery && sousCaracteristiques && typeof sousCaracteristiques === 'object') {
+            const sousCaracsKeys = Object.keys(sousCaracteristiques);
+            if (sousCaracsKeys.length > 0) {
+                const firstKey = sousCaracsKeys[0];
+                const firstValues = sousCaracteristiques[firstKey];
+                if (Array.isArray(firstValues) && firstValues.length > 0 && typeof firstValues[0] === 'string') {
+                    seedQuery = firstValues[0].trim();
+                    // Construire les tokens depuis toutes les valeurs de sous_caracteristiques
+                    const allValues: string[] = [];
+                    sousCaracsKeys.forEach(key => {
+                        const values = sousCaracteristiques[key];
+                        if (Array.isArray(values)) {
+                            allValues.push(...values.filter(v => typeof v === 'string'));
+                        }
+                    });
+                    contextTokens = buildSearchTokens(allValues.join(' '));
+                }
+            }
         }
 
-        const parts = smartSplit(firstCombo, separateur || ',').map(part => part.trim()).filter(Boolean);
-        const seedQuery = parts[0];
-        const contextTokens = buildSearchTokens(parts.join(' '));
+        // PRIORITÉ 3: Utiliser contextValues si disponible
+        if (!seedQuery && contextValues && Array.isArray(contextValues) && contextValues.length > 0) {
+            const firstContext = contextValues.find(v => v && typeof v === 'string' && v.trim().length > 0);
+            if (firstContext) {
+                const tokens = buildSearchTokens(firstContext);
+                if (tokens.length > 0) {
+                    seedQuery = tokens[0];
+                    contextTokens = tokens;
+                }
+            }
+        }
 
         if (!seedQuery || seedQuery.length < 2) {
             return;
@@ -1809,7 +1844,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         return () => {
             cancelled = true;
         };
-    }, [iaCombinaisons, separateur, searchQuery, combinationSuggestions.length, loadingCombinationSuggestions]);
+    }, [iaCombinaisons, separateur, searchQuery, combinationSuggestions.length, loadingCombinationSuggestions, sousCaracteristiques, contextValues]);
 
     // ✅ CORRIGÉ: Appliquer automatiquement les caractéristiques préférées de l'IA au chargement initial
     // ⚠️ IMPORTANT: L'application automatique est SYSTÉMATIQUE au chargement, peu importe si l'utilisateur
@@ -1832,12 +1867,28 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             return;
         }
 
-        if (loadingSuggestions || loadingCombinationSuggestions) {
+        // ✅ CORRECTION: Ne pas attendre le chargement des suggestions si on a déjà sous_caracteristiques
+        // Le candidat préféré peut être créé directement depuis sous_caracteristiques
+        const hasSousCaracs = sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0;
+        const hasProductVector = productVector && Array.isArray(productVector) && productVector.length > 0;
+
+        // Si on n'a ni sous_caracteristiques ni product_vector, attendre le chargement des suggestions
+        if (!hasSousCaracs && !hasProductVector && (loadingSuggestions || loadingCombinationSuggestions)) {
             return; // Attendre que les suggestions soient chargées
         }
 
         // Chercher la suggestion préférée de l'IA (celle avec isPreferred: true)
         const preferredCandidate = suggestionCandidates.find(candidate => candidate.isPreferred === true);
+
+        // ✅ CORRECTION: Si pas de candidat préféré mais qu'on a sous_caracteristiques, attendre un peu
+        // pour que suggestionCandidates soit recalculé avec les nouvelles données
+        if (!preferredCandidate && hasSousCaracs && initialMountRef.current) {
+            // Attendre un peu pour que suggestionCandidates soit recalculé
+            const timeoutId = setTimeout(() => {
+                initialMountRef.current = false;
+            }, 500);
+            return () => clearTimeout(timeoutId);
+        }
 
         if (!preferredCandidate) {
             // Si pas de suggestion préférée disponible, marquer comme appliqué pour éviter de réessayer
@@ -1896,7 +1947,9 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         applyCombinationSuggestion,
         applyPopularSuggestion,
         createVectorFromRows,
-        onChange
+        onChange,
+        sousCaracteristiques,
+        productVector
     ]);
 
     // ✅ NOUVEAU: Réinitialiser autoAppliedRef quand productVector/productLabels changent (nouvelles données IA)
