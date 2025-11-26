@@ -295,6 +295,10 @@ const MesProduitsScreen: React.FC = () => {
                             const nomProduitNormalized = normalizeProductField(product.nom_produit);
                             if (nomNormalized !== undefined) normalizedProduct.nom = nomNormalized;
                             if (nomProduitNormalized !== undefined) normalizedProduct.nom_produit = nomProduitNormalized;
+                            // ✅ CORRECTION: Utiliser nom_produit comme fallback pour nom si nom n'existe pas
+                            if (!normalizedProduct.nom && normalizedProduct.nom_produit) {
+                                normalizedProduct.nom = normalizedProduct.nom_produit;
+                            }
                             if (!normalizedProduct.nom && !normalizedProduct.nom_produit) {
                                 normalizedProduct.nom = '';
                                 normalizedProduct.nom_produit = '';
@@ -326,11 +330,33 @@ const MesProduitsScreen: React.FC = () => {
                             if (categorieProduitNormalized) normalizedProduct.categorie_produit = categorieProduitNormalized;
                             if (categoryNormalized) normalizedProduct.category = categoryNormalized;
 
-                            // ✅ Normaliser les champs complexes (sous_caracteristiques, produits, etc.)
+                            // ✅ CORRECTION CRITIQUE: Normaliser les champs complexes (sous_caracteristiques, produits, etc.)
                             if (product.sous_caracteristiques) {
                                 const sousCaracsNormalized = normalizeProductField(product.sous_caracteristiques);
                                 normalizedProduct.sous_caracteristiques = sousCaracsNormalized !== undefined ? sousCaracsNormalized : product.sous_caracteristiques;
                             }
+
+                            // ✅ CORRECTION CRITIQUE: Normaliser TOUS les autres champs du produit (lieu_produit, variabilite_prix, etc.)
+                            // Pour les produits créés via FormulaireYukpoIntelligentScreen, tous les champs sont dans format { type_donnee: '...', valeur: ... }
+                            Object.keys(product).forEach(key => {
+                                // Ignorer les champs déjà normalisés
+                                if (['nom', 'nom_produit', 'prix', 'prix_produit', 'devise', 'devise_produit',
+                                    'description', 'description_produit', 'categorie', 'categorie_produit', 'category',
+                                    'sous_caracteristiques', 'images', 'videos', 'audios', 'documents',
+                                    'base64_image', 'video_base64', 'audio_base64', 'doc_base64',
+                                    'image_base64'].includes(key)) {
+                                    return;
+                                }
+
+                                // Normaliser les autres champs (lieu_produit, variabilite_prix, etc.)
+                                const fieldValue = product[key];
+                                if (fieldValue !== undefined && fieldValue !== null) {
+                                    const normalized = normalizeProductField(fieldValue);
+                                    if (normalized !== undefined) {
+                                        normalizedProduct[key] = normalized;
+                                    }
+                                }
+                            });
 
                             // ✅ CORRECTION CRITIQUE: Normaliser TOUS les médias depuis différents formats
                             const normalizeMediaField = (field: any): any[] => {
@@ -502,7 +528,8 @@ const MesProduitsScreen: React.FC = () => {
         const productIndex = typeof product.productIndex === 'number' && product.productIndex >= 0
             ? product.productIndex
             : (product.product_index !== undefined ? Number(product.product_index) : undefined);
-        const productName = product.nom || product.name || product.title;
+        // ✅ CORRECTION: Chercher aussi nom_produit pour les produits créés via AjouterProduitSimpleScreen
+        const productName = product.nom || (product as any).nom_produit || product.name || product.title;
 
         // ✅ Validation améliorée
         if (!serviceId || serviceId === 0) {
@@ -1128,10 +1155,6 @@ const MesProduitsScreen: React.FC = () => {
     ), [totalProducts, activeProducts, inactiveProducts, totalCategories]);
 
     const buildProductPrefill = (product: ManagedProduct) => {
-        // ✅ CORRECTION: Copier TOUS les champs du produit, pas seulement les champs de base
-        // Cela permet de préserver tous les champs spécialisés (typeVetement, marqueVetement, etc.)
-        const prefill: Record<string, any> = { ...product };
-
         // ✅ CORRECTION CRITIQUE: Extraire les valeurs depuis les objets structurés si nécessaire
         // (Format FormulaireYukpoIntelligentScreen avec type_donnee/valeur)
         const extractValue = (field: any): any => {
@@ -1142,32 +1165,75 @@ const MesProduitsScreen: React.FC = () => {
             return field;
         };
 
-        // ✅ Champs de base avec extraction depuis objets structurés
+        // ✅ CORRECTION CRITIQUE: Copier TOUS les champs du produit ORIGINAL (avant normalisation)
+        // Mais d'abord, on doit reconstruire la structure originale si elle a été normalisée
+        // Les produits de FormulaireYukpoIntelligentScreen ont leurs champs dans format { type_donnee: '...', valeur: ... }
+        // Les produits d'AjouterProduitSimpleScreen ont leurs champs directement
+
+        // ✅ NOUVEAU: Préserver TOUS les champs du produit, y compris ceux qui sont dans le format structuré
+        const prefill: Record<string, any> = {};
+
+        // ✅ CORRECTION CRITIQUE: Copier TOUS les champs du produit, en extrayant les valeurs depuis objets structurés
+        Object.keys(product).forEach(key => {
+            // Ignorer les champs métadonnées ajoutés par MesProduitsScreen
+            if (['id', 'rawProductId', 'product_index', 'category_key', 'category_label',
+                'serviceId', 'serviceTitre', 'is_active', 'created_at_ts', 'views',
+                'shares', 'saves'].includes(key)) {
+                return;
+            }
+
+            const value = product[key];
+            if (value !== undefined && value !== null) {
+                // Extraire depuis objets structurés si nécessaire
+                const extracted = extractValue(value);
+                if (extracted !== undefined) {
+                    prefill[key] = extracted;
+                } else {
+                    prefill[key] = value;
+                }
+            }
+        });
+
+        // ✅ CORRECTION CRITIQUE: Champs de base avec extraction depuis objets structurés
+        // S'assurer que les champs sont bien présents même s'ils ont été normalisés
         const nomRaw = product.nom || product.nom_produit;
         const categorieRaw = product.categorie_produit || product.categorie || product.category;
         const descriptionRaw = product.description || product.description_produit;
 
-        prefill.nom_produit = extractValue(nomRaw) || (typeof nomRaw === 'string' ? nomRaw : '');
-        prefill.categorie_produit = extractValue(categorieRaw) || (typeof categorieRaw === 'string' ? categorieRaw : '');
-        prefill.description_produit = extractValue(descriptionRaw) || (typeof descriptionRaw === 'string' ? descriptionRaw : '');
+        // ✅ CORRECTION: Ne pas écraser si déjà présent dans prefill
+        if (!prefill.nom_produit) {
+            prefill.nom_produit = extractValue(nomRaw) || (typeof nomRaw === 'string' ? nomRaw : '');
+        }
+        if (!prefill.categorie_produit) {
+            prefill.categorie_produit = extractValue(categorieRaw) || (typeof categorieRaw === 'string' ? categorieRaw : '');
+        }
+        if (!prefill.description_produit) {
+            prefill.description_produit = extractValue(descriptionRaw) || (typeof descriptionRaw === 'string' ? descriptionRaw : '');
+        }
 
         // ✅ CORRECTION: Extraire prix depuis objets structurés
-        const prixRaw = product.prix_produit || product.prix;
-        const prixValue = extractValue(prixRaw);
+        // Ne pas écraser si déjà présent dans prefill
+        if (!prefill.prix_produit) {
+            const prixRaw = product.prix_produit || product.prix;
+            const prixValue = extractValue(prixRaw);
 
-        if (prixValue !== undefined && prixValue !== null) {
-            prefill.prix_produit = typeof prixValue === 'number'
-                ? prixValue.toString()
-                : (typeof prixValue === 'string' ? prixValue : String(prixValue));
-        } else if (product.prix !== undefined && product.prix !== null) {
-            prefill.prix_produit = typeof product.prix === 'number'
-                ? product.prix.toString()
-                : product.prix;
+            if (prixValue !== undefined && prixValue !== null) {
+                prefill.prix_produit = typeof prixValue === 'number'
+                    ? prixValue.toString()
+                    : (typeof prixValue === 'string' ? prixValue : String(prixValue));
+            } else if (product.prix !== undefined && product.prix !== null) {
+                prefill.prix_produit = typeof product.prix === 'number'
+                    ? product.prix.toString()
+                    : product.prix;
+            }
         }
 
         // ✅ CORRECTION: Extraire devise depuis objets structurés
-        const deviseRaw = product.devise_produit || product.devise;
-        prefill.devise_produit = extractValue(deviseRaw) || (typeof deviseRaw === 'string' ? deviseRaw : 'XAF');
+        // Ne pas écraser si déjà présent dans prefill
+        if (!prefill.devise_produit) {
+            const deviseRaw = product.devise_produit || product.devise;
+            prefill.devise_produit = extractValue(deviseRaw) || (typeof deviseRaw === 'string' ? deviseRaw : 'XAF');
+        }
 
         // ✅ CORRECTION CRITIQUE: Gestion des produits (autocomplete) avec extraction depuis objets structurés
         const produitsRaw = product.produits;
@@ -1319,29 +1385,11 @@ const MesProduitsScreen: React.FC = () => {
             }
         });
 
-        // ✅ Préserver TOUS les autres champs qui ne sont pas dans la liste de suppression
-        Object.keys(product).forEach(key => {
-            // Ne pas écraser les champs déjà traités
-            if (prefill[key] !== undefined) return;
+        // ✅ CORRECTION CRITIQUE: Ne PAS supprimer les champs 'nom', 'prix', 'devise', 'description', 'categorie', 'category'
+        // Car ils peuvent être nécessaires pour les produits créés via FormulaireYukpoIntelligentScreen
+        // On les garde dans le prefill pour compatibilité
 
-            // Ne pas ajouter les champs métadonnées
-            if (['id', 'rawProductId', 'product_index', 'category_key', 'category_label',
-                'serviceId', 'serviceTitre', 'is_active', 'created_at_ts', 'views',
-                'shares', 'saves', 'nom', 'prix', 'devise', 'description', 'categorie', 'category'].includes(key)) {
-                return;
-            }
-
-            // Extraire depuis objets structurés si nécessaire
-            const extracted = extractValue(product[key]);
-            if (extracted !== undefined) {
-                prefill[key] = extracted;
-            } else if (product[key] !== undefined && product[key] !== null) {
-                prefill[key] = product[key];
-            }
-        });
-
-        // ✅ Supprimer les champs métadonnées qui ne doivent pas être dans le prefill
-        // (ces champs sont ajoutés par MesProduitsScreen mais ne font pas partie du produit original)
+        // ✅ Supprimer UNIQUEMENT les champs métadonnées ajoutés par MesProduitsScreen
         delete prefill.id;
         delete prefill.rawProductId;
         delete prefill.product_index;
@@ -1354,12 +1402,20 @@ const MesProduitsScreen: React.FC = () => {
         delete prefill.views;
         delete prefill.shares;
         delete prefill.saves;
-        delete prefill.nom; // Utiliser nom_produit à la place
-        delete prefill.prix; // Utiliser prix_produit à la place
-        delete prefill.devise; // Utiliser devise_produit à la place
-        delete prefill.description; // Utiliser description_produit à la place
-        delete prefill.categorie; // Utiliser categorie_produit à la place
-        delete prefill.category; // Utiliser categorie_produit à la place
+
+        // ✅ DEBUG: Log pour vérifier le contenu du prefill
+        console.log('[MesProduitsScreen] buildProductPrefill - Prefill généré:', {
+            nom_produit: prefill.nom_produit,
+            categorie_produit: prefill.categorie_produit,
+            description_produit: prefill.description_produit,
+            prix_produit: prefill.prix_produit,
+            devise_produit: prefill.devise_produit,
+            produits: prefill.produits ? (Array.isArray(prefill.produits) ? prefill.produits.length : 'non-array') : 'undefined',
+            sous_caracteristiques: prefill.sous_caracteristiques ? 'présent' : 'absent',
+            lieu_produit: prefill.lieu_produit,
+            totalKeys: Object.keys(prefill).length,
+            allKeys: Object.keys(prefill)
+        });
 
         return prefill;
     };
@@ -1409,14 +1465,14 @@ const MesProduitsScreen: React.FC = () => {
                     <View style={styles.productInfoRow}>
                         <SafeIcon name="folder" size={14} color="#6B7280" />
                         <Text style={styles.productServiceName} numberOfLines={1}>
-                            {product.serviceTitre}
+                            {product.serviceTitre || 'Service sans titre'}
                         </Text>
                     </View>
 
                     <View style={styles.productInfoRow}>
                         <SafeIcon name="tag" size={14} color="#6B7280" />
                         <Text style={styles.productCategory} numberOfLines={1}>
-                            {categoryLabel}
+                            {categoryLabel || 'Non catégorisé'}
                         </Text>
                     </View>
 
@@ -1524,6 +1580,7 @@ const MesProduitsScreen: React.FC = () => {
                     >
                         <SafeIcon name="trending-up" size={20} color="#F59E0B" />
                     </TouchableOpacity>
+                    {/* ✅ CORRECTION: Bouton suppression toujours visible */}
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => handleDeleteProduct(product)}
@@ -1723,18 +1780,18 @@ const MesProduitsScreen: React.FC = () => {
                 ) : categoryFilter === 'tous' ? (
                     <View style={styles.productsList}>
                         {(categories || []).slice(1).map(({ key, label }) => {
-                            const categoryProducts = filteredProducts.filter(
-                                (product) => (product.category_key || 'autre') === key
+                            const categoryProducts = (filteredProducts || []).filter(
+                                (product) => (product?.category_key || 'autre') === key
                             );
 
-                            if (categoryProducts.length === 0) {
+                            if (!categoryProducts || categoryProducts.length === 0) {
                                 return null;
                             }
 
                             return (
                                 <View key={key} style={styles.categoryGroup}>
                                     <View style={styles.categoryHeader}>
-                                        <Text style={styles.categoryTitle}>{label}</Text>
+                                        <Text style={styles.categoryTitle}>{label || 'Sans catégorie'}</Text>
                                         <View style={styles.categoryCountBadge}>
                                             <Text style={styles.categoryCountText}>
                                                 {categoryProducts.length}
@@ -2224,10 +2281,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-around',
         alignItems: 'center',
+        flexWrap: 'wrap',
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
+        gap: 8,
     },
     iconButton: {
         width: 44,

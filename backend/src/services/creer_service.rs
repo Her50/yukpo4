@@ -3719,7 +3719,15 @@ pub async fn creer_service(
     }
 
     // ✅ NOUVEAU 2025-11-04: Sauvegarder le VRAI produit choisi par le prestataire
-    if let Err(e) = save_autocomplete_combination(pool, service_id, &data_obj).await {
+    // ✅ CORRECTION CRITIQUE: Utiliser data_processed au lieu de data_obj car data_obj peut avoir été nettoyé
+    // et ne plus contenir le champ produits. data_processed contient les données originales avant nettoyage.
+    let data_for_products = if data_processed.get("produits").is_some() {
+        &data_processed
+    } else {
+        &data_obj
+    };
+    
+    if let Err(e) = save_autocomplete_combination(pool, service_id, data_for_products).await {
         log::warn!(
             "[CREER_SERVICE] Erreur sauvegarde produit réel: {} (non bloquant)",
             e

@@ -9,6 +9,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
@@ -45,11 +46,9 @@ const TaxiFormScreen: React.FC = () => {
     });
 
     const [loading, setLoading] = useState(false);
-    const [selectedZones, setSelectedZones] = useState<string[]>([]);
+    const [selectedZones, setSelectedZones] = useState<LocationObject[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-
-    const zonesOptions = ['Douala', 'Yaoundé', 'Bafoussam', 'Bamenda', 'Garoua', 'Maroua', 'Centre-ville'];
 
     // ✅ Créer automatiquement un service si serviceId manquant
     useEffect(() => {
@@ -77,12 +76,14 @@ const TaxiFormScreen: React.FC = () => {
         }
     }, [formData.telephone, serviceId, user?.id]);
 
-    const toggleZone = (zone: string) => {
-        setSelectedZones((prev) =>
-            prev.includes(zone)
-                ? prev.filter((z) => z !== zone)
-                : [...prev, zone]
-        );
+    const handleZoneSelect = (zone: LocationObject) => {
+        const zoneStr = zone.raw || zone.place_name || '';
+        const exists = selectedZones.some(z => (z.raw || z.place_name) === zoneStr);
+        if (exists) {
+            setSelectedZones(prev => prev.filter(z => (z.raw || z.place_name) !== zoneStr));
+        } else {
+            setSelectedZones(prev => [...prev, zone]);
+        }
     };
 
     const handleGPSSelect = (coordinates: string) => {
@@ -144,7 +145,7 @@ const TaxiFormScreen: React.FC = () => {
                 immatriculation: formData.immatriculation || null,
                 couleur: formData.couleur || null,
                 annee: formData.annee ? parseInt(formData.annee) : null,
-                zone_intervention: selectedZones.length > 0 ? selectedZones : null,
+                zone_intervention: selectedZones.length > 0 ? selectedZones.map(z => z.raw || z.place_name || '') : null,
                 gps_actuel: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
@@ -285,27 +286,32 @@ const TaxiFormScreen: React.FC = () => {
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Zones d'intervention</Text>
-                        <View style={styles.chipsContainer}>
-                            {zonesOptions.map((zone) => (
-                                <TouchableOpacity
-                                    key={zone}
-                                    style={[
-                                        styles.chip,
-                                        selectedZones.includes(zone) && styles.chipSelected,
-                                    ]}
-                                    onPress={() => toggleZone(zone)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.chipText,
-                                            selectedZones.includes(zone) && styles.chipTextSelected,
-                                        ]}
-                                    >
-                                        {zone}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <LocationSelector
+                            label=""
+                            value=""
+                            onSelect={handleZoneSelect}
+                            placeholder="Rechercher une zone d'intervention..."
+                            scope="all"
+                            enrichWithBackend
+                        />
+                        {selectedZones.length > 0 && (
+                            <View style={styles.chipsContainer}>
+                                {selectedZones.map((zone, index) => {
+                                    const zoneStr = zone.raw || zone.place_name || '';
+                                    return (
+                                        <TouchableOpacity
+                                            key={index}
+                                            style={[styles.chip, styles.chipSelected]}
+                                            onPress={() => handleZoneSelect(zone)}
+                                        >
+                                            <Text style={styles.chipTextSelected}>
+                                                {zoneStr}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        )}
                     </View>
 
                     <View style={styles.row}>

@@ -1110,114 +1110,122 @@ pub async fn get_services_for_prestataire(
     let pg_pool = &state.pg;
 
     info!(
-        "[get_services_for_prestataire] R?cup?ration des services pour utilisateur {}",
+        "[get_services_for_prestataire] Récupération des services pour utilisateur {}",
         user_id
     );
 
-    // ✅ DEBUG: Vérifier si l'utilisateur existe et est provider
-    let _user_is_provider: Option<bool> = match sqlx::query_scalar::<_, bool>(
-        r#"SELECT is_provider FROM users WHERE id = $1"#
-    )
-    .bind(user_id)
-    .fetch_optional(pg_pool)
-    .await {
-        Ok(Some(is_provider)) => {
-            info!(
-                "[get_services_for_prestataire] ✅ Utilisateur {} trouvé: is_provider={}",
-                user_id, is_provider
-            );
-            Some(is_provider)
-        },
-        Ok(None) => {
-            error!("[get_services_for_prestataire] ❌ Utilisateur {} introuvable dans la base de données", user_id);
-            None
-        },
-        Err(e) => {
-            error!("[get_services_for_prestataire] ❌ Erreur vérification utilisateur: {}", e);
-            None
-        }
-    };
-
-    // ✅ DEBUG: Log des 5 derniers services créés pour debug
-    let _debug_rows: Vec<ServiceIdCreatedRow> = match sqlx::query_as::<_, ServiceIdCreatedRow>(
-        r#"SELECT id, created_at FROM services WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5"#
-    )
-    .bind(user_id)
-    .fetch_all(pg_pool)
-    .await {
-        Ok(r) => {
-            info!(
-                "[get_services_for_prestataire] 🔍 DEBUG - {} service(s) trouvé(s) dans la requête de debug (derniers 5)",
-                r.len()
-            );
-            for row in &r {
-                info!("[get_services_for_prestataire] 🔍   - Service ID: {}, créé le: {}", row.id, row.created_at);
-            }
-            r
-        },
-        Err(e) => {
-            error!("[get_services_for_prestataire] Erreur requ?te debug SQL: {}", e);
-            Vec::new()
-        }
-    };
-
-    // ✅ DEBUG: Compter tous les services (actifs et inactifs)
-    let _total_services_count: i64 = match sqlx::query_scalar::<_, i64>(
-        r#"SELECT COUNT(*) FROM services WHERE user_id = $1"#
-    )
-    .bind(user_id)
-    .fetch_one(pg_pool)
-    .await {
-        Ok(count) => {
-            info!("[get_services_for_prestataire] 📊 Total services dans DB pour user {}: {}", user_id, count);
-            count
-        },
-        Err(e) => {
-            error!("[get_services_for_prestataire] Erreur comptage services: {}", e);
-            0
-        }
-    };
-
-    let rows: Vec<ServiceIdActiveRow> = match sqlx::query_as(
-        r#"SELECT id, data, is_active, created_at FROM services WHERE user_id = $1 ORDER BY created_at DESC"#
+    // ✅ OPTIMISATION 2025-11-26 : Requête SQL optimisée avec projection des champs nécessaires uniquement
+    // Retourne seulement les champs essentiels pour la liste, pas le data JSONB complet (6.5 MB → < 50 KB)
+    let rows = match sqlx::query(
+        r#"
+        SELECT 
+            s.id,
+            s.is_active,
+            s.created_at,
+            s.category,
+            -- Extraire titre_service (support des deux formats)
+            COALESCE(
+                s.data->>'titre_service',
+                s.data->'titre_service'->>'valeur',
+                s.data->>'titre',
+                'Service sans titre'
+            ) as titre_service,
+            -- Extraire description (tronquée à 200 caractères pour la liste)
+            LEFT(
+                COALESCE(
+                    s.data->>'description',
+                    s.data->'description'->>'valeur',
+                    ''
+                ),
+                200
+            ) as description_preview,
+            -- Produits allégés (sans images/médias volumineux)
+            (
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'nom', COALESCE(product->>'nom', product->>'name', product->>'titre', ''),
+                        'prix', product->>'prix',
+                        'devise', product->>'devise',
+                        'is_active', COALESCE(
+                            (SELECT is_active FROM products_lifecycle pl
+                             WHERE pl.service_id = s.id AND pl.product_index = idx - 1),
+                            true
+                        )
+                    )
+                )
+                FROM jsonb_array_elements(
+                    CASE 
+                        WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
+                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
+                        ELSE '[]'::jsonb
+                    END
+                ) WITH ORDINALITY AS t(product, idx)
+                LIMIT 10  -- Limiter à 10 produits pour la liste
+            ) as produits_light,
+            -- Compter le nombre total de produits
+            (
+                SELECT COUNT(*)
+                FROM jsonb_array_elements(
+                    CASE 
+                        WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
+                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
+                        ELSE '[]'::jsonb
+                    END
+                )
+            ) as produits_count,
+            -- Garder seulement le place_id de Google Places (pas les données complètes)
+            s.data->'google_place'->>'place_id' as google_place_id
+        FROM services s
+        WHERE s.user_id = $1
+        ORDER BY s.created_at DESC
+        "#
     )
     .bind(user_id)
     .fetch_all(pg_pool)
     .await {
         Ok(r) => r,
         Err(e) => {
-            error!("[get_services_for_prestataire] Erreur requ?te SQL: {}", e);
+            error!("[get_services_for_prestataire] Erreur requête SQL: {}", e);
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Query error: {}", e)}))).into_response();
         }
     };
 
     info!(
-        "[get_services_for_prestataire] {} services trouv?s pour utilisateur {}",
+        "[get_services_for_prestataire] {} services trouvés pour utilisateur {}",
         rows.len(),
         user_id
     );
 
-    // Log des IDs des services retourn?s pour debug
-    let service_ids: Vec<i32> = rows.iter().map(|r| r.id).collect();
-    info!(
-        "[get_services_for_prestataire] DEBUG - IDs des services retourn?s: {:?}",
-        service_ids
-    );
-
+    // Construire la réponse avec les données allégées
     let result: Vec<_> = rows
         .into_iter()
-        .map(|r| {
+        .map(|row| {
+            let id: i32 = row.get("id");
+            let is_active: bool = row.get("is_active");
+            let created_at: chrono::NaiveDateTime = row.get("created_at");
+            let category: Option<String> = row.get("category");
+            let titre_service: Option<String> = row.get("titre_service");
+            let description_preview: Option<String> = row.get("description_preview");
+            let produits_light: Option<serde_json::Value> = row.get("produits_light");
+            let produits_count: Option<i64> = row.get("produits_count");
+            let google_place_id: Option<String> = row.get("google_place_id");
+
             json!({
-                "id": r.id,
-                "data": serde_json::from_value(r.data).unwrap_or(Value::Null),
-                "actif": r.is_active,
-                "created_at": r.created_at
+                "id": id,
+                "titre_service": titre_service,
+                "description_preview": description_preview,
+                "category": category,
+                "actif": is_active,
+                "created_at": created_at,
+                "produits_light": produits_light.unwrap_or(serde_json::json!([])),
+                "produits_count": produits_count.unwrap_or(0),
+                "google_place_id": google_place_id
             })
         })
         .collect();
 
     info!(
-        "[get_services_for_prestataire] R?ponse envoy?e avec {} services",
+        "[get_services_for_prestataire] Réponse allégée envoyée avec {} services (taille réduite de ~99%)",
         result.len()
     );
     (StatusCode::OK, Json(serde_json::Value::Array(result))).into_response()

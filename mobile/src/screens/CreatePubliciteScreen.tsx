@@ -269,7 +269,13 @@ const CreatePubliciteScreen: React.FC = () => {
                         service.data.produits.forEach((product: any, index: number) => {
                             const normalized: ManagedProduct = {
                                 id: `${service.id}_${index}`,
-                                nom: product.nom || product.name || product.title || `Produit ${index + 1}`,
+                                // ✅ CORRECTION: Chercher aussi nom_produit pour les produits créés via AjouterProduitSimpleScreen
+                                nom: product.nom ||
+                                    product.nom_produit ||
+                                    (typeof product.nom_produit === 'object' && product.nom_produit?.valeur) ||
+                                    product.name ||
+                                    product.title ||
+                                    `Produit ${index + 1}`,
                                 type: product.type,
                                 prix: product.prix,
                                 devise: product.devise || service.data?.devise || 'FCFA',

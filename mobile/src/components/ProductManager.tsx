@@ -15,15 +15,15 @@ interface Product {
 }
 
 interface ProductManagerProps {
-    products: Product[];
+    products?: Product[];
     onProductsChange: (products: Product[]) => void;
     compact?: boolean;
 }
 
-const ProductManager: React.FC<ProductManagerProps> = ({ products, onProductsChange, compact = false }) => {
+const ProductManager: React.FC<ProductManagerProps> = ({ products = [], onProductsChange, compact = false }) => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [newProduct, setNewProduct] = useState({
-            name: '',
+        name: '',
         description: '',
         price: 0,
         unit: '€'
@@ -56,17 +56,17 @@ const ProductManager: React.FC<ProductManagerProps> = ({ products, onProductsCha
     };
 
     const renderProduct = (product: Product) => (
-                            <Card key={product.id} style={styles.productCard}>
-                                <Card.Content>
-                                    <View style={styles.productHeader}>
-                                            <Text style={styles.productName}>{product.name}</Text>
+        <Card key={product.id} style={styles.productCard}>
+            <Card.Content>
+                <View style={styles.productHeader}>
+                    <Text style={styles.productName}>{product.name}</Text>
                     <IconButton
                         icon="close"
                         size={16}
                         onPress={() => removeProduct(product.id)}
                         iconColor={theme.colors.error}
                     />
-                                    </View>
+                </View>
 
                 {product.description && (
                     <Text style={styles.productDescription}>{product.description}</Text>
@@ -75,19 +75,19 @@ const ProductManager: React.FC<ProductManagerProps> = ({ products, onProductsCha
                 <View style={styles.productPrice}>
                     <DollarSign size={16} color={theme.colors.primary} />
                     <Text style={styles.priceText}>
-                        {product.price} {product.unit}
-                                            </Text>
-                                        </View>
-                                </Card.Content>
-                            </Card>
+                        {product.price ?? 0} {product.unit ?? '€'}
+                    </Text>
+                </View>
+            </Card.Content>
+        </Card>
     );
 
     if (compact) {
         return (
             <TouchableOpacity style={styles.compactContainer}>
                 <Package size={20} color={theme.colors.primary} />
-                <Text style={styles.compactText}>{products.length} produits</Text>
-                    </TouchableOpacity>
+                <Text style={styles.compactText}>{(products || []).length} produits</Text>
+            </TouchableOpacity>
         );
     }
 
@@ -149,39 +149,39 @@ const ProductManager: React.FC<ProductManagerProps> = ({ products, onProductsCha
                             </View>
 
                             <View style={styles.formActions}>
-                    <Button
-                        mode="outlined"
+                                <Button
+                                    mode="outlined"
                                     onPress={() => setShowAddForm(false)}
-                        style={styles.cancelButton}
-                    >
-                        Annuler
-                    </Button>
-                    <Button
-                        mode="contained"
+                                    style={styles.cancelButton}
+                                >
+                                    Annuler
+                                </Button>
+                                <Button
+                                    mode="contained"
                                     onPress={addProduct}
-                        style={styles.saveButton}
-                    >
+                                    style={styles.saveButton}
+                                >
                                     Ajouter
-                    </Button>
-                </View>
+                                </Button>
+                            </View>
                         </Card.Content>
                     </Card>
                 )}
 
                 {/* Products List */}
                 <ScrollView style={styles.productsList}>
-                    {products.map(renderProduct)}
+                    {(products || []).map(renderProduct)}
 
-                    {products.length === 0 && (
+                    {(!products || products.length === 0) && (
                         <View style={styles.emptyState}>
                             <Package size={48} color="#E0E0E0" />
                             <Text style={styles.emptyText}>Aucun produit ajouté</Text>
                             <Text style={styles.emptySubtext}>
                                 Ajoutez des produits pour définir vos offres
                             </Text>
-                                </View>
-                                )}
-                    </ScrollView>
+                        </View>
+                    )}
+                </ScrollView>
             </Card.Content>
         </Card>
     );

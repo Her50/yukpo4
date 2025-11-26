@@ -107,7 +107,14 @@ const normalizeProductName = (product?: ManagedProduct | null): string => {
     if (!product) {
         return 'Votre produit';
     }
-    return product.nom || product.name || product.title || 'Votre produit';
+    // ✅ CORRECTION: Chercher aussi nom_produit pour les produits créés via AjouterProduitSimpleScreen
+    return product.nom ||
+        (product as any).nom_produit ||
+        product.name ||
+        product.title ||
+        (product as any).data?.nom_produit ||
+        (product as any).data?.nom ||
+        'Votre produit';
 };
 
 const ensureNumber = (value: any, fallback: number): number => {

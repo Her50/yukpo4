@@ -816,23 +816,82 @@ impl NativeSearchService {
                 FROM search_services_gps_final($1, $2, $3, $4)
             "#;
 
-            let results = sqlx::query(sql)
-                .bind(query)
-                .bind(gps_zone_val)
-                .bind(radius)
-                .bind(100i32) // ✅ CORRIGÉ: max_results (4ème paramètre requis)
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| {
-                    log_error(&format!(
-                        "[NativeSearch] Erreur recherche GPS optimisée: {}",
-                        e
-                    ));
-                    crate::core::types::AppError::Internal(format!(
-                        "Erreur recherche GPS optimisée: {}",
-                        e
-                    ))
-                })?;
+            // ✅ CORRECTION 2025-11-26 : Retry avec backoff exponentiel pour les erreurs de connexion
+            let mut results = None;
+            let mut last_error = None;
+            let max_retries = 3;
+            
+            for attempt in 1..=max_retries {
+                match sqlx::query(sql)
+                    .bind(query)
+                    .bind(gps_zone_val)
+                    .bind(radius)
+                    .bind(100i32) // ✅ CORRIGÉ: max_results (4ème paramètre requis)
+                    .fetch_all(&self.pool)
+                    .await
+                {
+                    Ok(rows) => {
+                        results = Some(rows);
+                        if attempt > 1 {
+                            log_info(&format!(
+                                "[NativeSearch] Recherche GPS réussie après {} tentative(s)",
+                                attempt
+                            ));
+                        }
+                        break;
+                    }
+                    Err(e) => {
+                        last_error = Some(e);
+                        let error_str = last_error.as_ref().unwrap().to_string();
+                        
+                        // Vérifier si l'erreur est retryable (connexion fermée, timeout, etc.)
+                        let is_retryable = error_str.contains("peer closed connection")
+                            || error_str.contains("TLS close_notify")
+                            || error_str.contains("connection")
+                            || error_str.contains("timeout")
+                            || error_str.contains("terminating connection");
+                        
+                        if is_retryable && attempt < max_retries {
+                            let delay_ms = 100 * 2_u64.pow(attempt - 1); // Backoff exponentiel: 100ms, 200ms, 400ms
+                            log::warn!(
+                                "[NativeSearch] Erreur recherche GPS (tentative {}/{}): {}. Retry dans {}ms",
+                                attempt,
+                                max_retries,
+                                error_str,
+                                delay_ms
+                            );
+                            tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+                        } else {
+                            // Erreur non-retryable ou dernière tentative
+                            log_error(&format!(
+                                "[NativeSearch] Erreur recherche GPS optimisée (tentative {}/{}): {}",
+                                attempt,
+                                max_retries,
+                                error_str
+                            ));
+                            if attempt == max_retries {
+                                break; // Sortir de la boucle pour utiliser le fallback
+                            }
+                        }
+                    }
+                }
+            }
+            
+            let results = results.ok_or_else(|| {
+                let error_msg = last_error
+                    .as_ref()
+                    .map(|e| e.to_string())
+                    .unwrap_or_else(|| "Erreur inconnue".to_string());
+                log_error(&format!(
+                    "[NativeSearch] Échec recherche GPS après {} tentatives: {}",
+                    max_retries,
+                    error_msg
+                ));
+                crate::core::types::AppError::Internal(format!(
+                    "Erreur recherche GPS optimisée: {}",
+                    error_msg
+                ))
+            })?;
 
             let mut search_results = Vec::new();
             for row in results {

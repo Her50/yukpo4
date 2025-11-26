@@ -1696,6 +1696,11 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
     // Nettoyer le texte de manière plus intelligente
     let clean_text = text
         .to_lowercase()
+        // ✅ CORRECTION 2025-11-26 : Remplacer les séparateurs par des espaces AVANT le nettoyage
+        // Cela permet de traiter correctement les listes séparées par virgules
+        .replace(',', ' ')  // Virgules → espaces
+        .replace(';', ' ')  // Point-virgules → espaces
+        .replace('|', ' ')  // Pipes → espaces
         // Supprimer les expressions de recherche courantes
         .replace("je cherche", "")
         .replace("je voudrais", "")
@@ -1713,6 +1718,8 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
         .to_string();
 
     // Diviser en mots et filtrer intelligemment
+    // ✅ CORRECTION 2025-11-26 : split_whitespace() fonctionne maintenant correctement
+    // car les virgules ont été remplacées par des espaces
     let words: Vec<&str> = clean_text
         .split_whitespace()
         .filter(|word| {

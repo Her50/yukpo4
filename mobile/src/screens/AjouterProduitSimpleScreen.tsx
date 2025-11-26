@@ -657,8 +657,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 return;
             }
 
-            // ✅ ÉTAPE 2 : Vérifier le solde (coût fixe : 3000 FCFA pour ajout produit - IDENTIQUE AU GRAND FORMULAIRE)
-            const COUT_AJOUT_PRODUIT = 3000;
+            // ✅ ÉTAPE 2 : Vérifier le solde (coût fixe : 2000 FCFA pour ajout produit - IDENTIQUE AU GRAND FORMULAIRE)
+            const COUT_AJOUT_PRODUIT = 2000;
 
             console.log('💰 [AjouterProduitSimple] Vérification du solde pour ajout produit...');
             const balanceResponse = await apiGet<{ tokens_balance: number }>('/api/users/balance');
@@ -861,8 +861,31 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 productVector={Array.isArray(formValues.product_vector) ? formValues.product_vector : undefined}
                                 productLabels={Array.isArray(formValues.product_labels) ? formValues.product_labels : undefined}
                                 sousCaracteristiques={(() => {
-                                    // ✅ CORRECTION: Utiliser uniquement les valeurs de la COMBINAISON PRÉFÉRÉE de l'IA
-                                    // 1. PRIORITÉ: Construire depuis product_vector et product_labels de la combinaison préférée
+                                    // ✅ CORRECTION: Utiliser TOUTES les valeurs des sous_caracteristiques pour permettre l'affichage du tableau complet
+                                    // 1. PRIORITÉ: Utiliser sous_caracteristiques complets si disponibles (contient TOUTES les valeurs)
+                                    const sousCaracsComplets = formValues.sous_caracteristiques || suggestionData?.produits?.sous_caracteristiques;
+                                    if (sousCaracsComplets && typeof sousCaracsComplets === 'object' && Object.keys(sousCaracsComplets).length > 0) {
+                                        const sousCaracsObj: Record<string, string[]> = {};
+                                        Object.entries(sousCaracsComplets).forEach(([key, vals]: [string, any]) => {
+                                            if (Array.isArray(vals) && vals.length > 0) {
+                                                // ✅ Passer TOUTES les valeurs pour permettre l'affichage du tableau complet
+                                                const allValues = vals
+                                                    .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
+                                                    .map((v: string) => v.trim());
+                                                if (allValues.length > 0) {
+                                                    sousCaracsObj[key] = allValues;
+                                                }
+                                            }
+                                        });
+
+                                        if (Object.keys(sousCaracsObj).length > 0) {
+                                            console.log('[AjouterProduitSimple] ✅ Utilisation sous_caracteristiques complets (TOUTES les valeurs):', sousCaracsObj);
+                                            return sousCaracsObj;
+                                        }
+                                    }
+
+                                    // ✅ PRIORITÉ 1B: Fallback vers product_vector/product_labels (combinaison préférée uniquement)
+                                    // Si on n'a pas sous_caracteristiques complets, utiliser la combinaison préférée
                                     if (formValues.product_vector && Array.isArray(formValues.product_vector) &&
                                         formValues.product_labels && Array.isArray(formValues.product_labels) &&
                                         formValues.product_vector.length > 0 && formValues.product_vector.length === formValues.product_labels.length) {
@@ -888,40 +911,47 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     }
 
                                     // 2. Fallback: Utiliser sous_caracteristiques si product_vector/product_labels non disponibles
-                                    // ✅ CORRIGÉ: Prendre la première valeur de chaque dimension comme valeur préférée, même si plusieurs valeurs sont disponibles
+                                    // ✅ CORRIGÉ: Passer TOUTES les valeurs pour permettre l'affichage du tableau complet dans LinearAutocompleteEditor
                                     if (formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object' && Object.keys(formValues.sous_caracteristiques).length > 0) {
                                         const sousCaracsObj: Record<string, string[]> = {};
                                         Object.entries(formValues.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
                                             if (Array.isArray(vals) && vals.length > 0) {
-                                                // Prendre la première valeur comme valeur préférée
-                                                const firstValue = vals[0];
-                                                if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-                                                    sousCaracsObj[key] = [firstValue];
+                                                // ✅ CORRIGÉ: Passer TOUTES les valeurs, pas seulement la première
+                                                // Cela permet au tableau de s'afficher correctement dans LinearAutocompleteEditor
+                                                const allValues = vals
+                                                    .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
+                                                    .map((v: string) => v.trim());
+                                                if (allValues.length > 0) {
+                                                    sousCaracsObj[key] = allValues;
                                                 }
                                             }
                                         });
 
                                         if (Object.keys(sousCaracsObj).length > 0) {
-                                            console.log('[AjouterProduitSimple] ✅ Utilisation sous_caracteristiques (première valeur de chaque dimension) depuis formValues:', sousCaracsObj);
+                                            console.log('[AjouterProduitSimple] ✅ Utilisation sous_caracteristiques (TOUTES les valeurs) depuis formValues:', sousCaracsObj);
                                             return sousCaracsObj;
                                         }
                                     }
 
                                     // 3. Fallback: Vérifier aussi dans suggestionData si disponible
+                                    // ✅ CORRIGÉ: Passer TOUTES les valeurs pour permettre l'affichage du tableau complet
                                     if (suggestionData?.produits?.sous_caracteristiques && typeof suggestionData.produits.sous_caracteristiques === 'object' && Object.keys(suggestionData.produits.sous_caracteristiques).length > 0) {
                                         const sousCaracsObj: Record<string, string[]> = {};
                                         Object.entries(suggestionData.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
                                             if (Array.isArray(vals) && vals.length > 0) {
-                                                // Prendre la première valeur comme valeur préférée
-                                                const firstValue = vals[0];
-                                                if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-                                                    sousCaracsObj[key] = [firstValue];
+                                                // ✅ CORRIGÉ: Passer TOUTES les valeurs, pas seulement la première
+                                                // Cela permet au tableau de s'afficher correctement dans LinearAutocompleteEditor
+                                                const allValues = vals
+                                                    .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
+                                                    .map((v: string) => v.trim());
+                                                if (allValues.length > 0) {
+                                                    sousCaracsObj[key] = allValues;
                                                 }
                                             }
                                         });
 
                                         if (Object.keys(sousCaracsObj).length > 0) {
-                                            console.log('[AjouterProduitSimple] ✅ Utilisation sous_caracteristiques (première valeur de chaque dimension) depuis suggestionData:', sousCaracsObj);
+                                            console.log('[AjouterProduitSimple] ✅ Utilisation sous_caracteristiques (TOUTES les valeurs) depuis suggestionData:', sousCaracsObj);
                                             return sousCaracsObj;
                                         }
                                     }
@@ -1025,7 +1055,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             <View style={styles.costInfo}>
                                 <SafeIcon name="info" size={16} color={modernColors.textSecondary} />
                                 <Text style={styles.costText}>
-                                    {`Coût: 3000 FCFA (Solde: ${(user?.credits || 0).toLocaleString('fr-FR')} FCFA)`}
+                                    {`Coût: 2000 FCFA (Solde: ${(user?.credits || 0).toLocaleString('fr-FR')} FCFA)`}
                                 </Text>
                             </View>
                         )}

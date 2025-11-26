@@ -35,27 +35,33 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         // Routes protégées (création) - middleware appliqué au Router
         .route(
             "/api/pharmacies",
-            post(pharmacy_controller::create_pharmacy),
+            post(pharmacy_controller::create_pharmacy)
+                .get(pharmacy_controller::list_pharmacies), // ✅ Ajout GET
         )
         .route(
             "/api/hopitaux",
-            post(specialized_services_controller::create_hospital),
+            post(specialized_services_controller::create_hospital)
+                .get(specialized_services_controller::list_hospitals), // ✅ Ajout GET
         )
         .route(
             "/api/laboratoires",
-            post(specialized_services_controller::create_laboratory),
+            post(specialized_services_controller::create_laboratory)
+                .get(specialized_services_controller::list_laboratories), // ✅ Ajout GET
         )
         .route(
             "/api/agences-voyage",
-            post(specialized_services_controller::create_travel_agency),
+            post(specialized_services_controller::create_travel_agency)
+                .get(specialized_services_controller::list_travel_agencies), // ✅ Ajout GET
         )
         .route(
             "/api/covoiturages",
-            post(specialized_services_controller::create_covoiturage),
+            post(specialized_services_controller::create_covoiturage)
+                .get(specialized_services_controller::list_covoiturages), // ✅ Ajout GET
         )
         .route(
             "/api/taxis",
-            post(specialized_services_controller::create_taxi),
+            post(specialized_services_controller::create_taxi)
+                .get(specialized_services_controller::list_taxis), // ✅ Ajout GET
         )
         // Routes Banques de sang (publiques pour recherche, protégées pour création/modification)
         .route(

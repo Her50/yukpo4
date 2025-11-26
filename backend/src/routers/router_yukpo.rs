@@ -465,6 +465,15 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/services/{service_id}/media",
             get(crate::controllers::media_controller::get_service_media),
         )
+        // ✅ Routes pour liste et services récents
+        .route(
+            "/api/services",
+            get(crate::controllers::service_controller::get_services_list),
+        )
+        .route(
+            "/api/services/recent",
+            get(crate::controllers::service_controller::get_services_recent),
+        )
         // Route pour récupérer les informations d'un utilisateur par ID
         .route(
             "/api/users/{user_id}",

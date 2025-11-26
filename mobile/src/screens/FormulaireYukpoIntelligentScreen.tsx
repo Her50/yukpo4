@@ -385,11 +385,35 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       suggestionProduits: suggestion?.data?.produits
     });
 
-    // 1. PRIORITÉ: Construire depuis product_vector et product_labels de la combinaison préférée
-    // C'est la combinaison spécifique choisie par l'IA, pas toutes les valeurs possibles
+    // 1. PRIORITÉ: Utiliser sous_caracteristiques complets si disponibles (contient TOUTES les valeurs)
     // ✅ CORRIGÉ: Vérifier aussi dans suggestion.data.produits si pas dans values.produits
     const produitsData = values.produits || suggestion?.data?.produits;
 
+    // ✅ PRIORITÉ 1A: Si on a sous_caracteristiques complets, les utiliser directement
+    // (Ils contiennent toutes les valeurs possibles pour chaque dimension)
+    const sousCaracsComplets = produitsData?.sous_caracteristiques || suggestion?.data?.produits?.sous_caracteristiques;
+    if (sousCaracsComplets && typeof sousCaracsComplets === 'object' && Object.keys(sousCaracsComplets).length > 0) {
+      const sousCaracsObj: Record<string, string[]> = {};
+      Object.entries(sousCaracsComplets).forEach(([key, vals]: [string, any]) => {
+        if (Array.isArray(vals) && vals.length > 0) {
+          // ✅ Passer TOUTES les valeurs pour permettre l'affichage du tableau complet
+          const allValues = vals
+            .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
+            .map((v: string) => v.trim());
+          if (allValues.length > 0) {
+            sousCaracsObj[key] = allValues;
+          }
+        }
+      });
+
+      if (Object.keys(sousCaracsObj).length > 0) {
+        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques complets (TOUTES les valeurs):', sousCaracsObj);
+        return sousCaracsObj;
+      }
+    }
+
+    // ✅ PRIORITÉ 1B: Fallback vers product_vector/product_labels (combinaison préférée uniquement)
+    // Si on n'a pas sous_caracteristiques complets, utiliser la combinaison préférée
     if (produitsData?.product_vector && Array.isArray(produitsData.product_vector) &&
       produitsData.product_labels && Array.isArray(produitsData.product_labels) &&
       produitsData.product_vector.length > 0 && produitsData.product_vector.length === produitsData.product_labels.length) {
@@ -415,7 +439,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     // 2. Fallback: Utiliser sous_caracteristiques si product_vector/product_labels non disponibles
-    // ✅ CORRIGÉ: Prendre la première valeur de chaque dimension comme valeur préférée, même si plusieurs valeurs sont disponibles
+    // ✅ CORRIGÉ: Passer TOUTES les valeurs pour permettre l'affichage du tableau complet dans LinearAutocompleteEditor
     // ✅ CORRIGÉ: Vérifier aussi dans suggestion.data.produits si pas dans values.produits
     const sousCaracsSource = produitsData?.sous_caracteristiques || values.produits?.sous_caracteristiques;
 
@@ -423,36 +447,42 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const sousCaracsObj: Record<string, string[]> = {};
       Object.entries(sousCaracsSource).forEach(([key, vals]: [string, any]) => {
         if (Array.isArray(vals) && vals.length > 0) {
-          // Prendre la première valeur comme valeur préférée
-          const firstValue = vals[0];
-          if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-            sousCaracsObj[key] = [firstValue];
+          // ✅ CORRIGÉ: Passer TOUTES les valeurs, pas seulement la première
+          // Cela permet au tableau de s'afficher correctement dans LinearAutocompleteEditor
+          const allValues = vals
+            .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
+            .map((v: string) => v.trim());
+          if (allValues.length > 0) {
+            sousCaracsObj[key] = allValues;
           }
         }
       });
 
       if (Object.keys(sousCaracsObj).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (première valeur de chaque dimension):', sousCaracsObj);
+        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (TOUTES les valeurs) depuis produitsData:', sousCaracsObj);
         return sousCaracsObj;
       }
     }
 
     // 3. Fallback: Essayer depuis suggestionData.data.produits
-    // ✅ CORRIGÉ: Prendre la première valeur de chaque dimension comme valeur préférée
+    // ✅ CORRIGÉ: Passer TOUTES les valeurs pour permettre l'affichage du tableau complet
     if (suggestion?.data?.produits?.sous_caracteristiques && typeof suggestion.data.produits.sous_caracteristiques === 'object') {
       const sousCaracsObj: Record<string, string[]> = {};
       Object.entries(suggestion.data.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
         if (Array.isArray(vals) && vals.length > 0) {
-          // Prendre la première valeur comme valeur préférée
-          const firstValue = vals[0];
-          if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-            sousCaracsObj[key] = [firstValue];
+          // ✅ CORRIGÉ: Passer TOUTES les valeurs, pas seulement la première
+          // Cela permet au tableau de s'afficher correctement dans LinearAutocompleteEditor
+          const allValues = vals
+            .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
+            .map((v: string) => v.trim());
+          if (allValues.length > 0) {
+            sousCaracsObj[key] = allValues;
           }
         }
       });
 
       if (Object.keys(sousCaracsObj).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (première valeur de chaque dimension) depuis suggestion.data.produits:', sousCaracsObj);
+        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (TOUTES les valeurs) depuis suggestion.data.produits:', sousCaracsObj);
         return sousCaracsObj;
       }
     }

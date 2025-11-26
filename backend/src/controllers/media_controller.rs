@@ -216,8 +216,10 @@ pub async fn get_service_media(
     }
 
     // ✅ Utiliser query_as avec gestion d'erreur améliorée
+    // ✅ CORRECTION: Utiliser media.type avec le nom de table pour éviter les conflits avec le mot-clé réservé
+    // Le mapping se fait via #[sqlx(rename = "type")] dans MediaItem
     let rows = match sqlx::query_as::<_, MediaItem>(
-        r#"SELECT id, service_id, type, path, uploaded_at FROM media WHERE service_id = $1 ORDER BY uploaded_at DESC NULLS LAST"#
+        r#"SELECT id, service_id, media.type, path, uploaded_at FROM media WHERE service_id = $1 ORDER BY uploaded_at DESC NULLS LAST"#
     )
     .bind(service_id)
     .fetch_all(&pool)

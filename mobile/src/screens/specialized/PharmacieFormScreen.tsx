@@ -9,9 +9,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import WeekScheduleSelector from '../../components/WeekScheduleSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
@@ -34,8 +36,8 @@ const PharmacieFormScreen: React.FC = () => {
     const [formData, setFormData] = useState({
         nom: '',
         adresse: '',
-        quartier: '',
-        ville: '',
+        quartier: null as LocationObject | null,
+        ville: null as LocationObject | null,
         jours_garde: '',
         heures_ouverture: '08:00',
         heures_fermeture: '20:00',
@@ -54,7 +56,7 @@ const PharmacieFormScreen: React.FC = () => {
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
 
-    const servicesOptions = ['Garde', 'Délivrance', 'Conseil', 'Vaccination', 'Pansements'];
+    const servicesOptions = ['Garde', 'Délivrance', 'Conseil', 'Vaccination', 'Pansements', 'Livraison à domicile', 'Préparation de médicaments'];
 
     // ✅ Créer automatiquement un service si serviceId manquant
     useEffect(() => {
@@ -82,13 +84,6 @@ const PharmacieFormScreen: React.FC = () => {
         }
     }, [formData.nom, serviceId, user?.id]);
 
-    const toggleService = (service: string) => {
-        setSelectedServices((prev) =>
-            prev.includes(service)
-                ? prev.filter((s) => s !== service)
-                : [...prev, service]
-        );
-    };
 
     const handleGPSSelect = (coordinates: string) => {
         setSelectedGPS(coordinates);
@@ -155,8 +150,8 @@ const PharmacieFormScreen: React.FC = () => {
                 service_id: finalServiceId,
                 nom: formData.nom,
                 adresse: formData.adresse || null,
-                quartier: formData.quartier || null,
-                ville: formData.ville || null,
+                quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
+                ville: formData.ville?.raw || formData.ville?.place_name || null,
                 gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
@@ -244,23 +239,26 @@ const PharmacieFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Quartier</Text>
-                            <NativeInput
-                                value={formData.quartier}
-                                onChangeText={(text) => setFormData({ ...formData, quartier: text })}
-                                placeholder="Quartier"
-                            />
-                        </View>
-                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Ville</Text>
-                            <NativeInput
-                                value={formData.ville}
-                                onChangeText={(text) => setFormData({ ...formData, ville: text })}
-                                placeholder="Ville"
-                            />
-                        </View>
+                    <View style={styles.inputGroup}>
+                        <LocationSelector
+                            label="Quartier"
+                            value={formData.quartier || ''}
+                            onSelect={(value) => setFormData({ ...formData, quartier: value })}
+                            placeholder="Rechercher un quartier..."
+                            scope="neighborhood"
+                            enrichWithBackend
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <LocationSelector
+                            label="Ville"
+                            value={formData.ville || ''}
+                            onSelect={(value) => setFormData({ ...formData, ville: value })}
+                            placeholder="Rechercher une ville..."
+                            scope="city"
+                            enrichWithBackend
+                        />
                     </View>
 
                     {/* ✅ Planning hebdomadaire avec sélecteur visuel */}
@@ -362,28 +360,14 @@ const PharmacieFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Services proposés</Text>
-                        <View style={styles.chipsContainer}>
-                            {servicesOptions.map((service) => (
-                                <TouchableOpacity
-                                    key={service}
-                                    style={[
-                                        styles.chip,
-                                        selectedServices.includes(service) && styles.chipSelected,
-                                    ]}
-                                    onPress={() => toggleService(service)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.chipText,
-                                            selectedServices.includes(service) && styles.chipTextSelected,
-                                        ]}
-                                    >
-                                        {service}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <SimplePrestationSelector
+                            label="Services proposés"
+                            options={servicesOptions}
+                            selected={selectedServices}
+                            onSelectionChange={setSelectedServices}
+                            allowCustom={true}
+                            placeholder="Ajouter un service personnalisé"
+                        />
                     </View>
 
                     {/* ✅ CORRIGÉ: Utiliser title au lieu de children */}

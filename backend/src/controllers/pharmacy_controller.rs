@@ -13,6 +13,16 @@ use serde_json::json;
 use sqlx::FromRow;
 use std::sync::Arc;
 
+/// ✅ Liste des pharmacies (stub pour éviter erreur 405)
+pub async fn list_pharmacies(
+    State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[list_pharmacies] Called");
+    // TODO: Implémenter la vraie liste
+    Ok((StatusCode::OK, Json(json!([]))))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreatePharmacyRequest {
     pub service_id: i32,

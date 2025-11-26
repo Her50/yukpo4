@@ -15,6 +15,56 @@ use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 
+/// ✅ Liste des hôpitaux (stub pour éviter erreur 405)
+pub async fn list_hospitals(
+    State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[list_hospitals] Called");
+    // TODO: Implémenter la vraie liste
+    Ok((StatusCode::OK, Json(json!([]))))
+}
+
+/// ✅ Liste des laboratoires (stub pour éviter erreur 405)
+pub async fn list_laboratories(
+    State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[list_laboratories] Called");
+    // TODO: Implémenter la vraie liste
+    Ok((StatusCode::OK, Json(json!([]))))
+}
+
+/// ✅ Liste des agences de voyage (stub pour éviter erreur 405)
+pub async fn list_travel_agencies(
+    State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[list_travel_agencies] Called");
+    // TODO: Implémenter la vraie liste
+    Ok((StatusCode::OK, Json(json!([]))))
+}
+
+/// ✅ Liste des covoiturages (stub pour éviter erreur 405)
+pub async fn list_covoiturages(
+    State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[list_covoiturages] Called");
+    // TODO: Implémenter la vraie liste
+    Ok((StatusCode::OK, Json(json!([]))))
+}
+
+/// ✅ Liste des taxis (stub pour éviter erreur 405)
+pub async fn list_taxis(
+    State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[list_taxis] Called");
+    // TODO: Implémenter la vraie liste
+    Ok((StatusCode::OK, Json(json!([]))))
+}
+
 // ============================================================================
 // HÔPITAUX/CLINIQUES
 // ============================================================================

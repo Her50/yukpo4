@@ -2112,15 +2112,14 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
-        // ✅ CORRECTION: S'assurer que le ScrollView est visible
-        minHeight: 200, // Hauteur minimale pour garantir la visibilité
+        // ✅ CORRECTION: S'assurer que le ScrollView est visible et scrollable
     },
     stepContent: {
         padding: 20,
         gap: 20,
-        paddingBottom: Platform.OS === 'ios' ? 110 : 100, // ✅ Espace pour le bouton fixe + safe area
-        // ✅ CORRECTION: S'assurer que le contenu a une hauteur minimale
-        minHeight: 200,
+        paddingBottom: Platform.OS === 'ios' ? 140 : 130, // ✅ Espace pour le bouton fixe + safe area + marge supplémentaire
+        // ✅ CORRECTION: Utiliser flexGrow au lieu de minHeight pour permettre le scroll complet
+        flexGrow: 1,
     },
     fixedBottomButton: {
         position: 'absolute',

@@ -5630,6 +5630,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto bus ticket commission: {}", e),
     }
 
+    // ✅ 2025-11-26 : Correction signature search_services_gps_final
+    match ensure_search_services_gps_final_signature_fix(pool).await {
+        Ok(_) => info!("✅ Migration auto: search_services_gps_final signature fix OK"),
+        Err(e) => error!("❌ Erreur migration auto search_services_gps_final signature fix: {}", e),
+    }
+
+    // ✅ 2025-11-26 : Optimisation index pour recherche
+    match ensure_search_indexes_optimization(pool).await {
+        Ok(_) => info!("✅ Migration auto: search indexes optimization OK"),
+        Err(e) => error!("❌ Erreur migration auto search indexes optimization: {}", e),
+    }
+
     // ✅ 2025-11-27 : Système validation tickets bus
     match ensure_bus_ticket_validation_system(pool).await {
         Ok(_) => info!("✅ Migration auto: bus ticket validation system OK"),
@@ -8676,23 +8688,429 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
 pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification et création des tables services spécialisés...");
     
-    // Vérifier d'abord si les tables existent déjà
-    let pharmacies_exists: bool = sqlx::query_scalar(
+    // ✅ CORRECTION: Vérifier toutes les tables spécialisées individuellement
+    let pharmacies_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'pharmacies')"
     )
     .fetch_one(pool)
     .await
     .unwrap_or(false);
     
-    if !pharmacies_exists {
+    let hopitaux_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'hopitaux_cliniques')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    
+    let laboratoires_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'laboratoires_imagerie')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    
+    let agences_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'agences_voyage')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    
+    let covoiturages_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'covoiturages')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    
+    let taxis_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'taxis_ville')"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    
+    // Si au moins une table manque, exécuter la migration complète
+    let any_missing = !pharmacies_exists || !hopitaux_exists || !laboratoires_exists 
+        || !agences_exists || !covoiturages_exists || !taxis_exists;
+    
+    if any_missing {
         // Lire le contenu de la migration SQL
         let migration_sql = include_str!("../../migrations/20251126_create_specialized_services_tables.sql");
         
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_multiple_sql_commands(pool, migration_sql).await?;
-        info!("✅ Tables services spécialisés créées");
+        info!("✅ Tables services spécialisés créées via migration complète");
     } else {
-        info!("✅ Tables services spécialisés déjà présentes");
+        info!("✅ Toutes les tables services spécialisés déjà présentes");
+    }
+    
+    // ✅ CORRECTION: Vérifications supplémentaires et créations individuelles si nécessaire
+    // (au cas où la migration complète échouerait partiellement)
+    
+    // Créer la fonction update_specialized_service_timestamp si elle n'existe pas
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION update_specialized_service_timestamp()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    // 1. PHARMACIES
+    if !pharmacies_exists {
+        warn!("⚠️ Table pharmacies manquante, création directe...");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS pharmacies (
+                id SERIAL PRIMARY KEY,
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                nom VARCHAR(255) NOT NULL,
+                adresse TEXT,
+                quartier VARCHAR(255),
+                ville VARCHAR(255),
+                gps VARCHAR(255),
+                jours_garde TEXT,
+                heures_ouverture TIME,
+                heures_fermeture TIME,
+                permanent_24h BOOLEAN DEFAULT FALSE,
+                telephone VARCHAR(50),
+                telephone_urgence VARCHAR(50),
+                whatsapp VARCHAR(50),
+                email VARCHAR(255),
+                services TEXT[],
+                is_active BOOLEAN DEFAULT TRUE,
+                is_on_duty_now BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT unique_pharmacy_service UNIQUE(service_id)
+            )
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_user_id ON pharmacies(user_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_service_id ON pharmacies(service_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_is_active ON pharmacies(is_active)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_is_on_duty ON pharmacies(is_on_duty_now) WHERE is_on_duty_now = TRUE").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_ville ON pharmacies(ville)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_quartier ON pharmacies(quartier)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_services_gin ON pharmacies USING GIN(services)").execute(pool).await?;
+        
+        sqlx::query(
+            r#"
+            DROP TRIGGER IF EXISTS trigger_pharmacies_updated_at ON pharmacies;
+            CREATE TRIGGER trigger_pharmacies_updated_at
+                BEFORE UPDATE ON pharmacies
+                FOR EACH ROW
+                EXECUTE FUNCTION update_specialized_service_timestamp();
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        info!("✅ Table pharmacies créée directement");
+    }
+    
+    // 2. HOPITAUX_CLINIQUES
+    if !hopitaux_exists {
+        warn!("⚠️ Table hopitaux_cliniques manquante, création directe...");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS hopitaux_cliniques (
+                id SERIAL PRIMARY KEY,
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                nom VARCHAR(255) NOT NULL,
+                type_etablissement VARCHAR(50) NOT NULL,
+                adresse TEXT,
+                quartier VARCHAR(255),
+                ville VARCHAR(255),
+                gps VARCHAR(255),
+                prestations_medicales TEXT[],
+                banque_sang BOOLEAN DEFAULT FALSE,
+                urgences_disponible BOOLEAN DEFAULT FALSE,
+                rdv_en_ligne BOOLEAN DEFAULT FALSE,
+                planning_hebdomadaire JSONB,
+                telephone VARCHAR(50),
+                telephone_urgence VARCHAR(50),
+                whatsapp VARCHAR(50),
+                email VARCHAR(255),
+                site_web VARCHAR(255),
+                is_active BOOLEAN DEFAULT TRUE,
+                is_available_now BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT unique_hospital_service UNIQUE(service_id)
+            )
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_user_id ON hopitaux_cliniques(user_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_service_id ON hopitaux_cliniques(service_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_type ON hopitaux_cliniques(type_etablissement)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_is_active ON hopitaux_cliniques(is_active)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_is_available ON hopitaux_cliniques(is_available_now) WHERE is_available_now = TRUE").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_prestations_gin ON hopitaux_cliniques USING GIN(prestations_medicales)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_planning_gin ON hopitaux_cliniques USING GIN(planning_hebdomadaire)").execute(pool).await?;
+        
+        sqlx::query(
+            r#"
+            DROP TRIGGER IF EXISTS trigger_hopitaux_updated_at ON hopitaux_cliniques;
+            CREATE TRIGGER trigger_hopitaux_updated_at
+                BEFORE UPDATE ON hopitaux_cliniques
+                FOR EACH ROW
+                EXECUTE FUNCTION update_specialized_service_timestamp();
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        info!("✅ Table hopitaux_cliniques créée directement");
+    }
+    
+    // 3. LABORATOIRES_IMAGERIE
+    if !laboratoires_exists {
+        warn!("⚠️ Table laboratoires_imagerie manquante, création directe...");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS laboratoires_imagerie (
+                id SERIAL PRIMARY KEY,
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                nom VARCHAR(255) NOT NULL,
+                type_laboratoire VARCHAR(50) NOT NULL,
+                adresse TEXT,
+                quartier VARCHAR(255),
+                ville VARCHAR(255),
+                gps VARCHAR(255),
+                analyses_disponibles TEXT[],
+                imagerie_disponible TEXT[],
+                planning_hebdomadaire JSONB,
+                rdv_requis BOOLEAN DEFAULT TRUE,
+                resultats_en_ligne BOOLEAN DEFAULT FALSE,
+                telephone VARCHAR(50),
+                whatsapp VARCHAR(50),
+                email VARCHAR(255),
+                is_active BOOLEAN DEFAULT TRUE,
+                is_available_now BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT unique_laboratory_service UNIQUE(service_id)
+            )
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_user_id ON laboratoires_imagerie(user_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_service_id ON laboratoires_imagerie(service_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_type ON laboratoires_imagerie(type_laboratoire)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_analyses_gin ON laboratoires_imagerie USING GIN(analyses_disponibles)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_imagerie_gin ON laboratoires_imagerie USING GIN(imagerie_disponible)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_is_available ON laboratoires_imagerie(is_available_now) WHERE is_available_now = TRUE").execute(pool).await?;
+        
+        sqlx::query(
+            r#"
+            DROP TRIGGER IF EXISTS trigger_laboratoires_updated_at ON laboratoires_imagerie;
+            CREATE TRIGGER trigger_laboratoires_updated_at
+                BEFORE UPDATE ON laboratoires_imagerie
+                FOR EACH ROW
+                EXECUTE FUNCTION update_specialized_service_timestamp();
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        info!("✅ Table laboratoires_imagerie créée directement");
+    }
+    
+    // 4. AGENCES_VOYAGE
+    if !agences_exists {
+        warn!("⚠️ Table agences_voyage manquante, création directe...");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS agences_voyage (
+                id SERIAL PRIMARY KEY,
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                nom_agence VARCHAR(255) NOT NULL,
+                adresse TEXT,
+                quartier VARCHAR(255),
+                ville VARCHAR(255),
+                gps VARCHAR(255),
+                services_voyage TEXT[],
+                compagnies_bus TEXT[],
+                destinations TEXT[],
+                heures_ouverture TIME,
+                heures_fermeture TIME,
+                jours_ouverture TEXT,
+                telephone VARCHAR(50),
+                whatsapp VARCHAR(50),
+                email VARCHAR(255),
+                site_web VARCHAR(255),
+                peut_emettre_tickets_bus BOOLEAN DEFAULT FALSE,
+                compagnies_affiliees TEXT[],
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT unique_agency_service UNIQUE(service_id)
+            )
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_user_id ON agences_voyage(user_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_service_id ON agences_voyage(service_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_tickets_bus ON agences_voyage(peut_emettre_tickets_bus) WHERE peut_emettre_tickets_bus = TRUE").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_services_gin ON agences_voyage USING GIN(services_voyage)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_compagnies_gin ON agences_voyage USING GIN(compagnies_bus)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_destinations_gin ON agences_voyage USING GIN(destinations)").execute(pool).await?;
+        
+        sqlx::query(
+            r#"
+            DROP TRIGGER IF EXISTS trigger_agences_updated_at ON agences_voyage;
+            CREATE TRIGGER trigger_agences_updated_at
+                BEFORE UPDATE ON agences_voyage
+                FOR EACH ROW
+                EXECUTE FUNCTION update_specialized_service_timestamp();
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        info!("✅ Table agences_voyage créée directement");
+    }
+    
+    // 5. COVOITURAGES
+    if !covoiturages_exists {
+        warn!("⚠️ Table covoiturages manquante, création directe...");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS covoiturages (
+                id SERIAL PRIMARY KEY,
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                depart VARCHAR(255) NOT NULL,
+                destination VARCHAR(255) NOT NULL,
+                gps_depart VARCHAR(255),
+                gps_destination VARCHAR(255),
+                date_depart TIMESTAMPTZ NOT NULL,
+                heure_depart TIME NOT NULL,
+                date_arrivee_estimee TIMESTAMPTZ,
+                type_vehicule VARCHAR(50),
+                marque_modele VARCHAR(255),
+                nombre_places INTEGER NOT NULL,
+                places_disponibles INTEGER NOT NULL,
+                prix_par_place INTEGER NOT NULL,
+                devise VARCHAR(3) DEFAULT 'XAF',
+                bagages_autorises BOOLEAN DEFAULT TRUE,
+                animaux_autorises BOOLEAN DEFAULT FALSE,
+                fumeur_autorise BOOLEAN DEFAULT FALSE,
+                climatisation BOOLEAN DEFAULT FALSE,
+                statut VARCHAR(20) NOT NULL DEFAULT 'ouvert' CHECK (statut IN ('ouvert', 'complet', 'annule', 'termine')),
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT unique_covoiturage_service UNIQUE(service_id)
+            )
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_user_id ON covoiturages(user_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_service_id ON covoiturages(service_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_date_depart ON covoiturages(date_depart) WHERE is_active = TRUE AND statut = 'ouvert'").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_statut ON covoiturages(statut) WHERE statut = 'ouvert'").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_depart_destination ON covoiturages(depart, destination)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_places_disponibles ON covoiturages(places_disponibles) WHERE places_disponibles > 0").execute(pool).await?;
+        
+        sqlx::query(
+            r#"
+            DROP TRIGGER IF EXISTS trigger_covoiturages_updated_at ON covoiturages;
+            CREATE TRIGGER trigger_covoiturages_updated_at
+                BEFORE UPDATE ON covoiturages
+                FOR EACH ROW
+                EXECUTE FUNCTION update_specialized_service_timestamp();
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        info!("✅ Table covoiturages créée directement");
+    }
+    
+    // 6. TAXIS_VILLE
+    if !taxis_exists {
+        warn!("⚠️ Table taxis_ville manquante, création directe...");
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS taxis_ville (
+                id SERIAL PRIMARY KEY,
+                service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                nom_chauffeur VARCHAR(255),
+                telephone VARCHAR(50) NOT NULL,
+                whatsapp VARCHAR(50),
+                type_vehicule VARCHAR(50),
+                marque_modele VARCHAR(255),
+                immatriculation VARCHAR(50),
+                couleur VARCHAR(50),
+                annee INTEGER,
+                is_available_now BOOLEAN DEFAULT FALSE,
+                zone_intervention TEXT[],
+                gps_actuel VARCHAR(255),
+                tarif_base INTEGER DEFAULT 500,
+                tarif_par_km INTEGER DEFAULT 200,
+                devise VARCHAR(3) DEFAULT 'XAF',
+                paiement_cash BOOLEAN DEFAULT TRUE,
+                paiement_mobile_money BOOLEAN DEFAULT FALSE,
+                paiement_carte BOOLEAN DEFAULT FALSE,
+                climatisation BOOLEAN DEFAULT FALSE,
+                wifi BOOLEAN DEFAULT FALSE,
+                is_active BOOLEAN DEFAULT TRUE,
+                is_on_duty BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT unique_taxi_service UNIQUE(service_id)
+            )
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_user_id ON taxis_ville(user_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_service_id ON taxis_ville(service_id)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_is_available ON taxis_ville(is_available_now) WHERE is_available_now = TRUE").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_is_on_duty ON taxis_ville(is_on_duty) WHERE is_on_duty = TRUE").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_zone_gin ON taxis_ville USING GIN(zone_intervention)").execute(pool).await?;
+        
+        sqlx::query(
+            r#"
+            DROP TRIGGER IF EXISTS trigger_taxis_updated_at ON taxis_ville;
+            CREATE TRIGGER trigger_taxis_updated_at
+                BEFORE UPDATE ON taxis_ville
+                FOR EACH ROW
+                EXECUTE FUNCTION update_specialized_service_timestamp();
+            "#
+        )
+        .execute(pool)
+        .await?;
+        
+        info!("✅ Table taxis_ville créée directement");
     }
     
     Ok(())
@@ -9100,5 +9518,37 @@ pub async fn ensure_specialized_type_triggers(pool: &PgPool) -> Result<(), sqlx:
     execute_multiple_sql_commands(pool, migration_sql).await?;
     
     info!("✅ Triggers specialized_type créés");
+    Ok(())
+}
+
+/// ✅ 2025-11-26 : Correction de la signature de search_services_gps_final
+/// Pour résoudre l'erreur: "structure of query does not match function result type"
+/// Migration: 20251126_fix_search_services_gps_final_signature.sql
+pub async fn ensure_search_services_gps_final_signature_fix(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/correction de la signature de search_services_gps_final...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251126_fix_search_services_gps_final_signature.sql");
+    
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    
+    info!("✅ Signature de search_services_gps_final corrigée");
+    Ok(())
+}
+
+/// ✅ 2025-11-26 : Optimisation des index pour recherche de produits
+/// Crée des index sur les colonnes fréquemment recherchées pour améliorer les performances
+/// Migration: 20251126_optimize_search_indexes.sql
+pub async fn ensure_search_indexes_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des index d'optimisation de recherche...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251126_optimize_search_indexes.sql");
+    
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    
+    info!("✅ Index d'optimisation de recherche créés");
     Ok(())
 }

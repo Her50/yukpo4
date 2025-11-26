@@ -6,14 +6,14 @@ import {
     StyleSheet,
     Switch,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
+import PrestationSelectorWithSchedule, { PrestationWithSchedule } from '../../components/PrestationSelectorWithSchedule';
 import SafeIcon from '../../components/SafeIcon';
-import ServicePrestationsPlanner from '../../components/ServicePrestationsPlanner';
 import WeekScheduleSelector from '../../components/WeekScheduleSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
@@ -26,11 +26,6 @@ interface ScheduleDay {
     timeSlots: Array<{ start: string; end: string }>;
 }
 
-interface PrestationSchedule {
-    prestation: string;
-    days: number[];
-    timeSlots: Array<{ start: string; end: string }>;
-}
 
 const HopitalFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -43,8 +38,8 @@ const HopitalFormScreen: React.FC = () => {
         nom: '',
         type_etablissement: 'Hôpital',
         adresse: '',
-        quartier: '',
-        ville: '',
+        quartier: null as LocationObject | null,
+        ville: null as LocationObject | null,
         prestations_medicales: [] as string[],
         banque_sang: false,
         urgences_disponible: false,
@@ -57,15 +52,11 @@ const HopitalFormScreen: React.FC = () => {
     });
 
     const [loading, setLoading] = useState(false);
-    const [selectedPrestations, setSelectedPrestations] = useState<string[]>([]);
-    const [customPrestations, setCustomPrestations] = useState<string[]>([]);
-    const [newPrestationInput, setNewPrestationInput] = useState('');
+    const [prestationsWithSchedule, setPrestationsWithSchedule] = useState<PrestationWithSchedule[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
-    const [showPrestationsPlanner, setShowPrestationsPlanner] = useState(false);
-    const [prestationsSchedule, setPrestationsSchedule] = useState<PrestationSchedule[]>([]);
 
     const typesEtablissement = ['Hôpital', 'Clinique', 'Centre de santé', 'Dispensaire'];
 
@@ -112,8 +103,8 @@ const HopitalFormScreen: React.FC = () => {
                     };
 
                     const response = await servicesApi.createService(serviceData);
-                    if (response.success && response.data?.id) {
-                        setServiceId(response.data.id);
+                    if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
+                        setServiceId((response.data as any).id);
                     }
                 } catch (error: any) {
                     console.error('[HopitalFormScreen] Erreur création service:', error);
@@ -126,26 +117,6 @@ const HopitalFormScreen: React.FC = () => {
         }
     }, [formData.nom, serviceId, user?.id]);
 
-    const togglePrestation = (prestation: string) => {
-        setSelectedPrestations((prev) =>
-            prev.includes(prestation)
-                ? prev.filter((p) => p !== prestation)
-                : [...prev, prestation]
-        );
-    };
-
-    const addCustomPrestation = () => {
-        if (newPrestationInput.trim() && !customPrestations.includes(newPrestationInput.trim())) {
-            setCustomPrestations(prev => [...prev, newPrestationInput.trim()]);
-            setSelectedPrestations(prev => [...prev, newPrestationInput.trim()]);
-            setNewPrestationInput('');
-        }
-    };
-
-    const removeCustomPrestation = (prestation: string) => {
-        setCustomPrestations(prev => prev.filter(p => p !== prestation));
-        setSelectedPrestations(prev => prev.filter(p => p !== prestation));
-    };
 
     const handleGPSSelect = (coordinates: string) => {
         setSelectedGPS(coordinates);
@@ -155,11 +126,6 @@ const HopitalFormScreen: React.FC = () => {
     const handleScheduleSave = (savedSchedule: ScheduleDay[]) => {
         setSchedule(savedSchedule);
         setShowScheduleModal(false);
-    };
-
-    const handlePrestationsScheduleSave = (schedules: PrestationSchedule[]) => {
-        setPrestationsSchedule(schedules);
-        setShowPrestationsPlanner(false);
     };
 
     const handleSubmit = async () => {
@@ -175,8 +141,8 @@ const HopitalFormScreen: React.FC = () => {
                 };
 
                 const response = await servicesApi.createService(serviceData);
-                if (response.success && response.data?.id) {
-                    finalServiceId = response.data.id;
+                if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
+                    finalServiceId = (response.data as any).id;
                     setServiceId(finalServiceId);
                 } else {
                     Alert.alert('Erreur', 'Impossible de créer le service. Veuillez réessayer.');
@@ -213,9 +179,9 @@ const HopitalFormScreen: React.FC = () => {
                 }))
                 : null;
 
-            // Construire le planning des prestations
-            const planningPrestations = prestationsSchedule.length > 0
-                ? prestationsSchedule.map(ps => ({
+            // Construire le planning des prestations depuis le nouveau format
+            const planningPrestations = prestationsWithSchedule.length > 0
+                ? prestationsWithSchedule.map(ps => ({
                     prestation: ps.prestation,
                     days: ps.days,
                     timeSlots: ps.timeSlots
@@ -227,12 +193,14 @@ const HopitalFormScreen: React.FC = () => {
                 nom: formData.nom,
                 type_etablissement: formData.type_etablissement,
                 adresse: formData.adresse || null,
-                quartier: formData.quartier || null,
-                ville: formData.ville || null,
+                quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
+                ville: formData.ville?.raw || formData.ville?.place_name || null,
                 gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
-                prestations_medicales: selectedPrestations.length > 0 ? selectedPrestations : null,
+                prestations_medicales: prestationsWithSchedule.length > 0
+                    ? prestationsWithSchedule.map(p => p.prestation)
+                    : null,
                 planning_hebdomadaire: planningHebdomadaire,
                 planning_prestations: planningPrestations,
                 banque_sang: formData.banque_sang,
@@ -264,7 +232,6 @@ const HopitalFormScreen: React.FC = () => {
         }
     };
 
-    const allPrestations = [...prestationsOptions, ...customPrestations];
 
     return (
         <>
@@ -339,86 +306,38 @@ const HopitalFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Quartier</Text>
-                            <NativeInput
-                                value={formData.quartier}
-                                onChangeText={(text) => setFormData({ ...formData, quartier: text })}
-                                placeholder="Quartier"
-                            />
-                        </View>
-                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Ville</Text>
-                            <NativeInput
-                                value={formData.ville}
-                                onChangeText={(text) => setFormData({ ...formData, ville: text })}
-                                placeholder="Ville"
-                            />
-                        </View>
+                    <View style={styles.inputGroup}>
+                        <LocationSelector
+                            label="Quartier"
+                            value={formData.quartier || ''}
+                            onSelect={(value) => setFormData({ ...formData, quartier: value })}
+                            placeholder="Rechercher un quartier..."
+                            scope="neighborhood"
+                            enrichWithBackend
+                        />
                     </View>
 
-                    {/* ✅ Prestations médicales complètes */}
                     <View style={styles.inputGroup}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.label}>Prestations médicales</Text>
-                            {selectedPrestations.length > 0 && (
-                                <TouchableOpacity
-                                    style={styles.planningButton}
-                                    onPress={() => setShowPrestationsPlanner(true)}
-                                >
-                                    <SafeIcon name="calendar" size={16} color={modernColors.primary} />
-                                    <Text style={styles.planningButtonText}>Planifier</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                        <View style={styles.chipsContainer}>
-                            {allPrestations.map((prestation) => (
-                                <TouchableOpacity
-                                    key={prestation}
-                                    style={[
-                                        styles.chip,
-                                        selectedPrestations.includes(prestation) && styles.chipSelected,
-                                    ]}
-                                    onPress={() => togglePrestation(prestation)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.chipText,
-                                            selectedPrestations.includes(prestation) && styles.chipTextSelected,
-                                        ]}
-                                    >
-                                        {prestation}
-                                    </Text>
-                                    {customPrestations.includes(prestation) && (
-                                        <TouchableOpacity
-                                            style={styles.removeCustomButton}
-                                            onPress={(e) => {
-                                                e.stopPropagation();
-                                                removeCustomPrestation(prestation);
-                                            }}
-                                        >
-                                            <SafeIcon name="x" size={14} color="#DC2626" />
-                                        </TouchableOpacity>
-                                    )}
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                        <View style={styles.addPrestationContainer}>
-                            <TextInput
-                                style={styles.addPrestationInput}
-                                value={newPrestationInput}
-                                onChangeText={setNewPrestationInput}
-                                placeholder="Ajouter une prestation personnalisée"
-                                onSubmitEditing={addCustomPrestation}
-                            />
-                            <TouchableOpacity
-                                style={styles.addPrestationButton}
-                                onPress={addCustomPrestation}
-                            >
-                                <SafeIcon name="plus" size={18} color={modernColors.primary} />
-                            </TouchableOpacity>
-                        </View>
+                        <LocationSelector
+                            label="Ville"
+                            value={formData.ville || ''}
+                            onSelect={(value) => setFormData({ ...formData, ville: value })}
+                            placeholder="Rechercher une ville..."
+                            scope="city"
+                            enrichWithBackend
+                        />
+                    </View>
+
+                    {/* ✅ Prestations médicales avec planification inline */}
+                    <View style={styles.inputGroup}>
+                        <PrestationSelectorWithSchedule
+                            label="Prestations médicales"
+                            options={prestationsOptions}
+                            selected={prestationsWithSchedule}
+                            onSelectionChange={setPrestationsWithSchedule}
+                            allowCustom={true}
+                            placeholder="Ajouter une prestation personnalisée"
+                        />
                     </View>
 
                     {/* ✅ Planning hebdomadaire */}
@@ -553,14 +472,6 @@ const HopitalFormScreen: React.FC = () => {
                 title="Planning hebdomadaire"
             />
 
-            <ServicePrestationsPlanner
-                visible={showPrestationsPlanner}
-                onClose={() => setShowPrestationsPlanner(false)}
-                onSave={handlePrestationsScheduleSave}
-                prestations={selectedPrestations}
-                initialSchedules={prestationsSchedule}
-                title="Planification des prestations"
-            />
         </>
     );
 };

@@ -82,7 +82,8 @@ pub async fn toggle_product_status(
         StatusCode::BAD_REQUEST
     })?;
 
-    // Vérifier que le produit appartient à un service de l'utilisateur
+    // ✅ CORRECTION: Vérifier que le produit existe dans products_lifecycle
+    // Le produit doit être synchronisé dans products_lifecycle pour pouvoir être togglé
     let product_owner: Option<(i32, i32)> = sqlx::query_as(
         r#"
         SELECT pl.service_id, s.user_id
@@ -100,10 +101,10 @@ pub async fn toggle_product_status(
     })?;
 
     if product_owner.is_none() {
-        log::warn!("⚠️ Produit {} non trouvé", product_id);
+        log::warn!("⚠️ Produit {} non trouvé dans products_lifecycle. Le produit doit être synchronisé dans products_lifecycle pour pouvoir être togglé.", product_id);
         return Ok(Json(ApiResponse {
             success: false,
-            message: "Produit non trouvé".to_string(),
+            message: format!("Produit {} non trouvé. Veuillez synchroniser le produit dans products_lifecycle d'abord.", product_id),
             data: None,
         }));
     }

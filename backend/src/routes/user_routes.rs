@@ -19,6 +19,7 @@ pub fn user_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/user/me", get(get_user_profile))
         .route("/api/user/me", put(update_user_profile))
         .route("/api/users/balance", get(get_user_balance))
+        .route("/api/wallet/balance", get(get_user_balance)) // ✅ Alias pour compatibilité mobile
         .route(
             "/api/users/consumption-history",
             get(get_consumption_history),

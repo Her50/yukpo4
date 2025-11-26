@@ -10,6 +10,7 @@ import {
     View
 } from 'react-native';
 import BusModelForm, { BusModel } from '../../components/bus/BusModelForm';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
@@ -35,8 +36,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const [formData, setFormData] = useState({
         nom_agence: '',
         adresse: '',
-        quartier: '',
-        ville: '',
+        quartier: null as LocationObject | null,
+        ville: null as LocationObject | null,
         services_voyage: [] as string[],
         compagnies_bus: [] as string[],
         destinations: [] as string[],
@@ -235,8 +236,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 service_id: finalServiceId,
                 nom_agence: formData.nom_agence,
                 adresse: formData.adresse || null,
-                quartier: formData.quartier || null,
-                ville: formData.ville || null,
+                quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
+                ville: formData.ville?.raw || formData.ville?.place_name || null,
                 gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
@@ -403,23 +404,26 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Quartier</Text>
-                            <NativeInput
-                                value={formData.quartier}
-                                onChangeText={(text) => setFormData({ ...formData, quartier: text })}
-                                placeholder="Quartier"
-                            />
-                        </View>
-                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Ville</Text>
-                            <NativeInput
-                                value={formData.ville}
-                                onChangeText={(text) => setFormData({ ...formData, ville: text })}
-                                placeholder="Ville"
-                            />
-                        </View>
+                    <View style={styles.inputGroup}>
+                        <LocationSelector
+                            label="Quartier"
+                            value={formData.quartier || ''}
+                            onSelect={(value) => setFormData({ ...formData, quartier: value })}
+                            placeholder="Rechercher un quartier..."
+                            scope="neighborhood"
+                            enrichWithBackend
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <LocationSelector
+                            label="Ville"
+                            value={formData.ville || ''}
+                            onSelect={(value) => setFormData({ ...formData, ville: value })}
+                            placeholder="Rechercher une ville..."
+                            scope="city"
+                            enrichWithBackend
+                        />
                     </View>
 
                     <View style={styles.inputGroup}>

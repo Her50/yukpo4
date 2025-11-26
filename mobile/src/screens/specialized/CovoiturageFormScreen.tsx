@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
@@ -26,8 +27,8 @@ const CovoiturageFormScreen: React.FC = () => {
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
 
     const [formData, setFormData] = useState({
-        depart: '',
-        destination: '',
+        depart: null as LocationObject | null,
+        destination: null as LocationObject | null,
         date_depart: new Date(),
         heure_depart: '08:00',
         type_vehicule: '',
@@ -54,8 +55,10 @@ const CovoiturageFormScreen: React.FC = () => {
         const createServiceIfNeeded = async () => {
             if (!serviceId && user?.id && formData.depart && formData.destination) {
                 try {
+                    const departStr = formData.depart.raw || formData.depart.place_name || '';
+                    const destStr = formData.destination.raw || formData.destination.place_name || '';
                     const serviceData = {
-                        titre_service: `Covoiturage ${formData.depart} → ${formData.destination}`,
+                        titre_service: `Covoiturage ${departStr} → ${destStr}`,
                         description: 'Trajet de covoiturage',
                         category: 'transport',
                     };
@@ -91,8 +94,10 @@ const CovoiturageFormScreen: React.FC = () => {
         if (!finalServiceId && user?.id) {
             try {
                 setLoading(true);
+                const departStr = formData.depart?.raw || formData.depart?.place_name || '';
+                const destStr = formData.destination?.raw || formData.destination?.place_name || '';
                 const serviceData = {
-                    titre_service: `Covoiturage ${formData.depart} → ${formData.destination}`,
+                    titre_service: `Covoiturage ${departStr} → ${destStr}`,
                     description: 'Trajet de covoiturage',
                     category: 'transport',
                 };
@@ -120,7 +125,7 @@ const CovoiturageFormScreen: React.FC = () => {
             return;
         }
 
-        if (!formData.depart.trim() || !formData.destination.trim()) {
+        if (!formData.depart || !formData.destination) {
             Alert.alert('Erreur', 'Le point de départ et la destination sont obligatoires');
             setLoading(false);
             return;
@@ -140,8 +145,8 @@ const CovoiturageFormScreen: React.FC = () => {
 
             const payload = {
                 service_id: finalServiceId,
-                depart: formData.depart,
-                destination: formData.destination,
+                depart: formData.depart.raw || formData.depart.place_name || '',
+                destination: formData.destination.raw || formData.destination.place_name || '',
                 gps_depart: selectedGPSDepart || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
@@ -191,11 +196,14 @@ const CovoiturageFormScreen: React.FC = () => {
 
                 <View style={styles.form}>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Point de départ *</Text>
-                        <NativeInput
-                            value={formData.depart}
-                            onChangeText={(text) => setFormData({ ...formData, depart: text })}
-                            placeholder="Ex: Douala, Carrefour Ange Raphaël"
+                        <LocationSelector
+                            label="Point de départ *"
+                            value={formData.depart || ''}
+                            onSelect={(value) => setFormData({ ...formData, depart: value })}
+                            placeholder="Rechercher un lieu de départ..."
+                            scope="all"
+                            enrichWithBackend
+                            required
                         />
                         <TouchableOpacity
                             style={styles.gpsButton}
@@ -212,11 +220,14 @@ const CovoiturageFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Destination *</Text>
-                        <NativeInput
-                            value={formData.destination}
-                            onChangeText={(text) => setFormData({ ...formData, destination: text })}
-                            placeholder="Ex: Yaoundé, Gare routière"
+                        <LocationSelector
+                            label="Destination *"
+                            value={formData.destination || ''}
+                            onSelect={(value) => setFormData({ ...formData, destination: value })}
+                            placeholder="Rechercher une destination..."
+                            scope="all"
+                            enrichWithBackend
+                            required
                         />
                         <TouchableOpacity
                             style={styles.gpsButton}
@@ -368,7 +379,7 @@ const CovoiturageFormScreen: React.FC = () => {
                     <NativeButton
                         title={loading ? 'Création...' : 'Créer le Trajet'}
                         onPress={handleSubmit}
-                        disabled={loading || !formData.depart.trim() || !formData.destination.trim() || !formData.prix_par_place.trim()}
+                        disabled={loading || !formData.depart || !formData.destination || !formData.prix_par_place.trim()}
                         variant="primary"
                         size="large"
                         style={styles.submitButton}

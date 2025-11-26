@@ -9,9 +9,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import WeekScheduleSelector from '../../components/WeekScheduleSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
@@ -35,8 +37,8 @@ const LaboratoireFormScreen: React.FC = () => {
         nom: '',
         type_laboratoire: 'Laboratoire',
         adresse: '',
-        quartier: '',
-        ville: '',
+        quartier: null as LocationObject | null,
+        ville: null as LocationObject | null,
         analyses_disponibles: [] as string[],
         imagerie_disponible: [] as string[],
         rdv_requis: true,
@@ -84,21 +86,6 @@ const LaboratoireFormScreen: React.FC = () => {
         }
     }, [formData.nom, serviceId, user?.id]);
 
-    const toggleAnalyse = (analyse: string) => {
-        setSelectedAnalyses((prev) =>
-            prev.includes(analyse)
-                ? prev.filter((a) => a !== analyse)
-                : [...prev, analyse]
-        );
-    };
-
-    const toggleImagerie = (imagerie: string) => {
-        setSelectedImagerie((prev) =>
-            prev.includes(imagerie)
-                ? prev.filter((i) => i !== imagerie)
-                : [...prev, imagerie]
-        );
-    };
 
     const handleGPSSelect = (coordinates: string) => {
         setSelectedGPS(coordinates);
@@ -166,8 +153,8 @@ const LaboratoireFormScreen: React.FC = () => {
                 nom: formData.nom,
                 type_laboratoire: formData.type_laboratoire,
                 adresse: formData.adresse || null,
-                quartier: formData.quartier || null,
-                ville: formData.ville || null,
+                quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
+                ville: formData.ville?.raw || formData.ville?.place_name || null,
                 gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
@@ -273,73 +260,48 @@ const LaboratoireFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Quartier</Text>
-                            <NativeInput
-                                value={formData.quartier}
-                                onChangeText={(text) => setFormData({ ...formData, quartier: text })}
-                                placeholder="Quartier"
-                            />
-                        </View>
-                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Ville</Text>
-                            <NativeInput
-                                value={formData.ville}
-                                onChangeText={(text) => setFormData({ ...formData, ville: text })}
-                                placeholder="Ville"
-                            />
-                        </View>
+                    <View style={styles.inputGroup}>
+                        <LocationSelector
+                            label="Quartier"
+                            value={formData.quartier || ''}
+                            onSelect={(value) => setFormData({ ...formData, quartier: value })}
+                            placeholder="Rechercher un quartier..."
+                            scope="neighborhood"
+                            enrichWithBackend
+                        />
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Analyses disponibles</Text>
-                        <View style={styles.chipsContainer}>
-                            {analysesOptions.map((analyse) => (
-                                <TouchableOpacity
-                                    key={analyse}
-                                    style={[
-                                        styles.chip,
-                                        selectedAnalyses.includes(analyse) && styles.chipSelected,
-                                    ]}
-                                    onPress={() => toggleAnalyse(analyse)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.chipText,
-                                            selectedAnalyses.includes(analyse) && styles.chipTextSelected,
-                                        ]}
-                                    >
-                                        {analyse}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <LocationSelector
+                            label="Ville"
+                            value={formData.ville || ''}
+                            onSelect={(value) => setFormData({ ...formData, ville: value })}
+                            placeholder="Rechercher une ville..."
+                            scope="city"
+                            enrichWithBackend
+                        />
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Imagerie disponible</Text>
-                        <View style={styles.chipsContainer}>
-                            {imagerieOptions.map((imagerie) => (
-                                <TouchableOpacity
-                                    key={imagerie}
-                                    style={[
-                                        styles.chip,
-                                        selectedImagerie.includes(imagerie) && styles.chipSelected,
-                                    ]}
-                                    onPress={() => toggleImagerie(imagerie)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.chipText,
-                                            selectedImagerie.includes(imagerie) && styles.chipTextSelected,
-                                        ]}
-                                    >
-                                        {imagerie}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <SimplePrestationSelector
+                            label="Analyses disponibles"
+                            options={analysesOptions}
+                            selected={selectedAnalyses}
+                            onSelectionChange={setSelectedAnalyses}
+                            allowCustom={true}
+                            placeholder="Ajouter un type d'analyse"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <SimplePrestationSelector
+                            label="Imagerie disponible"
+                            options={imagerieOptions}
+                            selected={selectedImagerie}
+                            onSelectionChange={setSelectedImagerie}
+                            allowCustom={true}
+                            placeholder="Ajouter un type d'imagerie"
+                        />
                     </View>
 
                     {/* ✅ Planning hebdomadaire */}
