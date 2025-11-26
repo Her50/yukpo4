@@ -76,4 +76,50 @@ impl LiveStreamingConfig {
             && self.livekit_api_key.is_some()
             && self.livekit_api_secret.is_some()
     }
+
+    /// Valide la configuration LiveKit et retourne un message d'erreur si incohérente
+    pub fn validate(&self) -> Result<(), String> {
+        let has_api_url = self.livekit_api_url.is_some();
+        let has_api_key = self.livekit_api_key.is_some();
+        let has_api_secret = self.livekit_api_secret.is_some();
+
+        // Si aucune variable n'est définie, c'est OK (LiveKit désactivé)
+        if !has_api_url && !has_api_key && !has_api_secret {
+            return Ok(());
+        }
+
+        // Si certaines variables sont définies mais pas toutes, c'est une erreur
+        if has_api_url && (!has_api_key || !has_api_secret) {
+            return Err(
+                "LIVEKIT_API_URL est défini mais LIVEKIT_API_KEY ou LIVEKIT_API_SECRET manquent"
+                    .to_string(),
+            );
+        }
+
+        if has_api_key && (!has_api_url || !has_api_secret) {
+            return Err(
+                "LIVEKIT_API_KEY est défini mais LIVEKIT_API_URL ou LIVEKIT_API_SECRET manquent"
+                    .to_string(),
+            );
+        }
+
+        if has_api_secret && (!has_api_url || !has_api_key) {
+            return Err(
+                "LIVEKIT_API_SECRET est défini mais LIVEKIT_API_URL ou LIVEKIT_API_KEY manquent"
+                    .to_string(),
+            );
+        }
+
+        // Valider le format de l'URL
+        if let Some(ref url) = self.livekit_api_url {
+            if !url.starts_with("http://") && !url.starts_with("https://") {
+                return Err(format!(
+                    "LIVEKIT_API_URL doit commencer par http:// ou https://, reçu: {}",
+                    url.chars().take(50).collect::<String>()
+                ));
+            }
+        }
+
+        Ok(())
+    }
 }

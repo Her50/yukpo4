@@ -17,21 +17,51 @@ const FALLBACK_IDLE_THRESHOLD_SECS: i64 = 30 * 60; // 30 minutes
 
 /// Lance une tâche périodique qui nettoie les rooms et ingress LiveKit / SRS inactifs.
 pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
-    // Exécuter une première fois immédiatement
     let immediate_state = state.clone();
     tokio::spawn(async move {
         // Flag partagé pour limiter la verbosité des logs de connexion
         let connection_error_logged = Arc::new(AtomicBool::new(false));
         let connection_error_logged_first = connection_error_logged.clone();
         
-        if let Err(err) = cleanup_once(immediate_state.clone()).await {
+        // ✅ Délai initial pour laisser LiveKit démarrer (si self-hosted)
+        // Attendre 10 secondes avant la première tentative
+        log::info!("⏳ LiveKit: Attente de 10 secondes avant la première tentative de connexion...");
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        
+        // ✅ Retry avec backoff exponentiel pour la première connexion
+        let mut retry_count = 0;
+        let max_retries = 3;
+        let mut last_err = None;
+        
+        while retry_count < max_retries {
+            match cleanup_once(immediate_state.clone()).await {
+                Ok(_) => {
+                    log::info!("✅ LiveKit: Connexion établie avec succès (tentative {})", retry_count + 1);
+                    break;
+                }
+                Err(err) => {
+                    last_err = Some(err);
+                    retry_count += 1;
+                    if retry_count < max_retries {
+                        let delay = Duration::from_secs(2_u64.pow(retry_count)); // 2s, 4s, 8s
+                        log::debug!("⚠️ LiveKit: Tentative {}/{} échouée, nouvelle tentative dans {}s...", 
+                            retry_count, max_retries, delay.as_secs());
+                        tokio::time::sleep(delay).await;
+                    }
+                }
+            }
+        }
+        
+        // Si toutes les tentatives ont échoué, logger l'erreur
+        if let Some(err) = last_err {
             // Logger une seule fois si c'est une erreur de connexion (service non disponible)
             let err_str = format!("{err:?}").to_lowercase();
             if err_str.contains("connection refused") 
                 || err_str.contains("connexion refusée")
                 || err_str.contains("tcp connect error")
                 || err_str.contains("service non disponible")
-                || err_str.contains("manquant") {
+                || err_str.contains("manquant")
+                || err_str.contains("timeout") {
                 if !connection_error_logged_first.swap(true, Ordering::Relaxed) {
                     let config = immediate_state.live_streaming.clone();
                     let api_url = config.livekit_api_url.as_ref()
@@ -40,13 +70,18 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
                     
                     if err_str.contains("manquant") {
                         log::warn!("⚠️ LiveKit: Variables d'environnement manquantes. Vérifiez LIVEKIT_API_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET sur Render.com");
+                    } else if err_str.contains("timeout") {
+                        log::warn!("⚠️ LiveKit: Timeout de connexion après {} tentatives - URL: {}", max_retries, api_url);
+                        log::warn!("   💡 Le serveur LiveKit peut être en cours de démarrage. Les tentatives continueront toutes les {} minutes.", CLEANUP_INTERVAL_MINUTES);
+                        log::info!("ℹ️ LiveKit non disponible pour le moment (service optionnel). Nettoyage automatique désactivé.");
                     } else {
-                        log::warn!("⚠️ LiveKit: Connexion impossible - URL: {}. Vérifiez que LIVEKIT_API_URL est correcte sur Render.com", api_url);
+                        log::warn!("⚠️ LiveKit: Connexion impossible après {} tentatives - URL: {}", max_retries, api_url);
+                        log::warn!("   💡 Vérifiez que le serveur LiveKit est accessible et démarré.");
                         log::info!("ℹ️ LiveKit non disponible (service optionnel). Nettoyage automatique désactivé.");
                     }
                 }
             } else {
-                log::warn!("LiveKit cleanup initial failed: {err:?}");
+                log::warn!("LiveKit cleanup initial failed after {} retries: {err:?}", max_retries);
             }
         }
 
@@ -112,7 +147,7 @@ async fn cleanup_rooms(client: &Client, config: &LiveStreamingConfig) -> Result<
         .post(&list_endpoint)
         .bearer_auth(token)
         .json(&json!({}))
-        .timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(10)) // ✅ Augmenté de 5s à 10s pour laisser plus de temps
         .send()
         .await
         .map_err(|e| {

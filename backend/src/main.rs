@@ -8,7 +8,7 @@ use tokio::sync::Mutex;
 
 use axum::serve;
 use yukpomnang_backend::{
-    build_app, config::timeouts::TimeoutConfig, controllers::ia_status_controller::IAStats,
+    build_app, controllers::ia_status_controller::IAStats,
     services::app_ia::AppIA, state::AppState,
 };
 
@@ -48,7 +48,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log::error!("❌ DATABASE_URL manquante ou invalide: {}", e);
             e
         })?;
-    let timeout_config = TimeoutConfig::from_env();
 
     let upload_storage_path =
         env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "/var/data/uploads".to_string());
@@ -136,6 +135,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let redis_url =
         env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
 
+    // Valider le format de l'URL Redis
+    let redis_url_valid = validate_redis_url(&redis_url);
+    if !redis_url_valid {
+        log::warn!("⚠️ Redis: Format d'URL suspect détecté. Format attendu: redis://[user]:[password]@[host]:[port]/[db] ou rediss:// pour TLS");
+        log::warn!("   URL fournie: {}...", redis_url.chars().take(50).collect::<String>());
+    }
+    
+    // Détecter si Upstash utilise redis:// au lieu de rediss://
+    if redis_url.contains("upstash.io") && redis_url.starts_with("redis://") {
+        log::warn!("⚠️ Redis: Upstash détecté mais URL utilise 'redis://' au lieu de 'rediss://'");
+        log::warn!("   💡 Upstash nécessite TLS. Corrigez REDIS_URL sur Render.com:");
+        log::warn!("      ❌ Actuel: redis://...");
+        log::warn!("      ✅ Attendu: rediss://... (avec deux 's')");
+    }
+
     // Logger l'URL Redis utilisée (masquer le mot de passe)
     let redis_url_display = if redis_url.contains("@") {
         let parts: Vec<&str> = redis_url.split("@").collect();
@@ -179,8 +193,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(Err(e)) => {
                     let err_msg = format!("{}", e);
                     log::warn!("⚠️ Redis: Échec de connexion - URL: {}... Erreur: {}", redis_url_display, err_msg);
-                    if err_msg.contains("Name or service not known") || err_msg.contains("Connection refused") {
-                        log::info!("ℹ️ Redis non disponible (service optionnel). Vérifiez que REDIS_URL est correcte sur Render.com. WebSocket fonctionnera sans Redis.");
+                    if err_msg.contains("Name or service not known") || err_msg.contains("failed to lookup address") {
+                        log::warn!("   💡 Problème DNS détecté. Vérifiez:");
+                        log::warn!("      - Que l'endpoint Redis est correct (ex: [instance].upstash.io)");
+                        log::warn!("      - Que l'URL utilise 'rediss://' (avec 's') pour Upstash avec TLS");
+                        log::warn!("      - Format attendu: rediss://default:[password]@[endpoint].upstash.io:6379");
+                        log::info!("ℹ️ Redis non disponible (service optionnel). WebSocket fonctionnera sans Redis.");
+                    } else if err_msg.contains("Connection refused") {
+                        log::warn!("   💡 Connexion refusée. Vérifiez que le serveur Redis est accessible.");
+                        log::info!("ℹ️ Redis non disponible (service optionnel). WebSocket fonctionnera sans Redis.");
                     } else {
                         log::warn!("⚠️ Redis URL configurée mais connexion impossible: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
                     }
@@ -314,6 +335,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     serve(listener, app).await?;
 
     Ok(())
+}
+
+/// Valide le format d'une URL Redis
+fn validate_redis_url(url: &str) -> bool {
+    // Vérifier que l'URL commence par redis:// ou rediss://
+    if !url.starts_with("redis://") && !url.starts_with("rediss://") {
+        return false;
+    }
+    
+    // Vérifier qu'il y a au moins un ':' après le protocole
+    let after_proto = if url.starts_with("rediss://") {
+        &url[9..]
+    } else {
+        &url[8..]
+    };
+    
+    if !after_proto.contains(':') {
+        return false;
+    }
+    
+    true
 }
 
 /// Vérifie si la migration 20251125_fix_idx_services_search_optimized a été appliquée

@@ -28,6 +28,11 @@ const SYNC_INTERVAL_SECS: u64 = 60;
 pub fn start_live_analytics_task(state: Arc<AppState>) {
     let worker_state = state.clone();
     tokio::spawn(async move {
+        // ✅ Délai initial pour laisser LiveKit démarrer (si self-hosted)
+        // Attendre 10 secondes avant la première tentative
+        log::info!("⏳ LiveKit Analytics: Attente de 10 secondes avant la première tentative de connexion...");
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        
         let mut ticker = tokio::time::interval(Duration::from_secs(SYNC_INTERVAL_SECS));
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         
@@ -126,7 +131,7 @@ async fn list_livekit_rooms(
         .post(&list_endpoint)
         .bearer_auth(token)
         .json(&serde_json::json!({}))
-        .timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(10)) // ✅ Augmenté de 5s à 10s pour laisser plus de temps
         .send()
         .await
         .map_err(|e| {

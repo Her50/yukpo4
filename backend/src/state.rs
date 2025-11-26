@@ -210,7 +210,18 @@ impl AppState {
             redis_client,
             semantic_cache: None,
             prompt_optimizer: None,
-            live_streaming: Arc::new(LiveStreamingConfig::from_env()),
+            live_streaming: {
+                let config = LiveStreamingConfig::from_env();
+                if let Err(e) = config.validate() {
+                    log::warn!("⚠️ LiveKit: Configuration incohérente - {}", e);
+                    log::info!("ℹ️ LiveKit sera désactivé. Pour l'activer, configurez toutes les variables: LIVEKIT_API_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET");
+                } else if config.is_livekit_enabled() {
+                    log::info!("✅ LiveKit configuré et activé");
+                } else {
+                    log::debug!("ℹ️ LiveKit non configuré (service optionnel)");
+                }
+                Arc::new(config)
+            },
             delivery_ws_manager,
             delivery_service,
             remotion_renderer,
@@ -323,7 +334,14 @@ impl AppState {
             redis_client,
             semantic_cache: None,
             prompt_optimizer: None,
-            live_streaming: Arc::new(LiveStreamingConfig::from_env()),
+            live_streaming: {
+                let config = LiveStreamingConfig::from_env();
+                // Validation silencieuse pour les tests
+                if let Err(_) = config.validate() {
+                    // Pas de log en mode test
+                }
+                Arc::new(config)
+            },
             delivery_ws_manager,
             delivery_service,
             remotion_renderer: None,
