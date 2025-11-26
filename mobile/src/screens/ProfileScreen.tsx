@@ -205,7 +205,7 @@ const ProfileScreen: React.FC = () => {
   const profileActions = [
     {
       title: 'Mes Services Spécialisés',
-      icon: 'stethoscope', // ✅ CORRIGÉ: Icône Lucide pour services de santé
+      icon: 'layout-grid', // ✅ CORRIGÉ: Icône Lucide pour interface de gestion (tablette/grille)
       color: '#6366F1',
       route: 'MesServicesSpecialises',
       description: 'Gérer vos services de santé et transport'
@@ -219,14 +219,14 @@ const ProfileScreen: React.FC = () => {
     },
     {
       title: 'Don de sang',
-      icon: 'droplet', // ✅ CORRIGÉ: Icône Lucide pour don de sang
+      icon: 'activity', // ✅ CORRIGÉ: Icône Lucide pour don de sang (pouls/cœur) avec fallback emoji 💊
       color: '#DC2626',
       route: 'BloodGroupManagement',
       description: 'Enregistrer votre groupe sanguin et être notifié en cas d\'urgence'
     },
     {
       title: 'Devenir coursier Yukpo',
-      icon: 'bike', // ✅ CORRIGÉ: Icône Lucide pour coursier
+      icon: 'truck', // ✅ CORRIGÉ: Icône Lucide pour coursier (camion de livraison) avec fallback emoji 🚚
       color: '#10B981',
       route: 'CourierRegistration',
       description: 'Rejoignez notre équipe de coursiers'

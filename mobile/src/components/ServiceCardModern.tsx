@@ -92,7 +92,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
             <View style={styles.header}>
                 <View style={styles.titleContainer}>
                     <Text style={styles.title} numberOfLines={2}>
-                        {service.title}
+                        {service.title || 'Service sans titre'}
                     </Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(service.status) }]}>
                         <Text style={styles.statusText}>
@@ -104,7 +104,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
 
             {/* Description */}
             <Text style={styles.description} numberOfLines={3}>
-                {service.description}
+                {service.description || 'Aucune description'}
             </Text>
 
             {/* Informations du service */}

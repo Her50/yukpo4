@@ -373,6 +373,7 @@ pub async fn validate_video_generation_prerequisites(
     let include_publicite_assets = payload.include_publicite_assets.unwrap_or(true);
 
     let mut has_images = false;
+    let mut checked_sources = Vec::new();  // ✅ Pour tracking des sources vérifiées
 
     // Vérifier les médias sélectionnés explicitement
     if let Some(selected_ids) = &payload.selected_media_ids {
@@ -389,8 +390,10 @@ pub async fn validate_video_generation_prerequisites(
                 AppError::from(err)
             })?;
 
+            checked_sources.push(format!("médias sélectionnés ({} trouvés)", count));
             if count > 0 {
                 has_images = true;
+                info!("[VideoGeneration] ✅ Images trouvées dans médias sélectionnés: {}", count);
             }
         }
     }
@@ -412,8 +415,10 @@ pub async fn validate_video_generation_prerequisites(
             AppError::from(err)
         })?;
 
+        checked_sources.push(format!("galerie produit ({} trouvées)", count));
         if count > 0 {
             has_images = true;
+            info!("[VideoGeneration] ✅ Images trouvées dans galerie produit: {}", count);
         }
     }
 
@@ -434,8 +439,10 @@ pub async fn validate_video_generation_prerequisites(
             AppError::from(err)
         })?;
 
+        checked_sources.push(format!("médiathèque service ({} trouvées)", count));
         if count > 0 {
             has_images = true;
+            info!("[VideoGeneration] ✅ Images trouvées dans médiathèque service: {}", count);
         }
     }
 
@@ -460,8 +467,10 @@ pub async fn validate_video_generation_prerequisites(
             AppError::from(err)
         })?;
 
+        checked_sources.push(format!("assets publicité ({} trouvés)", count));
         if count > 0 {
             has_images = true;
+            info!("[VideoGeneration] ✅ Images trouvées dans assets publicité: {}", count);
         }
     }
 
@@ -471,9 +480,28 @@ pub async fn validate_video_generation_prerequisites(
             info!("[VideoGeneration] ⚠️ Aucune image locale trouvée, mais génération IA activée - Génération d'images prévue");
             return Ok(()); // Permettre la génération, les images seront créées plus tard
         } else {
-            return Err(AppError::BadRequest(
-                "Impossible de générer la vidéo : Aucune image trouvée. Veuillez d'abord ajouter au moins une image à votre service (médiathèque) ou au produit spécifique, ou activez 'auto_generate_images: true' pour générer automatiquement des images avec l'IA.".to_string(),
-            ));
+            // ✅ Message d'erreur détaillé avec les sources vérifiées
+            let sources_checked = if checked_sources.is_empty() {
+                "Aucune source vérifiée".to_string()
+            } else {
+                checked_sources.join(", ")
+            };
+            
+            let error_msg = format!(
+                "Impossible de générer la vidéo : Aucune image trouvée.\n\n\
+                Sources vérifiées : {}\n\n\
+                Solutions possibles :\n\
+                • Ajouter des images dans la médiathèque du service\n\
+                • Ajouter des images au produit spécifique (index {})\n\
+                • Activer 'auto_generate_images: true' pour générer automatiquement des images avec l'IA",
+                sources_checked,
+                product_index
+            );
+            
+            warn!("[VideoGeneration] ❌ Validation échouée pour service_id={}, product_index={}: {}", 
+                service_id, product_index, error_msg);
+            
+            return Err(AppError::BadRequest(error_msg));
         }
     }
 

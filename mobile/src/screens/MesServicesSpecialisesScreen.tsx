@@ -14,8 +14,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { servicesApi } from '../services/api';
 
 const { width } = Dimensions.get('window');
-const CARD_MARGIN = 12;
-const CARD_WIDTH = (width - (CARD_MARGIN * 3)) / 2; // 2 colonnes avec marges
+const CARD_PADDING = 16; // Padding horizontal du conteneur
+const CARD_MARGIN = 8; // Marge entre les cartes
+// ✅ Calcul pour 2 colonnes : largeur totale - 2*padding - 1*marge entre cartes, divisé par 2
+const CARD_WIDTH = (width - (CARD_PADDING * 2) - CARD_MARGIN) / 2;
 
 interface ServiceSpecialise {
     id: string;
@@ -33,40 +35,217 @@ const MesServicesSpecialisesScreen: React.FC = () => {
 
     // ✅ Créer automatiquement un service avant la navigation
     const handleServicePress = async (service: ServiceSpecialise) => {
-        if (creatingService) return; // Éviter les clics multiples
+        if (creatingService) {
+            console.log('[MesServicesSpecialisesScreen] ⚠️ Création déjà en cours, ignore le clic');
+            return; // Éviter les clics multiples
+        }
 
         try {
             setCreatingService(service.id);
+            console.log('[MesServicesSpecialisesScreen] 🚀 Début création service:', service.id, 'Route:', service.route);
 
-            // Créer un service minimal pour ce type de service spécialisé
-            const serviceData = {
+            // ✅ CORRECTION: Créer un service avec le format structuré attendu par le backend
+            // Le backend attend: titre_service, category, description (obligatoires)
+            // Format: peut être string simple ou objet avec { type_donnee, valeur }
+            const categoryValue = service.id.includes('pharmacie') || service.id.includes('hopital') || service.id.includes('laboratoire') || service.id.includes('banque_sang')
+                ? 'sante'
+                : 'transport';
+
+            // ✅ CORRECTION: Format structuré attendu par le backend
+            // Le backend peut accepter soit un format simple (string) soit un format structuré
+            // Pour les services spécialisés, on utilise le format simple
+            const serviceData: any = {
                 titre_service: service.title,
                 description: service.description,
-                category: service.id.includes('pharmacie') || service.id.includes('hopital') || service.id.includes('laboratoire') || service.id.includes('banque_sang')
-                    ? 'sante'
-                    : 'transport',
+                category: categoryValue,
+                // ✅ Ajouter is_tarissable par défaut (requis par le backend)
+                is_tarissable: false,
             };
+
+            // ✅ CORRECTION: S'assurer que les champs sont non vides
+            if (!serviceData.titre_service || !serviceData.description || !serviceData.category) {
+                Alert.alert(
+                    'Erreur',
+                    'Données de service incomplètes. Veuillez réessayer.',
+                    [{ text: 'OK' }]
+                );
+                setCreatingService(null);
+                return;
+            }
+
+            console.log('[MesServicesSpecialisesScreen] 📝 Données service à créer:', {
+                serviceId: service.id,
+                serviceData,
+                route: service.route,
+                category: categoryValue
+            });
 
             const response = await servicesApi.createService(serviceData);
 
-            if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
-                const serviceId = (response.data as any).id;
-                // Naviguer vers le formulaire avec le serviceId
-                (navigation as any).navigate(service.route, {
-                    serviceId: serviceId
-                });
+            console.log('[MesServicesSpecialisesScreen] Réponse création service:', {
+                success: response.success,
+                hasData: !!response.data,
+                dataType: typeof response.data,
+                error: response.error,
+                message: response.message,
+                fullResponse: JSON.stringify(response, null, 2)
+            });
+
+            if (response.success && response.data) {
+                // ✅ CORRECTION: Vérifier différents formats de réponse
+                let serviceId: number | string | undefined;
+
+                if (typeof response.data === 'object') {
+                    // Format 1: { id: ... }
+                    if ('id' in response.data) {
+                        serviceId = (response.data as any).id;
+                    }
+                    // Format 2: { service_id: ... }
+                    else if ('service_id' in response.data) {
+                        serviceId = (response.data as any).service_id;
+                    }
+                    // Format 3: { data: { id: ... } }
+                    else if ('data' in response.data && typeof response.data.data === 'object' && response.data.data && 'id' in response.data.data) {
+                        serviceId = (response.data.data as any).id;
+                    }
+                } else if (typeof response.data === 'number' || typeof response.data === 'string') {
+                    serviceId = response.data;
+                }
+
+                if (serviceId) {
+                    console.log('[MesServicesSpecialisesScreen] ✅ Service créé avec ID:', serviceId);
+                    console.log('[MesServicesSpecialisesScreen] 🧭 Tentative navigation vers:', service.route, 'avec serviceId:', serviceId);
+
+                    // ✅ CORRECTION: Naviguer vers le formulaire avec le serviceId en utilisant le navigateur parent
+                    try {
+                        // Utiliser le navigateur parent si disponible (pour navigation entre stacks)
+                        const parentNavigation = (navigation as any).getParent?.() || navigation;
+                        console.log('[MesServicesSpecialisesScreen] 🧭 Navigation avec parentNavigation vers:', service.route);
+                        parentNavigation.navigate(service.route, {
+                            serviceId: serviceId,
+                            mode: 'create'
+                        });
+                        console.log('[MesServicesSpecialisesScreen] ✅ Navigation réussie vers:', service.route);
+                    } catch (navError: any) {
+                        console.error('[MesServicesSpecialisesScreen] ❌ Erreur navigation parent:', navError);
+                        console.log('[MesServicesSpecialisesScreen] 🔄 Tentative navigation directe...');
+                        // Fallback: essayer avec le navigateur direct
+                        try {
+                            (navigation as any).navigate(service.route, {
+                                serviceId: serviceId,
+                                mode: 'create'
+                            });
+                            console.log('[MesServicesSpecialisesScreen] ✅ Navigation directe réussie vers:', service.route);
+                        } catch (fallbackError: any) {
+                            console.error('[MesServicesSpecialisesScreen] ❌ Erreur navigation fallback:', fallbackError);
+                            console.error('[MesServicesSpecialisesScreen] ❌ Détails erreur:', {
+                                message: fallbackError?.message,
+                                stack: fallbackError?.stack,
+                                route: service.route,
+                                serviceId: serviceId
+                            });
+                            Alert.alert(
+                                'Erreur de navigation',
+                                `Impossible d'ouvrir le formulaire ${service.title}.\n\nRoute: ${service.route}\nErreur: ${fallbackError?.message || 'Navigation échouée'}\n\nVeuillez réessayer.`,
+                                [
+                                    { text: 'OK' },
+                                    {
+                                        text: 'Réessayer',
+                                        onPress: () => handleServicePress(service)
+                                    }
+                                ]
+                            );
+                        }
+                    }
+                } else {
+                    console.error('[MesServicesSpecialisesScreen] ❌ Service créé mais ID introuvable dans la réponse:', response);
+                    Alert.alert(
+                        'Erreur',
+                        `Service créé mais ID introuvable. Réponse: ${JSON.stringify(response.data)}`,
+                        [{ text: 'OK' }]
+                    );
+                }
             } else {
+                // ✅ CORRECTION: Afficher le message d'erreur réel du backend avec détails
+                const errorMessage = response.error || response.message || 'Impossible de créer le service spécialisé. Veuillez réessayer.';
+                console.error('[MesServicesSpecialisesScreen] ❌ Erreur création service:', {
+                    error: response.error,
+                    message: response.message,
+                    data: response.data,
+                    fullResponse: JSON.stringify(response, null, 2),
+                    serviceData: JSON.stringify(serviceData, null, 2)
+                });
+
+                // ✅ NOUVEAU: Si l'erreur indique que le service existe déjà, essayer de récupérer les services existants
+                if (errorMessage.toLowerCase().includes('existe') || errorMessage.toLowerCase().includes('already') || errorMessage.toLowerCase().includes('déjà')) {
+                    console.log('[MesServicesSpecialisesScreen] Service existe peut-être déjà, tentative de récupération...');
+                    try {
+                        const userServices = await servicesApi.getUserServices();
+                        if (userServices.success && Array.isArray(userServices.data)) {
+                            // Chercher un service correspondant
+                            const existingService = userServices.data.find((s: any) => {
+                                const serviceTitle = s.titre_service || s.data?.titre_service?.valeur || s.title || '';
+                                return serviceTitle.toLowerCase().includes(service.title.toLowerCase()) ||
+                                    serviceTitle.toLowerCase().includes(service.id.toLowerCase());
+                            });
+
+                            if (existingService) {
+                                const existingServiceId = existingService.id || existingService.service_id;
+                                console.log('[MesServicesSpecialisesScreen] ✅ Service existant trouvé:', existingServiceId);
+                                // ✅ CORRECTION: Utiliser le navigateur parent pour navigation entre stacks
+                                try {
+                                    const parentNavigation = (navigation as any).getParent?.() || navigation;
+                                    parentNavigation.navigate(service.route, {
+                                        serviceId: existingServiceId,
+                                        mode: 'edit'
+                                    });
+                                } catch (navError: any) {
+                                    console.error('[MesServicesSpecialisesScreen] ❌ Erreur navigation service existant:', navError);
+                                    // Fallback: essayer avec le navigateur direct
+                                    (navigation as any).navigate(service.route, {
+                                        serviceId: existingServiceId,
+                                        mode: 'edit'
+                                    });
+                                }
+                                return;
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[MesServicesSpecialisesScreen] Erreur récupération services existants:', err);
+                    }
+                }
+
+                // ✅ CORRECTION: Afficher un message d'erreur plus détaillé
+                const detailedMessage = errorMessage.includes('Solde insuffisant')
+                    ? `${errorMessage}\n\nVeuillez recharger vos tokens pour créer un service.`
+                    : errorMessage.includes('Champs obligatoires')
+                        ? `${errorMessage}\n\nVeuillez vérifier que tous les champs requis sont remplis.`
+                        : `${errorMessage}\n\nSi le problème persiste, veuillez contacter le support.`;
+
                 Alert.alert(
-                    'Erreur',
-                    'Impossible de créer le service. Veuillez réessayer.',
-                    [{ text: 'OK' }]
+                    'Erreur de création',
+                    detailedMessage,
+                    [
+                        { text: 'OK' },
+                        {
+                            text: 'Voir les détails',
+                            onPress: () => {
+                                console.log('[MesServicesSpecialisesScreen] 📋 Détails erreur:', {
+                                    service: service.title,
+                                    serviceData,
+                                    response
+                                });
+                            }
+                        }
+                    ]
                 );
             }
         } catch (error: any) {
-            console.error('[MesServicesSpecialisesScreen] Erreur création service:', error);
+            console.error('[MesServicesSpecialisesScreen] ❌ Exception lors de la création du service:', error);
+            const errorMessage = error?.message || error?.error || 'Une erreur est survenue lors de la création du service.';
             Alert.alert(
                 'Erreur',
-                error.message || 'Une erreur est survenue lors de la création du service.',
+                errorMessage,
                 [{ text: 'OK' }]
             );
         } finally {
@@ -137,9 +316,13 @@ const MesServicesSpecialisesScreen: React.FC = () => {
     ];
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+        >
             <View style={styles.header}>
-                <Text style={styles.title}>Mes Services Spécialisés</Text>
+                <Text style={styles.title}>Spécialisés</Text>
                 <Text style={styles.subtitle}>
                     Gérez vos services de santé et de transport
                 </Text>
@@ -148,7 +331,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             {/* Groupe Santé */}
             <View style={styles.group}>
                 <View style={styles.groupHeader}>
-                    <SafeIcon name="heart-pulse" size={24} color="#EF4444" type="lucide" />
+                    <SafeIcon name="heart-pulse" size={20} color="#EF4444" type="lucide" />
                     <Text style={styles.groupTitle}>Santé</Text>
                 </View>
                 <View style={styles.servicesGrid}>
@@ -162,7 +345,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                             <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
                                 <SafeIcon
                                     name={service.icon}
-                                    size={24}
+                                    size={20}
                                     color={service.color}
                                     type="lucide"
                                 />
@@ -181,7 +364,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             {/* Groupe Transport */}
             <View style={styles.group}>
                 <View style={styles.groupHeader}>
-                    <SafeIcon name="car" size={24} color="#3B82F6" type="lucide" />
+                    <SafeIcon name="car" size={20} color="#3B82F6" type="lucide" />
                     <Text style={styles.groupTitle}>Transport</Text>
                 </View>
                 <View style={styles.servicesGrid}>
@@ -195,7 +378,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                             <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
                                 <SafeIcon
                                     name={service.icon}
-                                    size={24}
+                                    size={20}
                                     color={service.color}
                                     type="lucide"
                                 />
@@ -219,6 +402,9 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F9FAFB',
     },
+    scrollContent: {
+        paddingBottom: 20, // ✅ Espace en bas pour le scroll
+    },
     header: {
         padding: 20,
         paddingTop: 40,
@@ -238,53 +424,53 @@ const styles = StyleSheet.create({
     },
     group: {
         marginTop: 24,
-        paddingHorizontal: 16,
+        paddingHorizontal: CARD_PADDING, // ✅ Utiliser la constante
     },
     groupHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 16,
-        gap: 12,
+        gap: 8, // ✅ Réduit pour correspondre à l'image
     },
     groupTitle: {
-        fontSize: 20,
+        fontSize: 18, // ✅ Légèrement réduit
         fontWeight: '700',
         color: '#111827',
     },
     servicesGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        marginHorizontal: -CARD_MARGIN / 2,
+        justifyContent: 'space-between', // ✅ Espacement égal entre les cartes
+        alignItems: 'flex-start', // ✅ Aligner en haut
+        width: '100%', // ✅ Forcer la largeur complète
     },
     serviceCard: {
-        width: CARD_WIDTH,
+        width: CARD_WIDTH, // ✅ Largeur calculée pour 2 colonnes
         backgroundColor: '#fff',
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 12, // ✅ Légèrement réduit
+        padding: 14, // ✅ Légèrement réduit
         marginBottom: CARD_MARGIN,
-        marginHorizontal: CARD_MARGIN / 2,
         borderLeftWidth: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 4,
         elevation: 3,
-        minHeight: 160, // Hauteur minimale pour uniformité
+        // ✅ Supprimer minHeight pour laisser le contenu définir la hauteur
     },
     serviceIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 12,
+        width: 40, // ✅ Réduit pour correspondre à l'image
+        height: 40,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 10,
     },
     serviceTitle: {
-        fontSize: 16,
+        fontSize: 15, // ✅ Légèrement réduit
         fontWeight: '700',
         color: '#111827',
-        marginBottom: 6,
+        marginBottom: 4,
         lineHeight: 20,
     },
     serviceDescription: {

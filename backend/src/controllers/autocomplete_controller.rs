@@ -252,13 +252,8 @@ pub async fn search_combinations(
         query, user_location, limit
     );
 
-    if query.is_empty() {
-        return Ok(Json(serde_json::json!({
-            "success": true,
-            "data": [],
-            "count": 0
-        })));
-    }
+    // ✅ CORRECTION: Si la requête est vide, search_combinations chargera les combinaisons populaires
+    // Plus besoin de retourner un tableau vide
 
     match autocomplete_combinations_service::search_combinations(pool, query, user_location, limit)
         .await

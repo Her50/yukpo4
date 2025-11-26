@@ -1072,7 +1072,8 @@ const ResultatBesoinScreen: React.FC = () => {
             style={styles.suggestionsList}
             contentContainerStyle={styles.suggestionsContent}
             renderItem={({ item, index }) => {
-              const chips = getSuggestionVector(item).slice(0, 6);
+              const chipsVector = getSuggestionVector(item);
+              const chips = Array.isArray(chipsVector) ? chipsVector.slice(0, 6) : [];
               const priceText = typeof item?.prix === 'number'
                 ? `${Math.round(item.prix).toLocaleString()} ${item?.devise || 'XAF'}`
                 : null;
@@ -1101,13 +1102,13 @@ const ResultatBesoinScreen: React.FC = () => {
                   </View>
 
                   <View style={styles.vectorChips}>
-                    {chips.map((chip, chipIndex) => (
+                    {Array.isArray(chips) && chips.length > 0 ? chips.map((chip, chipIndex) => (
                       <View key={`${chip}-${chipIndex}`} style={styles.productChip}>
                         <Text style={styles.productChipText} numberOfLines={1}>
                           {chip}
                         </Text>
                       </View>
-                    ))}
+                    )) : null}
                   </View>
 
                   <View style={styles.statsRow}>
@@ -1215,7 +1216,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
         {(searchImages.length > 0 || searchDocuments.length > 0 || !!searchGPSString) && (
           <View style={styles.searchAttachmentsContainer}>
-            {searchImages.length > 0 && (
+            {Array.isArray(searchImages) && searchImages.length > 0 && (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1235,7 +1236,7 @@ const ResultatBesoinScreen: React.FC = () => {
               </ScrollView>
             )}
 
-            {searchDocuments.length > 0 && (
+            {Array.isArray(searchDocuments) && searchDocuments.length > 0 && (
               <View style={styles.searchDocumentsList}>
                 {searchDocuments.map((doc, index) => (
                   <View key={`search-doc-${index}`} style={styles.searchDocumentItem}>
@@ -1424,7 +1425,7 @@ const ResultatBesoinScreen: React.FC = () => {
             </View>
           </View>
 
-          {Object.entries(dynamicFilters).map(([label, values]) => (
+          {dynamicFilters && typeof dynamicFilters === 'object' && Object.entries(dynamicFilters).map(([label, values]) => (
             <View key={label} style={styles.dynamicFilterSection}>
               <View style={styles.filterGroupHeader}>
                 <Text style={styles.dynamicFilterLabel}>{label}</Text>
@@ -1441,7 +1442,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 )}
               </View>
               <View style={styles.dynamicFilterOptions}>
-                {Array.from(values).map((value) => {
+                {values && (values instanceof Set || Array.isArray(values)) ? Array.from(values).map((value) => {
                   const isActive = selectedFilters[label] === value;
                   return (
                     <TouchableOpacity
@@ -1462,7 +1463,7 @@ const ResultatBesoinScreen: React.FC = () => {
                       </Text>
                     </TouchableOpacity>
                   );
-                })}
+                }) : null}
               </View>
             </View>
           ))}
@@ -1476,11 +1477,11 @@ const ResultatBesoinScreen: React.FC = () => {
           contentContainerStyle={styles.filtersScroll}
         >
           <Text style={styles.filtersLabel}>Filtres :</Text>
-          {filters.map((filter, index) => (
+          {Array.isArray(filters) && filters.length > 0 ? filters.map((filter, index) => (
             <View key={index} style={styles.filterChip}>
               <Text style={styles.filterText}>{filter}</Text>
             </View>
-          ))}
+          )) : null}
         </ScrollView>
       )}
 
@@ -1748,7 +1749,7 @@ const ResultatBesoinScreen: React.FC = () => {
                   peut_emettre_tickets_bus: true,
                   distance_km: (item as any).distance_km || item.distance_km,
                 }}
-                busTickets={busTickets.map((ticket: any) => ({
+                busTickets={Array.isArray(busTickets) ? busTickets.map((ticket: any) => ({
                   product_id: ticket.product_id || ticket.id,
                   product_name: ticket.product_name || ticket.name,
                   bus_model_name: ticket.bus_model_name,
@@ -1763,7 +1764,7 @@ const ResultatBesoinScreen: React.FC = () => {
                   ticket_price: ticket.ticket_price || ticket.price,
                   currency: ticket.currency || 'XAF',
                   distance_km: ticket.distance_km,
-                }))}
+                })) : []}
                 onPress={() => {
                   trackNavigation('click', {
                     itemType: 'bus_ticket',

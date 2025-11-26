@@ -242,11 +242,30 @@ const MesProduitsScreen: React.FC = () => {
                     const serviceId = service.id.toString();
                     const serviceTitre = service.data?.titre_service?.valeur || service.titre || 'Service sans titre';
                     // ✅ CORRIGÉ: Extraire les produits de différentes structures possibles
-                    const produits = service.data?.produits?.valeur
-                        || service.data?.produits
-                        || service.produits?.valeur
-                        || service.produits
-                        || (Array.isArray(service.data?.produits) ? service.data.produits : null);
+                    let produits: any = null;
+
+                    // Format 1: listeproduit avec type_donnee (FormulaireYukpoIntelligentScreen)
+                    if (service.data?.produits?.type_donnee === 'listeproduit' && Array.isArray(service.data.produits.valeur)) {
+                        produits = service.data.produits.valeur;
+                        console.log('[MesProduitsScreen] ✅ Format listeproduit détecté:', produits.length, 'produits');
+                    }
+                    // Format 2: Array direct (AjouterProduitSimple)
+                    else if (Array.isArray(service.data?.produits)) {
+                        produits = service.data.produits;
+                        console.log('[MesProduitsScreen] ✅ Format array direct détecté:', produits.length, 'produits');
+                    }
+                    // Format 3: Objet avec valeur (ancien format)
+                    else if (service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur)) {
+                        produits = service.data.produits.valeur;
+                        console.log('[MesProduitsScreen] ✅ Format valeur détecté:', produits.length, 'produits');
+                    }
+                    // Format 4: service.produits (fallback)
+                    else if (Array.isArray(service.produits?.valeur)) {
+                        produits = service.produits.valeur;
+                    }
+                    else if (Array.isArray(service.produits)) {
+                        produits = service.produits;
+                    }
 
                     console.log('[MesProduitsScreen] 🔍 Service:', serviceId, 'Titre:', serviceTitre);
                     console.log('[MesProduitsScreen] 🔍 Produits trouvés:', produits ? (Array.isArray(produits) ? produits.length : 'non-array') : 'null/undefined');
@@ -258,48 +277,152 @@ const MesProduitsScreen: React.FC = () => {
                     if (produits && Array.isArray(produits) && produits.length > 0) {
                         console.log('[MesProduitsScreen] ✅ Ajout de', produits.length, 'produits du service', serviceId);
                         produits.forEach((product: any, index: number) => {
-                            const productIndex = typeof product.product_index === 'number'
-                                ? product.product_index
+                            // ✅ CORRECTION CRITIQUE: Normaliser le produit pour extraire les valeurs depuis objets structurés
+                            const normalizeProductField = (field: any, fallback?: any): any => {
+                                if (field === null || field === undefined) return fallback;
+                                if (typeof field === 'object' && 'valeur' in field) {
+                                    return field.valeur;
+                                }
+                                return field !== undefined ? field : fallback;
+                            };
+
+                            // ✅ CORRECTION CRITIQUE: Normaliser le produit en préservant TOUS les champs spécialisés
+                            // Commencer par copier tous les champs du produit original
+                            const normalizedProduct: any = { ...product };
+
+                            // ✅ Normaliser les champs de base (extraire depuis objets structurés si nécessaire)
+                            const nomNormalized = normalizeProductField(product.nom);
+                            const nomProduitNormalized = normalizeProductField(product.nom_produit);
+                            if (nomNormalized !== undefined) normalizedProduct.nom = nomNormalized;
+                            if (nomProduitNormalized !== undefined) normalizedProduct.nom_produit = nomProduitNormalized;
+                            if (!normalizedProduct.nom && !normalizedProduct.nom_produit) {
+                                normalizedProduct.nom = '';
+                                normalizedProduct.nom_produit = '';
+                            }
+
+                            const prixNormalized = normalizeProductField(product.prix);
+                            const prixProduitNormalized = normalizeProductField(product.prix_produit);
+                            if (prixNormalized !== undefined && prixNormalized !== null) normalizedProduct.prix = prixNormalized;
+                            if (prixProduitNormalized !== undefined && prixProduitNormalized !== null) normalizedProduct.prix_produit = prixProduitNormalized;
+
+                            const deviseNormalized = normalizeProductField(product.devise);
+                            const deviseProduitNormalized = normalizeProductField(product.devise_produit);
+                            if (deviseNormalized) normalizedProduct.devise = deviseNormalized;
+                            if (deviseProduitNormalized) normalizedProduct.devise_produit = deviseProduitNormalized;
+                            if (!normalizedProduct.devise && !normalizedProduct.devise_produit) {
+                                normalizedProduct.devise = 'XAF';
+                                normalizedProduct.devise_produit = 'XAF';
+                            }
+
+                            const descriptionNormalized = normalizeProductField(product.description);
+                            const descriptionProduitNormalized = normalizeProductField(product.description_produit);
+                            if (descriptionNormalized !== undefined) normalizedProduct.description = descriptionNormalized;
+                            if (descriptionProduitNormalized !== undefined) normalizedProduct.description_produit = descriptionProduitNormalized;
+
+                            const categorieNormalized = normalizeProductField(product.categorie);
+                            const categorieProduitNormalized = normalizeProductField(product.categorie_produit);
+                            const categoryNormalized = normalizeProductField(product.category);
+                            if (categorieNormalized) normalizedProduct.categorie = categorieNormalized;
+                            if (categorieProduitNormalized) normalizedProduct.categorie_produit = categorieProduitNormalized;
+                            if (categoryNormalized) normalizedProduct.category = categoryNormalized;
+
+                            // ✅ Normaliser les champs complexes (sous_caracteristiques, produits, etc.)
+                            if (product.sous_caracteristiques) {
+                                const sousCaracsNormalized = normalizeProductField(product.sous_caracteristiques);
+                                normalizedProduct.sous_caracteristiques = sousCaracsNormalized !== undefined ? sousCaracsNormalized : product.sous_caracteristiques;
+                            }
+
+                            // ✅ CORRECTION CRITIQUE: Normaliser TOUS les médias depuis différents formats
+                            const normalizeMediaField = (field: any): any[] => {
+                                if (!field) return [];
+                                if (Array.isArray(field)) return field;
+                                if (typeof field === 'object' && 'valeur' in field && Array.isArray(field.valeur)) {
+                                    return field.valeur;
+                                }
+                                return [];
+                            };
+
+                            // Normaliser images (depuis images, base64_image, image_base64)
+                            const imagesFromImages = normalizeMediaField(product.images);
+                            const imagesFromBase64 = normalizeMediaField(product.base64_image);
+                            const imagesFromImageBase64 = normalizeMediaField(product.image_base64);
+                            const allImages = [...imagesFromImages, ...imagesFromBase64, ...imagesFromImageBase64].filter((img, idx, arr) => arr.indexOf(img) === idx);
+                            if (allImages.length > 0) {
+                                normalizedProduct.images = allImages;
+                                normalizedProduct.base64_image = allImages; // Préserver aussi pour compatibilité
+                            }
+
+                            // Normaliser videos (depuis videos, video_base64)
+                            const videosFromVideos = normalizeMediaField(product.videos);
+                            const videosFromBase64 = normalizeMediaField(product.video_base64);
+                            const allVideos = [...videosFromVideos, ...videosFromBase64].filter((vid, idx, arr) => arr.indexOf(vid) === idx);
+                            if (allVideos.length > 0) {
+                                normalizedProduct.videos = allVideos;
+                                normalizedProduct.video_base64 = allVideos; // Préserver aussi pour compatibilité
+                            }
+
+                            // Normaliser audios (depuis audios, audio_base64)
+                            const audiosFromAudios = normalizeMediaField(product.audios);
+                            const audiosFromBase64 = normalizeMediaField(product.audio_base64);
+                            const allAudios = [...audiosFromAudios, ...audiosFromBase64].filter((aud, idx, arr) => arr.indexOf(aud) === idx);
+                            if (allAudios.length > 0) {
+                                normalizedProduct.audios = allAudios;
+                                normalizedProduct.audio_base64 = allAudios; // Préserver aussi pour compatibilité
+                            }
+
+                            // Normaliser documents (depuis documents, doc_base64)
+                            const docsFromDocs = normalizeMediaField(product.documents);
+                            const docsFromBase64 = normalizeMediaField(product.doc_base64);
+                            const allDocs = [...docsFromDocs, ...docsFromBase64].filter((doc, idx, arr) => arr.indexOf(doc) === idx);
+                            if (allDocs.length > 0) {
+                                normalizedProduct.documents = allDocs;
+                                normalizedProduct.doc_base64 = allDocs; // Préserver aussi pour compatibilité
+                            }
+
+                            // ✅ TOUS les autres champs sont préservés via le spread initial {...product}
+
+                            const productIndex = typeof normalizedProduct.product_index === 'number'
+                                ? normalizedProduct.product_index
                                 : index;
 
-                            const rawProductIdCandidate = product.lifecycle_id
-                                ?? product.product_lifecycle_id
-                                ?? product.productLifecycleId
-                                ?? product.product_id
-                                ?? product.id
+                            const rawProductIdCandidate = normalizedProduct.lifecycle_id
+                                ?? normalizedProduct.product_lifecycle_id
+                                ?? normalizedProduct.productLifecycleId
+                                ?? normalizedProduct.product_id
+                                ?? normalizedProduct.id
                                 ?? null;
 
                             const numericProductId = resolveNumericId(rawProductIdCandidate);
 
-                            const categoryKey = normalizeCategoryKey(product);
+                            const categoryKey = normalizeCategoryKey(normalizedProduct);
                             const categoryLabel = getProductTypeLabel(categoryKey);
 
                             const fallbackTimestamp =
                                 serviceCreatedAtTs || (numericProductId ? numericProductId * 1000 : 0);
-                            const productTimestamp = resolveProductTimestamp(product, fallbackTimestamp);
+                            const productTimestamp = resolveProductTimestamp(normalizedProduct, fallbackTimestamp);
 
                             const views = Number(
-                                product.views
-                                ?? product.stats?.views
-                                ?? product.analytics?.views
+                                normalizedProduct.views
+                                ?? normalizedProduct.stats?.views
+                                ?? normalizedProduct.analytics?.views
                                 ?? 0
                             );
                             const shares = Number(
-                                product.shares
-                                ?? product.stats?.shares
-                                ?? product.analytics?.shares
+                                normalizedProduct.shares
+                                ?? normalizedProduct.stats?.shares
+                                ?? normalizedProduct.analytics?.shares
                                 ?? 0
                             );
                             const saves = Number(
-                                product.saves
-                                ?? product.stats?.favorites
-                                ?? product.analytics?.favorites
-                                ?? product.favoris
+                                normalizedProduct.saves
+                                ?? normalizedProduct.stats?.favorites
+                                ?? normalizedProduct.analytics?.favorites
+                                ?? normalizedProduct.favoris
                                 ?? 0
                             );
 
                             allProducts.push({
-                                ...product,
+                                ...normalizedProduct,
                                 id: numericProductId ? String(numericProductId) : `${serviceId}_${productIndex}`,
                                 rawProductId: numericProductId ?? undefined,
                                 product_index: productIndex,
@@ -307,7 +430,7 @@ const MesProduitsScreen: React.FC = () => {
                                 category_label: categoryLabel,
                                 serviceId,
                                 serviceTitre,
-                                is_active: product.is_active !== undefined ? product.is_active : true,
+                                is_active: normalizedProduct.is_active !== undefined ? normalizedProduct.is_active : true,
                                 created_at_ts: productTimestamp,
                                 views,
                                 shares,
@@ -1009,23 +1132,70 @@ const MesProduitsScreen: React.FC = () => {
         // Cela permet de préserver tous les champs spécialisés (typeVetement, marqueVetement, etc.)
         const prefill: Record<string, any> = { ...product };
 
-        // ✅ Champs de base avec priorités (écrasent les valeurs du spread si présentes)
-        prefill.nom_produit = product.nom || product.nom_produit || '';
-        prefill.categorie_produit = product.categorie_produit || product.categorie || product.category || '';
-        prefill.description_produit = product.description || product.description_produit || '';
+        // ✅ CORRECTION CRITIQUE: Extraire les valeurs depuis les objets structurés si nécessaire
+        // (Format FormulaireYukpoIntelligentScreen avec type_donnee/valeur)
+        const extractValue = (field: any): any => {
+            if (field === null || field === undefined) return undefined;
+            if (typeof field === 'object' && 'valeur' in field) {
+                return field.valeur;
+            }
+            return field;
+        };
 
-        if (product.prix_produit) {
-            prefill.prix_produit = product.prix_produit.toString();
+        // ✅ Champs de base avec extraction depuis objets structurés
+        const nomRaw = product.nom || product.nom_produit;
+        const categorieRaw = product.categorie_produit || product.categorie || product.category;
+        const descriptionRaw = product.description || product.description_produit;
+
+        prefill.nom_produit = extractValue(nomRaw) || (typeof nomRaw === 'string' ? nomRaw : '');
+        prefill.categorie_produit = extractValue(categorieRaw) || (typeof categorieRaw === 'string' ? categorieRaw : '');
+        prefill.description_produit = extractValue(descriptionRaw) || (typeof descriptionRaw === 'string' ? descriptionRaw : '');
+
+        // ✅ CORRECTION: Extraire prix depuis objets structurés
+        const prixRaw = product.prix_produit || product.prix;
+        const prixValue = extractValue(prixRaw);
+
+        if (prixValue !== undefined && prixValue !== null) {
+            prefill.prix_produit = typeof prixValue === 'number'
+                ? prixValue.toString()
+                : (typeof prixValue === 'string' ? prixValue : String(prixValue));
         } else if (product.prix !== undefined && product.prix !== null) {
             prefill.prix_produit = typeof product.prix === 'number'
                 ? product.prix.toString()
                 : product.prix;
         }
 
-        prefill.devise_produit = product.devise_produit || product.devise || 'XAF';
+        // ✅ CORRECTION: Extraire devise depuis objets structurés
+        const deviseRaw = product.devise_produit || product.devise;
+        prefill.devise_produit = extractValue(deviseRaw) || (typeof deviseRaw === 'string' ? deviseRaw : 'XAF');
 
-        // ✅ Gestion des produits (autocomplete)
-        if (Array.isArray(product.produits)) {
+        // ✅ CORRECTION CRITIQUE: Gestion des produits (autocomplete) avec extraction depuis objets structurés
+        const produitsRaw = product.produits;
+        let produitsExtracted: any = null;
+
+        // Extraire depuis format listeproduit ou objet structuré
+        if (produitsRaw && typeof produitsRaw === 'object') {
+            if (produitsRaw.type_donnee === 'listeproduit' && Array.isArray(produitsRaw.valeur)) {
+                // Format listeproduit: extraire le premier produit et reconstruire l'autocomplete
+                const firstProduct = produitsRaw.valeur[0];
+                if (firstProduct) {
+                    if (firstProduct.combinaison_brute) {
+                        produitsExtracted = [firstProduct.combinaison_brute];
+                    } else if (Array.isArray(firstProduct.characteristic_vector)) {
+                        produitsExtracted = [firstProduct.characteristic_vector.filter(Boolean).join(', ')];
+                    }
+                }
+            } else if (Array.isArray(produitsRaw.valeur)) {
+                // Format autocomplete avec valeur array
+                produitsExtracted = produitsRaw.valeur;
+            } else if (produitsRaw.type_donnee === 'autocomplete' && Array.isArray(produitsRaw.valeur)) {
+                produitsExtracted = produitsRaw.valeur;
+            }
+        }
+
+        if (produitsExtracted) {
+            prefill.produits = produitsExtracted;
+        } else if (Array.isArray(product.produits)) {
             prefill.produits = product.produits;
         } else if (product.combinaison_brute) {
             prefill.produits = [product.combinaison_brute];
@@ -1033,8 +1203,21 @@ const MesProduitsScreen: React.FC = () => {
             prefill.produits = [product.characteristic_vector.filter(Boolean).join(', ')];
         }
 
-        // ✅ Gestion des sous-caractéristiques
-        if (product.sous_caracteristiques) {
+        // ✅ CORRECTION CRITIQUE: Gestion des sous-caractéristiques avec extraction
+        const sousCaracsRaw = product.sous_caracteristiques;
+        let sousCaracsExtracted: any = null;
+
+        if (sousCaracsRaw && typeof sousCaracsRaw === 'object') {
+            if ('valeur' in sousCaracsRaw) {
+                sousCaracsExtracted = sousCaracsRaw.valeur;
+            } else {
+                sousCaracsExtracted = sousCaracsRaw;
+            }
+        }
+
+        if (sousCaracsExtracted) {
+            prefill.sous_caracteristiques = sousCaracsExtracted;
+        } else if (product.sous_caracteristiques) {
             prefill.sous_caracteristiques = product.sous_caracteristiques;
         } else if (Array.isArray(product.product_labels) && Array.isArray(product.characteristic_vector)) {
             const map: Record<string, string[]> = {};
@@ -1058,25 +1241,104 @@ const MesProduitsScreen: React.FC = () => {
         prefill.variabilite_prix = product.variabilite_prix || product.price_variant || null;
         prefill.lieu_produit = product.lieu_produit || product.lieu || product.location || null;
 
-        // ✅ Médias
-        if (Array.isArray(product.images)) {
-            prefill.images = product.images;
+        // ✅ CORRECTION CRITIQUE: Médias avec extraction depuis objets structurés et toutes variantes
+        const extractMediaArray = (field: any): any[] => {
+            if (!field) return [];
+            if (Array.isArray(field)) return field;
+            if (typeof field === 'object' && 'valeur' in field && Array.isArray(field.valeur)) {
+                return field.valeur;
+            }
+            return [];
+        };
+
+        // Extraire images depuis toutes les variantes possibles (images, base64_image, image_base64)
+        const imagesFromImages = extractMediaArray(product.images);
+        const imagesFromBase64 = extractMediaArray(product.base64_image);
+        const imagesFromImageBase64 = extractMediaArray(product.image_base64);
+        const allImages = [...imagesFromImages, ...imagesFromBase64, ...imagesFromImageBase64].filter((img, idx, arr) => arr.indexOf(img) === idx);
+        if (allImages.length > 0) {
+            prefill.images = allImages;
         }
-        if (Array.isArray(product.videos)) {
-            prefill.videos = product.videos;
+
+        // Extraire videos depuis toutes les variantes possibles (videos, video_base64)
+        const videosFromVideos = extractMediaArray(product.videos);
+        const videosFromBase64 = extractMediaArray(product.video_base64);
+        const allVideos = [...videosFromVideos, ...videosFromBase64].filter((vid, idx, arr) => arr.indexOf(vid) === idx);
+        if (allVideos.length > 0) {
+            prefill.videos = allVideos;
         }
-        if (Array.isArray(product.audios)) {
-            prefill.audios = product.audios;
+
+        // Extraire audios depuis toutes les variantes possibles (audios, audio_base64)
+        const audiosFromAudios = extractMediaArray(product.audios);
+        const audiosFromBase64 = extractMediaArray(product.audio_base64);
+        const allAudios = [...audiosFromAudios, ...audiosFromBase64].filter((aud, idx, arr) => arr.indexOf(aud) === idx);
+        if (allAudios.length > 0) {
+            prefill.audios = allAudios;
         }
-        if (Array.isArray(product.documents)) {
-            prefill.documents = product.documents;
+
+        // Extraire documents depuis toutes les variantes possibles (documents, doc_base64)
+        const docsFromDocs = extractMediaArray(product.documents);
+        const docsFromBase64 = extractMediaArray(product.doc_base64);
+        const allDocs = [...docsFromDocs, ...docsFromBase64].filter((doc, idx, arr) => arr.indexOf(doc) === idx);
+        if (allDocs.length > 0) {
+            prefill.documents = allDocs;
         }
+
+        // ✅ Préserver characteristic_vector et combinaison_brute
         if (Array.isArray(product.characteristic_vector)) {
             prefill.characteristic_vector = product.characteristic_vector;
         }
         if (product.combinaison_brute) {
             prefill.combinaison_brute = product.combinaison_brute;
         }
+        if (Array.isArray(product.product_labels)) {
+            prefill.product_labels = product.product_labels;
+        }
+
+        // ✅ CORRECTION CRITIQUE: Préserver TOUS les champs spécialisés (typeVetement, marqueVetement, etc.)
+        // Ces champs ne doivent pas être supprimés car ils sont nécessaires pour la modification
+        const specializedFields = [
+            'typeVetement', 'marqueVetement', 'tailleVetement', 'couleurVetement', 'etatVetement',
+            'typeChaussure', 'marqueChaussure', 'pointureChaussure', 'couleurChaussure',
+            'typeTelephone', 'marqueTelephone', 'modeleTelephone', 'etatTelephone',
+            'typeVehicule', 'marqueVehicule', 'modeleVehicule', 'anneeVehicule',
+            'typeMobilier', 'categorieMobilier', 'styleMobilier', 'materiauMobilier',
+            'lieu_produit', 'lieu_commercial', 'lieu_commercialisation',
+            'variabilite_prix', 'price_variant', 'variation_prix',
+            // ... et tous les autres champs spécialisés
+        ];
+
+        specializedFields.forEach(fieldName => {
+            if (product[fieldName] !== undefined && product[fieldName] !== null) {
+                const extracted = extractValue(product[fieldName]);
+                if (extracted !== undefined) {
+                    prefill[fieldName] = extracted;
+                } else {
+                    prefill[fieldName] = product[fieldName];
+                }
+            }
+        });
+
+        // ✅ Préserver TOUS les autres champs qui ne sont pas dans la liste de suppression
+        Object.keys(product).forEach(key => {
+            // Ne pas écraser les champs déjà traités
+            if (prefill[key] !== undefined) return;
+
+            // Ne pas ajouter les champs métadonnées
+            if (['id', 'rawProductId', 'product_index', 'category_key', 'category_label',
+                'serviceId', 'serviceTitre', 'is_active', 'created_at_ts', 'views',
+                'shares', 'saves', 'nom', 'prix', 'devise', 'description', 'categorie', 'category'].includes(key)) {
+                return;
+            }
+
+            // Extraire depuis objets structurés si nécessaire
+            const extracted = extractValue(product[key]);
+            if (extracted !== undefined) {
+                prefill[key] = extracted;
+            } else if (product[key] !== undefined && product[key] !== null) {
+                prefill[key] = product[key];
+            }
+        });
 
         // ✅ Supprimer les champs métadonnées qui ne doivent pas être dans le prefill
         // (ces champs sont ajoutés par MesProduitsScreen mais ne font pas partie du produit original)
@@ -1448,7 +1710,7 @@ const MesProduitsScreen: React.FC = () => {
                 ], { useNativeDriver: true })}
                 scrollEventThrottle={16}
             >
-                {filteredProducts.length === 0 ? (
+                {!Array.isArray(filteredProducts) || filteredProducts.length === 0 ? (
                     <View style={styles.emptyState}>
                         <SafeIcon name="package" size={64} color="#D1D5DB" />
                         <Text style={styles.emptyTitle}>Aucun produit</Text>

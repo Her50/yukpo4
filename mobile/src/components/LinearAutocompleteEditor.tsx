@@ -1292,12 +1292,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             label: charKey,
                             value: values[0],
                         });
-                    } else if (typeof values === 'string' && values.trim().length > 0) {
-                        rows.push({
-                            label: charKey,
-                            value: values,
-                        });
                     }
+                    // Note: sousCaracteristiques est Record<string, string[]>, donc values est toujours string[]
                 });
 
                 if (rows.length > 0) {
@@ -1579,12 +1575,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                 value: firstValue,
                             });
                         }
-                    } else if (typeof values === 'string' && values.trim().length > 0) {
-                        preferredRows.push({
-                            label: key,
-                            value: values,
-                        });
                     }
+                    // Note: sousCaracteristiques est Record<string, string[]>, donc values est toujours string[]
                 });
             }
         }
@@ -1718,8 +1710,19 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
         }
 
+        // PRIORITÉ 4: Utiliser categoryValue si disponible
+        if (!seedQuery && categoryValue && typeof categoryValue === 'string' && categoryValue.trim().length >= 2) {
+            seedQuery = categoryValue.trim();
+            contextTokens = buildSearchTokens(categoryValue);
+        }
+
+        // ✅ CORRECTION: Charger les combinaisons populaires même sans seedQuery
+        // ⚠️ NOTE: La combinaison préférée de l'IA (depuis productVector/productLabels ou sousCaracteristiques)
+        // est créée directement dans suggestionCandidates avec isPreferred: true et score 15 (priorité maximale).
+        // Le chargement des combinaisons populaires ici sert uniquement de fallback si aucune combinaison préférée n'est disponible.
+        // Si aucun seedQuery n'est disponible, utiliser une requête vide pour charger les plus populaires
         if (!seedQuery || seedQuery.length < 2) {
-            return;
+            seedQuery = ''; // Requête vide pour charger les combinaisons populaires (fallback uniquement)
         }
 
         let cancelled = false;
@@ -1727,10 +1730,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         const loadInitialCombinations = async () => {
             try {
                 setLoadingCombinationSuggestions(true);
-                const response = await apiPost('/api/combinations/search', {
-                    query: seedQuery,
-                    limit: 8,
-                });
+                // ✅ CORRECTION: Si seedQuery est vide, charger les combinaisons populaires
+                const requestPayload = seedQuery && seedQuery.trim().length >= 2
+                    ? { query: seedQuery, limit: 8 }
+                    : { limit: 8 }; // Charger les plus populaires sans filtre
+
+                const response = await apiPost('/api/combinations/search', requestPayload);
 
                 if (!cancelled && response?.success) {
                     const combos = normalizeCombinationResponse(response);
@@ -1844,7 +1849,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         return () => {
             cancelled = true;
         };
-    }, [iaCombinaisons, separateur, searchQuery, combinationSuggestions.length, loadingCombinationSuggestions, sousCaracteristiques, contextValues]);
+    }, [iaCombinaisons, separateur, searchQuery, combinationSuggestions.length, loadingCombinationSuggestions, sousCaracteristiques, contextValues, categoryValue]);
 
     // ✅ CORRIGÉ: Appliquer automatiquement les caractéristiques préférées de l'IA au chargement initial
     // ⚠️ IMPORTANT: L'application automatique est SYSTÉMATIQUE au chargement, peu importe si l'utilisateur
@@ -1868,16 +1873,19 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         }
 
         // ✅ CORRECTION: Ne pas attendre le chargement des suggestions si on a déjà sous_caracteristiques
-        // Le candidat préféré peut être créé directement depuis sous_caracteristiques
+        // Le candidat préféré peut être créé directement depuis sous_caracteristiques ou product_vector/product_labels
         const hasSousCaracs = sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0;
         const hasProductVector = productVector && Array.isArray(productVector) && productVector.length > 0;
 
+        // ✅ PRIORITÉ: Si on a product_vector/product_labels ou sous_caracteristiques, 
+        // le candidat préféré est déjà créé dans suggestionCandidates, pas besoin d'attendre
         // Si on n'a ni sous_caracteristiques ni product_vector, attendre le chargement des suggestions
         if (!hasSousCaracs && !hasProductVector && (loadingSuggestions || loadingCombinationSuggestions)) {
             return; // Attendre que les suggestions soient chargées
         }
 
-        // Chercher la suggestion préférée de l'IA (celle avec isPreferred: true)
+        // ✅ PRIORITÉ ABSOLUE: Chercher la suggestion préférée de l'IA (celle avec isPreferred: true)
+        // Cette combinaison vient de product_vector/product_labels ou sous_caracteristiques (combinaison préférée de l'IA)
         const preferredCandidate = suggestionCandidates.find(candidate => candidate.isPreferred === true);
 
         // ✅ CORRECTION: Si pas de candidat préféré mais qu'on a sous_caracteristiques, attendre un peu

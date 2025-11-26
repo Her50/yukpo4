@@ -11,7 +11,7 @@ use axum::{
     Json,
 };
 use axum::body::Body;
-use chrono::{NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use sqlx::{FromRow, PgPool};
 use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
@@ -44,9 +44,11 @@ use log::{error, info, warn};
 pub struct MediaItem {
     pub id: i32,
     pub service_id: i32,
+    #[sqlx(rename = "type")]  // ✅ Mapping explicite pour éviter les conflits avec mot-clé Rust
     pub r#type: String,
     pub path: String,
-    pub uploaded_at: Option<NaiveDateTime>,
+    // ✅ TIMESTAMPTZ dans PostgreSQL -> DateTime<Utc> en Rust (NOT NULL dans la DB)
+    pub uploaded_at: DateTime<Utc>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -190,36 +192,104 @@ pub async fn get_service_media(
     Extension(pool): Extension<PgPool>,
 ) -> AppResult<Json<Vec<MediaItem>>> {
     info!("[get_service_media] Called for service_id={}", service_id);
-    // Utiliser query_as au lieu de query_as! pour gérer correctement les types optionnels
+    
+    // ✅ Vérifier d'abord si le service existe pour éviter des erreurs inutiles
+    let service_exists: bool = match sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM services WHERE id = $1)"
+    )
+    .bind(service_id)
+    .fetch_one(&pool)
+    .await
+    {
+        Ok(exists) => exists,
+        Err(e) => {
+            error!("[get_service_media] Erreur vérification service {}: {e:?}", service_id);
+            // Si la vérification échoue, on continue quand même (peut être un problème temporaire)
+            warn!("[get_service_media] Impossible de vérifier l'existence du service, continuation...");
+            true // Assume que le service existe pour continuer
+        }
+    };
+
+    if !service_exists {
+        warn!("[get_service_media] Service {} n'existe pas, retour liste vide", service_id);
+        return Ok(Json(vec![]));  // Retourner liste vide au lieu d'erreur
+    }
+
+    // ✅ Utiliser query_as avec gestion d'erreur améliorée
     let rows = match sqlx::query_as::<_, MediaItem>(
-        r#"SELECT id, service_id, type, path, uploaded_at FROM media WHERE service_id = $1 ORDER BY uploaded_at DESC"#
+        r#"SELECT id, service_id, type, path, uploaded_at FROM media WHERE service_id = $1 ORDER BY uploaded_at DESC NULLS LAST"#
     )
     .bind(service_id)
     .fetch_all(&pool)
     .await {
-        Ok(r) => r,
+        Ok(r) => {
+            info!("[get_service_media] {} médias trouvés pour service_id={}", r.len(), service_id);
+            r
+        },
         Err(e) => {
-            error!("[get_service_media] Query error: {e:?}");
-            return Err(AppError::from(e));
+            // ✅ Log détaillé pour debugging
+            error!(
+                "[get_service_media] Query error pour service_id={}: {e:?}",
+                service_id
+            );
+            
+            // ✅ Gérer différents types d'erreurs
+            match &e {
+                sqlx::Error::RowNotFound => {
+                    // Pas d'erreur si aucun média trouvé, juste retourner liste vide
+                    info!("[get_service_media] Aucun média trouvé pour service_id={}", service_id);
+                    return Ok(Json(vec![]));
+                }
+                sqlx::Error::PoolClosed | sqlx::Error::PoolTimedOut => {
+                    error!("[get_service_media] Pool de connexions saturé pour service_id={}", service_id);
+                    return Err(AppError::Database(
+                        "Service temporairement indisponible, veuillez réessayer".to_string()
+                    ));
+                }
+                sqlx::Error::Io(io_err) => {
+                    error!("[get_service_media] Erreur I/O pour service_id={}: {io_err:?}", service_id);
+                    // Vérifier si c'est une erreur de connexion TLS
+                    if io_err.to_string().contains("TLS close_notify") 
+                        || io_err.to_string().contains("crash of another server process") {
+                        return Err(AppError::Database(
+                            "Erreur de connexion à la base de données, veuillez réessayer".to_string()
+                        ));
+                    }
+                }
+                _ => {}
+            }
+            
+            // ✅ Pour les autres erreurs, retourner une erreur générique mais informative
+            return Err(AppError::Database(format!(
+                "Erreur lors de la récupération des médias: {}",
+                e
+            )));
         }
     };
+    
     Ok(Json(rows))
 }
 
 /// ?? R?cup?re tous les m?dias
 pub async fn get_all_media(Extension(pool): Extension<PgPool>) -> AppResult<Json<Vec<MediaItem>>> {
     info!("[get_all_media] Called");
-    let rows = match sqlx::query_as!(
-        MediaItem,
-        r#"SELECT id, service_id, type, path, uploaded_at AS "uploaded_at: Option<NaiveDateTime>" FROM media ORDER BY uploaded_at DESC"#
+    // ✅ Utiliser query_as au lieu de query_as! pour cohérence avec get_service_media
+    let rows = match sqlx::query_as::<_, MediaItem>(
+        r#"SELECT id, service_id, type, path, uploaded_at FROM media ORDER BY uploaded_at DESC"#
     )
     .fetch_all(&pool)
     .await
     {
-        Ok(r) => r,
+        Ok(r) => {
+            info!("[get_all_media] {} médias trouvés", r.len());
+            r
+        },
         Err(e) => {
             error!("[get_all_media] Query error: {e:?}");
-            return Err(AppError::from(e));
+            return Err(AppError::Database(format!(
+                "Erreur lors de la récupération des médias: {}",
+                e
+            )));
         }
     };
     Ok(Json(rows))

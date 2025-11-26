@@ -62,19 +62,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     log::info!("🔌 Connexion à la base de données PostgreSQL...");
+    
+    // ✅ Optimisation du pool de connexions selon le plan de correction
+    // Lecture des variables d'environnement avec valeurs par défaut optimisées
+    let max_connections: u32 = env::var("DB_POOL_SIZE")
+        .unwrap_or_else(|_| "20".to_string())
+        .parse()
+        .unwrap_or(20);  // Augmenté de 10 à 20 pour gérer la charge
+    
+    let min_connections: u32 = env::var("DB_POOL_MIN_SIZE")
+        .unwrap_or_else(|_| "5".to_string())
+        .parse()
+        .unwrap_or(5);  // Maintenir un minimum de connexions actives
+    
+    let acquire_timeout_secs: u64 = env::var("DB_ACQUIRE_TIMEOUT_SECS")
+        .unwrap_or_else(|_| "10".to_string())
+        .parse()
+        .unwrap_or(10);  // Augmenté de 2s à 10s pour éviter les timeouts
+    
     let pg_pool = PgPoolOptions::new()
-        .max_connections(10) // Augmenté de 5 à 10 pour de meilleures performances
-        .acquire_timeout(timeout_config.get_database_timeout())
+        .max_connections(max_connections)
+        .min_connections(min_connections)  // ✅ Maintenir un minimum de connexions
+        .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
         .idle_timeout(Some(std::time::Duration::from_secs(600))) // 10 minutes
-        .max_lifetime(Some(std::time::Duration::from_secs(1800))) // 30 minutes
+        .max_lifetime(Some(std::time::Duration::from_secs(1800))) // 30 minutes max par connexion
+        .test_before_acquire(true)  // ✅ Tester la connexion avant utilisation
         .connect(&db_url)
         .await
         .map_err(|e| {
             log::error!("❌ Impossible de se connecter à PostgreSQL: {}", e);
             log::error!("   URL utilisée: {}...", db_url.chars().take(30).collect::<String>());
+            log::error!("   Configuration pool: max={}, min={}, acquire_timeout={}s", 
+                max_connections, min_connections, acquire_timeout_secs);
             e
         })?;
-    log::info!("✅ Connexion PostgreSQL établie");
+    
+    log::info!(
+        "✅ Connexion PostgreSQL établie (pool: max={}, min={}, acquire_timeout={}s)",
+        max_connections, min_connections, acquire_timeout_secs
+    );
 
     // 🔄 Exécuter les migrations SQLx standard au démarrage
     log::info!("🚀 Application des migrations SQLx standard...");

@@ -16,7 +16,7 @@ const YukAIGateway: React.FC = () => {
       setResult(JSON.stringify(res.data, null, 2));
     } catch (err) {
       console.error(err);
-      setResult("? Une erreur est survenue lors de l'appel à l'API.");
+      setResult("? Une erreur est survenue lors de l'appel ï¿½ l'API.");
     }
   };
 
@@ -31,24 +31,24 @@ const YukAIGateway: React.FC = () => {
         onChange={(e) => setService(e.target.value)}
       >
         <option value="gpt">?? GPT</option>
-        <option value="dalle">??? DALL·E</option>
+        <option value="dalle">??? DALLï¿½E</option>
         <option value="translate">?? Traduction</option>
       </select>
 
-      <label style="block mb-2 font-semibold">Entrée (payload) :</label>
+      <label style="block mb-2 font-semibold">Entrï¿½e (payload) :</label>
       <textarea
         style="border w-full p-2 mb-4"
         rows={4}
         value={payload}
         onChange={(e) => setPayload(e.target.value)}
-        placeholder="Ex : Bonjour, peux-tu me décrire une maison en bord de mer ?"
+        placeholder="Ex : Bonjour, peux-tu me dï¿½crire une maison en bord de mer ?"
       />
 
       <TouchableOpacity
         style=""
         onPress={handleSubmit}
       >
-        ?? Envoyer
+        <Text>?? Envoyer</Text>
       </TouchableOpacity>
 
       {result && (

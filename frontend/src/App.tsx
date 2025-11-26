@@ -24,7 +24,11 @@ import ChatDialog from '@/pages/ChatDialog';
 import CreationService from "@/pages/CreationService";
 import CreationSmartService from '@/pages/CreationSmartService';
 import CourierDashboardPage from '@/pages/delivery/CourierDashboardPage';
+import CourierMyDeliveriesPage from '@/pages/delivery/CourierMyDeliveriesPage';
+import CourierRegistrationPage from '@/pages/delivery/CourierRegistrationPage';
 import DeliveryHomePage from '@/pages/delivery/DeliveryHomePage';
+import DeliveryParcelFlowPage from '@/pages/delivery/DeliveryParcelFlowPage';
+import DeliveryShoppingFlowPage from '@/pages/delivery/DeliveryShoppingFlowPage';
 import DeliveryTrackingPage from '@/pages/delivery/DeliveryTrackingPage';
 import ShoppingBasketPage from '@/pages/delivery/ShoppingBasketPage';
 import ShoppingBudgetPage from '@/pages/delivery/ShoppingBudgetPage';
@@ -36,6 +40,8 @@ import FormulaireYukpoIntelligent from '@/pages/FormulaireYukpoIntelligent';
 import RechercheBesoin from '@/pages/RechercheBesoin';
 import SoldeDetailPage from '@/pages/SoldeDetailPage';
 import YukpoIaHub from '@/pages/YukpoIaHub';
+// Services spécialisés
+import ManageAgencySchedulesPage from '@/pages/agency/ManageAgencySchedulesPage';
 
 // Dashboard pages
 import LocationDisplayDemo from '@/components/location/LocationDisplayDemo';
@@ -44,6 +50,7 @@ import AboutPage from '@/pages/AboutPage';
 import ContactPage from '@/pages/ContactPage';
 import CreatePublicitePage from '@/pages/CreatePublicitePage';
 import Dashboard from '@/pages/Dashboard';
+import AnalyticsDashboard from '@/pages/dashboard/AnalyticsDashboard';
 import MesServices from '@/pages/dashboard/MesServices';
 import MonProfil from '@/pages/dashboard/MonProfil';
 import DashboardPrestataire from '@/pages/DashboardPrestataire';
@@ -60,6 +67,10 @@ import TestResultatBesoin from '@/pages/TestResultatBesoin';
 import UserSettingsPage from '@/pages/UserSettingsPage';
 import ImmersiveVideoWizard from '@/pages/video/ImmersiveVideoWizard';
 import VideoCall from '@/pages/VideoCall';
+// 🛒 Nouvelles pages gestion commandes
+import OrderManagementPage from '@/pages/OrderManagementPage';
+import ProviderAnalyticsPage from '@/pages/ProviderAnalyticsPage';
+import SimilarProductsPage from '@/pages/SimilarProductsPage';
 function App() {
   return (
     <GPSManager>
@@ -127,6 +138,11 @@ function App() {
                           <MesServices />
                         </RequireAuth>
                       } />
+                      <Route path={ROUTES.ANALYTICS_DASHBOARD} element={
+                        <RequireAuth>
+                          <AnalyticsDashboard />
+                        </RequireAuth>
+                      } />
                       <Route path="/dashboard-prestataire" element={
                         <RequireAuth>
                           <DashboardPrestataire />
@@ -164,6 +180,16 @@ function App() {
                         </RequireAuth>
                       } />
                       {/* 🚚 Livraison & shopping */}
+                      <Route path="/become-courier" element={
+                        <RequireAuth>
+                          <CourierRegistrationPage />
+                        </RequireAuth>
+                      } />
+                      <Route path="/courier/my-deliveries" element={
+                        <RequireAuth>
+                          <CourierMyDeliveriesPage />
+                        </RequireAuth>
+                      } />
                       <Route path={ROUTES.DELIVERY_HOME} element={
                         <RequireAuth>
                           <DeliveryHomePage />
@@ -189,6 +215,16 @@ function App() {
                           <ShoppingSummaryPage />
                         </RequireAuth>
                       } />
+                      <Route path={ROUTES.DELIVERY_SHOPPING_FLOW} element={
+                        <RequireAuth>
+                          <DeliveryShoppingFlowPage />
+                        </RequireAuth>
+                      } />
+                      <Route path={ROUTES.DELIVERY_PARCEL_FLOW} element={
+                        <RequireAuth>
+                          <DeliveryParcelFlowPage />
+                        </RequireAuth>
+                      } />
                       <Route path={ROUTES.DELIVERY_TRACKING} element={
                         <RequireAuth>
                           <DeliveryTrackingPage />
@@ -202,6 +238,18 @@ function App() {
                       <Route path={ROUTES.DELIVERY_STORAGE_LOCATIONS} element={
                         <RequireAuth>
                           <StorageLocationsPage />
+                        </RequireAuth>
+                      } />
+                      {/* 🛒 Gestion commandes et produits similaires */}
+                      <Route path={ROUTES.SIMILAR_PRODUCTS} element={<SimilarProductsPage />} />
+                      <Route path={ROUTES.ORDER_MANAGEMENT} element={
+                        <RequireAuth>
+                          <OrderManagementPage />
+                        </RequireAuth>
+                      } />
+                      <Route path={ROUTES.PROVIDER_ANALYTICS} element={
+                        <RequireAuth>
+                          <ProviderAnalyticsPage />
                         </RequireAuth>
                       } />
                       {/*  R+sultats de recherche */}
@@ -220,6 +268,12 @@ function App() {
                       } />
                       {/* ���� Appels vid+�o */}
                       <Route path="/video-call" element={<VideoCall />} />
+                      {/* 🚌 Gestion horaires agences */}
+                      <Route path="/agency/schedules" element={
+                        <RequireAuth>
+                          <ManageAgencySchedulesPage />
+                        </RequireAuth>
+                      } />
                       {/* Fallback */}
                       <Route path="*" element={<PageNotFound />} />
                     </Routes>

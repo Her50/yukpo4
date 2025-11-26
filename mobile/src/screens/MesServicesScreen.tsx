@@ -695,12 +695,12 @@ const MesServicesScreen: React.FC = () => {
   };
 
   // Filtrer les services selon le filtre sélectionné
-  const filteredServices = services.filter((service) => {
+  const filteredServices = Array.isArray(services) ? services.filter((service) => {
     if (filter === 'tous') return true;
     if (filter === 'actif') return service.status === 'active';
     if (filter === 'inactif') return service.status === 'inactive';
     return true;
-  });
+  }) : [];
 
   if (loading) {
     return (
@@ -998,7 +998,7 @@ const MesServicesScreen: React.FC = () => {
           </View>
         ) : (
           <View style={styles.servicesContainer}>
-            {filteredServices.map((service) => (
+            {Array.isArray(filteredServices) && filteredServices.length > 0 ? filteredServices.map((service) => (
               <ServiceCardModern
                 key={service.id}
                 service={service}
@@ -1012,7 +1012,7 @@ const MesServicesScreen: React.FC = () => {
                 onManageTeam={handleManageTeam}  // ✅ NOUVEAU
                 onCreateVideo={handleCreateVideo}  // ✅ NOUVEAU
               />
-            ))}
+            )) : null}
           </View>
         )}
 

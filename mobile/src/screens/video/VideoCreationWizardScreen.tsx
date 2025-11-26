@@ -609,17 +609,36 @@ const VideoCreationWizardScreen: React.FC = () => {
         }
     }, [storyTemplateId, storyTemplates]);
 
-    // ✅ PHASE 3: Animation de transition améliorée entre les étapes
+    // ✅ CORRECTION CRITIQUE: Initialiser l'opacité à 1 AVANT tout pour éviter les écrans vides
     useEffect(() => {
-        stepTransition.setValue(0);
-        // Animation plus fluide avec spring pour un effet plus naturel
-        Animated.spring(stepTransition, {
-            toValue: 1,
-            tension: 50,
-            friction: 8,
-            useNativeDriver: true,
-        }).start();
-    }, [step, stepTransition]);
+        stepTransition.setValue(1); // ✅ Initialiser à 1 pour que le contenu soit visible dès le départ
+    }, []);
+
+    // ✅ PHASE 3: Animation de transition améliorée entre les étapes
+    // ✅ CORRIGÉ: S'assurer que l'animation se déclenche toujours et que le contenu reste visible
+    useEffect(() => {
+        // ✅ CORRECTION: Ne pas mettre à 0 si c'est le premier rendu (step === 1)
+        // Cela évite un flash blanc au chargement initial
+        if (step === 1) {
+            // Pour le premier step, on garde l'opacité à 1
+            stepTransition.setValue(1);
+        } else {
+            // Pour les changements de step, on anime depuis 0.3 (pas complètement invisible)
+            stepTransition.setValue(0.3);
+            // Animation plus fluide avec spring pour un effet plus naturel
+            Animated.spring(stepTransition, {
+                toValue: 1,
+                tension: 50,
+                friction: 8,
+                useNativeDriver: true,
+            }).start((finished) => {
+                // ✅ CORRECTION: Si l'animation échoue, forcer l'opacité à 1
+                if (!finished) {
+                    stepTransition.setValue(1);
+                }
+            });
+        }
+    }, [step]);
 
     useEffect(() => {
         const loop = Animated.loop(
@@ -653,12 +672,6 @@ const VideoCreationWizardScreen: React.FC = () => {
             modalScale.setValue(0);
         }
     }, [isGenerating, modalScale]);
-
-    // ✅ PHASE 3: Animation de transition améliorée avec fade + slide + scale
-    // ✅ CORRIGÉ: Initialiser l'opacité à 1 pour éviter les écrans vides
-    useEffect(() => {
-        stepTransition.setValue(1); // ✅ Initialiser à 1 pour que le contenu soit visible dès le départ
-    }, []);
 
     const stepAnimatedStyle = useMemo(
         () => ({
@@ -2099,11 +2112,15 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
+        // ✅ CORRECTION: S'assurer que le ScrollView est visible
+        minHeight: 200, // Hauteur minimale pour garantir la visibilité
     },
     stepContent: {
         padding: 20,
         gap: 20,
         paddingBottom: Platform.OS === 'ios' ? 110 : 100, // ✅ Espace pour le bouton fixe + safe area
+        // ✅ CORRECTION: S'assurer que le contenu a une hauteur minimale
+        minHeight: 200,
     },
     fixedBottomButton: {
         position: 'absolute',

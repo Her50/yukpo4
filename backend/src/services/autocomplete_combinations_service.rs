@@ -254,8 +254,53 @@ pub async fn search_combinations(
         .map(|s| s.to_lowercase())
         .collect();
 
+    // ✅ CORRECTION: Si la requête est vide, charger les combinaisons populaires
     if terms.is_empty() {
-        return Ok(Vec::new());
+        log::info!("[AutocompleteCombinations] Requête vide - Chargement des combinaisons populaires");
+        let sql = format!(
+            r#"
+            SELECT 
+                *,
+                0.0 as location_score,
+                (usage_count::FLOAT / 100.0) as popularity_score
+            FROM autocomplete_combinations
+            WHERE usage_count > 0
+            ORDER BY 
+                is_ai_preferred DESC,
+                usage_count DESC,
+                created_at DESC
+            LIMIT ${}
+            "#,
+            1
+        );
+
+        let rows = sqlx::query_as::<_, AutocompleteCombination>(&sql)
+            .bind(limit)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur recherche combinaisons populaires: {}", e)))?;
+
+        let results: Vec<CombinationSearchResult> = rows
+            .into_iter()
+            .map(|combo| {
+                let popularity_score = combo.usage_count as f32 / 100.0;
+                let final_score = popularity_score; // Pas de score de localisation pour les populaires
+
+                CombinationSearchResult {
+                    combination: combo,
+                    location_score: 0.0,
+                    popularity_score,
+                    final_score,
+                }
+            })
+            .collect();
+
+        log::info!(
+            "[AutocompleteCombinations] ✅ {} combinaisons populaires chargées",
+            results.len()
+        );
+
+        return Ok(results);
     }
 
     // Construction de la requête SQL avec recherche progressive
