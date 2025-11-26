@@ -53,12 +53,14 @@ struct ServiceFullRow {
 }
 
 #[derive(FromRow)]
+#[allow(dead_code)]
 struct ServiceIdCreatedRow {
     id: i32,
     created_at: sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,
 }
 
 #[derive(FromRow)]
+#[allow(dead_code)]
 struct ServiceIdActiveRow {
     id: i32,
     data: JsonValue,
