@@ -222,14 +222,18 @@ impl DbOptimizer {
              WHERE to_tsvector('french', data::text) @@ plainto_tsquery('french', $1)"
         );
 
+        let mut bind_value: Option<&str> = None;
+        
         if let Some(cat) = category {
             // ✅ NOUVEAU : Si la catégorie correspond à un type spécialisé, utiliser specialized_type
             let specialized_type = Self::map_category_to_specialized_type(cat);
             if let Some(st) = specialized_type {
                 sql_query.push_str(" AND specialized_type = $2");
+                bind_value = Some(st);
             } else {
                 // Service générique : utiliser category
                 sql_query.push_str(" AND (data->>'category' = $2 OR category = $2) AND specialized_type IS NULL");
+                bind_value = Some(cat);
             }
         }
 
@@ -238,8 +242,8 @@ impl DbOptimizer {
 
         let mut query_builder = sqlx::query(&sql_query).bind(query);
 
-        if let Some(cat) = category {
-            query_builder = query_builder.bind(cat);
+        if let Some(value) = bind_value {
+            query_builder = query_builder.bind(value);
         }
 
         query_builder = query_builder.bind(limit);

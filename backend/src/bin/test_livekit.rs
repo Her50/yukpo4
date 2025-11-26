@@ -1,8 +1,7 @@
 // Script de diagnostic LiveKit pour tester la connexion et l'authentification
 // Usage: cargo run --bin test_livekit
 
-use std::env;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use reqwest::Client;
 use serde_json::json;
 
