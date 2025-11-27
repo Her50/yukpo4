@@ -1056,7 +1056,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
         console.log('[ProductCard] Produit partagé avec succès');
       }
     } catch (error) {
-      console.error('[ProductCard] Erreur partage:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('[ProductCard] Erreur partage:', {
+        message: errorMessage,
+        stack: errorStack,
+        product: product?.nom || product?.name,
+        error: error
+      });
       Alert.alert('Erreur', 'Impossible de partager le produit');
     }
   };
@@ -1068,19 +1076,36 @@ const ProductCard: React.FC<ProductCardProps> = ({
     try {
       setLoadingReactions(true);
       const response = await apiGet(`/api/products/${serviceId}/${resolvedProductId}/reactions`);
+      // ✅ CORRIGÉ: Vérifier que response.data existe et est un tableau avant d'appeler forEach
       if (response.success && response.data) {
         const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
-        const reactionsArray = response.data as any[];
-        reactionsArray.forEach((r: any) => {
-          reactionsMap[r.reaction_type] = {
-            count: r.count,
-            hasReacted: r.has_reacted
-          };
-        });
-        setReactions(reactionsMap);
+        // ✅ CORRIGÉ: Vérifier que data est un tableau avant d'appeler forEach
+        const reactionsArray = Array.isArray(response.data) ? response.data : [];
+        if (reactionsArray && typeof reactionsArray.forEach === 'function') {
+          reactionsArray.forEach((r: any) => {
+            if (r && r.reaction_type) {
+              reactionsMap[r.reaction_type] = {
+                count: typeof r.count === 'number' ? r.count : 0,
+                hasReacted: typeof r.has_reacted === 'boolean' ? r.has_reacted : false
+              };
+            }
+          });
+          setReactions(reactionsMap);
+        } else {
+          console.warn('[ProductCard] Réponse réactions invalide (pas un tableau):', response.data);
+        }
       }
     } catch (error) {
-      console.error('[ProductCard] Erreur chargement réactions:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('[ProductCard] Erreur chargement réactions:', {
+        message: errorMessage,
+        stack: errorStack,
+        serviceId,
+        resolvedProductId,
+        error: error
+      });
     } finally {
       setLoadingReactions(false);
     }
@@ -1105,7 +1130,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
         });
       }
     } catch (error) {
-      console.error('[ProductCard] Erreur chargement stats commentaires:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('[ProductCard] Erreur chargement stats commentaires:', {
+        message: errorMessage,
+        stack: errorStack,
+        commentServiceId,
+        error: error
+      });
     } finally {
       setLoadingComments(false);
     }
@@ -1136,8 +1169,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
         await loadReactions();
       }
     } catch (error) {
-      console.error('[ProductCard] Erreur réaction:', error);
-      Alert.alert('Erreur', 'Impossible d’enregistrer votre réaction pour le moment.');
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('[ProductCard] Erreur réaction:', {
+        message: errorMessage,
+        stack: errorStack,
+        serviceId,
+        resolvedProductId,
+        reactionType,
+        error: error
+      });
+      Alert.alert('Erreur', "Impossible d'enregistrer votre réaction pour le moment.");
     } finally {
       setPendingReaction(null);
     }
@@ -1184,7 +1227,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
         Alert.alert('Information', "Impossible de créer une conversation privée pour le moment");
       }
     } catch (error) {
-      console.error('[ProductCard] Erreur création conversation privée:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('[ProductCard] Erreur création conversation privée:', {
+        message: errorMessage,
+        stack: errorStack,
+        userId,
+        userName,
+        error: error
+      });
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de contacter cet utilisateur');
     }
   };

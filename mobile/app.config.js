@@ -1,0 +1,124 @@
+const fs = require('fs');
+const path = require('path');
+
+// Vérifier si google-services.json existe
+const googleServicesPath = path.join(__dirname, 'google-services.json');
+const hasGoogleServices = fs.existsSync(googleServicesPath);
+
+module.exports = {
+    expo: {
+        name: "Yukpomnang",
+        slug: "yukpomnang-mobile",
+        version: "1.0.0",
+        scheme: "yukpomnang",
+        orientation: "portrait",
+        icon: "./assets/icon.png",
+        userInterfaceStyle: "light",
+        splash: {
+            image: "./assets/splash.png",
+            resizeMode: "contain",
+            backgroundColor: "#ffffff"
+        },
+        assetBundlePatterns: [
+            "**/*"
+        ],
+        ios: {
+            supportsTablet: true,
+            bundleIdentifier: "com.yukpomnang.mobile",
+            associatedDomains: [
+                "applinks:yukpomnang.com",
+                "applinks:www.yukpomnang.com"
+            ],
+            infoPlist: {
+                CFBundleURLTypes: [
+                    {
+                        CFBundleURLSchemes: [
+                            "yukpomnang"
+                        ]
+                    }
+                ]
+            }
+        },
+        android: {
+            adaptiveIcon: {
+                foregroundImage: "./assets/adaptive-icon.png",
+                backgroundColor: "#ffffff"
+            },
+            package: "com.yukpomnang.mobile",
+            // Ajouter googleServicesFile seulement si le fichier existe
+            ...(hasGoogleServices && { googleServicesFile: "./google-services.json" }),
+            permissions: [
+                "android.permission.ACCESS_FINE_LOCATION",
+                "android.permission.ACCESS_COARSE_LOCATION",
+                "android.permission.CAMERA",
+                "android.permission.RECORD_AUDIO",
+                "android.permission.WRITE_EXTERNAL_STORAGE",
+                "android.permission.READ_EXTERNAL_STORAGE",
+                "android.permission.INTERNET"
+            ],
+            intentFilters: [
+                {
+                    action: "VIEW",
+                    autoVerify: true,
+                    data: [
+                        {
+                            scheme: "https",
+                            host: "yukpomnang.com",
+                            pathPrefix: "/product"
+                        },
+                        {
+                            scheme: "https",
+                            host: "yukpomnang.com",
+                            pathPrefix: "/service"
+                        },
+                        {
+                            scheme: "yukpomnang"
+                        }
+                    ],
+                    category: [
+                        "BROWSABLE",
+                        "DEFAULT"
+                    ]
+                }
+            ],
+            config: {
+                encoding: "UTF-8",
+                googleMaps: {
+                    apiKey: "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
+                }
+            }
+        },
+        web: {
+            favicon: "./assets/favicon.png"
+        },
+        plugins: [
+            "expo-location",
+            "expo-camera",
+            "expo-image-picker",
+            "expo-document-picker",
+            "expo-file-system",
+            "expo-notifications",
+            [
+                "sentry-expo",
+                {
+                    organization: "yukpo",
+                    project: "mobile-app"
+                }
+            ]
+        ],
+        extra: {
+            eas: {
+                projectId: "944bbf0d-5541-4e56-ba75-87ffc4c5e51f"
+            },
+            sentryDsn: "",
+            observability: {
+                fpsSampleInterval: 6000,
+                fpsWarningThreshold: 45,
+                fpsWarningDebounce: 2,
+                traceSampleRate: 0.2
+            }
+        },
+        owner: "hernandezlele"
+    }
+};
+

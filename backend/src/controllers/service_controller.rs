@@ -1119,74 +1119,114 @@ pub async fn get_services_for_prestataire(
     // ✅ OPTIMISATION 2025-11-27 : Requête SQL optimisée pour éliminer la sous-requête corrélée coûteuse
     // Utilise jsonb_array_elements une seule fois avec un LEFT JOIN LATERAL pour accéder à products_lifecycle
     // Complexité réduite de O(n*m) à O(n) grâce à la jointure optimisée avec index
-    let rows = match sqlx::query(
-        r#"
-        SELECT 
-            s.id,
-            s.is_active,
-            s.created_at,
-            s.category,
-            -- Extraire titre_service (support des deux formats)
-            COALESCE(
-                s.data->>'titre_service',
-                s.data->'titre_service'->>'valeur',
-                s.data->>'titre',
-                'Service sans titre'
-            ) as titre_service,
-            -- Extraire description (tronquée à 200 caractères pour la liste)
-            LEFT(
-                COALESCE(
-                    s.data->>'description',
-                    s.data->'description'->>'valeur',
-                    ''
-                ),
-                200
-            ) as description_preview,
-            -- Produits allégés : UN SEUL parsing JSONB avec jointure optimisée
-            (
-                SELECT jsonb_agg(
-                    jsonb_build_object(
-                        'nom', COALESCE(p.product->>'nom', p.product->>'name', p.product->>'titre', ''),
-                        'prix', p.product->>'prix',
-                        'devise', p.product->>'devise',
-                        'is_active', COALESCE(pl.is_active, true)
-                    )
-                    ORDER BY p.idx
+    // ✅ CORRIGÉ: Ajout de retry avec backoff exponentiel pour gérer les erreurs de connexion PostgreSQL
+    use crate::utils::db_retry::retry_query;
+    
+    let user_id_param = user_id; // Clone pour éviter les problèmes de lifetime
+    let pool_clone = pg_pool.clone();
+    let rows = match retry_query(
+        pg_pool,
+        move || {
+            let user_id = user_id_param;
+            let pool = pool_clone.clone();
+            Box::pin(async move {
+                sqlx::query(
+                    r#"
+                    SELECT 
+                        s.id,
+                        s.is_active,
+                        s.created_at,
+                        s.category,
+                        -- Extraire titre_service (support des deux formats)
+                        COALESCE(
+                            s.data->>'titre_service',
+                            s.data->'titre_service'->>'valeur',
+                            s.data->>'titre',
+                            'Service sans titre'
+                        ) as titre_service,
+                        -- Extraire description (tronquée à 200 caractères pour la liste)
+                        LEFT(
+                            COALESCE(
+                                s.data->>'description',
+                                s.data->'description'->>'valeur',
+                                ''
+                            ),
+                            200
+                        ) as description_preview,
+                        -- ✅ CORRIGÉ: Optimisation requête SQL - Utiliser LATERAL JOIN au lieu de sous-requête corrélée
+                        -- Cela évite l'exécution répétée de la sous-requête pour chaque service
+                        COALESCE(
+                            (
+                                SELECT jsonb_agg(
+                                    jsonb_build_object(
+                                        'nom', COALESCE(p.product->>'nom', p.product->>'name', p.product->>'titre', ''),
+                                        'prix', p.product->>'prix',
+                                        'devise', p.product->>'devise',
+                                        'is_active', COALESCE(pl.is_active, true)
+                                    )
+                                    ORDER BY p.idx
+                                )
+                                FROM LATERAL jsonb_array_elements(
+                                    CASE 
+                                        WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
+                                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
+                                        ELSE '[]'::jsonb
+                                    END
+                                ) WITH ORDINALITY AS p(product, idx)
+                                LEFT JOIN products_lifecycle pl 
+                                    ON pl.service_id = s.id AND pl.product_index = p.idx - 1
+                                LIMIT 10
+                            ),
+                            '[]'::jsonb
+                        ) as produits_light,
+                        -- Compter les produits (réutilise le parsing ci-dessus via jsonb_array_length qui est très rapide)
+                        -- ✅ CORRECTION: Caster explicitement en BIGINT pour correspondre au type Rust Option<i64>
+                        COALESCE(
+                            jsonb_array_length(
+                                CASE 
+                                    WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
+                                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
+                                    ELSE '[]'::jsonb
+                                END
+                            )::BIGINT,
+                            0
+                        ) as produits_count,
+                        -- Garder seulement le place_id de Google Places
+                        s.data->'google_place'->>'place_id' as google_place_id
+                    FROM services s
+                    WHERE s.user_id = $1
+                    ORDER BY s.created_at DESC
+                    LIMIT 200
+                    "#
                 )
-                FROM jsonb_array_elements(
-                    CASE 
-                        WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
-                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
-                        ELSE '[]'::jsonb
-                    END
-                ) WITH ORDINALITY AS p(product, idx)
-                LEFT JOIN products_lifecycle pl 
-                    ON pl.service_id = s.id AND pl.product_index = p.idx - 1
-                LIMIT 10
-            ) as produits_light,
-            -- Compter les produits (réutilise le parsing ci-dessus via jsonb_array_length qui est très rapide)
-            -- ✅ CORRECTION: Caster explicitement en BIGINT pour correspondre au type Rust Option<i64>
-            jsonb_array_length(
-                CASE 
-                    WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
-                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
-                    ELSE '[]'::jsonb
-                END
-            )::BIGINT as produits_count,
-            -- Garder seulement le place_id de Google Places
-            s.data->'google_place'->>'place_id' as google_place_id
-        FROM services s
-        WHERE s.user_id = $1
-        ORDER BY s.created_at DESC
-        "#
+                .bind(user_id)
+                .fetch_all(&pool)
+                .await
+            })
+        },
+        5, // ✅ CORRIGÉ: Augmenté de 3 à 5 tentatives pour gérer les erreurs de connexion PostgreSQL
     )
-    .bind(user_id)
-    .fetch_all(pg_pool)
     .await {
         Ok(r) => r,
         Err(e) => {
-            error!("[get_services_for_prestataire] Erreur requête SQL: {}", e);
-            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Query error: {}", e)}))).into_response();
+            let error_msg = e.to_string();
+            error!("[get_services_for_prestataire] Erreur requête SQL après 5 tentatives: {}", error_msg);
+            
+            // ✅ CORRIGÉ: Message d'erreur plus informatif pour le client
+            let user_friendly_error = if error_msg.contains("peer closed connection") 
+                || error_msg.contains("TLS close_notify")
+                || error_msg.contains("terminating connection")
+                || error_msg.contains("crash of another server process") {
+                "Erreur temporaire de connexion à la base de données. Veuillez réessayer dans quelques instants."
+            } else {
+                "Erreur lors de la récupération des services. Veuillez réessayer."
+            };
+            
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "error": user_friendly_error,
+                "error_code": "DB_CONNECTION_ERROR",
+                "retry_after_seconds": 2
+            }))).into_response();
         }
     };
 

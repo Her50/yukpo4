@@ -324,6 +324,13 @@ const CreatePubliciteScreen: React.FC = () => {
     // Sélection de vidéos
     const handleSelectVideo = async () => {
         try {
+            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Videos
+            if (!ImagePicker || !ImagePicker.MediaType) {
+                console.error('[CreatePubliciteScreen] ImagePicker ou MediaType est undefined');
+                Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+                return;
+            }
+
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaType.Videos,
                 allowsEditing: false,

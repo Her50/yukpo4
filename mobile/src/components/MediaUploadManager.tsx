@@ -64,6 +64,14 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         return;
       }
 
+      // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
+      if (!ImagePicker || !ImagePicker.MediaType) {
+        console.error('[MediaUploadManager] ImagePicker ou MediaType est undefined');
+        Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+        setUploading(false);
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaType.Images,
         allowsMultipleSelection: true,
@@ -71,7 +79,12 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         base64: true,
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+      // ✅ CORRECTION: Protection contre undefined - vérifier que result et result.assets existent
+      if (!result || result.canceled || !result.assets || !Array.isArray(result.assets) || result.assets.length === 0) {
+        return;
+      }
+
+      if (result.assets.length > 0) {
         const newImages: string[] = [];
 
         for (const asset of result.assets) {
@@ -123,6 +136,14 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         return;
       }
 
+      // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Videos
+      if (!ImagePicker || !ImagePicker.MediaType) {
+        console.error('[MediaUploadManager] ImagePicker ou MediaType est undefined');
+        Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+        setUploading(false);
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaType.Videos,
         allowsMultipleSelection: false,
@@ -130,7 +151,12 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         base64: false, // ImagePicker ne supporte pas base64 pour les vidéos
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
+      // ✅ CORRECTION: Protection contre undefined - vérifier que result et result.assets existent
+      if (!result || result.canceled || !result.assets || !Array.isArray(result.assets) || !result.assets[0]) {
+        return;
+      }
+
+      if (result.assets[0]) {
         const videoUri = result.assets[0].uri;
 
         if (videoUri) {

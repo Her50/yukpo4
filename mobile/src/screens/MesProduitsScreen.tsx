@@ -487,12 +487,27 @@ const MesProduitsScreen: React.FC = () => {
                 console.log('[MesProduitsScreen] 📦 Total produits extraits:', allProducts.length);
                 setProducts(allProducts);
             } else {
-                console.error('[MesProduitsScreen] Erreur chargement services:', servicesResponse.error);
+                // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et contexte
+                const errorMessage = servicesResponse.error instanceof Error
+                    ? servicesResponse.error.message
+                    : String(servicesResponse.error || 'Erreur inconnue');
+                console.error('[MesProduitsScreen] Erreur chargement services:', {
+                    message: errorMessage,
+                    error: servicesResponse.error,
+                    response: servicesResponse
+                });
                 setServices([]);
                 setProducts([]);
             }
         } catch (error) {
-            console.error('[MesProduitsScreen] Erreur:', error);
+            // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            console.error('[MesProduitsScreen] Erreur:', {
+                message: errorMessage,
+                stack: errorStack,
+                error: error
+            });
             Alert.alert('Erreur', 'Impossible de charger vos produits');
             setServices([]);
             setProducts([]);
@@ -591,7 +606,14 @@ const MesProduitsScreen: React.FC = () => {
             }
             await loadProducts(true);
         } catch (error) {
-            console.error('[MesProduitsScreen] Erreur rafraîchissement après vidéo:', error);
+            // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            console.error('[MesProduitsScreen] Erreur rafraîchissement après vidéo:', {
+                message: errorMessage,
+                stack: errorStack,
+                error: error
+            });
         } finally {
             DeviceEventEmitter.emit('service:refresh');
             setVideoCreatorVisible(false);
@@ -704,8 +726,16 @@ const MesProduitsScreen: React.FC = () => {
                                         Alert.alert('Erreur', response.error || 'Impossible de réactiver');
                                     }
                                 } catch (error: any) {
-                                    console.error('[MesProduitsScreen] Erreur réactivation:', error);
-                                    const errorMessage = error?.message || 'Impossible de réactiver';
+                                    // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+                                    const errorMessage = error instanceof Error ? error.message : (error?.message || 'Impossible de réactiver');
+                                    const errorStack = error instanceof Error ? error.stack : undefined;
+                                    console.error('[MesProduitsScreen] Erreur réactivation:', {
+                                        message: errorMessage,
+                                        stack: errorStack,
+                                        productId: productIdForToggle,
+                                        error: error
+                                    });
+                                    const finalErrorMessage = errorMessage;
                                     const is404 = errorMessage.includes('404') || errorMessage.includes('not found');
                                     Alert.alert(
                                         '❌ Erreur',
@@ -750,8 +780,16 @@ const MesProduitsScreen: React.FC = () => {
                                         Alert.alert('Erreur', response.error || 'Impossible de désactiver');
                                     }
                                 } catch (error: any) {
-                                    console.error('[MesProduitsScreen] Erreur désactivation:', error);
-                                    const errorMessage = error?.message || 'Impossible de désactiver';
+                                    // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+                                    const errorMessage = error instanceof Error ? error.message : (error?.message || 'Impossible de désactiver');
+                                    const errorStack = error instanceof Error ? error.stack : undefined;
+                                    console.error('[MesProduitsScreen] Erreur désactivation:', {
+                                        message: errorMessage,
+                                        stack: errorStack,
+                                        productId: productIdForToggle,
+                                        error: error
+                                    });
+                                    const finalErrorMessage = errorMessage;
                                     const is404 = errorMessage.includes('404') || errorMessage.includes('not found');
                                     Alert.alert(
                                         '❌ Erreur',
@@ -768,7 +806,14 @@ const MesProduitsScreen: React.FC = () => {
                 );
             }
         } catch (error) {
-            console.error('[MesProduitsScreen] Erreur toggle product:', error);
+            // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            console.error('[MesProduitsScreen] Erreur toggle product:', {
+                message: errorMessage,
+                stack: errorStack,
+                error: error
+            });
         }
     };
 
@@ -818,16 +863,24 @@ const MesProduitsScreen: React.FC = () => {
                                 );
                             }
                         } catch (error: any) {
-                            console.error('[MesProduitsScreen] Erreur suppression:', error);
+                            // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+                            const errorMessage = error instanceof Error ? error.message : (error?.message || 'Impossible de supprimer le produit');
+                            const errorStack = error instanceof Error ? error.stack : undefined;
+                            console.error('[MesProduitsScreen] Erreur suppression:', {
+                                message: errorMessage,
+                                stack: errorStack,
+                                productId: productIdForDelete,
+                                error: error
+                            });
                             // ✅ CORRECTION: Recharger en cas d'erreur pour restaurer l'état
                             await loadProducts(true);
-                            const errorMessage = error?.message || 'Impossible de supprimer le produit';
-                            const is404 = errorMessage.includes('404') || errorMessage.includes('not found');
+                            const finalErrorMessage = errorMessage;
+                            const is404 = finalErrorMessage.includes('404') || finalErrorMessage.includes('not found');
                             Alert.alert(
                                 '❌ Erreur',
                                 is404
                                     ? 'Produit introuvable. Il a peut-être déjà été supprimé.'
-                                    : errorMessage
+                                    : finalErrorMessage
                             );
                         }
                     }
@@ -1011,7 +1064,14 @@ const MesProduitsScreen: React.FC = () => {
                 );
             }
         } catch (error) {
-            console.error('[MesProduitsScreen] Erreur création produit:', error);
+            // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            console.error('[MesProduitsScreen] Erreur création produit:', {
+                message: errorMessage,
+                stack: errorStack,
+                error: error
+            });
             Alert.alert('Erreur', 'Impossible de charger vos services');
         }
     };
@@ -1076,7 +1136,14 @@ const MesProduitsScreen: React.FC = () => {
                 fromMesProduits: true
             });
         } catch (error) {
-            console.error('[MesProduitsScreen] Erreur édition service:', error);
+            // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            console.error('[MesProduitsScreen] Erreur édition service:', {
+                message: errorMessage,
+                stack: errorStack,
+                error: error
+            });
             Alert.alert('Erreur', 'Impossible de charger les données du service');
         }
     };

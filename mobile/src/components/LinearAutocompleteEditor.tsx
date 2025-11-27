@@ -973,14 +973,15 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     // ✅ CORRECTION: Utiliser useMemo pour que chips se mette à jour quand value change
     const chips = useMemo(() => {
+        // ✅ CORRIGÉ: Ne pas logger si displayValue est vide et value est un tableau vide (cas normal)
         if (!displayValue || typeof displayValue !== 'string' || displayValue.trim().length === 0) {
-            console.warn('[LinearAutocompleteEditor] ⚠️ displayValue vide, aucun chip créé. displayValue:', displayValue, 'value:', value);
+            // Cas normal : pas de données à afficher, pas besoin de logger
             return [];
         }
         const parsedChips = parseVectorToChips(displayValue, labelOrder);
         console.log('[LinearAutocompleteEditor] ✅ Chips créés:', parsedChips.length, 'depuis displayValue:', displayValue.substring(0, 100));
         return parsedChips;
-    }, [displayValue, labelOrder]);
+    }, [displayValue, labelOrder, value]);
 
     const fetchSuggestionsForQuery = useCallback(
         async (
@@ -1364,22 +1365,18 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // ✅ NOUVEAU: Charger immédiatement les sous-caractéristiques préférées de l'IA dès qu'elles sont disponibles
     // Ce useEffect s'exécute indépendamment des autres suggestions pour garantir l'affichage immédiat
     useEffect(() => {
-        console.log('[LinearAutocompleteEditor] 🔍 [BACKEND_TRACE] useEffect sousCaracteristiques déclenché:', {
-            hasSousCaracteristiques: !!sousCaracteristiques,
-            type: typeof sousCaracteristiques,
-            keys: normalizedSousCaracteristiques ? Object.keys(normalizedSousCaracteristiques) : [],
-            count: normalizedSousCaracteristiques ? Object.keys(normalizedSousCaracteristiques).length : 0,
-            fullObject: JSON.stringify(sousCaracteristiques).substring(0, 500)
-        });
-
+        // ✅ CORRIGÉ: Ne pas logger si c'est un cas normal (objet vide ou null/undefined)
+        // Ces cas sont normaux et ne nécessitent pas de logging
         if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object') {
-            console.log('[LinearAutocompleteEditor] ⚠️ sousCaracteristiques invalide ou vide');
+            // Cas normal : null ou undefined, pas besoin de logger
             return;
         }
 
         const sousCaracsKeys = Object.keys(sousCaracteristiques);
+        // ✅ CORRIGÉ: Ne pas logger si l'objet est vide (cas normal)
+        // Un objet vide est valide et ne nécessite pas de logging
         if (sousCaracsKeys.length === 0) {
-            console.log('[LinearAutocompleteEditor] ⚠️ sousCaracteristiques est un objet vide');
+            // Cas normal : objet vide, pas besoin de logger
             return;
         }
 

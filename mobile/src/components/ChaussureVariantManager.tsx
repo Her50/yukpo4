@@ -81,6 +81,13 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
     // ✅ Upload multiple images par variante
     const handleImagePicker = async (variantId: string) => {
         try {
+            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
+            if (!ImagePicker || !ImagePicker.MediaType) {
+                console.error('[ChaussureVariantManager] ImagePicker ou MediaType est undefined');
+                Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+                return;
+            }
+
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaType.Images,
                 allowsMultipleSelection: true,

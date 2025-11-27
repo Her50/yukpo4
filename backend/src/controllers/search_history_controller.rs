@@ -88,9 +88,13 @@ pub async fn record_search(
         }))),
         Err(e) => {
             eprintln!("❌ Erreur enregistrement recherche: {:?}", e);
+            // ✅ CORRECTION: Retourner JSON au lieu de String pour éviter l'erreur de parsing côté mobile
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Erreur enregistrement: {}", e),
+                serde_json::to_string(&serde_json::json!({
+                    "success": false,
+                    "error": format!("Erreur enregistrement: {}", e)
+                })).unwrap_or_else(|_| format!("Erreur enregistrement: {}", e)),
             ))
         }
     }

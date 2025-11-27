@@ -224,8 +224,6 @@ const extractSearchResults = (response: any): Product[] => {
       image: item.image || item?.data?.image,
       coordinates: item.coordinates || item?.data?.coordinates,
       // ✅ Ajouter les données brutes pour ProductCard (avec priorité aux données enrichies)
-      chosen_location, // S'assurer que chosen_location est au niveau racine
-      location_vector, // S'assurer que location_vector est au niveau racine
       ...item,
     };
 
@@ -374,7 +372,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaType.Images,
+        mediaTypes: 'images' as any, // ✅ CORRIGÉ: Utiliser chaîne au lieu de MediaType.Images
         allowsEditing: true,
         quality: 0.8,
         base64: true,
@@ -385,7 +383,14 @@ const ResultatBesoinScreen: React.FC = () => {
         setSearchImages((prev) => [image, ...prev].slice(0, 10));
       }
     } catch (error) {
-      logger.error('[ResultatBesoinScreen] Erreur prise de photo:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] Erreur prise de photo:', {
+        message: errorMessage,
+        stack: errorStack,
+        error: error
+      });
       Alert.alert('Erreur', 'Impossible de prendre la photo.');
     }
   }, []);
@@ -398,7 +403,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.Images,
+        mediaTypes: 'images' as any, // ✅ CORRIGÉ: Utiliser chaîne au lieu de MediaType.Images
         allowsMultipleSelection: true,
         quality: 0.8,
         base64: true,
@@ -414,7 +419,14 @@ const ResultatBesoinScreen: React.FC = () => {
         }
       }
     } catch (error) {
-      logger.error('[ResultatBesoinScreen] Erreur sélection images:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] Erreur sélection images:', {
+        message: errorMessage,
+        stack: errorStack,
+        error: error
+      });
       Alert.alert('Erreur', 'Impossible de sélectionner des images.');
     }
   }, [requestImagePermissions]);
@@ -433,7 +445,14 @@ const ResultatBesoinScreen: React.FC = () => {
         setSearchDocuments((prev) => [{ name: asset.name ?? 'Document', base64 }, ...prev].slice(0, 5));
       }
     } catch (error) {
-      logger.error('[ResultatBesoinScreen] Erreur sélection document:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] Erreur sélection document:', {
+        message: errorMessage,
+        stack: errorStack,
+        error: error
+      });
       Alert.alert('Erreur', 'Impossible de sélectionner le document.');
     }
   }, []);
@@ -568,7 +587,15 @@ const ResultatBesoinScreen: React.FC = () => {
         setDynamicPlaceholder(null);
       }
     } catch (error) {
-      logger.error('[ResultatBesoinScreen] Erreur suggestions:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] Erreur suggestions:', {
+        message: errorMessage,
+        stack: errorStack,
+        query: query,
+        error: error
+      });
       setSuggestions([]);
       setDynamicPlaceholder(null);
     } finally {
@@ -635,7 +662,15 @@ const ResultatBesoinScreen: React.FC = () => {
         }
       }
     } catch (error) {
-      logger.error('[ResultatBesoinScreen] ❌ Erreur initialisation depuis route.params:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] ❌ Erreur initialisation depuis route.params:', {
+        message: errorMessage,
+        stack: errorStack,
+        params: route.params,
+        error: error
+      });
     }
   }, [route.params]); // ✅ Exécuter une seule fois au montage ou quand les params changent
 
@@ -644,7 +679,12 @@ const ResultatBesoinScreen: React.FC = () => {
     try {
       // ✅ PROTECTION: Vérifier que fetchSuggestions existe
       if (typeof fetchSuggestions !== 'function') {
-        logger.error('[ResultatBesoinScreen] ❌ fetchSuggestions n\'est pas une fonction');
+        // ✅ CORRIGÉ: Afficher le contexte de l'erreur
+        logger.error('[ResultatBesoinScreen] ❌ fetchSuggestions n\'est pas une fonction', {
+          type: typeof fetchSuggestions,
+          fetchSuggestions: fetchSuggestions,
+          searchQuery
+        });
         return;
       }
 
@@ -671,7 +711,15 @@ const ResultatBesoinScreen: React.FC = () => {
         }
       };
     } catch (error) {
-      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect fetchSuggestions:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect fetchSuggestions:', {
+        message: errorMessage,
+        stack: errorStack,
+        searchQuery,
+        error: error
+      });
     }
   }, [searchQuery, fetchSuggestions, route.params]); // ✅ Ajouter route.params aux dependencies
 
@@ -720,7 +768,15 @@ const ResultatBesoinScreen: React.FC = () => {
       setDynamicFilters(meaningfulFilters);
       logger.log('[ResultatBesoinScreen] Filtres dynamiques générés:', Object.keys(meaningfulFilters));
     } catch (error) {
-      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect dynamicFilters:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect dynamicFilters:', {
+        message: errorMessage,
+        stack: errorStack,
+        resultsCount: results?.length,
+        error: error
+      });
       setDynamicFilters({});
     }
   }, [results]);
@@ -730,7 +786,13 @@ const ResultatBesoinScreen: React.FC = () => {
     try {
       // ✅ PROTECTION: Vérifier que results est un array valide
       if (!Array.isArray(results)) {
-        logger.error('[ResultatBesoinScreen] ❌ results n\'est pas un array');
+        // ✅ CORRIGÉ: Afficher le contexte de l'erreur
+        logger.error('[ResultatBesoinScreen] ❌ results n\'est pas un array', {
+          type: typeof results,
+          results: results,
+          isNull: results === null,
+          isUndefined: results === undefined
+        });
         setFilteredResults([]);
         return;
       }
@@ -815,7 +877,17 @@ const ResultatBesoinScreen: React.FC = () => {
 
       setFilteredResults(filtered);
     } catch (error) {
-      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect filtrage/tri:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect filtrage/tri:', {
+        message: errorMessage,
+        stack: errorStack,
+        resultsCount: results?.length,
+        sortBy,
+        filterCategory,
+        error: error
+      });
       setFilteredResults(results || []); // Fallback aux résultats bruts
     }
   }, [results, sortBy, filterCategory, selectedFilters, priceFilter]); // ✅ Ajout priceFilter
@@ -852,12 +924,15 @@ const ResultatBesoinScreen: React.FC = () => {
     setFilters(finalFilters);
     setLoadingResults(true);
 
+    // ✅ CORRIGÉ: Déclarer payload avant le try pour qu'il soit accessible dans le catch
+    let payload: any = {};
+
     try {
       // Construire le texte de recherche depuis le vecteur
       const searchText = finalFilters.join(' ');
       logger.log('[ResultatBesoinScreen] 🔍 Recherche avec texte:', searchText);
 
-      const payload: any = {
+      payload = {
         texte: searchText,  // "Nike Air Max 42 Douala"
       };
 
@@ -953,8 +1028,15 @@ const ResultatBesoinScreen: React.FC = () => {
         });
       }
     } catch (error: any) {
-      logger.error('[ResultatBesoinScreen] ❌ Erreur recherche:', error);
-      logger.error('[ResultatBesoinScreen] ❌ Stack trace:', error?.stack);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : error?.stack;
+      logger.error('[ResultatBesoinScreen] ❌ Erreur recherche:', {
+        message: errorMessage,
+        stack: errorStack,
+        payload,
+        error: error
+      });
       setResults([]);
     } finally {
       setLoadingResults(false);
@@ -963,12 +1045,21 @@ const ResultatBesoinScreen: React.FC = () => {
 
   // Sélectionner suggestion
   const selectSuggestion = useCallback(async (suggestion: CombinationSuggestion) => {
+    // ✅ CORRIGÉ: Déclarer vector avant le try pour qu'il soit accessible dans le catch
+    let vector: string[] = [];
+
     try {
       logger.log('[ResultatBesoinScreen] 🎯 Suggestion sélectionnée:', suggestion);
 
-      const vector = getSuggestionVector(suggestion);
+      vector = getSuggestionVector(suggestion);
       if (!vector || vector.length === 0) {
-        logger.error('[ResultatBesoinScreen] ❌ Suggestion invalide ou vecteur manquant');
+        // ✅ CORRIGÉ: Afficher le contexte de l'erreur
+        logger.error('[ResultatBesoinScreen] ❌ Suggestion invalide ou vecteur manquant', {
+          suggestion: suggestion,
+          hasFullVector: !!suggestion?.full_vector,
+          hasProductVector: !!suggestion?.product_vector,
+          vectorLength: vector?.length
+        });
         return;
       }
 
@@ -978,7 +1069,16 @@ const ResultatBesoinScreen: React.FC = () => {
       setShowSuggestions(false);
       await searchFinal(vector);
     } catch (error) {
-      logger.error('[ResultatBesoinScreen] ❌ Crash selectSuggestion:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] ❌ Crash selectSuggestion:', {
+        message: errorMessage,
+        stack: errorStack,
+        suggestion: suggestion,
+        vector: vector,
+        error: error
+      });
     }
   }, [searchFinal]);
 
@@ -1028,7 +1128,15 @@ const ResultatBesoinScreen: React.FC = () => {
         }
       }
     } catch (error) {
-      logger.error('[ResultatBesoinScreen] Erreur refresh:', error);
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] Erreur refresh:', {
+        message: errorMessage,
+        stack: errorStack,
+        searchQuery,
+        error: error
+      });
     } finally {
       setRefreshing(false);
     }
@@ -1055,7 +1163,16 @@ const ResultatBesoinScreen: React.FC = () => {
                   setShowSuggestions(false);
                   searchFinal(searchQuery || filters);
                 } catch (error) {
-                  logger.error('[ResultatBesoinScreen] ❌ Crash recherche manuelle:', error);
+                  // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  const errorStack = error instanceof Error ? error.stack : undefined;
+                  logger.error('[ResultatBesoinScreen] ❌ Crash recherche manuelle:', {
+                    message: errorMessage,
+                    stack: errorStack,
+                    searchQuery,
+                    filters,
+                    error: error
+                  });
                 }
               }}
             >
@@ -1147,7 +1264,16 @@ const ResultatBesoinScreen: React.FC = () => {
               setShowSuggestions(false);
               searchFinal(searchQuery || filters);
             } catch (error) {
-              logger.error('[ResultatBesoinScreen] ❌ Crash recherche quand même:', error);
+              // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              const errorStack = error instanceof Error ? error.stack : undefined;
+              logger.error('[ResultatBesoinScreen] ❌ Crash recherche quand même:', {
+                message: errorMessage,
+                stack: errorStack,
+                searchQuery,
+                filters,
+                error: error
+              });
             }
           }}
         >
@@ -1178,7 +1304,15 @@ const ResultatBesoinScreen: React.FC = () => {
                     searchFinal(searchQuery);
                   }
                 } catch (error) {
-                  console.error('[ResultatBesoinScreen] ❌ Crash onSubmitEditing:', error);
+                  // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  const errorStack = error instanceof Error ? error.stack : undefined;
+                  console.error('[ResultatBesoinScreen] ❌ Crash onSubmitEditing:', {
+                    message: errorMessage,
+                    stack: errorStack,
+                    searchQuery,
+                    error: error
+                  });
                 }
               }}
             />
@@ -1201,7 +1335,16 @@ const ResultatBesoinScreen: React.FC = () => {
                   searchFinal(searchQuery);
                 }
               } catch (error) {
-                console.error('[ResultatBesoinScreen] ❌ Crash onPress:', error);
+                // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                const errorStack = error instanceof Error ? error.stack : undefined;
+                console.error('[ResultatBesoinScreen] ❌ Crash onPress:', {
+                  message: errorMessage,
+                  stack: errorStack,
+                  searchQuery,
+                  filters,
+                  error: error
+                });
               }
             }}
             disabled={loadingResults}
@@ -1604,7 +1747,7 @@ const ResultatBesoinScreen: React.FC = () => {
         renderItem={({ item }) => {
           // ✅ NOUVEAU 2025-11-26 : Détecter le type de résultat et utiliser le composant spécialisé
           const searchMethod = (item as any).search_method || '';
-          const data = item.data || {};
+          const data = (item as any).data || {}; // ✅ CORRIGÉ: item.data n'existe pas sur le type Product
           const type = data.type || (item as any).type || '';
 
           // Détecter le type spécialisé
@@ -1626,7 +1769,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
                 onPress={() => {
                   trackNavigation('click', {
-                    itemType: 'pharmacy',
+                    itemType: 'pharmacy' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
                     itemId: item.service_id?.toString(),
                   });
                   (navigation as any).navigate('ServiceDetail', {
@@ -1657,7 +1800,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
                 onPress={() => {
                   trackNavigation('click', {
-                    itemType: 'hospital',
+                    itemType: 'hospital' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
                     itemId: item.service_id?.toString(),
                   });
                   (navigation as any).navigate('ServiceDetail', {
@@ -1687,7 +1830,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
                 onPress={() => {
                   trackNavigation('click', {
-                    itemType: 'laboratory',
+                    itemType: 'laboratory' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
                     itemId: item.service_id?.toString(),
                   });
                   (navigation as any).navigate('ServiceDetail', {
@@ -1720,7 +1863,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 busTickets={busTickets}
                 onPress={() => {
                   trackNavigation('click', {
-                    itemType: 'travel_agency',
+                    itemType: 'travel_agency' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
                     itemId: item.service_id?.toString(),
                   });
                   (navigation as any).navigate('ServiceDetail', {
@@ -1767,7 +1910,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 })) : []}
                 onPress={() => {
                   trackNavigation('click', {
-                    itemType: 'bus_ticket',
+                    itemType: 'bus_ticket' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
                     itemId: item.service_id?.toString(),
                   });
                   (navigation as any).navigate('ServiceDetail', {
@@ -1796,7 +1939,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
                 onPress={() => {
                   trackNavigation('click', {
-                    itemType: 'covoiturage',
+                    itemType: 'covoiturage' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
                     itemId: item.service_id?.toString(),
                   });
                   (navigation as any).navigate('ServiceDetail', {
@@ -1823,7 +1966,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
                 onPress={() => {
                   trackNavigation('click', {
-                    itemType: 'taxi',
+                    itemType: 'taxi' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
                     itemId: item.service_id?.toString(),
                   });
                   (navigation as any).navigate('ServiceDetail', {
@@ -1849,8 +1992,8 @@ const ResultatBesoinScreen: React.FC = () => {
                 product={item}
                 service={{
                   ...item,
-                  data: item.data || {},
-                  user: item.user || null,
+                  data: (item as any).data || {}, // ✅ CORRIGÉ: item.data n'existe pas sur le type Product
+                  user: (item as any).user || null, // ✅ CORRIGÉ: item.user n'existe pas sur le type Product
                   prestataire: item.prestataire || null,
                 } as any}
               />

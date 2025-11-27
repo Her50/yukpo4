@@ -83,17 +83,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .max_connections(max_connections)
         .min_connections(min_connections)  // ✅ Maintenir un minimum de connexions
         .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
-        .idle_timeout(Some(std::time::Duration::from_secs(600))) // 10 minutes
+        .idle_timeout(Some(std::time::Duration::from_secs(300))) // ✅ CORRIGÉ: Réduit de 600s à 300s (5 min) pour éviter les connexions mortes
         .max_lifetime(Some(std::time::Duration::from_secs(1800))) // 30 minutes max par connexion
         .test_before_acquire(true)  // ✅ Tester la connexion avant utilisation
-        // ✅ CORRIGÉ: Désactiver la validation TLS stricte pour éviter les erreurs "TLS close_notify"
-        // Cela permet de récupérer automatiquement des connexions fermées brutalement
-        .after_connect(|_conn, _meta| {
-            Box::pin(async move {
-                // Pas de validation TLS stricte - laisser PostgreSQL gérer
-                Ok(())
-            })
-        })
+        // ✅ CORRIGÉ 2025-11-27: Amélioration de la gestion des connexions PostgreSQL
+        // - test_before_acquire permet de détecter les connexions mortes avant utilisation
+        // - idle_timeout réduit pour éviter les connexions mortes qui causent "crash of another server process"
+        // - Les erreurs TLS "close_notify" sont gérées par retry_query dans les contrôleurs
+        // - Le pool se reconnecte automatiquement si une connexion est fermée
         .connect(&db_url)
         .await
         .map_err(|e| {

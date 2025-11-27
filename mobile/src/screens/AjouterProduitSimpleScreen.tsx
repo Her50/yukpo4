@@ -239,7 +239,42 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     }
     const prefillProduits = normalizeToStringArray(prefillProduitsValue || []);
 
-    const sous_caracteristiques = suggestionData.produits?.sous_caracteristiques || prefill.sous_caracteristiques || null;
+    // ✅ CORRECTION: Extraire sous_caracteristiques avec plusieurs fallbacks
+    let sous_caracteristiques = null;
+
+    // PRIORITÉ 1: Depuis suggestionData.produits.sous_caracteristiques
+    if (suggestionData.produits?.sous_caracteristiques && typeof suggestionData.produits.sous_caracteristiques === 'object') {
+        sous_caracteristiques = suggestionData.produits.sous_caracteristiques;
+    }
+    // PRIORITÉ 2: Depuis suggestionData.sous_caracteristiques (au niveau racine)
+    else if (suggestionData.sous_caracteristiques && typeof suggestionData.sous_caracteristiques === 'object') {
+        sous_caracteristiques = suggestionData.sous_caracteristiques;
+    }
+    // PRIORITÉ 3: Construire depuis product_vector et product_labels si disponibles
+    else if (suggestionData.produits?.product_vector && Array.isArray(suggestionData.produits.product_vector) &&
+        suggestionData.produits.product_labels && Array.isArray(suggestionData.produits.product_labels) &&
+        suggestionData.produits.product_vector.length > 0 && suggestionData.produits.product_vector.length === suggestionData.produits.product_labels.length) {
+        const sousCaracsObj: Record<string, string[]> = {};
+        suggestionData.produits.product_vector.forEach((value: string, index: number) => {
+            const label = suggestionData.produits.product_labels[index];
+            if (label && typeof label === 'string' && value && typeof value === 'string') {
+                if (!sousCaracsObj[label]) {
+                    sousCaracsObj[label] = [];
+                }
+                if (!sousCaracsObj[label].includes(value)) {
+                    sousCaracsObj[label].push(value);
+                }
+            }
+        });
+        if (Object.keys(sousCaracsObj).length > 0) {
+            sous_caracteristiques = sousCaracsObj;
+            console.log('[AjouterProduitSimple] ✅ sous_caracteristiques construit depuis product_vector/product_labels:', Object.keys(sousCaracsObj));
+        }
+    }
+    // PRIORITÉ 4: Depuis prefill
+    if (!sous_caracteristiques && prefill.sous_caracteristiques && typeof prefill.sous_caracteristiques === 'object') {
+        sous_caracteristiques = prefill.sous_caracteristiques;
+    }
 
     // ✅ Lieu produit
     const lieu_produit = extractValue(suggestionData.lieu_produit) || extractValue(suggestionData.lieu_commercial) || extractValue(suggestionData.lieu_commercialisation) || null;
@@ -252,6 +287,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         devise_produit,
         variabilite_prix: iaPriceVariant ? 'OUI' : 'NON',
         produits: (produits && Array.isArray(produits) ? produits.length : 0) || (Array.isArray(suggestionProduits) ? suggestionProduits.length : 0),
+        sous_caracteristiques: sous_caracteristiques ? Object.keys(sous_caracteristiques).length + ' dimensions' : 'VIDE',
+        product_vector: suggestionData.produits?.product_vector ? suggestionData.produits.product_vector.length : 0,
+        product_labels: suggestionData.produits?.product_labels ? suggestionData.produits.product_labels.length : 0,
         lieu_produit: lieu_produit ? 'OUI' : 'NON'
     });
 
@@ -281,7 +319,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         price_variant: initialPriceVariant,
         // ✅ CORRECTION: S'assurer que produits est toujours un tableau de strings pour LinearAutocompleteEditor
         produits: prefillProduits.length > 0 ? prefillProduits : suggestionProduits,
-        sous_caracteristiques: prefill.sous_caracteristiques ?? sous_caracteristiques,
+        // ✅ CORRECTION: Utiliser sous_caracteristiques construit (avec fallback vers prefill)
+        sous_caracteristiques: sous_caracteristiques || prefill.sous_caracteristiques || {},
         lieu_produit: prefill.lieu_produit ?? lieu_produit,
         images: initialProductImages,
         videos: initialProductVideos,
@@ -297,11 +336,16 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const [formValues, setFormValues] = useState<any>(initialFormValues);
 
     // ✅ NOUVEAU 2025-11-21: Charger les combinaisons préférées par l'IA via session_id
+    // ✅ CORRIGÉ: Charger aussi si sous_caracteristiques est vide (pour afficher les caractéristiques)
     React.useEffect(() => {
         const loadAIPreferredCombinations = async () => {
-            // Vérifier si on a un session_id et que produits n'est pas déjà rempli
+            // Vérifier si on a un session_id et que produits OU sous_caracteristiques sont vides
             const sessionId = suggestionIA?.session_id || suggestionIA?.data?.session_id;
-            if (sessionId && (!formValues.produits || formValues.produits.length === 0)) {
+            const hasProduits = formValues.produits && Array.isArray(formValues.produits) && formValues.produits.length > 0;
+            const hasSousCaracs = formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object' && Object.keys(formValues.sous_caracteristiques).length > 0;
+
+            // ✅ CORRIGÉ: Charger si session_id existe ET (produits vide OU sous_caracteristiques vide)
+            if (sessionId && (!hasProduits || !hasSousCaracs)) {
                 try {
                     const combinationsResponse = await apiGet(`/api/combinations/session/${sessionId}`);
                     if (combinationsResponse?.combinations && Array.isArray(combinationsResponse.combinations)) {
@@ -358,7 +402,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         };
 
         loadAIPreferredCombinations();
-    }, [suggestionIA?.session_id, suggestionIA?.data?.session_id]);
+    }, [suggestionIA?.session_id, suggestionIA?.data?.session_id, formValues.produits, formValues.sous_caracteristiques]);
 
     const currentModalites = Array.isArray(formValues.variabilite_prix?.modalites)
         ? formValues.variabilite_prix.modalites

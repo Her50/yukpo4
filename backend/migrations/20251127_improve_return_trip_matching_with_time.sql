@@ -2,6 +2,9 @@
 -- Date: 2025-11-27
 -- Description: Modifie la fonction match_return_trip_requests pour inclure le matching par heure de retour
 
+-- ✅ CORRIGÉ: DROP la fonction avant de la recréer si le type de retour change
+DROP FUNCTION IF EXISTS match_return_trip_requests(TEXT);
+
 -- Fonction améliorée pour matcher automatiquement les demandes de retour avec prise en compte de l'heure
 CREATE OR REPLACE FUNCTION match_return_trip_requests(p_product_id TEXT)
 RETURNS TABLE(

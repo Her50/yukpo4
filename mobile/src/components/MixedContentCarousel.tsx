@@ -112,12 +112,14 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     useEffect(() => {
         if (isAutoScrollDisabled) {
             clearAutoScrollTimer();
-            console.log('[MixedContentCarousel] ⏸️ Scroll automatique désactivé (configuration)');
+            // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
+            console.debug('[MixedContentCarousel] ⏸️ Scroll automatique désactivé (configuration)');
             return;
         }
 
         const safeContent = Array.isArray(content) ? content : [];
-        console.log('[MixedContentCarousel] 🔍 Vérification scroll initial:', {
+        // ✅ CORRIGÉ: Log en debug pour éviter le spam
+        console.debug('[MixedContentCarousel] 🔍 Vérification scroll initial:', {
             contentLength: safeContent.length,
             currentIndex,
             isPaused,
@@ -125,7 +127,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         });
 
         if (safeContent.length > 1 && currentIndex === 0 && !isPaused) {
-            console.log('[MixedContentCarousel] ⏱️ Programmation scroll initial dans 2 secondes...');
+            // ✅ CORRIGÉ: Log en debug pour éviter le spam
+            console.debug('[MixedContentCarousel] ⏱️ Programmation scroll initial dans 2 secondes...');
             const initialTimer = setTimeout(() => {
                 const safeContent = Array.isArray(content) ? content : [];
                 if (scrollViewRef.current && safeContent.length > 1) {
@@ -135,7 +138,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                         return;
                     }
 
-                    console.log('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial (index 0 → 1)');
+                    // ✅ CORRIGÉ: Log en debug pour éviter le spam
+                    console.debug('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial (index 0 → 1)');
                     // ✅ CORRIGÉ: Calculer la position correctement (nextIndex * SNAP_INTERVAL)
                     const nextIndex = 1;
                     const scrollPosition = nextIndex * SNAP_INTERVAL;
@@ -157,7 +161,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
             return () => clearTimeout(initialTimer);
         } else if (safeContent.length <= 1) {
-            console.log('[MixedContentCarousel] ⚠️ Pas assez de contenu pour le scroll automatique:', safeContent.length);
+            // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
+            console.debug('[MixedContentCarousel] Pas assez de contenu pour le scroll automatique:', safeContent.length);
         }
     }, [content.length, isPaused, currentIndex, isAutoScrollDisabled, content]);
 
@@ -317,9 +322,11 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                     }
                 });
 
-                console.log(`[MixedContentCarousel] ✅ ${organicContent.length} produits organiques chargés`);
+                // ✅ CORRIGÉ: Log en debug pour éviter le spam
+                console.debug(`[MixedContentCarousel] ✅ ${organicContent.length} produits organiques chargés`);
                 if (organicContent.length === 0) {
-                    console.warn('[MixedContentCarousel] ⚠️ Aucun produit trouvé dans les services. Structure des données:', {
+                    // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
+                    console.debug('[MixedContentCarousel] ⚠️ Aucun produit trouvé dans les services. Structure des données:', {
                         servicesCount: response.data.length,
                         firstService: response.data[0] ? {
                             id: response.data[0].id,
@@ -333,7 +340,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 }
                 setContent(organicContent);
             } else {
-                console.log('[MixedContentCarousel] ⚠️ Aucun produit organique trouvé - Réponse API invalide:', {
+                // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
+                console.debug('[MixedContentCarousel] ⚠️ Aucun produit organique trouvé - Réponse API invalide:', {
                     success: response.success,
                     hasData: !!response.data,
                     isArray: Array.isArray(response.data),
@@ -374,17 +382,20 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         const safeContent = Array.isArray(content) ? content : [];
 
         if (isAutoScrollDisabled) {
-            console.log('[MixedContentCarousel] ⏸️ Scroll automatique désactivé (configuration)');
+            // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
+            console.debug('[MixedContentCarousel] ⏸️ Scroll automatique désactivé (configuration)');
             return;
         }
 
         if (safeContent.length <= 1) {
-            console.log('[MixedContentCarousel] ⚠️ Pas assez de contenu pour le scroll automatique:', safeContent.length);
+            // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
+            console.debug('[MixedContentCarousel] Pas assez de contenu pour le scroll automatique:', safeContent.length);
             return;
         }
 
         if (isPaused) {
-            console.log('[MixedContentCarousel] ⏸️ Scroll automatique en pause');
+            // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
+            console.debug('[MixedContentCarousel] ⏸️ Scroll automatique en pause');
             return;
         }
 
@@ -395,7 +406,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         }
 
         const delay = Math.max(calculateDelay(currentItem), 3000);
-        console.log('[MixedContentCarousel] ⏱️ Programmation autoscroll', {
+        // ✅ CORRIGÉ: Log en debug pour éviter le spam (se déclenche fréquemment)
+        console.debug('[MixedContentCarousel] ⏱️ Programmation autoscroll', {
             delay,
             currentIndex,
             contentLength: safeContent.length,
@@ -406,13 +418,15 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         autoScrollTimerRef.current = setTimeout(() => {
             // ✅ CORRIGÉ: Vérifier que le ScrollView est monté et que le contenu est chargé
             if (!scrollViewRef.current) {
-                console.warn('[MixedContentCarousel] ⚠️ ScrollView ref null, scroll annulé');
+                // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas rare mais normal)
+                console.debug('[MixedContentCarousel] ⚠️ ScrollView ref null, scroll annulé');
                 return;
             }
 
             const safeContent = Array.isArray(content) ? content : [];
             if (safeContent.length <= 1) {
-                console.warn('[MixedContentCarousel] ⚠️ Contenu insuffisant lors du scroll:', safeContent.length);
+                // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
+                console.debug('[MixedContentCarousel] ⚠️ Contenu insuffisant lors du scroll:', safeContent.length);
                 return;
             }
 
@@ -420,11 +434,13 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             try {
                 // Test si le ScrollView est accessible
                 if (typeof scrollViewRef.current.scrollTo !== 'function') {
-                    console.warn('[MixedContentCarousel] ⚠️ ScrollView.scrollTo n\'est pas une fonction, scroll annulé');
+                    // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas rare mais normal)
+                    console.debug('[MixedContentCarousel] ⚠️ ScrollView.scrollTo n\'est pas une fonction, scroll annulé');
                     return;
                 }
             } catch (error) {
-                console.warn('[MixedContentCarousel] ⚠️ Erreur accès ScrollView:', error);
+                // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas rare mais normal)
+                console.debug('[MixedContentCarousel] ⚠️ Erreur accès ScrollView:', error);
                 return;
             }
 
@@ -432,7 +448,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             // ✅ CORRIGÉ: Calculer la position de scroll correctement en tenant compte du padding
             const scrollPosition = nextIndex * SNAP_INTERVAL;
 
-            console.log('[MixedContentCarousel] 🎬 Auto scroll exécuté', {
+            // ✅ CORRIGÉ: Log en debug pour éviter le spam (se déclenche fréquemment)
+            console.debug('[MixedContentCarousel] 🎬 Auto scroll exécuté', {
                 currentIndex,
                 nextIndex,
                 scrollPosition,
@@ -486,7 +503,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         const safeContent = Array.isArray(content) ? content : [];
 
         if (index !== currentIndex && index >= 0 && index < safeContent.length) {
-            console.log('[MixedContentCarousel] 👆 Scroll manuel détecté: index', index);
+            // ✅ CORRIGÉ: Log en debug pour éviter le spam (se déclenche à chaque scroll manuel)
+            console.debug('[MixedContentCarousel] 👆 Scroll manuel détecté: index', index);
             setCurrentIndex(index);
 
             if (!isAutoScrollDisabled) {
@@ -494,7 +512,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
                 clearResumeTimer();
                 resumeTimerRef.current = setTimeout(() => {
-                    console.log('[MixedContentCarousel] ▶️ Reprise auto-scroll après pause manuelle');
+                    // ✅ CORRIGÉ: Log en debug pour éviter le spam
+                    console.debug('[MixedContentCarousel] ▶️ Reprise auto-scroll après pause manuelle');
                     setIsPaused(false);
                 }, 4000);
             }

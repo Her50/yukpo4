@@ -41,6 +41,13 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
                 return;
             }
 
+            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
+            if (!ImagePicker || !ImagePicker.MediaType) {
+                console.error('[BrandingManagerMobile] ImagePicker ou MediaType est undefined');
+                Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+                return;
+            }
+
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaType.Images,
                 allowsMultipleSelection: false,

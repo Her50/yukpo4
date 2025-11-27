@@ -607,8 +607,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     // Picker d'images
     const pickImage = async () => {
         try {
+            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
+            // Utiliser 'images' as any pour éviter les erreurs TypeScript avec certaines versions d'expo-image-picker
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaType.Images,
+                mediaTypes: 'images' as any,
                 allowsMultipleSelection: true,
                 quality: 0.8,
                 base64: true,

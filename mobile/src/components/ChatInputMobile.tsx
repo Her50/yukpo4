@@ -293,6 +293,13 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         }
 
         try {
+            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
+            if (!ImagePicker || !ImagePicker.MediaType) {
+                console.error('[ChatInputMobile] ImagePicker ou MediaType est undefined');
+                Alert.alert('Erreur', 'Impossible d\'accéder à la caméra. Veuillez réessayer.');
+                return;
+            }
+
             const result = await ImagePicker.launchCameraAsync({
                 mediaTypes: ImagePicker.MediaType.Images,
                 allowsEditing: true,
@@ -333,6 +340,13 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     const pickImage = async () => {
         const hasPermission = await requestPermissions();
         if (!hasPermission) return;
+
+        // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
+        if (!ImagePicker || !ImagePicker.MediaType) {
+            console.error('[ChatInputMobile] ImagePicker ou MediaType est undefined');
+            Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+            return;
+        }
 
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaType.Images,

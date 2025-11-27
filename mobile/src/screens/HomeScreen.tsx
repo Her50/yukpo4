@@ -724,10 +724,10 @@ const HomeScreen: React.FC = () => {
                     nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll horizontal des composants enfants (MixedContentCarousel)
                     scrollEventThrottle={16}
                     onScroll={(event) => {
-                        // ✅ [BACKEND_TRACE] Log pour diagnostiquer le scroll
+                        // ✅ CORRIGÉ: Log en debug pour éviter le spam (se déclenche fréquemment)
                         const scrollY = event.nativeEvent.contentOffset.y;
                         if (scrollY > 0 && scrollY % 50 === 0) {
-                            console.log('[HomeScreen] 🔍 [BACKEND_TRACE] Scroll vertical:', scrollY);
+                            console.debug('[HomeScreen] 🔍 [BACKEND_TRACE] Scroll vertical:', scrollY);
                         }
                     }}
                 >
@@ -1585,7 +1585,7 @@ const styles = StyleSheet.create({
     },
     // ✅ Container pour l'icône services spécialisés (avec écart du texte Yukpo)
     specializedServicesContainer: {
-        marginLeft: 4, // ✅ Écart supplémentaire après le drapeau
+        marginLeft: 6, // ✅ CORRIGÉ: Ajusté pour mieux équilibrer l'espace entre drapeau et Yukpo
     },
 });
 

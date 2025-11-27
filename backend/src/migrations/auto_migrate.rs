@@ -3067,6 +3067,11 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
     }
 
     // ✅ CORRIGÉ 2025-11-27 : Version corrigée avec TEXT et plpgsql (alignée avec migration SQLx)
+    // ✅ CORRIGÉ: DROP la fonction avant de la recréer si le type de retour change
+    let _ = sqlx::query("DROP FUNCTION IF EXISTS get_product_reactions_count(INTEGER, TEXT)")
+        .execute(pool)
+        .await;
+    
     sqlx::query(r#"
         CREATE OR REPLACE FUNCTION get_product_reactions_count(
             p_service_id INTEGER,
@@ -9409,6 +9414,11 @@ pub async fn ensure_return_time_columns(pool: &PgPool) -> Result<(), sqlx::Error
 /// Compatible SQLx offline mode
 pub async fn ensure_improved_return_matching(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification fonction match_return_trip_requests améliorée...");
+    
+    // ✅ CORRIGÉ: DROP la fonction avant de la recréer pour éviter l'erreur "cannot change return type"
+    let _ = sqlx::query("DROP FUNCTION IF EXISTS match_return_trip_requests(TEXT)")
+        .execute(pool)
+        .await;
     
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20251127_improve_return_trip_matching_with_time.sql");

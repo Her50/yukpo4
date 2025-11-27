@@ -120,6 +120,13 @@ const ProfileScreen: React.FC = () => {
           {
             text: 'Galerie',
             onPress: async () => {
+              // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
+              if (!ImagePicker || !ImagePicker.MediaType) {
+                console.error('[ProfileScreen] ImagePicker ou MediaType est undefined');
+                Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+                return;
+              }
+
               const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaType.Images,
                 allowsEditing: true,
@@ -139,6 +146,13 @@ const ProfileScreen: React.FC = () => {
               const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
               if (cameraStatus.status !== 'granted') {
                 Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
+                return;
+              }
+
+              // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
+              if (!ImagePicker || !ImagePicker.MediaType) {
+                console.error('[ProfileScreen] ImagePicker ou MediaType est undefined');
+                Alert.alert('Erreur', 'Impossible d\'accéder à la caméra. Veuillez réessayer.');
                 return;
               }
 

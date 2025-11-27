@@ -77,32 +77,44 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
                     const { apiGet } = await import('../services/api');
                     const imagesResp = await apiGet(`/api/media/product/${service.id}/${idx}/images`);
 
-                    if (imagesResp.success && imagesResp.images && Array.isArray(imagesResp.images)) {
-                        imagesResp.images.forEach((img: string, imgIdx: number) => {
-                            mediaList.push({
-                                type: 'image',
-                                url: img,
-                                category: 'products',
-                                description: `${productName} - Image ${imgIdx + 1}`,
-                                productName: productName,
-                                productIndex: idx
+                    // ✅ CORRIGÉ: Vérifier que response.data existe et contient images
+                    if (imagesResp.success && imagesResp.data) {
+                        const images = imagesResp.data.images || imagesResp.data.Images || imagesResp.images || [];
+                        if (Array.isArray(images) && images.length > 0) {
+                            images.forEach((img: string, imgIdx: number) => {
+                                if (img && typeof img === 'string') {
+                                    mediaList.push({
+                                        type: 'image',
+                                        url: img,
+                                        category: 'products',
+                                        description: `${productName} - Image ${imgIdx + 1}`,
+                                        productName: productName,
+                                        productIndex: idx
+                                    });
+                                }
                             });
-                        });
+                        }
                     }
 
                     // Charger vidéos depuis API
                     const videosResp = await apiGet(`/api/media/product/${service.id}/${idx}/videos`);
-                    if (videosResp.success && videosResp.videos && Array.isArray(videosResp.videos)) {
-                        videosResp.videos.forEach((vid: string, vidIdx: number) => {
-                            mediaList.push({
-                                type: 'video',
-                                url: vid,
-                                category: 'products',
-                                description: `${productName} - Vidéo ${vidIdx + 1}`,
-                                productName: productName,
-                                productIndex: idx
+                    // ✅ CORRIGÉ: Vérifier que response.data existe et contient videos
+                    if (videosResp.success && videosResp.data) {
+                        const videos = videosResp.data.videos || videosResp.data.Videos || videosResp.videos || [];
+                        if (Array.isArray(videos) && videos.length > 0) {
+                            videos.forEach((vid: string, vidIdx: number) => {
+                                if (vid && typeof vid === 'string') {
+                                    mediaList.push({
+                                        type: 'video',
+                                        url: vid,
+                                        category: 'products',
+                                        description: `${productName} - Vidéo ${vidIdx + 1}`,
+                                        productName: productName,
+                                        productIndex: idx
+                                    });
+                                }
                             });
-                        });
+                        }
                     }
                 } catch (error) {
                     console.log(`[ProductGalleryPickerModal] Fallback JSON pour produit ${idx}:`, error);

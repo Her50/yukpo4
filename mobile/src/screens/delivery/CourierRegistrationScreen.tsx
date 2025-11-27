@@ -147,6 +147,13 @@ const CourierRegistrationScreen: React.FC = () => {
                 return;
             }
 
+            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
+            if (!ImagePicker || !ImagePicker.MediaType) {
+                console.error('[CourierRegistrationScreen] ImagePicker ou MediaType est undefined');
+                Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+                return;
+            }
+
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaType.Images,
                 allowsEditing: true,

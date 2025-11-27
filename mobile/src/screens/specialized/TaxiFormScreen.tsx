@@ -65,8 +65,9 @@ const TaxiFormScreen: React.FC = () => {
                 return;
             }
 
+            // ✅ CORRIGÉ: Utiliser 'images' as any pour éviter les erreurs TypeScript
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaType.Images,
+                mediaTypes: 'images' as any,
                 allowsEditing: true,
                 quality: 0.8,
                 base64: true,

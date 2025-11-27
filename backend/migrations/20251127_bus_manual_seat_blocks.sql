@@ -228,6 +228,7 @@ $$ LANGUAGE plpgsql;
 COMMENT ON FUNCTION get_bus_seat_availability_with_blocks IS 'Retourne la disponibilité des places en incluant les blocages manuels';
 
 -- 6. Vue pour les blocages actifs avec détails
+-- ✅ CORRIGÉ: Utilisation de LEFT JOIN pour éviter l'erreur si la table products n'existe pas
 CREATE OR REPLACE VIEW bus_active_seat_blocks AS
 SELECT 
     bsb.id,
@@ -239,11 +240,19 @@ SELECT
     bsb.blocked_by,
     bsb.blocked_at,
     u.nom_complet as blocked_by_name,
-    p.name as product_name,
-    p.numero_bus
+    -- ✅ CORRIGÉ: Récupération des infos produit depuis services.data si products n'existe pas
+    COALESCE(
+        (SELECT data->>'name' FROM services WHERE id::text = bsb.product_id LIMIT 1),
+        (SELECT data->'name'->>'valeur' FROM services WHERE id::text = bsb.product_id LIMIT 1),
+        bsb.product_id
+    ) as product_name,
+    COALESCE(
+        (SELECT data->>'numero_bus' FROM services WHERE id::text = bsb.product_id LIMIT 1),
+        (SELECT data->'numero_bus'->>'valeur' FROM services WHERE id::text = bsb.product_id LIMIT 1),
+        NULL
+    ) as numero_bus
 FROM bus_seat_blocks bsb
-JOIN users u ON u.id = bsb.blocked_by
-JOIN products p ON p.id::text = bsb.product_id
+LEFT JOIN users u ON u.id = bsb.blocked_by
 WHERE bsb.is_active = TRUE
 ORDER BY bsb.blocked_at DESC;
 

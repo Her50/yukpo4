@@ -38,27 +38,10 @@ ON services USING GIN ((data->'produits'))
 WHERE is_active = true 
   AND (jsonb_typeof(data->'produits') = 'array' OR jsonb_typeof(data->'produits'->'valeur') = 'array');
 
--- Index pour recherche spécifique dans nom_produit (le plus fréquent)
--- Utilise une expression pour extraire tous les noms de produits
-CREATE INDEX IF NOT EXISTS idx_services_produits_nom_search 
-ON services USING GIN (
-    (
-        SELECT array_agg(LOWER(COALESCE(
-            product->>'nom',
-            product->>'name',
-            product->>'titre'
-        )))
-        FROM jsonb_array_elements(
-            CASE 
-                WHEN jsonb_typeof(data->'produits') = 'array' THEN data->'produits'
-                WHEN jsonb_typeof(data->'produits'->'valeur') = 'array' THEN data->'produits'->'valeur'
-                ELSE '[]'::jsonb
-            END
-        ) AS product
-        WHERE COALESCE(product->>'nom', product->>'name', product->>'titre') IS NOT NULL
-    )
-)
-WHERE is_active = true;
+-- ✅ CORRIGÉ: Index pour recherche spécifique dans nom_produit (le plus fréquent)
+-- Note: PostgreSQL ne permet pas de sous-requête SELECT dans un index
+-- On utilise un index GIN sur le champ produits directement (déjà créé ci-dessus)
+-- Cet index sera utilisé pour les recherches dans les noms de produits via jsonb_path_ops
 
 -- ============================================
 -- 3. INDEX POUR AUTOCOMPLETE_CHARACTERISTICS

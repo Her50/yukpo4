@@ -382,16 +382,23 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       hasValues: !!values,
       hasSuggestion: !!suggestion,
       produitsField: values?.produits,
-      suggestionProduits: suggestion?.data?.produits
+      suggestionProduits: suggestion?.data?.produits,
+      suggestionDataProduits: suggestionData?.produits,
+      suggestionDataRoot: suggestionData?.sous_caracteristiques ? 'OUI' : 'NON',
+      suggestionDataProductVector: suggestionData?.product_vector ? suggestionData.product_vector.length : 0
     });
 
-    // 1. PRIORITÉ: Utiliser sous_caracteristiques complets si disponibles (contient TOUTES les valeurs)
-    // ✅ CORRIGÉ: Vérifier aussi dans suggestion.data.produits si pas dans values.produits
-    const produitsData = values.produits || suggestion?.data?.produits;
+    // ✅ CORRIGÉ: Vérifier plusieurs sources pour produitsData
+    const produitsData = values.produits || suggestion?.data?.produits || suggestionData?.produits;
 
     // ✅ PRIORITÉ 1A: Si on a sous_caracteristiques complets, les utiliser directement
     // (Ils contiennent toutes les valeurs possibles pour chaque dimension)
-    const sousCaracsComplets = produitsData?.sous_caracteristiques || suggestion?.data?.produits?.sous_caracteristiques;
+    // ✅ CORRIGÉ: Vérifier aussi au niveau racine de suggestionData
+    const sousCaracsComplets = produitsData?.sous_caracteristiques
+      || suggestion?.data?.produits?.sous_caracteristiques
+      || suggestionData?.produits?.sous_caracteristiques
+      || suggestion?.data?.sous_caracteristiques
+      || suggestionData?.sous_caracteristiques;
     if (sousCaracsComplets && typeof sousCaracsComplets === 'object' && Object.keys(sousCaracsComplets).length > 0) {
       const sousCaracsObj: Record<string, string[]> = {};
       Object.entries(sousCaracsComplets).forEach(([key, vals]: [string, any]) => {
@@ -414,13 +421,26 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     // ✅ PRIORITÉ 1B: Fallback vers product_vector/product_labels (combinaison préférée uniquement)
     // Si on n'a pas sous_caracteristiques complets, utiliser la combinaison préférée
-    if (produitsData?.product_vector && Array.isArray(produitsData.product_vector) &&
-      produitsData.product_labels && Array.isArray(produitsData.product_labels) &&
-      produitsData.product_vector.length > 0 && produitsData.product_vector.length === produitsData.product_labels.length) {
+    // ✅ CORRIGÉ: Vérifier plusieurs sources pour product_vector/product_labels
+    const productVector = produitsData?.product_vector
+      || suggestion?.data?.produits?.product_vector
+      || suggestionData?.produits?.product_vector
+      || suggestion?.data?.product_vector
+      || suggestionData?.product_vector;
+
+    const productLabels = produitsData?.product_labels
+      || suggestion?.data?.produits?.product_labels
+      || suggestionData?.produits?.product_labels
+      || suggestion?.data?.product_labels
+      || suggestionData?.product_labels;
+
+    if (productVector && Array.isArray(productVector) &&
+      productLabels && Array.isArray(productLabels) &&
+      productVector.length > 0 && productVector.length === productLabels.length) {
 
       const sousCaracsFromPreferred: Record<string, string[]> = {};
-      produitsData.product_vector.forEach((value: string, index: number) => {
-        const label = produitsData.product_labels[index];
+      productVector.forEach((value: string, index: number) => {
+        const label = productLabels[index];
         if (label && typeof label === 'string' && value && typeof value === 'string') {
           if (!sousCaracsFromPreferred[label]) {
             sousCaracsFromPreferred[label] = [];
@@ -1897,7 +1917,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales:', initialValues);
 
         // ✅ NOUVEAU 2025-11-21: Charger les combinaisons préférées par l'IA via session_id
-        if (suggestion?.session_id && !initialValues.produits?.valeur?.length) {
+        // ✅ CORRIGÉ: Charger aussi si sous_caracteristiques est vide (pour afficher les caractéristiques)
+        const hasProduits = initialValues.produits?.valeur && Array.isArray(initialValues.produits.valeur) && initialValues.produits.valeur.length > 0;
+        const hasSousCaracs = initialValues.produits?.sous_caracteristiques && typeof initialValues.produits.sous_caracteristiques === 'object' && Object.keys(initialValues.produits.sous_caracteristiques).length > 0;
+
+        if (suggestion?.session_id && (!hasProduits || !hasSousCaracs)) {
           try {
             const combinationsResponse = await apiGet(`/api/combinations/session/${suggestion.session_id}`);
             if (combinationsResponse?.combinations && Array.isArray(combinationsResponse.combinations)) {

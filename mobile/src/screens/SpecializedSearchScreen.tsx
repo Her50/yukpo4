@@ -28,6 +28,21 @@ interface SpecializedSearchScreenParams {
     serviceIcon?: string;
 }
 
+// ✅ NOUVEAU: Fonction pour générer des exemples de recherche adaptés au service spécialisé
+const getPlaceholderExample = (specializedType: string): string => {
+    const examples: Record<string, string> = {
+        'pharmacie': 'Ex: paracétamol 500mg, pharmacie de garde, médicament contre la fièvre...',
+        'hopital_clinique': 'Ex: urologue disponible, consultation pédiatrie, urgence 24h...',
+        'laboratoire_imagerie': 'Ex: prise de sang, radiographie, analyse urinaire, échographie...',
+        'agence_voyage': 'Ex: billet avion Douala-Paris, réservation hôtel, visa touristique...',
+        'covoiturage': 'Ex: trajet Douala-Yaoundé, covoiturage quotidien, partage frais route...',
+        'taxi_ville': 'Ex: taxi aéroport, course centre-ville, transport urgence...',
+        'banque_sang': 'Ex: don de sang, groupe sanguin O+, collecte mobile...',
+    };
+
+    return examples[specializedType] || 'Ex: rechercher un service...';
+};
+
 const SpecializedSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -176,7 +191,7 @@ const SpecializedSearchScreen: React.FC = () => {
                         <Text style={styles.label}>Que recherchez-vous ?</Text>
                         <TextInput
                             style={styles.textInput}
-                            placeholder="Ex: urologue disponible, pharmacie de garde..."
+                            placeholder={getPlaceholderExample(specializedType)}
                             placeholderTextColor={modernColors.textSecondary}
                             value={searchQuery}
                             onChangeText={setSearchQuery}

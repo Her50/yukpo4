@@ -1,6 +1,7 @@
 use crate::config::search_config::SearchConfig;
 use crate::core::types::AppResult;
 use crate::services::scheduling_search_service::SchedulingSearchService;
+use crate::utils::db_retry::retry_query;
 use crate::utils::log::{log_error, log_info};
 use serde_json::Value;
 use sqlx::{PgPool, Row};
@@ -889,71 +890,39 @@ impl NativeSearchService {
                 FROM search_services_gps_final($1, $2, $3, $4)
             "#;
 
-            // ✅ CORRECTION 2025-11-26 : Retry avec backoff exponentiel pour les erreurs de connexion
-            let mut results = None;
-            let mut last_error = None;
-            let max_retries = 3;
-            
-            for attempt in 1..=max_retries {
-                match sqlx::query(sql)
-                    .bind(query)
-                    .bind(gps_zone_val)
-                    .bind(radius)
-                    .bind(100i32) // ✅ CORRIGÉ: max_results (4ème paramètre requis)
-                    .fetch_all(&self.pool)
-                    .await
-                {
-                    Ok(rows) => {
-                        results = Some(rows);
-                        if attempt > 1 {
-                            log_info(&format!(
-                                "[NativeSearch] Recherche GPS réussie après {} tentative(s)",
-                                attempt
-                            ));
-                        }
-                        break;
-                    }
-                    Err(e) => {
-                        last_error = Some(e);
-                        let error_str = last_error.as_ref().unwrap().to_string();
-                        
-                        // Vérifier si l'erreur est retryable (connexion fermée, timeout, etc.)
-                        let is_retryable = error_str.contains("peer closed connection")
-                            || error_str.contains("TLS close_notify")
-                            || error_str.contains("connection")
-                            || error_str.contains("timeout")
-                            || error_str.contains("terminating connection");
-                        
-                        if is_retryable && attempt < max_retries {
-                            let delay_ms = 100 * 2_u64.pow(attempt - 1); // Backoff exponentiel: 100ms, 200ms, 400ms
-                            log::warn!(
-                                "[NativeSearch] Erreur recherche GPS (tentative {}/{}): {}. Retry dans {}ms",
-                                attempt,
-                                max_retries,
-                                error_str,
-                                delay_ms
-                            );
-                            tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
-                        } else {
-                            // Erreur non-retryable ou dernière tentative
-                            log_error(&format!(
-                                "[NativeSearch] Erreur recherche GPS optimisée (tentative {}/{}): {}",
-                                attempt,
-                                max_retries,
-                                error_str
-                            ));
-                            if attempt == max_retries {
-                                break; // Sortir de la boucle pour utiliser le fallback
-                            }
-                        }
-                    }
-                }
-            }
+            // ✅ CORRECTION 2025-11-27 : Utiliser retry_query pour cohérence et meilleure gestion d'erreurs
+            let query_clone = query.clone();
+            let gps_zone_val_clone = gps_zone_val.clone();
+            let pool_clone = self.pool.clone();
+            let sql_static = sql.to_string();
+            let radius_clone = radius;
+            let results = retry_query(
+                &self.pool,
+                move || {
+                    let query = query_clone.clone();
+                    let gps_zone_val = gps_zone_val_clone.clone();
+                    let pool = pool_clone.clone();
+                    let sql = sql_static.clone();
+                    let radius = radius_clone;
+                    Box::pin(async move {
+                        sqlx::query(sql.as_str())
+                            .bind(query.as_str())
+                            .bind(gps_zone_val.as_str())
+                            .bind(radius)
+                            .bind(100i32) // ✅ CORRIGÉ: max_results (4ème paramètre requis)
+                            .fetch_all(&pool)
+                            .await
+                    })
+                },
+                3, // max_retries
+            )
+            .await;
             
             // ✅ CORRIGÉ: Si la recherche GPS échoue, fallback vers recherche sans GPS
             // L'erreur "structure of query does not match function result type" peut survenir
             // si la fonction SQL a été modifiée ou si la base de données n'est pas à jour
-            if let Some(rows) = results {
+            match results {
+                Ok(rows) if !rows.is_empty() => {
                 // ✅ CORRIGÉ: Traiter les résultats GPS si disponibles
                 let mut search_results = Vec::new();
                 for row in rows {
@@ -1017,44 +986,45 @@ impl NativeSearchService {
                 ));
             }
 
-                log_info(&format!(
-                    "[NativeSearch] Recherche GPS optimisée: {} résultats trouvés",
-                    search_results.len()
-                ));
-                
-                // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
-                if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
-                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                        SearchResult::enrich_with_google_maps(
-                            &mut search_results,
-                            Some((user_lat, user_lng)),
-                            self.geographic_matching.as_ref(),
-                        ).await;
-                    }
-                }
-                
-                return Ok(search_results);
-            } else {
-                // ✅ CORRIGÉ: Pas de résultats GPS, vérifier si fallback nécessaire
-                let error_msg = last_error
-                    .as_ref()
-                    .map(|e| e.to_string())
-                    .unwrap_or_else(|| "Erreur inconnue".to_string());
-                
-                // Vérifier si c'est une erreur de structure de requête
-                if error_msg.contains("structure of query does not match function result type") {
-                    log::warn!(
-                        "[NativeSearch] ⚠️ Erreur structure requête GPS - Fallback vers recherche sans GPS. Erreur: {}",
-                        error_msg
-                    );
-                } else {
-                    log_error(&format!(
-                        "[NativeSearch] Échec recherche GPS après {} tentatives: {}",
-                        max_retries,
-                        error_msg
+                    log_info(&format!(
+                        "[NativeSearch] Recherche GPS optimisée: {} résultats trouvés",
+                        search_results.len()
                     ));
+                    
+                    // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
+                    if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+                        if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                            SearchResult::enrich_with_google_maps(
+                                &mut search_results,
+                                Some((user_lat, user_lng)),
+                                self.geographic_matching.as_ref(),
+                            ).await;
+                        }
+                    }
+                    
+                    return Ok(search_results);
                 }
-                // ✅ CORRIGÉ: Le code continue naturellement avec la recherche sans GPS ci-dessous
+                Ok(_) => {
+                    // Résultats vides, continuer avec fallback
+                    log_info("[NativeSearch] Recherche GPS retournée vide, fallback vers recherche sans GPS");
+                }
+                Err(e) => {
+                    let error_msg = e.to_string();
+                    
+                    // Vérifier si c'est une erreur de structure de requête
+                    if error_msg.contains("structure of query does not match function result type") {
+                        log::warn!(
+                            "[NativeSearch] ⚠️ Erreur structure requête GPS - Fallback vers recherche sans GPS. Erreur: {}",
+                            error_msg
+                        );
+                    } else {
+                        log_error(&format!(
+                            "[NativeSearch] Échec recherche GPS après retry: {}",
+                            error_msg
+                        ));
+                    }
+                    // ✅ CORRIGÉ: Le code continue naturellement avec la recherche sans GPS ci-dessous
+                }
             }
         }
         
@@ -1347,45 +1317,40 @@ SELECT DISTINCT
             partial_conditions, partial_conditions
         );
 
-        // ✅ CORRIGÉ: Retry automatique pour les erreurs de connexion PostgreSQL
-        let mut last_error = None;
+        // ✅ CORRECTION 2025-11-27 : Utiliser retry_query pour cohérence et meilleure gestion d'erreurs
+        let query_clone = query.to_string();
+        let category_filter_clone = category_filter.map(|s| s.to_string());
+        let location_filter_clone = location_filter.map(|s| s.to_string());
+        let sql_clone = sql.clone();
+        let pool_clone = self.pool.clone();
         
-        let results = loop {
-            match sqlx::query(&sql)
-                .bind(query)
-                .bind(category_filter)
-                .bind(location_filter)
-                .fetch_all(&self.pool)
-                .await
-            {
-                Ok(results) => break results,
-                Err(e) => {
-                    let error_str = e.to_string();
-                    // Détecter les erreurs de connexion (TLS, peer closed, etc.)
-                    let is_connection_error = error_str.contains("peer closed connection")
-                        || error_str.contains("TLS close_notify")
-                        || error_str.contains("terminating connection")
-                        || error_str.contains("error communicating with database");
-                    
-                    if is_connection_error && last_error.is_none() {
-                        // Premier essai, on retry une seule fois
-                        last_error = Some(e);
-                        log::warn!(
-                            "[NativeSearch] ⚠️ Erreur connexion PostgreSQL détectée, retry dans 500ms..."
-                        );
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                        continue;
-                    } else {
-                        // Erreur non-récupérable ou déjà retry
-                        log_error(&format!("[NativeSearch] Erreur recherche full-text: {}", e));
-                        return Err(crate::core::types::AppError::Internal(format!(
-                            "Erreur recherche full-text: {}",
-                            e
-                        )));
-                    }
-                }
-            }
-        };
+        let results = retry_query(
+            &self.pool,
+            move || {
+                let query = query_clone.clone();
+                let category_filter = category_filter_clone.as_ref().map(|s| s.as_str());
+                let location_filter = location_filter_clone.as_ref().map(|s| s.as_str());
+                let sql = sql_clone.clone();
+                let pool = pool_clone.clone();
+                Box::pin(async move {
+                    sqlx::query(sql.as_str())
+                        .bind(query.as_str())
+                        .bind(category_filter.map(|s| s.as_str()))
+                        .bind(location_filter.map(|s| s.as_str()))
+                        .fetch_all(&pool)
+                        .await
+                })
+            },
+            3, // max_retries
+        )
+        .await
+        .map_err(|e| {
+            log_error(&format!("[NativeSearch] Erreur recherche full-text après retry: {}", e));
+            crate::core::types::AppError::Internal(format!(
+                "Erreur recherche full-text: {}",
+                e
+            ))
+        })?;
 
         let mut search_results = Vec::new();
         for row in results {

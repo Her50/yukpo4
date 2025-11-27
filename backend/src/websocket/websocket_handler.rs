@@ -179,22 +179,44 @@ async fn handle_notifications_websocket(socket: WebSocket, user_id: i32) {
                 "timestamp": Utc::now()
             });
 
-            // Envoi de notification avec gestion d'erreur
-            if let Err(e) = sender
+            // ✅ CORRIGÉ: Envoi de notification avec gestion d'erreur améliorée
+            // Détecte les connexions fermées et les gère proprement
+            match sender
                 .send(Message::Text(notification.to_string().into()))
                 .await
             {
-                log::warn!(
-                    "Impossible d'envoyer la notification à l'utilisateur {}: {}",
-                    user_id,
-                    e
-                );
-                break;
-            } else {
-                log::debug!(
-                    "Notification envoyée avec succès à l'utilisateur {}",
-                    user_id
-                );
+                Ok(_) => {
+                    log::debug!(
+                        "Notification envoyée avec succès à l'utilisateur {}",
+                        user_id
+                    );
+                }
+                Err(e) => {
+                    let error_str = e.to_string();
+                    // ✅ CORRECTION 2025-11-27 : Détection améliorée des connexions fermées
+                    // Détecter si c'est une connexion fermée avec plus de patterns
+                    if error_str.contains("closed connection")
+                        || error_str.contains("Trying to work with closed")
+                        || error_str.contains("channel closed")
+                        || error_str.contains("connection closed")
+                        || error_str.contains("broken pipe")
+                        || error_str.contains("Connection reset")
+                        || error_str.contains("send on closed")
+                    {
+                        log::info!(
+                            "WebSocket notifications fermé pour l'utilisateur {} (connexion fermée détectée)",
+                            user_id
+                        );
+                    } else {
+                        log::warn!(
+                            "Impossible d'envoyer la notification à l'utilisateur {}: {}",
+                            user_id,
+                            e
+                        );
+                    }
+                    // Arrêter la tâche de notification si la connexion est fermée
+                    break;
+                }
             }
         }
     });

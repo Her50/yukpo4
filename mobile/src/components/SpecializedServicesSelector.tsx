@@ -109,8 +109,8 @@ const SpecializedServicesSelector: React.FC<SpecializedServicesSelectorProps> = 
                     onPress={() => setMenuVisible(true)}
                     activeOpacity={0.7}
                 >
-                    {/* ✅ CORRIGÉ: Utiliser une icône qui existe dans Lucide (grid-3x3 ou layout-grid) */}
-                    <SafeIcon name="grid-3x3" size={16} color="#fff" type="lucide" />
+                    {/* ✅ CORRIGÉ: Utiliser une icône de recherche au lieu de grid-3x3 pour éviter la confusion avec le texte Yukpo */}
+                    <SafeIcon name="search" size={18} color="#fff" type="lucide" />
                 </TouchableOpacity>
 
                 {/* Menu déroulant vertical */}
@@ -194,11 +194,13 @@ const styles = StyleSheet.create({
     compactButton: {
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: modernColors.primary, // ✅ CORRIGÉ: Utiliser la couleur primaire pour meilleure visibilité
         width: 32,
         height: 32,
         borderRadius: 16,
-        marginLeft: 8, // ✅ Écart avec le drapeau (LanguageSelector)
+        marginLeft: 6, // ✅ CORRIGÉ: Réduit de 8 à 6 pour mieux équilibrer l'espace entre drapeau et Yukpo
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)', // ✅ Bordure subtile pour séparation
     },
     menuOverlay: {
         flex: 1,
