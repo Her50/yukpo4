@@ -64,20 +64,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // ✅ Optimisation du pool de connexions selon le plan de correction
     // Lecture des variables d'environnement avec valeurs par défaut optimisées
+    // ✅ CORRIGÉ 2025-11-27: Augmenté pour réduire les temps d'acquisition
     let max_connections: u32 = env::var("DB_POOL_SIZE")
-        .unwrap_or_else(|_| "20".to_string())
+        .unwrap_or_else(|_| "30".to_string())
         .parse()
-        .unwrap_or(20);  // Augmenté de 10 à 20 pour gérer la charge
+        .unwrap_or(30);  // ✅ Augmenté de 20 à 30 pour gérer la charge
     
     let min_connections: u32 = env::var("DB_POOL_MIN_SIZE")
-        .unwrap_or_else(|_| "5".to_string())
-        .parse()
-        .unwrap_or(5);  // Maintenir un minimum de connexions actives
-    
-    let acquire_timeout_secs: u64 = env::var("DB_ACQUIRE_TIMEOUT_SECS")
         .unwrap_or_else(|_| "10".to_string())
         .parse()
-        .unwrap_or(10);  // Augmenté de 2s à 10s pour éviter les timeouts
+        .unwrap_or(10);  // ✅ Augmenté de 5 à 10 pour maintenir plus de connexions actives
+    
+    let acquire_timeout_secs: u64 = env::var("DB_ACQUIRE_TIMEOUT_SECS")
+        .unwrap_or_else(|_| "15".to_string())
+        .parse()
+        .unwrap_or(15);  // ✅ Augmenté de 10s à 15s pour éviter les timeouts
     
     let pg_pool = PgPoolOptions::new()
         .max_connections(max_connections)
@@ -106,6 +107,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         max_connections, min_connections, acquire_timeout_secs
     );
 
+    // ✅ NOUVEAU 2025-11-27: Pré-chauffer le pool pour avoir des connexions prêtes
+    log::info!("🔥 Pré-chauffage du pool de connexions...");
+    let warmup_pool = pg_pool.clone();
+    let warmup_min = min_connections;
+    tokio::spawn(async move {
+        let mut success_count = 0;
+        for i in 0..warmup_min {
+            match tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                sqlx::query("SELECT 1").execute(&warmup_pool)
+            ).await {
+                Ok(Ok(_)) => {
+                    success_count += 1;
+                    log::debug!("[Pool Warmup] Connexion {} pré-chauffée", i + 1);
+                }
+                Ok(Err(e)) => {
+                    log::warn!("[Pool Warmup] Erreur connexion {}: {}", i + 1, e);
+                }
+                Err(_) => {
+                    log::warn!("[Pool Warmup] Timeout connexion {}", i + 1);
+                }
+            }
+        }
+        log::info!("✅ Pool pré-chauffé: {}/{} connexions prêtes", success_count, warmup_min);
+    });
+
     // 🔄 Exécuter les migrations SQLx standard au démarrage
     log::info!("🚀 Application des migrations SQLx standard...");
     match sqlx::migrate!("./migrations").run(&pg_pool).await {
@@ -124,6 +151,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 🔄 Exécuter les migrations automatiques au démarrage
     yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
+
+    // ✅ NOUVEAU 2025-11-27: Démarrer le monitoring de santé du pool
+    yukpomnang_backend::utils::db_monitor::start_db_health_monitor(pg_pool.clone()).await;
 
     let mongo_url =
         env::var("MONGODB_URL").unwrap_or_else(|_| "mongodb://localhost:27017".to_string());

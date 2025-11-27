@@ -495,7 +495,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         }
     };
 
-    // ✅ Gérer le scroll manuel (quand l'utilisateur arrête de scroller)
+    // ✅ AMÉLIORATION: Gérer le scroll manuel avec meilleure détection des gestes
     const handleScroll = (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
         const adjustedOffset = Math.max(0, offsetX - SCREEN_PADDING);

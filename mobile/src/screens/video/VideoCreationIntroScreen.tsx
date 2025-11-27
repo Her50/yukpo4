@@ -272,7 +272,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                                 style={styles.heroImage}
                                 resizeMode="cover"
                                 onError={() => {
-                                    console.warn('[VideoCreationIntroScreen] Erreur chargement image hero');
+                                    // ✅ AMÉLIORATION: Réduire niveau log (image optionnelle, non bloquant)
+                                    console.debug('[VideoCreationIntroScreen] Erreur chargement image hero (non bloquant)');
                                     setImageError(true);
                                 }}
                             />

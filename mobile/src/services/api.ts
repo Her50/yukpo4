@@ -1412,8 +1412,27 @@ export const apiPost = async <T>(endpoint: string, data: any): Promise<ApiRespon
 };
 
 // Export pour compatibilité avec les anciens imports  
-export const apiGet = async <T>(endpoint: string): Promise<ApiResponse<T>> => {
-  return apiCall<T>(endpoint, {
+// ✅ AMÉLIORÉ: Support des paramètres de requête (pagination, etc.)
+export const apiGet = async <T>(
+  endpoint: string,
+  options?: { params?: Record<string, any> }
+): Promise<ApiResponse<T>> => {
+  // ✅ Construire l'URL avec les paramètres de requête
+  let url = endpoint;
+  if (options?.params && Object.keys(options.params).length > 0) {
+    const searchParams = new URLSearchParams();
+    Object.entries(options.params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        searchParams.append(key, String(value));
+      }
+    });
+    const queryString = searchParams.toString();
+    if (queryString) {
+      url = `${endpoint}${endpoint.includes('?') ? '&' : '?'}${queryString}`;
+    }
+  }
+
+  return apiCall<T>(url, {
     method: 'GET',
   });
 };

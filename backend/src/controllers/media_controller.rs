@@ -5,11 +5,12 @@ use std::{
 };
 
 use axum::{
-    extract::{Extension, Multipart, Path as AxumPath},
+    extract::{Extension, Multipart, Path as AxumPath, State},
     http::{header, StatusCode},
     response::Response,
     Json,
 };
+use std::sync::Arc;
 use axum::body::Body;
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, PgPool};
@@ -36,6 +37,7 @@ struct MediaPathRow {
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
+    state::AppState,
 };
 use log::{error, info, warn};
 
@@ -189,16 +191,17 @@ pub async fn upload_media(
 /// ?? R?cup?re les m?dias li?s ? un service donn?
 pub async fn get_service_media(
     AxumPath(service_id): AxumPath<i32>,
-    Extension(pool): Extension<PgPool>,
+    State(state): State<Arc<crate::state::AppState>>,
 ) -> AppResult<Json<Vec<MediaItem>>> {
     info!("[get_service_media] Called for service_id={}", service_id);
+    let pool = &state.pg;
     
     // ✅ Vérifier d'abord si le service existe pour éviter des erreurs inutiles
     let service_exists: bool = match sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM services WHERE id = $1)"
     )
     .bind(service_id)
-    .fetch_one(&pool)
+    .fetch_one(pool)
     .await
     {
         Ok(exists) => exists,
@@ -222,7 +225,7 @@ pub async fn get_service_media(
         r#"SELECT id, service_id, media.type, path, uploaded_at FROM media WHERE service_id = $1 ORDER BY uploaded_at DESC NULLS LAST"#
     )
     .bind(service_id)
-    .fetch_all(&pool)
+    .fetch_all(pool)
     .await {
         Ok(r) => {
             info!("[get_service_media] {} médias trouvés pour service_id={}", r.len(), service_id);

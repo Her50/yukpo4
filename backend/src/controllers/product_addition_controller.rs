@@ -453,13 +453,22 @@ pub async fn add_product_to_service(
             )
             .await;
 
+            // ✅ AMÉLIORATION: Ajouter warning si aucune image
+            let warning_message = if saved_media_paths.images.is_none() || 
+                (saved_media_paths.images.as_ref().map(|v| v.is_empty()).unwrap_or(true)) {
+                Some("Aucune image ajoutée. La génération de vidéo nécessite au moins une image.".to_string())
+            } else {
+                None
+            };
+
             Ok(Json(json!({
                 "success": true,
                 "service_id": service_id,
                 "product_index": product_index,
                 "cost": cout_ajout,
                 "message": format!("Produit ajouté avec succès (coût: {} FCFA)", cout_ajout),
-                "new_balance": new_balance
+                "new_balance": new_balance,
+                "warning": warning_message
             })))
         }
         Err(e) => {

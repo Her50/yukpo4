@@ -44,6 +44,22 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
   const [uploading, setUploading] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
 
+  // ✅ AMÉLIORATION: Fonction helper pour vérifier la disponibilité d'ImagePicker
+  const checkImagePickerAvailable = (): boolean => {
+    try {
+      return !!(
+        ImagePicker &&
+        typeof ImagePicker.requestMediaLibraryPermissionsAsync === 'function' &&
+        ImagePicker.MediaType &&
+        ImagePicker.MediaType.Images &&
+        ImagePicker.launchImageLibraryAsync
+      );
+    } catch (error) {
+      console.error('[MediaUploadManager] Erreur vérification ImagePicker:', error);
+      return false;
+    }
+  };
+
   const pickImages = async () => {
     if (images.length >= maxImages) {
       Alert.alert('Limite atteinte', `Vous ne pouvez ajouter que ${maxImages} images maximum`);
@@ -52,6 +68,18 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
 
     try {
       setUploading(true);
+
+      // ✅ AMÉLIORATION: Vérifier ImagePicker avant de demander les permissions
+      if (!checkImagePickerAvailable()) {
+        console.error('[MediaUploadManager] ImagePicker non disponible');
+        Alert.alert(
+          'Fonctionnalité indisponible',
+          'L\'accès à la galerie n\'est pas disponible sur cet appareil. Veuillez mettre à jour l\'application ou contacter le support.',
+          [{ text: 'OK' }]
+        );
+        setUploading(false);
+        return;
+      }
 
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -131,6 +159,18 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         Alert.alert(
           'Permission refusée',
           'Vous devez autoriser l\'accès à la galerie pour ajouter des vidéos'
+        );
+        setUploading(false);
+        return;
+      }
+
+      // ✅ AMÉLIORATION: Vérifier ImagePicker avant de demander les permissions
+      if (!checkImagePickerAvailable()) {
+        console.error('[MediaUploadManager] ImagePicker non disponible');
+        Alert.alert(
+          'Fonctionnalité indisponible',
+          'L\'accès à la galerie n\'est pas disponible sur cet appareil. Veuillez mettre à jour l\'application ou contacter le support.',
+          [{ text: 'OK' }]
         );
         setUploading(false);
         return;

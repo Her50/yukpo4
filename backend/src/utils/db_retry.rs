@@ -41,12 +41,24 @@ where
                     || error_str.contains("connection reset");
                 
                 if is_retryable && attempt < max_retries {
-                    let backoff_ms = 200 * (1u64 << (attempt - 1)).min(2000); // ✅ CORRIGÉ: Augmenté de 100ms/1000ms à 200ms/2000ms pour plus de stabilité
+                    // ✅ NOUVEAU 2025-11-27: Backoff plus long pour les crashes PostgreSQL
+                    let is_crash_error = error_str.contains("crash of another server process")
+                        || error_str.contains("terminating connection because of crash");
+                    
+                    let backoff_ms = if is_crash_error {
+                        // Backoff plus long pour les crashes (500ms, 1000ms, 2000ms, 4000ms, 5000ms max)
+                        500 * (1u64 << (attempt - 1)).min(5000)
+                    } else {
+                        // Backoff normal pour autres erreurs (200ms, 400ms, 800ms, 1600ms, 2000ms max)
+                        200 * (1u64 << (attempt - 1)).min(2000)
+                    };
+                    
                     // ✅ CORRIGÉ: Log en debug pour réduire le bruit (les erreurs récupérables sont normales)
                     log::debug!(
-                        "[DB Retry] Tentative {}/{} échouée (erreur récupérable): {}. Retry dans {}ms",
+                        "[DB Retry] Tentative {}/{} échouée (erreur récupérable{}): {}. Retry dans {}ms",
                         attempt,
                         max_retries,
+                        if is_crash_error { " - crash PostgreSQL" } else { "" },
                         error_str,
                         backoff_ms
                     );

@@ -377,6 +377,73 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         []
     );
 
+    // ✅ AMÉLIORATION: Fonction helper pour retry avec exponential backoff
+    const fetchWithRetry = useCallback(async <T,>(
+        fetchFn: () => Promise<T>,
+        maxRetries: number = 3,
+        type: string = 'unknown'
+    ): Promise<T | null> => {
+        let retryCount = 0;
+
+        while (retryCount < maxRetries) {
+            try {
+                const result = await fetchFn();
+                return result;
+            } catch (error) {
+                retryCount++;
+                if (retryCount >= maxRetries) {
+                    console.warn(`[ProductVideoCreationModal] Coach IA: ${type} indisponible après ${maxRetries} tentatives`, error);
+                    return null;
+                }
+                // Exponential backoff: 1s, 2s, 4s
+                const delay = Math.pow(2, retryCount) * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        return null;
+    }, []);
+
+    // ✅ AMÉLIORATION: Valeurs par défaut pour Coach IA
+    const getDefaultCoachData = useCallback((type: 'brief' | 'style' | 'plan'): any => {
+        if (!selectedProduct) return null;
+
+        const productName = normalizeProductName(selectedProduct);
+
+        switch (type) {
+            case 'brief':
+                return {
+                    variants: [{
+                        headline: productName,
+                        call_to_action: 'Découvrez maintenant',
+                        script_outline: ['Introduction', 'Caractéristiques', 'Appel à l\'action'],
+                        tone: stylePreset
+                    }]
+                };
+            case 'style':
+                return {
+                    suggestion: {
+                        preset: stylePreset || 'story',
+                        transitions: 'smooth',
+                        effects: [],
+                        overlay_tips: []
+                    }
+                };
+            case 'plan':
+                return {
+                    plan: {
+                        distribution: Array.from(selectedChannels.values()).length > 0
+                            ? Array.from(selectedChannels.values())
+                            : ['product', 'chat'],
+                        duration: 15,
+                        hashtags: [],
+                        schedule: []
+                    }
+                };
+            default:
+                return null;
+        }
+    }, [selectedProduct, stylePreset, selectedChannels]);
+
     const prefetchCoachInsights = useCallback(async () => {
         if (!selectedProduct || coachLoading) {
             return;
@@ -395,61 +462,103 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         const lang = subtitleLang || voiceoverLang;
 
         try {
+            // ✅ AMÉLIORATION: Brief avec retry + valeurs par défaut
             if (briefVariants.length === 0) {
-                try {
-                    const response = await mediaApi.generateVideoBrief({
-                        product_name: normalizeProductName(selectedProduct),
-                        description: selectedProduct.description,
-                        price: priceLabel,
-                        promotion: promotionValue,
-                        highlights,
-                        target_audience: channelsArray.join(', '),
-                        tone: stylePreset,
-                        lang,
-                        variant_count: 3,
-                    });
-                    if (response.success && Array.isArray(response.data?.variants) && response.data.variants.length > 0) {
-                        setBriefVariants(response.data.variants);
+                const briefResult = await fetchWithRetry(
+                    async () => {
+                        const response = await mediaApi.generateVideoBrief({
+                            product_name: normalizeProductName(selectedProduct),
+                            description: selectedProduct.description,
+                            price: priceLabel,
+                            promotion: promotionValue,
+                            highlights,
+                            target_audience: channelsArray.join(', '),
+                            tone: stylePreset,
+                            lang,
+                            variant_count: 3,
+                        });
+                        if (response.success && Array.isArray(response.data?.variants) && response.data.variants.length > 0) {
+                            return response.data.variants;
+                        }
+                        throw new Error('Aucun variant retourné');
+                    },
+                    3,
+                    'brief'
+                );
+
+                if (briefResult) {
+                    setBriefVariants(briefResult);
+                } else {
+                    // Utiliser valeurs par défaut
+                    const defaultBrief = getDefaultCoachData('brief');
+                    if (defaultBrief?.variants) {
+                        setBriefVariants(defaultBrief.variants);
                     }
-                } catch (error) {
-                    console.warn('[ProductVideoCreationModal] Coach IA: brief indisponible', error);
                 }
             }
 
+            // ✅ AMÉLIORATION: Style avec retry + valeurs par défaut
             if (!styleSuggestion) {
-                try {
-                    const channelPriority = ['shorts', 'instagram', 'youtube', 'chat', 'product'];
-                    const preferredChannel = channelPriority.find((key) => selectedChannels.has(key)) || 'shorts';
-                    const response = await mediaApi.generateVideoStyle({
-                        channel: preferredChannel,
-                        product_type: selectedProduct.type || selectedProduct.category_label,
-                        tone: stylePreset,
-                        promotion: promotionValue,
-                        highlights,
-                        lang,
-                    });
-                    if (response.success && response.data?.suggestion) {
-                        setStyleSuggestion(response.data.suggestion);
+                const styleResult = await fetchWithRetry(
+                    async () => {
+                        const channelPriority = ['shorts', 'instagram', 'youtube', 'chat', 'product'];
+                        const preferredChannel = channelPriority.find((key) => selectedChannels.has(key)) || 'shorts';
+                        const response = await mediaApi.generateVideoStyle({
+                            channel: preferredChannel,
+                            product_type: selectedProduct.type || selectedProduct.category_label,
+                            tone: stylePreset,
+                            promotion: promotionValue,
+                            highlights,
+                            lang,
+                        });
+                        if (response.success && response.data?.suggestion) {
+                            return response.data.suggestion;
+                        }
+                        throw new Error('Aucune suggestion retournée');
+                    },
+                    3,
+                    'style'
+                );
+
+                if (styleResult) {
+                    setStyleSuggestion(styleResult);
+                } else {
+                    // Utiliser valeurs par défaut
+                    const defaultStyle = getDefaultCoachData('style');
+                    if (defaultStyle?.suggestion) {
+                        setStyleSuggestion(defaultStyle.suggestion);
                     }
-                } catch (error) {
-                    console.warn('[ProductVideoCreationModal] Coach IA: style indisponible', error);
                 }
             }
 
+            // ✅ AMÉLIORATION: Plan avec retry + valeurs par défaut
             if (!distributionPlan) {
-                try {
-                    const response = await mediaApi.generateDistributionPlan({
-                        product_name: normalizeProductName(selectedProduct),
-                        channels: channelsArray,
-                        target_audience: channelsArray.join(', '),
-                        marketing_angle: mediaAnalysis.marketingAngle || undefined,
-                        lang,
-                    });
-                    if (response.success && response.data?.plan) {
-                        setDistributionPlan(response.data.plan);
+                const planResult = await fetchWithRetry(
+                    async () => {
+                        const response = await mediaApi.generateDistributionPlan({
+                            product_name: normalizeProductName(selectedProduct),
+                            channels: channelsArray,
+                            target_audience: channelsArray.join(', '),
+                            marketing_angle: mediaAnalysis.marketingAngle || undefined,
+                            lang,
+                        });
+                        if (response.success && response.data?.plan) {
+                            return response.data.plan;
+                        }
+                        throw new Error('Aucun plan retourné');
+                    },
+                    3,
+                    'plan'
+                );
+
+                if (planResult) {
+                    setDistributionPlan(planResult);
+                } else {
+                    // Utiliser valeurs par défaut
+                    const defaultPlan = getDefaultCoachData('plan');
+                    if (defaultPlan?.plan) {
+                        setDistributionPlan(defaultPlan.plan);
                     }
-                } catch (error) {
-                    console.warn('[ProductVideoCreationModal] Coach IA: plan indisponible', error);
                 }
             }
         } finally {
@@ -466,6 +575,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         styleSuggestion,
         subtitleLang,
         voiceoverLang,
+        fetchWithRetry,
+        getDefaultCoachData,
     ]);
 
     const handleRefreshCoach = useCallback(() => {
@@ -1217,36 +1328,71 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 </Text>
                 {/* ✅ CORRECTION: Remplacer ScrollView imbriqué par View pour éviter les problèmes de toucher */}
                 <View style={styles.productSelectionList}>
-                    {groupedProducts.map((group) => (
-                        <View key={group.serviceId} style={styles.productGroup}>
-                            <Text style={styles.productGroupTitle}>{group.serviceTitre}</Text>
-                            {group.items.map((product) => (
-                                <TouchableOpacity
-                                    key={`${group.serviceId}_${product.product_index ?? product.id}`}
-                                    style={styles.productSelectItem}
-                                    onPress={() => {
-                                        console.log('[ProductVideoCreationModal] Produit sélectionné:', product);
-                                        setSelectedProduct(product);
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={styles.productSelectIcon}>
-                                        <SafeIcon name="package" size={18} color={modernColors.primary} />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.productSelectName} numberOfLines={2}>
-                                            {normalizeProductName(product)}
-                                        </Text>
-                                        <Text style={styles.productSelectMeta} numberOfLines={1}>
-                                            {product.type || 'produit'}
-                                            {product.prix ? ` • ${product.prix} ${product.devise || 'XAF'}` : ''}
-                                        </Text>
-                                    </View>
-                                    <SafeIcon name="chevron-right" size={18} color={modernColors.textSecondary} />
-                                </TouchableOpacity>
-                            ))}
+                    {Array.isArray(groupedProducts) && groupedProducts.length > 0 ? (
+                        groupedProducts.map((group) => {
+                            // ✅ CORRIGÉ: Vérifier que group et group.items sont définis
+                            if (!group || !Array.isArray(group.items)) {
+                                return null;
+                            }
+
+                            return (
+                                <View key={group.serviceId || 'unknown'} style={styles.productGroup}>
+                                    <Text style={styles.productGroupTitle}>
+                                        {group.serviceTitre || 'Service sans nom'}
+                                    </Text>
+                                    {group.items.map((product, idx) => {
+                                        // ✅ CORRIGÉ: Vérifier que product est défini
+                                        if (!product) return null;
+
+                                        return (
+                                            <TouchableOpacity
+                                                key={`${group.serviceId}_${product.product_index ?? product.id ?? idx}`}
+                                                style={styles.productSelectItem}
+                                                onPress={() => {
+                                                    console.log('[ProductVideoCreationModal] Produit sélectionné:', product);
+
+                                                    // ✅ CORRIGÉ: Vérifier que le produit est valide
+                                                    if (!product) {
+                                                        console.error('[ProductVideoCreationModal] Produit null/undefined');
+                                                        return;
+                                                    }
+
+                                                    // ✅ CORRIGÉ: Normaliser le produit si nécessaire
+                                                    const normalizedProduct = {
+                                                        ...product,
+                                                        nom: product.nom || product.nom_produit || 'Produit sans nom',
+                                                        nom_produit: product.nom_produit || product.nom || 'Produit sans nom'
+                                                    };
+
+                                                    setSelectedProduct(normalizedProduct);
+                                                    console.log('[ProductVideoCreationModal] Produit normalisé:', normalizedProduct);
+                                                }}
+                                                activeOpacity={0.7}
+                                            >
+                                                <View style={styles.productSelectIcon}>
+                                                    <SafeIcon name="package" size={18} color={modernColors.primary} />
+                                                </View>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.productSelectName} numberOfLines={2}>
+                                                        {normalizeProductName(product)}
+                                                    </Text>
+                                                    <Text style={styles.productSelectMeta} numberOfLines={1}>
+                                                        {product.type || 'produit'}
+                                                        {product.prix ? ` • ${product.prix} ${product.devise || 'XAF'}` : ''}
+                                                    </Text>
+                                                </View>
+                                                <SafeIcon name="chevron-right" size={18} color={modernColors.textSecondary} />
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            );
+                        })
+                    ) : (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyStateText}>Aucun produit disponible</Text>
                         </View>
-                    ))}
+                    )}
                 </View>
             </NativeCard>
         );
@@ -1530,7 +1676,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                             <View style={styles.suggestionSection}>
                                                 <Text style={styles.suggestionTitle}>Effets recommandés</Text>
                                                 <View style={styles.suggestionRow}>
-                                                    {styleSuggestion.effects.map((effect) => {
+                                                    {Array.isArray(styleSuggestion.effects) ? styleSuggestion.effects.map((effect) => {
                                                         const active = selectedEffects.has(effect);
                                                         return (
                                                             <TouchableOpacity
@@ -1551,12 +1697,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                                 </Text>
                                                             </TouchableOpacity>
                                                         );
-                                                    })}
+                                                    }) : null}
                                                 </View>
 
                                                 <Text style={styles.suggestionTitle}>Transitions</Text>
                                                 <View style={styles.suggestionRow}>
-                                                    {styleSuggestion.transitions.map((transition) => {
+                                                    {Array.isArray(styleSuggestion.transitions) ? styleSuggestion.transitions.map((transition) => {
                                                         const active = selectedTransitions.has(transition);
                                                         return (
                                                             <TouchableOpacity
@@ -1577,12 +1723,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                                 </Text>
                                                             </TouchableOpacity>
                                                         );
-                                                    })}
+                                                    }) : null}
                                                 </View>
 
                                                 <Text style={styles.suggestionTitle}>Overlays & tips</Text>
                                                 <View style={styles.suggestionRow}>
-                                                    {styleSuggestion.overlay_tips.map((tip) => {
+                                                    {Array.isArray(styleSuggestion.overlay_tips) ? styleSuggestion.overlay_tips.map((tip) => {
                                                         const active = selectedOverlayTips.has(tip);
                                                         return (
                                                             <TouchableOpacity
@@ -1603,7 +1749,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                                 </Text>
                                                             </TouchableOpacity>
                                                         );
-                                                    })}
+                                                    }) : null}
                                                 </View>
 
                                                 <Text style={styles.suggestionTitle}>Palette de couleurs</Text>
@@ -2033,12 +2179,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                 )}
                                                 {distributionPlan.hashtags?.length > 0 && (
                                                     <Text style={styles.planHashtags}>
-                                                        Hashtags : {distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ')}
+                                                        Hashtags : {Array.isArray(distributionPlan.hashtags) ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}
                                                     </Text>
                                                 )}
                                                 {distributionPlan.schedule?.length > 0 && (
                                                     <View style={styles.planSchedule}>
-                                                        {distributionPlan.schedule.map((item, idx) => (
+                                                        {Array.isArray(distributionPlan.schedule) ? distributionPlan.schedule.map((item, idx) => (
                                                             <View key={`schedule_${idx}`} style={styles.planScheduleRow}>
                                                                 <Text style={styles.planScheduleChannel}>{item.channel}</Text>
                                                                 <Text style={styles.planScheduleTime}>{item.best_time}</Text>
@@ -2046,7 +2192,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                                     <Text style={styles.planScheduleCTA}>{item.call_to_action}</Text>
                                                                 )}
                                                             </View>
-                                                        ))}
+                                                        )) : null}
                                                     </View>
                                                 )}
                                             </View>
@@ -2191,15 +2337,15 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         <Text style={styles.variantCardHook}>{variant.hook}</Text>
                                     )}
                                     <View style={styles.variantOutline}>
-                                        {variant.script_outline.map((line, idx) => (
+                                        {Array.isArray(variant.script_outline) ? variant.script_outline.map((line, idx) => (
                                             <Text key={idx} style={styles.variantOutlineLine}>
                                                 • {line}
                                             </Text>
-                                        ))}
+                                        )) : null}
                                     </View>
                                     {variant.hashtags?.length > 0 && (
                                         <Text style={styles.variantHashtags}>
-                                            {variant.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ')}
+                                            {Array.isArray(variant.hashtags) ? variant.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}
                                         </Text>
                                     )}
                                 </TouchableOpacity>

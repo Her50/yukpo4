@@ -74,8 +74,12 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
         });
     };
 
+    // ✅ CORRIGÉ: Vérifier que products est défini et est un array
+    const safeProducts = Array.isArray(products) ? products : [];
+
     // Grouper par service
-    const groupedByService = products.reduce((acc, product) => {
+    const groupedByService = safeProducts.reduce((acc, product) => {
+        if (!product) return acc; // ✅ Protection contre produits null/undefined
         const key = `${product.serviceId}-${product.serviceName}`;
         if (!acc[key]) {
             acc[key] = {
@@ -120,47 +124,98 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                     )}
 
                     <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                        {services.map((service, serviceIndex) => (
-                            <View key={`service-${service.serviceId}`} style={styles.serviceGroup}>
-                                <View style={styles.serviceHeader}>
-                                    <SafeIcon name="briefcase" size={18} color={modernColors.primary} />
-                                    <Text style={styles.serviceName}>{service.serviceName}</Text>
-                                </View>
+                        {Array.isArray(services) && services.length > 0 ? (
+                            services.map((service, serviceIndex) => {
+                                // ✅ CORRIGÉ: Vérifier que service et service.products sont définis
+                                if (!service || !Array.isArray(service.products)) {
+                                    return null;
+                                }
 
-                                {service.products.map((product, productIndex) => {
-                                    const productKey = `${product.serviceId}-${product.productIndex}`;
-                                    const isSelected = selectedProducts.has(productKey);
+                                return (
+                                    <View key={`service-${service.serviceId || serviceIndex}`} style={styles.serviceGroup}>
+                                        <View style={styles.serviceHeader}>
+                                            <SafeIcon name="briefcase" size={18} color={modernColors.primary} />
+                                            <Text style={styles.serviceName}>
+                                                {service.serviceName || 'Service sans nom'}
+                                            </Text>
+                                        </View>
 
-                                    return (
-                                        <TouchableOpacity
-                                            key={`product-${product.serviceId}-${product.productIndex}`}
-                                            style={[
-                                                styles.productItem,
-                                                isSelected && styles.productItemSelected,
-                                            ]}
-                                            onPress={() => toggleProductSelection(product)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={styles.productContent}>
-                                                <SafeIcon
-                                                    name={isSelected ? 'check-circle' : 'circle'}
-                                                    size={20}
-                                                    color={isSelected ? modernColors.primary : modernColors.textSecondary}
-                                                />
-                                                <Text
+                                        {service.products.map((product, productIndex) => {
+                                            // ✅ CORRIGÉ: Vérifier que product est défini
+                                            if (!product) return null;
+
+                                            const productKey = `${product.serviceId}-${product.productIndex}`;
+                                            const isSelected = selectedProducts.has(productKey);
+
+                                            // ✅ CORRIGÉ: Extraire le nom du produit depuis différents formats
+                                            const extractProductName = (productName: any): string => {
+                                                if (!productName) return 'Produit sans nom';
+
+                                                if (typeof productName === 'string') {
+                                                    const trimmed = productName.trim();
+                                                    // Éviter d'afficher des objets JSON stringifiés
+                                                    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                                                        try {
+                                                            const parsed = JSON.parse(trimmed);
+                                                            if (typeof parsed === 'object' && parsed !== null) {
+                                                                if ('valeur' in parsed && typeof parsed.valeur === 'string') {
+                                                                    return parsed.valeur.trim() || 'Produit sans nom';
+                                                                }
+                                                                return 'Produit sans nom';
+                                                            }
+                                                        } catch {
+                                                            // Ce n'est pas du JSON valide
+                                                        }
+                                                    }
+                                                    return trimmed || 'Produit sans nom';
+                                                }
+
+                                                if (typeof productName === 'object' && productName !== null) {
+                                                    if ('valeur' in productName && typeof productName.valeur === 'string') {
+                                                        return productName.valeur.trim() || 'Produit sans nom';
+                                                    }
+                                                    return 'Produit sans nom';
+                                                }
+
+                                                return String(productName) || 'Produit sans nom';
+                                            };
+
+                                            return (
+                                                <TouchableOpacity
+                                                    key={`product-${product.serviceId}-${product.productIndex || productIndex}`}
                                                     style={[
-                                                        styles.productName,
-                                                        isSelected && styles.productNameSelected,
+                                                        styles.productItem,
+                                                        isSelected && styles.productItemSelected,
                                                     ]}
+                                                    onPress={() => toggleProductSelection(product)}
+                                                    activeOpacity={0.7}
                                                 >
-                                                    {product.productName}
-                                                </Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                                                    <View style={styles.productContent}>
+                                                        <SafeIcon
+                                                            name={isSelected ? 'check-circle' : 'circle'}
+                                                            size={20}
+                                                            color={isSelected ? modernColors.primary : modernColors.textSecondary}
+                                                        />
+                                                        <Text
+                                                            style={[
+                                                                styles.productName,
+                                                                isSelected && styles.productNameSelected,
+                                                            ]}
+                                                        >
+                                                            {extractProductName(product.productName)}
+                                                        </Text>
+                                                    </View>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                );
+                            })
+                        ) : (
+                            <View style={styles.emptyState}>
+                                <Text style={styles.emptyStateText}>Aucun produit disponible</Text>
                             </View>
-                        ))}
+                        )}
                     </ScrollView>
 
                     <View style={styles.footer}>
@@ -295,6 +350,16 @@ const styles = StyleSheet.create({
     },
     confirmButton: {
         flex: 1,
+    },
+    emptyState: {
+        padding: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emptyStateText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
     },
 });
 

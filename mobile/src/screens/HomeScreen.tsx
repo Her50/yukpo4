@@ -39,6 +39,8 @@ const HomeScreen: React.FC = () => {
     const { language, setLanguage, t } = useLanguageSafe(); // ✅ SAFE: Context de langue avec traduction (ne crash jamais)
     const { location } = useLocation(); // ✅ NOUVEAU PHASE 9: Pour contextualiser les recherches géographiques
     const scrollViewRef = React.useRef<ReactNative.ScrollView>(null); // ✅ NOUVEAU: Référence pour scroll automatique
+    const [hasUserScrolled, setHasUserScrolled] = React.useState(false); // ✅ AMÉLIORATION: Détecter scroll utilisateur
+    const [contentLoaded, setContentLoaded] = React.useState(false); // ✅ AMÉLIORATION: Détecter chargement contenu
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -201,24 +203,31 @@ const HomeScreen: React.FC = () => {
         loadUserBehavior();
     }, []);
 
-    // ✅ NOUVEAU: Scroll automatique vers le carousel au démarrage de l'app
+    // ✅ AMÉLIORATION: Scroll automatique avec détection scroll utilisateur
     React.useEffect(() => {
         if (CRASH_PREVENTION_CONFIG.DISABLE_HOME_AUTOSCROLL) {
             console.log('[HomeScreen] ⏸️ Scroll automatique désactivé (configuration)');
             return;
         }
 
+        // Ne pas scroller si l'utilisateur a déjà scrollé ou si le contenu n'est pas chargé
+        if (!contentLoaded || hasUserScrolled) {
+            return;
+        }
+
         // Attendre que le layout soit stabilisé, puis scroller vers le carousel
         const timer = setTimeout(() => {
-            scrollViewRef.current?.scrollTo({
-                y: 100, // Scroll léger pour rendre le carousel visible
-                animated: true,
-            });
-            console.log('[HomeScreen] 🎯 Scroll automatique vers le carousel au démarrage');
+            if (!hasUserScrolled && contentLoaded) {
+                scrollViewRef.current?.scrollTo({
+                    y: 100, // Scroll léger pour rendre le carousel visible
+                    animated: true,
+                });
+                console.log('[HomeScreen] 🎯 Scroll automatique vers le carousel au démarrage');
+            }
         }, 1500); // 1.5 secondes pour laisser le temps au contenu de charger
 
         return () => clearTimeout(timer);
-    }, []); // Se déclenche une seule fois au mount du composant
+    }, [contentLoaded, hasUserScrolled]); // Se déclenche une seule fois au mount du composant
 
     // ✅ CORRECTION: Détection GPS sécurisée avec timeout
     React.useEffect(() => {
@@ -721,15 +730,25 @@ const HomeScreen: React.FC = () => {
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     horizontal={false} // ✅ [BACKEND_TRACE] Scroll vertical uniquement
-                    nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll horizontal des composants enfants (MixedContentCarousel)
-                    scrollEventThrottle={16}
                     onScroll={(event) => {
-                        // ✅ CORRIGÉ: Log en debug pour éviter le spam (se déclenche fréquemment)
+                        // ✅ AMÉLIORATION: Détecter scroll utilisateur
                         const scrollY = event.nativeEvent.contentOffset.y;
+                        if (scrollY > 10 && !hasUserScrolled) {
+                            setHasUserScrolled(true);
+                        }
+                        // ✅ CORRIGÉ: Log en debug pour éviter le spam (se déclenche fréquemment)
                         if (scrollY > 0 && scrollY % 50 === 0) {
                             console.debug('[HomeScreen] 🔍 [BACKEND_TRACE] Scroll vertical:', scrollY);
                         }
                     }}
+                    onContentSizeChange={() => {
+                        // ✅ AMÉLIORATION: Marquer le contenu comme chargé
+                        if (!contentLoaded) {
+                            setContentLoaded(true);
+                        }
+                    }}
+                    scrollEventThrottle={16}
+                    nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll horizontal des composants enfants (MixedContentCarousel)
                 >
                     <View>
                         {/* ✅ TITRE SECTION CAROUSEL */}
@@ -1585,7 +1604,7 @@ const styles = StyleSheet.create({
     },
     // ✅ Container pour l'icône services spécialisés (avec écart du texte Yukpo)
     specializedServicesContainer: {
-        marginLeft: 6, // ✅ CORRIGÉ: Ajusté pour mieux équilibrer l'espace entre drapeau et Yukpo
+        marginLeft: 2, // ✅ CORRIGÉ: Réduit pour décaler l'icône plus vers la gauche, exploitant l'espace entre drapeau et Yukpo
     },
 });
 

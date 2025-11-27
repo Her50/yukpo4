@@ -1,4 +1,5 @@
 pub mod currency;
+pub mod db_monitor;
 pub mod db_retry;
 pub mod detect_intention;
 pub mod embedding_client;

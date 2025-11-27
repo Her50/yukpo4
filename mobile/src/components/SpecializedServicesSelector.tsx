@@ -48,7 +48,7 @@ export const SPECIALIZED_SERVICES = [
         iconType: 'lucide' as const,
         emoji: '✈️',
         specialized_type: 'agence_voyage',
-        description: 'Billets, réservations voyage',
+        description: 'Tickets de bus, billets d\'avion',
     },
     {
         id: 'covoiturage',
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        marginLeft: 6, // ✅ CORRIGÉ: Réduit de 8 à 6 pour mieux équilibrer l'espace entre drapeau et Yukpo
+        marginLeft: 0, // ✅ CORRIGÉ: Supprimé pour décaler l'icône plus vers la gauche, exploitant l'espace entre drapeau et Yukpo
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.3)', // ✅ Bordure subtile pour séparation
     },

@@ -395,8 +395,45 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         }
                     }
                 } catch (error) {
+                    // ✅ CORRECTION: Logger en WARN avec retry logic pour résoudre le problème
                     console.warn('[AjouterProduitSimple] ⚠️ Erreur chargement combinaisons IA:', error);
-                    // Ne pas bloquer le formulaire si l'API échoue
+                    // ✅ AMÉLIORATION: Essayer une fois de plus après un délai
+                    try {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        const retryResponse = await apiGet(`/api/combinations/session/${sessionId}`);
+                        if (retryResponse?.combinations && Array.isArray(retryResponse.combinations)) {
+                            const preferred = retryResponse.combinations.find((c: any) => c.is_ai_preferred);
+                            if (preferred && preferred.product_vector && Array.isArray(preferred.product_vector) && preferred.product_vector.length > 0) {
+                                const separateur = preferred.separateur || ',';
+                                const combinationString = preferred.product_vector.join(separateur);
+                                const sousCaracsObj: Record<string, string[]> = {};
+                                if (Array.isArray(preferred.product_labels) && preferred.product_labels.length > 0) {
+                                    preferred.product_vector.forEach((value: string, index: number) => {
+                                        const label = preferred.product_labels[index];
+                                        if (label && typeof label === 'string') {
+                                            if (!sousCaracsObj[label]) {
+                                                sousCaracsObj[label] = [];
+                                            }
+                                            if (!sousCaracsObj[label].includes(value)) {
+                                                sousCaracsObj[label].push(value);
+                                            }
+                                        }
+                                    });
+                                }
+                                setFormValues((prev: any) => ({
+                                    ...prev,
+                                    produits: [combinationString],
+                                    sous_caracteristiques: Object.keys(sousCaracsObj).length > 0 ? sousCaracsObj : (preferred.product_labels || prev.sous_caracteristiques || {}),
+                                    product_vector: preferred.product_vector,
+                                    product_labels: preferred.product_labels || []
+                                }));
+                                console.log('[AjouterProduitSimple] ✅ Combinaison préférée IA chargée après retry');
+                            }
+                        }
+                    } catch (retryError) {
+                        console.warn('[AjouterProduitSimple] ⚠️ Retry échoué également:', retryError);
+                        // Ne pas bloquer le formulaire si l'API échoue
+                    }
                 }
             }
         };
@@ -1004,7 +1041,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     }
 
                                     // 4. Fallback: objet vide (pas de valeurs par défaut hardcodées)
-                                    console.log('[AjouterProduitSimple] ⚠️ Aucune combinaison préférée trouvée, utilisation objet vide');
+                                    // ✅ CORRECTION: Logger en WARN car c'est un vrai problème - les caractéristiques devraient être disponibles
+                                    console.warn('[AjouterProduitSimple] ⚠️ PROBLÈME: Aucune combinaison préférée trouvée après vérification de toutes les sources. Vérifier que:');
+                                    console.warn('  - session_id est présent dans suggestionIA');
+                                    console.warn('  - L\'API /api/combinations/session/{session_id} retourne des données');
+                                    console.warn('  - formValues contient sous_caracteristiques ou product_vector/product_labels');
                                     return {};
                                 })()}
                                 separateur=","

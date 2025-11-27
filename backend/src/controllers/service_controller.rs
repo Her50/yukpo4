@@ -1103,12 +1103,55 @@ pub async fn get_service_by_id(
     }
 }
 
-/// R?cup?re tous les services du prestataire connect?
+#[derive(Debug, Deserialize)]
+pub struct PrestataireServicesQuery {
+    pub page: Option<usize>,
+    pub limit: Option<usize>,
+}
+
+/// R?cup?re tous les services du prestataire connect? avec pagination
 pub async fn get_services_for_prestataire(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
+    Query(query): Query<PrestataireServicesQuery>,
 ) -> axum::response::Response {
     let user_id = user.id;
+    
+    // ✅ NOUVEAU: Pagination avec valeurs par défaut
+    let page = query.page.unwrap_or(0);
+    let limit = query.limit.unwrap_or(20).min(100); // Max 100 par page pour éviter surcharge
+    let offset = page * limit;
+    
+    // ✅ NOUVEAU 2025-11-27: Cache Redis avec TTL de 60 secondes pour réduire les requêtes SQL lentes
+    // Inclure page et limit dans la clé de cache pour éviter collisions
+    let cache_key = format!("services:prestataire:{}:page:{}:limit:{}", user_id, page, limit);
+    let cache_ttl = std::time::Duration::from_secs(60);
+    
+    // Tentative de récupération depuis le cache
+    match state.cache_service.get::<serde_json::Value>(&cache_key).await {
+        Ok(Some(cached_result)) => {
+            info!(
+                "[get_services_for_prestataire] ✅ Résultat depuis cache Redis pour user {} (page {}, limit {})",
+                user_id, page, limit
+            );
+            return (StatusCode::OK, Json(cached_result)).into_response();
+        }
+        Ok(None) => {
+            // Cache miss - continuer avec la requête SQL
+            info!(
+                "[get_services_for_prestataire] Cache miss pour user {}, exécution requête SQL",
+                user_id
+            );
+        }
+        Err(e) => {
+            warn!(
+                "[get_services_for_prestataire] Erreur cache Redis pour user {}: {}, continuation avec SQL",
+                user_id, e
+            );
+            // En cas d'erreur Redis, continuer avec SQL (degradation gracieuse)
+        }
+    }
+    
     let pg_pool = &state.pg;
 
     info!(
@@ -1196,10 +1239,12 @@ pub async fn get_services_for_prestataire(
                     FROM services s
                     WHERE s.user_id = $1
                     ORDER BY s.created_at DESC
-                    LIMIT 200
+                    LIMIT $2 OFFSET $3
                     "#
                 )
                 .bind(user_id)
+                .bind(limit as i64)
+                .bind(offset as i64)
                 .fetch_all(&pool)
                 .await
             })
@@ -1297,11 +1342,57 @@ pub async fn get_services_for_prestataire(
         })
         .collect();
 
+    // ✅ NOUVEAU: Compter le total de services pour la pagination
+    let total_count: i64 = match sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM services WHERE user_id = $1"
+    )
+    .bind(user_id)
+    .fetch_one(pg_pool)
+    .await {
+        Ok(count) => count,
+        Err(e) => {
+            warn!(
+                "[get_services_for_prestataire] Erreur comptage total pour user {}: {}",
+                user_id, e
+            );
+            result.len() as i64 // Fallback sur le nombre de résultats actuels
+        }
+    };
+    
+    let total_pages = (total_count as f64 / limit as f64).ceil() as usize;
+    
     info!(
-        "[get_services_for_prestataire] Réponse allégée envoyée avec {} services (taille réduite de ~99%)",
-        result.len()
+        "[get_services_for_prestataire] Réponse allégée envoyée avec {} services (page {}/{}, total: {})",
+        result.len(), page + 1, total_pages.max(1), total_count
     );
-    (StatusCode::OK, Json(serde_json::Value::Array(result))).into_response()
+    
+    let json_result = json!({
+        "data": result,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total_count,
+            "total_pages": total_pages,
+            "has_next": (page + 1) < total_pages,
+            "has_prev": page > 0
+        }
+    });
+    
+    // ✅ NOUVEAU 2025-11-27: Mettre en cache pour 60 secondes
+    if let Err(e) = state.cache_service.set_with_ttl(&cache_key, &json_result, cache_ttl).await {
+        warn!(
+            "[get_services_for_prestataire] Erreur mise en cache pour user {}: {}",
+            user_id, e
+        );
+        // Ne pas échouer la requête si le cache échoue
+    } else {
+        info!(
+            "[get_services_for_prestataire] ✅ Résultat mis en cache pour user {} (TTL: 60s)",
+            user_id
+        );
+    }
+    
+    (StatusCode::OK, Json(json_result)).into_response()
 }
 
 /// ✅ NOUVEAU : Liste des services avec pagination

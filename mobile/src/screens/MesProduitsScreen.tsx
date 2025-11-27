@@ -29,19 +29,39 @@ import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
 
-const normalizeCategoryKey = (product: Record<string, any>): string => {
-    const raw = product?.categorie_produit
-        ?? product?.categorie
-        ?? product?.category
-        ?? product?.type
-        ?? product?.serviceCategorie
-        ?? 'autre';
-
-    return String(raw).trim().toLowerCase();
+// ✅ CORRIGÉ: Helper pour extraire valeur depuis objets structurés
+const extractValue = (field: any): string | null => {
+    if (!field) return null;
+    if (typeof field === 'string') {
+        const trimmed = field.trim();
+        return trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof field === 'object' && field !== null) {
+        // Format structuré {valeur: "...", type_donnee: "..."}
+        if ('valeur' in field) {
+            const val = field.valeur;
+            if (typeof val === 'string') {
+                const trimmed = val.trim();
+                return trimmed.length > 0 ? trimmed : null;
+            }
+        }
+    }
+    return null;
 };
 
-const getProductTypeLabel = (type: string): string => {
-    const key = (type || '').toLowerCase();
+const normalizeCategoryKey = (product: Record<string, any>): string | null => {
+    const raw = extractValue(product?.categorie_produit)
+        ?? extractValue(product?.categorie)
+        ?? extractValue(product?.category)
+        ?? extractValue(product?.type)
+        ?? extractValue(product?.serviceCategorie);
+
+    return raw ? raw.toLowerCase() : null;
+};
+
+const getProductTypeLabel = (type: string | null | undefined): string => {
+    if (!type) return 'Non catégorisé';
+    const key = type.toLowerCase();
     const labels: Record<string, string> = {
         'electronique': '📱 Électronique',
         'informatique': '💻 Informatique',
@@ -227,11 +247,19 @@ const MesProduitsScreen: React.FC = () => {
                 setLoading(true);
             }
 
-            // Charger tous les services du prestataire
-            const servicesResponse = await apiGet('/api/prestataire/services');
+            // ✅ NOUVEAU: Charger les services avec pagination pour améliorer les performances
+            const servicesResponse = await apiGet('/api/prestataire/services', {
+                params: {
+                    page: 0,
+                    limit: 20
+                }
+            });
 
             if (servicesResponse.success && servicesResponse.data) {
-                const servicesData = servicesResponse.data;
+                // ✅ CORRIGÉ: Gérer le nouveau format avec pagination ou l'ancien format
+                const servicesData = Array.isArray(servicesResponse.data)
+                    ? servicesResponse.data
+                    : (servicesResponse.data.data || servicesResponse.data);
                 console.log('[MesProduitsScreen] 📦 Services reçus:', servicesData.length);
                 setServices(servicesData);
 
@@ -240,7 +268,41 @@ const MesProduitsScreen: React.FC = () => {
 
                 servicesData.forEach((service: any) => {
                     const serviceId = service.id.toString();
-                    const serviceTitre = service.data?.titre_service?.valeur || service.titre || 'Service sans titre';
+
+                    // ✅ CORRIGÉ: Extraire serviceTitre de manière robuste pour éviter JSON brut
+                    const extractServiceTitre = (service: any): string => {
+                        // Essayer titre_service.valeur (format structuré)
+                        if (service.data?.titre_service?.valeur) {
+                            const val = service.data.titre_service.valeur;
+                            if (typeof val === 'string' && val.trim()) {
+                                return val.trim();
+                            }
+                        }
+                        // Essayer titre_service directement (string)
+                        if (service.data?.titre_service) {
+                            const val = service.data.titre_service;
+                            if (typeof val === 'string' && val.trim()) {
+                                return val.trim();
+                            }
+                        }
+                        // Essayer titre
+                        if (service.titre) {
+                            const val = service.titre;
+                            if (typeof val === 'string' && val.trim()) {
+                                return val.trim();
+                            }
+                        }
+                        // Essayer data.titre
+                        if (service.data?.titre) {
+                            const val = service.data.titre;
+                            if (typeof val === 'string' && val.trim()) {
+                                return val.trim();
+                            }
+                        }
+                        return 'Service sans titre';
+                    };
+
+                    const serviceTitre = extractServiceTitre(service);
                     // ✅ CORRIGÉ: Extraire les produits de différentes structures possibles
                     let produits: any = null;
 
@@ -293,16 +355,26 @@ const MesProduitsScreen: React.FC = () => {
                             // ✅ Normaliser les champs de base (extraire depuis objets structurés si nécessaire)
                             const nomNormalized = normalizeProductField(product.nom);
                             const nomProduitNormalized = normalizeProductField(product.nom_produit);
-                            if (nomNormalized !== undefined) normalizedProduct.nom = nomNormalized;
-                            if (nomProduitNormalized !== undefined) normalizedProduct.nom_produit = nomProduitNormalized;
-                            // ✅ CORRECTION: Utiliser nom_produit comme fallback pour nom si nom n'existe pas
-                            if (!normalizedProduct.nom && normalizedProduct.nom_produit) {
-                                normalizedProduct.nom = normalizedProduct.nom_produit;
+
+                            // ✅ CORRIGÉ: Ne pas mettre chaîne vide, vérifier que la valeur est valide
+                            if (nomNormalized !== undefined && nomNormalized !== null) {
+                                const nomStr = String(nomNormalized).trim();
+                                if (nomStr.length > 0) {
+                                    normalizedProduct.nom = nomStr;
+                                }
                             }
-                            if (!normalizedProduct.nom && !normalizedProduct.nom_produit) {
-                                normalizedProduct.nom = '';
-                                normalizedProduct.nom_produit = '';
+                            if (nomProduitNormalized !== undefined && nomProduitNormalized !== null) {
+                                const nomProdStr = String(nomProduitNormalized).trim();
+                                if (nomProdStr.length > 0) {
+                                    normalizedProduct.nom_produit = nomProdStr;
+                                }
                             }
+
+                            // ✅ CORRIGÉ: Utiliser nom_produit comme fallback pour nom si nom n'existe pas
+                            if ((!normalizedProduct.nom || !normalizedProduct.nom.trim()) && normalizedProduct.nom_produit?.trim()) {
+                                normalizedProduct.nom = normalizedProduct.nom_produit.trim();
+                            }
+                            // ✅ CORRIGÉ: Ne pas définir chaîne vide, laisser undefined pour que le fallback dans l'affichage fonctionne
 
                             const prixNormalized = normalizeProductField(product.prix);
                             const prixProduitNormalized = normalizeProductField(product.prix_produit);
@@ -1014,10 +1086,20 @@ const MesProduitsScreen: React.FC = () => {
     // ✅ NOUVEAU: Créer un nouveau produit (choisir un service puis ouvrir le formulaire)
     const handleCreateNewProduct = async () => {
         try {
-            // Charger tous les services du prestataire
-            const servicesResponse = await apiGet('/api/prestataire/services');
+            // ✅ NOUVEAU: Charger les services avec pagination
+            const servicesResponse = await apiGet('/api/prestataire/services', {
+                params: {
+                    page: 0,
+                    limit: 20
+                }
+            });
 
-            if (!servicesResponse.success || !servicesResponse.data || servicesResponse.data.length === 0) {
+            // ✅ CORRIGÉ: Gérer le nouveau format avec pagination
+            const servicesData = Array.isArray(servicesResponse.data)
+                ? servicesResponse.data
+                : (servicesResponse.data?.data || servicesResponse.data || []);
+
+            if (!servicesResponse.success || !servicesData || servicesData.length === 0) {
                 Alert.alert(
                     'Aucun service',
                     'Vous devez d\'abord créer un service avant de pouvoir ajouter des produits.\n\nVoulez-vous créer un service maintenant ?',
@@ -1105,10 +1187,20 @@ const MesProduitsScreen: React.FC = () => {
     // ✅ NOUVEAU 2025-11-06: Éditer les informations générales du service
     const handleEditServiceInfo = async () => {
         try {
-            // Charger le premier service du prestataire
-            const servicesResponse = await apiGet('/api/prestataire/services');
+            // ✅ NOUVEAU: Charger les services avec pagination
+            const servicesResponse = await apiGet('/api/prestataire/services', {
+                params: {
+                    page: 0,
+                    limit: 20
+                }
+            });
 
-            if (!servicesResponse.success || !servicesResponse.data || servicesResponse.data.length === 0) {
+            // ✅ CORRIGÉ: Gérer le nouveau format avec pagination
+            const servicesData = Array.isArray(servicesResponse.data)
+                ? servicesResponse.data
+                : (servicesResponse.data?.data || servicesResponse.data || []);
+
+            if (!servicesResponse.success || !servicesData || servicesData.length === 0) {
                 Alert.alert(
                     'Aucun service',
                     'Vous n\'avez pas encore de service à éditer.',
@@ -1117,7 +1209,7 @@ const MesProduitsScreen: React.FC = () => {
                 return;
             }
 
-            const service = servicesResponse.data[0]; // Premier service
+            const service = servicesData[0]; // Premier service
             const serviceData = service.data || {};
 
             console.log('[MesProduitsScreen] 📝 Édition service', service.id);
@@ -1502,7 +1594,7 @@ const MesProduitsScreen: React.FC = () => {
             || product.details
             || '';
 
-        const categoryLabel = product.category_label || getProductTypeLabel(product.category_key || product.type);
+        const categoryLabel = product.category_label || getProductTypeLabel(product.category_key ?? product.type ?? null);
         const viewsLabel = formatStatValue(product.views);
         const sharesLabel = formatStatValue(product.shares);
         const savesLabel = formatStatValue(product.saves);
@@ -1515,7 +1607,7 @@ const MesProduitsScreen: React.FC = () => {
                 <View style={styles.productHeader}>
                     <View style={styles.productTitleContainer}>
                         <Text style={styles.productName} numberOfLines={2}>
-                            {product.nom || product.nom_produit || 'Produit sans nom'}
+                            {(product.nom?.trim() || product.nom_produit?.trim() || 'Produit sans nom')}
                         </Text>
                         <View style={[
                             styles.productStatusBadge,
@@ -1532,7 +1624,36 @@ const MesProduitsScreen: React.FC = () => {
                     <View style={styles.productInfoRow}>
                         <SafeIcon name="folder" size={14} color="#6B7280" />
                         <Text style={styles.productServiceName} numberOfLines={1}>
-                            {product.serviceTitre || 'Service sans titre'}
+                            {(() => {
+                                // ✅ CORRIGÉ: Éviter affichage JSON brut
+                                const titre = product.serviceTitre;
+                                if (!titre) return 'Service sans titre';
+                                if (typeof titre === 'string') {
+                                    // Éviter d'afficher des objets JSON stringifiés
+                                    if (titre.trim().startsWith('{') || titre.trim().startsWith('[')) {
+                                        try {
+                                            const parsed = JSON.parse(titre.trim());
+                                            if (typeof parsed === 'object' && parsed !== null) {
+                                                if ('valeur' in parsed && typeof parsed.valeur === 'string') {
+                                                    return parsed.valeur.trim() || 'Service sans titre';
+                                                }
+                                                return 'Service sans titre';
+                                            }
+                                        } catch {
+                                            // Ce n'est pas du JSON valide, retourner tel quel
+                                        }
+                                    }
+                                    return titre.trim() || 'Service sans titre';
+                                }
+                                // Si c'est un objet, essayer d'extraire la valeur
+                                if (typeof titre === 'object' && titre !== null) {
+                                    if ('valeur' in titre && typeof titre.valeur === 'string') {
+                                        return titre.valeur.trim() || 'Service sans titre';
+                                    }
+                                    return 'Service sans titre';
+                                }
+                                return 'Service sans titre';
+                            })()}
                         </Text>
                     </View>
 
