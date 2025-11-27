@@ -17,7 +17,8 @@ pub async fn start_db_health_monitor(pool: PgPool) {
             // Récupérer les métriques du pool
             let pool_size = pool.size();
             let idle_connections = pool.num_idle();
-            let active_connections = pool_size.saturating_sub(idle_connections);
+            // ✅ CORRECTION: Convertir usize en u32 pour saturating_sub
+            let active_connections = pool_size.saturating_sub(idle_connections as u32);
             
             // Tester une connexion avec timeout
             let test_result = tokio::time::timeout(

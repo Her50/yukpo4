@@ -37,7 +37,6 @@ struct MediaPathRow {
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
-    state::AppState,
 };
 use log::{error, info, warn};
 

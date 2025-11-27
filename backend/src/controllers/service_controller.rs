@@ -1573,7 +1573,12 @@ pub async fn get_my_services(
         "[get_my_services] Redirection vers get_services_for_prestataire pour user_id={}",
         user.id
     );
-    get_services_for_prestataire(State(state), Extension(user)).await
+    // ✅ CORRECTION: Créer un Query par défaut pour la pagination
+    let default_query = PrestataireServicesQuery {
+        page: None,
+        limit: None,
+    };
+    get_services_for_prestataire(State(state), Extension(user), Query(default_query)).await
 }
 
 /// Récupère un service pour le partage public avec restrictions de sécurité

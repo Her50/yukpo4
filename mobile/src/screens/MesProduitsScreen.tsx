@@ -1114,7 +1114,7 @@ const MesProduitsScreen: React.FC = () => {
                 return;
             }
 
-            const servicesData = servicesResponse.data;
+            // ✅ CORRECTION: servicesData est déjà déclaré ci-dessus, pas besoin de le redéclarer
             setServices(servicesData);
 
             // Si un seul service, l'ouvrir directement

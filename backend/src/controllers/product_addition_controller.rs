@@ -286,8 +286,9 @@ pub async fn add_product_to_service(
     .await;
 
     // Remplacer les base64 par les chemins de fichiers dans product_obj
-    if let Some(image_paths) = saved_media_paths.images {
-        product_obj["images"] = json!(image_paths);
+    // ✅ CORRECTION: Utiliser une référence pour éviter le move
+    if let Some(ref image_paths) = saved_media_paths.images {
+        product_obj["images"] = json!(image_paths.clone());
     }
     if let Some(video_paths) = saved_media_paths.videos {
         product_obj["videos"] = json!(video_paths);
