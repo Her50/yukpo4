@@ -8624,46 +8624,94 @@ pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sql
 /// Helper pour exécuter plusieurs commandes SQL séparées par des points-virgules
 /// Gère les blocs DO $$ ... $$ comme une seule commande
 async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), sqlx::Error> {
-    // Amélioration : gérer les blocs DO $$...END $$; correctement
-    // Diviser par ";" mais préserver les blocs DO $$...END $$;
+    // Amélioration : gérer les blocs DO $$...END $$; et CREATE FUNCTION $$...$$ LANGUAGE correctement
+    // Diviser par ";" mais préserver les blocs $$...$$;
     let mut commands = Vec::new();
     let mut current = String::new();
-    let mut in_do_block = false;
-    let mut dollar_tags = Vec::new(); // Stack pour gérer les tags $$ imbriqués
+    let mut in_dollar_block = false;
+    let mut dollar_tag = String::new();
     
     for line in sql.lines() {
         let trimmed = line.trim();
         
-        // Détecter début d'un bloc DO $$
-        if trimmed.starts_with("DO $$") || trimmed.matches("DO $$").count() > 0 {
-            in_do_block = true;
-            dollar_tags.push("$$");
-            current.push_str(line);
-            current.push_str("\n");
-            continue;
+        // Ignorer les lignes vides et les commentaires seuls
+        if trimmed.is_empty() || trimmed.starts_with("--") {
+            if !in_dollar_block {
+                continue;
+            }
         }
         
-        if in_do_block {
-            current.push_str(line);
-            current.push_str("\n");
-            
-            // Détecter fin du bloc (END $$;)
-            if trimmed.contains("END $$") && trimmed.ends_with("$$;") {
-                dollar_tags.pop();
-                if dollar_tags.is_empty() {
-                    // Fin du bloc DO
-                    commands.push(current.trim().to_string());
-                    current.clear();
-                    in_do_block = false;
+        // Détecter début d'un bloc avec $$
+        if trimmed.contains("$$") && !in_dollar_block {
+            // Détecter le tag $$ (peut être $$, $tag$, etc.)
+            if let Some(start) = trimmed.find("$$") {
+                let tag_end = trimmed[start + 2..].find("$$");
+                if tag_end.is_some() {
+                    // Tag simple $$
+                    dollar_tag = "$$".to_string();
+                    in_dollar_block = true;
+                } else {
+                    // Tag personnalisé $tag$
+                    let tag_start = trimmed[..start].rfind('$');
+                    if let Some(ts) = tag_start {
+                        dollar_tag = trimmed[ts..=start+1].to_string();
+                        in_dollar_block = true;
+                    } else {
+                        dollar_tag = "$$".to_string();
+                        in_dollar_block = true;
+                    }
                 }
             }
-        } else {
-            // Commande normale
-            current.push_str(line);
-            current.push_str("\n");
-            
-            // Si la ligne se termine par ;, c'est une commande complète
-            if trimmed.ends_with(';') && !trimmed.contains("$$") {
+        }
+        
+        current.push_str(line);
+        current.push_str("\n");
+        
+        // Détecter fin du bloc $$
+        if in_dollar_block {
+            // Vérifier si la ligne contient la fin du bloc ($$ LANGUAGE ou END $$;)
+            if trimmed.contains(&dollar_tag) {
+                if trimmed.contains("LANGUAGE") {
+                    // Fonction SQL se termine par $$ LANGUAGE plpgsql;
+                    // La commande se termine au point-virgule
+                    if trimmed.ends_with(';') {
+                        commands.push(current.trim().to_string());
+                        current.clear();
+                        in_dollar_block = false;
+                        dollar_tag.clear();
+                        continue; // Passer à la ligne suivante (peut être un commentaire)
+                    } else {
+                        // LANGUAGE sur une ligne, point-virgule sur la suivante
+                        // On continue à accumuler jusqu'au prochain ;
+                    }
+                } else if trimmed.contains("END") && trimmed.ends_with(&format!("{};", dollar_tag)) {
+                    // Bloc DO $$ se termine par END $$;
+                    commands.push(current.trim().to_string());
+                    current.clear();
+                    in_dollar_block = false;
+                    dollar_tag.clear();
+                    continue;
+                } else if trimmed.ends_with(&format!("{};", dollar_tag)) && !trimmed.contains("LANGUAGE") {
+                    // Fin de bloc simple $$;
+                    commands.push(current.trim().to_string());
+                    current.clear();
+                    in_dollar_block = false;
+                    dollar_tag.clear();
+                    continue;
+                }
+            }
+            // Si on est dans un bloc et qu'on trouve un point-virgule après LANGUAGE
+            if in_dollar_block && current.contains("LANGUAGE") && trimmed.ends_with(';') && !trimmed.contains(&dollar_tag) {
+                // Le point-virgule final de la fonction
+                commands.push(current.trim().to_string());
+                current.clear();
+                in_dollar_block = false;
+                dollar_tag.clear();
+                continue;
+            }
+        } else if !in_dollar_block {
+            // Commande normale - se termine par ;
+            if trimmed.ends_with(';') {
                 let cmd = current.trim();
                 if !cmd.is_empty() && !cmd.starts_with("--") {
                     commands.push(cmd.to_string());
@@ -8675,14 +8723,42 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
     
     // Ajouter la dernière commande si elle existe
     if !current.trim().is_empty() {
-        commands.push(current.trim().to_string());
+        let cmd = current.trim();
+        if !cmd.is_empty() && !cmd.starts_with("--") {
+            commands.push(cmd.to_string());
+        }
     }
     
-    // Exécuter chaque commande
+    // Exécuter chaque commande avec gestion d'erreur gracieuse
     for cmd in commands {
         let trimmed_cmd = cmd.trim();
         if !trimmed_cmd.is_empty() && !trimmed_cmd.starts_with("--") {
-            sqlx::query(trimmed_cmd).execute(pool).await?;
+            // Ignorer les erreurs pour les commandes qui peuvent échouer si l'objet existe déjà
+            if trimmed_cmd.to_uppercase().contains("DROP INDEX") && !trimmed_cmd.to_uppercase().contains("IF EXISTS") {
+                // Convertir DROP INDEX en DROP INDEX IF EXISTS
+                let fixed_cmd = trimmed_cmd.replace("DROP INDEX", "DROP INDEX IF EXISTS");
+                if let Err(e) = sqlx::query(&fixed_cmd).execute(pool).await {
+                    warn!("⚠️ Erreur lors de l'exécution de DROP INDEX (ignorée): {}", e);
+                }
+            } else if trimmed_cmd.to_uppercase().contains("DROP TABLE") && !trimmed_cmd.to_uppercase().contains("IF EXISTS") {
+                // Convertir DROP TABLE en DROP TABLE IF EXISTS
+                let fixed_cmd = trimmed_cmd.replace("DROP TABLE", "DROP TABLE IF EXISTS");
+                if let Err(e) = sqlx::query(&fixed_cmd).execute(pool).await {
+                    warn!("⚠️ Erreur lors de l'exécution de DROP TABLE (ignorée): {}", e);
+                }
+            } else {
+                if let Err(e) = sqlx::query(trimmed_cmd).execute(pool).await {
+                    // Pour les autres erreurs, on les log mais on continue
+                    // Sauf pour les erreurs critiques qui doivent être propagées
+                    let error_str = e.to_string();
+                    if error_str.contains("syntax error") || error_str.contains("unterminated") {
+                        error!("❌ Erreur de syntaxe SQL: {}", e);
+                        return Err(e);
+                    } else {
+                        warn!("⚠️ Erreur lors de l'exécution SQL (continuation): {}", e);
+                    }
+                }
+            }
         }
     }
     
@@ -9402,72 +9478,44 @@ pub async fn ensure_services_specialized_type(pool: &PgPool) -> Result<(), sqlx:
         info!("✅ Colonne specialized_type déjà présente");
     }
     
-    // Remplir depuis les tables spécialisées existantes (en utilisant DO $$ blocks)
-    sqlx::query(
-        r#"
-        DO $$
-        BEGIN
-            -- Pharmacies
-            UPDATE services s
-            SET specialized_type = 'pharmacie'
-            WHERE EXISTS (
-                SELECT 1 FROM pharmacies p WHERE p.service_id = s.id
+    // Remplir depuis les tables spécialisées existantes (vérifier existence d'abord)
+    let tables_to_check = vec![
+        ("pharmacies", "pharmacie"),
+        ("hopitaux_cliniques", "hopital_clinique"),
+        ("laboratoires_imagerie", "laboratoire_imagerie"),
+        ("agences_voyage", "agence_voyage"),
+        ("covoiturages", "covoiturage"),
+        ("taxis_ville", "taxi_ville"),
+        ("banques_sang", "banque_sang"),
+    ];
+
+    for (table_name, specialized_type) in tables_to_check {
+        let table_exists: bool = sqlx::query_scalar(
+            &format!(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = '{}')",
+                table_name
             )
-            AND specialized_type IS NULL;
-            
-            -- Hôpitaux/Cliniques
-            UPDATE services s
-            SET specialized_type = 'hopital_clinique'
-            WHERE EXISTS (
-                SELECT 1 FROM hopitaux_cliniques h WHERE h.service_id = s.id
-            )
-            AND specialized_type IS NULL;
-            
-            -- Laboratoires/Imagerie
-            UPDATE services s
-            SET specialized_type = 'laboratoire_imagerie'
-            WHERE EXISTS (
-                SELECT 1 FROM laboratoires_imagerie l WHERE l.service_id = s.id
-            )
-            AND specialized_type IS NULL;
-            
-            -- Agences de voyage
-            UPDATE services s
-            SET specialized_type = 'agence_voyage'
-            WHERE EXISTS (
-                SELECT 1 FROM agences_voyage a WHERE a.service_id = s.id
-            )
-            AND specialized_type IS NULL;
-            
-            -- Covoiturages
-            UPDATE services s
-            SET specialized_type = 'covoiturage'
-            WHERE EXISTS (
-                SELECT 1 FROM covoiturages c WHERE c.service_id = s.id
-            )
-            AND specialized_type IS NULL;
-            
-            -- Taxis ville
-            UPDATE services s
-            SET specialized_type = 'taxi_ville'
-            WHERE EXISTS (
-                SELECT 1 FROM taxis_ville t WHERE t.service_id = s.id
-            )
-            AND specialized_type IS NULL;
-            
-            -- Banques de sang
-            UPDATE services s
-            SET specialized_type = 'banque_sang'
-            WHERE EXISTS (
-                SELECT 1 FROM banques_sang b WHERE b.service_id = s.id
-            )
-            AND specialized_type IS NULL;
-        END
-        $$;
-        "#
-    )
-    .execute(pool)
-    .await?;
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap_or(false);
+        
+        if table_exists {
+            sqlx::query(&format!(
+                r#"
+                UPDATE services s
+                SET specialized_type = '{}'
+                WHERE EXISTS (
+                    SELECT 1 FROM {} p WHERE p.service_id = s.id
+                )
+                AND specialized_type IS NULL
+                "#,
+                specialized_type, table_name
+            ))
+            .execute(pool)
+            .await?;
+        }
+    }
     
     // Ajouter contrainte CHECK si elle n'existe pas
     sqlx::query(
