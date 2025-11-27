@@ -1230,16 +1230,29 @@ pub async fn get_services_for_prestataire(
                 }
             }
 
+            // ✅ CORRIGÉ: Inclure les produits dans data.produits pour compatibilité mobile
+            let produits_value = produits_light.unwrap_or(serde_json::json!([]));
             json!({
                 "id": id,
-                "titre_service": titre_service,
+                "titre": titre_service.clone().unwrap_or_else(|| "Service sans titre".to_string()),
+                "titre_service": titre_service.clone().unwrap_or_else(|| "Service sans titre".to_string()),
                 "description_preview": description_preview,
                 "category": category,
                 "actif": is_active,
                 "created_at": created_at,
-                "produits_light": produits_light.unwrap_or(serde_json::json!([])),
+                "produits_light": produits_value.clone(),
                 "produits_count": produits_count.unwrap_or(0),
-                "google_place_id": google_place_id
+                "google_place_id": google_place_id,
+                // ✅ CORRIGÉ: Inclure data.produits pour que le mobile puisse les lire
+                "data": {
+                    "titre_service": {
+                        "valeur": titre_service.clone().unwrap_or_else(|| "Service sans titre".to_string())
+                    },
+                    "description": description_preview,
+                    "produits": produits_value,
+                    "produits_valeur": produits_value, // Alias pour compatibilité
+                    "category": category
+                }
             })
         })
         .collect();

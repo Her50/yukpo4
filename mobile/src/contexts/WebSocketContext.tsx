@@ -6,7 +6,6 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { Alert } from 'react-native';
 import websocketService, { ChatMessage, NotificationMessage, UserStatusUpdate } from '../services/websocketService';
 import { useAuth } from './AuthContext';
-import { STARTUP_CONFIG } from '../config/startupConfig';
 
 interface WebSocketContextValue {
     isConnected: boolean;
@@ -38,7 +37,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             // DÉLAI AUGMENTÉ pour éviter les blocages au démarrage
             setTimeout(() => {
                 try {
-                    websocketService.connect();
+                    websocketService.connect(user.id);
                 } catch (error) {
                     console.error('[WebSocketContext] Erreur connexion WebSocket:', error);
                 }

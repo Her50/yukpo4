@@ -42,7 +42,7 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
             }
 
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ImagePicker.MediaType.Images,
                 allowsMultipleSelection: false,
                 quality: 0.8,
                 base64: true,

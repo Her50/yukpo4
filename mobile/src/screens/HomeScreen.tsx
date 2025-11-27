@@ -721,6 +721,7 @@ const HomeScreen: React.FC = () => {
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     horizontal={false} // ✅ [BACKEND_TRACE] Scroll vertical uniquement
+                    nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll horizontal des composants enfants (MixedContentCarousel)
                     scrollEventThrottle={16}
                     onScroll={(event) => {
                         // ✅ [BACKEND_TRACE] Log pour diagnostiquer le scroll

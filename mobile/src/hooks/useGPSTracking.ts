@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -49,7 +48,7 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
     const startTracking = async () => {
         try {
             console.log('[useGPSTracking] 🚀 Démarrage du tracking GPS...');
-            
+
             setState(prev => ({ ...prev, error: null }));
 
             // Demander les permissions avec timeout
@@ -78,6 +77,20 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
                 },
                 async (location) => {
                     try {
+                        // ✅ CORRIGÉ: Validation des coordonnées GPS avant utilisation
+                        if (
+                            !location?.coords ||
+                            !Number.isFinite(location.coords.latitude) ||
+                            !Number.isFinite(location.coords.longitude) ||
+                            location.coords.latitude < -90 ||
+                            location.coords.latitude > 90 ||
+                            location.coords.longitude < -180 ||
+                            location.coords.longitude > 180
+                        ) {
+                            console.warn('[useGPSTracking] ⚠️ Coordonnées GPS invalides ignorées:', location);
+                            return;
+                        }
+
                         const coords = {
                             lat: location.coords.latitude,
                             lng: location.coords.longitude
@@ -95,7 +108,7 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
                         // Envoyer au backend
                         await sendLocationToBackend(coords.lat, coords.lng);
                     } catch (error) {
-                        console.error('[useGPSTracking] Erreur mise à jour position:', error);
+                        console.error('[useGPSTracking] ❌ Erreur mise à jour position:', error);
                     }
                 }
             );
@@ -133,9 +146,29 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
         try {
             console.log('[useGPSTracking] 📍 Récupération position actuelle...');
 
-            const location = await Location.getCurrentPositionAsync({
+            // ✅ CORRIGÉ: Ajout d'un timeout pour éviter les blocages GPS
+            const locationPromise = Location.getCurrentPositionAsync({
                 accuracy: Location.Accuracy.Balanced,
             });
+
+            const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('GPS timeout')), 15000)
+            );
+
+            const location = await Promise.race([locationPromise, timeoutPromise]);
+
+            // ✅ CORRIGÉ: Validation des coordonnées GPS avant utilisation
+            if (
+                !location?.coords ||
+                !Number.isFinite(location.coords.latitude) ||
+                !Number.isFinite(location.coords.longitude) ||
+                location.coords.latitude < -90 ||
+                location.coords.latitude > 90 ||
+                location.coords.longitude < -180 ||
+                location.coords.longitude > 180
+            ) {
+                throw new Error('Coordonnées GPS invalides');
+            }
 
             const coords = {
                 lat: location.coords.latitude,
@@ -158,7 +191,7 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
             console.error('[useGPSTracking] ❌ Erreur récupération position:', error);
             setState(prev => ({
                 ...prev,
-                error: error.message
+                error: error?.message || 'Erreur récupération position GPS'
             }));
         }
     };

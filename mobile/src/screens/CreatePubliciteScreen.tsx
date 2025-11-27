@@ -325,7 +325,7 @@ const CreatePubliciteScreen: React.FC = () => {
     const handleSelectVideo = async () => {
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                mediaTypes: ImagePicker.MediaType.Videos,
                 allowsEditing: false,
                 quality: 0.8,
                 // ✅ CORRECTION: Suppression de la contrainte de durée vidéo

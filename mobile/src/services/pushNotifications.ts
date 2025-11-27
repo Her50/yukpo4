@@ -46,12 +46,29 @@ export async function registerForPushNotificationsAsync(userToken: string): Prom
         }
 
         // Obtenir le token Expo Push
-        const tokenData = await Notifications.getExpoPushTokenAsync({
-            projectId: '39f01dbb-43a0-4fd9-9ba6-a5db1e999ec8' // Votre project ID Expo
-        });
-        const expoPushToken = tokenData.data;
-
-        console.log('[PushNotifications] ✅ Token Expo obtenu:', expoPushToken.substring(0, 20) + '...');
+        let expoPushToken: string;
+        try {
+            const tokenData = await Notifications.getExpoPushTokenAsync({
+                projectId: '39f01dbb-43a0-4fd9-9ba6-a5db1e999ec8' // Votre project ID Expo
+            });
+            expoPushToken = tokenData.data;
+            console.log('[PushNotifications] ✅ Token Expo obtenu:', expoPushToken.substring(0, 20) + '...');
+        } catch (tokenError: any) {
+            // Gestion spécifique de l'erreur Firebase sur Android
+            if (Platform.OS === 'android' && tokenError?.code === 'E_REGISTRATION_FAILED') {
+                console.error('[PushNotifications] ❌ Firebase non configuré pour Android');
+                console.error('[PushNotifications] 📖 Suivez le guide: https://docs.expo.dev/push-notifications/fcm-credentials/');
+                console.error('[PushNotifications] 💡 Actions requises:');
+                console.error('[PushNotifications]    1. Créer un projet Firebase');
+                console.error('[PushNotifications]    2. Télécharger google-services.json');
+                console.error('[PushNotifications]    3. Placer dans mobile/android/app/');
+                console.error('[PushNotifications]    4. Configurer app.json avec les credentials');
+                // Ne pas faire crasher l'app, retourner null gracieusement
+                return null;
+            }
+            // Relancer l'erreur pour les autres cas
+            throw tokenError;
+        }
 
         // Configurer le canal de notifications pour Android
         if (Platform.OS === 'android') {

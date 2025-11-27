@@ -74,7 +74,8 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         )
         .route(
             "/api/banques-sang",
-            post(blood_bank_controller::create_blood_bank),
+            post(blood_bank_controller::create_blood_bank)
+                .get(blood_bank_controller::list_blood_banks), // ✅ Ajout GET
         )
         .route(
             "/api/banques-sang/{id}/stocks",

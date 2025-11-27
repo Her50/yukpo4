@@ -65,7 +65,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.Images,
         allowsMultipleSelection: true,
         quality: 0.8,
         base64: true,
@@ -124,7 +124,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        mediaTypes: ImagePicker.MediaType.Videos,
         allowsMultipleSelection: false,
         quality: 0.8,
         base64: false, // ImagePicker ne supporte pas base64 pour les vidéos

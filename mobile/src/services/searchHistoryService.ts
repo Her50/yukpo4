@@ -60,6 +60,12 @@ class SearchHistoryService {
         }
     ): Promise<number | null> {
         try {
+            // ✅ CORRIGÉ: Vérifier que apiCall est disponible
+            if (typeof apiCall !== 'function') {
+                console.error('[SearchHistoryService] apiCall n\'est pas une fonction');
+                return null;
+            }
+
             const response = await apiCall<{
                 success: boolean;
                 id: number;
@@ -84,8 +90,10 @@ class SearchHistoryService {
             }
 
             return null;
-        } catch (error) {
-            console.error('[SearchHistoryService] Erreur enregistrement recherche:', error);
+        } catch (error: any) {
+            // ✅ CORRIGÉ: Gestion d'erreur améliorée
+            console.error('[SearchHistoryService] Erreur enregistrement recherche:', error?.message || error);
+            // Ne pas faire crasher l'app si l'enregistrement échoue
             return null;
         }
     }

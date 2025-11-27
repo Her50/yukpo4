@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 
+import { WEBSOCKET_CONFIG } from '../config/websocket';
 import {
   recordWebSocketError,
   recordWebSocketMessage,
@@ -14,7 +15,7 @@ interface WebSocketMessage {
 }
 
 interface WebSocketService {
-  connect: () => void;
+  connect: (userId?: string | number) => void;
   disconnect: () => void;
   sendMessage: (message: any) => void;
   isConnected: () => boolean;
@@ -24,7 +25,7 @@ interface WebSocketService {
 
 class WebSocketManager implements WebSocketService {
   private ws: WebSocket | null = null;
-  private url: string;
+  private url: string | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectInterval = 3000;
@@ -32,22 +33,43 @@ class WebSocketManager implements WebSocketService {
   private statusCallbacks: ((status: 'online' | 'offline') => void)[] = [];
   private isConnecting = false;
   private connectStartedAt: number | null = null;
+  private currentUserId: string | number | null = null;
 
-  constructor(url: string) {
-    this.url = url;
+  constructor() {
+    // URL sera construite dynamiquement lors de la connexion
   }
 
-  connect(): void {
+  connect(userId?: string | number): void {
+    if (!userId) {
+      console.error('❌ [WebSocket] userId requis pour la connexion');
+      return;
+    }
+
+    if (this.isConnecting || this.isConnected()) {
+      // Si déjà connecté avec le même userId, ne rien faire
+      if (this.currentUserId === userId) {
+        return;
+      }
+      // Si connecté avec un autre userId, déconnecter d'abord
+      this.disconnect();
+    }
+
+    // Construire l'URL complète avec le chemin WebSocket
+    this.currentUserId = userId;
+    this.url = WEBSOCKET_CONFIG.urls.notifications(userId);
     if (this.isConnecting || this.isConnected()) {
       return;
     }
 
     this.isConnecting = true;
-    console.log('🔌 [WebSocket] Tentative de connexion...');
+    console.log(`🔌 [WebSocket] Tentative de connexion à ${this.url}...`);
 
     this.connectStartedAt = Date.now();
 
     try {
+      if (!this.url) {
+        throw new Error('URL WebSocket non définie');
+      }
       this.ws = new WebSocket(this.url);
 
       this.ws.onopen = () => {
@@ -103,6 +125,8 @@ class WebSocketManager implements WebSocketService {
       this.ws.close(1000, 'Déconnexion volontaire');
       this.ws = null;
     }
+    this.currentUserId = null;
+    this.url = null;
   }
 
   sendMessage(message: any): void {
@@ -166,8 +190,7 @@ class WebSocketManager implements WebSocketService {
 }
 
 // Instance singleton du service WebSocket
-const wsUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpomnang.onrender.com';
-const websocketService = new WebSocketManager(wsUrl);
+const websocketService = new WebSocketManager();
 
 export default websocketService;
 

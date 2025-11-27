@@ -111,7 +111,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     const handleImagePicker = async (variantId: string) => {
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ImagePicker.MediaType.Images,
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.8,

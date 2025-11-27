@@ -63,7 +63,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.All,
+            mediaTypes: [ImagePicker.MediaType.Images, ImagePicker.MediaType.Videos],
             allowsEditing: true,
             quality: 0.8,
         });
@@ -89,7 +89,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                     text: 'Photo',
                     onPress: async () => {
                         const result = await ImagePicker.launchCameraAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            mediaTypes: ImagePicker.MediaType.Images,
                             allowsEditing: true,
                             quality: 0.8,
                         });
@@ -102,7 +102,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                     text: 'Vidéo',
                     onPress: async () => {
                         const result = await ImagePicker.launchCameraAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                            mediaTypes: ImagePicker.MediaType.Videos,
                             allowsEditing: true,
                             quality: 0.8,
                             videoMaxDuration: 60, // Max 60 secondes

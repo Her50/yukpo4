@@ -148,7 +148,32 @@ pub async fn get_product_reactions(
             );
             // ✅ CORRIGÉ: Retourner un tableau vide au lieu d'une erreur 500
             // La fonction peut ne pas exister ou il peut n'y avoir aucune réaction
-            Vec::new()
+            // Si c'est une erreur de fonction manquante, on peut essayer une requête alternative
+            if e.to_string().contains("does not exist") || e.to_string().contains("function") {
+                log::warn!("[ProductReactions] Fonction PostgreSQL absente, utilisation requête alternative");
+                // Requête alternative sans fonction
+                match sqlx::query(
+                    r#"
+                    SELECT 
+                        reaction_type,
+                        COUNT(*)::BIGINT as count,
+                        ARRAY[]::TEXT[] as users_sample
+                    FROM product_reactions
+                    WHERE service_id = $1 AND product_id = $2
+                    GROUP BY reaction_type
+                    "#,
+                )
+                .bind(service_id)
+                .bind(&normalized_product_id)
+                .fetch_all(&state.pg)
+                .await
+                {
+                    Ok(alt_r) => alt_r,
+                    Err(_) => Vec::new(),
+                }
+            } else {
+                Vec::new()
+            }
         }
     };
 

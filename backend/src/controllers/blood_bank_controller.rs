@@ -364,6 +364,16 @@ pub async fn search_blood_banks(
     Ok((StatusCode::OK, Json(json!({"success": true, "data": results}))))
 }
 
+/// ✅ Liste des banques de sang (stub pour éviter erreur 405)
+pub async fn list_blood_banks(
+    State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[list_blood_banks] Called");
+    // TODO: Implémenter la vraie liste
+    Ok((StatusCode::OK, Json(json!([]))))
+}
+
 /// Obtenir une banque de sang par ID
 pub async fn get_blood_bank(
     State(state): State<Arc<AppState>>,

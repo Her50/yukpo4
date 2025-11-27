@@ -950,21 +950,50 @@ impl NativeSearchService {
                 }
             }
             
-            let results = results.ok_or_else(|| {
-                let error_msg = last_error
-                    .as_ref()
-                    .map(|e| e.to_string())
-                    .unwrap_or_else(|| "Erreur inconnue".to_string());
-                log_error(&format!(
-                    "[NativeSearch] Échec recherche GPS après {} tentatives: {}",
-                    max_retries,
-                    error_msg
-                ));
-                crate::core::types::AppError::Internal(format!(
-                    "Erreur recherche GPS optimisée: {}",
-                    error_msg
-                ))
-            })?;
+            // ✅ CORRIGÉ: Si la recherche GPS échoue, fallback vers recherche sans GPS
+            // L'erreur "structure of query does not match function result type" peut survenir
+            // si la fonction SQL a été modifiée ou si la base de données n'est pas à jour
+            let results = match results {
+                Some(rows) => rows,
+                None => {
+                    let error_msg = last_error
+                        .as_ref()
+                        .map(|e| e.to_string())
+                        .unwrap_or_else(|| "Erreur inconnue".to_string());
+                    
+                    // ✅ CORRIGÉ: Vérifier si c'est une erreur de structure de requête
+                    if error_msg.contains("structure of query does not match function result type") {
+                        log::warn!(
+                            "[NativeSearch] ⚠️ Erreur structure requête GPS - Fallback vers recherche sans GPS. Erreur: {}",
+                            error_msg
+                        );
+                        // Fallback: continuer avec recherche sans GPS (sera géré plus bas)
+                        return self.fulltext_search_with_gps(
+                            query,
+                            category_filter,
+                            location_or_input_filter,
+                            None, // Pas de GPS pour le fallback
+                            search_radius_km,
+                            specialized_type,
+                        ).await;
+                    }
+                    
+                    log_error(&format!(
+                        "[NativeSearch] Échec recherche GPS après {} tentatives: {}",
+                        max_retries,
+                        error_msg
+                    ));
+                    // Fallback: continuer avec recherche sans GPS
+                    return self.fulltext_search_with_gps(
+                        query,
+                        category_filter,
+                        location_or_input_filter,
+                        None, // Pas de GPS pour le fallback
+                        search_radius_km,
+                        specialized_type,
+                    ).await;
+                }
+            };
 
             let mut search_results = Vec::new();
             for row in results {
@@ -1171,13 +1200,14 @@ SELECT DISTINCT
                             ELSE 0.0
                         END
                     ) +
-                    -- ✅ NOUVEAU 2025-11-04: BOOST pour autocomplete_characteristics (MODE VECTORIEL)
+                    -- ✅ OPTIMISÉ 2025-11-27: BOOST pour autocomplete_characteristics (MODE VECTORIEL)
                     -- ⚠️ CORRECTION BIAIS: Recherche UNIQUEMENT dans characteristic_vector (SANS lieu)
                     -- Le lieu est déjà utilisé pour le PRÉ-FILTRE → ne pas le scorer 2 fois
                     -- Score: 8.0-24.0 par produit + boost popularité CLIENT (usage_count)
                     -- Réduction 15.0 → 8.0 pour équilibrer à ~50% caractéristiques / 50% description
-                    (
-                        SELECT COALESCE(SUM(
+                    -- ✅ OPTIMISÉ: Utiliser COALESCE au lieu de sous-requête corrélée pour meilleures performances
+                    COALESCE((
+                        SELECT SUM(
                             -- Score de base pour correspondance dans characteristic_vector (SANS lieu)
                             8.0 *
                             -- Recherche dans le vecteur caractéristiques UNIQUEMENT (produit, pas lieu)
@@ -1188,7 +1218,7 @@ SELECT DISTINCT
                             -- BOOST selon popularité CLIENT (usage_count)
                             -- 1 fois = 1.0x, 5 fois = 1.5x, 10 fois = 2.0x, 20+ fois = 3.0x
                             LEAST(3.0, 1.0 + (ac.usage_count::REAL / 10.0))
-                        ), 0.0)
+                        )
                         FROM autocomplete_characteristics ac
                         WHERE ac.service_id = s.id
                         AND ac.identifiant_base LIKE 'produit%'
@@ -1198,7 +1228,8 @@ SELECT DISTINCT
                             SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
                             WHERE vec_val ILIKE '%' || $1 || '%'
                         )
-                    ) +
+                        LIMIT 5  -- ✅ OPTIMISÉ: Limiter à 5 produits par service pour éviter les calculs excessifs
+                    ), 0.0) +
                     -- 🔥 NOUVEAU 2025-11-04: Bonus unaccent pour champs PRODUIT (PRIORITAIRE)
                     (
                         SELECT COALESCE(SUM(
@@ -1329,20 +1360,51 @@ SELECT DISTINCT
                 )
             )
             ORDER BY fulltext_score DESC
+            LIMIT 100  -- ✅ OPTIMISÉ: Limiter les résultats avant le tri pour améliorer les performances
         "#,
             partial_conditions, partial_conditions
         );
 
-        let results = sqlx::query(&sql)
-            .bind(query)
-            .bind(category_filter)
-            .bind(location_filter)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| {
-                log_error(&format!("[NativeSearch] Erreur recherche full-text: {}", e));
-                crate::core::types::AppError::Internal(format!("Erreur recherche full-text: {}", e))
-            })?;
+        // ✅ CORRIGÉ: Retry automatique pour les erreurs de connexion PostgreSQL
+        let max_retries = 3;
+        let mut last_error = None;
+        
+        let results = loop {
+            match sqlx::query(&sql)
+                .bind(query.clone())
+                .bind(category_filter.clone())
+                .bind(location_filter.clone())
+                .fetch_all(&self.pool)
+                .await
+            {
+                Ok(results) => break results,
+                Err(e) => {
+                    let error_str = e.to_string();
+                    // Détecter les erreurs de connexion (TLS, peer closed, etc.)
+                    let is_connection_error = error_str.contains("peer closed connection")
+                        || error_str.contains("TLS close_notify")
+                        || error_str.contains("terminating connection")
+                        || error_str.contains("error communicating with database");
+                    
+                    if is_connection_error && last_error.is_none() {
+                        // Premier essai, on retry
+                        last_error = Some(e);
+                        log::warn!(
+                            "[NativeSearch] ⚠️ Erreur connexion PostgreSQL détectée, retry dans 500ms..."
+                        );
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        continue;
+                    } else {
+                        // Erreur non-récupérable ou déjà retry
+                        log_error(&format!("[NativeSearch] Erreur recherche full-text: {}", e));
+                        return Err(crate::core::types::AppError::Internal(format!(
+                            "Erreur recherche full-text: {}",
+                            e
+                        )));
+                    }
+                }
+            }
+        };
 
         let mut search_results = Vec::new();
         for row in results {

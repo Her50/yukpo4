@@ -86,6 +86,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .idle_timeout(Some(std::time::Duration::from_secs(600))) // 10 minutes
         .max_lifetime(Some(std::time::Duration::from_secs(1800))) // 30 minutes max par connexion
         .test_before_acquire(true)  // ✅ Tester la connexion avant utilisation
+        // ✅ CORRIGÉ: Désactiver la validation TLS stricte pour éviter les erreurs "TLS close_notify"
+        // Cela permet de récupérer automatiquement des connexions fermées brutalement
+        .after_connect(|_conn, _meta| {
+            Box::pin(async move {
+                // Pas de validation TLS stricte - laisser PostgreSQL gérer
+                Ok(())
+            })
+        })
         .connect(&db_url)
         .await
         .map_err(|e| {

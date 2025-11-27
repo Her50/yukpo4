@@ -861,9 +861,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 productVector={Array.isArray(formValues.product_vector) ? formValues.product_vector : undefined}
                                 productLabels={Array.isArray(formValues.product_labels) ? formValues.product_labels : undefined}
                                 sousCaracteristiques={(() => {
-                                    // ✅ CORRECTION: Utiliser TOUTES les valeurs des sous_caracteristiques pour permettre l'affichage du tableau complet
+                                    // ✅ CORRIGÉ: Réextraction dynamique pour garantir que les sous-caractéristiques sont toujours à jour
                                     // 1. PRIORITÉ: Utiliser sous_caracteristiques complets si disponibles (contient TOUTES les valeurs)
-                                    const sousCaracsComplets = formValues.sous_caracteristiques || suggestionData?.produits?.sous_caracteristiques;
+                                    // ✅ AMÉLIORATION: Vérifier aussi dans formValues.produits.sous_caracteristiques
+                                    const sousCaracsComplets = formValues.produits?.sous_caracteristiques
+                                        || formValues.sous_caracteristiques
+                                        || suggestionData?.produits?.sous_caracteristiques;
                                     if (sousCaracsComplets && typeof sousCaracsComplets === 'object' && Object.keys(sousCaracsComplets).length > 0) {
                                         const sousCaracsObj: Record<string, string[]> = {};
                                         Object.entries(sousCaracsComplets).forEach(([key, vals]: [string, any]) => {

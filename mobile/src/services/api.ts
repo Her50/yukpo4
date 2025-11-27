@@ -154,7 +154,7 @@ const removeAuthToken = async (): Promise<void> => {
 };
 
 // Fonction générique pour les appels API
-const apiCall = async <T>(
+export const apiCall = async <T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
@@ -215,6 +215,9 @@ const apiCall = async <T>(
     }
 
     let data;
+    // ✅ CORRIGÉ: Cloner la réponse avant de la lire pour éviter "Already read"
+    const responseClone = response.clone();
+
     try {
       data = await response.json();
     } catch (jsonError) {
@@ -222,9 +225,9 @@ const apiCall = async <T>(
       console.error(`[Mobile API] Response status: ${response.status}`);
       console.error(`[Mobile API] Response headers:`, Object.fromEntries(response.headers.entries()));
 
-      // Essayer de récupérer le texte brut
+      // ✅ CORRIGÉ: Utiliser la réponse clonée pour lire le texte
       try {
-        const textData = await response.text();
+        const textData = await responseClone.text();
         console.error(`[Mobile API] Response text:`, textData);
         data = { error: 'Invalid JSON response', raw: textData };
       } catch (textError) {

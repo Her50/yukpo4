@@ -21,6 +21,7 @@ import {
   View,
 } from 'react-native';
 import { config } from '../config/environment';
+import { useLocation } from '../contexts/LocationContext';
 import { apiGet, apiPost, commentsApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
@@ -277,6 +278,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onPress,
   onChatPress,
 }) => {
+  // ✅ CORRIGÉ: Utiliser LocationContext pour calculer la distance si nécessaire
+  const { calculateDistance: locationCalculateDistance, location: contextLocation } = useLocation();
+  const effectiveUserLocation = userLocation || (contextLocation ? { latitude: contextLocation.coords.latitude, longitude: contextLocation.coords.longitude } : null);
   const navigation = useNavigation();
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
@@ -784,7 +788,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
     extractedPriceData.devise ||
     'XAF';
 
-  // Distance
+  // ✅ CORRIGÉ: Calculer la distance avec plusieurs sources
+  // 1. Distance fournie directement
   const rawDistance = product.distance_km
     ?? product.distanceKm
     ?? product.distance
@@ -796,18 +801,72 @@ const ProductCard: React.FC<ProductCardProps> = ({
     ?? service?.distance_km
     ?? service?.distanceKm
     ?? service?.distance;
-  const distanceKm = parseDistanceToKm(rawDistance);
+
+  let distanceKm = parseDistanceToKm(rawDistance);
+
+  // 2. ✅ NOUVEAU: Calculer la distance côté client si userLocation et service GPS disponibles
+  if (!distanceKm && effectiveUserLocation) {
+    // Extraire les coordonnées GPS du service
+    const parseGPS = (gpsValue: any): { lat: number; lng: number } | null => {
+      if (!gpsValue) return null;
+
+      // Format 1: "lat,lng" ou "lat|lng"
+      if (typeof gpsValue === 'string') {
+        const parts = gpsValue.replace(/\s+/g, '').split(/[,|]/);
+        if (parts.length >= 2) {
+          const lat = parseFloat(parts[0]);
+          const lng = parseFloat(parts[1]);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            return { lat, lng };
+          }
+        }
+      }
+
+      // Format 2: Objet { lat, lng } ou { latitude, longitude }
+      if (typeof gpsValue === 'object') {
+        const lat = gpsValue.lat ?? gpsValue.latitude;
+        const lng = gpsValue.lng ?? gpsValue.longitude;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          return { lat, lng };
+        }
+      }
+
+      return null;
+    };
+
+    const serviceGPS = parseGPS(service?.gps)
+      ?? parseGPS(service?.data?.gps_fixe)
+      ?? parseGPS(service?.data?.gps)
+      ?? parseGPS(product.gps)
+      ?? parseGPS(product.data?.gps);
+
+    if (serviceGPS && locationCalculateDistance) {
+      try {
+        const calculatedDistance = locationCalculateDistance(
+          effectiveUserLocation.latitude,
+          effectiveUserLocation.longitude,
+          serviceGPS.lat,
+          serviceGPS.lng
+        );
+        if (Number.isFinite(calculatedDistance) && calculatedDistance >= 0) {
+          distanceKm = calculatedDistance;
+          // Ne pas logger - c'est un calcul normal
+        }
+      } catch (error) {
+        // Erreur silencieuse - on continue sans distance
+      }
+    }
+  }
+
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm);
 
-  // ✅ DEBUG: Logger la distance pour vérifier qu'elle est bien extraite
+  // ✅ CORRIGÉ: Réduire le niveau de log (warn → debug) car c'est normal qu'un service n'ait pas toujours de distance
   if (hasDistance) {
-    console.log(`[ProductCard] ✅ Distance extraite pour service ${product.service_id}: ${distanceKm}km`);
+    // Ne pas logger en production - trop verbeux
+    // console.log(`[ProductCard] ✅ Distance extraite pour service ${product.service_id}: ${distanceKm}km`);
   } else {
-    console.warn(`[ProductCard] ⚠️ Pas de distance pour service ${product.service_id}`, {
-      rawDistance,
-      productDistanceKm: product.distance_km,
-      serviceDistanceKm: service?.distance_km,
-    });
+    // Ne logger que si vraiment nécessaire (debug uniquement)
+    // console.debug(`[ProductCard] Pas de distance pour service ${product.service_id}`);
   }
   const formattedDistance = hasDistance
     ? distanceKm! < 1
@@ -875,19 +934,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const countryFlag = getCountryFlag(pays);
   const showCountryBadge = countryFlag && countryFlag !== '🌍';
 
-  // Debug: afficher les données extraites
-  console.log('[ProductCard] DEBUG - prestataireName:', prestataireName);
-  console.log('[ProductCard] DEBUG - rawPrestataire:', rawPrestataire);
-  console.log('[ProductCard] DEBUG - service?.user:', service?.user);
-  console.log('[ProductCard] DEBUG - service?.prestataire:', service?.prestataire);
-  console.log('[ProductCard] DEBUG - product.prestataire:', product.prestataire);
-  console.log('[ProductCard] DEBUG - chosenLocation:', chosenLocation);
-  console.log('[ProductCard] DEBUG - locationVector:', locationVector);
-  console.log('[ProductCard] DEBUG - pays:', pays, 'countryFlag:', countryFlag);
-  console.log('[ProductCard] DEBUG - product.adresse:', product.adresse);
-  console.log('[ProductCard] DEBUG - product.ville:', product.ville);
-  console.log('[ProductCard] DEBUG - product.region:', product.region);
-  console.log('[ProductCard] DEBUG - service?.data?.produits:', service?.data?.produits);
+  // ✅ CORRIGÉ: Supprimer les logs DEBUG verbeux qui affichent undefined
+  // Ces logs ne sont plus nécessaires et polluent les logs en production
+  // Si besoin de debug, utiliser des logs conditionnels avec vérification de valeurs
 
   const commentServiceId = Number(product._serviceId || product.service_id || service?.id || 0);
   const serviceTitleForComments =

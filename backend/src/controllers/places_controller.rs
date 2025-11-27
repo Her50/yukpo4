@@ -55,7 +55,7 @@ pub struct LocationMetadata {
 pub async fn enrich_location(
     State(state): State<Arc<AppState>>,
     Query(params): Query<EnrichLocationRequest>,
-) -> Result<Json<EnrichLocationResponse>, AppError> {
+) -> axum::response::Response {
     info!(
         "🗺️ Enrichissement lieu: {} ({})",
         params.place_name,
@@ -65,8 +65,9 @@ pub async fn enrich_location(
     let pool = &state.pg;
     let country_str = params.country.as_deref().unwrap_or("");
 
+    // ✅ CORRIGÉ: Gestion d'erreur améliorée avec retour JSON même en cas d'erreur
     // 1. Chercher dans cache d'abord
-    let cached = sqlx::query_as::<
+    let cached = match sqlx::query_as::<
         _,
         (
             String,
@@ -94,7 +95,14 @@ pub async fn enrich_location(
     .bind(&params.place_name)
     .bind(country_str)
     .fetch_optional(pool)
-    .await?;
+    .await {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("[enrich_location] Erreur requête cache: {}", e);
+            // Continuer sans cache
+            None
+        }
+    };
 
     if let Some(cached) = cached {
         info!("✅ Trouvé en cache pour {}", params.place_name);
@@ -130,7 +138,7 @@ pub async fn enrich_location(
             .get_children(pool, &params.place_name, place_type)
             .await;
 
-        return Ok(Json(EnrichLocationResponse {
+        return (axum::http::StatusCode::OK, axum::Json(EnrichLocationResponse {
             place_name: params.place_name.clone(),
             geoname_id: None, // Google Places n'a pas de geoname_id
             display_name,
@@ -151,7 +159,7 @@ pub async fn enrich_location(
                 population: None,
                 timezone: None,
             },
-        }));
+        })).into_response();
     }
 
     // 2. Pas en cache → Enrichir avec Google Places API
@@ -174,7 +182,7 @@ pub async fn enrich_location(
                 "⚠️ Lieu '{}' introuvable dans Google Places, retour données minimales",
                 params.place_name
             );
-            return Ok(Json(EnrichLocationResponse {
+            return (axum::http::StatusCode::OK, axum::Json(EnrichLocationResponse {
                 place_name: params.place_name.clone(),
                 geoname_id: None,
                 display_name: params.place_name.clone(),
@@ -192,7 +200,7 @@ pub async fn enrich_location(
                     population: None,
                     timezone: None,
                 },
-            }));
+            })).into_response();
         }
         Err(error) => {
             let error_msg = error.to_string();
@@ -233,7 +241,7 @@ pub async fn enrich_location(
                     .get_children(pool, &params.place_name, "city")
                     .await;
                 
-                return Ok(Json(EnrichLocationResponse {
+                return (axum::http::StatusCode::OK, axum::Json(EnrichLocationResponse {
                     place_name: params.place_name.clone(),
                     geoname_id: local_data.geoname_id,
                     display_name: local_data.display_name.clone(),
@@ -262,7 +270,7 @@ pub async fn enrich_location(
                 "⚠️ Lieu '{}' introuvable (Google Places et base locale), retour données minimales",
                 params.place_name
             );
-            return Ok(Json(EnrichLocationResponse {
+            return (axum::http::StatusCode::OK, axum::Json(EnrichLocationResponse {
                 place_name: params.place_name.clone(),
                 geoname_id: None,
                 display_name: params.place_name.clone(),
@@ -280,7 +288,7 @@ pub async fn enrich_location(
                     population: None,
                     timezone: None,
                 },
-            }));
+            })).into_response();
         }
     };
 
@@ -294,7 +302,8 @@ pub async fn enrich_location(
         .unwrap_or_else(|| country_str.to_string());
     let parent_country_code = extract_country_code(&parent_country);
 
-    let _ = sqlx::query(
+    // ✅ CORRIGÉ: Gestion d'erreur pour l'insertion en cache (non bloquant)
+    if let Err(e) = sqlx::query(
         "INSERT INTO geo_hierarchy 
          (place_name, display_name, location_vector, admin_level, is_leaf, 
           parent_country, parent_country_code, lat, lng, created_at, updated_at)
@@ -331,7 +340,10 @@ pub async fn enrich_location(
             .unwrap_or(0.0),
     )
     .execute(pool)
-    .await?;
+    .await {
+        warn!("[enrich_location] Erreur sauvegarde cache: {}", e);
+        // Continuer même si le cache échoue
+    }
 
     info!(
         "✅ Enrichissement Google Places terminé pour {} : {} éléments",
@@ -359,7 +371,7 @@ pub async fn enrich_location(
         .get_children(pool, &params.place_name, place_type_str)
         .await;
 
-    Ok(Json(EnrichLocationResponse {
+    (axum::http::StatusCode::OK, axum::Json(EnrichLocationResponse {
         place_name: params.place_name,
         geoname_id: None,
         display_name: google_data.display_name.clone(),
@@ -388,7 +400,7 @@ pub async fn enrich_location(
             population: None,
             timezone: None,
         },
-    }))
+    })).into_response()
 }
 
 /// Détermine le niveau administratif basé sur la taille du location_vector

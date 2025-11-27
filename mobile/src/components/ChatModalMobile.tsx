@@ -608,7 +608,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const pickImage = async () => {
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ImagePicker.MediaType.Images,
                 allowsMultipleSelection: true,
                 quality: 0.8,
                 base64: true,

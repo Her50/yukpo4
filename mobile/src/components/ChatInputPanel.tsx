@@ -1,10 +1,10 @@
-﻿import * as React from "react";
-import { useState, useCallback, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } from 'react-native';
-import { Button, Card, Title, Paragraph } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+﻿import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import * as React from "react";
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Card } from 'react-native-paper';
 import { useLocation } from '../contexts/LocationContext';
 import { theme } from '../theme/theme';
 
@@ -41,16 +41,16 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
   const [texte, setTexte] = useState('');
   const [site_web, setSiteWeb] = useState('');
   const [showLinkInput, setShowLinkInput] = useState(false);
-  
+
   // États pour les fichiers multimédias
   const [base64_image, setBase64Image] = useState<UploadedFile[]>([]);
   const [audio_base64, setAudio_base64] = useState<UploadedFile[]>([]);
   const [doc_base64, setDoc_base64] = useState<UploadedFile[]>([]);
-  
+
   // GPS
   const { location } = useLocation();
   const [gps_zone, setGpsZone] = useState<{ lat: number; lng: number } | null>(null);
-  
+
   // Suggestions IA
   const [aiInsights, setAiInsights] = useState<{
     confidence: number;
@@ -102,7 +102,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
   const takePhoto = useCallback(async () => {
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
@@ -128,7 +128,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
   const pickImages = useCallback(async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.Images,
         allowsMultipleSelection: true,
         quality: 0.8,
         base64: true,
@@ -250,23 +250,23 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
           <Text style={styles.actionText}>Docs</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.actionButton} 
+        <TouchableOpacity
+          style={styles.actionButton}
           onPress={() => setShowLinkInput(!showLinkInput)}
         >
           <Ionicons name="link" size={20} color={theme.colors.primary} />
           <Text style={styles.actionText}>Lien</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.submitButton, loading && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={loading || (!texte.trim() && totalFiles === 0)}
         >
-          <Ionicons 
-            name={loading ? "hourglass" : "send"} 
-            size={20} 
-            color="white" 
+          <Ionicons
+            name={loading ? "hourglass" : "send"}
+            size={20}
+            color="white"
           />
           <Text style={styles.submitText}>
             {loading ? "Analyse..." : "Envoyer à Yukpo"}
@@ -293,14 +293,14 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
           <Text style={styles.previewTitle}>
             Éléments ajoutés ({totalFiles} fichier{totalFiles > 1 ? 's' : ''})
           </Text>
-          
+
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.previewList}>
               {/* Images */}
               {base64_image.map((file, index) => (
                 <View key={`img-${index}`} style={styles.previewItem}>
                   <Image source={{ uri: file.data }} style={styles.previewImage} />
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.removeButton}
                     onPress={() => removeFile(index, 'image')}
                   >
@@ -316,7 +316,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
                   <View style={styles.documentPreview}>
                     <Ionicons name="document" size={24} color={theme.colors.primary} />
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.removeButton}
                     onPress={() => removeFile(index, 'document')}
                   >
@@ -332,7 +332,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
                   <View style={styles.linkPreview}>
                     <Ionicons name="link" size={24} color={theme.colors.primary} />
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.removeButton}
                     onPress={() => setSiteWeb('')}
                   >

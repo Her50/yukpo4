@@ -90,11 +90,16 @@ export const useWebSocket = (
 
   const connect = useCallback(() => {
     if (!isConnected && !isConnecting) {
+      if (!userId) {
+        console.warn('⚠️ [useWebSocket] userId requis pour la connexion');
+        setLastError('userId requis');
+        return;
+      }
       setIsConnecting(true);
       setLastError(null);
-      websocketService.connect();
+      websocketService.connect(userId);
     }
-  }, [isConnected, isConnecting]);
+  }, [isConnected, isConnecting, userId]);
 
   const disconnect = useCallback(() => {
     websocketService.disconnect();

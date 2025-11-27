@@ -129,13 +129,27 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             const initialTimer = setTimeout(() => {
                 const safeContent = Array.isArray(content) ? content : [];
                 if (scrollViewRef.current && safeContent.length > 1) {
+                    // ✅ CORRIGÉ: Vérifier que scrollTo est disponible
+                    if (typeof scrollViewRef.current.scrollTo !== 'function') {
+                        console.warn('[MixedContentCarousel] ⚠️ scrollTo n\'est pas une fonction');
+                        return;
+                    }
+
                     console.log('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial (index 0 → 1)');
-                    const offset = SCREEN_PADDING + SNAP_INTERVAL;
-                    scrollViewRef.current.scrollTo({
-                        x: offset,
-                        animated: true,
+                    // ✅ CORRIGÉ: Calculer la position correctement (nextIndex * SNAP_INTERVAL)
+                    const nextIndex = 1;
+                    const scrollPosition = nextIndex * SNAP_INTERVAL;
+
+                    // ✅ CORRIGÉ: Utiliser requestAnimationFrame pour s'assurer que le layout est prêt
+                    requestAnimationFrame(() => {
+                        if (scrollViewRef.current) {
+                            scrollViewRef.current.scrollTo({
+                                x: scrollPosition,
+                                animated: true,
+                            });
+                            setCurrentIndex(nextIndex);
+                        }
                     });
-                    setCurrentIndex(1);
                 } else {
                     console.warn('[MixedContentCarousel] ⚠️ ScrollView ref null ou contenu insuffisant lors du scroll initial');
                 }
@@ -187,23 +201,36 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     };
 
     // ✅ FONCTION: Extraire les produits d'un service (cohérent avec MesServicesScreen)
+    // ✅ CORRIGÉ: Gérer toutes les structures possibles incluant produits_light
     const extractProduits = (service: any): any[] => {
-        // Structure 1: data.produits.valeur (structure standard)
+        // Structure 1: produits_light (réponse allégée du backend)
+        if (service.produits_light && Array.isArray(service.produits_light)) {
+            return service.produits_light;
+        }
+        // Structure 2: data.produits (tableau direct)
+        if (Array.isArray(service.data?.produits)) {
+            return service.data.produits;
+        }
+        // Structure 3: data.produits.valeur (structure standard)
         if (service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur)) {
             return service.data.produits.valeur;
         }
-        // Structure 2: data.produits directement (tableau)
-        else if (Array.isArray(service.data?.produits)) {
-            return service.data.produits;
+        // Structure 4: data.produits_valeur (alias)
+        if (Array.isArray(service.data?.produits_valeur)) {
+            return service.data.produits_valeur;
         }
-        // Structure 3: data.produits est un objet avec un tableau à l'intérieur
-        else if (service.data?.produits && typeof service.data.produits === 'object') {
+        // Structure 5: data.produits est un objet avec un tableau à l'intérieur
+        if (service.data?.produits && typeof service.data.produits === 'object') {
             const produitsObj = service.data.produits;
             if (Array.isArray(produitsObj.items)) {
                 return produitsObj.items;
             } else if (Array.isArray(produitsObj.list)) {
                 return produitsObj.list;
             }
+        }
+        // Structure 6: produits directement sur le service (fallback)
+        if (Array.isArray(service.produits)) {
+            return service.produits;
         }
         return [];
     };
@@ -377,6 +404,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         });
 
         autoScrollTimerRef.current = setTimeout(() => {
+            // ✅ CORRIGÉ: Vérifier que le ScrollView est monté et que le contenu est chargé
             if (!scrollViewRef.current) {
                 console.warn('[MixedContentCarousel] ⚠️ ScrollView ref null, scroll annulé');
                 return;
@@ -388,22 +416,43 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 return;
             }
 
+            // ✅ CORRIGÉ: Vérifier que le ScrollView est bien monté en vérifiant qu'on peut accéder à ses méthodes
+            try {
+                // Test si le ScrollView est accessible
+                if (typeof scrollViewRef.current.scrollTo !== 'function') {
+                    console.warn('[MixedContentCarousel] ⚠️ ScrollView.scrollTo n\'est pas une fonction, scroll annulé');
+                    return;
+                }
+            } catch (error) {
+                console.warn('[MixedContentCarousel] ⚠️ Erreur accès ScrollView:', error);
+                return;
+            }
+
             const nextIndex = (currentIndex + 1) % safeContent.length;
-            const scrollPosition = SCREEN_PADDING + nextIndex * SNAP_INTERVAL;
+            // ✅ CORRIGÉ: Calculer la position de scroll correctement en tenant compte du padding
+            const scrollPosition = nextIndex * SNAP_INTERVAL;
 
             console.log('[MixedContentCarousel] 🎬 Auto scroll exécuté', {
                 currentIndex,
                 nextIndex,
                 scrollPosition,
+                SNAP_INTERVAL,
+                CARD_WIDTH,
+                CARD_MARGIN,
                 contentLength: safeContent.length
             });
 
             try {
-                scrollViewRef.current.scrollTo({
-                    x: scrollPosition,
-                    animated: true,
+                // ✅ CORRIGÉ: Utiliser requestAnimationFrame pour s'assurer que le layout est prêt
+                requestAnimationFrame(() => {
+                    if (scrollViewRef.current) {
+                        scrollViewRef.current.scrollTo({
+                            x: scrollPosition,
+                            animated: true,
+                        });
+                        setCurrentIndex(nextIndex);
+                    }
                 });
-                setCurrentIndex(nextIndex);
             } catch (error) {
                 console.error('[MixedContentCarousel] ❌ Erreur lors du scroll:', error);
             }

@@ -226,7 +226,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
             }
 
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ImagePicker.MediaType.Images,
                 allowsEditing: true,
                 quality: 0.7,
                 base64: true

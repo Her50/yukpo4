@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { API_BASE_URL } from '../config/api.config';
 
 type FeatureFlags = Record<string, boolean>;
 
@@ -43,31 +44,60 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
     useEffect(() => {
         const fetchFlags = async () => {
             try {
-                const res = await fetch(
-                    `${process.env.EXPO_PUBLIC_API_BASE_URL}/api/meta/feature-flags`,
-                );
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
+                // ✅ CORRIGÉ: Utiliser la configuration centralisée API_BASE_URL
+                if (!API_BASE_URL) {
+                    console.warn('[FeatureFlagContext] API_BASE_URL non défini, utilisation des flags par défaut');
+                    setLoading(false);
+                    return;
                 }
+
+                const res = await fetch(
+                    `${API_BASE_URL}/api/meta/feature-flags`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                        // ✅ CORRIGÉ: Ajouter un timeout pour éviter les blocages
+                        signal: AbortSignal.timeout(5000), // 5 secondes
+                    }
+                );
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+
                 const data = (await res.json()) as {
                     success: boolean;
                     data?: { known?: Record<string, boolean> };
                 };
+
                 if (data?.success && data.data?.known) {
                     setFlags((prev) => ({
                         ...prev,
                         ...data.data!.known,
                     }));
+                    console.log('[FeatureFlagContext] ✅ Feature flags chargés:', Object.keys(data.data.known));
+                } else {
+                    console.warn('[FeatureFlagContext] ⚠️ Format de réponse invalide:', data);
                 }
-            } catch (err) {
-                // eslint-disable-next-line no-console
-                console.warn('[FeatureFlagContext] fetch failed', err);
+            } catch (err: any) {
+                // ✅ CORRIGÉ: Gestion d'erreur améliorée avec détails
+                if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+                    console.warn('[FeatureFlagContext] ⏱️ Timeout lors du chargement des feature flags');
+                } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+                    console.warn('[FeatureFlagContext] 🌐 Erreur réseau lors du chargement des feature flags');
+                } else {
+                    console.warn('[FeatureFlagContext] ❌ Erreur lors du chargement des feature flags:', err.message || err);
+                }
+                // ✅ CORRIGÉ: Continuer avec les flags par défaut (déjà initialisés depuis env)
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchFlags().catch(() => {
+        fetchFlags().catch((err) => {
+            console.warn('[FeatureFlagContext] ❌ Erreur non gérée:', err);
             setLoading(false);
         });
     }, []);

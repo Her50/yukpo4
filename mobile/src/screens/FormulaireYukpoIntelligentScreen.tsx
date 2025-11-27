@@ -2377,14 +2377,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     // ✅ CORRIGÉ: Utiliser getSousCaracteristiquesFromIA() au lieu de valeurs hardcodées
     // Cela garantit que les caractéristiques préférées par l'IA sont affichées
+    // ✅ AMÉLIORATION: Toujours réextraire pour garantir que les données sont à jour
     if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object' || Object.keys(sousCaracteristiques).length === 0) {
       const sousCaracsFromIA = getSousCaracteristiquesFromIA(valeursFormulaire, suggestion);
+      if (sousCaracsFromIA && typeof sousCaracsFromIA === 'object' && Object.keys(sousCaracsFromIA).length > 0) {
+        sousCaracteristiques = sousCaracsFromIA;
+      }
       console.log('[FormulaireYukpoIntelligentScreen] 🔍 getSousCaracteristiquesFromIA appelé dans renderProductsBlock:', {
         hasFormValues: !!valeursFormulaire,
         hasSuggestion: !!suggestion,
         produitsField: valeursFormulaire.produits,
         suggestionData: suggestion?.data,
-        result: sousCaracsFromIA
+        result: sousCaracsFromIA,
+        finalSousCaracs: sousCaracteristiques
       });
       if (sousCaracsFromIA && typeof sousCaracsFromIA === 'object' && Object.keys(sousCaracsFromIA).length > 0) {
         sousCaracteristiques = sousCaracsFromIA;
@@ -2724,10 +2729,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }).filter(v => v.length > 0);
       }
 
-      // ✅ PROTECTION CRITIQUE: S'assurer que currentSousCaracs est un objet valide
-      if (!currentSousCaracs || typeof currentSousCaracs !== 'object') {
-        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ sousCaracteristiques invalide pour', field.name);
-        currentSousCaracs = {};
+      // ✅ CORRIGÉ: Si currentSousCaracs est vide, réessayer avec getSousCaracteristiquesFromIA
+      // Cela garantit que les sous-caractéristiques sont toujours extraites même si elles n'étaient pas disponibles au moment de la création du champ
+      if (!currentSousCaracs || typeof currentSousCaracs !== 'object' || Object.keys(currentSousCaracs).length === 0) {
+        // Réessayer avec les valeurs actuelles du formulaire
+        const sousCaracsFromIA = getSousCaracteristiquesFromIA(valeursFormulaire, suggestion);
+        if (sousCaracsFromIA && typeof sousCaracsFromIA === 'object' && Object.keys(sousCaracsFromIA).length > 0) {
+          currentSousCaracs = sousCaracsFromIA;
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Sous-caractéristiques réextraites depuis IA pour', field.name, {
+            count: Object.keys(currentSousCaracs).length,
+            keys: Object.keys(currentSousCaracs)
+          });
+        } else {
+          // Dernier fallback: utiliser field.sousCaracteristiques même s'il est vide
+          currentSousCaracs = field.sousCaracteristiques || {};
+          console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Aucune sous-caractéristique trouvée pour', field.name);
+        }
       }
 
       // ✅ PROTECTION CRITIQUE 2025-11-06: S'assurer que separateur est une string valide

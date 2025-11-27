@@ -109,7 +109,8 @@ const SpecializedServicesSelector: React.FC<SpecializedServicesSelectorProps> = 
                     onPress={() => setMenuVisible(true)}
                     activeOpacity={0.7}
                 >
-                    <SafeIcon name="grid" size={16} color="#fff" type="lucide" />
+                    {/* ✅ CORRIGÉ: Utiliser une icône qui existe dans Lucide (grid-3x3 ou layout-grid) */}
+                    <SafeIcon name="grid-3x3" size={16} color="#fff" type="lucide" />
                 </TouchableOpacity>
 
                 {/* Menu déroulant vertical */}

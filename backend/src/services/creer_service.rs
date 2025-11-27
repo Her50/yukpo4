@@ -2250,8 +2250,31 @@ pub async fn creer_service(
                     .execute(&mut *tx)
                     .await
                     {
-                        log::error!("[creer_service] Erreur insertion media: {}", e);
+                        // ✅ CORRIGÉ: Gestion d'erreur améliorée avec détails
+                        log::error!(
+                            "[creer_service] ❌ Erreur insertion media produit {} (index {}): {}",
+                            product_id,
+                            product_index,
+                            e
+                        );
+                        log::error!(
+                            "[creer_service] Détails insertion: service_id={}, product_id={}, product_index={}, path={}",
+                            service_id,
+                            product_id,
+                            product_index,
+                            file_path
+                        );
+                        // Ne pas continuer - l'erreur pourrait être critique (contrainte, type, etc.)
+                        // Mais ne pas faire échouer toute la création de service pour un seul média
                         continue;
+                    } else {
+                        log::info!(
+                            "[creer_service] ✅ Media sauvegardé avec succès: service_id={}, product_id={}, product_index={}, path={}",
+                            service_id,
+                            product_id,
+                            product_index,
+                            file_path
+                        );
                     }
 
                     let product_name = produit_obj
@@ -2464,8 +2487,29 @@ pub async fn creer_service(
                     .execute(&mut *tx)
                     .await
                     {
-                        log::error!("[creer_service] Erreur insertion media video: {}", e);
+                        // ✅ CORRIGÉ: Gestion d'erreur améliorée avec détails
+                        log::error!(
+                            "[creer_service] ❌ Erreur insertion media video produit {} (index {}): {}",
+                            product_id,
+                            product_index,
+                            e
+                        );
+                        log::error!(
+                            "[creer_service] Détails insertion video: service_id={}, product_id={}, product_index={}, path={}",
+                            service_id,
+                            product_id,
+                            product_index,
+                            file_path
+                        );
                         continue;
+                    } else {
+                        log::info!(
+                            "[creer_service] ✅ Media video sauvegardé avec succès: service_id={}, product_id={}, product_index={}, path={}",
+                            service_id,
+                            product_id,
+                            product_index,
+                            file_path
+                        );
                     }
 
                     files_saved += 1;
@@ -4098,10 +4142,11 @@ pub async fn save_autocomplete_combination(
     );
 
     // 1. Extraire vecteur produit depuis champ produits
+    // ✅ CORRIGÉ: Réduire le niveau de log (warn → debug) car c'est normal pour certains services sans produits
     let produits_field = match data_obj.get("produits") {
         Some(p) => p,
         None => {
-            log::warn!("[save_autocomplete_combination] Pas de champ produits");
+            log::debug!("[save_autocomplete_combination] Pas de champ produits (service sans produits - normal)");
             return Ok(());
         }
     };

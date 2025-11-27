@@ -540,13 +540,13 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             );
         }
 
-        if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object') {
-            console.error('[LinearAutocompleteEditor] ❌ sousCaracteristiques invalide:', sousCaracteristiques);
-            return (
-                <View style={styles.container}>
-                    <Text style={{ color: 'red' }}>Erreur: sousCaracteristiques invalide</Text>
-                </View>
-            );
+        // ✅ CORRIGÉ: Accepter sousCaracteristiques vide ou null, utiliser objet vide par défaut
+        if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object' || Array.isArray(sousCaracteristiques)) {
+            if (sousCaracteristiques !== null && sousCaracteristiques !== undefined) {
+                console.warn('[LinearAutocompleteEditor] ⚠️ sousCaracteristiques invalide, utilisation objet vide:', sousCaracteristiques);
+            }
+            // Utiliser un objet vide par défaut au lieu de retourner une erreur
+            // sousCaracteristiques sera défini plus bas avec une valeur par défaut
         }
     } catch (error) {
         console.error('[LinearAutocompleteEditor] ❌ Erreur validation props:', error);
@@ -557,10 +557,19 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         );
     }
 
+    // ✅ CORRIGÉ: Normaliser sousCaracteristiques avec valeur par défaut
+    const normalizedSousCaracteristiques = useMemo(() => {
+        if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object' || Array.isArray(sousCaracteristiques)) {
+            return {}; // Objet vide par défaut
+        }
+        return sousCaracteristiques;
+    }, [sousCaracteristiques]);
+
     // ✅ PROTECTION ULTIME 2025-11-06: S'assurer que displayValue est TOUJOURS une string
+    // ✅ CORRIGÉ: Ne pas logger de warning si value est simplement vide (c'est normal pour un champ non rempli)
     const displayValue = (() => {
         if (!value || !Array.isArray(value) || value.length === 0) {
-            console.warn('[LinearAutocompleteEditor] ⚠️ value est vide ou invalide:', value);
+            // Ne pas logger de warning - c'est normal pour un champ vide
             return '';
         }
 
@@ -1279,13 +1288,13 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         // ✅ NOUVEAU: Ajouter les sous_caracteristiques préférées de l'IA si disponibles
         // Toujours les ajouter, même s'il y a d'autres suggestions, car ce sont les choix préférés de l'IA
         if (sousCaracteristiques && typeof sousCaracteristiques === 'object') {
-            const sousCaracsKeys = Object.keys(sousCaracteristiques);
+            const sousCaracsKeys = Object.keys(normalizedSousCaracteristiques);
             if (sousCaracsKeys.length > 0) {
                 const key = 'ia-sous-caracteristiques-preferred';
                 const rows: Array<{ label: string; value: string }> = [];
 
                 sousCaracsKeys.forEach((charKey) => {
-                    const values = sousCaracteristiques[charKey];
+                    const values = normalizedSousCaracteristiques[charKey];
                     if (Array.isArray(values) && values.length > 0) {
                         // Prendre la première valeur (choix préféré de l'IA)
                         rows.push({
@@ -1358,8 +1367,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         console.log('[LinearAutocompleteEditor] 🔍 [BACKEND_TRACE] useEffect sousCaracteristiques déclenché:', {
             hasSousCaracteristiques: !!sousCaracteristiques,
             type: typeof sousCaracteristiques,
-            keys: sousCaracteristiques ? Object.keys(sousCaracteristiques) : [],
-            count: sousCaracteristiques ? Object.keys(sousCaracteristiques).length : 0,
+            keys: normalizedSousCaracteristiques ? Object.keys(normalizedSousCaracteristiques) : [],
+            count: normalizedSousCaracteristiques ? Object.keys(normalizedSousCaracteristiques).length : 0,
             fullObject: JSON.stringify(sousCaracteristiques).substring(0, 500)
         });
 
@@ -1636,7 +1645,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         // ✅ PRIORITÉ 2: Utiliser sous_caracteristiques (fallback)
         // ✅ CORRIGÉ: Prendre uniquement la PREMIÈRE valeur de chaque dimension (combinaison préférée)
         else if (sousCaracteristiques && typeof sousCaracteristiques === 'object') {
-            const sousCaracsKeys = Object.keys(sousCaracteristiques);
+            const sousCaracsKeys = Object.keys(normalizedSousCaracteristiques);
             if (sousCaracsKeys.length > 0) {
                 sousCaracsKeys.forEach((key) => {
                     const values = sousCaracteristiques[key];
@@ -1798,7 +1807,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
         // PRIORITÉ 2: Utiliser sous_caracteristiques si disponible (première valeur de la première dimension)
         if (!seedQuery && sousCaracteristiques && typeof sousCaracteristiques === 'object') {
-            const sousCaracsKeys = Object.keys(sousCaracteristiques);
+            const sousCaracsKeys = Object.keys(normalizedSousCaracteristiques);
             if (sousCaracsKeys.length > 0) {
                 const firstKey = sousCaracsKeys[0];
                 const firstValues = sousCaracteristiques[firstKey];
