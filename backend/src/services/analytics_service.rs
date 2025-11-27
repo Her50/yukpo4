@@ -257,8 +257,8 @@ impl AnalyticsService {
 
         Ok(RevenueStats {
             total_revenue,
-            revenue_this_month: revenue_this_month,
-            revenue_last_month: revenue_last_month,
+            revenue_this_month,
+            revenue_last_month,
             revenue_growth,
             avg_revenue_per_delivery,
             total_commissions: 0.0, // TODO: Calculer les commissions réelles

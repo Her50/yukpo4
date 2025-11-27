@@ -2,7 +2,6 @@
 // ? compl?ter avec la logique d'alerte, relance, notification sonore/mail, etc.
 
 use crate::models::alert_model::Alert;
-use chrono::Utc;
 use sqlx::PgPool;
 
 pub async fn create_alert(
@@ -14,9 +13,9 @@ pub async fn create_alert(
 ) -> Result<Alert, sqlx::Error> {
     let rec = sqlx::query_as!(Alert,
         r#"INSERT INTO alerts (user_id, service_id, client_id, alert_type, is_read, created_at)
-           VALUES ($1, $2, $3, $4, FALSE, $5)
+           VALUES ($1, $2, $3, $4, FALSE, DEFAULT)
            RETURNING id, user_id, service_id, client_id, alert_type, is_read, created_at as "created_at: chrono::NaiveDateTime""#,
-        user_id, service_id, client_id, alert_type, Utc::now()
+        user_id, service_id, client_id, alert_type
     )
     .fetch_one(pool)
     .await?;

@@ -3,7 +3,6 @@
  * - Recalcul des stats de préparation par catégorie (toutes les 24h)
  * - Recalcul des stats d'annulation par produit (toutes les 24h)
  */
-
 use crate::core::types::AppResult;
 use crate::services::dynamic_preparation_time_service::DynamicPreparationTimeService;
 use chrono::{Timelike, Utc};

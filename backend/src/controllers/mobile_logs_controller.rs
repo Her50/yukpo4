@@ -1,7 +1,7 @@
 // Contrôleur pour recevoir les logs mobile
 use crate::core::types::AppError;
 use crate::state::AppState;
-use axum::{extract::State, http::StatusCode, response::Json};
+use axum::{extract::State, response::Json};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
@@ -13,8 +13,10 @@ pub struct MobileLogEntry {
     pub component: Option<String>,
     pub data: Option<Value>,
     pub timestamp: String,
-    pub userId: Option<String>,
-    pub deviceInfo: Option<DeviceInfo>,
+    #[serde(rename = "userId")]
+    pub user_id: Option<String>,
+    #[serde(rename = "deviceInfo")]
+    pub device_info: Option<DeviceInfo>,
     pub stack: Option<String>,
 }
 
@@ -22,7 +24,8 @@ pub struct MobileLogEntry {
 pub struct DeviceInfo {
     pub platform: Option<String>,
     pub version: Option<String>,
-    pub deviceId: Option<String>,
+    #[serde(rename = "deviceId")]
+    pub device_id: Option<String>,
     // ✅ Compatibilité avec expo-device
     #[serde(rename = "osName")]
     pub os_name: Option<String>,
@@ -49,7 +52,7 @@ pub struct MobileLogsResponse {
 
 /// Endpoint pour recevoir les logs mobile
 pub async fn receive_mobile_logs(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Json(payload): Json<MobileLogsRequest>,
 ) -> Result<Json<MobileLogsResponse>, AppError> {
     let batch_id = payload.batch_id.clone();
@@ -58,8 +61,8 @@ pub async fn receive_mobile_logs(
     // ✅ AMÉLIORÉ : Logger tous les logs mobiles avec un format distinctif
     for log in &payload.logs {
         let component = log.component.as_deref().unwrap_or("unknown");
-        let user_info = log.userId.as_ref().map(|u| format!("User:{}", u)).unwrap_or_default();
-        let device_info = log.deviceInfo.as_ref().map(|d| {
+        let user_info = log.user_id.as_ref().map(|u| format!("User:{}", u)).unwrap_or_default();
+        let device_info = log.device_info.as_ref().map(|d| {
             let platform = d.platform.as_deref()
                 .or_else(|| d.os_name.as_deref())
                 .unwrap_or("unknown");
