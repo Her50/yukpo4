@@ -871,6 +871,7 @@ impl NativeSearchService {
             return Ok(results);
         }
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
+        let mut use_gps_fallback = false; // ✅ CORRIGÉ: Flag pour éviter récursion
         if let Some(gps_zone_val) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
 
@@ -953,19 +954,10 @@ impl NativeSearchService {
             // ✅ CORRIGÉ: Si la recherche GPS échoue, fallback vers recherche sans GPS
             // L'erreur "structure of query does not match function result type" peut survenir
             // si la fonction SQL a été modifiée ou si la base de données n'est pas à jour
-            if !use_gps_fallback {
-                let results = match results {
-                    Some(rows) => rows,
-                    None => {
-                        // Pas de résultats, continuer avec recherche sans GPS
-                        use_gps_fallback = true;
-                        vec![] // Placeholder, ne sera pas utilisé
-                    }
-                };
-
-                if !use_gps_fallback {
-                    let mut search_results = Vec::new();
-                    for row in results {
+            if let Some(rows) = results {
+                // ✅ CORRIGÉ: Traiter les résultats GPS si disponibles
+                let mut search_results = Vec::new();
+                for row in rows {
                 let service_id: i32 = row.get("service_id");
                 let _titre_service: String = row.get("titre_service");
                 let _category: Option<String> = row.get("category");
@@ -1026,27 +1018,51 @@ impl NativeSearchService {
                 ));
             }
 
-            log_info(&format!(
-                "[NativeSearch] Recherche GPS optimisée: {} résultats trouvés",
-                search_results.len()
-            ));
-            
-                    // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
-                    if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
-                        if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                            SearchResult::enrich_with_google_maps(
-                                &mut search_results,
-                                Some((user_lat, user_lng)),
-                                self.geographic_matching.as_ref(),
-                            ).await;
-                        }
+                log_info(&format!(
+                    "[NativeSearch] Recherche GPS optimisée: {} résultats trouvés",
+                    search_results.len()
+                ));
+                
+                // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
+                if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                        SearchResult::enrich_with_google_maps(
+                            &mut search_results,
+                            Some((user_lat, user_lng)),
+                            self.geographic_matching.as_ref(),
+                        ).await;
                     }
-                    
-                    return Ok(search_results);
+                }
+                
+                return Ok(search_results);
+            } else {
+                // ✅ CORRIGÉ: Pas de résultats GPS, vérifier si fallback nécessaire
+                let error_msg = last_error
+                    .as_ref()
+                    .map(|e| e.to_string())
+                    .unwrap_or_else(|| "Erreur inconnue".to_string());
+                
+                // Vérifier si c'est une erreur de structure de requête
+                if error_msg.contains("structure of query does not match function result type") {
+                    log::warn!(
+                        "[NativeSearch] ⚠️ Erreur structure requête GPS - Fallback vers recherche sans GPS. Erreur: {}",
+                        error_msg
+                    );
+                    use_gps_fallback = true;
+                } else {
+                    log_error(&format!(
+                        "[NativeSearch] Échec recherche GPS après {} tentatives: {}",
+                        max_retries,
+                        error_msg
+                    ));
+                    use_gps_fallback = true;
                 }
             }
         }
-
+        
+        // ✅ CORRIGÉ: Si fallback nécessaire ou pas de GPS, continuer avec recherche sans GPS
+        // (Le code continue naturellement ici si use_gps_fallback est true ou si gps_zone est None)
+        
         // ✅ NETTOYÉ 2025-11-27 : Recherche générale pure (sans fusion avec résultats spécialisés)
         // Fallback vers l'ancienne méthode si pas de GPS
         let partial_conditions = self.create_partial_match_conditions(query);
