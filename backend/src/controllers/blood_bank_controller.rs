@@ -101,6 +101,87 @@ pub async fn create_blood_bank(
         return Err(AppError::NotFound("Service non trouvé ou n'appartient pas à l'utilisateur".to_string()));
     }
 
+    // ✅ NOUVEAU : Vérifier si une banque de sang existe déjà pour ce service
+    let existing_blood_bank: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM banques_sang WHERE service_id = $1 AND user_id = $2"
+    )
+    .bind(payload.service_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_blood_bank] Erreur vérification banque de sang existante: {}", e);
+        AppError::Internal(format!("Erreur vérification banque de sang existante: {}", e))
+    })?;
+
+    if existing_blood_bank.is_some() {
+        info!("[create_blood_bank] Banque de sang existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
+        let blood_bank_id = existing_blood_bank.unwrap();
+        
+        let horaires_dons: Option<Vec<chrono::NaiveTime>> = payload.horaires_dons
+            .map(|horaires| {
+                horaires
+                    .into_iter()
+                    .filter_map(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok())
+                    .collect()
+            });
+        let stocks = payload.stocks_groupes_sanguins.unwrap_or_else(|| json!({}));
+
+        sqlx::query(
+            r#"
+            UPDATE banques_sang SET
+                hopital_id = $3,
+                nom = $4,
+                adresse = $5,
+                quartier = $6,
+                ville = $7,
+                gps = $8,
+                stocks_groupes_sanguins = $9,
+                accepte_dons = $10,
+                accepte_demandes = $11,
+                urgence_24h = $12,
+                planning_hebdomadaire = $13,
+                horaires_dons = $14,
+                telephone = $15,
+                telephone_urgence = $16,
+                whatsapp = $17,
+                email = $18,
+                updated_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            "#
+        )
+        .bind(blood_bank_id)
+        .bind(user_id)
+        .bind(payload.hopital_id)
+        .bind(&payload.nom)
+        .bind(payload.adresse.as_ref())
+        .bind(payload.quartier.as_ref())
+        .bind(payload.ville.as_ref())
+        .bind(payload.gps.as_ref())
+        .bind(&stocks)
+        .bind(payload.accepte_dons.unwrap_or(true))
+        .bind(payload.accepte_demandes.unwrap_or(true))
+        .bind(payload.urgence_24h.unwrap_or(false))
+        .bind(payload.planning_hebdomadaire.as_ref())
+        .bind(horaires_dons.as_ref())
+        .bind(payload.telephone.as_ref())
+        .bind(payload.telephone_urgence.as_ref())
+        .bind(payload.whatsapp.as_ref())
+        .bind(payload.email.as_ref())
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_blood_bank] Erreur mise à jour: {}", e);
+            AppError::Internal(format!("Erreur mise à jour banque de sang: {}", e))
+        })?;
+
+        return Ok((StatusCode::OK, Json(json!({
+            "success": true,
+            "id": blood_bank_id,
+            "message": "Banque de sang mise à jour avec succès"
+        }))));
+    }
+
     // Vérifier que hopital_id appartient à l'utilisateur si fourni
     if let Some(hopital_id) = payload.hopital_id {
         let hopital_exists: Option<i32> = sqlx::query_scalar(

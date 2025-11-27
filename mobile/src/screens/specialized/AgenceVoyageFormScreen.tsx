@@ -10,21 +10,20 @@ import {
     View
 } from 'react-native';
 import BusModelForm, { BusModel } from '../../components/bus/BusModelForm';
+import CompanySelector, { Company } from '../../components/CompanySelector';
+import GuardDaysSelector from '../../components/GuardDaysSelector';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import WeekScheduleSelector from '../../components/WeekScheduleSelector';
+import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+// ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
-interface ScheduleDay {
-    day: number;
-    enabled: boolean;
-    timeSlots: Array<{ start: string; end: string }>;
-}
+// ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
 
 const AgenceVoyageFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -32,31 +31,35 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const { user } = useAuth();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
+    const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
+    const mode = (route.params as any)?.mode as string | undefined;
 
     const [formData, setFormData] = useState({
         nom_agence: '',
         adresse: '',
         quartier: null as LocationObject | null,
-        ville: null as LocationObject | null,
+        // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
         services_voyage: [] as string[],
-        compagnies_bus: [] as string[],
-        destinations: [] as string[],
+        compagnies_bus: [] as Company[], // ✅ AMÉLIORÉ : Utiliser Company[] au lieu de string[]
+        destinations: [] as LocationObject[], // ✅ AMÉLIORÉ : Utiliser LocationObject[] pour utiliser quartier
         heures_ouverture: '08:00',
         heures_fermeture: '18:00',
-        jours_ouverture: '',
+        jours_ouverture: {} as Record<string, number[]>, // ✅ AMÉLIORÉ : Format pour GuardDaysSelector
         telephone: '',
         whatsapp: '',
         email: '',
         site_web: '',
         peut_emettre_tickets_bus: false,
-        compagnies_affiliees: [] as string[],
+        compagnies_affiliees: [] as Company[], // ✅ AMÉLIORÉ : Utiliser Company[] au lieu de string[]
+        devise: 'XAF', // ✅ NOUVEAU : Devise récupérée intelligemment depuis quartier
     });
 
     const [loading, setLoading] = useState(false);
     const [selectedServices, setSelectedServices] = useState<string[]>([]);
-    const [selectedCompagnies, setSelectedCompagnies] = useState<string[]>([]);
-    const [selectedDestinations, setSelectedDestinations] = useState<string[]>([]);
-    const [selectedAffiliees, setSelectedAffiliees] = useState<string[]>([]);
+    const [selectedCompagnies, setSelectedCompagnies] = useState<Company[]>([]);
+    const [selectedDestinations, setSelectedDestinations] = useState<LocationObject[]>([]);
+    const [selectedAffiliees, setSelectedAffiliees] = useState<Company[]>([]);
+    const [showGuardDaysModal, setShowGuardDaysModal] = useState(false);
 
     // Gestion des modèles de bus
     const [busModels, setBusModels] = useState<BusModel[]>([]);
@@ -64,13 +67,12 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const [editingModelIndex, setEditingModelIndex] = useState<number | null>(null);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    const [showScheduleModal, setShowScheduleModal] = useState(false);
-    const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
+    // ✅ SUPPRIMÉ : showScheduleModal et schedule (planning hebdomadaire supprimé)
 
     const servicesOptions = ['Billetterie bus', 'Billetterie avion', 'Organisation voyages', 'Visa'];
-    const compagniesOptions = ['Voyages Express', 'Amour Mezam', 'Camair-Co', 'Brussels Airlines', 'Air France'];
-    const destinationsOptions = ['Douala', 'Yaoundé', 'Bafoussam', 'Bamenda', 'Garoua', 'Maroua', 'Paris', 'Bruxelles'];
-    const compagniesAffilieesOptions = ['Voyages Express', 'Amour Mezam', 'Camair-Co'];
+    // ✅ SUPPRIMÉ : compagniesOptions hardcodées (utiliser CompanySelector dynamique)
+    // ✅ SUPPRIMÉ : destinationsOptions hardcodées (utiliser LocationSelector)
+    // ✅ SUPPRIMÉ : compagniesAffilieesOptions hardcodées (utiliser CompanySelector dynamique)
 
     // ✅ Créer automatiquement un service si serviceId manquant
     useEffect(() => {
@@ -98,6 +100,91 @@ const AgenceVoyageFormScreen: React.FC = () => {
         }
     }, [formData.nom_agence, serviceId, user?.id]);
 
+    // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
+    useEffect(() => {
+        const loadExistingData = async () => {
+            if (mode === 'edit' && specializedServiceId && serviceId) {
+                try {
+                    setLoading(true);
+                    const { apiGet } = require('../../services/api');
+                    const response = await apiGet(`/api/agences-voyage/${specializedServiceId}`);
+
+                    if (response.success && response.data) {
+                        const data = response.data;
+
+                        // Convertir compagnies_bus string[] en Company[]
+                        const compagniesBus: Company[] = (data.compagnies_bus || []).map((name: string) => ({
+                            id: Date.now().toString() + Math.random(),
+                            name,
+                            type: 'bus' as const
+                        }));
+
+                        // Convertir destinations string[] en LocationObject[]
+                        const destinations: LocationObject[] = (data.destinations || []).map((dest: string) => ({
+                            raw: dest,
+                            place_name: dest
+                        }));
+
+                        // Convertir compagnies_affiliees string[] en Company[]
+                        const compagniesAffiliees: Company[] = (data.compagnies_affiliees || []).map((name: string) => ({
+                            id: Date.now().toString() + Math.random(),
+                            name,
+                            type: 'bus' as const
+                        }));
+
+                        // Parser jours_ouverture si c'est une string JSON
+                        let joursOuverture: Record<string, number[]> = {};
+                        if (data.jours_ouverture) {
+                            if (typeof data.jours_ouverture === 'string') {
+                                try {
+                                    joursOuverture = JSON.parse(data.jours_ouverture);
+                                } catch {
+                                    joursOuverture = {};
+                                }
+                            } else {
+                                joursOuverture = data.jours_ouverture;
+                            }
+                        }
+
+                        setFormData({
+                            nom_agence: data.nom_agence || '',
+                            adresse: data.adresse || '',
+                            quartier: data.quartier ? { raw: data.quartier, place_name: data.quartier } : null,
+                            services_voyage: data.services_voyage || [],
+                            compagnies_bus: compagniesBus,
+                            destinations: destinations,
+                            heures_ouverture: data.heures_ouverture || '08:00',
+                            heures_fermeture: data.heures_fermeture || '18:00',
+                            jours_ouverture: joursOuverture,
+                            telephone: data.telephone || '',
+                            whatsapp: data.whatsapp || '',
+                            email: data.email || '',
+                            site_web: data.site_web || '',
+                            peut_emettre_tickets_bus: data.peut_emettre_tickets_bus || false,
+                            compagnies_affiliees: compagniesAffiliees,
+                            devise: data.devise || 'XAF',
+                        });
+
+                        setSelectedServices(data.services_voyage || []);
+                        setSelectedCompagnies(compagniesBus);
+                        setSelectedDestinations(destinations);
+                        setSelectedAffiliees(compagniesAffiliees);
+
+                        if (data.gps) {
+                            setSelectedGPS(data.gps);
+                        }
+                    }
+                } catch (error: any) {
+                    console.error('[AgenceVoyageFormScreen] Erreur chargement données:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadExistingData();
+    }, [mode, specializedServiceId, serviceId]);
+
     const toggleService = (service: string) => {
         setSelectedServices((prev) =>
             prev.includes(service)
@@ -106,29 +193,17 @@ const AgenceVoyageFormScreen: React.FC = () => {
         );
     };
 
-    const toggleCompagnie = (compagnie: string) => {
-        setSelectedCompagnies((prev) =>
-            prev.includes(compagnie)
-                ? prev.filter((c) => c !== compagnie)
-                : [...prev, compagnie]
-        );
-    };
+    // ✅ SUPPRIMÉ : toggleCompagnie, toggleDestination, toggleAffiliee (remplacés par CompanySelector et LocationSelector)
 
-    const toggleDestination = (destination: string) => {
-        setSelectedDestinations((prev) =>
-            prev.includes(destination)
-                ? prev.filter((d) => d !== destination)
-                : [...prev, destination]
-        );
-    };
-
-    const toggleAffiliee = (compagnie: string) => {
-        setSelectedAffiliees((prev) =>
-            prev.includes(compagnie)
-                ? prev.filter((c) => c !== compagnie)
-                : [...prev, compagnie]
-        );
-    };
+    // ✅ NOUVEAU : Récupération automatique de la devise depuis le quartier
+    useEffect(() => {
+        if (formData.quartier) {
+            const currency = getCurrencyIntelligently(formData.quartier);
+            if (currency) {
+                setFormData(prev => ({ ...prev, devise: currency }));
+            }
+        }
+    }, [formData.quartier]);
 
     // Fonction pour générer le seat_map automatiquement
     const generateSeatMap = (model: BusModel): any[] => {
@@ -174,9 +249,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
         setShowGPSModal(false);
     };
 
-    const handleScheduleSave = (savedSchedule: ScheduleDay[]) => {
-        setSchedule(savedSchedule);
-        setShowScheduleModal(false);
+    const handleGuardDaysSave = (days: Record<string, number[]>) => {
+        setFormData({ ...formData, jours_ouverture: days });
+        setShowGuardDaysModal(false);
     };
 
     const handleSubmit = async () => {
@@ -223,37 +298,43 @@ const AgenceVoyageFormScreen: React.FC = () => {
         try {
             setLoading(true);
 
-            // Construire le planning hebdomadaire depuis schedule
-            const planningHebdomadaire = schedule.length > 0
-                ? schedule.map(day => ({
-                    day: day.day,
-                    enabled: day.enabled,
-                    timeSlots: day.timeSlots
-                }))
-                : null;
+            // ✅ SUPPRIMÉ : planning_hebdomadaire (pas d'utilité selon demande)
+
+            // ✅ Convertir Company[] en string[] pour le backend
+            const compagniesBusNames = selectedCompagnies
+                .filter(c => c.type === 'bus')
+                .map(c => c.name);
+            const compagniesAffilieesNames = selectedAffiliees.map(c => c.name);
+
+            // ✅ Convertir LocationObject[] en string[] pour les destinations
+            const destinationsNames = selectedDestinations.map(d =>
+                d.raw || d.place_name || ''
+            ).filter(Boolean);
 
             const payload = {
                 service_id: finalServiceId,
                 nom_agence: formData.nom_agence,
                 adresse: formData.adresse || null,
                 quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
-                ville: formData.ville?.raw || formData.ville?.place_name || null,
+                // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
                 gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
-                planning_hebdomadaire: planningHebdomadaire,
                 services_voyage: selectedServices.length > 0 ? selectedServices : null,
-                compagnies_bus: selectedCompagnies.length > 0 ? selectedCompagnies : null,
-                destinations: selectedDestinations.length > 0 ? selectedDestinations : null,
+                compagnies_bus: compagniesBusNames.length > 0 ? compagniesBusNames : null,
+                destinations: destinationsNames.length > 0 ? destinationsNames : null,
                 heures_ouverture: formData.heures_ouverture || null,
                 heures_fermeture: formData.heures_fermeture || null,
-                jours_ouverture: formData.jours_ouverture || null,
+                jours_ouverture: Object.keys(formData.jours_ouverture).length > 0
+                    ? JSON.stringify(formData.jours_ouverture)
+                    : null, // ✅ Format JSON pour jours_ouverture
                 telephone: formData.telephone || null,
                 whatsapp: formData.whatsapp || null,
                 email: formData.email || null,
                 site_web: formData.site_web || null,
                 peut_emettre_tickets_bus: formData.peut_emettre_tickets_bus,
-                compagnies_affiliees: selectedAffiliees.length > 0 ? selectedAffiliees : null,
+                compagnies_affiliees: compagniesAffilieesNames.length > 0 ? compagniesAffilieesNames : null,
+                devise: formData.devise, // ✅ NOUVEAU : Devise récupérée intelligemment
             };
 
             const response = await apiPost('/api/agences-voyage', payload);
@@ -409,21 +490,13 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             label="Quartier"
                             value={formData.quartier || ''}
                             onSelect={(value) => setFormData({ ...formData, quartier: value })}
-                            placeholder="Rechercher un quartier..."
+                            placeholder="Rechercher un quartier (inclut ville et pays)..."
                             scope="neighborhood"
                             enrichWithBackend
                         />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Ville"
-                            value={formData.ville || ''}
-                            onSelect={(value) => setFormData({ ...formData, ville: value })}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            enrichWithBackend
-                        />
+                        <Text style={styles.hintText}>
+                            Le quartier permet de récupérer automatiquement la ville, le pays et la devise
+                        </Text>
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -451,101 +524,95 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         </View>
                     </View>
 
+                    {/* ✅ AMÉLIORÉ : Compagnies avec distinction bus/vols et ajout dynamique */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Compagnies de bus</Text>
-                        <View style={styles.chipsContainer}>
-                            {compagniesOptions.map((compagnie) => (
-                                <TouchableOpacity
-                                    key={compagnie}
-                                    style={[
-                                        styles.chip,
-                                        selectedCompagnies.includes(compagnie) && styles.chipSelected,
-                                    ]}
-                                    onPress={() => toggleCompagnie(compagnie)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.chipText,
-                                            selectedCompagnies.includes(compagnie) && styles.chipTextSelected,
-                                        ]}
-                                    >
-                                        {compagnie}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <CompanySelector
+                            label="Compagnies de transport"
+                            selected={selectedCompagnies}
+                            onSelectionChange={setSelectedCompagnies}
+                            placeholder="Ex: Voyages Express, Camair-Co..."
+                            hint="Distinguer les compagnies de bus des compagnies aériennes"
+                        />
                     </View>
 
+                    {/* ✅ AMÉLIORÉ : Destinations utilisant LocationSelector (comme quartier) */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Destinations</Text>
-                        <View style={styles.chipsContainer}>
-                            {destinationsOptions.map((destination) => (
-                                <TouchableOpacity
-                                    key={destination}
-                                    style={[
-                                        styles.chip,
-                                        selectedDestinations.includes(destination) && styles.chipSelected,
-                                    ]}
-                                    onPress={() => toggleDestination(destination)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.chipText,
-                                            selectedDestinations.includes(destination) && styles.chipTextSelected,
-                                        ]}
-                                    >
-                                        {destination}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                        <LocationSelector
+                            label=""
+                            value={selectedDestinations.length > 0 ? selectedDestinations.map(d => d.place_name || d.raw).join(', ') : ''}
+                            onSelect={(value) => {
+                                if (value && !selectedDestinations.some(d =>
+                                    (d.raw || d.place_name) === (value.raw || value.place_name)
+                                )) {
+                                    setSelectedDestinations([...selectedDestinations, value]);
+                                }
+                            }}
+                            placeholder="Rechercher une destination (quartier, ville, pays)..."
+                            scope="neighborhood"
+                            enrichWithBackend
+                        />
+                        {selectedDestinations.length > 0 && (
+                            <View style={styles.destinationsList}>
+                                {selectedDestinations.map((dest, idx) => (
+                                    <View key={idx} style={styles.destinationChip}>
+                                        <Text style={styles.destinationText}>
+                                            {dest.place_name || dest.raw}
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => setSelectedDestinations(
+                                                selectedDestinations.filter((_, i) => i !== idx)
+                                            )}
+                                        >
+                                            <SafeIcon name="x" size={16} color="#DC2626" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+
+                    {/* ✅ SUPPRIMÉ : Planning hebdomadaire (pas d'utilité) */}
+
+                    {/* ✅ Heures d'ouverture et fermeture */}
+                    <View style={styles.row}>
+                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                            <Text style={styles.label}>Heure d'ouverture</Text>
+                            <NativeInput
+                                value={formData.heures_ouverture}
+                                onChangeText={(text) => setFormData({ ...formData, heures_ouverture: text })}
+                                placeholder="08:00"
+                            />
+                        </View>
+                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                            <Text style={styles.label}>Heure de fermeture</Text>
+                            <NativeInput
+                                value={formData.heures_fermeture}
+                                onChangeText={(text) => setFormData({ ...formData, heures_fermeture: text })}
+                                placeholder="18:00"
+                            />
                         </View>
                     </View>
 
-                    {/* ✅ Planning hebdomadaire avec sélecteur visuel */}
+                    {/* ✅ AMÉLIORÉ : Jours d'ouverture avec sélecteur visuel (pas de saisie manuelle) */}
                     <View style={styles.inputGroup}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.label}>Planning hebdomadaire</Text>
+                            <Text style={styles.label}>Jours d'ouverture</Text>
                             <TouchableOpacity
                                 style={styles.planningButton}
-                                onPress={() => setShowScheduleModal(true)}
+                                onPress={() => setShowGuardDaysModal(true)}
                             >
                                 <SafeIcon name="calendar" size={16} color={modernColors.primary} />
                                 <Text style={styles.planningButtonText}>
-                                    {schedule.length > 0 ? 'Modifier' : 'Configurer'}
+                                    {Object.keys(formData.jours_ouverture).length > 0 ? 'Modifier' : 'Configurer'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
-                        {schedule.length > 0 && (
+                        {Object.keys(formData.jours_ouverture).length > 0 && (
                             <Text style={styles.scheduleSummary}>
-                                {schedule.filter(d => d.enabled).length} jour(s) configuré(s)
+                                {Object.values(formData.jours_ouverture).flat().length} jour(s) configuré(s)
                             </Text>
                         )}
-                        <View style={styles.row}>
-                            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                                <Text style={styles.label}>Heure d'ouverture (optionnel)</Text>
-                                <NativeInput
-                                    value={formData.heures_ouverture}
-                                    onChangeText={(text) => setFormData({ ...formData, heures_ouverture: text })}
-                                    placeholder="08:00"
-                                />
-                            </View>
-                            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                                <Text style={styles.label}>Heure de fermeture (optionnel)</Text>
-                                <NativeInput
-                                    value={formData.heures_fermeture}
-                                    onChangeText={(text) => setFormData({ ...formData, heures_fermeture: text })}
-                                    placeholder="18:00"
-                                />
-                            </View>
-                        </View>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Jours d'ouverture (optionnel - texte libre)</Text>
-                            <NativeInput
-                                value={formData.jours_ouverture}
-                                onChangeText={(text) => setFormData({ ...formData, jours_ouverture: text })}
-                                placeholder="Ex: Lundi - Samedi"
-                            />
-                        </View>
                     </View>
 
                     <View style={styles.switchGroup}>
@@ -642,29 +709,15 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         </View>
                     )}
 
+                    {/* ✅ AMÉLIORÉ : Compagnies affiliées avec CompanySelector */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Compagnies affiliées</Text>
-                        <View style={styles.chipsContainer}>
-                            {compagniesAffilieesOptions.map((compagnie) => (
-                                <TouchableOpacity
-                                    key={compagnie}
-                                    style={[
-                                        styles.chip,
-                                        selectedAffiliees.includes(compagnie) && styles.chipSelected,
-                                    ]}
-                                    onPress={() => toggleAffiliee(compagnie)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.chipText,
-                                            selectedAffiliees.includes(compagnie) && styles.chipTextSelected,
-                                        ]}
-                                    >
-                                        {compagnie}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <CompanySelector
+                            label="Compagnies affiliées"
+                            selected={selectedAffiliees}
+                            onSelectionChange={setSelectedAffiliees}
+                            placeholder="Ex: Voyages Express, Amour Mezam..."
+                            hint="Compagnies avec lesquelles vous travaillez en partenariat"
+                        />
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -755,12 +808,15 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 title="Sélectionner la localisation"
             />
 
-            <WeekScheduleSelector
-                visible={showScheduleModal}
-                onClose={() => setShowScheduleModal(false)}
-                onSave={handleScheduleSave}
-                initialSchedule={schedule}
-                title="Planning hebdomadaire"
+            {/* ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé) */}
+
+            {/* ✅ NOUVEAU : GuardDaysSelector pour jours d'ouverture */}
+            <GuardDaysSelector
+                visible={showGuardDaysModal}
+                onClose={() => setShowGuardDaysModal(false)}
+                onSave={handleGuardDaysSave}
+                initialDays={formData.jours_ouverture}
+                title="Planifier les jours d'ouverture"
             />
         </>
     );
@@ -879,6 +935,34 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#6B7280',
         marginTop: 4,
+    },
+    hintText: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    destinationsList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 12,
+    },
+    destinationChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    destinationText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#111827',
     },
     submitButton: {
         marginTop: 24,

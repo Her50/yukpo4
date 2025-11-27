@@ -77,7 +77,7 @@ async fn search_services_fallback(
                 OR s.data->>'description_service' ILIKE $1
                 OR s.data->>'category' ILIKE $1
                 OR s.category ILIKE $1
-                OR s.specialized_type ILIKE $1
+                -- ✅ NETTOYÉ 2025-11-27 : Plus de recherche dans specialized_type (recherche générale uniquement)
                 OR EXISTS (
                     SELECT 1 
                     FROM jsonb_array_elements(
@@ -309,12 +309,13 @@ pub async fn rechercher_besoin_direct(
     user_text: &str,
     gps_zone: Option<&str>,        // Nouveau paramètre GPS
     search_radius_km: Option<i32>, // Nouveau paramètre rayon
+    specialized_type: Option<&str>, // ✅ NOUVEAU : Paramètre pour recherche spécialisée dédiée
 ) -> AppResult<(Value, u32)> {
     use crate::services::orchestration_ia::extract_keywords_from_text;
     use crate::utils::log::log_info;
 
-    log_info(&format!("[RECHERCHE_DIRECTE] Recherche directe avec texte utilisateur: '{}' (GPS: {:?}, Rayon: {:?}km)", 
-        user_text, gps_zone, search_radius_km));
+    log_info(&format!("[RECHERCHE_DIRECTE] Recherche directe avec texte utilisateur: '{}' (GPS: {:?}, Rayon: {:?}km, specialized_type: {:?})", 
+        user_text, gps_zone, search_radius_km, specialized_type));
 
     // Extraire les mots-clés pertinents
     let keywords = extract_keywords_from_text(user_text);
@@ -387,6 +388,7 @@ pub async fn rechercher_besoin_direct(
             user_id,
             gps_zone,         // Passer la zone GPS (gps_fixe/gps_courant)
             search_radius_km, // Passer le rayon de recherche
+            specialized_type, // ✅ Transmettre specialized_type (None pour recherche générale)
         )
         .await
     {
@@ -1123,7 +1125,7 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
         geographic_matching,
     );
 
-    // Recherche native intelligente
+    // Recherche native intelligente (recherche générale, pas de specialized_type)
     let native_results = match native_search
         .intelligent_search(
             &search_query,
@@ -1132,6 +1134,7 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
             user_id,
             None, // Pas de zone GPS pour cette recherche
             None, // Pas de rayon GPS pour cette recherche
+            None, // ✅ Recherche générale (pas de specialized_type)
         )
         .await
     {

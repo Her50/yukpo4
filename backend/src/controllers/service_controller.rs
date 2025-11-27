@@ -1116,8 +1116,9 @@ pub async fn get_services_for_prestataire(
         user_id
     );
 
-    // ✅ OPTIMISATION 2025-11-26 : Requête SQL optimisée avec projection des champs nécessaires uniquement
-    // Retourne seulement les champs essentiels pour la liste, pas le data JSONB complet (6.5 MB → < 50 KB)
+    // ✅ OPTIMISATION 2025-11-27 : Requête SQL optimisée pour éliminer la sous-requête corrélée coûteuse
+    // Utilise jsonb_array_elements une seule fois avec un LEFT JOIN LATERAL pour accéder à products_lifecycle
+    // Complexité réduite de O(n*m) à O(n) grâce à la jointure optimisée avec index
     let rows = match sqlx::query(
         r#"
         SELECT 
@@ -1141,19 +1142,16 @@ pub async fn get_services_for_prestataire(
                 ),
                 200
             ) as description_preview,
-            -- Produits allégés (sans images/médias volumineux)
+            -- Produits allégés : UN SEUL parsing JSONB avec jointure optimisée
             (
                 SELECT jsonb_agg(
                     jsonb_build_object(
-                        'nom', COALESCE(product->>'nom', product->>'name', product->>'titre', ''),
-                        'prix', product->>'prix',
-                        'devise', product->>'devise',
-                        'is_active', COALESCE(
-                            (SELECT is_active FROM products_lifecycle pl
-                             WHERE pl.service_id = s.id AND pl.product_index = idx - 1),
-                            true
-                        )
+                        'nom', COALESCE(p.product->>'nom', p.product->>'name', p.product->>'titre', ''),
+                        'prix', p.product->>'prix',
+                        'devise', p.product->>'devise',
+                        'is_active', COALESCE(pl.is_active, true)
                     )
+                    ORDER BY p.idx
                 )
                 FROM jsonb_array_elements(
                     CASE 
@@ -1161,21 +1159,20 @@ pub async fn get_services_for_prestataire(
                         WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
                         ELSE '[]'::jsonb
                     END
-                ) WITH ORDINALITY AS t(product, idx)
-                LIMIT 10  -- Limiter à 10 produits pour la liste
+                ) WITH ORDINALITY AS p(product, idx)
+                LEFT JOIN products_lifecycle pl 
+                    ON pl.service_id = s.id AND pl.product_index = p.idx - 1
+                LIMIT 10
             ) as produits_light,
-            -- Compter le nombre total de produits
-            (
-                SELECT COUNT(*)
-                FROM jsonb_array_elements(
-                    CASE 
-                        WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
-                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
-                        ELSE '[]'::jsonb
-                    END
-                )
+            -- Compter les produits (réutilise le parsing ci-dessus via jsonb_array_length qui est très rapide)
+            jsonb_array_length(
+                CASE 
+                    WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
+                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
+                    ELSE '[]'::jsonb
+                END
             ) as produits_count,
-            -- Garder seulement le place_id de Google Places (pas les données complètes)
+            -- Garder seulement le place_id de Google Places
             s.data->'google_place'->>'place_id' as google_place_id
         FROM services s
         WHERE s.user_id = $1
@@ -1198,19 +1195,39 @@ pub async fn get_services_for_prestataire(
         user_id
     );
 
+    // ✅ NOUVEAU: Log détaillé pour tracer les sous_caracteristiques
     // Construire la réponse avec les données allégées
     let result: Vec<_> = rows
         .into_iter()
         .map(|row| {
             let id: i32 = row.get("id");
             let is_active: bool = row.get("is_active");
-            let created_at: chrono::NaiveDateTime = row.get("created_at");
+            // ✅ CORRECTION: Utiliser DateTime<Utc> au lieu de NaiveDateTime car la colonne est TIMESTAMPTZ
+            let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
             let category: Option<String> = row.get("category");
             let titre_service: Option<String> = row.get("titre_service");
             let description_preview: Option<String> = row.get("description_preview");
             let produits_light: Option<serde_json::Value> = row.get("produits_light");
             let produits_count: Option<i64> = row.get("produits_count");
             let google_place_id: Option<String> = row.get("google_place_id");
+
+            // ✅ LOG: Vérifier si produits_light contient des sous_caracteristiques
+            if let Some(ref produits) = produits_light {
+                if let Some(produits_array) = produits.as_array() {
+                    for (idx, produit) in produits_array.iter().take(1).enumerate() {
+                        if let Some(produit_obj) = produit.as_object() {
+                            let has_sous_caracs = produit_obj.contains_key("sous_caracteristiques");
+                            info!(
+                                "[get_services_for_prestataire] 📦 Service {} - Produit #{}: nom={:?}, has_sous_caracteristiques={}",
+                                id,
+                                idx,
+                                produit_obj.get("nom"),
+                                has_sous_caracs
+                            );
+                        }
+                    }
+                }
+            }
 
             json!({
                 "id": id,

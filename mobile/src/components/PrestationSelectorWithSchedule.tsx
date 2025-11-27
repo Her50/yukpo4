@@ -27,15 +27,23 @@ const DAYS_OF_WEEK = [
 ];
 
 const TIME_SLOTS = [
+    '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', // ✅ AJOUTÉ: Heures nocturnes
     '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
     '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
-    '18:00', '19:00', '20:00', '21:00', '22:00'
+    '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'
 ];
 
+// ✅ REFONTE : Structure pour horaires indépendants par jour
 export interface PrestationWithSchedule {
     prestation: string;
-    days: number[];
-    timeSlots: Array<{ start: string; end: string }>;
+    // ✅ NOUVEAU : Horaires spécifiques par jour (chaque jour peut avoir ses propres horaires)
+    scheduleByDay: Array<{
+        day: number; // 1=Lundi, 2=Mardi, ..., 7=Dimanche
+        timeSlots: Array<{ start: string; end: string }>;
+    }>;
+    // ✅ DÉPRÉCIÉ : days et timeSlots (conservés pour compatibilité)
+    days?: number[];
+    timeSlots?: Array<{ start: string; end: string }>;
 }
 
 interface PrestationSelectorWithScheduleProps {
@@ -78,10 +86,18 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
             // Retirer
             onSelectionChange(selected.filter(s => s.prestation !== prestation));
         } else {
-            // Ajouter avec planification par défaut
+            // ✅ NOUVEAU : Ajouter avec structure scheduleByDay (horaires indépendants par jour)
             const newPrestation: PrestationWithSchedule = {
                 prestation,
-                days: [1, 2, 3, 4, 5], // Lundi-Vendredi par défaut
+                scheduleByDay: [
+                    { day: 1, timeSlots: [{ start: '08:00', end: '17:00' }] }, // Lundi
+                    { day: 2, timeSlots: [{ start: '08:00', end: '17:00' }] }, // Mardi
+                    { day: 3, timeSlots: [{ start: '08:00', end: '17:00' }] }, // Mercredi
+                    { day: 4, timeSlots: [{ start: '08:00', end: '17:00' }] }, // Jeudi
+                    { day: 5, timeSlots: [{ start: '08:00', end: '17:00' }] }, // Vendredi
+                ],
+                // Compatibilité avec ancien format
+                days: [1, 2, 3, 4, 5],
                 timeSlots: [{ start: '08:00', end: '17:00' }]
             };
             onSelectionChange([...selected, newPrestation]);
@@ -94,8 +110,16 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
 
     const handleAddCustom = () => {
         if (customInput.trim() && !selected.some(s => s.prestation === customInput.trim())) {
+            // ✅ NOUVEAU : Structure scheduleByDay
             const newPrestation: PrestationWithSchedule = {
                 prestation: customInput.trim(),
+                scheduleByDay: [
+                    { day: 1, timeSlots: [{ start: '08:00', end: '17:00' }] },
+                    { day: 2, timeSlots: [{ start: '08:00', end: '17:00' }] },
+                    { day: 3, timeSlots: [{ start: '08:00', end: '17:00' }] },
+                    { day: 4, timeSlots: [{ start: '08:00', end: '17:00' }] },
+                    { day: 5, timeSlots: [{ start: '08:00', end: '17:00' }] },
+                ],
                 days: [1, 2, 3, 4, 5],
                 timeSlots: [{ start: '08:00', end: '17:00' }]
             };
@@ -118,52 +142,127 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
         ));
     };
 
+    // ✅ NOUVEAU : Toggle un jour (ajouter/retirer de scheduleByDay)
     const toggleDay = (prestation: string, day: number) => {
         const prestationData = selected.find(s => s.prestation === prestation);
         if (!prestationData) return;
 
-        const newDays = prestationData.days.includes(day)
-            ? prestationData.days.filter(d => d !== day)
-            : [...prestationData.days, day];
+        const scheduleByDay = prestationData.scheduleByDay || [];
+        const dayExists = scheduleByDay.some(d => d.day === day);
 
-        updateSchedule(prestation, { days: newDays });
+        let newScheduleByDay: Array<{ day: number; timeSlots: Array<{ start: string; end: string }> }>;
+
+        if (dayExists) {
+            // Retirer le jour
+            newScheduleByDay = scheduleByDay.filter(d => d.day !== day);
+        } else {
+            // Ajouter le jour avec horaires par défaut
+            newScheduleByDay = [...scheduleByDay, { day, timeSlots: [{ start: '08:00', end: '17:00' }] }];
+        }
+
+        // Mettre à jour aussi days pour compatibilité
+        const newDays = newScheduleByDay.map(d => d.day).sort();
+
+        updateSchedule(prestation, {
+            scheduleByDay: newScheduleByDay,
+            days: newDays // Compatibilité
+        });
     };
 
-    const updateTimeSlot = (prestation: string, slotIndex: number, field: 'start' | 'end', value: string) => {
+    // ✅ NOUVEAU : Mettre à jour un créneau horaire pour un jour spécifique
+    const updateTimeSlot = (prestation: string, day: number, slotIndex: number, field: 'start' | 'end', value: string) => {
         const prestationData = selected.find(s => s.prestation === prestation);
         if (!prestationData) return;
 
-        const updatedSlots = prestationData.timeSlots.map((slot, idx) =>
+        const scheduleByDay = prestationData.scheduleByDay || [];
+        const daySchedule = scheduleByDay.find(d => d.day === day);
+
+        if (!daySchedule) return;
+
+        const updatedSlots = daySchedule.timeSlots.map((slot, idx) =>
             idx === slotIndex ? { ...slot, [field]: value } : slot
         );
 
-        updateSchedule(prestation, { timeSlots: updatedSlots });
+        const newScheduleByDay = scheduleByDay.map(d =>
+            d.day === day ? { ...d, timeSlots: updatedSlots } : d
+        );
+
+        updateSchedule(prestation, { scheduleByDay: newScheduleByDay });
     };
 
-    const addTimeSlot = (prestation: string) => {
+    // ✅ NOUVEAU : Ajouter un créneau horaire pour un jour spécifique
+    const addTimeSlot = (prestation: string, day: number) => {
         const prestationData = selected.find(s => s.prestation === prestation);
         if (!prestationData) return;
 
-        updateSchedule(prestation, {
-            timeSlots: [...prestationData.timeSlots, { start: '08:00', end: '17:00' }]
-        });
+        const scheduleByDay = prestationData.scheduleByDay || [];
+        const daySchedule = scheduleByDay.find(d => d.day === day);
+
+        if (!daySchedule) {
+            // Si le jour n'existe pas, l'ajouter avec le nouveau créneau
+            const newScheduleByDay = [...scheduleByDay, {
+                day,
+                timeSlots: [{ start: '08:00', end: '17:00' }]
+            }];
+            updateSchedule(prestation, { scheduleByDay: newScheduleByDay });
+            return;
+        }
+
+        const newScheduleByDay = scheduleByDay.map(d =>
+            d.day === day
+                ? { ...d, timeSlots: [...d.timeSlots, { start: '08:00', end: '17:00' }] }
+                : d
+        );
+
+        updateSchedule(prestation, { scheduleByDay: newScheduleByDay });
     };
 
-    const removeTimeSlot = (prestation: string, slotIndex: number) => {
+    // ✅ NOUVEAU : Retirer un créneau horaire pour un jour spécifique
+    const removeTimeSlot = (prestation: string, day: number, slotIndex: number) => {
         const prestationData = selected.find(s => s.prestation === prestation);
-        if (!prestationData || prestationData.timeSlots.length <= 1) return;
+        if (!prestationData) return;
 
-        updateSchedule(prestation, {
-            timeSlots: prestationData.timeSlots.filter((_, idx) => idx !== slotIndex)
-        });
+        const scheduleByDay = prestationData.scheduleByDay || [];
+        const daySchedule = scheduleByDay.find(d => d.day === day);
+
+        if (!daySchedule || daySchedule.timeSlots.length <= 1) return;
+
+        const newScheduleByDay = scheduleByDay.map(d =>
+            d.day === day
+                ? { ...d, timeSlots: d.timeSlots.filter((_, idx) => idx !== slotIndex) }
+                : d
+        );
+
+        updateSchedule(prestation, { scheduleByDay: newScheduleByDay });
     };
 
     const getScheduleSummary = (prestation: PrestationWithSchedule): string => {
-        if (prestation.days.length === 0) return 'Non planifié';
-        const daysStr = prestation.days.length === 7 ? 'Tous les jours' :
-            prestation.days.length === 5 && prestation.days.every(d => d <= 5) ? 'Lun-Ven' :
-                `${prestation.days.length} jour(s)`;
-        const timeStr = prestation.timeSlots.length > 0
+        // ✅ NOUVEAU : Utiliser scheduleByDay si disponible
+        const scheduleByDay = prestation.scheduleByDay || [];
+        const days = scheduleByDay.length > 0
+            ? scheduleByDay.map(d => d.day).sort()
+            : (prestation.days || []);
+
+        if (days.length === 0) return 'Non planifié';
+
+        const daysStr = days.length === 7 ? 'Tous les jours' :
+            days.length === 5 && days.every(d => d <= 5) ? 'Lun-Ven' :
+                `${days.length} jour(s)`;
+
+        // ✅ NOUVEAU : Afficher un résumé des horaires (peut varier par jour)
+        if (scheduleByDay.length > 0) {
+            const allTimeSlots = scheduleByDay.flatMap(d => d.timeSlots);
+            if (allTimeSlots.length > 0) {
+                const uniqueSlots = Array.from(new Set(allTimeSlots.map(s => `${s.start}-${s.end}`)));
+                const timeStr = uniqueSlots.length === 1
+                    ? uniqueSlots[0]
+                    : `${uniqueSlots.length} créneau(x)`;
+                return `${daysStr} • ${timeStr}`;
+            }
+        }
+
+        // Fallback ancien format
+        const timeStr = prestation.timeSlots && prestation.timeSlots.length > 0
             ? `${prestation.timeSlots[0].start}-${prestation.timeSlots[0].end}`
             : '';
         return `${daysStr} ${timeStr}`;
@@ -309,110 +408,121 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                             </View>
 
                             <ScrollView style={styles.scheduleContent}>
-                                {/* Jours */}
-                                <View style={styles.scheduleSection}>
-                                    <Text style={styles.sectionLabel}>Jours disponibles</Text>
-                                    <View style={styles.daysGrid}>
-                                        {DAYS_OF_WEEK.map(day => (
-                                            <TouchableOpacity
-                                                key={day.value}
-                                                style={[
-                                                    styles.dayButton,
-                                                    currentPrestationData.days.includes(day.value) && styles.dayButtonSelected
-                                                ]}
-                                                onPress={() => toggleDay(currentPrestation, day.value)}
-                                            >
-                                                <Text style={[
-                                                    styles.dayButtonText,
-                                                    currentPrestationData.days.includes(day.value) && styles.dayButtonTextSelected
-                                                ]}>
-                                                    {day.short}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </View>
+                                {/* ✅ NOUVEAU : Planification par jour avec horaires indépendants */}
+                                <Text style={styles.infoText}>
+                                    Configurez les horaires pour chaque jour indépendamment
+                                </Text>
 
-                                {/* Plages horaires */}
-                                {currentPrestationData.days.length > 0 && (
-                                    <View style={styles.scheduleSection}>
-                                        <Text style={styles.sectionLabel}>Plages horaires</Text>
-                                        {currentPrestationData.timeSlots.map((slot, slotIndex) => (
-                                            <View key={slotIndex} style={styles.timeSlotCard}>
-                                                <View style={styles.timeSlotRow}>
-                                                    <View style={styles.timeInputGroup}>
-                                                        <Text style={styles.timeLabel}>Début</Text>
-                                                        <ScrollView
-                                                            horizontal
-                                                            showsHorizontalScrollIndicator={false}
-                                                            style={styles.timePicker}
-                                                        >
-                                                            {TIME_SLOTS.map(time => (
-                                                                <TouchableOpacity
-                                                                    key={time}
-                                                                    style={[
-                                                                        styles.timeOption,
-                                                                        slot.start === time && styles.timeOptionSelected
-                                                                    ]}
-                                                                    onPress={() => updateTimeSlot(currentPrestation, slotIndex, 'start', time)}
-                                                                >
-                                                                    <Text style={[
-                                                                        styles.timeOptionText,
-                                                                        slot.start === time && styles.timeOptionTextSelected
-                                                                    ]}>
-                                                                        {time}
-                                                                    </Text>
-                                                                </TouchableOpacity>
-                                                            ))}
-                                                        </ScrollView>
-                                                    </View>
-                                                    <View style={styles.timeInputGroup}>
-                                                        <Text style={styles.timeLabel}>Fin</Text>
-                                                        <ScrollView
-                                                            horizontal
-                                                            showsHorizontalScrollIndicator={false}
-                                                            style={styles.timePicker}
-                                                        >
-                                                            {TIME_SLOTS.map(time => (
-                                                                <TouchableOpacity
-                                                                    key={time}
-                                                                    style={[
-                                                                        styles.timeOption,
-                                                                        slot.end === time && styles.timeOptionSelected
-                                                                    ]}
-                                                                    onPress={() => updateTimeSlot(currentPrestation, slotIndex, 'end', time)}
-                                                                >
-                                                                    <Text style={[
-                                                                        styles.timeOptionText,
-                                                                        slot.end === time && styles.timeOptionTextSelected
-                                                                    ]}>
-                                                                        {time}
-                                                                    </Text>
-                                                                </TouchableOpacity>
-                                                            ))}
-                                                        </ScrollView>
-                                                    </View>
-                                                </View>
-                                                {currentPrestationData.timeSlots.length > 1 && (
-                                                    <TouchableOpacity
-                                                        style={styles.removeSlotButton}
-                                                        onPress={() => removeTimeSlot(currentPrestation, slotIndex)}
-                                                    >
-                                                        <SafeIcon name="trash-2" size={16} color="#DC2626" />
-                                                        <Text style={styles.removeSlotText}>Supprimer</Text>
-                                                    </TouchableOpacity>
-                                                )}
+                                {DAYS_OF_WEEK.map(day => {
+                                    const scheduleByDay = currentPrestationData.scheduleByDay || [];
+                                    const daySchedule = scheduleByDay.find(d => d.day === day.value);
+                                    const isDaySelected = daySchedule !== undefined;
+
+                                    return (
+                                        <View key={day.value} style={styles.dayScheduleCard}>
+                                            {/* En-tête du jour */}
+                                            <View style={styles.dayScheduleHeader}>
+                                                <TouchableOpacity
+                                                    style={[
+                                                        styles.dayToggleButton,
+                                                        isDaySelected && styles.dayToggleButtonSelected
+                                                    ]}
+                                                    onPress={() => toggleDay(currentPrestation, day.value)}
+                                                >
+                                                    <Text style={[
+                                                        styles.dayToggleText,
+                                                        isDaySelected && styles.dayToggleTextSelected
+                                                    ]}>
+                                                        {day.label}
+                                                    </Text>
+                                                    {isDaySelected && (
+                                                        <SafeIcon name="check" size={16} color="#fff" />
+                                                    )}
+                                                </TouchableOpacity>
                                             </View>
-                                        ))}
-                                        <TouchableOpacity
-                                            style={styles.addSlotButton}
-                                            onPress={() => addTimeSlot(currentPrestation)}
-                                        >
-                                            <SafeIcon name="plus" size={18} color={modernColors.primary} />
-                                            <Text style={styles.addSlotText}>Ajouter une plage horaire</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
+
+                                            {/* Horaires pour ce jour (si sélectionné) */}
+                                            {isDaySelected && daySchedule && (
+                                                <View style={styles.dayTimeSlotsContainer}>
+                                                    {daySchedule.timeSlots.map((slot, slotIndex) => (
+                                                        <View key={slotIndex} style={styles.timeSlotCard}>
+                                                            <View style={styles.timeSlotRow}>
+                                                                <View style={styles.timeInputGroup}>
+                                                                    <Text style={styles.timeLabel}>Début</Text>
+                                                                    <ScrollView
+                                                                        horizontal
+                                                                        showsHorizontalScrollIndicator={false}
+                                                                        style={styles.timePicker}
+                                                                    >
+                                                                        {TIME_SLOTS.map(time => (
+                                                                            <TouchableOpacity
+                                                                                key={time}
+                                                                                style={[
+                                                                                    styles.timeOption,
+                                                                                    slot.start === time && styles.timeOptionSelected
+                                                                                ]}
+                                                                                onPress={() => updateTimeSlot(currentPrestation, day.value, slotIndex, 'start', time)}
+                                                                            >
+                                                                                <Text style={[
+                                                                                    styles.timeOptionText,
+                                                                                    slot.start === time && styles.timeOptionTextSelected
+                                                                                ]}>
+                                                                                    {time}
+                                                                                </Text>
+                                                                            </TouchableOpacity>
+                                                                        ))}
+                                                                    </ScrollView>
+                                                                </View>
+                                                                <View style={styles.timeInputGroup}>
+                                                                    <Text style={styles.timeLabel}>Fin</Text>
+                                                                    <ScrollView
+                                                                        horizontal
+                                                                        showsHorizontalScrollIndicator={false}
+                                                                        style={styles.timePicker}
+                                                                    >
+                                                                        {TIME_SLOTS.map(time => (
+                                                                            <TouchableOpacity
+                                                                                key={time}
+                                                                                style={[
+                                                                                    styles.timeOption,
+                                                                                    slot.end === time && styles.timeOptionSelected
+                                                                                ]}
+                                                                                onPress={() => updateTimeSlot(currentPrestation, day.value, slotIndex, 'end', time)}
+                                                                            >
+                                                                                <Text style={[
+                                                                                    styles.timeOptionText,
+                                                                                    slot.end === time && styles.timeOptionTextSelected
+                                                                                ]}>
+                                                                                    {time}
+                                                                                </Text>
+                                                                            </TouchableOpacity>
+                                                                        ))}
+                                                                    </ScrollView>
+                                                                </View>
+                                                            </View>
+                                                            {daySchedule.timeSlots.length > 1 && (
+                                                                <TouchableOpacity
+                                                                    style={styles.removeSlotButton}
+                                                                    onPress={() => removeTimeSlot(currentPrestation, day.value, slotIndex)}
+                                                                >
+                                                                    <SafeIcon name="trash-2" size={16} color="#DC2626" />
+                                                                    <Text style={styles.removeSlotText}>Supprimer</Text>
+                                                                </TouchableOpacity>
+                                                            )}
+                                                        </View>
+                                                    ))}
+                                                    <TouchableOpacity
+                                                        style={styles.addSlotButton}
+                                                        onPress={() => addTimeSlot(currentPrestation, day.value)}
+                                                    >
+                                                        <SafeIcon name="plus" size={18} color={modernColors.primary} />
+                                                        <Text style={styles.addSlotText}>Ajouter un créneau</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            )}
+                                        </View>
+                                    );
+                                })}
                             </ScrollView>
 
                             <View style={styles.scheduleFooter}>

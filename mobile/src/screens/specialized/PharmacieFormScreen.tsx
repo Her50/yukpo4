@@ -9,22 +9,18 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import GuardDaysSelector from '../../components/GuardDaysSelector';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
-import WeekScheduleSelector from '../../components/WeekScheduleSelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
-interface ScheduleDay {
-    day: number;
-    enabled: boolean;
-    timeSlots: Array<{ start: string; end: string }>;
-}
+// ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
 
 const PharmacieFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -32,13 +28,15 @@ const PharmacieFormScreen: React.FC = () => {
     const { user } = useAuth();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
+    const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
+    const mode = (route.params as any)?.mode as string | undefined;
 
     const [formData, setFormData] = useState({
         nom: '',
         adresse: '',
         quartier: null as LocationObject | null,
-        ville: null as LocationObject | null,
-        jours_garde: '',
+        // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
+        jours_garde: {} as Record<string, number[]>, // Format: { '2025-01': [1, 3, 5], ... }
         heures_ouverture: '08:00',
         heures_fermeture: '20:00',
         permanent_24h: false,
@@ -53,8 +51,7 @@ const PharmacieFormScreen: React.FC = () => {
     const [selectedServices, setSelectedServices] = useState<string[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    const [showScheduleModal, setShowScheduleModal] = useState(false);
-    const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
+    const [showGuardDaysModal, setShowGuardDaysModal] = useState(false);
 
     const servicesOptions = ['Garde', 'Délivrance', 'Conseil', 'Vaccination', 'Pansements', 'Livraison à domicile', 'Préparation de médicaments'];
 
@@ -84,15 +81,57 @@ const PharmacieFormScreen: React.FC = () => {
         }
     }, [formData.nom, serviceId, user?.id]);
 
+    // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
+    useEffect(() => {
+        const loadExistingData = async () => {
+            if (mode === 'edit' && specializedServiceId && serviceId) {
+                try {
+                    setLoading(true);
+                    const { apiGet } = require('../../services/api');
+                    const response = await apiGet(`/api/pharmacies/${specializedServiceId}`);
+
+                    if (response.success && response.data) {
+                        const data = response.data;
+                        setFormData({
+                            nom: data.nom || '',
+                            adresse: data.adresse || '',
+                            quartier: data.quartier ? { raw: data.quartier, place_name: data.quartier } : null,
+                            jours_garde: data.jours_garde ? (typeof data.jours_garde === 'string' ? JSON.parse(data.jours_garde) : data.jours_garde) : {},
+                            heures_ouverture: data.heures_ouverture || '08:00',
+                            heures_fermeture: data.heures_fermeture || '20:00',
+                            permanent_24h: data.permanent_24h || false,
+                            telephone: data.telephone || '',
+                            telephone_urgence: data.telephone_urgence || '',
+                            whatsapp: data.whatsapp || '',
+                            email: data.email || '',
+                            services: data.services || [],
+                        });
+
+                        setSelectedServices(data.services || []);
+                        if (data.gps) {
+                            setSelectedGPS(data.gps);
+                        }
+                    }
+                } catch (error: any) {
+                    console.error('[PharmacieFormScreen] Erreur chargement données:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadExistingData();
+    }, [mode, specializedServiceId, serviceId]);
+
 
     const handleGPSSelect = (coordinates: string) => {
         setSelectedGPS(coordinates);
         setShowGPSModal(false);
     };
 
-    const handleScheduleSave = (savedSchedule: ScheduleDay[]) => {
-        setSchedule(savedSchedule);
-        setShowScheduleModal(false);
+    const handleGuardDaysSave = (days: Record<string, number[]>) => {
+        setFormData({ ...formData, jours_garde: days });
+        setShowGuardDaysModal(false);
     };
 
     const handleSubmit = async () => {
@@ -137,13 +176,10 @@ const PharmacieFormScreen: React.FC = () => {
         }
 
         try {
-            // Construire le planning hebdomadaire depuis schedule
-            const planningHebdomadaire = schedule.length > 0
-                ? schedule.map(day => ({
-                    day: day.day,
-                    enabled: day.enabled,
-                    timeSlots: day.timeSlots
-                }))
+            // ✅ SUPPRIMÉ : planning_hebdomadaire (pas d'utilité selon demande)
+            // ✅ Format jours_garde : { '2025-01': [1, 3, 5], ... } où les valeurs sont les jours de la semaine
+            const joursGardeFormatted = Object.keys(formData.jours_garde).length > 0
+                ? formData.jours_garde
                 : null;
 
             const payload = {
@@ -151,12 +187,11 @@ const PharmacieFormScreen: React.FC = () => {
                 nom: formData.nom,
                 adresse: formData.adresse || null,
                 quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
-                ville: formData.ville?.raw || formData.ville?.place_name || null,
+                // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
                 gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
-                jours_garde: formData.jours_garde || null,
-                planning_hebdomadaire: planningHebdomadaire,
+                jours_garde: joursGardeFormatted,
                 heures_ouverture: formData.heures_ouverture || null,
                 heures_fermeture: formData.heures_fermeture || null,
                 permanent_24h: formData.permanent_24h,
@@ -244,50 +279,43 @@ const PharmacieFormScreen: React.FC = () => {
                             label="Quartier"
                             value={formData.quartier || ''}
                             onSelect={(value) => setFormData({ ...formData, quartier: value })}
-                            placeholder="Rechercher un quartier..."
+                            placeholder="Rechercher un quartier (inclut ville et pays)..."
                             scope="neighborhood"
                             enrichWithBackend
                         />
+                        <Text style={styles.hintText}>
+                            Le quartier permet de récupérer automatiquement la ville et le pays
+                        </Text>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Ville"
-                            value={formData.ville || ''}
-                            onSelect={(value) => setFormData({ ...formData, ville: value })}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            enrichWithBackend
-                        />
-                    </View>
+                    {/* ✅ SUPPRIMÉ : Planning hebdomadaire (pas d'utilité) */}
 
-                    {/* ✅ Planning hebdomadaire avec sélecteur visuel */}
+                    {/* ✅ Jours de garde avec sélecteur visuel amélioré */}
                     <View style={styles.inputGroup}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.label}>Planning hebdomadaire</Text>
+                            <View>
+                                <Text style={styles.label}>Jours de garde</Text>
+                                <Text style={styles.hintText}>
+                                    Planifier les jours de garde sur les 12 prochains mois
+                                </Text>
+                            </View>
                             <TouchableOpacity
                                 style={styles.planningButton}
-                                onPress={() => setShowScheduleModal(true)}
+                                onPress={() => setShowGuardDaysModal(true)}
                             >
                                 <SafeIcon name="calendar" size={16} color={modernColors.primary} />
                                 <Text style={styles.planningButtonText}>
-                                    {schedule.length > 0 ? 'Modifier' : 'Configurer'}
+                                    {Object.keys(formData.jours_garde).length > 0 ? 'Modifier' : 'Planifier'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
-                        {schedule.length > 0 && (
-                            <Text style={styles.scheduleSummary}>
-                                {schedule.filter(d => d.enabled).length} jour(s) configuré(s)
-                            </Text>
+                        {Object.keys(formData.jours_garde).length > 0 && (
+                            <View style={styles.guardDaysSummary}>
+                                <Text style={styles.guardDaysSummaryText}>
+                                    {Object.values(formData.jours_garde).reduce((sum, days) => sum + days.length, 0)} jour(s) de garde planifié(s) sur {Object.keys(formData.jours_garde).length} mois
+                                </Text>
+                            </View>
                         )}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Jours de garde (optionnel - texte libre)</Text>
-                            <NativeInput
-                                value={formData.jours_garde}
-                                onChangeText={(text) => setFormData({ ...formData, jours_garde: text })}
-                                placeholder="Ex: Lundi, Mercredi, Vendredi"
-                            />
-                        </View>
                     </View>
 
                     <View style={styles.row}>
@@ -394,12 +422,12 @@ const PharmacieFormScreen: React.FC = () => {
                 title="Sélectionner la localisation"
             />
 
-            <WeekScheduleSelector
-                visible={showScheduleModal}
-                onClose={() => setShowScheduleModal(false)}
-                onSave={handleScheduleSave}
-                initialSchedule={schedule}
-                title="Planning hebdomadaire"
+            <GuardDaysSelector
+                visible={showGuardDaysModal}
+                onClose={() => setShowGuardDaysModal(false)}
+                onSave={handleGuardDaysSave}
+                initialDays={formData.jours_garde}
+                title="Planifier les jours de garde"
             />
         </>
     );
@@ -518,6 +546,25 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#6B7280',
         marginTop: 4,
+    },
+    hintText: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    guardDaysSummary: {
+        marginTop: 8,
+        padding: 12,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+    },
+    guardDaysSummaryText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
     submitButton: {
         marginTop: 24,

@@ -114,6 +114,82 @@ pub async fn create_hospital(
         return Err(AppError::NotFound("Service non trouvé ou n'appartient pas à l'utilisateur".to_string()));
     }
 
+    // ✅ NOUVEAU : Vérifier si un hôpital existe déjà pour ce service
+    let existing_hospital: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM hopitaux_cliniques WHERE service_id = $1 AND user_id = $2"
+    )
+    .bind(payload.service_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_hospital] Erreur vérification hôpital existant: {}", e);
+        AppError::Internal(format!("Erreur vérification hôpital existant: {}", e))
+    })?;
+
+    if existing_hospital.is_some() {
+        info!("[create_hospital] Hôpital existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
+        // ✅ UPSERT : Mise à jour si existe
+        let hospital_id = existing_hospital.unwrap();
+        
+        // Construire planning_prestations depuis payload
+        let planning_prestations_json = payload.planning_prestations.as_ref()
+            .map(|p| serde_json::to_value(p).ok())
+            .flatten();
+
+        sqlx::query(
+            r#"
+            UPDATE hopitaux_cliniques SET
+                nom = $3,
+                type_etablissement = $4,
+                adresse = $5,
+                quartier = $6,
+                ville = $7,
+                gps = $8,
+                prestations_medicales = $9,
+                planning_prestations = $10,
+                urgences_disponible = $11,
+                rdv_en_ligne = $12,
+                telephone = $13,
+                telephone_urgence = $14,
+                whatsapp = $15,
+                email = $16,
+                site_web = $17,
+                updated_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            "#
+        )
+        .bind(hospital_id)
+        .bind(user_id)
+        .bind(&payload.nom)
+        .bind(&payload.type_etablissement)
+        .bind(payload.adresse.as_ref())
+        .bind(payload.quartier.as_ref())
+        .bind(payload.ville.as_ref())
+        .bind(payload.gps.as_ref())
+        .bind(payload.prestations_medicales.as_ref().map(|s| s.as_slice()))
+        .bind(planning_prestations_json.as_ref())
+        .bind(payload.urgences_disponible.unwrap_or(false))
+        .bind(payload.rdv_en_ligne.unwrap_or(false))
+        .bind(payload.telephone.as_ref())
+        .bind(payload.telephone_urgence.as_ref())
+        .bind(payload.whatsapp.as_ref())
+        .bind(payload.email.as_ref())
+        .bind(payload.site_web.as_ref())
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_hospital] Erreur mise à jour: {}", e);
+            AppError::Internal(format!("Erreur mise à jour hôpital: {}", e))
+        })?;
+
+        return Ok((StatusCode::OK, Json(json!({
+            "success": true,
+            "id": hospital_id,
+            "message": "Établissement de santé mis à jour avec succès"
+        }))));
+    }
+
     let hospital_id: i32 = sqlx::query_scalar(
         r#"
         INSERT INTO hopitaux_cliniques (
@@ -232,7 +308,84 @@ pub async fn create_laboratory(
     })?;
 
     if service_exists.is_none() {
-        return Err(AppError::NotFound("Service non trouvé".to_string()));
+        return Err(AppError::NotFound("Service non trouvé ou n'appartient pas à l'utilisateur".to_string()));
+    }
+
+    // ✅ NOUVEAU : Vérifier si un laboratoire existe déjà pour ce service
+    let existing_laboratory: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM laboratoires_imagerie WHERE service_id = $1 AND user_id = $2"
+    )
+    .bind(payload.service_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_laboratory] Erreur vérification laboratoire existant: {}", e);
+        AppError::Internal(format!("Erreur vérification laboratoire existant: {}", e))
+    })?;
+
+    if existing_laboratory.is_some() {
+        info!("[create_laboratory] Laboratoire existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
+        let lab_id = existing_laboratory.unwrap();
+        
+        let heures_ouverture = payload.heures_ouverture
+            .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
+        let heures_fermeture = payload.heures_fermeture
+            .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
+
+        sqlx::query(
+            r#"
+            UPDATE laboratoires_imagerie SET
+                nom = $3,
+                type_laboratoire = $4,
+                adresse = $5,
+                quartier = $6,
+                ville = $7,
+                gps = $8,
+                analyses_disponibles = $9,
+                imagerie_disponible = $10,
+                heures_ouverture = $11,
+                heures_fermeture = $12,
+                permanent_24h = $13,
+                rdv_requis = $14,
+                resultats_en_ligne = $15,
+                telephone = $16,
+                whatsapp = $17,
+                email = $18,
+                updated_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            "#
+        )
+        .bind(lab_id)
+        .bind(user_id)
+        .bind(&payload.nom)
+        .bind(&payload.type_laboratoire)
+        .bind(payload.adresse.as_ref())
+        .bind(payload.quartier.as_ref())
+        .bind(payload.ville.as_ref())
+        .bind(payload.gps.as_ref())
+        .bind(payload.analyses_disponibles.as_ref().map(|s| s.as_slice()))
+        .bind(payload.imagerie_disponible.as_ref().map(|s| s.as_slice()))
+        .bind(heures_ouverture)
+        .bind(heures_fermeture)
+        .bind(payload.permanent_24h.unwrap_or(false))
+        .bind(payload.rdv_requis.unwrap_or(true))
+        .bind(payload.resultats_en_ligne.unwrap_or(false))
+        .bind(payload.telephone.as_ref())
+        .bind(payload.whatsapp.as_ref())
+        .bind(payload.email.as_ref())
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_laboratory] Erreur mise à jour: {}", e);
+            AppError::Internal(format!("Erreur mise à jour laboratoire: {}", e))
+        })?;
+
+        return Ok((StatusCode::OK, Json(json!({
+            "success": true,
+            "id": lab_id,
+            "message": "Laboratoire mis à jour avec succès"
+        }))));
     }
 
     let lab_id: i32 = sqlx::query_scalar(
@@ -336,6 +489,85 @@ pub async fn create_travel_agency(
 
     if service_exists.is_none() {
         return Err(AppError::NotFound("Service non trouvé".to_string()));
+    }
+
+    // ✅ NOUVEAU : Vérifier si une agence de voyage existe déjà pour ce service
+    let existing_agency: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM agences_voyage WHERE service_id = $1 AND user_id = $2"
+    )
+    .bind(payload.service_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_travel_agency] Erreur vérification agence existante: {}", e);
+        AppError::Internal(format!("Erreur vérification agence existante: {}", e))
+    })?;
+
+    if existing_agency.is_some() {
+        info!("[create_travel_agency] Agence existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
+        let agency_id = existing_agency.unwrap();
+        
+        let heures_ouverture = payload.heures_ouverture
+            .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
+        let heures_fermeture = payload.heures_fermeture
+            .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
+
+        sqlx::query(
+            r#"
+            UPDATE agences_voyage SET
+                nom_agence = $3,
+                adresse = $4,
+                quartier = $5,
+                ville = $6,
+                gps = $7,
+                services_voyage = $8,
+                compagnies_bus = $9,
+                destinations = $10,
+                heures_ouverture = $11,
+                heures_fermeture = $12,
+                jours_ouverture = $13,
+                telephone = $14,
+                whatsapp = $15,
+                email = $16,
+                site_web = $17,
+                peut_emettre_tickets_bus = $18,
+                compagnies_affiliees = $19,
+                updated_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            "#
+        )
+        .bind(agency_id)
+        .bind(user_id)
+        .bind(&payload.nom_agence)
+        .bind(payload.adresse.as_ref())
+        .bind(payload.quartier.as_ref())
+        .bind(payload.ville.as_ref())
+        .bind(payload.gps.as_ref())
+        .bind(payload.services_voyage.as_ref().map(|s| s.as_slice()))
+        .bind(payload.compagnies_bus.as_ref().map(|s| s.as_slice()))
+        .bind(payload.destinations.as_ref().map(|s| s.as_slice()))
+        .bind(heures_ouverture)
+        .bind(heures_fermeture)
+        .bind(payload.jours_ouverture.as_ref())
+        .bind(payload.telephone.as_ref())
+        .bind(payload.whatsapp.as_ref())
+        .bind(payload.email.as_ref())
+        .bind(payload.site_web.as_ref())
+        .bind(payload.peut_emettre_tickets_bus.unwrap_or(false))
+        .bind(payload.compagnies_affiliees.as_ref().map(|s| s.as_slice()))
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_travel_agency] Erreur mise à jour: {}", e);
+            AppError::Internal(format!("Erreur mise à jour agence: {}", e))
+        })?;
+
+        return Ok((StatusCode::OK, Json(json!({
+            "success": true,
+            "id": agency_id,
+            "message": "Agence de voyage mise à jour avec succès"
+        }))));
     }
 
     let heures_ouverture = payload.heures_ouverture
@@ -447,7 +679,85 @@ pub async fn create_covoiturage(
     })?;
 
     if service_exists.is_none() {
-        return Err(AppError::NotFound("Service non trouvé".to_string()));
+        return Err(AppError::NotFound("Service non trouvé ou n'appartient pas à l'utilisateur".to_string()));
+    }
+
+    // ✅ NOUVEAU : Vérifier si un covoiturage existe déjà pour ce service
+    let existing_covoiturage: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM covoiturages WHERE service_id = $1 AND user_id = $2"
+    )
+    .bind(payload.service_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_covoiturage] Erreur vérification covoiturage existant: {}", e);
+        AppError::Internal(format!("Erreur vérification covoiturage existant: {}", e))
+    })?;
+
+    if existing_covoiturage.is_some() {
+        info!("[create_covoiturage] Covoiturage existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
+        let covoiturage_id = existing_covoiturage.unwrap();
+        
+        let date_depart = chrono::DateTime::parse_from_rfc3339(&payload.date_depart)
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+            .map_err(|_| AppError::BadRequest("Format date_depart invalide (ISO 8601 requis)".to_string()))?;
+        let heure_depart = chrono::NaiveTime::parse_from_str(&payload.heure_depart, "%H:%M")
+            .map_err(|_| AppError::BadRequest("Format heure_depart invalide (HH:MM requis)".to_string()))?;
+
+        sqlx::query(
+            r#"
+            UPDATE covoiturages SET
+                depart = $3,
+                destination = $4,
+                gps_depart = $5,
+                gps_destination = $6,
+                date_depart = $7,
+                heure_depart = $8,
+                type_vehicule = $9,
+                marque_modele = $10,
+                nombre_places = $11,
+                places_disponibles = $12,
+                prix_par_place = $13,
+                devise = $14,
+                bagages_autorises = $15,
+                animaux_autorises = $16,
+                fumeur_autorise = $17,
+                climatisation = $18,
+                updated_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            "#
+        )
+        .bind(covoiturage_id)
+        .bind(user_id)
+        .bind(&payload.depart)
+        .bind(&payload.destination)
+        .bind(payload.gps_depart.as_ref())
+        .bind(payload.gps_destination.as_ref())
+        .bind(date_depart)
+        .bind(heure_depart)
+        .bind(payload.type_vehicule.as_ref())
+        .bind(payload.marque_modele.as_ref())
+        .bind(payload.nombre_places)
+        .bind(payload.places_disponibles)
+        .bind(payload.prix_par_place)
+        .bind(payload.devise.as_ref().unwrap_or(&"XAF".to_string()))
+        .bind(payload.bagages_autorises.unwrap_or(true))
+        .bind(payload.animaux_autorises.unwrap_or(false))
+        .bind(payload.fumeur_autorise.unwrap_or(false))
+        .bind(payload.climatisation.unwrap_or(false))
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_covoiturage] Erreur mise à jour: {}", e);
+            AppError::Internal(format!("Erreur mise à jour covoiturage: {}", e))
+        })?;
+
+        return Ok((StatusCode::OK, Json(json!({
+            "success": true,
+            "id": covoiturage_id,
+            "message": "Covoiturage mis à jour avec succès"
+        }))));
     }
 
     let date_depart = chrono::DateTime::parse_from_rfc3339(&payload.date_depart)
@@ -561,7 +871,83 @@ pub async fn create_taxi(
     })?;
 
     if service_exists.is_none() {
-        return Err(AppError::NotFound("Service non trouvé".to_string()));
+        return Err(AppError::NotFound("Service non trouvé ou n'appartient pas à l'utilisateur".to_string()));
+    }
+
+    // ✅ NOUVEAU : Vérifier si un taxi existe déjà pour ce service
+    let existing_taxi: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM taxis_ville WHERE service_id = $1 AND user_id = $2"
+    )
+    .bind(payload.service_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_taxi] Erreur vérification taxi existant: {}", e);
+        AppError::Internal(format!("Erreur vérification taxi existant: {}", e))
+    })?;
+
+    if existing_taxi.is_some() {
+        info!("[create_taxi] Taxi existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
+        let taxi_id = existing_taxi.unwrap();
+        
+        sqlx::query(
+            r#"
+            UPDATE taxis_ville SET
+                nom_chauffeur = $3,
+                telephone = $4,
+                whatsapp = $5,
+                type_vehicule = $6,
+                marque_modele = $7,
+                immatriculation = $8,
+                couleur = $9,
+                annee = $10,
+                zone_intervention = $11,
+                gps_actuel = $12,
+                tarif_base = $13,
+                tarif_par_km = $14,
+                devise = $15,
+                paiement_cash = $16,
+                paiement_mobile_money = $17,
+                paiement_carte = $18,
+                climatisation = $19,
+                wifi = $20,
+                updated_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            "#
+        )
+        .bind(taxi_id)
+        .bind(user_id)
+        .bind(payload.nom_chauffeur.as_ref())
+        .bind(&payload.telephone)
+        .bind(payload.whatsapp.as_ref())
+        .bind(payload.type_vehicule.as_ref())
+        .bind(payload.marque_modele.as_ref())
+        .bind(payload.immatriculation.as_ref())
+        .bind(payload.couleur.as_ref())
+        .bind(payload.annee)
+        .bind(payload.zone_intervention.as_ref().map(|s| s.as_slice()))
+        .bind(payload.gps_actuel.as_ref())
+        .bind(payload.tarif_base)
+        .bind(payload.tarif_par_km)
+        .bind(payload.devise.as_ref().unwrap_or(&"XAF".to_string()))
+        .bind(payload.paiement_cash.unwrap_or(true))
+        .bind(payload.paiement_mobile_money.unwrap_or(false))
+        .bind(payload.paiement_carte.unwrap_or(false))
+        .bind(payload.climatisation.unwrap_or(false))
+        .bind(payload.wifi.unwrap_or(false))
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_taxi] Erreur mise à jour: {}", e);
+            AppError::Internal(format!("Erreur mise à jour taxi: {}", e))
+        })?;
+
+        return Ok((StatusCode::OK, Json(json!({
+            "success": true,
+            "id": taxi_id,
+            "message": "Taxi mis à jour avec succès"
+        }))));
     }
 
     let taxi_id: i32 = sqlx::query_scalar(

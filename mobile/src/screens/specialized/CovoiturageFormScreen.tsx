@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 const CovoiturageFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -25,6 +26,8 @@ const CovoiturageFormScreen: React.FC = () => {
     const { user } = useAuth();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
+    const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
+    const mode = (route.params as any)?.mode as string | undefined;
 
     const [formData, setFormData] = useState({
         depart: null as LocationObject | null,
@@ -36,7 +39,7 @@ const CovoiturageFormScreen: React.FC = () => {
         nombre_places: '4',
         places_disponibles: '4',
         prix_par_place: '',
-        devise: 'XAF',
+        devise: 'XAF', // ✅ Sera récupéré automatiquement depuis depart/destination
         bagages_autorises: true,
         animaux_autorises: false,
         fumeur_autorise: false,
@@ -45,6 +48,17 @@ const CovoiturageFormScreen: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    // ✅ NOUVEAU : Récupération automatique de la devise depuis depart ou destination
+    useEffect(() => {
+        const location = formData.depart || formData.destination;
+        if (location) {
+            const currency = getCurrencyIntelligently(location);
+            if (currency) {
+                setFormData(prev => ({ ...prev, devise: currency }));
+            }
+        }
+    }, [formData.depart, formData.destination]);
     const [showGPSModalDepart, setShowGPSModalDepart] = useState(false);
     const [showGPSModalDestination, setShowGPSModalDestination] = useState(false);
     const [selectedGPSDepart, setSelectedGPSDepart] = useState<string | null>(null);
@@ -77,6 +91,63 @@ const CovoiturageFormScreen: React.FC = () => {
             createServiceIfNeeded();
         }
     }, [formData.depart, formData.destination, serviceId, user?.id]);
+
+    // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
+    useEffect(() => {
+        const loadExistingData = async () => {
+            if (mode === 'edit' && specializedServiceId && serviceId) {
+                try {
+                    setLoading(true);
+                    const { apiGet } = require('../../services/api');
+                    const response = await apiGet(`/api/covoiturages/${specializedServiceId}`);
+
+                    if (response.success && response.data) {
+                        const data = response.data;
+
+                        // Parser date_depart si c'est une string
+                        let dateDepart = new Date();
+                        if (data.date_depart) {
+                            if (typeof data.date_depart === 'string') {
+                                dateDepart = new Date(data.date_depart);
+                            } else {
+                                dateDepart = new Date(data.date_depart);
+                            }
+                        }
+
+                        setFormData({
+                            depart: data.depart ? { raw: data.depart, place_name: data.depart } : null,
+                            destination: data.destination ? { raw: data.destination, place_name: data.destination } : null,
+                            date_depart: dateDepart,
+                            heure_depart: data.heure_depart || '08:00',
+                            type_vehicule: data.type_vehicule || '',
+                            marque_modele: data.marque_modele || '',
+                            nombre_places: data.nombre_places ? String(data.nombre_places) : '4',
+                            places_disponibles: data.places_disponibles ? String(data.places_disponibles) : '4',
+                            prix_par_place: data.prix_par_place ? String(data.prix_par_place) : '',
+                            devise: data.devise || 'XAF',
+                            bagages_autorises: data.bagages_autorises !== undefined ? data.bagages_autorises : true,
+                            animaux_autorises: data.animaux_autorises || false,
+                            fumeur_autorise: data.fumeur_autorise || false,
+                            climatisation: data.climatisation || false,
+                        });
+
+                        if (data.gps_depart) {
+                            setSelectedGPSDepart(data.gps_depart);
+                        }
+                        if (data.gps_destination) {
+                            setSelectedGPSDestination(data.gps_destination);
+                        }
+                    }
+                } catch (error: any) {
+                    console.error('[CovoiturageFormScreen] Erreur chargement données:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadExistingData();
+    }, [mode, specializedServiceId, serviceId]);
 
     const handleGPSSelectDepart = (coordinates: string) => {
         setSelectedGPSDepart(coordinates);

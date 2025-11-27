@@ -10,20 +10,17 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import WeekScheduleSelector from '../../components/WeekScheduleSelector';
+// ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
-interface ScheduleDay {
-    day: number;
-    enabled: boolean;
-    timeSlots: Array<{ start: string; end: string }>;
-}
+// ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
 
 const GROUPES_SANGUINS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 
@@ -34,12 +31,14 @@ const BanqueSangFormScreen: React.FC = () => {
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const hopitalId = (route.params as any)?.hopitalId; // Optionnel
+    const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
+    const mode = (route.params as any)?.mode as string | undefined;
 
     const [formData, setFormData] = useState({
         nom: '',
         adresse: '',
-        quartier: '',
-        ville: '',
+        quartier: null as LocationObject | string | null,
+        // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
         accepte_dons: true,
         accepte_demandes: true,
         urgence_24h: false,
@@ -55,15 +54,16 @@ const BanqueSangFormScreen: React.FC = () => {
     const [stocks, setStocks] = useState<Record<string, { quantite: string; unite: string }>>({});
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    const [showScheduleModal, setShowScheduleModal] = useState(false);
-    const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
+    // ✅ SUPPRIMÉ : showScheduleModal et schedule (planning hebdomadaire supprimé)
 
-    // Charger les données existantes si on édite
+    // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
+    // (compatible avec l'ancien système banqueId)
     useEffect(() => {
-        if (banqueId) {
-            loadBanqueData();
+        const idToLoad = specializedServiceId || banqueId;
+        if ((mode === 'edit' && specializedServiceId) || banqueId) {
+            loadBanqueData(idToLoad);
         }
-    }, [banqueId]);
+    }, [mode, specializedServiceId, banqueId]);
 
     // ✅ Créer automatiquement un service si serviceId manquant
     useEffect(() => {
@@ -91,17 +91,20 @@ const BanqueSangFormScreen: React.FC = () => {
         }
     }, [formData.nom, serviceId, user?.id]);
 
-    const loadBanqueData = async () => {
+    const loadBanqueData = async (id?: number) => {
+        const banqueIdToLoad = id || banqueId || specializedServiceId;
+        if (!banqueIdToLoad) return;
+
         try {
             setLoadingData(true);
-            const response = await apiGet(`/api/banques-sang/${banqueId}`);
+            const response = await apiGet(`/api/banques-sang/${banqueIdToLoad}`);
             if (response.success && response.data) {
-                const data = response.data;
+                const data = response.data as any;
                 setFormData({
                     nom: data.nom || '',
                     adresse: data.adresse || '',
-                    quartier: data.quartier || '',
-                    ville: data.ville || '',
+                    quartier: data.quartier || null,
+                    // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
                     accepte_dons: data.accepte_dons ?? true,
                     accepte_demandes: data.accepte_demandes ?? true,
                     urgence_24h: data.urgence_24h ?? false,
@@ -114,7 +117,7 @@ const BanqueSangFormScreen: React.FC = () => {
                 // Charger les stocks existants
                 if (data.stocks_groupes_sanguins) {
                     const loadedStocks: Record<string, { quantite: string; unite: string }> = {};
-                    Object.entries(data.stocks_groupes_sanguins).forEach(([groupe, stock]: [string, any]) => {
+                    Object.entries(data.stocks_groupes_sanguins as Record<string, any>).forEach(([groupe, stock]: [string, any]) => {
                         loadedStocks[groupe] = {
                             quantite: String(stock.quantite || ''),
                             unite: stock.unite || 'poches',
@@ -177,10 +180,7 @@ const BanqueSangFormScreen: React.FC = () => {
         setShowGPSModal(false);
     };
 
-    const handleScheduleSave = (savedSchedule: ScheduleDay[]) => {
-        setSchedule(savedSchedule);
-        setShowScheduleModal(false);
-    };
+    // ✅ SUPPRIMÉ : handleScheduleSave (planning hebdomadaire supprimé)
 
     const handleSubmit = async () => {
         // ✅ Créer le service si nécessaire
@@ -238,26 +238,22 @@ const BanqueSangFormScreen: React.FC = () => {
                 }
             }
 
-            // Construire le planning hebdomadaire depuis schedule
-            const planningHebdomadaire = schedule.length > 0
-                ? schedule.map(day => ({
-                    day: day.day,
-                    enabled: day.enabled,
-                    timeSlots: day.timeSlots
-                }))
-                : null;
+            // ✅ SUPPRIMÉ : planning_hebdomadaire (pas d'utilité selon demande)
+
+            const quartierValue = typeof formData.quartier === 'string'
+                ? formData.quartier
+                : formData.quartier?.raw || formData.quartier?.place_name || null;
 
             const payload = {
                 service_id: finalServiceId,
                 hopital_id: hopitalId || null,
                 nom: formData.nom,
                 adresse: formData.adresse || null,
-                quartier: formData.quartier || null,
-                ville: formData.ville || null,
+                quartier: quartierValue,
+                // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
                 gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
-                planning_hebdomadaire: planningHebdomadaire,
                 stocks_groupes_sanguins: Object.keys(stocks_json).length > 0 ? stocks_json : null,
                 accepte_dons: formData.accepte_dons,
                 accepte_demandes: formData.accepte_demandes,
@@ -335,23 +331,18 @@ const BanqueSangFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    <View style={styles.row}>
-                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Quartier</Text>
-                            <NativeInput
-                                value={formData.quartier}
-                                onChangeText={(text) => setFormData({ ...formData, quartier: text })}
-                                placeholder="Quartier"
-                            />
-                        </View>
-                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Ville</Text>
-                            <NativeInput
-                                value={formData.ville}
-                                onChangeText={(text) => setFormData({ ...formData, ville: text })}
-                                placeholder="Ville"
-                            />
-                        </View>
+                    <View style={styles.inputGroup}>
+                        <LocationSelector
+                            label="Quartier"
+                            value={formData.quartier || ''}
+                            onSelect={(value) => setFormData({ ...formData, quartier: typeof value === 'string' ? value : (value?.raw || value?.place_name || '') })}
+                            placeholder="Rechercher un quartier (inclut ville et pays)..."
+                            scope="neighborhood"
+                            enrichWithBackend
+                        />
+                        <Text style={styles.hintText}>
+                            Le quartier permet de récupérer automatiquement la ville et le pays
+                        </Text>
                     </View>
 
                     <View style={styles.section}>
@@ -447,26 +438,7 @@ const BanqueSangFormScreen: React.FC = () => {
                         )}
                     </View>
 
-                    {/* ✅ Planning hebdomadaire */}
-                    <View style={styles.inputGroup}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.label}>Planning hebdomadaire</Text>
-                            <TouchableOpacity
-                                style={styles.planningButton}
-                                onPress={() => setShowScheduleModal(true)}
-                            >
-                                <SafeIcon name="calendar" size={16} color={modernColors.primary} />
-                                <Text style={styles.planningButtonText}>
-                                    {schedule.length > 0 ? 'Modifier' : 'Configurer'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                        {schedule.length > 0 && (
-                            <Text style={styles.scheduleSummary}>
-                                {schedule.filter(d => d.enabled).length} jour(s) configuré(s)
-                            </Text>
-                        )}
-                    </View>
+                    {/* ✅ SUPPRIMÉ : Planning hebdomadaire (pas d'utilité) */}
 
                     <View style={styles.switchGroup}>
                         <Text style={styles.label}>Accepte les dons</Text>
@@ -564,13 +536,7 @@ const BanqueSangFormScreen: React.FC = () => {
                 title="Sélectionner la localisation"
             />
 
-            <WeekScheduleSelector
-                visible={showScheduleModal}
-                onClose={() => setShowScheduleModal(false)}
-                onSave={handleScheduleSave}
-                initialSchedule={schedule}
-                title="Planning hebdomadaire"
-            />
+            {/* ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé) */}
         </>
     );
 };
@@ -736,12 +702,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: modernColors.primary,
     },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
+    // ✅ sectionHeader déjà défini plus haut, pas de duplication
     gpsButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -781,6 +742,12 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#6B7280',
         marginTop: 4,
+    },
+    hintText: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+        fontStyle: 'italic',
     },
     submitButton: {
         marginTop: 24,

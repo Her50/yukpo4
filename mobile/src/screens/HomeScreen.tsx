@@ -12,8 +12,10 @@ import ModernBackground from '../components/ModernBackground';
 import ModernGPSModal from '../components/ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import GlobalPromoHighlights from '../components/promotions/GlobalPromoHighlights';
+import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import ServiceProductSelector from '../components/ServiceProductSelector';
+import SpecializedServicesSelector from '../components/SpecializedServicesSelector';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
 import { useAuth } from '../contexts/AuthContext';
@@ -611,6 +613,7 @@ const HomeScreen: React.FC = () => {
                                 onLanguageChange={setLanguage}
                                 compact={true}
                             />
+                            <SpecializedServicesSelector compact={true} />
                         </View>
 
                         {/* Titre principal PARFAITEMENT centré */}
@@ -641,7 +644,7 @@ const HomeScreen: React.FC = () => {
                                     }
                                 }}
                             >
-                                <Text style={styles.headerButtonIconCompact}>🚚</Text>
+                                <SafeIcon name="package" size={18} color="#fff" type="lucide" />
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={styles.headerButtonCompact}
@@ -714,6 +717,15 @@ const HomeScreen: React.FC = () => {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    horizontal={false} // ✅ [BACKEND_TRACE] Scroll vertical uniquement
+                    scrollEventThrottle={16}
+                    onScroll={(event) => {
+                        // ✅ [BACKEND_TRACE] Log pour diagnostiquer le scroll
+                        const scrollY = event.nativeEvent.contentOffset.y;
+                        if (scrollY > 0 && scrollY % 50 === 0) {
+                            console.log('[HomeScreen] 🔍 [BACKEND_TRACE] Scroll vertical:', scrollY);
+                        }
+                    }}
                 >
                     <View>
                         {/* ✅ TITRE SECTION CAROUSEL */}

@@ -1795,6 +1795,7 @@ async fn router_metier_ultra_optimise(
                 crate::services::rechercher_besoin::rechercher_besoin_direct(
                     _user_id, user_text, None, // Pas de zone GPS pour cette recherche
                     None, // Pas de rayon GPS pour cette recherche
+                    None, // ✅ Pas de specialized_type (recherche générale)
                 )
                 .await?;
 

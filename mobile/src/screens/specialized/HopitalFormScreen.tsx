@@ -14,17 +14,13 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import PrestationSelectorWithSchedule, { PrestationWithSchedule } from '../../components/PrestationSelectorWithSchedule';
 import SafeIcon from '../../components/SafeIcon';
-import WeekScheduleSelector from '../../components/WeekScheduleSelector';
+// ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
-interface ScheduleDay {
-    day: number;
-    enabled: boolean;
-    timeSlots: Array<{ start: string; end: string }>;
-}
+// ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
 
 
 const HopitalFormScreen: React.FC = () => {
@@ -33,15 +29,17 @@ const HopitalFormScreen: React.FC = () => {
     const { user } = useAuth();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
+    const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
+    const mode = (route.params as any)?.mode as string | undefined;
 
     const [formData, setFormData] = useState({
         nom: '',
         type_etablissement: 'Hôpital',
         adresse: '',
         quartier: null as LocationObject | null,
-        ville: null as LocationObject | null,
+        // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
         prestations_medicales: [] as string[],
-        banque_sang: false,
+        // ✅ SUPPRIMÉ : banque_sang (service spécialisé dédié)
         urgences_disponible: false,
         rdv_en_ligne: false,
         telephone: '',
@@ -55,8 +53,7 @@ const HopitalFormScreen: React.FC = () => {
     const [prestationsWithSchedule, setPrestationsWithSchedule] = useState<PrestationWithSchedule[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    const [showScheduleModal, setShowScheduleModal] = useState(false);
-    const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
+    // ✅ SUPPRIMÉ : showScheduleModal et schedule (planning hebdomadaire supprimé)
 
     const typesEtablissement = ['Hôpital', 'Clinique', 'Centre de santé', 'Dispensaire'];
 
@@ -117,16 +114,67 @@ const HopitalFormScreen: React.FC = () => {
         }
     }, [formData.nom, serviceId, user?.id]);
 
+    // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
+    useEffect(() => {
+        const loadExistingData = async () => {
+            if (mode === 'edit' && specializedServiceId && serviceId) {
+                try {
+                    setLoading(true);
+                    const { apiGet } = require('../../services/api');
+                    const response = await apiGet(`/api/hopitaux/${specializedServiceId}`);
+
+                    if (response.success && response.data) {
+                        const data = response.data;
+                        setFormData({
+                            nom: data.nom || '',
+                            type_etablissement: data.type_etablissement || 'Hôpital',
+                            adresse: data.adresse || '',
+                            quartier: data.quartier ? { raw: data.quartier, place_name: data.quartier } : null,
+                            prestations_medicales: data.prestations_medicales || [],
+                            urgences_disponible: data.urgences_disponible || false,
+                            rdv_en_ligne: data.rdv_en_ligne || false,
+                            telephone: data.telephone || '',
+                            telephone_urgence: data.telephone_urgence || '',
+                            whatsapp: data.whatsapp || '',
+                            email: data.email || '',
+                            site_web: data.site_web || '',
+                        });
+
+                        // Charger les prestations avec planning si disponible
+                        if (data.planning_prestations && Array.isArray(data.planning_prestations)) {
+                            const prestations: PrestationWithSchedule[] = data.planning_prestations.map((p: any) => ({
+                                prestation: p.prestation,
+                                scheduleByDay: p.scheduleByDay || (p.days || []).map((day: number) => ({
+                                    day,
+                                    timeSlots: p.timeSlots || [{ start: '08:00', end: '17:00' }]
+                                })),
+                                days: p.days || [],
+                                timeSlots: p.timeSlots || []
+                            }));
+                            setPrestationsWithSchedule(prestations);
+                        }
+
+                        if (data.gps) {
+                            setSelectedGPS(data.gps);
+                        }
+                    }
+                } catch (error: any) {
+                    console.error('[HopitalFormScreen] Erreur chargement données:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadExistingData();
+    }, [mode, specializedServiceId, serviceId]);
 
     const handleGPSSelect = (coordinates: string) => {
         setSelectedGPS(coordinates);
         setShowGPSModal(false);
     };
 
-    const handleScheduleSave = (savedSchedule: ScheduleDay[]) => {
-        setSchedule(savedSchedule);
-        setShowScheduleModal(false);
-    };
+    // ✅ SUPPRIMÉ : handleScheduleSave (planning hebdomadaire supprimé)
 
     const handleSubmit = async () => {
         // ✅ Créer le service si nécessaire
@@ -170,21 +218,26 @@ const HopitalFormScreen: React.FC = () => {
         }
 
         try {
-            // Construire le planning hebdomadaire depuis schedule
-            const planningHebdomadaire = schedule.length > 0
-                ? schedule.map(day => ({
-                    day: day.day,
-                    enabled: day.enabled,
-                    timeSlots: day.timeSlots
-                }))
-                : null;
+            // ✅ SUPPRIMÉ : planning_hebdomadaire (pas d'utilité selon demande)
 
-            // Construire le planning des prestations depuis le nouveau format
+            // ✅ Construire le planning des prestations avec horaires indépendants par jour
+            // Structure: chaque prestation a des horaires spécifiques par jour
             const planningPrestations = prestationsWithSchedule.length > 0
                 ? prestationsWithSchedule.map(ps => ({
                     prestation: ps.prestation,
-                    days: ps.days,
-                    timeSlots: ps.timeSlots
+                    // ✅ NOUVEAU : Utiliser scheduleByDay si disponible (structure refondue)
+                    scheduleByDay: ps.scheduleByDay && ps.scheduleByDay.length > 0
+                        ? ps.scheduleByDay // Utiliser la nouvelle structure
+                        : (ps.days || []).map(day => ({
+                            // Fallback vers ancien format pour compatibilité
+                            day,
+                            timeSlots: ps.timeSlots || [{ start: '08:00', end: '17:00' }]
+                        })),
+                    // Compatibilité avec ancien format
+                    days: ps.scheduleByDay ? ps.scheduleByDay.map(d => d.day) : (ps.days || []),
+                    timeSlots: ps.scheduleByDay && ps.scheduleByDay.length > 0
+                        ? ps.scheduleByDay[0].timeSlots // Premier jour pour compatibilité
+                        : (ps.timeSlots || [])
                 }))
                 : null;
 
@@ -194,16 +247,15 @@ const HopitalFormScreen: React.FC = () => {
                 type_etablissement: formData.type_etablissement,
                 adresse: formData.adresse || null,
                 quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
-                ville: formData.ville?.raw || formData.ville?.place_name || null,
+                // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
                 gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
                 prestations_medicales: prestationsWithSchedule.length > 0
                     ? prestationsWithSchedule.map(p => p.prestation)
                     : null,
-                planning_hebdomadaire: planningHebdomadaire,
                 planning_prestations: planningPrestations,
-                banque_sang: formData.banque_sang,
+                // ✅ SUPPRIMÉ : banque_sang (service spécialisé dédié)
                 urgences_disponible: formData.urgences_disponible,
                 rdv_en_ligne: formData.rdv_en_ligne,
                 telephone: formData.telephone || null,
@@ -311,24 +363,18 @@ const HopitalFormScreen: React.FC = () => {
                             label="Quartier"
                             value={formData.quartier || ''}
                             onSelect={(value) => setFormData({ ...formData, quartier: value })}
-                            placeholder="Rechercher un quartier..."
+                            placeholder="Rechercher un quartier (inclut ville et pays)..."
                             scope="neighborhood"
                             enrichWithBackend
                         />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Ville"
-                            value={formData.ville || ''}
-                            onSelect={(value) => setFormData({ ...formData, ville: value })}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            enrichWithBackend
-                        />
+                        <Text style={styles.hintText}>
+                            Le quartier permet de récupérer automatiquement la ville et le pays
+                        </Text>
                     </View>
 
                     {/* ✅ Prestations médicales avec planification inline */}
+                    {/* ✅ AMÉLIORÉ : Horaires indépendants par jour (chaque jour peut avoir ses propres horaires) */}
+                    {/* TODO: Modifier PrestationSelectorWithSchedule pour supporter horaires indépendants par jour */}
                     <View style={styles.inputGroup}>
                         <PrestationSelectorWithSchedule
                             label="Prestations médicales"
@@ -340,35 +386,9 @@ const HopitalFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    {/* ✅ Planning hebdomadaire */}
-                    <View style={styles.inputGroup}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.label}>Planning hebdomadaire</Text>
-                            <TouchableOpacity
-                                style={styles.planningButton}
-                                onPress={() => setShowScheduleModal(true)}
-                            >
-                                <SafeIcon name="calendar" size={16} color={modernColors.primary} />
-                                <Text style={styles.planningButtonText}>
-                                    {schedule.length > 0 ? 'Modifier' : 'Configurer'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                        {schedule.length > 0 && (
-                            <Text style={styles.scheduleSummary}>
-                                {schedule.filter(d => d.enabled).length} jour(s) configuré(s)
-                            </Text>
-                        )}
-                    </View>
+                    {/* ✅ SUPPRIMÉ : Planning hebdomadaire (pas d'utilité) */}
 
-                    <View style={styles.switchGroup}>
-                        <Text style={styles.label}>Banque de sang</Text>
-                        <Switch
-                            value={formData.banque_sang}
-                            onValueChange={(value) => setFormData({ ...formData, banque_sang: value })}
-                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
-                        />
-                    </View>
+                    {/* ✅ SUPPRIMÉ : Banque de sang (service spécialisé dédié) */}
 
                     <View style={styles.switchGroup}>
                         <Text style={styles.label}>Urgences disponibles</Text>
@@ -464,13 +484,7 @@ const HopitalFormScreen: React.FC = () => {
                 title="Sélectionner la localisation"
             />
 
-            <WeekScheduleSelector
-                visible={showScheduleModal}
-                onClose={() => setShowScheduleModal(false)}
-                onSave={handleScheduleSave}
-                initialSchedule={schedule}
-                title="Planning hebdomadaire"
-            />
+            {/* ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé) */}
 
         </>
     );
@@ -616,6 +630,12 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#6B7280',
         marginTop: 4,
+    },
+    hintText: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+        fontStyle: 'italic',
     },
     submitButton: {
         marginTop: 24,

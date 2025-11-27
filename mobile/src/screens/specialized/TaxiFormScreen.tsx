@@ -17,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 const TaxiFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -24,6 +25,8 @@ const TaxiFormScreen: React.FC = () => {
     const { user } = useAuth();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
+    const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
+    const mode = (route.params as any)?.mode as string | undefined;
 
     const [formData, setFormData] = useState({
         nom_chauffeur: '',
@@ -37,7 +40,7 @@ const TaxiFormScreen: React.FC = () => {
         zone_intervention: [] as string[],
         tarif_base: '500',
         tarif_par_km: '200',
-        devise: 'XAF',
+        devise: 'XAF', // ✅ Sera récupéré automatiquement depuis zone_intervention
         paiement_cash: true,
         paiement_mobile_money: false,
         paiement_carte: false,
@@ -49,6 +52,16 @@ const TaxiFormScreen: React.FC = () => {
     const [selectedZones, setSelectedZones] = useState<LocationObject[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
+
+    // ✅ NOUVEAU : Récupération automatique de la devise depuis la première zone
+    useEffect(() => {
+        if (selectedZones.length > 0) {
+            const currency = getCurrencyIntelligently(selectedZones[0]);
+            if (currency) {
+                setFormData(prev => ({ ...prev, devise: currency }));
+            }
+        }
+    }, [selectedZones]);
 
     // ✅ Créer automatiquement un service si serviceId manquant
     useEffect(() => {
@@ -75,6 +88,60 @@ const TaxiFormScreen: React.FC = () => {
             createServiceIfNeeded();
         }
     }, [formData.telephone, serviceId, user?.id]);
+
+    // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
+    useEffect(() => {
+        const loadExistingData = async () => {
+            if (mode === 'edit' && specializedServiceId && serviceId) {
+                try {
+                    setLoading(true);
+                    const { apiGet } = require('../../services/api');
+                    const response = await apiGet(`/api/taxis/${specializedServiceId}`);
+
+                    if (response.success && response.data) {
+                        const data = response.data;
+
+                        // Convertir zone_intervention string[] en LocationObject[]
+                        const zones: LocationObject[] = (data.zone_intervention || []).map((zone: string) => ({
+                            raw: zone,
+                            place_name: zone
+                        }));
+
+                        setFormData({
+                            nom_chauffeur: data.nom_chauffeur || '',
+                            telephone: data.telephone || '',
+                            whatsapp: data.whatsapp || '',
+                            type_vehicule: data.type_vehicule || '',
+                            marque_modele: data.marque_modele || '',
+                            immatriculation: data.immatriculation || '',
+                            couleur: data.couleur || '',
+                            annee: data.annee ? String(data.annee) : '',
+                            zone_intervention: data.zone_intervention || [],
+                            tarif_base: data.tarif_base ? String(data.tarif_base) : '500',
+                            tarif_par_km: data.tarif_par_km ? String(data.tarif_par_km) : '200',
+                            devise: data.devise || 'XAF',
+                            paiement_cash: data.paiement_cash !== undefined ? data.paiement_cash : true,
+                            paiement_mobile_money: data.paiement_mobile_money || false,
+                            paiement_carte: data.paiement_carte || false,
+                            climatisation: data.climatisation || false,
+                            wifi: data.wifi || false,
+                        });
+
+                        setSelectedZones(zones);
+                        if (data.gps_actuel) {
+                            setSelectedGPS(data.gps_actuel);
+                        }
+                    }
+                } catch (error: any) {
+                    console.error('[TaxiFormScreen] Erreur chargement données:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadExistingData();
+    }, [mode, specializedServiceId, serviceId]);
 
     const handleZoneSelect = (zone: LocationObject) => {
         const zoneStr = zone.raw || zone.place_name || '';

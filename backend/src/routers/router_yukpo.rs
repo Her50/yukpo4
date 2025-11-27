@@ -661,9 +661,12 @@ async fn handle_direct_search(
     use crate::services::rechercher_besoin::rechercher_besoin_direct;
     use crate::utils::log::log_info;
 
+    // Extraire specialized_type depuis l'input (pour recherche spécialisée dédiée)
+    let specialized_type = input.specialized_type.as_deref();
+    
     log_info(&format!(
-        "[DIRECT_SEARCH] Recherche directe pour utilisateur {} (GPS: {:?})",
-        user.id, input.gps_mobile
+        "[DIRECT_SEARCH] Recherche directe pour utilisateur {} (GPS: {:?}, specialized_type: {:?})",
+        user.id, input.gps_mobile, specialized_type
     ));
 
     // Extraire le texte de l'input
@@ -764,12 +767,13 @@ async fn handle_direct_search(
                 let gps_zone = input.gps_mobile.as_deref();
                 let search_radius_km = Some(50);
 
-                // ✅ APPELER RECHERCHE GLOBALE avec l'input combiné
+                // ✅ APPELER RECHERCHE avec l'input combiné
                 let (mut result, tokens_consumed_search) = rechercher_besoin_direct(
                     Some(user.id),
                     &combined_search_text,
                     gps_zone,
                     search_radius_km,
+                    specialized_type, // ✅ Transmettre specialized_type
                 )
                 .await?;
 
@@ -890,6 +894,7 @@ async fn handle_direct_search(
                         &user_text,
                         gps_zone,
                         search_radius_km,
+                        specialized_type, // ✅ Transmettre specialized_type
                     )
                     .await?;
 
@@ -962,7 +967,7 @@ async fn handle_direct_search(
 
     // Recherche directe sans détection d'intention, avec filtrage GPS
     let (mut result, tokens_consumed) =
-        rechercher_besoin_direct(Some(user.id), &user_text, gps_zone, search_radius_km).await?;
+        rechercher_besoin_direct(Some(user.id), &user_text, gps_zone, search_radius_km, specialized_type).await?;
 
     // ✅ ENRICHIR avec données de publicité et booster scores
     if let Some(resultats) = result.get_mut("resultats").and_then(|r| r.as_array_mut()) {

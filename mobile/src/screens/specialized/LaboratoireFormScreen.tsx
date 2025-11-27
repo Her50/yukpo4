@@ -14,17 +14,13 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
-import WeekScheduleSelector from '../../components/WeekScheduleSelector';
+// ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
-interface ScheduleDay {
-    day: number;
-    enabled: boolean;
-    timeSlots: Array<{ start: string; end: string }>;
-}
+// ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
 
 const LaboratoireFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -32,15 +28,20 @@ const LaboratoireFormScreen: React.FC = () => {
     const { user } = useAuth();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
+    const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
+    const mode = (route.params as any)?.mode as string | undefined;
 
     const [formData, setFormData] = useState({
         nom: '',
         type_laboratoire: 'Laboratoire',
         adresse: '',
         quartier: null as LocationObject | null,
-        ville: null as LocationObject | null,
+        // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
         analyses_disponibles: [] as string[],
         imagerie_disponible: [] as string[],
+        heures_ouverture: '08:00', // ✅ NOUVEAU : Heures d'ouverture
+        heures_fermeture: '18:00', // ✅ NOUVEAU : Heures de fermeture
+        permanent_24h: false, // ✅ NOUVEAU : Bouton 24h/24 pour gérer recherches liées au moment
         rdv_requis: true,
         resultats_en_ligne: false,
         telephone: '',
@@ -53,8 +54,7 @@ const LaboratoireFormScreen: React.FC = () => {
     const [selectedImagerie, setSelectedImagerie] = useState<string[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
-    const [showScheduleModal, setShowScheduleModal] = useState(false);
-    const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
+    // ✅ SUPPRIMÉ : showScheduleModal et schedule (planning hebdomadaire supprimé)
 
     const typesLaboratoire = ['Laboratoire', 'Centre d\'imagerie', 'Les deux'];
     const analysesOptions = ['Sang', 'Urine', 'Bactériologie', 'Parasitologie', 'Sérologie', 'Biochimie'];
@@ -86,16 +86,57 @@ const LaboratoireFormScreen: React.FC = () => {
         }
     }, [formData.nom, serviceId, user?.id]);
 
+    // ✅ NOUVEAU : Charger les données existantes si mode='edit' et specializedServiceId fourni
+    useEffect(() => {
+        const loadExistingData = async () => {
+            if (mode === 'edit' && specializedServiceId && serviceId) {
+                try {
+                    setLoading(true);
+                    const { apiGet } = require('../../services/api');
+                    const response = await apiGet(`/api/laboratoires/${specializedServiceId}`);
+
+                    if (response.success && response.data) {
+                        const data = response.data;
+                        setFormData({
+                            nom: data.nom || '',
+                            type_laboratoire: data.type_laboratoire || 'Laboratoire',
+                            adresse: data.adresse || '',
+                            quartier: data.quartier ? { raw: data.quartier, place_name: data.quartier } : null,
+                            analyses_disponibles: data.analyses_disponibles || [],
+                            imagerie_disponible: data.imagerie_disponible || [],
+                            heures_ouverture: data.heures_ouverture || '08:00',
+                            heures_fermeture: data.heures_fermeture || '18:00',
+                            permanent_24h: data.permanent_24h || false,
+                            rdv_requis: data.rdv_requis !== undefined ? data.rdv_requis : true,
+                            resultats_en_ligne: data.resultats_en_ligne || false,
+                            telephone: data.telephone || '',
+                            whatsapp: data.whatsapp || '',
+                            email: data.email || '',
+                        });
+
+                        setSelectedAnalyses(data.analyses_disponibles || []);
+                        setSelectedImagerie(data.imagerie_disponible || []);
+                        if (data.gps) {
+                            setSelectedGPS(data.gps);
+                        }
+                    }
+                } catch (error: any) {
+                    console.error('[LaboratoireFormScreen] Erreur chargement données:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadExistingData();
+    }, [mode, specializedServiceId, serviceId]);
 
     const handleGPSSelect = (coordinates: string) => {
         setSelectedGPS(coordinates);
         setShowGPSModal(false);
     };
 
-    const handleScheduleSave = (savedSchedule: ScheduleDay[]) => {
-        setSchedule(savedSchedule);
-        setShowScheduleModal(false);
-    };
+    // ✅ SUPPRIMÉ : handleScheduleSave (planning hebdomadaire supprimé)
 
     const handleSubmit = async () => {
         // ✅ Créer le service si nécessaire
@@ -139,14 +180,7 @@ const LaboratoireFormScreen: React.FC = () => {
         }
 
         try {
-            // Construire le planning hebdomadaire depuis schedule
-            const planningHebdomadaire = schedule.length > 0
-                ? schedule.map(day => ({
-                    day: day.day,
-                    enabled: day.enabled,
-                    timeSlots: day.timeSlots
-                }))
-                : null;
+            // ✅ SUPPRIMÉ : planning_hebdomadaire (pas d'utilité selon demande)
 
             const payload = {
                 service_id: finalServiceId,
@@ -154,13 +188,15 @@ const LaboratoireFormScreen: React.FC = () => {
                 type_laboratoire: formData.type_laboratoire,
                 adresse: formData.adresse || null,
                 quartier: formData.quartier?.raw || formData.quartier?.place_name || null,
-                ville: formData.ville?.raw || formData.ville?.place_name || null,
+                // ✅ SUPPRIMÉ : ville (quartier contient déjà ville et pays)
                 gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
                     : null),
                 analyses_disponibles: selectedAnalyses.length > 0 ? selectedAnalyses : null,
                 imagerie_disponible: selectedImagerie.length > 0 ? selectedImagerie : null,
-                planning_hebdomadaire: planningHebdomadaire,
+                heures_ouverture: formData.heures_ouverture || null, // ✅ NOUVEAU
+                heures_fermeture: formData.heures_fermeture || null, // ✅ NOUVEAU
+                permanent_24h: formData.permanent_24h, // ✅ NOUVEAU : Pour gérer recherches liées au moment
                 rdv_requis: formData.rdv_requis,
                 resultats_en_ligne: formData.resultats_en_ligne,
                 telephone: formData.telephone || null,
@@ -265,21 +301,13 @@ const LaboratoireFormScreen: React.FC = () => {
                             label="Quartier"
                             value={formData.quartier || ''}
                             onSelect={(value) => setFormData({ ...formData, quartier: value })}
-                            placeholder="Rechercher un quartier..."
+                            placeholder="Rechercher un quartier (inclut ville et pays)..."
                             scope="neighborhood"
                             enrichWithBackend
                         />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <LocationSelector
-                            label="Ville"
-                            value={formData.ville || ''}
-                            onSelect={(value) => setFormData({ ...formData, ville: value })}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            enrichWithBackend
-                        />
+                        <Text style={styles.hintText}>
+                            Le quartier permet de récupérer automatiquement la ville et le pays
+                        </Text>
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -304,25 +332,36 @@ const LaboratoireFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    {/* ✅ Planning hebdomadaire */}
-                    <View style={styles.inputGroup}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.label}>Planning hebdomadaire</Text>
-                            <TouchableOpacity
-                                style={styles.planningButton}
-                                onPress={() => setShowScheduleModal(true)}
-                            >
-                                <SafeIcon name="calendar" size={16} color={modernColors.primary} />
-                                <Text style={styles.planningButtonText}>
-                                    {schedule.length > 0 ? 'Modifier' : 'Configurer'}
-                                </Text>
-                            </TouchableOpacity>
+                    {/* ✅ SUPPRIMÉ : Planning hebdomadaire (pas d'utilité) */}
+
+                    {/* ✅ NOUVEAU : Heures d'ouverture et fermeture */}
+                    <View style={styles.row}>
+                        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                            <Text style={styles.label}>Heure d'ouverture</Text>
+                            <NativeInput
+                                value={formData.heures_ouverture}
+                                onChangeText={(text) => setFormData({ ...formData, heures_ouverture: text })}
+                                placeholder="08:00"
+                            />
                         </View>
-                        {schedule.length > 0 && (
-                            <Text style={styles.scheduleSummary}>
-                                {schedule.filter(d => d.enabled).length} jour(s) configuré(s)
-                            </Text>
-                        )}
+                        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                            <Text style={styles.label}>Heure de fermeture</Text>
+                            <NativeInput
+                                value={formData.heures_fermeture}
+                                onChangeText={(text) => setFormData({ ...formData, heures_fermeture: text })}
+                                placeholder="18:00"
+                            />
+                        </View>
+                    </View>
+
+                    {/* ✅ NOUVEAU : Bouton 24h/24 pour gérer recherches liées au moment */}
+                    <View style={styles.switchGroup}>
+                        <Text style={styles.label}>Ouvert 24h/24</Text>
+                        <Switch
+                            value={formData.permanent_24h}
+                            onValueChange={(value) => setFormData({ ...formData, permanent_24h: value })}
+                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
+                        />
                     </View>
 
                     <View style={styles.switchGroup}>
@@ -398,13 +437,7 @@ const LaboratoireFormScreen: React.FC = () => {
                 title="Sélectionner la localisation"
             />
 
-            <WeekScheduleSelector
-                visible={showScheduleModal}
-                onClose={() => setShowScheduleModal(false)}
-                onSave={handleScheduleSave}
-                initialSchedule={schedule}
-                title="Planning hebdomadaire"
-            />
+            {/* ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé) */}
         </>
     );
 };
@@ -421,6 +454,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 8,
     },
     backButton: {
         marginRight: 12,
@@ -439,18 +478,18 @@ const styles = StyleSheet.create({
     row: {
         flexDirection: 'row',
     },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
-    },
     switchGroup: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 16,
         paddingVertical: 8,
+    },
+    hintText: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+        fontStyle: 'italic',
     },
     chipsContainer: {
         flexDirection: 'row',

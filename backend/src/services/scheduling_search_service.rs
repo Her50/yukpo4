@@ -339,39 +339,115 @@ impl SchedulingSearchService {
         Ok(())
     }
 
-    /// Analyse une requête de recherche pour détecter les intentions de planification
-    pub fn analyze_search_intent(&self, query: &str) -> SearchIntent {
+    /// Analyse une requête de recherche pour détecter les intentions de planification (UNIQUEMENT pour recherche générale)
+    /// ✅ NETTOYÉ 2025-11-27 : Ne détecte QUE les intentions de planification (PharmacyOnDuty, MedicalServiceAvailable, TimeConstrained)
+    /// Pas de détection de services spécialisés (c'est fait via le menu dédié)
+    pub fn analyze_scheduling_intent_only(&self, query: &str) -> SearchIntent {
         let query_lower = query.to_lowercase();
 
-        // ✅ NOUVEAU 2025-11-26 : Détection spécialisée (prioritaire)
-        // Pharmacie (simple mention, pas forcément garde)
+        // Détection de recherche de pharmacie de garde (avec contrainte temporelle)
+        if query_lower.contains("pharmacie")
+            && (query_lower.contains("garde")
+                || query_lower.contains("urgent")
+                || query_lower.contains("nuit")
+                || query_lower.contains("24h"))
+        {
+            return SearchIntent::PharmacyOnDuty;
+        }
+
+        // Détection de recherche de service médical (avec contrainte temporelle)
+        if (query_lower.contains("médecin")
+            || query_lower.contains("docteur")
+            || query_lower.contains("gynécologue")
+            || query_lower.contains("cardiologue")
+            || query_lower.contains("urgences"))
+            && (query_lower.contains("disponible")
+                || query_lower.contains("ouvert")
+                || query_lower.contains("maintenant")
+                || query_lower.contains("urgent"))
+        {
+            return SearchIntent::MedicalServiceAvailable;
+        }
+
+        // Détection de recherche avec contrainte temporelle
+        if query_lower.contains("maintenant")
+            || query_lower.contains("urgent")
+            || query_lower.contains("immédiat")
+            || query_lower.contains("tout de suite")
+        {
+            return SearchIntent::TimeConstrained;
+        }
+
+        SearchIntent::General
+    }
+
+    /// Analyse une requête de recherche pour détecter les intentions (complet - utilisé pour recherche spécialisée)
+    /// ✅ UTILISÉ UNIQUEMENT pour recherche spécialisée dédiée (via menu)
+    pub fn analyze_search_intent(&self, query: &str) -> SearchIntent {
+        let query_lower = query.to_lowercase();
+        let query_words: Vec<&str> = query_lower.split_whitespace().collect();
+
+        // ✅ OPTIMISÉ : Détection spécialisée plus précise (exige plus de contexte)
+        // Pharmacie : doit être le mot principal ou accompagné de mots-clés spécifiques
         if query_lower.contains("pharmacie") && !query_lower.contains("garde") && !query_lower.contains("urgent") {
-            return SearchIntent::SpecializedPharmacy;
+            // Vérifier que "pharmacie" n'est pas dans un contexte de produit général
+            let is_product_context = query_lower.contains("produit") || query_lower.contains("acheter") 
+                || query_lower.contains("vendre") || query_lower.contains("prix");
+            
+            // Si "pharmacie" est le mot principal (dans les 3 premiers mots) ou pas dans contexte produit
+            let pharmacy_index = query_words.iter().position(|w| w.contains("pharmacie"));
+            if !is_product_context && (pharmacy_index.is_none() || pharmacy_index.unwrap() < 3) {
+                return SearchIntent::SpecializedPharmacy;
+            }
         }
 
-        // Hôpital/Clinique (simple mention)
+        // Hôpital/Clinique : doit être le mot principal (pas "clinique vétérinaire" ou "hôpital pour animaux")
         if query_lower.contains("hôpital") || query_lower.contains("hopital") || query_lower.contains("clinique") {
-            return SearchIntent::SpecializedHospital;
+            // Exclure les contextes non-médicaux
+            let is_non_medical = query_lower.contains("vétérinaire") || query_lower.contains("veterinaire")
+                || query_lower.contains("animal") || query_lower.contains("chien") || query_lower.contains("chat");
+            
+            if !is_non_medical {
+                let hospital_index = query_words.iter().position(|w| w.contains("hopital") || w.contains("hôpital") || w.contains("clinique"));
+                if hospital_index.is_none() || hospital_index.unwrap() < 3 {
+                    return SearchIntent::SpecializedHospital;
+                }
+            }
         }
 
-        // Laboratoire/Imagerie
-        if query_lower.contains("laboratoire") || query_lower.contains("imagerie") || query_lower.contains("analyse") {
-            return SearchIntent::SpecializedLaboratory;
+        // Laboratoire/Imagerie : doit être accompagné de contexte médical ou être le mot principal
+        if query_lower.contains("laboratoire") || query_lower.contains("imagerie") {
+            let is_medical_context = query_lower.contains("médical") || query_lower.contains("medical")
+                || query_lower.contains("sang") || query_lower.contains("radio") || query_lower.contains("scanner");
+            
+            // "analyse" seul n'est pas assez spécifique, doit être "analyse de sang" ou "analyse médicale"
+            if query_lower.contains("analyse") {
+                if is_medical_context || query_lower.contains("analyse de") || query_lower.contains("analyse du") {
+                    return SearchIntent::SpecializedLaboratory;
+                }
+            } else {
+                // "laboratoire" ou "imagerie" sont assez spécifiques
+                return SearchIntent::SpecializedLaboratory;
+            }
         }
 
-        // Agence de voyage / Ticket bus
+        // Agence de voyage / Ticket bus : doit contenir "agence" ET ("voyage" OU "bus" OU "ticket")
         if query_lower.contains("agence") && (query_lower.contains("voyage") || query_lower.contains("bus") || query_lower.contains("ticket")) {
             return SearchIntent::SpecializedTravelAgency;
         }
 
-        // Covoiturage
+        // Covoiturage : mot spécifique, détection OK
         if query_lower.contains("covoiturage") || query_lower.contains("covoit") {
             return SearchIntent::SpecializedCovoiturage;
         }
 
-        // Taxi
+        // Taxi : mot spécifique, mais vérifier qu'il n'est pas dans un contexte général
         if query_lower.contains("taxi") {
-            return SearchIntent::SpecializedTaxi;
+            // Exclure "taxi moto" ou "taxi vélo" qui sont des produits, pas des services
+            let is_product = query_lower.contains("moto") || query_lower.contains("vélo") || query_lower.contains("velo");
+            if !is_product {
+                return SearchIntent::SpecializedTaxi;
+            }
         }
 
         // ✅ NOUVEAU 2025-11-27 : Détection de recherche de banque de sang
@@ -437,6 +513,162 @@ impl SchedulingSearchService {
                 | SearchIntent::SpecializedTaxi
                 | SearchIntent::SpecializedBloodBank
         )
+    }
+
+    /// ✅ NOUVEAU 2025-11-27 : Détection basée sur specialized_type en base (sans ambiguïté)
+    /// ✅ OPTIMISÉ 2025-11-27 : Détection tolérante aux erreurs (casse, fautes de frappe, textes tronqués)
+    /// Utilise similarity() de pg_trgm et unaccent pour une détection robuste
+    /// Retourne le specialized_type correspondant si trouvé, None sinon
+    pub async fn detect_specialized_type_from_database(
+        &self,
+        query: &str,
+    ) -> Result<Option<String>, String> {
+        use crate::utils::log::log_info;
+        
+        let query_lower = query.to_lowercase();
+        
+        // ✅ Mapping étendu avec variations et racines pour détection flexible
+        // Inclut les variantes tronquées, fautes de frappe courantes, etc.
+        let keyword_variations: Vec<(Vec<&str>, &str)> = vec![
+            // Pharmacie : variations avec fautes de frappe courantes et textes tronqués
+            (vec!["pharmacie", "pharmaci", "pharm", "pharma", "pharmac"], "pharmacie"),
+            // Hôpital/Clinique : variations multiples + spécialités médicales
+            (vec![
+                "hopital", "hôpital", "hopit", "hospital", 
+                "clinique", "cliniqu", "clin",
+                // ✅ NOUVEAU: Spécialités médicales (mappées vers hopital_clinique)
+                "urologue", "urologie", "urolog", 
+                "dermatologue", "dermatologie", "dermatolog",
+                "cardiologue", "cardiologie", "cardiolog",
+                "gynécologue", "gynecologue", "gynéco", "gyneco", "gynecol",
+                "pédiatre", "pediatre", "pediatri",
+                "ophtalmologue", "ophtalmo", "ophtalmolog",
+                "orthopédiste", "orthopediste", "orthoped",
+                "neurologue", "neurologie", "neurolog",
+                "médecin", "medecin", "docteur",
+                "urgences", "urgence"
+            ], "hopital_clinique"),
+            // Laboratoire/Imagerie
+            (vec!["laboratoire", "laboratoir", "labo", "lab", "imagerie", "imag", "imager"], "laboratoire_imagerie"),
+            // Agence de voyage (nécessite contexte)
+            (vec!["agence", "voyage", "voyag", "bus", "billet"], "agence_voyage"),
+            // Covoiturage
+            (vec!["covoiturage", "covoit", "covoiturag", "covoitura"], "covoiturage"),
+            // Taxi
+            (vec!["taxi", "taxis", "tax"], "taxi_ville"),
+            // Banque de sang (phrases complètes)
+            (vec!["banque de sang", "banque sang", "don de sang", "don sang", "groupe sanguin", "sang"], "banque_sang"),
+        ];
+
+        // Détecter le type potentiel avec recherche flexible (sans doublons)
+        let mut potential_types: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        
+        for (variations, specialized_type) in keyword_variations.iter() {
+            // Vérifier si au moins une variation est présente dans la requête
+            let matches = variations.iter().any(|variation| {
+                query_lower.contains(variation)
+            });
+            
+            if matches {
+                // Cas spéciaux pour agence_voyage (nécessite contexte)
+                if *specialized_type == "agence_voyage" {
+                    let has_agence = query_lower.contains("agence");
+                    let has_voyage_context = query_lower.contains("voyage") 
+                        || query_lower.contains("voyag")
+                        || query_lower.contains("bus")
+                        || query_lower.contains("billet")
+                        || query_lower.contains("ticket");
+                    
+                    if has_agence && has_voyage_context {
+                        potential_types.insert(specialized_type);
+                    }
+                } else {
+                    potential_types.insert(specialized_type);
+                }
+            }
+        }
+
+        // ✅ OPTIMISÉ: Vérifier en base si des services avec ces specialized_type existent
+        let specialized_types_vec: Vec<&str> = potential_types.into_iter().collect();
+        if specialized_types_vec.is_empty() {
+            // ✅ NOUVEAU: Tentative de détection fuzzy avec similarity() pour textes tronqués/erreurs
+            log_info(&format!(
+                "[SchedulingSearchService] 🔍 Aucun mot-clé spécialisé détecté directement, tentative fuzzy matching pour: '{}'",
+                query
+            ));
+            
+            // Recherche fuzzy en base avec similarity() de pg_trgm
+            let fuzzy_match: Option<String> = sqlx::query_scalar(
+                r#"
+                SELECT specialized_type
+                FROM services
+                WHERE specialized_type IS NOT NULL
+                AND is_active = TRUE
+                AND (
+                    -- Match direct sur specialized_type (casse insensible)
+                    LOWER(specialized_type) ILIKE '%' || $1 || '%'
+                    -- OU fuzzy match avec similarity (tolère fautes de frappe)
+                    OR similarity(LOWER(specialized_type), LOWER($1)) > 0.5
+                    -- OU match sur titre/catégorie avec unaccent (tolère accents)
+                    OR unaccent(LOWER(COALESCE(data->>'titre_service', data->'titre_service'->>'valeur', ''))) ILIKE '%' || unaccent(LOWER($1)) || '%'
+                    OR unaccent(LOWER(COALESCE(category, data->>'category', data->'category'->>'valeur', ''))) ILIKE '%' || unaccent(LOWER($1)) || '%'
+                )
+                ORDER BY 
+                    -- Prioriser les matches exacts
+                    CASE WHEN LOWER(specialized_type) = LOWER($1) THEN 1 ELSE 2 END,
+                    -- Puis par similarity score décroissant
+                    similarity(LOWER(specialized_type), LOWER($1)) DESC NULLS LAST
+                LIMIT 1
+                "#
+            )
+            .bind(query_lower.as_str())
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| format!("Erreur recherche fuzzy specialized_type: {}", e))?;
+
+            if let Some(found) = fuzzy_match {
+                log_info(&format!(
+                    "[SchedulingSearchService] ✅ specialized_type '{}' détecté via fuzzy matching pour requête: '{}'",
+                    found, query
+                ));
+                return Ok(Some(found));
+            } else {
+                log_info(&format!(
+                    "[SchedulingSearchService] ⚠️ Aucun specialized_type détecté (ni direct ni fuzzy) pour: '{}'",
+                    query
+                ));
+                return Ok(None);
+            }
+        }
+
+        // Vérifier tous les types en une seule requête avec ANY pour performance
+        let found_type: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT specialized_type
+            FROM services
+            WHERE specialized_type = ANY($1::text[])
+            AND is_active = TRUE
+            LIMIT 1
+            "#
+        )
+        .bind(&specialized_types_vec)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| format!("Erreur vérification specialized_type: {}", e))?;
+
+        if let Some(found) = found_type {
+            log_info(&format!(
+                "[SchedulingSearchService] ✅ specialized_type '{}' détecté en base (services actifs présents) pour requête: '{}'",
+                found, query
+            ));
+            Ok(Some(found))
+        } else {
+            log_info(&format!(
+                "[SchedulingSearchService] ⚠️ Aucun service spécialisé actif trouvé en base pour types: {:?}, requête: '{}'",
+                specialized_types_vec, query
+            ));
+            Ok(None)
+        }
     }
 
     /// ✅ NOUVEAU 2025-11-27 : Recherche de banques de sang avec moment

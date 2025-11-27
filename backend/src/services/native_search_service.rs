@@ -129,11 +129,12 @@ impl NativeSearchService {
         _user_id: Option<i32>,
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
+        specialized_type: Option<&str>, // ✅ NOUVEAU : Paramètre pour recherche spécialisée dédiée
     ) -> AppResult<Vec<SearchResult>> {
         let _start_time = std::time::Instant::now();
         log_info(&format!(
-            "[NativeSearch] Recherche avec pré-filtre lieu: '{}' (input complet: '{}')",
-            search_query, user_input_full
+            "[NativeSearch] Recherche avec pré-filtre lieu: '{}' (input complet: '{}', specialized_type: {:?})",
+            search_query, user_input_full, specialized_type
         ));
 
         // ✅ NOUVELLE LOGIQUE : Vérifier si l'input contient un lieu
@@ -159,6 +160,7 @@ impl NativeSearchService {
             _user_id,
             gps_zone,
             search_radius_km,
+            specialized_type, // ✅ Transmettre specialized_type
         )
         .await
     }
@@ -172,6 +174,7 @@ impl NativeSearchService {
         _user_id: Option<i32>,
         gps_zone: Option<&str>,        // Nouveau paramètre GPS
         search_radius_km: Option<i32>, // Nouveau paramètre rayon
+        specialized_type: Option<&str>, // ✅ NOUVEAU : Paramètre pour recherche spécialisée dédiée
     ) -> AppResult<Vec<SearchResult>> {
         // Appel à la version interne
         self.intelligent_search_internal(
@@ -181,6 +184,7 @@ impl NativeSearchService {
             _user_id,
             gps_zone,
             search_radius_km,
+            specialized_type, // ✅ Transmettre specialized_type
         )
         .await
     }
@@ -194,11 +198,12 @@ impl NativeSearchService {
         _user_id: Option<i32>,
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
+        specialized_type: Option<&str>, // ✅ NOUVEAU : Paramètre pour recherche spécialisée dédiée
     ) -> AppResult<Vec<SearchResult>> {
         let _start_time = std::time::Instant::now();
         log_info(&format!(
-            "[NativeSearch] Début recherche: '{}' (GPS: {:?}, Rayon: {:?}km)",
-            search_query, gps_zone, search_radius_km
+            "[NativeSearch] Début recherche: '{}' (GPS: {:?}, Rayon: {:?}km, specialized_type: {:?})",
+            search_query, gps_zone, search_radius_km, specialized_type
         ));
 
         // Normaliser la requête
@@ -212,6 +217,7 @@ impl NativeSearchService {
                 location_or_input_filter, // ✅ Input complet pour pré-filtre lieu
                 gps_zone,
                 search_radius_km,
+                specialized_type, // ✅ Transmettre specialized_type (None pour recherche générale)
             )
             .await?;
 
@@ -303,11 +309,15 @@ impl NativeSearchService {
         location_filter: Option<&str>,
     ) -> AppResult<Vec<SearchResult>> {
         // Appeler la nouvelle méthode avec GPS désactivé
-        self.fulltext_search_with_gps(query, category_filter, location_filter, None, None)
+        // ✅ NETTOYÉ : Pas de specialized_type dans la recherche générale
+        self.fulltext_search_with_gps(query, category_filter, location_filter, None, None, None)
             .await
     }
 
-    /// Recherche full-text intelligente avec filtrage GPS et planifications
+    /// Recherche full-text intelligente avec filtrage GPS
+    /// ✅ NETTOYÉ 2025-11-27 : Recherche 100% générale - Plus de détection/redirection vers services spécialisés
+    /// Les services spécialisés sont accessibles UNIQUEMENT via la page dédiée (menu spécialisé)
+    /// Paramètre specialized_type: uniquement pour recherche spécialisée dédiée (hors recherche générale)
     async fn fulltext_search_with_gps(
         &self,
         query: &str,
@@ -315,20 +325,42 @@ impl NativeSearchService {
         location_filter: Option<&str>,
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
+        specialized_type: Option<&str>, // ✅ Utilisé uniquement pour recherche spécialisée dédiée (hors recherche générale)
     ) -> AppResult<Vec<SearchResult>> {
-        // Analyser l'intention de recherche pour détecter les planifications et services spécialisés
-        let scheduling_service = SchedulingSearchService::new(self.pool.clone());
-        let intent = scheduling_service.analyze_search_intent(query);
-
-        // ✅ NOUVEAU 2025-11-26 : Si recherche spécialisée, utiliser les tables dédiées
-        if SchedulingSearchService::is_specialized_search(&intent) {
+        // ✅ NETTOYÉ 2025-11-27 : Si specialized_type fourni → Recherche spécialisée dédiée (hors recherche générale)
+        // Sinon → Recherche générale pure (sans aucune détection spécialisée)
+        if let Some(ref st) = specialized_type {
             log_info(&format!(
-                "[NativeSearch] Recherche spécialisée détectée: {:?}",
+                "[NativeSearch] 🔷 Recherche spécialisée dédiée: '{}'",
+                st
+            ));
+            
+            // Mapper specialized_type vers SearchIntent pour recherche spécialisée
+            let intent = match *st {
+                "pharmacie" => crate::services::scheduling_search_service::SearchIntent::SpecializedPharmacy,
+                "hopital_clinique" => crate::services::scheduling_search_service::SearchIntent::SpecializedHospital,
+                "laboratoire_imagerie" => crate::services::scheduling_search_service::SearchIntent::SpecializedLaboratory,
+                "agence_voyage" => crate::services::scheduling_search_service::SearchIntent::SpecializedTravelAgency,
+                "covoiturage" => crate::services::scheduling_search_service::SearchIntent::SpecializedCovoiturage,
+                "taxi_ville" => crate::services::scheduling_search_service::SearchIntent::SpecializedTaxi,
+                "banque_sang" => crate::services::scheduling_search_service::SearchIntent::SpecializedBloodBank,
+                _ => {
+                    return Err(crate::core::types::AppError::BadRequest(format!(
+                        "Type spécialisé non reconnu: '{}'",
+                        st
+                    )));
+                }
+            };
+            
+            // ✅ RECHERCHE SPÉCIALISÉE avec planification et moment intégrés
+            let scheduling_service = SchedulingSearchService::new(self.pool.clone());
+            let radius = search_radius_km.unwrap_or(50);
+            let mut specialized_results: Vec<SearchResult> = Vec::new();
+            
+            log_info(&format!(
+                "[NativeSearch] 🔷 Recherche spécialisée dédiée avec planification/moment: {:?}",
                 intent
             ));
-
-            let radius = search_radius_km.unwrap_or(50);
-            let mut results: Vec<SearchResult> = Vec::new();
 
             match intent {
                 crate::services::scheduling_search_service::SearchIntent::SpecializedPharmacy => {
@@ -375,7 +407,7 @@ impl NativeSearchService {
                             "whatsapp": row.get::<Option<String>, _>("whatsapp"),
                         });
 
-                        results.push(SearchResult {
+                        specialized_results.push(SearchResult {
                             service_id,
                             data,
                             total_score: score as f32,
@@ -432,7 +464,7 @@ impl NativeSearchService {
                             "telephone": row.get::<Option<String>, _>("telephone"),
                         });
 
-                        results.push(SearchResult {
+                        specialized_results.push(SearchResult {
                             service_id,
                             data,
                             total_score: score as f32,
@@ -487,7 +519,7 @@ impl NativeSearchService {
                             "telephone": row.get::<Option<String>, _>("telephone"),
                         });
 
-                        results.push(SearchResult {
+                        specialized_results.push(SearchResult {
                             service_id,
                             data,
                             total_score: score as f32,
@@ -541,7 +573,7 @@ impl NativeSearchService {
                             "telephone": row.get::<Option<String>, _>("telephone"),
                         });
 
-                        results.push(SearchResult {
+                        specialized_results.push(SearchResult {
                             service_id,
                             data,
                             total_score: score as f32,
@@ -599,7 +631,7 @@ impl NativeSearchService {
                             "prix_par_place": row.get::<i32, _>("prix_par_place"),
                         });
 
-                        results.push(SearchResult {
+                        specialized_results.push(SearchResult {
                             service_id,
                             data,
                             total_score: score as f32,
@@ -653,7 +685,7 @@ impl NativeSearchService {
                             "zone_intervention": row.get::<Option<Vec<String>>, _>("zone_intervention"),
                         });
 
-                        results.push(SearchResult {
+                        specialized_results.push(SearchResult {
                             service_id,
                             data,
                             total_score: score as f32,
@@ -681,13 +713,13 @@ impl NativeSearchService {
                         (None, None)
                     };
 
-                    let specialized_results = scheduling_service
+                    let blood_bank_results = scheduling_service
                         .search_banques_sang_with_moment(query, user_lat, user_lng, Some(radius as f64))
                         .await
                         .map_err(|e| format!("Erreur recherche banques de sang: {}", e))?;
 
-                    for r in specialized_results {
-                        results.push(SearchResult {
+                    for r in blood_bank_results {
+                        specialized_results.push(SearchResult {
                             service_id: r.service_id,
                             data: r.product_data,
                             total_score: r.relevance_score as f32,
@@ -708,14 +740,55 @@ impl NativeSearchService {
                 }
             }
 
-            log_info(&format!(
-                "[NativeSearch] {} résultats spécialisés trouvés",
-                results.len()
-            ));
-            return Ok(results);
-        }
+            // Enrichir tous les résultats spécialisés avec Google Places
+            for result in &mut specialized_results {
+                if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                    &self.pool,
+                    result.service_id,
+                    &mut result.data
+                ).await {
+                    log::warn!(
+                        "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
+                        result.service_id,
+                        e
+                    );
+                }
+            }
+            
+            // Enrichir les distances avec Google Maps si disponible
+            if let Some(gps_zone_val) = gps_zone {
+                if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                        SearchResult::enrich_with_google_maps(
+                            &mut specialized_results,
+                            Some((user_lat, user_lng)),
+                            self.geographic_matching.as_ref(),
+                        ).await;
+                    }
+                }
+            }
 
-        // Si recherche avec planification, utiliser la fonction spécialisée
+            log_info(&format!(
+                "[NativeSearch] ✅ {} résultats spécialisés trouvés avec planification/moment",
+                specialized_results.len()
+            ));
+            
+            // ✅ Recherche spécialisée dédiée : retourner directement les résultats (pas de fallback)
+            return Ok(specialized_results);
+        }
+        
+        // ✅ RECHERCHE GÉNÉRALE : Avec planification (ex: "pharmacie de garde") mais SANS vérifier existence services spécialisés
+        log_info(&format!(
+            "[NativeSearch] 🔍 Recherche générale pure (sans vérification services spécialisés)"
+        ));
+        
+        let scheduling_service = SchedulingSearchService::new(self.pool.clone());
+        
+        // ✅ NETTOYÉ 2025-11-27 : Analyser UNIQUEMENT les intentions de planification (pas de détection de services spécialisés)
+        // Utiliser analyze_scheduling_intent_only() pour éviter de détecter SpecializedPharmacy, etc.
+        let intent = scheduling_service.analyze_scheduling_intent_only(query);
+        
+        // Si recherche avec planification, utiliser la fonction spécialisée (dans la recherche générale)
         if intent.should_use_scheduling_search() {
             log_info(&format!(
                 "[NativeSearch] Recherche avec planification détectée: {:?}",
@@ -974,6 +1047,7 @@ impl NativeSearchService {
             return Ok(search_results);
         }
 
+        // ✅ NETTOYÉ 2025-11-27 : Recherche générale pure (sans fusion avec résultats spécialisés)
         // Fallback vers l'ancienne méthode si pas de GPS
         let partial_conditions = self.create_partial_match_conditions(query);
 
@@ -1280,7 +1354,7 @@ SELECT DISTINCT
             let _category: Option<String> = row.get("category");
             // Gérer le cas où fulltext_score peut être NULL
             let fulltext_score: f32 = row.try_get("fulltext_score").unwrap_or(0.0);
-
+            
             search_results.push(SearchResult {
                 service_id,
                 data,
@@ -1296,6 +1370,15 @@ SELECT DISTINCT
             });
         }
 
+        // ✅ NETTOYÉ 2025-11-27 : Recherche générale pure (pas de fusion avec résultats spécialisés)
+        
+        // Trier par score total
+        search_results.sort_by(|a, b| {
+            b.total_score
+                .partial_cmp(&a.total_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        
         Ok(search_results)
     }
 

@@ -2552,7 +2552,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 handleFieldChange('sous_caracteristiques', updatedSousCaracs);
               }
             }}
-            sousCaracteristiques={sousCaracteristiques || {}}
+            sousCaracteristiques={(() => {
+              // ✅ NOUVEAU: Log détaillé pour tracer le passage de sous_caracteristiques
+              const finalSousCaracs = sousCaracteristiques || {};
+              console.log('[FormulaireYukpoIntelligentScreen] 🔍 [BACKEND_TRACE] Passage sousCaracteristiques à LinearAutocompleteEditor:', {
+                hasValue: !!sousCaracteristiques,
+                type: typeof sousCaracteristiques,
+                keys: Object.keys(finalSousCaracs),
+                count: Object.keys(finalSousCaracs).length,
+                sample: JSON.stringify(finalSousCaracs).substring(0, 300),
+                productVector: productVector?.slice(0, 3),
+                productLabels: productLabels?.slice(0, 3)
+              });
+              return finalSousCaracs;
+            })()}
             separateur={safeSeparateur}
             allowCustomModality
             filtrable

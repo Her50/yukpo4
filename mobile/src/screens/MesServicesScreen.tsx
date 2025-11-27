@@ -55,6 +55,8 @@ const MesServicesScreen: React.FC = () => {
   const [showVideoCreationModal, setShowVideoCreationModal] = useState(false);
   const [productsForVideoCreation, setProductsForVideoCreation] = useState<ManagedProduct[]>([]);
   const [selectedServiceForVideo, setSelectedServiceForVideo] = useState<Service | null>(null);
+  // ✅ NOUVEAU: État pour stocker les services bruts (pour détecter si service existe)
+  const [rawServices, setRawServices] = useState<any[]>([]);
 
   // ✅ OPTIMISATION: Fonction pour parser un produit (extrait pour réutilisabilité)
   const parseProduct = useCallback((product: any, index: number, service: any, serviceId: string, serviceTitre: string): Service | null => {
@@ -214,6 +216,10 @@ const MesServicesScreen: React.FC = () => {
           type: typeof data
         });
 
+        // ✅ NOUVEAU: Stocker les services bruts pour la détection lors de l'ajout de produit
+        const servicesArray = Array.isArray(data) ? data : [];
+        setRawServices(servicesArray);
+
         // ✅ OPTIMISATION: Utiliser useMemo pour parser les produits (plus efficace)
         const allProducts: Service[] = [];
 
@@ -332,6 +338,46 @@ const MesServicesScreen: React.FC = () => {
       default: return 'Inconnu';
     }
   };
+
+  // ✅ NOUVEAU: Fonction pour gérer l'ajout de produit (détecte si service existe)
+  const handleAddProduct = useCallback((serviceId?: number | string) => {
+    try {
+      // Si un serviceId est fourni, naviguer directement vers AjouterProduitSimple
+      if (serviceId) {
+        logger.log('[MesServicesScreen] handleAddProduct - ServiceId fourni:', serviceId);
+        (navigation as any).navigate('AjouterProduitSimple', {
+          serviceId: typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
+          mode: 'create'
+        });
+        return;
+      }
+
+      // Sinon, vérifier s'il y a des services existants
+      if (rawServices && rawServices.length > 0) {
+        // Prendre le premier service actif, ou le premier service tout court
+        const activeService = rawServices.find((s: any) => s.is_active !== false && s.actif !== false) || rawServices[0];
+        
+        if (activeService && activeService.id) {
+          logger.log('[MesServicesScreen] handleAddProduct - Service existant trouvé:', activeService.id);
+          (navigation as any).navigate('AjouterProduitSimple', {
+            serviceId: typeof activeService.id === 'string' ? parseInt(activeService.id, 10) : activeService.id,
+            mode: 'create'
+          });
+          return;
+        }
+      }
+
+      // Aucun service existant, naviguer vers FormulaireYukpoIntelligent pour créer service + produit
+      logger.log('[MesServicesScreen] handleAddProduct - Aucun service trouvé, création nouveau service');
+      (navigation as any).navigate('FormulaireYukpoIntelligent', {
+        mode: 'create',
+        focusProduct: true
+      });
+    } catch (error) {
+      logger.error('[MesServicesScreen] Erreur handleAddProduct:', error);
+      Alert.alert('Erreur', 'Impossible d\'ouvrir le formulaire d\'ajout de produit');
+    }
+  }, [rawServices, navigation]);
 
   // Fonctions de gestion des services
   const handleEditService = (service: any) => {
@@ -581,11 +627,7 @@ const MesServicesScreen: React.FC = () => {
           {
             text: 'Créer un produit',
             onPress: () => {
-              (navigation as any).navigate('FormulaireYukpoIntelligent', {
-                mode: 'edit',
-                serviceId: serviceId,
-                focusProduct: true
-              });
+              handleAddProduct(serviceId);
             }
           }
         ]
@@ -788,10 +830,7 @@ const MesServicesScreen: React.FC = () => {
               style={styles.menuItem}
               onPress={() => {
                 setShowGlobalMenu(false);
-                (navigation as any).navigate('FormulaireYukpoIntelligent', {
-                  mode: 'create',
-                  focusProduct: true
-                });
+                handleAddProduct();
               }}
             >
               <SafeIcon name="plus-circle" size={18} color="#10B981" />

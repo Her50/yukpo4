@@ -5642,6 +5642,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto search indexes optimization: {}", e),
     }
 
+    // ✅ 2025-11-27 : Optimisation performance get_services_for_prestataire
+    match ensure_get_services_performance_indexes(pool).await {
+        Ok(_) => info!("✅ Migration auto: get_services performance indexes OK"),
+        Err(e) => error!("❌ Erreur migration auto get_services performance indexes: {}", e),
+    }
+
     // ✅ 2025-11-27 : Système validation tickets bus
     match ensure_bus_ticket_validation_system(pool).await {
         Ok(_) => info!("✅ Migration auto: bus ticket validation system OK"),
@@ -9550,5 +9556,21 @@ pub async fn ensure_search_indexes_optimization(pool: &PgPool) -> Result<(), sql
     execute_multiple_sql_commands(pool, migration_sql).await?;
     
     info!("✅ Index d'optimisation de recherche créés");
+    Ok(())
+}
+
+/// ✅ 2025-11-27 : Optimisation des performances pour get_services_for_prestataire
+/// Crée des index composites pour optimiser les jointures avec products_lifecycle
+/// Migration: 20251127_optimize_get_services_performance.sql
+pub async fn ensure_get_services_performance_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des index d'optimisation get_services_for_prestataire...");
+    
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251127_optimize_get_services_performance.sql");
+    
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    
+    info!("✅ Index d'optimisation get_services_for_prestataire créés");
     Ok(())
 }

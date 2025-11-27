@@ -242,10 +242,17 @@ pub async fn search_combinations(
     State(state): State<Arc<AppState>>,
     Json(request): Json<SearchCombinationsRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    use crate::utils::log::log_info;
+    
     let pool = &state.pg;
     let query = request.query.trim();
     let user_location = request.user_location.as_deref();
     let limit = request.limit.unwrap_or(20);
+
+    log_info(&format!(
+        "[AutocompleteController] 🔍 POST /api/combinations/search - query: '{}', location: {:?}, limit: {}",
+        query, user_location, limit
+    ));
 
     info!(
         "🔍 Recherche combinaisons: '{}' (location: {:?}, limit: {})",
@@ -259,6 +266,25 @@ pub async fn search_combinations(
         .await
     {
         Ok(results) => {
+            log_info(&format!(
+                "[AutocompleteController] ✅ {} combinaisons trouvées",
+                results.len()
+            ));
+            
+            // ✅ NOUVEAU: Log détaillé des combinaisons retournées pour déboguer sous_caracteristiques
+            for (idx, result) in results.iter().take(3).enumerate() {
+                log_info(&format!(
+                    "[AutocompleteController] 🔗 Combinaison #{}: id={}, vector={:?}, labels={:?}, usage_count={}, prix={:?}, final_score={:.2}",
+                    idx + 1,
+                    result.combination.id,
+                    result.combination.product_vector,
+                    result.combination.product_labels,
+                    result.combination.usage_count,
+                    result.combination.prix,
+                    result.final_score
+                ));
+            }
+            
             info!("✅ {} résultats trouvés", results.len());
             Ok(Json(serde_json::json!({
                 "success": true,
@@ -267,6 +293,10 @@ pub async fn search_combinations(
             })))
         }
         Err(e) => {
+            log_info(&format!(
+                "[AutocompleteController] ❌ Erreur recherche combinaisons: {:?}",
+                e
+            ));
             eprintln!("❌ Erreur recherche combinaisons: {:?}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,

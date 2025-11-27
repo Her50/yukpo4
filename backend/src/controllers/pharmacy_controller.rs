@@ -101,6 +101,80 @@ pub async fn create_pharmacy(
         return Err(AppError::NotFound("Service non trouvé ou n'appartient pas à l'utilisateur".to_string()));
     }
 
+    // ✅ NOUVEAU : Vérifier si une pharmacie existe déjà pour ce service
+    let existing_pharmacy: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM pharmacies WHERE service_id = $1 AND user_id = $2"
+    )
+    .bind(payload.service_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_pharmacy] Erreur vérification pharmacie existante: {}", e);
+        AppError::Internal(format!("Erreur vérification pharmacie existante: {}", e))
+    })?;
+
+    if existing_pharmacy.is_some() {
+        info!("[create_pharmacy] Pharmacie existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
+        // ✅ UPSERT : Mise à jour si existe, sinon création
+        let pharmacy_id = existing_pharmacy.unwrap();
+        
+        let heures_ouverture = payload.heures_ouverture
+            .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
+        let heures_fermeture = payload.heures_fermeture
+            .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
+
+        sqlx::query(
+            r#"
+            UPDATE pharmacies SET
+                nom = $3,
+                adresse = $4,
+                quartier = $5,
+                ville = $6,
+                gps = $7,
+                jours_garde = $8,
+                heures_ouverture = $9,
+                heures_fermeture = $10,
+                permanent_24h = $11,
+                telephone = $12,
+                telephone_urgence = $13,
+                whatsapp = $14,
+                email = $15,
+                services = $16,
+                updated_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            "#
+        )
+        .bind(pharmacy_id)
+        .bind(user_id)
+        .bind(&payload.nom)
+        .bind(payload.adresse)
+        .bind(payload.quartier)
+        .bind(payload.ville)
+        .bind(payload.gps)
+        .bind(payload.jours_garde)
+        .bind(heures_ouverture)
+        .bind(heures_fermeture)
+        .bind(payload.permanent_24h.unwrap_or(false))
+        .bind(payload.telephone)
+        .bind(payload.telephone_urgence)
+        .bind(payload.whatsapp)
+        .bind(payload.email)
+        .bind(payload.services.as_ref().map(|s| s.as_slice()))
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_pharmacy] Erreur mise à jour: {}", e);
+            AppError::Internal(format!("Erreur mise à jour pharmacie: {}", e))
+        })?;
+
+        return Ok((StatusCode::OK, Json(json!({
+            "success": true,
+            "id": pharmacy_id,
+            "message": "Pharmacie mise à jour avec succès"
+        }))));
+    }
+
     // Convertir heures_ouverture et heures_fermeture
     let heures_ouverture = payload.heures_ouverture
         .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());

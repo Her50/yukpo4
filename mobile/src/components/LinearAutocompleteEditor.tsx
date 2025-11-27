@@ -1355,11 +1355,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // ✅ NOUVEAU: Charger immédiatement les sous-caractéristiques préférées de l'IA dès qu'elles sont disponibles
     // Ce useEffect s'exécute indépendamment des autres suggestions pour garantir l'affichage immédiat
     useEffect(() => {
-        console.log('[LinearAutocompleteEditor] 🔍 useEffect sousCaracteristiques déclenché:', {
+        console.log('[LinearAutocompleteEditor] 🔍 [BACKEND_TRACE] useEffect sousCaracteristiques déclenché:', {
             hasSousCaracteristiques: !!sousCaracteristiques,
             type: typeof sousCaracteristiques,
             keys: sousCaracteristiques ? Object.keys(sousCaracteristiques) : [],
-            count: sousCaracteristiques ? Object.keys(sousCaracteristiques).length : 0
+            count: sousCaracteristiques ? Object.keys(sousCaracteristiques).length : 0,
+            fullObject: JSON.stringify(sousCaracteristiques).substring(0, 500)
         });
 
         if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object') {

@@ -399,6 +399,11 @@ CREATE TABLE IF NOT EXISTS products_lifecycle (
 -- Index pour products_lifecycle
 CREATE INDEX IF NOT EXISTS idx_products_lifecycle_service_id ON products_lifecycle(service_id);
 CREATE INDEX IF NOT EXISTS idx_products_lifecycle_active ON products_lifecycle(is_active);
+-- ✅ 2025-11-27 : Index composites pour optimiser get_services_for_prestataire
+CREATE INDEX IF NOT EXISTS idx_products_lifecycle_service_product ON products_lifecycle (service_id, product_index);
+CREATE INDEX IF NOT EXISTS idx_products_lifecycle_service_product_active ON products_lifecycle (service_id, product_index, is_active);
+-- Index pour optimiser la requête principale (user_id + created_at)
+CREATE INDEX IF NOT EXISTS idx_services_user_id_created_at_desc ON services (user_id, created_at DESC);
 
 DO $$
 BEGIN
