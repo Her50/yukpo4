@@ -1,7 +1,9 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Image,
     ScrollView,
     StyleSheet,
     Switch,
@@ -46,12 +48,44 @@ const TaxiFormScreen: React.FC = () => {
         paiement_carte: false,
         climatisation: false,
         wifi: false,
+        image_vehicule: null as string | null, // ✅ NOUVEAU : Image du véhicule
     });
 
     const [loading, setLoading] = useState(false);
     const [selectedZones, setSelectedZones] = useState<LocationObject[]>([]);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
+
+    // ✅ NOUVEAU : Fonction pour sélectionner une image du véhicule
+    const pickVehicleImage = async () => {
+        try {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permissionResult.granted) {
+                Alert.alert('Permission refusée', 'Permission d\'accès à la galerie refusée');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+                base64: true,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                const base64 = result.assets[0].base64;
+                const imageUri = result.assets[0].uri;
+                if (base64) {
+                    setFormData({ ...formData, image_vehicule: `data:image/jpeg;base64,${base64}` });
+                } else {
+                    setFormData({ ...formData, image_vehicule: imageUri });
+                }
+            }
+        } catch (error) {
+            console.error('[TaxiFormScreen] Erreur sélection image:', error);
+            Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+        }
+    };
 
     // ✅ NOUVEAU : Récupération automatique de la devise depuis la première zone
     useEffect(() => {
@@ -113,6 +147,7 @@ const TaxiFormScreen: React.FC = () => {
                             whatsapp: data.whatsapp || '',
                             type_vehicule: data.type_vehicule || '',
                             marque_modele: data.marque_modele || '',
+                            image_vehicule: data.image_vehicule || null,
                             immatriculation: data.immatriculation || '',
                             couleur: data.couleur || '',
                             annee: data.annee ? String(data.annee) : '',
@@ -224,6 +259,7 @@ const TaxiFormScreen: React.FC = () => {
                 paiement_carte: formData.paiement_carte,
                 climatisation: formData.climatisation,
                 wifi: formData.wifi,
+                image_vehicule: formData.image_vehicule || null, // ✅ NOUVEAU : Image du véhicule
             };
 
             const response = await apiPost('/api/taxis', payload);
@@ -331,6 +367,33 @@ const TaxiFormScreen: React.FC = () => {
                             placeholder="2020"
                             keyboardType="numeric"
                         />
+                    </View>
+
+                    {/* ✅ NOUVEAU : Image du véhicule */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Photo du véhicule</Text>
+                        {formData.image_vehicule ? (
+                            <View style={styles.imageContainer}>
+                                <Image
+                                    source={{ uri: formData.image_vehicule }}
+                                    style={styles.imagePreview}
+                                />
+                                <TouchableOpacity
+                                    style={styles.removeImageButton}
+                                    onPress={() => setFormData({ ...formData, image_vehicule: null })}
+                                >
+                                    <SafeIcon name="x" size={20} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={styles.imagePickerButton}
+                                onPress={pickVehicleImage}
+                            >
+                                <SafeIcon name="camera" size={24} color={modernColors.primary} />
+                                <Text style={styles.imagePickerText}>Ajouter une photo du véhicule</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                     {/* ✅ Localisation avec Google Maps */}
@@ -565,6 +628,45 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         marginTop: 24,
+    },
+    imageContainer: {
+        position: 'relative',
+        marginTop: 8,
+    },
+    imagePreview: {
+        width: '100%',
+        height: 200,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+    },
+    removeImageButton: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: '#DC2626',
+        borderRadius: 20,
+        width: 36,
+        height: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    imagePickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        borderStyle: 'dashed',
+        marginTop: 8,
+    },
+    imagePickerText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
 });
 

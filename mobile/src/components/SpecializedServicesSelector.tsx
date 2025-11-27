@@ -109,8 +109,7 @@ const SpecializedServicesSelector: React.FC<SpecializedServicesSelectorProps> = 
                     onPress={() => setMenuVisible(true)}
                     activeOpacity={0.7}
                 >
-                    <SafeIcon name="crosshair" size={16} color="#fff" />
-                    <Text style={styles.compactText}>Services</Text>
+                    <SafeIcon name="grid" size={16} color="#fff" type="lucide" />
                 </TouchableOpacity>
 
                 {/* Menu déroulant vertical */}
@@ -192,20 +191,13 @@ const SpecializedServicesSelector: React.FC<SpecializedServicesSelectorProps> = 
 
 const styles = StyleSheet.create({
     compactButton: {
-        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 12,
-        gap: 4,
-        marginLeft: 8,
-    },
-    compactText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '600',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginLeft: 8, // ✅ Écart avec le drapeau (LanguageSelector)
     },
     menuOverlay: {
         flex: 1,

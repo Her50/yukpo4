@@ -1,8 +1,10 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Image,
     ScrollView,
     StyleSheet,
     Switch,
@@ -44,10 +46,42 @@ const CovoiturageFormScreen: React.FC = () => {
         animaux_autorises: false,
         fumeur_autorise: false,
         climatisation: false,
+        image_vehicule: null as string | null, // ✅ NOUVEAU : Image du véhicule
     });
 
     const [loading, setLoading] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    // ✅ NOUVEAU : Fonction pour sélectionner une image du véhicule
+    const pickVehicleImage = async () => {
+        try {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permissionResult.granted) {
+                Alert.alert('Permission refusée', 'Permission d\'accès à la galerie refusée');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+                base64: true,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                const base64 = result.assets[0].base64;
+                const imageUri = result.assets[0].uri;
+                if (base64) {
+                    setFormData({ ...formData, image_vehicule: `data:image/jpeg;base64,${base64}` });
+                } else {
+                    setFormData({ ...formData, image_vehicule: imageUri });
+                }
+            }
+        } catch (error) {
+            console.error('[CovoiturageFormScreen] Erreur sélection image:', error);
+            Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+        }
+    };
 
     // ✅ NOUVEAU : Récupération automatique de la devise depuis depart ou destination
     useEffect(() => {
@@ -121,6 +155,7 @@ const CovoiturageFormScreen: React.FC = () => {
                             heure_depart: data.heure_depart || '08:00',
                             type_vehicule: data.type_vehicule || '',
                             marque_modele: data.marque_modele || '',
+                            image_vehicule: data.image_vehicule || null,
                             nombre_places: data.nombre_places ? String(data.nombre_places) : '4',
                             places_disponibles: data.places_disponibles ? String(data.places_disponibles) : '4',
                             prix_par_place: data.prix_par_place ? String(data.prix_par_place) : '',
@@ -234,6 +269,7 @@ const CovoiturageFormScreen: React.FC = () => {
                 animaux_autorises: formData.animaux_autorises,
                 fumeur_autorise: formData.fumeur_autorise,
                 climatisation: formData.climatisation,
+                image_vehicule: formData.image_vehicule || null, // ✅ NOUVEAU : Image du véhicule
             };
 
             const response = await apiPost('/api/covoiturages', payload);
@@ -367,6 +403,33 @@ const CovoiturageFormScreen: React.FC = () => {
                                 placeholder="Ex: Toyota Corolla"
                             />
                         </View>
+                    </View>
+
+                    {/* ✅ NOUVEAU : Image du véhicule */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Photo du véhicule</Text>
+                        {formData.image_vehicule ? (
+                            <View style={styles.imageContainer}>
+                                <Image
+                                    source={{ uri: formData.image_vehicule }}
+                                    style={styles.imagePreview}
+                                />
+                                <TouchableOpacity
+                                    style={styles.removeImageButton}
+                                    onPress={() => setFormData({ ...formData, image_vehicule: null })}
+                                >
+                                    <SafeIcon name="x" size={20} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={styles.imagePickerButton}
+                                onPress={pickVehicleImage}
+                            >
+                                <SafeIcon name="camera" size={24} color={modernColors.primary} />
+                                <Text style={styles.imagePickerText}>Ajouter une photo du véhicule</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                     <View style={styles.row}>
@@ -564,6 +627,45 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         marginTop: 24,
+    },
+    imageContainer: {
+        position: 'relative',
+        marginTop: 8,
+    },
+    imagePreview: {
+        width: '100%',
+        height: 200,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+    },
+    removeImageButton: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: '#DC2626',
+        borderRadius: 20,
+        width: 36,
+        height: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    imagePickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        borderStyle: 'dashed',
+        marginTop: 8,
+    },
+    imagePickerText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
 });
 

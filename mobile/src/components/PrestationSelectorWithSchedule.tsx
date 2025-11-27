@@ -407,7 +407,13 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                                 </TouchableOpacity>
                             </View>
 
-                            <ScrollView style={styles.scheduleContent}>
+                            <ScrollView
+                                style={styles.scheduleContent}
+                                nestedScrollEnabled={true}
+                                scrollEnabled={true}
+                                showsVerticalScrollIndicator={true}
+                                bounces={true}
+                            >
                                 {/* ✅ NOUVEAU : Planification par jour avec horaires indépendants */}
                                 <Text style={styles.infoText}>
                                     Configurez les horaires pour chaque jour indépendamment
@@ -515,8 +521,8 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                                                         style={styles.addSlotButton}
                                                         onPress={() => addTimeSlot(currentPrestation, day.value)}
                                                     >
-                                                        <SafeIcon name="plus" size={18} color={modernColors.primary} />
-                                                        <Text style={styles.addSlotText}>Ajouter un créneau</Text>
+                                                        <SafeIcon name="plus" size={18} color="#fff" />
+                                                        <Text style={styles.addSlotText}>Ajouter un horaire supplémentaire</Text>
                                                     </TouchableOpacity>
                                                 </View>
                                             )}
@@ -812,15 +818,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         padding: 12,
         borderRadius: 8,
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-        borderStyle: 'dashed',
+        backgroundColor: modernColors.primary,
         gap: 8,
     },
     addSlotText: {
         fontSize: 14,
         fontWeight: '600',
-        color: modernColors.primary,
+        color: '#fff',
     },
     scheduleFooter: {
         padding: 20,
@@ -837,6 +841,48 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: '#fff',
+    },
+    infoText: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginBottom: 16,
+        fontStyle: 'italic',
+    },
+    dayScheduleCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    dayScheduleHeader: {
+        marginBottom: 12,
+    },
+    dayToggleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    dayToggleButtonSelected: {
+        backgroundColor: `${modernColors.primary}15`,
+        borderColor: modernColors.primary,
+    },
+    dayToggleText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    dayToggleTextSelected: {
+        color: modernColors.primary,
+    },
+    dayTimeSlotsContainer: {
+        gap: 12,
     },
 });
 

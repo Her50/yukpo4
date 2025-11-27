@@ -257,7 +257,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'pharmacie',
             title: 'Pharmacie',
-            icon: 'pill', // ✅ Icône Lucide
+            icon: 'Pill', // ✅ Icône Lucide en PascalCase
             description: 'Enregistrer une pharmacie avec garde',
             route: 'PharmacieForm',
             color: '#10B981', // Vert
@@ -265,7 +265,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'hopital',
             title: 'Hôpital/Clinique',
-            icon: 'hospital', // ✅ Icône Lucide
+            icon: 'Hospital', // ✅ Icône Lucide en PascalCase
             description: 'Enregistrer un établissement de santé',
             route: 'HopitalForm',
             color: '#EF4444', // Rouge
@@ -273,7 +273,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'laboratoire',
             title: 'Laboratoire/Imagerie',
-            icon: 'microscope', // ✅ Icône Lucide
+            icon: 'Microscope', // ✅ Icône Lucide en PascalCase
             description: 'Enregistrer un laboratoire',
             route: 'LaboratoireForm',
             color: '#3B82F6', // Bleu
@@ -281,7 +281,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'banque_sang',
             title: 'Banque de Sang',
-            icon: 'droplet', // ✅ Icône Lucide
+            icon: 'Droplet', // ✅ Icône Lucide en PascalCase
             description: 'Enregistrer une banque de sang',
             route: 'BanqueSangForm',
             color: '#DC2626', // Rouge foncé
@@ -292,7 +292,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'agence_voyage',
             title: 'Agence de Voyage',
-            icon: 'bus', // ✅ Icône Lucide
+            icon: 'Bus', // ✅ Icône Lucide en PascalCase
             description: 'Enregistrer une agence de voyage',
             route: 'AgenceVoyageForm',
             color: '#F59E0B', // Orange
@@ -300,7 +300,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'covoiturage',
             title: 'Covoiturage',
-            icon: 'users', // ✅ Icône Lucide
+            icon: 'Users', // ✅ Icône Lucide en PascalCase
             description: 'Proposer un trajet partagé',
             route: 'CovoiturageForm',
             color: '#8B5CF6', // Violet
@@ -308,7 +308,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         {
             id: 'taxi',
             title: 'Taxi de Ville',
-            icon: 'car', // ✅ Icône Lucide
+            icon: 'Car', // ✅ Icône Lucide en PascalCase
             description: 'Enregistrer un service de taxi',
             route: 'TaxiForm',
             color: '#F97316', // Orange foncé

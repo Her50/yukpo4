@@ -135,7 +135,13 @@ const GuardDaysSelector: React.FC<GuardDaysSelectorProps> = ({
                     </Text>
                 </View>
 
-                <ScrollView style={styles.content}>
+                <ScrollView
+                    style={styles.content}
+                    nestedScrollEnabled={true}
+                    scrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    bounces={true}
+                >
                     {months.map((month) => {
                         const monthDays = selectedDays[month.key] || [];
                         const allSelected = DAYS_OF_WEEK.every(d => monthDays.includes(d.value));

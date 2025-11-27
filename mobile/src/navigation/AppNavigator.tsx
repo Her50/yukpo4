@@ -67,6 +67,7 @@ import HopitalFormScreen from '../screens/specialized/HopitalFormScreen';
 import LaboratoireFormScreen from '../screens/specialized/LaboratoireFormScreen';
 import PharmacieFormScreen from '../screens/specialized/PharmacieFormScreen';
 import TaxiFormScreen from '../screens/specialized/TaxiFormScreen';
+import SpecializedSearchScreen from '../screens/SpecializedSearchScreen';
 import VideoCreationIntroScreen from '../screens/video/VideoCreationIntroScreen';
 import VideoCreationWizardScreen from '../screens/video/VideoCreationWizardScreen';
 import VideoGenerationResultScreen from '../screens/video/VideoGenerationResultScreen';
@@ -107,6 +108,7 @@ const BanqueSangFormScreenWithSafeArea = withNavigatorSafeArea(BanqueSangFormScr
 const AgenceVoyageFormScreenWithSafeArea = withNavigatorSafeArea(AgenceVoyageFormScreen);
 const CovoiturageFormScreenWithSafeArea = withNavigatorSafeArea(CovoiturageFormScreen);
 const TaxiFormScreenWithSafeArea = withNavigatorSafeArea(TaxiFormScreen);
+const SpecializedSearchScreenWithSafeArea = withNavigatorSafeArea(SpecializedSearchScreen);
 const VideoFeedScreenWithSafeArea = withNavigatorSafeArea(VideoFeedScreen);
 const VideoAnalyticsScreenWithSafeArea = withNavigatorSafeArea(VideoAnalyticsScreen);
 const VideoCreationIntroScreenWithSafeArea = withNavigatorSafeArea(VideoCreationIntroScreen);
@@ -345,6 +347,7 @@ const SecondaryStack = () => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Main" component={MainStack} />
         <Stack.Screen name="Contact" component={ContactScreenWithSafeArea} />
+        <Stack.Screen name="SpecializedSearch" component={SpecializedSearchScreenWithSafeArea} />
         <Stack.Screen name="MesServicesSpecialises" component={MesServicesSpecialisesScreenWithSafeArea} />
         <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreenWithSafeArea} />
         <Stack.Screen name="PharmacieForm" component={PharmacieFormScreenWithSafeArea} />

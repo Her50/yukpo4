@@ -441,8 +441,17 @@ pub async fn link_bus_product_to_agency(
     }
 
     // Vérifier que le produit existe et appartient à l'utilisateur
+    // ✅ CORRIGÉ : products n'a pas user_id directement, il faut JOIN avec services
     let product_exists: Option<(String, i32)> = sqlx::query_as::<_, (String, i32)>(
-        "SELECT id::text, user_id FROM products WHERE id::text = $1 AND user_id = $2 AND type = 'ticket_voyage' AND is_active = TRUE"
+        r#"
+        SELECT p.id::text, s.user_id 
+        FROM products p
+        JOIN services s ON p.service_id = s.id
+        WHERE p.id::text = $1 
+          AND s.user_id = $2 
+          AND p.type = 'ticket_voyage'
+          AND s.is_active = TRUE
+        "#
     )
         .bind(&payload.product_id)
         .bind(user_id)
@@ -567,7 +576,14 @@ pub async fn create_reservations(
 
     // Vérifier que le produit existe
     let product_exists: Option<String> = sqlx::query_scalar(
-        "SELECT id::text FROM products WHERE id::text = $1 AND type = 'ticket_voyage' AND is_active = TRUE"
+        r#"
+        SELECT p.id::text 
+        FROM products p
+        JOIN services s ON p.service_id = s.id
+        WHERE p.id::text = $1 
+          AND p.type = 'ticket_voyage' 
+          AND s.is_active = TRUE
+        "#
     )
         .bind(&payload.product_id)
         .fetch_optional(&state.pg)

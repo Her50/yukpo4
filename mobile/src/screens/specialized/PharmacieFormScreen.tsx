@@ -292,23 +292,19 @@ const PharmacieFormScreen: React.FC = () => {
 
                     {/* ✅ Jours de garde avec sélecteur visuel amélioré */}
                     <View style={styles.inputGroup}>
-                        <View style={styles.sectionHeader}>
-                            <View>
-                                <Text style={styles.label}>Jours de garde</Text>
-                                <Text style={styles.hintText}>
-                                    Planifier les jours de garde sur les 12 prochains mois
-                                </Text>
-                            </View>
-                            <TouchableOpacity
-                                style={styles.planningButton}
-                                onPress={() => setShowGuardDaysModal(true)}
-                            >
-                                <SafeIcon name="calendar" size={16} color={modernColors.primary} />
-                                <Text style={styles.planningButtonText}>
-                                    {Object.keys(formData.jours_garde).length > 0 ? 'Modifier' : 'Planifier'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                        <Text style={styles.label}>Jours de garde</Text>
+                        <Text style={styles.hintText}>
+                            Planifier les jours de garde sur les 12 prochains mois
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.planningButton}
+                            onPress={() => setShowGuardDaysModal(true)}
+                        >
+                            <SafeIcon name="calendar" size={18} color="#fff" />
+                            <Text style={styles.planningButtonText}>
+                                {Object.keys(formData.jours_garde).length > 0 ? 'Modifier la planification' : 'Planifier les jours de garde'}
+                            </Text>
+                        </TouchableOpacity>
                         {Object.keys(formData.jours_garde).length > 0 && (
                             <View style={styles.guardDaysSummary}>
                                 <Text style={styles.guardDaysSummaryText}>
@@ -531,16 +527,18 @@ const styles = StyleSheet.create({
     planningButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: `${modernColors.primary}15`,
+        justifyContent: 'center',
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: modernColors.primary,
         borderRadius: 8,
+        marginTop: 8,
     },
     planningButtonText: {
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '600',
-        color: modernColors.primary,
+        color: '#fff',
     },
     scheduleSummary: {
         fontSize: 12,

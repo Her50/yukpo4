@@ -11,11 +11,11 @@ import {
 } from 'react-native';
 import BusModelForm, { BusModel } from '../../components/bus/BusModelForm';
 import CompanySelector, { Company } from '../../components/CompanySelector';
-import GuardDaysSelector from '../../components/GuardDaysSelector';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import WeekDaysSelector from '../../components/WeekDaysSelector';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 // ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,6 +24,16 @@ import { apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 // ✅ SUPPRIMÉ : ScheduleDay interface (planning hebdomadaire supprimé)
+
+const DAYS_OF_WEEK = [
+    { value: 1, label: 'Lundi', short: 'Lun' },
+    { value: 2, label: 'Mardi', short: 'Mar' },
+    { value: 3, label: 'Mercredi', short: 'Mer' },
+    { value: 4, label: 'Jeudi', short: 'Jeu' },
+    { value: 5, label: 'Vendredi', short: 'Ven' },
+    { value: 6, label: 'Samedi', short: 'Sam' },
+    { value: 7, label: 'Dimanche', short: 'Dim' },
+];
 
 const AgenceVoyageFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -44,7 +54,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
         destinations: [] as LocationObject[], // ✅ AMÉLIORÉ : Utiliser LocationObject[] pour utiliser quartier
         heures_ouverture: '08:00',
         heures_fermeture: '18:00',
-        jours_ouverture: {} as Record<string, number[]>, // ✅ AMÉLIORÉ : Format pour GuardDaysSelector
+        jours_ouverture: [] as number[], // ✅ SIMPLIFIÉ : Jours de la semaine uniquement [1,2,3,4,5]
         telephone: '',
         whatsapp: '',
         email: '',
@@ -59,7 +69,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const [selectedCompagnies, setSelectedCompagnies] = useState<Company[]>([]);
     const [selectedDestinations, setSelectedDestinations] = useState<LocationObject[]>([]);
     const [selectedAffiliees, setSelectedAffiliees] = useState<Company[]>([]);
-    const [showGuardDaysModal, setShowGuardDaysModal] = useState(false);
+    const [showWeekDaysModal, setShowWeekDaysModal] = useState(false);
 
     // Gestion des modèles de bus
     const [busModels, setBusModels] = useState<BusModel[]>([]);
@@ -132,16 +142,22 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             type: 'bus' as const
                         }));
 
-                        // Parser jours_ouverture si c'est une string JSON
-                        let joursOuverture: Record<string, number[]> = {};
+                        // Parser jours_ouverture (peut être string JSON ou array)
+                        let joursOuverture: number[] = [];
                         if (data.jours_ouverture) {
                             if (typeof data.jours_ouverture === 'string') {
                                 try {
-                                    joursOuverture = JSON.parse(data.jours_ouverture);
+                                    const parsed = JSON.parse(data.jours_ouverture);
+                                    // Si c'est un objet (ancien format), extraire tous les jours
+                                    if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+                                        joursOuverture = Array.from(new Set(Object.values(parsed).flat() as number[]));
+                                    } else if (Array.isArray(parsed)) {
+                                        joursOuverture = parsed;
+                                    }
                                 } catch {
-                                    joursOuverture = {};
+                                    joursOuverture = [];
                                 }
-                            } else {
+                            } else if (Array.isArray(data.jours_ouverture)) {
                                 joursOuverture = data.jours_ouverture;
                             }
                         }
@@ -249,9 +265,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
         setShowGPSModal(false);
     };
 
-    const handleGuardDaysSave = (days: Record<string, number[]>) => {
+    const handleWeekDaysSave = (days: number[]) => {
         setFormData({ ...formData, jours_ouverture: days });
-        setShowGuardDaysModal(false);
+        setShowWeekDaysModal(false);
     };
 
     const handleSubmit = async () => {
@@ -325,9 +341,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 destinations: destinationsNames.length > 0 ? destinationsNames : null,
                 heures_ouverture: formData.heures_ouverture || null,
                 heures_fermeture: formData.heures_fermeture || null,
-                jours_ouverture: Object.keys(formData.jours_ouverture).length > 0
-                    ? JSON.stringify(formData.jours_ouverture)
-                    : null, // ✅ Format JSON pour jours_ouverture
+                jours_ouverture: formData.jours_ouverture.length > 0
+                    ? formData.jours_ouverture
+                    : null, // ✅ Format array simple pour jours_ouverture
                 telephone: formData.telephone || null,
                 whatsapp: formData.whatsapp || null,
                 email: formData.email || null,
@@ -594,24 +610,31 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* ✅ AMÉLIORÉ : Jours d'ouverture avec sélecteur visuel (pas de saisie manuelle) */}
+                    {/* ✅ SIMPLIFIÉ : Jours d'ouverture (semaine uniquement) */}
                     <View style={styles.inputGroup}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.label}>Jours d'ouverture</Text>
-                            <TouchableOpacity
-                                style={styles.planningButton}
-                                onPress={() => setShowGuardDaysModal(true)}
-                            >
-                                <SafeIcon name="calendar" size={16} color={modernColors.primary} />
-                                <Text style={styles.planningButtonText}>
-                                    {Object.keys(formData.jours_ouverture).length > 0 ? 'Modifier' : 'Configurer'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                        {Object.keys(formData.jours_ouverture).length > 0 && (
-                            <Text style={styles.scheduleSummary}>
-                                {Object.values(formData.jours_ouverture).flat().length} jour(s) configuré(s)
+                        <Text style={styles.label}>Jours d'ouverture</Text>
+                        <TouchableOpacity
+                            style={styles.planningButton}
+                            onPress={() => setShowWeekDaysModal(true)}
+                        >
+                            <SafeIcon name="calendar" size={18} color="#fff" />
+                            <Text style={styles.planningButtonText}>
+                                {formData.jours_ouverture.length > 0
+                                    ? `${formData.jours_ouverture.length} jour(s) sélectionné(s)`
+                                    : 'Sélectionner les jours'}
                             </Text>
+                        </TouchableOpacity>
+                        {formData.jours_ouverture.length > 0 && (
+                            <View style={styles.selectedDaysContainer}>
+                                {formData.jours_ouverture.map(day => {
+                                    const dayLabel = DAYS_OF_WEEK.find(d => d.value === day)?.short || '';
+                                    return (
+                                        <View key={day} style={styles.selectedDayChip}>
+                                            <Text style={styles.selectedDayText}>{dayLabel}</Text>
+                                        </View>
+                                    );
+                                })}
+                            </View>
                         )}
                     </View>
 
@@ -810,13 +833,13 @@ const AgenceVoyageFormScreen: React.FC = () => {
 
             {/* ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé) */}
 
-            {/* ✅ NOUVEAU : GuardDaysSelector pour jours d'ouverture */}
-            <GuardDaysSelector
-                visible={showGuardDaysModal}
-                onClose={() => setShowGuardDaysModal(false)}
-                onSave={handleGuardDaysSave}
+            {/* ✅ SIMPLIFIÉ : WeekDaysSelector pour jours d'ouverture (semaine uniquement) */}
+            <WeekDaysSelector
+                visible={showWeekDaysModal}
+                onClose={() => setShowWeekDaysModal(false)}
+                onSave={handleWeekDaysSave}
                 initialDays={formData.jours_ouverture}
-                title="Planifier les jours d'ouverture"
+                title="Sélectionner les jours d'ouverture"
             />
         </>
     );
@@ -920,13 +943,34 @@ const styles = StyleSheet.create({
     planningButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        justifyContent: 'center',
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: modernColors.primary,
+        borderRadius: 8,
+        marginTop: 8,
+    },
+    planningButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#fff',
+    },
+    selectedDaysContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 12,
+    },
+    selectedDayChip: {
         paddingHorizontal: 12,
         paddingVertical: 6,
         backgroundColor: `${modernColors.primary}15`,
-        borderRadius: 8,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
     },
-    planningButtonText: {
+    selectedDayText: {
         fontSize: 12,
         fontWeight: '600',
         color: modernColors.primary,

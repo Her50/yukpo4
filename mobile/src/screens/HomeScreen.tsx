@@ -599,7 +599,7 @@ const HomeScreen: React.FC = () => {
                 {/* ✅ ENTÊTE FIXE - Reste visible au scroll */}
                 <View style={styles.fixedHeader}>
                     <View style={styles.headerRow}>
-                        {/* Colonne gauche: Avatar + Langue */}
+                        {/* Colonne gauche: Avatar + Langue + Services Spécialisés */}
                         <View style={styles.headerLeft}>
                             <View style={styles.avatarContainer}>
                                 <UserAvatarMenu
@@ -613,7 +613,10 @@ const HomeScreen: React.FC = () => {
                                 onLanguageChange={setLanguage}
                                 compact={true}
                             />
-                            <SpecializedServicesSelector compact={true} />
+                            {/* ✅ CORRIGÉ: Icône services spécialisés avec écart après le drapeau */}
+                            <View style={styles.specializedServicesContainer}>
+                                <SpecializedServicesSelector compact={true} />
+                            </View>
                         </View>
 
                         {/* Titre principal PARFAITEMENT centré */}
@@ -999,6 +1002,7 @@ const styles = StyleSheet.create({
         minWidth: 0,
         maxWidth: '35%', // ✅ Limite la largeur pour laisser de l'espace au centre
         flexShrink: 1, // ✅ Permet de rétrécir si nécessaire
+        gap: 6, // ✅ Espacement uniforme entre les éléments
     },
     // ✅ Titre centré entre le drapeau et l'icône voiture
     brandTitleContainer: {
@@ -1577,6 +1581,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    // ✅ Container pour l'icône services spécialisés (avec écart du texte Yukpo)
+    specializedServicesContainer: {
+        marginLeft: 4, // ✅ Écart supplémentaire après le drapeau
     },
 });
 

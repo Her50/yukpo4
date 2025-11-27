@@ -3,8 +3,9 @@
  * Permet de distinguer les bus des vols et d'ajouter autant de compagnies que nécessaire
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+    FlatList,
     Modal,
     StyleSheet,
     Text,
@@ -12,6 +13,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -42,6 +44,55 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
     const [companyName, setCompanyName] = useState('');
     const [companyType, setCompanyType] = useState<'bus' | 'flight'>('bus');
     const [searchQuery, setSearchQuery] = useState('');
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+    // ✅ NOUVEAU : Rechercher les compagnies existantes dans la base
+    useEffect(() => {
+        const searchExistingCompanies = async () => {
+            if (companyName.trim().length < 2) {
+                setSuggestions([]);
+                return;
+            }
+
+            try {
+                setLoadingSuggestions(true);
+                // Rechercher dans les agences de voyage existantes
+                const response = await apiGet('/api/agences-voyage');
+                if (response.success && Array.isArray(response.data)) {
+                    const allCompanies: string[] = [];
+                    response.data.forEach((agency: any) => {
+                        // Compagnies de bus
+                        if (Array.isArray(agency.compagnies_bus)) {
+                            allCompanies.push(...agency.compagnies_bus);
+                        }
+                        // Compagnies affiliées
+                        if (Array.isArray(agency.compagnies_affiliees)) {
+                            allCompanies.push(...agency.compagnies_affiliees);
+                        }
+                    });
+
+                    // Filtrer et dédupliquer
+                    const uniqueCompanies = Array.from(new Set(allCompanies))
+                        .filter(name =>
+                            name.toLowerCase().includes(companyName.toLowerCase()) &&
+                            !selected.some(c => c.name.toLowerCase() === name.toLowerCase())
+                        )
+                        .slice(0, 5); // Limiter à 5 suggestions
+
+                    setSuggestions(uniqueCompanies);
+                }
+            } catch (error) {
+                console.error('[CompanySelector] Erreur recherche compagnies:', error);
+                setSuggestions([]);
+            } finally {
+                setLoadingSuggestions(false);
+            }
+        };
+
+        const timeoutId = setTimeout(searchExistingCompanies, 300); // Debounce 300ms
+        return () => clearTimeout(timeoutId);
+    }, [companyName, selected]);
 
     const handleAddCompany = () => {
         if (companyName.trim() && !selected.some(c => c.name.toLowerCase() === companyName.trim().toLowerCase())) {
@@ -70,7 +121,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <View>
+                <View style={styles.labelContainer}>
                     <Text style={styles.label}>{label}</Text>
                     {hint && <Text style={styles.hint}>{hint}</Text>}
                 </View>
@@ -78,7 +129,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
                     style={styles.addButton}
                     onPress={() => setShowModal(true)}
                 >
-                    <SafeIcon name="plus" size={18} color={modernColors.primary} />
+                    <SafeIcon name="plus" size={18} color="#fff" />
                     <Text style={styles.addButtonText}>Ajouter</Text>
                 </TouchableOpacity>
             </View>
@@ -187,7 +238,31 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
                                 onChangeText={setCompanyName}
                                 placeholder={placeholder}
                                 placeholderTextColor="#9CA3AF"
+                                autoCapitalize="words"
                             />
+                            {/* ✅ NOUVEAU : Suggestions d'autocomplete */}
+                            {suggestions.length > 0 && (
+                                <View style={styles.suggestionsContainer}>
+                                    <Text style={styles.suggestionsLabel}>Suggestions :</Text>
+                                    <FlatList
+                                        data={suggestions}
+                                        keyExtractor={(item, index) => `${item}-${index}`}
+                                        renderItem={({ item }) => (
+                                            <TouchableOpacity
+                                                style={styles.suggestionItem}
+                                                onPress={() => {
+                                                    setCompanyName(item);
+                                                    setSuggestions([]);
+                                                }}
+                                            >
+                                                <SafeIcon name="check-circle" size={16} color={modernColors.primary} />
+                                                <Text style={styles.suggestionText}>{item}</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        scrollEnabled={false}
+                                    />
+                                </View>
+                            )}
                         </View>
 
                         <View style={styles.modalFooter}>
@@ -239,19 +314,25 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontStyle: 'italic',
     },
+    labelContainer: {
+        flex: 1,
+        marginRight: 12,
+    },
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        backgroundColor: `${modernColors.primary}15`,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        backgroundColor: modernColors.primary,
         borderRadius: 8,
+        minWidth: 100,
     },
     addButtonText: {
         fontSize: 14,
         fontWeight: '600',
-        color: modernColors.primary,
+        color: '#fff',
     },
     emptyState: {
         padding: 24,
@@ -373,6 +454,33 @@ const styles = StyleSheet.create({
         borderColor: '#E5E7EB',
         fontSize: 14,
         color: '#111827',
+    },
+    suggestionsContainer: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    suggestionsLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+        marginBottom: 8,
+    },
+    suggestionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+        borderRadius: 6,
+    },
+    suggestionText: {
+        fontSize: 14,
+        color: '#111827',
+        flex: 1,
     },
     modalFooter: {
         flexDirection: 'row',

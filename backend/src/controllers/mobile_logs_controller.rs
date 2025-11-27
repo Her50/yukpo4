@@ -20,9 +20,18 @@ pub struct MobileLogEntry {
 
 #[derive(Debug, Deserialize)]
 pub struct DeviceInfo {
-    pub platform: String,
+    pub platform: Option<String>,
     pub version: Option<String>,
     pub deviceId: Option<String>,
+    // ✅ Compatibilité avec expo-device
+    #[serde(rename = "osName")]
+    pub os_name: Option<String>,
+    #[serde(rename = "osVersion")]
+    pub os_version: Option<String>,
+    pub brand: Option<String>,
+    pub model: Option<String>,
+    #[serde(rename = "isDevice")]
+    pub is_device: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,29 +55,67 @@ pub async fn receive_mobile_logs(
     let batch_id = payload.batch_id.clone();
     let logs_count = payload.logs.len();
 
-    // Logger les erreurs critiques immédiatement
+    // ✅ AMÉLIORÉ : Logger tous les logs mobiles avec un format distinctif
     for log in &payload.logs {
-        if log.level == "error" {
-            log::error!(
-                "[MobileLog] [{}] {}: {}",
-                log.component.as_deref().unwrap_or("unknown"),
-                log.message,
-                log.data
-                    .as_ref()
-                    .map(|d| serde_json::to_string(d).unwrap_or_default())
-                    .unwrap_or_default()
-            );
+        let component = log.component.as_deref().unwrap_or("unknown");
+        let user_info = log.userId.as_ref().map(|u| format!("User:{}", u)).unwrap_or_default();
+        let device_info = log.deviceInfo.as_ref().map(|d| {
+            let platform = d.platform.as_deref()
+                .or_else(|| d.os_name.as_deref())
+                .unwrap_or("unknown");
+            let version = d.version.as_deref()
+                .or_else(|| d.os_version.as_deref())
+                .unwrap_or("unknown");
+            format!("Device:{}/{}", platform, version)
+        }).unwrap_or_default();
+        
+        let log_prefix = format!(
+            "📱[MOBILE] [{}] {}{}{}",
+            log.level.to_uppercase(),
+            component,
+            if !user_info.is_empty() { format!(" | {}", user_info) } else { String::new() },
+            if !device_info.is_empty() { format!(" | {}", device_info) } else { String::new() }
+        );
 
-            // Si stack trace disponible, la logger aussi
-            if let Some(stack) = &log.stack {
-                log::error!("[MobileLog] Stack trace: {}", stack);
+        match log.level.as_str() {
+            "error" => {
+                log::error!("{} {}", log_prefix, log.message);
+                if let Some(data) = &log.data {
+                    if let Ok(data_str) = serde_json::to_string(data) {
+                        log::error!("{} Data: {}", log_prefix, data_str);
+                    }
+                }
+                if let Some(stack) = &log.stack {
+                    log::error!("{} Stack: {}", log_prefix, stack);
+                }
             }
-        } else if log.level == "warn" {
-            log::warn!(
-                "[MobileLog] [{}] {}",
-                log.component.as_deref().unwrap_or("unknown"),
-                log.message
-            );
+            "warn" => {
+                log::warn!("{} {}", log_prefix, log.message);
+                if let Some(data) = &log.data {
+                    if let Ok(data_str) = serde_json::to_string(data) {
+                        log::warn!("{} Data: {}", log_prefix, data_str);
+                    }
+                }
+            }
+            "info" => {
+                log::info!("{} {}", log_prefix, log.message);
+                if let Some(data) = &log.data {
+                    if let Ok(data_str) = serde_json::to_string(data) {
+                        log::info!("{} Data: {}", log_prefix, data_str);
+                    }
+                }
+            }
+            "debug" => {
+                log::debug!("{} {}", log_prefix, log.message);
+                if let Some(data) = &log.data {
+                    if let Ok(data_str) = serde_json::to_string(data) {
+                        log::debug!("{} Data: {}", log_prefix, data_str);
+                    }
+                }
+            }
+            _ => {
+                log::info!("{} {}", log_prefix, log.message);
+            }
         }
     }
 
@@ -77,7 +124,7 @@ pub async fn receive_mobile_logs(
     // Vous pouvez ajouter une table mobile_logs si besoin d'historique
 
     log::info!(
-        "[MobileLogs] Reçu {} logs (batch: {})",
+        "📱[MOBILE-BATCH] Reçu {} logs mobile (batch: {})",
         logs_count,
         batch_id
     );
