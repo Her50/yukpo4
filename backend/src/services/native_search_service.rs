@@ -871,7 +871,6 @@ impl NativeSearchService {
             return Ok(results);
         }
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
-        let mut use_gps_fallback = false; // ✅ CORRIGÉ: Flag pour éviter récursion
         if let Some(gps_zone_val) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);
 
@@ -1048,23 +1047,19 @@ impl NativeSearchService {
                         "[NativeSearch] ⚠️ Erreur structure requête GPS - Fallback vers recherche sans GPS. Erreur: {}",
                         error_msg
                     );
-                    use_gps_fallback = true;
                 } else {
                     log_error(&format!(
                         "[NativeSearch] Échec recherche GPS après {} tentatives: {}",
                         max_retries,
                         error_msg
                     ));
-                    use_gps_fallback = true;
                 }
+                // ✅ CORRIGÉ: Le code continue naturellement avec la recherche sans GPS ci-dessous
             }
         }
         
-        // ✅ CORRIGÉ: Si fallback nécessaire ou pas de GPS, continuer avec recherche sans GPS
-        // (Le code continue naturellement ici si use_gps_fallback est true ou si gps_zone est None)
-        
         // ✅ NETTOYÉ 2025-11-27 : Recherche générale pure (sans fusion avec résultats spécialisés)
-        // Fallback vers l'ancienne méthode si pas de GPS
+        // Fallback vers l'ancienne méthode si pas de GPS ou si recherche GPS a échoué
         let partial_conditions = self.create_partial_match_conditions(query);
 
         let sql = format!(
@@ -1357,9 +1352,9 @@ SELECT DISTINCT
         
         let results = loop {
             match sqlx::query(&sql)
-                .bind(query.clone())
-                .bind(category_filter.clone())
-                .bind(location_filter.clone())
+                .bind(query)
+                .bind(category_filter)
+                .bind(location_filter)
                 .fetch_all(&self.pool)
                 .await
             {
