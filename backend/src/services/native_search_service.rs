@@ -353,7 +353,7 @@ impl NativeSearchService {
             };
             
             // ✅ RECHERCHE SPÉCIALISÉE avec planification et moment intégrés
-            let scheduling_service = SchedulingSearchService::new(self.pool.clone());
+            let _scheduling_service = SchedulingSearchService::new(self.pool.clone());
             let radius = search_radius_km.unwrap_or(50);
             let mut specialized_results: Vec<SearchResult> = Vec::new();
             

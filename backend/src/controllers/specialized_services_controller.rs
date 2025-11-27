@@ -131,11 +131,6 @@ pub async fn create_hospital(
         info!("[create_hospital] Hôpital existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
         // ✅ UPSERT : Mise à jour si existe
         let hospital_id = existing_hospital.unwrap();
-        
-        // Construire planning_prestations depuis payload
-        let planning_prestations_json = payload.planning_prestations.as_ref()
-            .map(|p| serde_json::to_value(p).ok())
-            .flatten();
 
         sqlx::query(
             r#"
@@ -147,7 +142,7 @@ pub async fn create_hospital(
                 ville = $7,
                 gps = $8,
                 prestations_medicales = $9,
-                planning_prestations = $10,
+                planning_hebdomadaire = $10,
                 urgences_disponible = $11,
                 rdv_en_ligne = $12,
                 telephone = $13,
@@ -168,7 +163,7 @@ pub async fn create_hospital(
         .bind(payload.ville.as_ref())
         .bind(payload.gps.as_ref())
         .bind(payload.prestations_medicales.as_ref().map(|s| s.as_slice()))
-        .bind(planning_prestations_json.as_ref())
+        .bind(payload.planning_hebdomadaire.as_ref())
         .bind(payload.urgences_disponible.unwrap_or(false))
         .bind(payload.rdv_en_ligne.unwrap_or(false))
         .bind(payload.telephone.as_ref())
@@ -280,6 +275,9 @@ pub struct CreateLaboratoryRequest {
     pub analyses_disponibles: Option<Vec<String>>,
     pub imagerie_disponible: Option<Vec<String>>,
     pub planning_hebdomadaire: Option<serde_json::Value>,
+    pub heures_ouverture: Option<String>,
+    pub heures_fermeture: Option<String>,
+    pub permanent_24h: Option<bool>,
     pub rdv_requis: Option<bool>,
     pub resultats_en_ligne: Option<bool>,
     pub telephone: Option<String>,
@@ -328,10 +326,10 @@ pub async fn create_laboratory(
         info!("[create_laboratory] Laboratoire existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
         let lab_id = existing_laboratory.unwrap();
         
-        let heures_ouverture = payload.heures_ouverture
-            .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
-        let heures_fermeture = payload.heures_fermeture
-            .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
+        let heures_ouverture = payload.heures_ouverture.as_ref()
+            .and_then(|h| chrono::NaiveTime::parse_from_str(h, "%H:%M").ok());
+        let heures_fermeture = payload.heures_fermeture.as_ref()
+            .and_then(|h| chrono::NaiveTime::parse_from_str(h, "%H:%M").ok());
 
         sqlx::query(
             r#"
@@ -508,10 +506,10 @@ pub async fn create_travel_agency(
         info!("[create_travel_agency] Agence existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
         let agency_id = existing_agency.unwrap();
         
-        let heures_ouverture = payload.heures_ouverture
-            .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
-        let heures_fermeture = payload.heures_fermeture
-            .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
+        let heures_ouverture = payload.heures_ouverture.as_ref()
+            .and_then(|h| chrono::NaiveTime::parse_from_str(h, "%H:%M").ok());
+        let heures_fermeture = payload.heures_fermeture.as_ref()
+            .and_then(|h| chrono::NaiveTime::parse_from_str(h, "%H:%M").ok());
 
         sqlx::query(
             r#"
@@ -570,10 +568,10 @@ pub async fn create_travel_agency(
         }))));
     }
 
-    let heures_ouverture = payload.heures_ouverture
-        .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
-    let heures_fermeture = payload.heures_fermeture
-        .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
+    let heures_ouverture = payload.heures_ouverture.as_ref()
+        .and_then(|h| chrono::NaiveTime::parse_from_str(h, "%H:%M").ok());
+    let heures_fermeture = payload.heures_fermeture.as_ref()
+        .and_then(|h| chrono::NaiveTime::parse_from_str(h, "%H:%M").ok());
 
     let agency_id: i32 = sqlx::query_scalar(
         r#"
