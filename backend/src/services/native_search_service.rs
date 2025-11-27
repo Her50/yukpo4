@@ -891,8 +891,8 @@ impl NativeSearchService {
             "#;
 
             // ✅ CORRECTION 2025-11-27 : Utiliser retry_query pour cohérence et meilleure gestion d'erreurs
-            let query_clone = query.clone();
-            let gps_zone_val_clone = gps_zone_val.clone();
+            let query_clone = query.to_string();
+            let gps_zone_val_clone = gps_zone_val.to_string();
             let pool_clone = self.pool.clone();
             let sql_static = sql.to_string();
             let radius_clone = radius;
@@ -1328,15 +1328,17 @@ SELECT DISTINCT
             &self.pool,
             move || {
                 let query = query_clone.clone();
-                let category_filter = category_filter_clone.as_ref().map(|s| s.as_str());
-                let location_filter = location_filter_clone.as_ref().map(|s| s.as_str());
+                let category_filter = category_filter_clone.clone();
+                let location_filter = location_filter_clone.clone();
                 let sql = sql_clone.clone();
                 let pool = pool_clone.clone();
                 Box::pin(async move {
+                    // ✅ CORRIGÉ: Utiliser les String directement pour éviter les problèmes de lifetime
+                    // sqlx accepte String et Option<String> pour .bind()
                     sqlx::query(sql.as_str())
-                        .bind(query.as_str())
-                        .bind(category_filter.map(|s| s.as_str()))
-                        .bind(location_filter.map(|s| s.as_str()))
+                        .bind(query)
+                        .bind(category_filter)
+                        .bind(location_filter)
                         .fetch_all(&pool)
                         .await
                 })
