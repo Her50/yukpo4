@@ -1,11 +1,10 @@
 // Contrôleur pour enrichissement géographique avec Google Places API + Base locale africaine
-use crate::core::types::AppError;
 use crate::services::african_locations_service::AfricanLocationsService;
 use crate::services::google_places_service::GooglePlacesService;
 use crate::state::AppState;
 use axum::{
     extract::{Query, State},
-    Json,
+    response::IntoResponse,
 };
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
@@ -262,7 +261,7 @@ pub async fn enrich_location(
                         population: local_data.population,
                         timezone: local_data.timezone,
                     },
-                }));
+                })).into_response();
             }
             
             // ✅ Fallback final : retourner données minimales

@@ -953,50 +953,19 @@ impl NativeSearchService {
             // ✅ CORRIGÉ: Si la recherche GPS échoue, fallback vers recherche sans GPS
             // L'erreur "structure of query does not match function result type" peut survenir
             // si la fonction SQL a été modifiée ou si la base de données n'est pas à jour
-            let results = match results {
-                Some(rows) => rows,
-                None => {
-                    let error_msg = last_error
-                        .as_ref()
-                        .map(|e| e.to_string())
-                        .unwrap_or_else(|| "Erreur inconnue".to_string());
-                    
-                    // ✅ CORRIGÉ: Vérifier si c'est une erreur de structure de requête
-                    if error_msg.contains("structure of query does not match function result type") {
-                        log::warn!(
-                            "[NativeSearch] ⚠️ Erreur structure requête GPS - Fallback vers recherche sans GPS. Erreur: {}",
-                            error_msg
-                        );
-                        // Fallback: continuer avec recherche sans GPS (sera géré plus bas)
-                        return self.fulltext_search_with_gps(
-                            query,
-                            category_filter,
-                            location_or_input_filter,
-                            None, // Pas de GPS pour le fallback
-                            search_radius_km,
-                            specialized_type,
-                        ).await;
+            if !use_gps_fallback {
+                let results = match results {
+                    Some(rows) => rows,
+                    None => {
+                        // Pas de résultats, continuer avec recherche sans GPS
+                        use_gps_fallback = true;
+                        vec![] // Placeholder, ne sera pas utilisé
                     }
-                    
-                    log_error(&format!(
-                        "[NativeSearch] Échec recherche GPS après {} tentatives: {}",
-                        max_retries,
-                        error_msg
-                    ));
-                    // Fallback: continuer avec recherche sans GPS
-                    return self.fulltext_search_with_gps(
-                        query,
-                        category_filter,
-                        location_or_input_filter,
-                        None, // Pas de GPS pour le fallback
-                        search_radius_km,
-                        specialized_type,
-                    ).await;
-                }
-            };
+                };
 
-            let mut search_results = Vec::new();
-            for row in results {
+                if !use_gps_fallback {
+                    let mut search_results = Vec::new();
+                    for row in results {
                 let service_id: i32 = row.get("service_id");
                 let _titre_service: String = row.get("titre_service");
                 let _category: Option<String> = row.get("category");
@@ -1062,18 +1031,20 @@ impl NativeSearchService {
                 search_results.len()
             ));
             
-            // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
-            if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
-                if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                    SearchResult::enrich_with_google_maps(
-                        &mut search_results,
-                        Some((user_lat, user_lng)),
-                        self.geographic_matching.as_ref(),
-                    ).await;
+                    // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
+                    if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+                        if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                            SearchResult::enrich_with_google_maps(
+                                &mut search_results,
+                                Some((user_lat, user_lng)),
+                                self.geographic_matching.as_ref(),
+                            ).await;
+                        }
+                    }
+                    
+                    return Ok(search_results);
                 }
             }
-            
-            return Ok(search_results);
         }
 
         // ✅ NETTOYÉ 2025-11-27 : Recherche générale pure (sans fusion avec résultats spécialisés)
@@ -1366,7 +1337,6 @@ SELECT DISTINCT
         );
 
         // ✅ CORRIGÉ: Retry automatique pour les erreurs de connexion PostgreSQL
-        let max_retries = 3;
         let mut last_error = None;
         
         let results = loop {
@@ -1387,7 +1357,7 @@ SELECT DISTINCT
                         || error_str.contains("error communicating with database");
                     
                     if is_connection_error && last_error.is_none() {
-                        // Premier essai, on retry
+                        // Premier essai, on retry une seule fois
                         last_error = Some(e);
                         log::warn!(
                             "[NativeSearch] ⚠️ Erreur connexion PostgreSQL détectée, retry dans 500ms..."

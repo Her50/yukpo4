@@ -38,7 +38,6 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.yukpomnang.mobile",
-      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
