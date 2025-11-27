@@ -1165,13 +1165,14 @@ pub async fn get_services_for_prestataire(
                 LIMIT 10
             ) as produits_light,
             -- Compter les produits (réutilise le parsing ci-dessus via jsonb_array_length qui est très rapide)
+            -- ✅ CORRECTION: Caster explicitement en BIGINT pour correspondre au type Rust Option<i64>
             jsonb_array_length(
                 CASE 
                     WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
                     WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
                     ELSE '[]'::jsonb
                 END
-            ) as produits_count,
+            )::BIGINT as produits_count,
             -- Garder seulement le place_id de Google Places
             s.data->'google_place'->>'place_id' as google_place_id
         FROM services s

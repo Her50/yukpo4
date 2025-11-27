@@ -58,6 +58,7 @@ use crate::routes::{
     media_routes::media_routes,
     metrics_routes::metrics_routes,
     metrics_tracking_routes::metrics_tracking_routes,
+    mobile_logs_routes::mobile_logs_routes, // ✅ NOUVEAU : Routes pour logs mobile
     notification_routes::notification_routes, // ✅ NOUVEAU : Routes de notifications
     order_routes::order_routes, // ✅ NOUVEAU : Routes pour commandes produits
     payment_routes::payment_routes,
@@ -233,6 +234,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let metrics = metrics_routes(state.clone());
     let metrics_tracking = metrics_tracking_routes(state.clone());
     
+    // ✅ NOUVEAU : Routes pour logs mobile (logging distant)
+    let mobile_logs = mobile_logs_routes(state.clone());
+    
     // ✅ Phase 10 - Routes d'analytics pour prestataires
     let analytics = analytics_routes(state.clone());
     
@@ -300,6 +304,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(live_ai)
         .merge(system_health)
         .merge(health) // ✅ Phase 10 - Routes de santé et vérification services
+        .merge(mobile_logs) // ✅ NOUVEAU : Routes pour logs mobile (logging distant)
         .merge(metrics)
         .merge(analytics) // ✅ Phase 10 - Routes d'analytics pour prestataires
         .merge(orders) // ✅ NOUVEAU : Routes pour commandes produits

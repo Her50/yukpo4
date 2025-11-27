@@ -1732,6 +1732,23 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         ? bestSuggestionCandidate
         : (preferredDraftCandidate || bestSuggestionCandidate);
 
+    // ✅ LOG: Candidat sélectionné pour affichage
+    useEffect(() => {
+        if (displayCandidate) {
+            console.log('[LinearAutocompleteEditor] ✅ [CANDIDAT_SELECTIONNE] Candidat sélectionné pour affichage tableau:', {
+                key: displayCandidate.key,
+                source: displayCandidate.source,
+                rowsCount: displayCandidate.rows.length,
+                isPreferred: displayCandidate.isPreferred,
+                title: displayCandidate.title,
+                rows: displayCandidate.rows.map(r => `${r.label}: ${r.value}`),
+                timestamp: new Date().toISOString()
+            });
+        } else {
+            console.log('[LinearAutocompleteEditor] ⚠️ [CANDIDAT_SELECTIONNE] Aucun candidat disponible pour affichage');
+        }
+    }, [displayCandidate?.key, displayCandidate?.rows.length]);
+
     const handleApplySuggestion = useCallback(
         (candidate: SuggestionCandidate | null) => {
             if (!candidate) {
@@ -2331,6 +2348,18 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             </View>
 
                             <View style={styles.suggestionTable}>
+                                {(() => {
+                                    // ✅ LOG: Affichage du tableau des caractéristiques
+                                    console.log('[LinearAutocompleteEditor] 📊 [AFFICHAGE_TABLEAU] Affichage tableau caractéristiques:', {
+                                        candidateKey: displayCandidate.key,
+                                        rowsCount: displayCandidate.rows.length,
+                                        rows: displayCandidate.rows.map(r => ({ label: r.label, value: r.value })),
+                                        source: displayCandidate.source,
+                                        isPreferred: displayCandidate.isPreferred,
+                                        timestamp: new Date().toISOString()
+                                    });
+                                    return null;
+                                })()}
                                 {displayCandidate.rows.length === 0 ? (
                                     <Text style={styles.suggestionEmptyRow}>
                                         Aucune modalité. Ajoutez-en pour personnaliser.

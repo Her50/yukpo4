@@ -5,8 +5,13 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { initObservability } from './src/observability';
+import { remoteLoggingService } from './src/services/remoteLoggingService';
 
 initObservability();
+
+// ✅ NOUVEAU : Initialiser le logging distant pour Expo.dev cloud
+// Le service intercepte automatiquement tous les console.log/error/warn
+console.log('[App] ✅ Service de logging distant initialisé');
 
 // ✅ Import dynamique pour éviter les erreurs TypeScript
 const { NavigationContainer } = require('@react-navigation/native');
@@ -14,6 +19,7 @@ const { NavigationContainer } = require('@react-navigation/native');
 // ✅ Composants essentiels
 import ErrorBoundary from './src/components/ErrorBoundary';
 import GPSTrackingManager from './src/components/GPSTrackingManager';
+import RemoteLoggingInitializer from './src/components/RemoteLoggingInitializer';
 import { linking } from './src/config/linking';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { DeliveryProvider } from './src/contexts/DeliveryContext';
@@ -74,6 +80,7 @@ export default function App() {
         <SafeAreaProvider>
           <PaperProvider theme={theme}>
             <AuthProvider>
+              <RemoteLoggingInitializer />
               <WebSocketProvider>
                 <FeatureFlagProvider>
                   <DeliveryProvider>

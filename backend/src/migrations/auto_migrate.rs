@@ -3066,29 +3066,31 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
         .await?;
     }
 
+    // ✅ CORRIGÉ 2025-11-27 : Version corrigée avec TEXT et plpgsql (alignée avec migration SQLx)
     sqlx::query(r#"
         CREATE OR REPLACE FUNCTION get_product_reactions_count(
             p_service_id INTEGER,
             p_product_id TEXT
         )
         RETURNS TABLE (
-            reaction_type VARCHAR(20),
+            reaction_type TEXT,
             count BIGINT,
             users_sample TEXT[]
-        )
-        LANGUAGE SQL
-        AS $$
-            SELECT
-                pr.reaction_type,
+        ) AS $$
+        BEGIN
+            RETURN QUERY
+            SELECT 
+                pr.reaction_type::TEXT,
                 COUNT(*)::BIGINT as count,
-                array_agg(COALESCE(u.nom_complet, u.email) ORDER BY pr.created_at DESC)::TEXT[] as users_sample
+                ARRAY_AGG(DISTINCT u.email::TEXT) FILTER (WHERE u.email IS NOT NULL) as users_sample
             FROM product_reactions pr
             LEFT JOIN users u ON pr.user_id = u.id
             WHERE pr.service_id = p_service_id
               AND pr.product_id = p_product_id
             GROUP BY pr.reaction_type
-            ORDER BY count DESC;
-        $$;
+            ORDER BY count DESC, pr.reaction_type;
+        END;
+        $$ LANGUAGE plpgsql STABLE;
     "#)
     .execute(pool)
     .await?;

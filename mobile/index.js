@@ -54,6 +54,17 @@ if (typeof global.Promise !== 'undefined') {
     };
 }
 
+// ✅ CRITIQUE : Importer le service de logging AVANT tout autre code
+// Cela garantit que TOUS les logs sont interceptés dès le début
+let remoteLoggingService;
+try {
+    const loggingModule = require('./src/services/remoteLoggingService');
+    remoteLoggingService = loggingModule.remoteLoggingService || loggingModule.default;
+    console.log('[INDEX.JS] ✅ Service de logging distant chargé');
+} catch (error) {
+    console.error('[INDEX.JS] ⚠️ Impossible de charger le service de logging distant:', error);
+}
+
 // Logs de démarrage
 console.log('='.repeat(50));
 console.log('🚀 [INDEX.JS] Yukpomnang Mobile - Démarrage');

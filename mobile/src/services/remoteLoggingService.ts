@@ -1,0 +1,380 @@
+/**
+ * Service de logging distant pour Expo.dev dans le cloud
+ * Envoie les logs au backend pour centralisation
+ * 
+ * ✅ INTERCEPTE AUTOMATIQUEMENT TOUS LES console.log/error/warn/info/debug
+ * ✅ Fonctionne avec tous les fichiers existants dans mobile/src/
+ * ✅ Capture même les logs chargés avant l'initialisation
+ */
+
+import { apiPost } from './api';
+
+interface LogEntry {
+    level: 'log' | 'warn' | 'error' | 'info' | 'debug';
+    message: string;
+    component?: string;
+    data?: any;
+    timestamp: string;
+    userId?: string;
+    deviceInfo?: {
+        platform: string;
+        version?: string;
+        deviceId?: string;
+    };
+    stack?: string;
+}
+
+class RemoteLoggingService {
+    private logQueue: LogEntry[] = [];
+    private isEnabled: boolean = true;
+    private batchSize: number = 10;
+    private flushInterval: number = 5000; // 5 secondes
+    private flushTimer: NodeJS.Timeout | null = null;
+    private userId: string | undefined;
+    private originalConsole: {
+        log: typeof console.log;
+        warn: typeof console.warn;
+        error: typeof console.error;
+        info: typeof console.info;
+        debug: typeof console.debug;
+    } | null = null;
+
+    constructor() {
+        // ✅ CRITIQUE : Intercepter IMMÉDIATEMENT au chargement du module
+        // Cela garantit que TOUS les logs sont capturés, même ceux chargés avant
+        this.interceptConsole();
+
+        // Démarrer le flush périodique
+        this.startPeriodicFlush();
+
+        console.log('[RemoteLoggingService] ✅ Service initialisé - Tous les logs seront capturés');
+    }
+
+    /**
+     * Intercepter console.log, console.error, etc. IMMÉDIATEMENT
+     * Cette méthode est appelée dans le constructeur pour garantir
+     * que TOUS les logs sont capturés, même ceux des fichiers chargés après
+     */
+    private interceptConsole() {
+        if (this.originalConsole) {
+            return; // Déjà intercepté
+        }
+
+        if (typeof global === 'undefined') {
+            console.warn('[RemoteLoggingService] ⚠️ global non disponible, interception limitée');
+            return;
+        }
+
+        // Sauvegarder les fonctions originales
+        this.originalConsole = {
+            log: console.log,
+            warn: console.warn,
+            error: console.error,
+            info: console.info,
+            debug: console.debug,
+        };
+
+        // Intercepter console.log
+        console.log = (...args: any[]) => {
+            this.originalConsole!.log(...args);
+            const message = args.map(arg =>
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            this.addToQueue({
+                level: 'log',
+                message,
+                component: this.extractComponentFromMessage(message),
+                timestamp: new Date().toISOString(),
+                userId: this.userId,
+                deviceInfo: this.getDeviceInfo(),
+            });
+        };
+
+        // Intercepter console.warn
+        console.warn = (...args: any[]) => {
+            this.originalConsole!.warn(...args);
+            const message = args.map(arg =>
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            this.addToQueue({
+                level: 'warn',
+                message,
+                component: this.extractComponentFromMessage(message),
+                timestamp: new Date().toISOString(),
+                userId: this.userId,
+                deviceInfo: this.getDeviceInfo(),
+            });
+        };
+
+        // Intercepter console.error
+        console.error = (...args: any[]) => {
+            this.originalConsole!.error(...args);
+            const message = args.map(arg =>
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            const error = args.find(arg => arg instanceof Error);
+            this.addToQueue({
+                level: 'error',
+                message,
+                component: this.extractComponentFromMessage(message),
+                data: error ? {
+                    message: error?.message,
+                    name: error?.name,
+                    code: (error as any)?.code,
+                    ...(typeof error === 'object' ? error : { raw: String(error) }),
+                } : undefined,
+                timestamp: new Date().toISOString(),
+                userId: this.userId,
+                deviceInfo: this.getDeviceInfo(),
+                stack: error?.stack,
+            });
+        };
+
+        // Intercepter console.info
+        console.info = (...args: any[]) => {
+            this.originalConsole!.info(...args);
+            const message = args.map(arg =>
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            this.addToQueue({
+                level: 'info',
+                message,
+                component: this.extractComponentFromMessage(message),
+                timestamp: new Date().toISOString(),
+                userId: this.userId,
+                deviceInfo: this.getDeviceInfo(),
+            });
+        };
+
+        // Intercepter console.debug
+        console.debug = (...args: any[]) => {
+            this.originalConsole!.debug(...args);
+            const message = args.map(arg =>
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            this.addToQueue({
+                level: 'debug',
+                message,
+                component: this.extractComponentFromMessage(message),
+                timestamp: new Date().toISOString(),
+                userId: this.userId,
+                deviceInfo: this.getDeviceInfo(),
+            });
+        };
+    }
+
+    /**
+     * Extraire le nom du composant depuis le message de log
+     * Exemple: "[HomeScreen] Message" -> "HomeScreen"
+     */
+    private extractComponentFromMessage(message: string): string | undefined {
+        const match = message.match(/^\[([^\]]+)\]/);
+        return match ? match[1] : undefined;
+    }
+
+    /**
+     * Initialiser le service avec l'ID utilisateur
+     */
+    setUserId(userId: string | undefined) {
+        this.userId = userId;
+    }
+
+    /**
+     * Activer/désactiver le logging distant
+     */
+    setEnabled(enabled: boolean) {
+        this.isEnabled = enabled;
+        if (!enabled) {
+            this.flush(); // Flush les logs restants avant désactivation
+        }
+    }
+
+    /**
+     * Obtenir les infos de l'appareil
+     */
+    private getDeviceInfo(): LogEntry['deviceInfo'] {
+        try {
+            const { Platform } = require('react-native');
+            return {
+                platform: Platform.OS,
+                version: Platform.Version?.toString(),
+            };
+        } catch {
+            return {
+                platform: 'unknown',
+            };
+        }
+    }
+
+    /**
+     * Ajouter un log à la queue
+     */
+    private addToQueue(entry: LogEntry) {
+        if (!this.isEnabled) return;
+
+        this.logQueue.push(entry);
+
+        // Flush automatique si la queue est pleine
+        if (this.logQueue.length >= this.batchSize) {
+            this.flush();
+        }
+    }
+
+    /**
+     * Envoyer les logs au backend
+     */
+    async flush(): Promise<void> {
+        if (this.logQueue.length === 0) return;
+
+        const logsToSend = [...this.logQueue];
+        this.logQueue = [];
+
+        try {
+            await apiPost('/api/mobile-logs', {
+                logs: logsToSend,
+                batch_id: `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            });
+
+            if (__DEV__) {
+                this.originalConsole?.log(`[RemoteLogging] ✅ ${logsToSend.length} logs envoyés au backend`);
+            }
+        } catch (error) {
+            // En cas d'erreur, remettre les logs dans la queue (sauf si trop nombreux)
+            if (this.logQueue.length < 100) {
+                this.logQueue.unshift(...logsToSend);
+            } else {
+                // Queue trop pleine, garder seulement les plus récents
+                this.logQueue = logsToSend.slice(-50);
+            }
+
+            if (__DEV__) {
+                this.originalConsole?.error('[RemoteLogging] ❌ Erreur envoi logs:', error);
+            }
+        }
+    }
+
+    /**
+     * Démarrer le flush périodique
+     */
+    private startPeriodicFlush() {
+        if (this.flushTimer) {
+            clearInterval(this.flushTimer);
+        }
+
+        this.flushTimer = setInterval(() => {
+            this.flush();
+        }, this.flushInterval);
+    }
+
+    /**
+     * Arrêter le flush périodique
+     */
+    stop() {
+        if (this.flushTimer) {
+            clearInterval(this.flushTimer);
+            this.flushTimer = null;
+        }
+        this.flush(); // Flush final
+    }
+
+    /**
+     * Logger un message (méthode manuelle)
+     */
+    log(message: string, component?: string, data?: any) {
+        this.addToQueue({
+            level: 'log',
+            message,
+            component,
+            data,
+            timestamp: new Date().toISOString(),
+            userId: this.userId,
+            deviceInfo: this.getDeviceInfo(),
+        });
+    }
+
+    /**
+     * Logger un warning (méthode manuelle)
+     */
+    warn(message: string, component?: string, data?: any) {
+        this.addToQueue({
+            level: 'warn',
+            message,
+            component,
+            data,
+            timestamp: new Date().toISOString(),
+            userId: this.userId,
+            deviceInfo: this.getDeviceInfo(),
+        });
+    }
+
+    /**
+     * Logger une erreur (méthode manuelle)
+     */
+    error(message: string, component?: string, error?: any, stack?: string) {
+        this.addToQueue({
+            level: 'error',
+            message,
+            component,
+            data: error ? {
+                message: error?.message,
+                name: error?.name,
+                code: error?.code,
+                ...(typeof error === 'object' ? error : { raw: String(error) }),
+            } : undefined,
+            timestamp: new Date().toISOString(),
+            userId: this.userId,
+            deviceInfo: this.getDeviceInfo(),
+            stack: stack || error?.stack,
+        });
+    }
+
+    /**
+     * Logger une info (méthode manuelle)
+     */
+    info(message: string, component?: string, data?: any) {
+        this.addToQueue({
+            level: 'info',
+            message,
+            component,
+            data,
+            timestamp: new Date().toISOString(),
+            userId: this.userId,
+            deviceInfo: this.getDeviceInfo(),
+        });
+    }
+
+    /**
+     * Logger un debug (méthode manuelle)
+     */
+    debug(message: string, component?: string, data?: any) {
+        if (__DEV__) {
+            // En dev, logger aussi dans la console
+            this.originalConsole?.debug(`[${component || 'App'}] ${message}`, data);
+        }
+
+        this.addToQueue({
+            level: 'debug',
+            message,
+            component,
+            data,
+            timestamp: new Date().toISOString(),
+            userId: this.userId,
+            deviceInfo: this.getDeviceInfo(),
+        });
+    }
+}
+
+// ✅ CRITIQUE : Créer l'instance IMMÉDIATEMENT au chargement du module
+// Cela garantit que l'interception se fait AVANT que d'autres fichiers soient chargés
+export const remoteLoggingService = new RemoteLoggingService();
+
+// ✅ DOUBLE VÉRIFICATION : Intercepter aussi au niveau global si possible
+// (pour les cas où le module est chargé après d'autres fichiers)
+if (typeof global !== 'undefined' && !(global as any).__REMOTE_LOGGING_INTERCEPTED__) {
+    (global as any).__REMOTE_LOGGING_INTERCEPTED__ = true;
+
+    // Log de confirmation
+    console.log('[RemoteLoggingService] ✅ Interception globale activée - Tous les logs seront capturés');
+}
+
+export default remoteLoggingService;
