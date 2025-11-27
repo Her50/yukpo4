@@ -27,6 +27,7 @@ pub mod inventory_controller;
 pub mod live_ai_controller;
 pub mod live_controller;
 pub mod media_analytics_controller;
+pub mod mobile_logs_controller; // ✅ NOUVEAU : Contrôleur pour logs mobile
 pub mod media_product_controller; // ✅ NOUVEAU: Contrôleur pour médias par produit spécifique
 pub mod metrics_controller;
 pub mod mixed_content_controller; // ✅ NOUVEAU: Contrôleur pour contenu mixte (publicités + organiques)

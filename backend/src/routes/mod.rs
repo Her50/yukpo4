@@ -28,6 +28,7 @@ pub mod live_routes;
 pub mod media_routes;
 pub mod metrics_routes;
 pub mod metrics_tracking_routes;
+pub mod mobile_logs_routes; // ✅ NOUVEAU : Routes pour logs mobile
 pub mod nearby_services_routes;
 pub mod notification_routes; // ✅ Routes de notifications
 pub mod order_routes; // ✅ NOUVEAU : Routes pour commandes produits
