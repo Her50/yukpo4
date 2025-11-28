@@ -15,7 +15,6 @@ import GlobalPromoHighlights from '../components/promotions/GlobalPromoHighlight
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import ServiceProductSelector from '../components/ServiceProductSelector';
-import SpecializedServicesSelector from '../components/SpecializedServicesSelector';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
 import { useAuth } from '../contexts/AuthContext';
@@ -622,10 +621,6 @@ const HomeScreen: React.FC = () => {
                                 onLanguageChange={setLanguage}
                                 compact={true}
                             />
-                            {/* ✅ CORRIGÉ: Icône services spécialisés avec écart après le drapeau */}
-                            <View style={styles.specializedServicesContainer}>
-                                <SpecializedServicesSelector compact={true} />
-                            </View>
                         </View>
 
                         {/* Titre principal PARFAITEMENT centré */}
@@ -1194,7 +1189,7 @@ const styles = StyleSheet.create({
     },
     brandTitleCompact: {
         width: '100%', // ✅ Prend toute la largeur disponible
-        fontSize: 19, // ✅ Taille optimale pour afficher "Yukpo" complet
+        fontSize: 20, // ✅ Harmonisé à 20px pour s'aligner avec les icônes de 18px (ratio 1.1:1)
         fontWeight: '900',
         textAlign: 'center', // ✅ Centrer le texte à l'intérieur
         letterSpacing: -0.2, // ✅ Espacement ajusté pour "Yukpo"
@@ -1601,10 +1596,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#FFFFFF',
-    },
-    // ✅ Container pour l'icône services spécialisés (avec écart du texte Yukpo)
-    specializedServicesContainer: {
-        marginLeft: 2, // ✅ CORRIGÉ: Réduit pour décaler l'icône plus vers la gauche, exploitant l'espace entre drapeau et Yukpo
     },
 });
 

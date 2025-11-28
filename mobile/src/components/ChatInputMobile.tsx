@@ -22,6 +22,7 @@ import { uploadMultipleToCloud } from '../services/cloudUpload';
 import { modernColors } from '../theme/modernTheme';
 import ModernGPSModal from './ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
 import SafeIcon from './SafeIcon';
+import SpecializedServicesSelector from './SpecializedServicesSelector';
 
 const primaryColor = modernColors?.primary ?? '#6366F1';
 const accentColor = modernColors?.accent ?? '#F97316';
@@ -293,15 +294,9 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         }
 
         try {
-            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
-            if (!ImagePicker || !ImagePicker.MediaType) {
-                console.error('[ChatInputMobile] ImagePicker ou MediaType est undefined');
-                Alert.alert('Erreur', 'Impossible d\'accéder à la caméra. Veuillez réessayer.');
-                return;
-            }
-
+            // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
             const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaType.Images,
+                mediaTypes: 'images' as any,
                 allowsEditing: true,
                 quality: 0.8,
                 base64: true,
@@ -341,15 +336,9 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         const hasPermission = await requestPermissions();
         if (!hasPermission) return;
 
-        // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
-        if (!ImagePicker || !ImagePicker.MediaType) {
-            console.error('[ChatInputMobile] ImagePicker ou MediaType est undefined');
-            Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
-            return;
-        }
-
+        // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaType.Images,
+            mediaTypes: 'images' as any,
             allowsMultipleSelection: true,
             quality: 0.8,
             base64: true,
@@ -1151,16 +1140,23 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             {/* Bouton d'envoi - HORS DE LA ZONE DE SAISIE */}
             {showSendButton && (
                 <View style={styles.sendButtonContainerExternal}>
-                    <TouchableOpacity
-                        style={[styles.submitButtonBottom, loading && styles.sendButtonDisabled]}
-                        onPress={() => handleSubmit()}
-                        disabled={loading || (!text.trim() && images.length === 0 && videos.length === 0 && audioUri === null && documents.length === 0 && excelFiles.length === 0)}
-                    >
-                        <Text style={styles.sendIcon}>🚀</Text>
-                        <Text style={styles.submitButtonText}>
-                            {loading ? 'Envoi...' : 'Envoyer'}
-                        </Text>
-                    </TouchableOpacity>
+                    <View style={styles.sendButtonRow}>
+                        {/* Icône de recherches spécialisées */}
+                        <View style={styles.specializedServicesWrapper}>
+                            <SpecializedServicesSelector compact={true} />
+                        </View>
+                        {/* Bouton Envoyer */}
+                        <TouchableOpacity
+                            style={[styles.submitButtonBottom, loading && styles.sendButtonDisabled]}
+                            onPress={() => handleSubmit()}
+                            disabled={loading || (!text.trim() && images.length === 0 && videos.length === 0 && audioUri === null && documents.length === 0 && excelFiles.length === 0)}
+                        >
+                            <Text style={styles.sendIcon}>🚀</Text>
+                            <Text style={styles.submitButtonText}>
+                                {loading ? 'Envoi...' : 'Envoyer'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             )}
 
@@ -1246,6 +1242,20 @@ const styles = StyleSheet.create({
         paddingBottom: 2,
         alignItems: 'center',
         marginTop: 0, // ✅ Supprimé l'espace
+    },
+    sendButtonRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12, // ✅ Espacement équilibré entre les deux boutons
+        width: '100%',
+        paddingHorizontal: 4,
+    },
+    specializedServicesWrapper: {
+        marginRight: 0,
+        flexShrink: 0, // ✅ Empêche la réduction de taille
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     actionButton: {
         flexDirection: 'column',
@@ -1539,18 +1549,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#10B981',
-        paddingVertical: 10, // ✅ Réduit de 12 à 10
-        paddingHorizontal: 28, // ✅ Réduit de 32 à 28
-        borderRadius: 10, // ✅ Réduit de 12 à 10
-        gap: 5, // ✅ Réduit de 6 à 5
+        paddingVertical: 10,
+        paddingHorizontal: 24, // ✅ Ajusté pour équilibrer avec l'icône
+        borderRadius: 10,
+        gap: 5,
         borderWidth: 1,
         borderColor: '#10B981',
         shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 2 }, // ✅ Réduit shadow
-        shadowOpacity: 0.3, // ✅ Réduit opacité
-        shadowRadius: 4, // ✅ Réduit radius
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
         elevation: 4,
-        marginTop: 6, // ✅ Réduit de 16 à 6 pour optimiser l'espace
+        marginTop: 0, // ✅ Supprimé pour aligner avec l'icône
+        flex: 1, // ✅ Prend l'espace disponible
+        minWidth: 120, // ✅ Largeur minimale pour le texte "Envoyer"
     },
     submitButtonDisabled: {
         backgroundColor: '#9CA3AF',

@@ -1,6 +1,6 @@
 use crate::core::types::{AppError, AppResult};
 use chrono::Datelike;
-use log::{info, warn};
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -125,8 +125,9 @@ impl SimilarProductsService {
         let original = match original_characteristics {
             Some(c) => c,
             None => {
-                warn!(
-                    "[SimilarProducts] Caractéristiques non trouvées pour service_id={}, product_index={}",
+                // ✅ CORRECTION : Changer de WARN à DEBUG car c'est un cas normal (produit pas encore traité)
+                debug!(
+                    "[SimilarProducts] Caractéristiques non trouvées pour service_id={}, product_index={} - Utilisation du fallback",
                     service_id, product_index
                 );
                 // Fallback : récupérer depuis services directement
@@ -754,7 +755,8 @@ impl SimilarProductsService {
         product_index: i32,
         limit: i32,
     ) -> AppResult<Vec<SimilarProduct>> {
-        warn!(
+        // ✅ CORRECTION : Changer de WARN à DEBUG car c'est un cas normal (produit pas encore traité)
+        debug!(
             "[SimilarProducts] Utilisation du fallback pour service_id={}, product_index={}",
             service_id, product_index
         );

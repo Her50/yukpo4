@@ -996,6 +996,31 @@ export const mediaApi = {
   getVideoJobStatus: async (jobId: string) => {
     return apiCall<VideoJobStatus>(`/api/media/jobs/${jobId}`);
   },
+  // ✅ NOUVEAU: Méthodes pour la génération de vidéos IA
+  generateVideoBrief: async (payload: any) => {
+    return apiCall('/api/media/generate-video-brief', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  generateVideoStyle: async (payload: any) => {
+    return apiCall('/api/media/generate-video-style', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  generateDistributionPlan: async (payload: any) => {
+    return apiCall('/api/media/generate-distribution-plan', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  analyzeMedia: async (payload: any) => {
+    return apiCall('/api/media/analyze', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 // ===== IA =====

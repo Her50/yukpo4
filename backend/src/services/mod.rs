@@ -99,6 +99,7 @@ pub mod programme_service;
 pub mod prompt_optimizer_pro;
 pub mod publicite_search_service;
 pub mod push_notification_service; // ✅ Service de push notifications Expo
+pub mod query_monitor; // ✅ NOUVEAU 2025-11-28: Monitoring avancé des requêtes SQL
 pub mod rechercher_besoin;
 pub mod remotion_renderer_service;
 pub mod scheduling_search_service;

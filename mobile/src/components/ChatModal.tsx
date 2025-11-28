@@ -225,15 +225,9 @@ const ChatModal: React.FC<ChatModalProps> = ({
                 return;
             }
 
-            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
-            if (!ImagePicker || !ImagePicker.MediaType) {
-                console.error('[ChatModal] ImagePicker ou MediaType est undefined');
-                Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
-                return;
-            }
-
+            // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaType.Images,
+                mediaTypes: 'images' as any,
                 allowsEditing: true,
                 quality: 0.7,
                 base64: true

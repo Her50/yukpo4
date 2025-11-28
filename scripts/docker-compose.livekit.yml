@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  livekit-server:
+    image: livekit/livekit-server:latest
+    container_name: livekit-server
+    restart: unless-stopped
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-60000:50000-60000/udp"
+    volumes:
+      - ./config/livekit.yaml:/etc/livekit.yaml:ro
+    command: --config /etc/livekit.yaml --dev
+    environment:
+      - LIVEKIT_IP=46.224.14.85
+      - LIVEKIT_PORT=7880
+    networks:
+      - livekit-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:7880/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  livekit-network:
+    driver: bridge

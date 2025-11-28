@@ -122,11 +122,14 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     // Charger GPS utilisateur au montage et récupérer les coûts
     useEffect(() => {
         if (visible) {
-            loadUserGPS();
+            loadUserGPS(); // Charger le GPS depuis l'API (pour référence)
             loadAvailableProducts();
             if (productIndex !== undefined) {
                 setSelectedProducts([productIndex]);
             }
+            // ✅ NOUVEAU : Charger automatiquement la position actuelle de l'utilisateur
+            // Cette fonction essaie d'abord la position actuelle, puis utilise le GPS de l'API comme fallback
+            loadCurrentLocationAutomatically();
         }
     }, [visible, serviceId, productIndex]);
 
@@ -137,6 +140,41 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         }
     }, [visible, selectedProducts, dropoffLocation]);
 
+    // ✅ NOUVEAU : Fonction helper pour formater l'adresse avec quartier
+    const formatAddressWithDistrict = (addr: Location.LocationGeocodedAddress): string => {
+        const addressParts: string[] = [];
+
+        // Rue et numéro
+        if (addr.street || addr.streetNumber) {
+            const streetPart = [addr.streetNumber, addr.street].filter(Boolean).join(' ');
+            if (streetPart) addressParts.push(streetPart);
+        }
+
+        // Quartier/District (priorité haute pour l'affichage)
+        if (addr.district && addr.district !== addr.city) {
+            addressParts.push(addr.district);
+        } else if (addr.subregion && addr.subregion !== addr.city) {
+            addressParts.push(addr.subregion);
+        }
+
+        // Ville
+        if (addr.city) {
+            addressParts.push(addr.city);
+        }
+
+        // Région (si différente de la ville)
+        if (addr.region && addr.region !== addr.city && addr.region !== addr.district) {
+            addressParts.push(addr.region);
+        }
+
+        // Pays (optionnel, seulement si nécessaire)
+        // if (addr.country && addressParts.length < 2) {
+        //     addressParts.push(addr.country);
+        // }
+
+        return addressParts.length > 0 ? addressParts.join(', ') : '';
+    };
+
     const loadUserGPS = async () => {
         try {
             // ✅ CORRIGÉ: Utiliser GET au lieu de POST pour récupérer les infos utilisateur
@@ -145,10 +183,118 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 const [lng, lat] = response.data.gps.split(',').map(parseFloat);
                 const location = { latitude: lat, longitude: lng };
                 setUserGPS(location);
-                setDropoffLocation(location);
+                // Ne pas définir dropoffLocation ici, on laisse loadCurrentLocationAutomatically le faire
+                // Mais si loadCurrentLocationAutomatically échoue, on pourra utiliser ce GPS comme fallback
             }
         } catch (error) {
             console.error('Erreur chargement GPS utilisateur:', error);
+        }
+    };
+
+    // ✅ NOUVEAU : Charger automatiquement la position actuelle
+    const loadCurrentLocationAutomatically = async () => {
+        try {
+            // Vérifier les permissions
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                // Si pas de permission, utiliser le GPS de l'utilisateur depuis l'API comme fallback
+                // Récupérer le GPS depuis l'API si pas encore chargé
+                let gpsToUse = userGPS;
+                if (!gpsToUse) {
+                    try {
+                        const response = await apiGet('/api/user/me') as ApiResponse<UserMeResponse>;
+                        if (response.success && response.data?.gps) {
+                            const [lng, lat] = response.data.gps.split(',').map(parseFloat);
+                            gpsToUse = { latitude: lat, longitude: lng };
+                            setUserGPS(gpsToUse);
+                        }
+                    } catch (apiError) {
+                        console.warn('Erreur récupération GPS depuis API:', apiError);
+                    }
+                }
+
+                if (gpsToUse) {
+                    // Géocoder le GPS de l'utilisateur depuis l'API
+                    try {
+                        const reverseGeocode = await Location.reverseGeocodeAsync(gpsToUse);
+                        if (reverseGeocode.length > 0) {
+                            const addr = reverseGeocode[0];
+                            const formattedAddress = formatAddressWithDistrict(addr);
+                            setDropoffLocation({
+                                ...gpsToUse,
+                                address: formattedAddress || `${gpsToUse.latitude.toFixed(6)}, ${gpsToUse.longitude.toFixed(6)}`,
+                            });
+                        } else {
+                            setDropoffLocation(gpsToUse);
+                        }
+                    } catch (geocodeError) {
+                        console.warn('Erreur géocodage GPS utilisateur:', geocodeError);
+                        setDropoffLocation(gpsToUse);
+                    }
+                }
+                return;
+            }
+
+            // Obtenir la position actuelle
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+            });
+
+            const coords = {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+            };
+
+            // Géocodage inverse pour obtenir l'adresse avec quartier
+            try {
+                const reverseGeocode = await Location.reverseGeocodeAsync(coords);
+                if (reverseGeocode.length > 0) {
+                    const addr = reverseGeocode[0];
+                    const formattedAddress = formatAddressWithDistrict(addr);
+
+                    setDropoffLocation({
+                        ...coords,
+                        address: formattedAddress || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
+                    });
+                } else {
+                    setDropoffLocation(coords);
+                }
+            } catch (geocodeError) {
+                console.warn('Erreur géocodage automatique:', geocodeError);
+                setDropoffLocation(coords);
+            }
+
+            setUserGPS(coords);
+        } catch (error) {
+            console.warn('Erreur chargement position automatique:', error);
+            // Fallback : utiliser le GPS de l'utilisateur depuis l'API si disponible
+            try {
+                const response = await apiGet('/api/user/me') as ApiResponse<UserMeResponse>;
+                if (response.success && response.data?.gps) {
+                    const [lng, lat] = response.data.gps.split(',').map(parseFloat);
+                    const gpsFromApi = { latitude: lat, longitude: lng };
+                    setUserGPS(gpsFromApi);
+
+                    try {
+                        const reverseGeocode = await Location.reverseGeocodeAsync(gpsFromApi);
+                        if (reverseGeocode.length > 0) {
+                            const addr = reverseGeocode[0];
+                            const formattedAddress = formatAddressWithDistrict(addr);
+                            setDropoffLocation({
+                                ...gpsFromApi,
+                                address: formattedAddress || `${gpsFromApi.latitude.toFixed(6)}, ${gpsFromApi.longitude.toFixed(6)}`,
+                            });
+                        } else {
+                            setDropoffLocation(gpsFromApi);
+                        }
+                    } catch (geocodeError) {
+                        console.warn('Erreur géocodage GPS utilisateur (fallback):', geocodeError);
+                        setDropoffLocation(gpsFromApi);
+                    }
+                }
+            } catch (apiError) {
+                console.warn('Erreur récupération GPS depuis API (fallback):', apiError);
+            }
         }
     };
 
@@ -312,28 +458,24 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 return;
             }
 
-            const location = await Location.getCurrentPositionAsync({});
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+            });
             const coords = {
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
             };
 
-            // ✅ CORRIGÉ : Géocodage inverse pour obtenir l'adresse
+            // ✅ AMÉLIORÉ : Géocodage inverse pour obtenir l'adresse avec quartier
             try {
                 const reverseGeocode = await Location.reverseGeocodeAsync(coords);
                 if (reverseGeocode.length > 0) {
                     const addr = reverseGeocode[0];
-                    const fullAddress = [
-                        addr.street || '',
-                        addr.streetNumber || '',
-                        addr.city || '',
-                        addr.region || '',
-                        addr.country || '',
-                    ].filter(Boolean).join(', ');
+                    const formattedAddress = formatAddressWithDistrict(addr);
 
                     setDropoffLocation({
                         ...coords,
-                        address: fullAddress,
+                        address: formattedAddress || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
                     });
                 } else {
                     setDropoffLocation(coords);
@@ -366,7 +508,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 return;
             }
 
-            // Géocodage inverse pour obtenir l'adresse
+            // ✅ AMÉLIORÉ : Géocodage inverse pour obtenir l'adresse avec quartier
             try {
                 const reverseGeocode = await Location.reverseGeocodeAsync({
                     latitude: lat,
@@ -375,18 +517,12 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
                 if (reverseGeocode.length > 0) {
                     const addr = reverseGeocode[0];
-                    const fullAddress = [
-                        addr.street || '',
-                        addr.streetNumber || '',
-                        addr.city || '',
-                        addr.region || '',
-                        addr.country || '',
-                    ].filter(Boolean).join(', ');
+                    const formattedAddress = formatAddressWithDistrict(addr);
 
                     setDropoffLocation({
                         latitude: lat,
                         longitude: lng,
-                        address: fullAddress,
+                        address: formattedAddress || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
                     });
                 } else {
                     setDropoffLocation({
@@ -718,6 +854,10 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
                         {dropoffLocation ? (
                             <View style={styles.locationCard}>
+                                <View style={styles.locationCardHeader}>
+                                    <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
+                                    <Text style={styles.locationLabel}>Adresse de livraison</Text>
+                                </View>
                                 <Text style={styles.locationText}>
                                     {dropoffLocation.address ||
                                         `${dropoffLocation.latitude.toFixed(6)}, ${dropoffLocation.longitude.toFixed(6)}`}
@@ -726,21 +866,11 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                     style={styles.modifyButton}
                                     onPress={() => setDropoffLocation(null)}
                                 >
-                                    <Text style={styles.modifyButtonText}>Modifier l'adresse</Text>
+                                    <Text style={styles.modifyButtonText}>Choisir une autre adresse</Text>
                                 </TouchableOpacity>
                             </View>
                         ) : (
                             <View style={styles.locationActions}>
-                                <TouchableOpacity
-                                    style={styles.locationButton}
-                                    onPress={handleUseCurrentLocation}
-                                >
-                                    <SafeIcon name="navigation" size={20} color={modernColors.primary} />
-                                    <Text style={styles.locationButtonText}>
-                                        Utiliser ma position actuelle
-                                    </Text>
-                                </TouchableOpacity>
-
                                 {/* ✅ NOUVEAU : Bouton pour sélectionner une adresse sur la carte */}
                                 <TouchableOpacity
                                     style={[styles.locationButton, styles.locationButtonSecondary]}
@@ -753,7 +883,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                 </TouchableOpacity>
 
                                 <Text style={styles.hintText}>
-                                    Sélectionnez votre position actuelle ou choisissez une autre adresse
+                                    Si votre position actuelle n'est pas affichée, vous pouvez choisir une autre adresse
                                 </Text>
                             </View>
                         )}
@@ -1072,6 +1202,19 @@ const styles = StyleSheet.create({
         borderColor: '#BFDBFE',
         borderRadius: 12,
     },
+    locationCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    locationLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
     locationCardPlaceholder: {
         padding: 16,
         backgroundColor: '#F9FAFB',
@@ -1080,9 +1223,11 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     locationText: {
-        fontSize: 14,
+        fontSize: 15,
+        fontWeight: '500',
         color: modernColors.text,
-        marginBottom: 8,
+        marginBottom: 12,
+        lineHeight: 22,
     },
     placeholderText: {
         fontSize: 14,

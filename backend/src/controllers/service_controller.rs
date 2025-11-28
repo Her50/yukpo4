@@ -1196,8 +1196,9 @@ pub async fn get_services_for_prestataire(
                             ),
                             200
                         ) as description_preview,
-                        -- ✅ CORRIGÉ: Optimisation requête SQL - Utiliser LATERAL JOIN au lieu de sous-requête corrélée
-                        -- Cela évite l'exécution répétée de la sous-requête pour chaque service
+                        -- ✅ CORRIGÉ 2025-11-28: Afficher TOUS les produits (actifs ET désactivés) pour la page de management
+                        -- Le champ is_active est inclus pour que le frontend puisse afficher un indicateur visuel
+                        -- Page de management = prestataire doit voir tous ses produits pour les gérer
                         COALESCE(
                             (
                                 SELECT jsonb_agg(
@@ -1205,7 +1206,7 @@ pub async fn get_services_for_prestataire(
                                         'nom', COALESCE(p.product->>'nom', p.product->>'name', p.product->>'titre', ''),
                                         'prix', p.product->>'prix',
                                         'devise', p.product->>'devise',
-                                        'is_active', COALESCE(pl.is_active, true)
+                                        'is_active', COALESCE(pl.is_active, true)  -- ✅ Inclure is_active pour indicateur visuel
                                     )
                                     ORDER BY p.idx
                                 )
@@ -1218,12 +1219,12 @@ pub async fn get_services_for_prestataire(
                                 ) WITH ORDINALITY AS p(product, idx)
                                 LEFT JOIN products_lifecycle pl 
                                     ON pl.service_id = s.id AND pl.product_index = p.idx - 1
-                                LIMIT 10
+                                -- ✅ Pas de filtre WHERE : afficher TOUS les produits pour management
                             ),
                             '[]'::jsonb
                         ) as produits_light,
-                        -- Compter les produits (réutilise le parsing ci-dessus via jsonb_array_length qui est très rapide)
-                        -- ✅ CORRECTION: Caster explicitement en BIGINT pour correspondre au type Rust Option<i64>
+                        -- ✅ CORRIGÉ 2025-11-28: Compter TOUS les produits (actifs ET désactivés) pour la page de management
+                        -- Le prestataire doit voir le nombre total de produits qu'il a créés
                         COALESCE(
                             jsonb_array_length(
                                 CASE 

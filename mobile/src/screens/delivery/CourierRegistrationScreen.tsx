@@ -442,37 +442,52 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Informations personnelles */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Informations personnelles</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Nom complet *"
-                        value={fullName}
-                        onChangeText={setFullName}
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Téléphone *"
-                        value={phone}
-                        onChangeText={setPhone}
-                        keyboardType="phone-pad"
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Email"
-                        value={user?.email || ''}
-                        editable={false}
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Date de naissance (YYYY-MM-DD)"
-                        value={dateOfBirth}
-                        onChangeText={setDateOfBirth}
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Numéro de pièce d'identité *"
-                        value={idNumber}
-                        onChangeText={setIdNumber}
-                    />
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Nom complet *</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Entrez votre nom complet"
+                            value={fullName}
+                            onChangeText={setFullName}
+                        />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Téléphone *</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Entrez votre numéro de téléphone"
+                            value={phone}
+                            onChangeText={setPhone}
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Email</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Email"
+                            value={user?.email || ''}
+                            editable={false}
+                        />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Date de naissance</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="YYYY-MM-DD"
+                            value={dateOfBirth}
+                            onChangeText={setDateOfBirth}
+                        />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Numéro de pièce d'identité *</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Entrez votre numéro de pièce d'identité"
+                            value={idNumber}
+                            onChangeText={setIdNumber}
+                        />
+                    </View>
                 </NativeCard>
 
                 {/* Adresse */}
@@ -772,6 +787,15 @@ const styles = StyleSheet.create({
         color: modernColors.text,
         marginBottom: 16,
     },
+    inputContainer: {
+        marginBottom: 12,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 6,
+    },
     input: {
         borderWidth: 1,
         borderColor: modernColors.border,
@@ -779,7 +803,6 @@ const styles = StyleSheet.create({
         padding: 12,
         fontSize: 16,
         color: modernColors.text,
-        marginBottom: 12,
         backgroundColor: modernColors.surface,
     },
     textArea: {

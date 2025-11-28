@@ -50,9 +50,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       return !!(
         ImagePicker &&
         typeof ImagePicker.requestMediaLibraryPermissionsAsync === 'function' &&
-        ImagePicker.MediaType &&
-        ImagePicker.MediaType.Images &&
-        ImagePicker.launchImageLibraryAsync
+        typeof ImagePicker.launchImageLibraryAsync === 'function'
       );
     } catch (error) {
       console.error('[MediaUploadManager] Erreur vérification ImagePicker:', error);
@@ -71,7 +69,11 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
 
       // ✅ AMÉLIORATION: Vérifier ImagePicker avant de demander les permissions
       if (!checkImagePickerAvailable()) {
-        console.error('[MediaUploadManager] ImagePicker non disponible');
+        console.error('[MediaUploadManager] ImagePicker non disponible', {
+          hasImagePicker: !!ImagePicker,
+          hasRequestPermissions: typeof ImagePicker?.requestMediaLibraryPermissionsAsync === 'function',
+          hasLaunchLibrary: typeof ImagePicker?.launchImageLibraryAsync === 'function'
+        });
         Alert.alert(
           'Fonctionnalité indisponible',
           'L\'accès à la galerie n\'est pas disponible sur cet appareil. Veuillez mettre à jour l\'application ou contacter le support.',
@@ -84,24 +86,26 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permissionResult.granted) {
+        console.warn('[MediaUploadManager] Permission galerie refusée:', permissionResult);
         Alert.alert(
           'Permission refusée',
-          'Vous devez autoriser l\'accès à la galerie pour ajouter des images'
+          'Vous devez autoriser l\'accès à la galerie pour ajouter des images. Veuillez activer cette permission dans les paramètres de l\'application.',
+          [
+            { text: 'Annuler', style: 'cancel' },
+            {
+              text: 'Paramètres', onPress: () => {
+                // L'utilisateur peut ouvrir les paramètres manuellement
+              }
+            }
+          ]
         );
         setUploading(false);
         return;
       }
 
-      // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
-      if (!ImagePicker || !ImagePicker.MediaType) {
-        console.error('[MediaUploadManager] ImagePicker ou MediaType est undefined');
-        Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
-        setUploading(false);
-        return;
-      }
-
+      // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.Images,
+        mediaTypes: 'images' as any,
         allowsMultipleSelection: true,
         quality: 0.8,
         base64: true,
@@ -153,20 +157,13 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
     try {
       setUploading(true);
 
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permissionResult.granted) {
-        Alert.alert(
-          'Permission refusée',
-          'Vous devez autoriser l\'accès à la galerie pour ajouter des vidéos'
-        );
-        setUploading(false);
-        return;
-      }
-
       // ✅ AMÉLIORATION: Vérifier ImagePicker avant de demander les permissions
       if (!checkImagePickerAvailable()) {
-        console.error('[MediaUploadManager] ImagePicker non disponible');
+        console.error('[MediaUploadManager] ImagePicker non disponible', {
+          hasImagePicker: !!ImagePicker,
+          hasRequestPermissions: typeof ImagePicker?.requestMediaLibraryPermissionsAsync === 'function',
+          hasLaunchLibrary: typeof ImagePicker?.launchImageLibraryAsync === 'function'
+        });
         Alert.alert(
           'Fonctionnalité indisponible',
           'L\'accès à la galerie n\'est pas disponible sur cet appareil. Veuillez mettre à jour l\'application ou contacter le support.',
@@ -176,16 +173,29 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         return;
       }
 
-      // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Videos
-      if (!ImagePicker || !ImagePicker.MediaType) {
-        console.error('[MediaUploadManager] ImagePicker ou MediaType est undefined');
-        Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        console.warn('[MediaUploadManager] Permission galerie refusée:', permissionResult);
+        Alert.alert(
+          'Permission refusée',
+          'Vous devez autoriser l\'accès à la galerie pour ajouter des vidéos. Veuillez activer cette permission dans les paramètres de l\'application.',
+          [
+            { text: 'Annuler', style: 'cancel' },
+            {
+              text: 'Paramètres', onPress: () => {
+                // L'utilisateur peut ouvrir les paramètres manuellement
+              }
+            }
+          ]
+        );
         setUploading(false);
         return;
       }
 
+      // ✅ CORRIGÉ: Utiliser 'videos' as any pour compatibilité avec toutes les versions d'expo-image-picker
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.Videos,
+        mediaTypes: 'videos' as any,
         allowsMultipleSelection: false,
         quality: 0.8,
         base64: false, // ImagePicker ne supporte pas base64 pour les vidéos

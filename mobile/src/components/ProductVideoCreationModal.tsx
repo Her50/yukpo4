@@ -17,6 +17,7 @@ import { mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { AIDistributionPlan, AIVideoBriefVariant, AIVideoStyleSuggestion, GeneratedVideoResponse } from '../types/VideoGeneration';
+import { getFieldValue } from '../utils/productNormalizer';
 import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 
@@ -107,14 +108,32 @@ const normalizeProductName = (product?: ManagedProduct | null): string => {
     if (!product) {
         return 'Votre produit';
     }
-    // ✅ CORRECTION: Chercher aussi nom_produit pour les produits créés via AjouterProduitSimpleScreen
-    return product.nom ||
-        (product as any).nom_produit ||
-        product.name ||
-        product.title ||
-        (product as any).data?.nom_produit ||
-        (product as any).data?.nom ||
-        'Votre produit';
+
+    // ✅ CORRIGÉ: Extraire la valeur en utilisant getFieldValue pour gérer les structures wrapper
+    const nom = getFieldValue(product.nom) ||
+        getFieldValue((product as any).nom_produit) ||
+        getFieldValue(product.name) ||
+        getFieldValue(product.title) ||
+        getFieldValue((product as any).data?.nom_produit) ||
+        getFieldValue((product as any).data?.nom);
+
+    // ✅ CORRIGÉ: S'assurer que c'est toujours une string (pas un objet JSON)
+    if (typeof nom === 'string' && nom.trim()) {
+        return nom;
+    }
+
+    // Si c'est un objet, essayer de le convertir en string de manière lisible
+    if (typeof nom === 'object' && nom !== null) {
+        console.warn('[ProductVideoCreationModal] Nom de produit est un objet:', nom);
+        // Essayer d'extraire une valeur lisible
+        if ('valeur' in nom && typeof nom.valeur === 'string') {
+            return nom.valeur;
+        }
+        // Sinon, retourner un fallback
+        return 'Votre produit';
+    }
+
+    return 'Votre produit';
 };
 
 const ensureNumber = (value: any, fallback: number): number => {
@@ -126,17 +145,26 @@ const ensureNumber = (value: any, fallback: number): number => {
 };
 
 const computePriceLabel = (product: ManagedProduct | null | undefined): string | undefined => {
-    if (!product || product.prix === undefined || product.prix === null || product.prix === '') {
+    if (!product) {
         return undefined;
     }
+
+    // ✅ CORRIGÉ: Extraire la valeur du prix en utilisant getFieldValue
+    const prix = getFieldValue(product.prix);
+    const devise = getFieldValue(product.devise) || 'XAF';
+
+    if (prix === undefined || prix === null || prix === '') {
+        return undefined;
+    }
+
     const value =
-        typeof product.prix === 'number'
-            ? product.prix.toLocaleString()
-            : String(product.prix).trim();
+        typeof prix === 'number'
+            ? prix.toLocaleString()
+            : String(prix).trim();
     if (!value) {
         return undefined;
     }
-    return `${value} ${product.devise || 'XAF'}`;
+    return `${value} ${devise}`;
 };
 
 const computePromotionLabel = (product: ManagedProduct | null | undefined): string | undefined => {
@@ -323,8 +351,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     );
                 }
 
-                const productMediaItems: MediaLibraryItem[] = Array.isArray(productMediaResponse.data?.data)
-                    ? productMediaResponse.data.data
+                const productMediaItems: MediaLibraryItem[] = Array.isArray((productMediaResponse.data as any)?.data)
+                    ? (productMediaResponse.data as any).data
                         .map((item: any) => ({
                             id: ensureNumber(item.id, -1),
                             path: item.path,
@@ -477,8 +505,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             lang,
                             variant_count: 3,
                         });
-                        if (response.success && Array.isArray(response.data?.variants) && response.data.variants.length > 0) {
-                            return response.data.variants;
+                        if (response.success && Array.isArray((response.data as any)?.variants) && (response.data as any).variants.length > 0) {
+                            return (response.data as any).variants;
                         }
                         throw new Error('Aucun variant retourné');
                     },
@@ -511,8 +539,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             highlights,
                             lang,
                         });
-                        if (response.success && response.data?.suggestion) {
-                            return response.data.suggestion;
+                        if (response.success && (response.data as any)?.suggestion) {
+                            return (response.data as any).suggestion;
                         }
                         throw new Error('Aucune suggestion retournée');
                     },
@@ -542,8 +570,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             marketing_angle: mediaAnalysis.marketingAngle || undefined,
                             lang,
                         });
-                        if (response.success && response.data?.plan) {
-                            return response.data.plan;
+                        if (response.success && (response.data as any)?.plan) {
+                            return (response.data as any).plan;
                         }
                         throw new Error('Aucun plan retourné');
                     },
@@ -647,7 +675,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 copyToCacheDirectory: true,
             });
 
-            if (!result || result.type === 'cancel') {
+            if (!result || (result as any).canceled || (result as any).type === 'cancel') {
                 return;
             }
 
@@ -709,11 +737,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 variant_count: 3,
             });
 
-            if (!response.success || !response.data?.variants) {
+            if (!response.success || !(response.data as any)?.variants) {
                 throw new Error(response.error || 'Génération IA impossible');
             }
 
-            const variants: AIVideoBriefVariant[] = response.data.variants;
+            const variants: AIVideoBriefVariant[] = (response.data as any).variants;
             setBriefVariants(variants);
 
             if (variants.length === 0) {
@@ -734,6 +762,15 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setIsGeneratingBrief(false);
         }
     }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang, applyBriefVariant]);
+
+    const applyStyleSuggestion = useCallback((suggestion: AIVideoStyleSuggestion) => {
+        setStyleSuggestion(suggestion);
+        setSelectedEffects(new Set(suggestion.effects || []));
+        setSelectedTransitions(new Set(suggestion.transitions || []));
+        setSelectedOverlayTips(new Set(suggestion.overlay_tips || []));
+        setColorPalette(suggestion.color_palette || '');
+        setStyleMusicHint(suggestion.music_hint || '');
+    }, []);
 
     const handleGenerateStyleSuggestion = useCallback(async () => {
         if (!selectedProduct) {
@@ -756,11 +793,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 lang: subtitleLang || voiceoverLang,
             });
 
-            if (!response.success || !response.data?.suggestion) {
+            if (!response.success || !(response.data as any)?.suggestion) {
                 throw new Error(response.error || 'Impossible de récupérer les suggestions IA');
             }
 
-            applyStyleSuggestion(response.data.suggestion);
+            applyStyleSuggestion((response.data as any).suggestion);
             Alert.alert('Effets IA générés', 'Les effets et transitions recommandés ont été ajoutés. Vous pouvez les ajuster.');
         } catch (error) {
             console.error('[ProductVideoCreationModal] Style IA impossible:', error);
@@ -800,11 +837,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 lang: subtitleLang || voiceoverLang,
             });
 
-            if (!response.success || !response.data?.analysis) {
+            if (!response.success || !(response.data as any)?.analysis) {
                 throw new Error(response.error || 'Analyse IA indisponible');
             }
 
-            const analysis = response.data.analysis;
+            const analysis = (response.data as any).analysis;
             setMediaAnalysis({
                 dominantColors: analysis.dominant_colors,
                 detectedObjects: analysis.detected_objects,
@@ -930,8 +967,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         setLoadingLibrary(true);
         mediaApi.getAudioLibrary()
             .then((response) => {
-                if (response.success && Array.isArray(response.data?.loops)) {
-                    setAudioLibrary(response.data.loops);
+                if (response.success && Array.isArray((response.data as any)?.loops)) {
+                    setAudioLibrary((response.data as any).loops);
                 }
             })
             .catch((error) => {
@@ -970,9 +1007,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         if (!selectedProduct) {
             return [];
         }
+        // ✅ CORRIGÉ: Vérifier que products est un tableau avant d'appeler .filter()
+        if (!Array.isArray(products)) {
+            return [];
+        }
         return products
             .filter(
                 (product) =>
+                    product &&
                     product.serviceId === selectedProduct.serviceId &&
                     product.product_index !== selectedProduct.product_index
             )
@@ -1019,14 +1061,17 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         });
     }, []);
 
-    const applyStyleSuggestion = useCallback((suggestion: AIVideoStyleSuggestion) => {
-        setStyleSuggestion(suggestion);
-        setSelectedEffects(new Set(suggestion.effects || []));
-        setSelectedTransitions(new Set(suggestion.transitions || []));
-        setSelectedOverlayTips(new Set(suggestion.overlay_tips || []));
-        setColorPalette(suggestion.color_palette || '');
-        setStyleMusicHint(suggestion.music_hint || '');
-    }, []);
+    // ✅ CORRIGÉ: Fonction wrapper pour applyBriefVariant avec les setters du composant
+    const handleApplyBriefVariant = useCallback((variant: AIVideoBriefVariant) => {
+        applyBriefVariant(
+            variant,
+            setHeadline,
+            setCallToAction,
+            setScriptNotes,
+            setVoiceoverScript,
+            setVariantPickerVisible
+        );
+    }, [setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible]);
 
     const coachPanel = useMemo(() => {
         if (!selectedProduct) {
@@ -1043,8 +1088,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             topVariant?.script_outline?.[0] ||
             topVariant?.call_to_action ||
             '';
+        // ✅ CORRIGÉ: Vérifier que hashtags est un tableau avant d'appeler .slice() et .map()
         const limitedHashtags =
-            distributionPlan?.hashtags?.slice(0, 3)?.map((tag) => `#${tag.replace(/^#/, '')}`) || [];
+            (Array.isArray(distributionPlan?.hashtags)
+                ? distributionPlan.hashtags.slice(0, 3).map((tag) => `#${String(tag || '').replace(/^#/, '')}`)
+                : []) || [];
         const nextSchedule = distributionPlan?.schedule?.[0];
 
         return (
@@ -1077,7 +1125,6 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     name="align-left"
                                     size={18}
                                     color={modernColors.primary}
-                                    style={styles.coachIcon}
                                 />
                                 <View style={styles.coachContent}>
                                     <Text style={styles.coachLabel}>Script IA</Text>
@@ -1105,7 +1152,6 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     name="film"
                                     size={18}
                                     color={modernColors.primary}
-                                    style={styles.coachIcon}
                                 />
                                 <View style={styles.coachContent}>
                                     <Text style={styles.coachLabel}>Effets recommandés</Text>
@@ -1136,7 +1182,6 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     name="send"
                                     size={18}
                                     color={modernColors.primary}
-                                    style={styles.coachIcon}
                                 />
                                 <View style={styles.coachContent}>
                                     <Text style={styles.coachLabel}>Plan de diffusion</Text>
@@ -1297,11 +1342,15 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <Text style={styles.selectedProductService} numberOfLines={1}>
                                 {selectedProduct.serviceTitre || 'Service'}
                             </Text>
-                            {selectedProduct.prix && (
-                                <Text style={styles.selectedProductPrice}>
-                                    {selectedProduct.prix} {selectedProduct.devise || 'XAF'}
-                                </Text>
-                            )}
+                            {(() => {
+                                const prix = getFieldValue(selectedProduct.prix);
+                                const devise = getFieldValue(selectedProduct.devise) || 'XAF';
+                                return prix ? (
+                                    <Text style={styles.selectedProductPrice}>
+                                        {prix} {devise}
+                                    </Text>
+                                ) : null;
+                            })()}
                         </View>
                     </View>
                 </NativeCard>
@@ -1357,11 +1406,19 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                         return;
                                                     }
 
-                                                    // ✅ CORRIGÉ: Normaliser le produit si nécessaire
-                                                    const normalizedProduct = {
+                                                    // ✅ CORRIGÉ: Normaliser le produit en extrayant les valeurs des wrappers
+                                                    const normalizedProduct: ManagedProduct = {
                                                         ...product,
-                                                        nom: product.nom || product.nom_produit || 'Produit sans nom',
-                                                        nom_produit: product.nom_produit || product.nom || 'Produit sans nom'
+                                                        nom: getFieldValue(product.nom) ||
+                                                            getFieldValue((product as any).nom_produit) ||
+                                                            'Produit sans nom',
+                                                        nom_produit: getFieldValue((product as any).nom_produit) ||
+                                                            getFieldValue(product.nom) ||
+                                                            'Produit sans nom',
+                                                        // Normaliser aussi les autres champs qui pourraient avoir des wrappers
+                                                        prix: getFieldValue(product.prix),
+                                                        devise: getFieldValue(product.devise),
+                                                        description: getFieldValue(product.description),
                                                     };
 
                                                     setSelectedProduct(normalizedProduct);
@@ -1377,8 +1434,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                         {normalizeProductName(product)}
                                                     </Text>
                                                     <Text style={styles.productSelectMeta} numberOfLines={1}>
-                                                        {product.type || 'produit'}
-                                                        {product.prix ? ` • ${product.prix} ${product.devise || 'XAF'}` : ''}
+                                                        {getFieldValue(product.type) || 'produit'}
+                                                        {(() => {
+                                                            const prix = getFieldValue(product.prix);
+                                                            const devise = getFieldValue(product.devise) || 'XAF';
+                                                            return prix ? ` • ${prix} ${devise}` : '';
+                                                        })()}
                                                     </Text>
                                                 </View>
                                                 <SafeIcon name="chevron-right" size={18} color={modernColors.textSecondary} />
@@ -1411,35 +1472,39 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     vidéo.
                 </Text>
                 <View style={styles.relatedProductsContainer}>
-                    {productsSameService.map((product) => {
-                        const index = typeof product.product_index === 'number' ? product.product_index : undefined;
-                        const selected = index !== undefined && selectedRelatedProducts.has(index);
-                        return (
-                            <TouchableOpacity
-                                key={`related_${product.id}_${product.product_index}`}
-                                style={[
-                                    styles.relatedProductChip,
-                                    selected && styles.relatedProductChipSelected,
-                                ]}
-                                onPress={() => toggleRelatedProduct(index)}
-                            >
-                                <SafeIcon
-                                    name={selected ? 'check-circle' : 'circle'}
-                                    size={16}
-                                    color={selected ? '#10B981' : modernColors.primary}
-                                />
-                                <Text
+                    {Array.isArray(productsSameService) && productsSameService.length > 0 ? (
+                        productsSameService.map((product) => {
+                            const index = typeof product.product_index === 'number' ? product.product_index : undefined;
+                            const selected = index !== undefined && selectedRelatedProducts.has(index);
+                            return (
+                                <TouchableOpacity
+                                    key={`related_${product.id}_${product.product_index}`}
                                     style={[
-                                        styles.relatedProductText,
-                                        selected && styles.relatedProductTextSelected,
+                                        styles.relatedProductChip,
+                                        selected && styles.relatedProductChipSelected,
                                     ]}
-                                    numberOfLines={1}
+                                    onPress={() => toggleRelatedProduct(index)}
                                 >
-                                    {normalizeProductName(product)}
-                                </Text>
-                            </TouchableOpacity>
-                        );
-                    })}
+                                    <SafeIcon
+                                        name={selected ? 'check-circle' : 'circle'}
+                                        size={16}
+                                        color={selected ? '#10B981' : modernColors.primary}
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.relatedProductText,
+                                            selected && styles.relatedProductTextSelected,
+                                        ]}
+                                        numberOfLines={1}
+                                    >
+                                        {normalizeProductName(product)}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })
+                    ) : (
+                        <Text style={styles.emptyStateText}>Aucun produit complémentaire disponible</Text>
+                    )}
                 </View>
             </NativeCard>
         );
@@ -1527,11 +1592,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 lang: subtitleLang || voiceoverLang,
             });
 
-            if (!response.success || !response.data?.plan) {
+            if (!response.success || !(response.data as any)?.plan) {
                 throw new Error(response.error || 'Plan IA indisponible');
             }
 
-            setDistributionPlan(response.data.plan);
+            setDistributionPlan((response.data as any).plan);
             Alert.alert('Plan IA généré', 'Le plan de diffusion et hashtags ont été ajoutés.');
         } catch (error) {
             console.error('[ProductVideoCreationModal] Plan IA impossible:', error);
@@ -2065,7 +2130,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                             Sélectionnez les images/vidéos à mettre en avant. Vous pouvez combiner votre
                                             galerie produit et la médiathèque générale.
                                         </Text>
-                                        {mediaAnalysis.dominantColors && mediaAnalysis.dominantColors.length > 0 && (
+                                        {Array.isArray(mediaAnalysis.dominantColors) && mediaAnalysis.dominantColors.length > 0 && (
                                             <View style={styles.mediaInsightsBox}>
                                                 <Text style={styles.mediaInsightsTitle}>Palette dominante</Text>
                                                 <View style={styles.colorRow}>
@@ -2328,7 +2393,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 <TouchableOpacity
                                     key={`brief_variant_${index}`}
                                     style={styles.variantCard}
-                                    onPress={() => applyBriefVariant(variant)}
+                                    onPress={() => handleApplyBriefVariant(variant)}
                                 >
                                     <Text style={styles.variantCardTitle}>
                                         Variante {index + 1}
@@ -2827,6 +2892,18 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 16,
         paddingHorizontal: 24,
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 24,
+        gap: 8,
+    },
+    emptyStateText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        lineHeight: 16,
     },
     mediaList: {
         gap: 12,

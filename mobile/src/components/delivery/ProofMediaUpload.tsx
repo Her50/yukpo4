@@ -62,8 +62,9 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
             return;
         }
 
+        // ✅ CORRIGÉ: Utiliser 'all' as any pour compatibilité avec toutes les versions d'expo-image-picker
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: [ImagePicker.MediaType.Images, ImagePicker.MediaType.Videos],
+            mediaTypes: 'all' as any,
             allowsEditing: true,
             quality: 0.8,
         });
@@ -88,8 +89,9 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                 {
                     text: 'Photo',
                     onPress: async () => {
+                        // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
                         const result = await ImagePicker.launchCameraAsync({
-                            mediaTypes: ImagePicker.MediaType.Images,
+                            mediaTypes: 'images' as any,
                             allowsEditing: true,
                             quality: 0.8,
                         });
@@ -101,8 +103,9 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                 {
                     text: 'Vidéo',
                     onPress: async () => {
+                        // ✅ CORRIGÉ: Utiliser 'videos' as any pour compatibilité avec toutes les versions d'expo-image-picker
                         const result = await ImagePicker.launchCameraAsync({
-                            mediaTypes: ImagePicker.MediaType.Videos,
+                            mediaTypes: 'videos' as any,
                             allowsEditing: true,
                             quality: 0.8,
                             videoMaxDuration: 60, // Max 60 secondes

@@ -996,7 +996,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             label: fieldName === 'whatsapp' ? 'WhatsApp' :
               fieldName === 'telephone' ? 'Téléphone' :
                 fieldName === 'email' ? 'Email' : 'Site web',
-            required: fieldName === 'whatsapp', // Seul WhatsApp obligatoire
+            required: fieldName === 'whatsapp', // ✅ CORRIGÉ 2025-11-28: WhatsApp est obligatoire (validation renforcée)
             placeholder: fieldName === 'whatsapp' ? '+237 6XX XX XX XX' :
               fieldName === 'telephone' ? '+237 6XX XX XX XX' :
                 fieldName === 'email' ? 'contact@exemple.com' : 'https://...'
@@ -1150,6 +1150,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Fonctions de navigation entre blocs
   const goToNextBlock = () => {
+    // ✅ CORRIGÉ 2025-11-28: Validation spécifique pour WhatsApp (obligatoire) avant de quitter le bloc contact
+    const contactBlockIndex = blocks.findIndex(b => b.id === 'contact');
+    if (contactBlockIndex !== -1 && currentBlock === contactBlockIndex) {
+      const whatsappValue = valeursFormulaire['whatsapp'];
+      if (!whatsappValue || (typeof whatsappValue === 'string' && whatsappValue.trim() === '')) {
+        Alert.alert(
+          'Champ obligatoire',
+          'Le champ WhatsApp est obligatoire. Veuillez le renseigner avant de continuer.',
+          [{ text: 'OK' }]
+        );
+        setFieldErrors({ whatsapp: 'WhatsApp est obligatoire' });
+        return;
+      }
+    }
+
     // Valider le bloc actuel avant de passer au suivant
     const validation = validateCurrentBlock();
 
@@ -1208,6 +1223,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     if (blockIndex < 0 || !blocks[blockIndex] || targetDisplayIndex === -1) {
       return;
+    }
+
+    // ✅ CORRIGÉ 2025-11-28: Empêcher de quitter le bloc contact si WhatsApp est vide (obligatoire)
+    const contactBlockIndex = blocks.findIndex(b => b.id === 'contact');
+    if (contactBlockIndex !== -1 && currentBlock === contactBlockIndex && blockIndex !== contactBlockIndex) {
+      const whatsappValue = valeursFormulaire['whatsapp'];
+      if (!whatsappValue || (typeof whatsappValue === 'string' && whatsappValue.trim() === '')) {
+        Alert.alert(
+          'Champ obligatoire',
+          'Le champ WhatsApp est obligatoire. Veuillez le renseigner avant de continuer.',
+          [{ text: 'OK' }]
+        );
+        setFieldErrors({ whatsapp: 'WhatsApp est obligatoire' });
+        return;
+      }
     }
 
     const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
@@ -2447,38 +2477,37 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       produitsValues = [produitsField];
     }
 
-    // ✅ CORRIGÉ: Utiliser getSousCaracteristiquesFromIA() au lieu de valeurs hardcodées
-    // Cela garantit que les caractéristiques préférées par l'IA sont affichées
-    // ✅ AMÉLIORATION: Toujours réextraire pour garantir que les données sont à jour
-    if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object' || Object.keys(sousCaracteristiques).length === 0) {
-      const sousCaracsFromIA = getSousCaracteristiquesFromIA(valeursFormulaire, suggestion);
-      if (sousCaracsFromIA && typeof sousCaracsFromIA === 'object' && Object.keys(sousCaracsFromIA).length > 0) {
-        sousCaracteristiques = sousCaracsFromIA;
-      }
+    // ✅ CORRIGÉ: Toujours réextraire depuis valeursFormulaire pour garantir que les données sont à jour
+    // Cela garantit que même si les combinaisons IA sont chargées de manière asynchrone,
+    // elles seront utilisées dès qu'elles sont disponibles
+    const sousCaracsFromIA = getSousCaracteristiquesFromIA(valeursFormulaire, suggestion);
+
+    // ✅ PRIORITÉ: Utiliser sousCaracteristiques depuis valeursFormulaire s'il existe et n'est pas vide
+    // Sinon, utiliser le résultat de getSousCaracteristiquesFromIA
+    if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) {
+      // Utiliser les données déjà disponibles
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ sousCaracteristiques déjà disponibles depuis valeursFormulaire:', {
+        keys: Object.keys(sousCaracteristiques),
+        count: Object.keys(sousCaracteristiques).length
+      });
+    } else if (sousCaracsFromIA && typeof sousCaracsFromIA === 'object' && Object.keys(sousCaracsFromIA).length > 0) {
+      // Utiliser les données extraites depuis l'IA
+      sousCaracteristiques = sousCaracsFromIA;
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ Utilisation caractéristiques préférées IA depuis getSousCaracteristiquesFromIA:', {
+        keys: Object.keys(sousCaracteristiques),
+        count: Object.keys(sousCaracteristiques).length
+      });
+    } else {
+      // Dernier fallback: objet vide
+      sousCaracteristiques = sousCaracteristiques || {};
       console.log('[FormulaireYukpoIntelligentScreen] 🔍 getSousCaracteristiquesFromIA appelé dans renderProductsBlock:', {
         hasFormValues: !!valeursFormulaire,
         hasSuggestion: !!suggestion,
         produitsField: valeursFormulaire.produits,
         suggestionData: suggestion?.data,
         result: sousCaracsFromIA,
-        finalSousCaracs: sousCaracteristiques
-      });
-      if (sousCaracsFromIA && typeof sousCaracsFromIA === 'object' && Object.keys(sousCaracsFromIA).length > 0) {
-        sousCaracteristiques = sousCaracsFromIA;
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ Utilisation caractéristiques préférées IA:', sousCaracteristiques);
-      } else {
-        // Dernier fallback: objet vide (pas de valeurs hardcodées)
-        sousCaracteristiques = {};
-        // ✅ CORRECTION: Logger en WARN car c'est un vrai problème - les caractéristiques devraient être disponibles
-        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ PROBLÈME: Aucune caractéristique IA disponible dans renderProductsBlock. Vérifier que:');
-        console.warn('  - Les combinaisons IA ont été chargées via session_id');
-        console.warn('  - valeursFormulaire.produits contient sous_caracteristiques');
-        console.warn('  - suggestion.data.produits contient les données nécessaires');
-      }
-    } else {
-      console.log('[FormulaireYukpoIntelligentScreen] ✅ sousCaracteristiques déjà disponibles depuis valeursFormulaire:', {
-        keys: Object.keys(sousCaracteristiques),
-        count: Object.keys(sousCaracteristiques).length
+        finalSousCaracs: sousCaracteristiques,
+        note: 'Les combinaisons IA peuvent être en cours de chargement. Le tableau s\'affichera automatiquement une fois les données disponibles.'
       });
     }
 

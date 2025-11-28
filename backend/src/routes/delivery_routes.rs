@@ -13,6 +13,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use futures::{SinkExt, StreamExt};
 use bigdecimal::ToPrimitive;
+use log;
 use rust_decimal::{prelude::FromPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -1058,7 +1059,17 @@ async fn create_client_order(
         }),
     };
 
-    let summary = service.create_delivery_request(params).await?;
+    // ✅ CORRECTION : Meilleure gestion d'erreur avec logging détaillé
+    let summary = match service.create_delivery_request(params).await {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!(
+                "[create_client_order] ❌ Erreur lors de la création de la livraison pour user_id={}, service_id={}, product_index={:?}: {:?}",
+                user.id, payload.service_id, payload.product_index, e
+            );
+            return Err(e);
+        }
+    };
 
     // ✅ Phase 5 - Amélioration 10 : Réservation de paiement AVANT matching
     // Récupérer le prix du produit et le coût de livraison
@@ -1603,6 +1614,20 @@ async fn estimate_delivery_costs(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<EstimateCostsPayload>,
 ) -> AppResult<Json<EstimateCostsResponse>> {
+    // ✅ CORRECTION : Validation des paramètres requis
+    if payload.service_id <= 0 {
+        return Err(crate::core::types::AppError::BadRequest(
+            "service_id est requis et doit être supérieur à 0".into(),
+        ));
+    }
+    
+    // ✅ CORRECTION : Si product_index est fourni mais dropoff manquant, retourner erreur claire
+    if payload.product_index.is_some() && payload.dropoff.is_none() {
+        return Err(crate::core::types::AppError::BadRequest(
+            "dropoff est requis pour calculer le coût de livraison lorsque product_index est fourni".into(),
+        ));
+    }
+    
     let _service = delivery_service(&state)?;
 
     // 1. Récupérer le prix du produit (✅ avec promotions)

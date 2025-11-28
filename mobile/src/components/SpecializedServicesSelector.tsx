@@ -109,8 +109,11 @@ const SpecializedServicesSelector: React.FC<SpecializedServicesSelectorProps> = 
                     onPress={() => setMenuVisible(true)}
                     activeOpacity={0.7}
                 >
-                    {/* ✅ CORRIGÉ: Utiliser une icône de recherche au lieu de grid-3x3 pour éviter la confusion avec le texte Yukpo */}
-                    <SafeIcon name="search" size={18} color="#fff" type="lucide" />
+                    <View style={styles.compactButtonContent}>
+                        {/* ✅ CORRIGÉ: Utiliser une icône de recherche au lieu de grid-3x3 pour éviter la confusion avec le texte Yukpo */}
+                        <SafeIcon name="search" size={18} color="#fff" type="lucide" />
+                        <Text style={styles.compactButtonText}>Spécialisé</Text>
+                    </View>
                 </TouchableOpacity>
 
                 {/* Menu déroulant vertical */}
@@ -194,13 +197,31 @@ const styles = StyleSheet.create({
     compactButton: {
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: modernColors.primary, // ✅ CORRIGÉ: Utiliser la couleur primaire pour meilleure visibilité
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        marginLeft: 0, // ✅ CORRIGÉ: Supprimé pour décaler l'icône plus vers la gauche, exploitant l'espace entre drapeau et Yukpo
+        backgroundColor: modernColors.primary,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 10,
+        marginLeft: 0,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)', // ✅ Bordure subtile pour séparation
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        shadowColor: modernColors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4, // ✅ Même élévation que le bouton Envoyer pour cohérence
+        minHeight: 40, // ✅ Hauteur minimale pour correspondre au bouton Envoyer
+    },
+    compactButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+    },
+    compactButtonText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '600',
+        letterSpacing: 0.2,
     },
     menuOverlay: {
         flex: 1,

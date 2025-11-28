@@ -101,15 +101,9 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
   // Prise de photo
   const takePhoto = useCallback(async () => {
     try {
-      // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
-      if (!ImagePicker || !ImagePicker.MediaType) {
-        console.error('[ChatInputPanel] ImagePicker ou MediaType est undefined');
-        Alert.alert('Erreur', 'Impossible d\'accéder à la caméra. Veuillez réessayer.');
-        return;
-      }
-
+      // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaType.Images,
+        mediaTypes: 'images' as any,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
@@ -134,15 +128,9 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
   // Sélection d'images
   const pickImages = useCallback(async () => {
     try {
-      // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
-      if (!ImagePicker || !ImagePicker.MediaType) {
-        console.error('[ChatInputPanel] ImagePicker ou MediaType est undefined');
-        Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
-        return;
-      }
-
+      // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.Images,
+        mediaTypes: 'images' as any,
         allowsMultipleSelection: true,
         quality: 0.8,
         base64: true,
