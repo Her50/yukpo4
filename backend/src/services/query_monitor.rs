@@ -44,6 +44,7 @@ pub struct PoolStats {
 pub struct QueryMonitor {
     metrics: Arc<RwLock<HashMap<String, QueryMetrics>>>,
     slow_query_threshold_ms: u64,
+    #[allow(dead_code)] // Pour usage futur (stats du pool)
     pool: Arc<PgPool>,
 }
 

@@ -14,6 +14,7 @@ pub mod openapi;
 pub mod test_utils;
 pub mod websocket;
 pub mod metrics;
+pub mod migrations;
 // Modules d'optimisation (temporairement commentés pour compilation)
 // pub mod semantic_cache_pro;
 // pub mod prompt_optimizer_pro; 
