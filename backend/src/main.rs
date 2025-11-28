@@ -296,6 +296,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         pg_pool.clone(),
     ));
 
+    // ✅ Cloner redis_client pour le healthcheck avant de le déplacer dans AppState
+    let redis_client_healthcheck = redis_client.clone();
+
     let app_state = Arc::new(AppState::new(
         pg_pool,
         mongo_client,
@@ -365,7 +368,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(tasks::order_timeout_monitor::start_order_timeout_monitor(app_state.clone()));
     
     // ✅ NOUVEAU: Healthcheck périodique Redis pour détecter les changements d'état
-    let redis_client_healthcheck = redis_client.clone();
     tokio::spawn(async move {
         use yukpomnang_backend::utils::redis_helper;
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60)); // Toutes les minutes
