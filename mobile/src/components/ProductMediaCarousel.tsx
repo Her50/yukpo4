@@ -270,11 +270,11 @@ const styles = StyleSheet.create({
     container: {
         position: 'relative',
         width: '100%',
-        height: 220,
+        height: 140, // ✅ RÉDUIT: 220 → 140 (pour correspondre à imageContainer)
     },
     slide: {
         width: CAROUSEL_WIDTH,
-        height: 220,
+        height: 140, // ✅ RÉDUIT: 220 → 140
     },
     imageContainer: {
         width: '100%',
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     },
     placeholder: {
         width: '100%',
-        height: 220,
+        height: 140, // ✅ RÉDUIT: 220 → 140
         backgroundColor: '#EEF2FF',
         alignItems: 'center',
         justifyContent: 'center',
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 12,
         borderWidth: 1,
         borderColor: '#C7D2FE',
-        gap: 12,
+        gap: 8, // ✅ RÉDUIT: 12 → 8
     },
     placeholderIcon: {
         width: 60,

@@ -83,6 +83,111 @@ const HomeScreen: React.FC = () => {
     const [userBehaviorCategories, setUserBehaviorCategories] = useState<string[]>([]);
     const [showProductSelector, setShowProductSelector] = useState(false);
     const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
+
+    // ✅ CORRECTION 2025-11-28: Fonction pour charger les produits pour le bouton vidéo
+    const loadProductsForVideo = React.useCallback(async () => {
+        try {
+            console.log('[HomeScreen] 🎬 Chargement des produits pour création vidéo...');
+            const response = await apiGet('/api/prestataire/services');
+
+            if (!response.success || !Array.isArray(response.data)) {
+                console.warn('[HomeScreen] ⚠️ Aucun service trouvé pour le bouton vidéo');
+                setProductsForSelection([]);
+                return;
+            }
+
+            const allProducts: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> = [];
+
+            // ✅ CORRECTION: Fonction pour extraire les produits (même logique que MesServicesScreen)
+            const extractProduits = (service: any): any[] => {
+                const serviceData = service.data || service;
+
+                if (serviceData?.produits?.valeur) {
+                    const valeur = serviceData.produits.valeur;
+                    if (Array.isArray(valeur) && valeur.length > 0) {
+                        const filtered = valeur.filter((v: any) => v !== null && v !== undefined && v !== '');
+                        if (filtered.length > 0) return filtered;
+                    }
+                }
+
+                if (Array.isArray(serviceData?.produits) && serviceData.produits.length > 0) {
+                    return serviceData.produits;
+                }
+
+                if (serviceData?.produits && typeof serviceData.produits === 'object') {
+                    const produitsObj = serviceData.produits;
+                    if (Array.isArray(produitsObj.items) && produitsObj.items.length > 0) {
+                        return produitsObj.items;
+                    } else if (Array.isArray(produitsObj.list) && produitsObj.list.length > 0) {
+                        return produitsObj.list;
+                    }
+                }
+
+                if (Array.isArray(service.produits) && service.produits.length > 0) {
+                    return service.produits;
+                }
+
+                return [];
+            };
+
+            response.data.forEach((service: any) => {
+                const produits = extractProduits(service);
+                const serviceId = service.id || service.service_id;
+                const serviceName = service.data?.titre_service?.valeur || service.titre || `Service #${serviceId}`;
+
+                if (Array.isArray(produits) && produits.length > 0) {
+                    produits.forEach((product: any, index: number) => {
+                        let productName = 'Produit sans nom';
+                        if (typeof product === 'string') {
+                            productName = product.split(',')[0].trim() || `Produit ${index + 1}`;
+                        } else if (typeof product === 'object' && product !== null) {
+                            productName = product.nom || product.name || product.title || product.valeur || `Produit ${index + 1}`;
+                        }
+
+                        allProducts.push({
+                            serviceId: Number(serviceId),
+                            productIndex: index,
+                            productName: productName,
+                            serviceName: serviceName
+                        });
+                    });
+                }
+            });
+
+            console.log('[HomeScreen] ✅ Produits chargés pour vidéo:', allProducts.length);
+            setProductsForSelection(allProducts);
+
+            if (allProducts.length === 0) {
+                Alert.alert(
+                    'Produit requis',
+                    'Vous n\'avez pas encore de produit. Créez d\'abord un produit pour pouvoir créer une vidéo.',
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        {
+                            text: 'Aller à Mes Services',
+                            onPress: () => {
+                                try {
+                                    const parent = (navigation as any).getParent();
+                                    if (parent) {
+                                        parent.navigate('Services');
+                                    } else {
+                                        (navigation as any).navigate('Services');
+                                    }
+                                } catch (error) {
+                                    console.error('[HomeScreen] Erreur navigation vers Services:', error);
+                                }
+                            }
+                        }
+                    ]
+                );
+            } else {
+                setShowProductSelector(true);
+            }
+        } catch (error: any) {
+            console.error('[HomeScreen] Erreur chargement produits pour vidéo:', error);
+            Alert.alert('Erreur', 'Impossible de charger vos produits. Vérifiez votre connexion.');
+        }
+    }, [navigation]);
     const [isCourier, setIsCourier] = useState(false);
 
     // ✅ NOUVEAU : Vérifier si l'utilisateur est coursier
@@ -494,23 +599,69 @@ const HomeScreen: React.FC = () => {
 
             console.log('[HomeScreen] Données GPS extraites:', gpsData);
 
-            // ✅ NOUVEAU 2025-11-06: Vérifier si l'utilisateur a DÉJÀ un service (n'importe lequel)
+            // ✅ CORRECTION 2025-11-28: Vérifier si l'utilisateur a DÉJÀ un service (n'importe lequel)
+            // ✅ Utiliser /api/services/last en premier (plus fiable selon les logs)
             console.log('[HomeScreen] Vérification si utilisateur a déjà un service...');
             let hasExistingService = false;
             let firstServiceId: number | null = null;
 
             try {
-                const servicesResponse = await apiGet('/api/services/my-services');
-                if (servicesResponse.success && Array.isArray(servicesResponse.data) && servicesResponse.data.length > 0) {
-                    hasExistingService = true;
-                    firstServiceId = servicesResponse.data[0].id;
-                    console.log('[HomeScreen] ✅ Utilisateur a déjà un service (ID: ' + firstServiceId + ')');
-                    console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
-                } else {
-                    console.log('[HomeScreen] ℹ️ Aucun service existant → Formulaire COMPLET');
+                // ✅ CORRECTION: Essayer d'abord /api/services/last qui retourne directement le dernier service
+                const lastServiceResponse = await apiGet('/api/services/last');
+                console.log('[HomeScreen] Réponse /api/services/last:', {
+                    success: lastServiceResponse.success,
+                    hasData: !!lastServiceResponse.data,
+                    dataType: typeof lastServiceResponse.data,
+                    dataKeys: lastServiceResponse.data ? Object.keys(lastServiceResponse.data) : []
+                });
+
+                // ✅ CORRECTION: Vérifier si on a un service dans la réponse
+                if (lastServiceResponse.data) {
+                    // La réponse peut être directement un objet service ou dans une propriété data
+                    const serviceData = (lastServiceResponse.data as any)?.data || lastServiceResponse.data;
+                    if (serviceData && (serviceData.id || serviceData.service_id)) {
+                        hasExistingService = true;
+                        firstServiceId = serviceData.id || serviceData.service_id;
+                        console.log('[HomeScreen] ✅ Service trouvé via /api/services/last (ID: ' + firstServiceId + ')');
+                        console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
+                    }
                 }
-            } catch (error) {
+
+                // ✅ FALLBACK: Si /api/services/last ne fonctionne pas, essayer /api/services/my-services
+                if (!hasExistingService) {
+                    console.log('[HomeScreen] Tentative avec /api/services/my-services comme fallback...');
+                    const servicesResponse = await apiGet('/api/services/my-services');
+                    console.log('[HomeScreen] Réponse /api/services/my-services:', {
+                        success: servicesResponse.success,
+                        hasData: !!servicesResponse.data,
+                        isArray: Array.isArray(servicesResponse.data),
+                        length: Array.isArray(servicesResponse.data) ? servicesResponse.data.length : 0
+                    });
+
+                    if (servicesResponse.success && Array.isArray(servicesResponse.data) && servicesResponse.data.length > 0) {
+                        hasExistingService = true;
+                        // ✅ CORRECTION: Extraire l'ID correctement (peut être dans service.id ou service.service_id)
+                        const firstService = servicesResponse.data[0];
+                        firstServiceId = firstService.id || firstService.service_id || null;
+                        if (firstServiceId) {
+                            console.log('[HomeScreen] ✅ Service trouvé via /api/services/my-services (ID: ' + firstServiceId + ')');
+                            console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
+                        } else {
+                            console.warn('[HomeScreen] ⚠️ Service trouvé mais ID manquant:', firstService);
+                        }
+                    }
+                }
+
+                if (!hasExistingService) {
+                    console.log('[HomeScreen] ℹ️ Aucun service existant détecté → Formulaire COMPLET');
+                }
+            } catch (error: any) {
                 console.warn('[HomeScreen] Erreur vérification services (non bloquant):', error);
+                console.warn('[HomeScreen] Détails erreur:', {
+                    message: error?.message,
+                    stack: error?.stack,
+                    response: error?.response
+                });
             }
 
             // ✅ AMÉLIORATION UX: Si utilisateur a déjà un service → Formulaire SIMPLE produit seul

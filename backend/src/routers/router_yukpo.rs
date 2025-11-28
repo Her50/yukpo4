@@ -629,18 +629,65 @@ async fn handle_direct_search(
     ));
 
     // Extraire le texte de l'input
-    let user_text = input.texte.clone().unwrap_or_default();
+    let mut user_text = input.texte.clone().unwrap_or_default();
     let has_text = !user_text.trim().is_empty();
     let has_images = input
         .base64_image
         .as_ref()
         .map(|imgs| !imgs.is_empty())
         .unwrap_or(false);
+    let has_audio = input
+        .audio_base64
+        .as_ref()
+        .map(|audios| !audios.is_empty())
+        .unwrap_or(false);
 
     log_info(&format!(
-        "[DIRECT_SEARCH] Contenu: texte={}, images={}",
-        has_text, has_images
+        "[DIRECT_SEARCH] Contenu: texte={}, images={}, audio={}",
+        has_text, has_images, has_audio
     ));
+
+    // ✅ NOUVELLE LOGIQUE 2025-11-28: Si audio présent, transcrire PUIS combiner avec texte
+    if has_audio {
+        use crate::services::audio_transcription_service::AudioTranscriptionService;
+        
+        log_info("[DIRECT_SEARCH] 🎤 Audio détecté - Transcription en cours...");
+        
+        if let Some(audios) = &input.audio_base64 {
+            if let Some(first_audio) = audios.first() {
+                match AudioTranscriptionService::transcribe_audio_base64(first_audio).await {
+                    Ok(transcription) => {
+                        log_info(&format!(
+                            "[DIRECT_SEARCH] ✅ Audio transcrit: '{}' (langue: {:?}, confiance: {:?})",
+                            transcription.text.chars().take(100).collect::<String>(),
+                            transcription.language,
+                            transcription.confidence
+                        ));
+                        
+                        // Combiner le texte existant avec la transcription
+                        if user_text.trim().is_empty() {
+                            user_text = transcription.text;
+                        } else {
+                            user_text = format!("{} {}", user_text.trim(), transcription.text);
+                        }
+                        
+                        log_info(&format!(
+                            "[DIRECT_SEARCH] 📝 Texte combiné après transcription: '{}'",
+                            user_text.chars().take(150).collect::<String>()
+                        ));
+                    }
+                    Err(e) => {
+                        log_error(&format!(
+                            "[DIRECT_SEARCH] ❌ Erreur transcription audio: {}",
+                            e
+                        ));
+                        // Continuer avec le texte existant (peut être vide)
+                        // Si pas de texte et transcription échoue, la recherche échouera mais c'est mieux que de crasher
+                    }
+                }
+            }
+        }
+    }
 
     // ✅ NOUVELLE LOGIQUE 2025-11-04: Si image présente, analyser PUIS combiner avec texte pour recherche globale
     if has_images {
@@ -787,7 +834,11 @@ async fn handle_direct_search(
                         }
                     });
 
-                    if let Err(e) = crate::services::publicite_search_service::PubliciteSearchService::enrich_search_results_with_promotion(
+                    // ✅ OPTIMISÉ: Utiliser le cache pour les publicités
+                    let publicite_service = crate::services::publicite_search_service::PubliciteSearchService::new(
+                        Some(_state.cache_service.clone())
+                    );
+                    if let Err(e) = publicite_service.enrich_search_results_with_promotion(
                         &_state.pg,
                         resultats,
                         user_coords
@@ -812,7 +863,7 @@ async fn handle_direct_search(
                     "resultats": result.get("resultats"),
                     "tokens_consumed": ai_cost.total_tokens + tokens_consumed_search,
                     "message": format!("Recherche par image + texte: {} résultats", results_count),
-                    "search_method": "image_analysis_then_global_search",
+                    "search_method": if has_audio { "image_analysis_audio_then_global_search" } else { "image_analysis_then_global_search" },
                     "image_analysis": {
                         "description": analysis.description,
                         "tags": analysis.tags,
@@ -827,6 +878,7 @@ async fn handle_direct_search(
                         "vecteur_caracteristiques": analysis.tags.clone()
                     },
                     "user_text_provided": has_text,
+                    "audio_transcribed": has_audio,
                     "combined_search_used": true,
                     "billing": billing_info,
                     "gps_filtered": gps_zone.is_some(),
@@ -942,7 +994,11 @@ async fn handle_direct_search(
             }
         });
 
-        if let Err(e) = crate::services::publicite_search_service::PubliciteSearchService::enrich_search_results_with_promotion(
+        // ✅ OPTIMISÉ: Utiliser le cache pour les publicités
+        let publicite_service = crate::services::publicite_search_service::PubliciteSearchService::new(
+            Some(_state.cache_service.clone())
+        );
+        if let Err(e) = publicite_service.enrich_search_results_with_promotion(
             &_state.pg,
             resultats,
             user_coords
@@ -962,13 +1018,20 @@ async fn handle_direct_search(
     }
 
     // Construire la réponse
+    let search_method = if has_audio && !user_text.trim().is_empty() {
+        "audio_transcribed"
+    } else {
+        "text"
+    };
+    
     let response = serde_json::json!({
         "status": "success",
         "intention": "recherche_besoin",
         "resultats": result,
         "tokens_consumed": tokens_consumed,
-        "message": "Recherche directe réussie",
-        "search_method": "text",
+        "message": if has_audio { "Recherche directe réussie (audio transcrit)" } else { "Recherche directe réussie" },
+        "search_method": search_method,
+        "audio_transcribed": has_audio,
         "gps_filtered": gps_zone.is_some(),
         "search_radius_km": search_radius_km
     });

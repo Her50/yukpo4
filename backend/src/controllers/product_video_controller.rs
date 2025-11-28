@@ -79,20 +79,47 @@ pub async fn generate_video_for_product(
                 }
             }
             Err(err) => {
+                let error_message = format!("{}", err);
+                let error_detail = format!("{:?}", err);
+                
+                error!(
+                    "[ProductVideoController] ❌ Erreur génération vidéo pour job {}: {}",
+                    job_id, error_message
+                );
+                error!(
+                    "[ProductVideoController] Détails: service_id={}, product_index={}, user_id={}",
+                    service_id, product_index, user_clone.id
+                );
+                error!(
+                    "[ProductVideoController] Stack trace: {}",
+                    error_detail
+                );
+                
+                // Créer des steps d'erreur pour le tracking
+                let error_steps = vec![
+                    crate::services::video_generation_service::ProgressStep {
+                        key: "error",
+                        label: "Erreur de génération",
+                        status: "failed",
+                        detail: Some(error_message.clone()),
+                    }
+                ];
+                
                 if let Err(mark_err) = state_clone
                     .video_jobs
-                    .mark_failed(job_id, &err.to_string(), None)
+                    .mark_failed(job_id, &error_message, Some(&error_steps))
                     .await
                 {
-                    warn!(
-                        "[ProductVideoController] Impossible de marquer le job {} comme échoué: {}",
+                    error!(
+                        "[ProductVideoController] ❌ Impossible de marquer le job {} comme échoué: {}",
                         job_id, mark_err
                     );
+                } else {
+                    info!(
+                        "[ProductVideoController] ✅ Job {} marqué comme échoué dans la base de données",
+                        job_id
+                    );
                 }
-                error!(
-                    "[ProductVideoController] Erreur génération vidéo pour job {}: {:?}",
-                    job_id, err
-                );
             }
         }
     });

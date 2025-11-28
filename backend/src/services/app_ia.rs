@@ -230,7 +230,7 @@ impl AppIA {
                 top_p: 0.8,             // R?duit pour plus de pr?cision
                 frequency_penalty: 0.0, // Supprim? pour acc?l?rer
                 presence_penalty: 0.0,  // Supprim? pour acc?l?rer
-                timeout: 20,            // R?duit de 30s ? 20s
+                timeout: 30,
                 retry_count: 2,         // R?duit ? 2 tentatives
                 priority: 9,
                 cost_per_token: 0.00000015,
@@ -270,7 +270,7 @@ impl AppIA {
                 top_p: 0.8,             // R?duit pour plus de pr?cision
                 frequency_penalty: 0.0, // Supprim? pour acc?l?rer
                 presence_penalty: 0.0,  // Supprim? pour acc?l?rer
-                timeout: 20,            // R?duit de 30s ? 20s
+                timeout: 30,
                 retry_count: 2,         // R?duit ? 2 tentatives
                 priority: 3,
                 cost_per_token: 0.000024,
@@ -2076,7 +2076,7 @@ Ne retourne aucun autre texte. Texte à vocaliser:\n```{script}```"
         let start_time = std::time::Instant::now();
 
         // ? OPTIMISATION : Timeout r?duit pour l'IA externe
-        let timeout = Duration::from_secs(15); // R?duit de 20s ? 15s
+        let timeout = Duration::from_secs(20);
 
         match tokio::time::timeout(timeout, async {
             match model_name {

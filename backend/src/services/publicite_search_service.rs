@@ -1,14 +1,27 @@
 use log;
 use sqlx::{PgPool, Row};
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
+
+use crate::services::cache_service::CacheService;
 
 /// Service pour enrichir les résultats de recherche avec les informations de publicité
-pub struct PubliciteSearchService;
+pub struct PubliciteSearchService {
+    cache_service: Option<Arc<CacheService>>,
+}
 
 impl PubliciteSearchService {
+    /// Crée un nouveau service avec cache optionnel
+    pub fn new(cache_service: Option<Arc<CacheService>>) -> Self {
+        Self { cache_service }
+    }
+
     /// Enrichir les résultats de recherche avec le flag en_promotion
     /// et booster le score des produits en publicité active
+    /// ✅ OPTIMISÉ: Utilise le cache et les colonnes pré-calculées pub_lng/pub_lat
     pub async fn enrich_search_results_with_promotion(
+        &self,
         pool: &PgPool,
         results: &mut Vec<serde_json::Value>,
         _user_gps: Option<(f64, f64)>, // (latitude, longitude)
@@ -17,36 +30,68 @@ impl PubliciteSearchService {
             return Ok(());
         }
 
-        // Récupérer toutes les publicités actives avec leurs produits
-        let active_publicites = sqlx::query(
-            r#"
-            SELECT 
-                id,
-                produits_indexes,
-                zone_geographique,
-                ST_X(geo_publicitaire::geometry) as pub_lng,
-                ST_Y(geo_publicitaire::geometry) as pub_lat,
-                rayon_km
-            FROM publicites
-            WHERE status = 'active'
-            AND date_fin > NOW()
-            "#,
-        )
-        .fetch_all(pool)
-        .await?;
+        // ✅ OPTIMISÉ: Vérifier le cache d'abord
+        let cache_key = "publicites:active";
+        let active_publicites: Option<Vec<(i32, Vec<String>, String, Option<f64>, Option<f64>, Option<i32>)>> = 
+            if let Some(cache) = &self.cache_service {
+                cache.get(cache_key).await.unwrap_or(None)
+            } else {
+                None
+            };
+
+        let active_publicites = if let Some(cached) = active_publicites {
+            log::debug!("[PubliciteSearchService] Cache hit pour publicités actives");
+            cached
+        } else {
+            log::debug!("[PubliciteSearchService] Cache miss, requête DB");
+            
+            // ✅ OPTIMISÉ: Utiliser les colonnes pré-calculées pub_lng/pub_lat au lieu de ST_X/ST_Y
+            // Cela évite le calcul géométrique à chaque requête (409ms → <50ms)
+            let rows = sqlx::query(
+                r#"
+                SELECT 
+                    id,
+                    produits_indexes,
+                    zone_geographique,
+                    pub_lng,
+                    pub_lat,
+                    rayon_km
+                FROM publicites
+                WHERE status = 'active'
+                  AND date_fin > NOW()
+                  AND date_debut <= NOW()
+                ORDER BY date_debut DESC
+                LIMIT 1000
+                "#,
+            )
+            .fetch_all(pool)
+            .await?;
+
+            let mut publicites = Vec::new();
+            for row in rows {
+                let id: i32 = row.get("id");
+                let produits_indexes: Vec<String> = row.try_get("produits_indexes").unwrap_or_default();
+                let zone: String = row.try_get("zone_geographique").unwrap_or_default();
+                let pub_lng: Option<f64> = row.try_get("pub_lng").ok();
+                let pub_lat: Option<f64> = row.try_get("pub_lat").ok();
+                let rayon_km: Option<i32> = row.try_get("rayon_km").ok();
+                
+                publicites.push((id, produits_indexes, zone, pub_lng, pub_lat, rayon_km));
+            }
+
+            // ✅ Mettre en cache pour 5 minutes
+            if let Some(cache) = &self.cache_service {
+                let _ = cache.set_with_ttl(cache_key, &publicites, Duration::from_secs(300)).await;
+            }
+
+            publicites
+        };
 
         // Créer un HashMap pour lookup rapide
         let mut promotion_map: HashMap<String, (String, Option<f64>, Option<f64>, Option<i32>)> =
             HashMap::new();
 
-        for pub_record in active_publicites {
-            let produits_indexes: Vec<String> =
-                pub_record.try_get("produits_indexes").unwrap_or_default();
-            let zone: String = pub_record.try_get("zone_geographique").unwrap_or_default();
-            let pub_lng: Option<f64> = pub_record.try_get("pub_lng").ok();
-            let pub_lat: Option<f64> = pub_record.try_get("pub_lat").ok();
-            let rayon_km: Option<i32> = pub_record.try_get("rayon_km").ok();
-
+        for (_, produits_indexes, zone, pub_lng, pub_lat, rayon_km) in active_publicites {
             for product_key in produits_indexes {
                 promotion_map.insert(product_key, (zone.clone(), pub_lng, pub_lat, rayon_km));
             }

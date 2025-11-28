@@ -222,6 +222,14 @@ const extractSearchResults = (response: any): Product[] => {
       prix: item.prix || item?.data?.prix,
       devise: item.devise || item?.data?.devise || 'XAF',
       image: item.image || item?.data?.image,
+      // ✅ CORRIGÉ: Extraire images et videos pour ProductCard
+      images: Array.isArray(item.images) ? item.images :
+        Array.isArray(item?.data?.images) ? item.data.images :
+          Array.isArray(item?.data?.images?.valeur) ? item.data.images.valeur :
+            item.image ? [item.image] : [],
+      videos: Array.isArray(item.videos) ? item.videos :
+        Array.isArray(item?.data?.videos) ? item.data.videos :
+          Array.isArray(item?.data?.videos?.valeur) ? item.data.videos.valeur : [],
       coordinates: item.coordinates || item?.data?.coordinates,
       // ✅ Ajouter les données brutes pour ProductCard (avec priorité aux données enrichies)
       ...item,

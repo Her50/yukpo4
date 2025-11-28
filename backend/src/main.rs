@@ -368,23 +368,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(tasks::order_timeout_monitor::start_order_timeout_monitor(app_state.clone()));
     
     // ✅ NOUVEAU: Healthcheck périodique Redis pour détecter les changements d'état
+    // ✅ CORRIGÉ: Réduit la fréquence à toutes les 5 minutes (au lieu de chaque minute)
+    // Le cache interne de check_redis_health gère déjà les logs de changement d'état
     tokio::spawn(async move {
         use yukpomnang_backend::utils::redis_helper;
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60)); // Toutes les minutes
-        let mut last_status = false;
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // Toutes les 5 minutes
         
         loop {
             interval.tick().await;
-            let current_status = redis_helper::check_redis_health(&redis_client_healthcheck).await;
-            
-            if current_status != last_status {
-                if current_status {
-                    log::info!("✅ [Redis Healthcheck] Redis est maintenant disponible");
-                } else {
-                    log::warn!("⚠️ [Redis Healthcheck] Redis n'est plus disponible");
-                }
-                last_status = current_status;
-            }
+            // La fonction check_redis_health gère déjà les logs de changement d'état
+            let _ = redis_helper::check_redis_health(&redis_client_healthcheck).await;
         }
     });
 

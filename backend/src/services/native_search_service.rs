@@ -33,6 +33,8 @@ pub struct NativeSearchService {
     pool: PgPool,
     config: SearchConfig,
     /// ✅ Phase 10 - Service de matching géographique pour enrichir les distances
+    /// ⚠️ OPTIMISÉ 2025-11-28: Désactivé par défaut (trop lent), peut être réactivé via with_geographic_matching()
+    #[allow(dead_code)]
     geographic_matching: Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
     /// ✅ OPTIMISÉ 2025-11-28 - Service de cache Redis pour les résultats de recherche
     cache_service: Option<Arc<CacheService>>,
@@ -793,33 +795,31 @@ impl NativeSearchService {
                 }
             }
 
-            // Enrichir tous les résultats spécialisés avec Google Places
-            for result in &mut specialized_results {
-                if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
-                    &self.pool,
-                    result.service_id,
-                    &mut result.data
-                ).await {
-                    log::warn!(
-                        "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
-                        result.service_id,
-                        e
-                    );
-                }
+            // ✅ OPTIMISÉ 2025-11-28: Enrichir tous les résultats spécialisés avec Google Places en BATCH (1 requête SQL)
+            if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
+                &self.pool,
+                &mut specialized_results
+            ).await {
+                log::warn!(
+                    "[NativeSearch] Erreur enrichissement batch Google Places: {}",
+                    e
+                );
             }
             
-            // Enrichir les distances avec Google Maps si disponible
-            if let Some(gps_zone_val) = gps_zone {
-                if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
-                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                        SearchResult::enrich_with_google_maps(
-                            &mut specialized_results,
-                            Some((user_lat, user_lng)),
-                            self.geographic_matching.as_ref(),
-                        ).await;
-                    }
-                }
-            }
+            // ✅ OPTIMISÉ 2025-11-28: Désactivé enrichissement Google Maps par défaut (trop lent: 5s par appel)
+            // La distance est déjà calculée par PostgreSQL dans search_*_with_moment() et retournée dans distance_km
+            // ProductCard peut calculer la distance côté client si nécessaire
+            // if let Some(gps_zone_val) = gps_zone {
+            //     if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+            //         if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+            //             SearchResult::enrich_with_google_maps(
+            //                 &mut specialized_results,
+            //                 Some((user_lat, user_lng)),
+            //                 self.geographic_matching.as_ref(),
+            //             ).await;
+            //         }
+            //     }
+            // }
 
             log_info(&format!(
                 "[NativeSearch] ✅ {} résultats spécialisés trouvés avec planification/moment",
@@ -889,33 +889,31 @@ impl NativeSearchService {
                 })
                 .collect();
 
-            // ✅ NOUVEAU: Enrichir tous les résultats avec les données Google Places complètes
-            for result in &mut results {
-                if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
-                    &self.pool,
-                    result.service_id,
-                    &mut result.data
-                ).await {
-                    log::warn!(
-                        "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
-                        result.service_id,
-                        e
-                    );
-                }
+            // ✅ OPTIMISÉ 2025-11-28: Enrichir tous les résultats avec Google Places en BATCH (1 requête SQL)
+            if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
+                &self.pool,
+                &mut results
+            ).await {
+                log::warn!(
+                    "[NativeSearch] Erreur enrichissement batch Google Places: {}",
+                    e
+                );
             }
             
-            // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
-            if let Some(gps_zone) = gps_zone {
-                if let Some((lat_str, lng_str)) = gps_zone.split_once(',') {
-                    if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                        SearchResult::enrich_with_google_maps(
-                            &mut results,
-                            Some((user_lat, user_lng)),
-                            self.geographic_matching.as_ref(),
-                        ).await;
-                    }
-                }
-            }
+            // ✅ OPTIMISÉ 2025-11-28: Désactivé enrichissement Google Maps par défaut (trop lent: 5s par appel)
+            // La distance est déjà calculée par PostgreSQL et retournée dans distance_km
+            // ProductCard peut calculer la distance côté client si nécessaire
+            // if let Some(gps_zone) = gps_zone {
+            //     if let Some((lat_str, lng_str)) = gps_zone.split_once(',') {
+            //         if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+            //             SearchResult::enrich_with_google_maps(
+            //                 &mut results,
+            //                 Some((user_lat, user_lng)),
+            //                 self.geographic_matching.as_ref(),
+            //             ).await;
+            //         }
+            //     }
+            // }
 
             log_info(&format!(
                 "[NativeSearch] {} résultats avec planifications trouvés",
@@ -1043,16 +1041,29 @@ impl NativeSearchService {
                         search_results.len()
                     ));
                     
-                    // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
-                    if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
-                        if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                            SearchResult::enrich_with_google_maps(
-                                &mut search_results,
-                                Some((user_lat, user_lng)),
-                                self.geographic_matching.as_ref(),
-                            ).await;
-                        }
+                    // ✅ OPTIMISÉ 2025-11-28: Enrichir tous les résultats avec Google Places en BATCH (1 requête SQL)
+                    if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
+                        &self.pool,
+                        &mut search_results
+                    ).await {
+                        log::warn!(
+                            "[NativeSearch] Erreur enrichissement batch Google Places: {}",
+                            e
+                        );
                     }
+                    
+                    // ✅ OPTIMISÉ 2025-11-28: Désactivé enrichissement Google Maps par défaut (trop lent: 5s par appel)
+                    // La distance est déjà calculée par PostgreSQL dans search_services_gps_final() et retournée dans distance_km
+                    // ProductCard peut calculer la distance côté client si nécessaire
+                    // if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+                    //     if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+                    //         SearchResult::enrich_with_google_maps(
+                    //             &mut search_results,
+                    //             Some((user_lat, user_lng)),
+                    //             self.geographic_matching.as_ref(),
+                    //         ).await;
+                    //     }
+                    // }
                     
                     return Ok(search_results);
                 }
@@ -1549,16 +1560,29 @@ LIMIT 100
                 });
             }
 
-            // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
-            if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
-                if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                    SearchResult::enrich_with_google_maps(
-                        &mut search_results,
-                        Some((user_lat, user_lng)),
-                        self.geographic_matching.as_ref(),
-                    ).await;
-                }
+            // ✅ OPTIMISÉ 2025-11-28: Enrichir tous les résultats avec Google Places en BATCH (1 requête SQL)
+            if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
+                &self.pool,
+                &mut search_results
+            ).await {
+                log::warn!(
+                    "[NativeSearch] Erreur enrichissement batch Google Places: {}",
+                    e
+                );
             }
+
+            // ✅ OPTIMISÉ 2025-11-28: Désactivé enrichissement Google Maps par défaut (trop lent: 5s par appel)
+            // La distance est déjà calculée par PostgreSQL dans search_services_gps_final() et retournée dans distance_km
+            // ProductCard peut calculer la distance côté client si nécessaire
+            // if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+            //     if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+            //         SearchResult::enrich_with_google_maps(
+            //             &mut search_results,
+            //             Some((user_lat, user_lng)),
+            //             self.geographic_matching.as_ref(),
+            //         ).await;
+            //     }
+            // }
 
             return Ok(search_results);
         }
@@ -1770,16 +1794,29 @@ LIMIT 100
                 });
             }
 
-            // ✅ Phase 10 - Enrichir les distances avec Google Maps si disponible
-            if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
-                if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
-                    SearchResult::enrich_with_google_maps(
-                        &mut search_results,
-                        Some((user_lat, user_lng)),
-                        self.geographic_matching.as_ref(),
-                    ).await;
-                }
+            // ✅ OPTIMISÉ 2025-11-28: Enrichir tous les résultats avec Google Places en BATCH (1 requête SQL)
+            if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
+                &self.pool,
+                &mut search_results
+            ).await {
+                log::warn!(
+                    "[NativeSearch] Erreur enrichissement batch Google Places: {}",
+                    e
+                );
             }
+
+            // ✅ OPTIMISÉ 2025-11-28: Désactivé enrichissement Google Maps par défaut (trop lent: 5s par appel)
+            // La distance est déjà calculée par PostgreSQL dans search_services_gps_final() et retournée dans distance_km
+            // ProductCard peut calculer la distance côté client si nécessaire
+            // if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
+            //     if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
+            //         SearchResult::enrich_with_google_maps(
+            //             &mut search_results,
+            //             Some((user_lat, user_lng)),
+            //             self.geographic_matching.as_ref(),
+            //         ).await;
+            //     }
+            // }
 
             return Ok(search_results);
         }

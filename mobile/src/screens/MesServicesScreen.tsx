@@ -144,20 +144,76 @@ const MesServicesScreen: React.FC = () => {
     }
   }, []);
 
-  // ✅ OPTIMISATION: Fonction pour extraire les produits d'un service
+  // ✅ CORRECTION 2025-11-28: Fonction pour extraire les produits d'un service (tous formats)
   const extractProduits = useCallback((service: any): any[] => {
-    if (service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur)) {
-      return service.data.produits.valeur;
-    } else if (Array.isArray(service.data?.produits)) {
-      return service.data.produits;
-    } else if (service.data?.produits && typeof service.data.produits === 'object') {
-      const produitsObj = service.data.produits;
-      if (Array.isArray(produitsObj.items)) {
+    // ✅ CORRECTION: Vérifier d'abord si service.data existe
+    const serviceData = service.data || service;
+
+    // ✅ CORRECTION: Format 1 - produits.valeur (tableau de strings ou objets)
+    if (serviceData?.produits?.valeur) {
+      const valeur = serviceData.produits.valeur;
+      if (Array.isArray(valeur) && valeur.length > 0) {
+        // ✅ CORRECTION: Filtrer les valeurs vides
+        const filtered = valeur.filter((v: any) => v !== null && v !== undefined && v !== '');
+        if (filtered.length > 0) {
+          logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits.valeur:', filtered.length);
+          return filtered;
+        }
+      }
+    }
+
+    // ✅ CORRECTION: Format 2 - produits directement un tableau
+    if (Array.isArray(serviceData?.produits) && serviceData.produits.length > 0) {
+      logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits (array):', serviceData.produits.length);
+      return serviceData.produits;
+    }
+
+    // ✅ CORRECTION: Format 3 - produits.items ou produits.list
+    if (serviceData?.produits && typeof serviceData.produits === 'object') {
+      const produitsObj = serviceData.produits;
+      if (Array.isArray(produitsObj.items) && produitsObj.items.length > 0) {
+        logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits.items:', produitsObj.items.length);
         return produitsObj.items;
-      } else if (Array.isArray(produitsObj.list)) {
+      } else if (Array.isArray(produitsObj.list) && produitsObj.list.length > 0) {
+        logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits.list:', produitsObj.list.length);
         return produitsObj.list;
       }
     }
+
+    // ✅ CORRECTION: Format 4 - produits dans le service brut (sans data)
+    if (Array.isArray(service.produits) && service.produits.length > 0) {
+      logger.log('[MesServicesScreen] ✅ Produits trouvés dans service.produits:', service.produits.length);
+      return service.produits;
+    }
+
+    // ✅ CORRECTION: Format 5 - Vérifier si produits est une string (à parser)
+    if (typeof serviceData?.produits === 'string' && serviceData.produits.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(serviceData.produits);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits (JSON string):', parsed.length);
+          return parsed;
+        } else if (parsed.valeur && Array.isArray(parsed.valeur) && parsed.valeur.length > 0) {
+          logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits (JSON string avec valeur):', parsed.valeur.length);
+          return parsed.valeur;
+        }
+      } catch (e) {
+        // Ce n'est pas du JSON, peut-être une string simple avec séparateur
+        const parts = serviceData.produits.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+        if (parts.length > 0) {
+          logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits (string séparée):', parts.length);
+          return parts;
+        }
+      }
+    }
+
+    logger.warn('[MesServicesScreen] ⚠️ Aucun produit trouvé dans le service:', {
+      hasData: !!serviceData,
+      hasProduits: !!serviceData?.produits,
+      produitsType: typeof serviceData?.produits,
+      produitsKeys: serviceData?.produits && typeof serviceData.produits === 'object' ? Object.keys(serviceData.produits) : []
+    });
+
     return [];
   }, []);
 

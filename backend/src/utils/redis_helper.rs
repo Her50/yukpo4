@@ -2,8 +2,40 @@
 // Gère les cas où Redis n'est pas toujours disponible
 
 use redis::{AsyncCommands, Client as RedisClient};
-use std::time::Duration;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use tokio::time::sleep;
+
+/// Cache pour l'état de santé Redis (évite les logs répétitifs)
+struct RedisHealthCache {
+    last_status: bool,
+    last_check: Instant,
+}
+
+impl RedisHealthCache {
+    fn new() -> Self {
+        Self {
+            last_status: false,
+            last_check: Instant::now(),
+        }
+    }
+
+    fn should_log(&mut self, current_status: bool) -> bool {
+        let now = Instant::now();
+        let state_changed = self.last_status != current_status;
+        let time_elapsed = now.duration_since(self.last_check).as_secs() > 300; // 5 minutes
+        
+        if state_changed || time_elapsed {
+            self.last_status = current_status;
+            self.last_check = now;
+            true
+        } else {
+            false
+        }
+    }
+}
+
+static REDIS_HEALTH_CACHE: Mutex<Option<RedisHealthCache>> = Mutex::new(None);
 
 /// Résultat d'une opération Redis avec indication de disponibilité
 pub type RedisResult<T> = Result<T, RedisError>;
@@ -48,20 +80,31 @@ pub async fn get_redis_connection(
                 last_error = Some(err_msg.clone());
                 
                 if attempt < max_retries {
-                    log::warn!(
-                        "⚠️ [Redis] Tentative {}/{} échouée: {}. Nouvelle tentative dans {}ms...",
-                        attempt,
-                        max_retries,
-                        err_msg,
-                        retry_delay_ms
-                    );
+                    // ✅ CORRECTION 2025-11-28: Réduire les logs Redis (seulement en debug ou toutes les 10 tentatives)
+                    if attempt % 10 == 0 || log::log_enabled!(log::Level::Debug) {
+                        log::debug!(
+                            "⚠️ [Redis] Tentative {}/{} échouée: {}. Nouvelle tentative dans {}ms...",
+                            attempt,
+                            max_retries,
+                            err_msg,
+                            retry_delay_ms
+                        );
+                    }
                     sleep(Duration::from_millis(retry_delay_ms)).await;
                 } else {
-                    log::warn!(
-                        "⚠️ [Redis] Toutes les tentatives ({}) ont échoué. Dernière erreur: {}",
-                        max_retries,
-                        err_msg
-                    );
+                    // ✅ CORRECTION: Logger seulement une fois toutes les 5 minutes pour éviter le spam
+                    let should_log = {
+                        let mut cache_guard = REDIS_HEALTH_CACHE.lock().unwrap();
+                        let cache = cache_guard.get_or_insert_with(|| RedisHealthCache::new());
+                        cache.should_log(false)
+                    };
+                    if should_log {
+                        log::warn!(
+                            "⚠️ [Redis] Toutes les tentatives ({}) ont échoué. Dernière erreur: {}. Redis non disponible - mode dégradé activé.",
+                            max_retries,
+                            err_msg
+                        );
+                    }
                 }
             }
         }
@@ -102,12 +145,15 @@ where
                         // Si c'est une erreur de connexion, réessayer
                         if err_msg.contains("connection") || err_msg.contains("Connection") {
                             if attempt < max_retries {
-                                log::warn!(
-                                    "⚠️ [Redis] Erreur connexion lors de l'opération (tentative {}/{}): {}. Nouvelle tentative...",
-                                    attempt,
-                                    max_retries,
-                                    err_msg
-                                );
+                                // ✅ CORRECTION 2025-11-28: Réduire les logs Redis (seulement toutes les 5 tentatives)
+                                if attempt % 5 == 0 || log::log_enabled!(log::Level::Debug) {
+                                    log::debug!(
+                                        "⚠️ [Redis] Erreur connexion lors de l'opération (tentative {}/{}): {}. Nouvelle tentative...",
+                                        attempt,
+                                        max_retries,
+                                        err_msg
+                                    );
+                                }
                                 sleep(Duration::from_millis(retry_delay_ms)).await;
                                 continue;
                             }
@@ -123,13 +169,16 @@ where
                 last_error = Some(err_msg.clone());
                 
                 if attempt < max_retries {
-                    log::warn!(
-                        "⚠️ [Redis] Impossible d'obtenir une connexion (tentative {}/{}): {}. Nouvelle tentative dans {}ms...",
-                        attempt,
-                        max_retries,
-                        err_msg,
-                        retry_delay_ms
-                    );
+                    // ✅ CORRECTION 2025-11-28: Réduire les logs Redis (seulement toutes les 5 tentatives)
+                    if attempt % 5 == 0 || log::log_enabled!(log::Level::Debug) {
+                        log::debug!(
+                            "⚠️ [Redis] Impossible d'obtenir une connexion (tentative {}/{}): {}. Nouvelle tentative dans {}ms...",
+                            attempt,
+                            max_retries,
+                            err_msg,
+                            retry_delay_ms
+                        );
+                    }
                     sleep(Duration::from_millis(retry_delay_ms)).await;
                 }
             }
@@ -141,24 +190,36 @@ where
     ))
 }
 
-/// Vérifie si Redis est disponible
+/// Vérifie si Redis est disponible avec cache pour réduire les logs
+/// Ne log que les changements d'état (UP → DOWN, DOWN → UP) ou toutes les 5 minutes
 pub async fn check_redis_health(client: &RedisClient) -> bool {
-    match get_redis_connection(client, 1, 0).await {
+    let is_available = match get_redis_connection(client, 1, 0).await {
         Ok(mut conn) => {
             // Tester avec une opération simple (GET sur une clé inexistante)
             match conn.get::<&str, Option<String>>("__health_check__").await {
                 Ok(_) => true,
-                Err(e) => {
-                    log::warn!("⚠️ [Redis] Health check échoué: {}", e);
-                    false
-                }
+                Err(_) => false,
             }
         }
-        Err(e) => {
-            log::debug!("⚠️ [Redis] Health check échoué: {}", e);
-            false
+        Err(_) => false,
+    };
+
+    // Logger seulement les changements d'état ou toutes les 5 minutes
+    let should_log = {
+        let mut cache_guard = REDIS_HEALTH_CACHE.lock().unwrap();
+        let cache = cache_guard.get_or_insert_with(|| RedisHealthCache::new());
+        cache.should_log(is_available)
+    };
+
+    if should_log {
+        if is_available {
+            log::info!("✅ [Redis] Health check réussi - Redis disponible");
+        } else {
+            log::warn!("⚠️ [Redis] Health check échoué - Redis non disponible (fallback gracieux activé)");
         }
     }
+
+    is_available
 }
 
 /// Obtient une valeur depuis Redis avec retry

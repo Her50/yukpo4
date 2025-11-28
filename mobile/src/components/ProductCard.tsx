@@ -589,9 +589,46 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const isTrending = usageCount >= 10; // Tendance si recherché 10+ fois
 
   // Images et vidéos
+  // ✅ CORRIGÉ: Extraire depuis product.images directement (depuis extractSearchResults)
   const rawProductImages: string[] = Array.isArray(product.images)
     ? product.images.filter(Boolean)
     : [];
+  // ✅ NOUVEAU: Extraire aussi depuis service.data.produits si disponible
+  // Note: productIndex sera déclaré plus bas, on le calcule ici temporairement
+  const tempProductIndex = typeof product.product_index === 'number'
+    ? product.product_index
+    : typeof product.index === 'number'
+      ? product.index
+      : 0;
+  const produitsFromService = service?.data?.produits;
+  let productImagesFromService: string[] = [];
+  let productVideosFromService: string[] = [];
+  if (produitsFromService) {
+    // Si c'est un array, prendre le produit à l'index
+    if (Array.isArray(produitsFromService) && produitsFromService.length > tempProductIndex) {
+      const targetProduct = produitsFromService[tempProductIndex];
+      if (targetProduct && typeof targetProduct === 'object') {
+        productImagesFromService = Array.isArray(targetProduct.images)
+          ? targetProduct.images.filter(Boolean)
+          : [];
+        productVideosFromService = Array.isArray(targetProduct.videos)
+          ? targetProduct.videos.filter(Boolean)
+          : [];
+      }
+    }
+    // Si c'est un object avec valeur (array)
+    else if (typeof produitsFromService === 'object' && produitsFromService.valeur && Array.isArray(produitsFromService.valeur) && produitsFromService.valeur.length > tempProductIndex) {
+      const targetProduct = produitsFromService.valeur[tempProductIndex];
+      if (targetProduct && typeof targetProduct === 'object') {
+        productImagesFromService = Array.isArray(targetProduct.images)
+          ? targetProduct.images.filter(Boolean)
+          : [];
+        productVideosFromService = Array.isArray(targetProduct.videos)
+          ? targetProduct.videos.filter(Boolean)
+          : [];
+      }
+    }
+  }
   const rawServiceImages: string[] = Array.isArray(service?.images)
     ? (service?.images as string[]).filter(Boolean)
     : [];
@@ -641,15 +678,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
   addImage(serviceBannerImage);
   addImage(serviceLogoImage);
   rawProductImages.forEach(addImage);
+  productImagesFromService.forEach(addImage); // ✅ NOUVEAU: Ajouter images depuis service.data.produits
   rawServiceImages.forEach(addImage);
   googlePhotoUrls.forEach(addImage);
 
   const images = orderedImages;
   const videos: string[] = Array.isArray(product.videos)
     ? product.videos.filter(Boolean)
-    : Array.isArray(service?.videos)
-      ? (service?.videos as string[]).filter(Boolean)
-      : [];
+    : productVideosFromService.length > 0
+      ? productVideosFromService // ✅ NOUVEAU: Utiliser videos depuis service.data.produits si disponible
+      : Array.isArray(service?.videos)
+        ? (service?.videos as string[]).filter(Boolean)
+        : [];
 
   const googleRating =
     typeof googlePlaceMeta?.rating === 'number' ? googlePlaceMeta.rating : null;
@@ -1906,7 +1946,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 160,
+    height: 140, // ✅ RÉDUIT: 160 → 140
     overflow: 'hidden',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
@@ -2022,15 +2062,15 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   content: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 10,
+    paddingHorizontal: 12, // ✅ RÉDUIT: 16 → 12
+    paddingVertical: 10, // ✅ RÉDUIT: 14 → 10
+    gap: 6, // ✅ RÉDUIT: 10 → 6
     backgroundColor: 'rgba(255, 255, 255, 0.94)',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
   contentCompact: {
-    paddingTop: 14,
+    paddingTop: 10, // ✅ RÉDUIT: 14 → 10
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -2038,8 +2078,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 2,
+    gap: 4, // ✅ RÉDUIT: 6 → 4
+    marginBottom: 0, // ✅ RÉDUIT: 2 → 0
   },
   topStatPill: {
     flexDirection: 'row',
@@ -2054,11 +2094,11 @@ const styles = StyleSheet.create({
   topStatPillCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 12,
+    paddingHorizontal: 5, // ✅ RÉDUIT: 6 → 5
+    paddingVertical: 2, // ✅ RÉDUIT: 3 → 2
+    borderRadius: 10, // ✅ RÉDUIT: 12 → 10
     borderWidth: 1,
-    gap: 3,
+    gap: 2, // ✅ RÉDUIT: 3 → 2
   },
   topStatValue: {
     fontSize: 12,
@@ -2066,27 +2106,27 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   topStatValueCompact: {
-    fontSize: 11,
+    fontSize: 10, // ✅ RÉDUIT: 11 → 10
     fontWeight: '600',
   },
   topStatLabelCompact: {
-    fontSize: 9,
+    fontSize: 8, // ✅ RÉDUIT: 9 → 8
     fontWeight: '500',
     opacity: 0.8,
-    marginLeft: 2,
+    marginLeft: 1, // ✅ RÉDUIT: 2 → 1
   },
   productName: {
-    fontSize: 16,
+    fontSize: 15, // ✅ RÉDUIT: 16 → 15
     fontWeight: '700',
     color: '#1F2937',
-    lineHeight: 22,
+    lineHeight: 20, // ✅ RÉDUIT: 22 → 20
   },
   prestataireRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
+    gap: 5, // ✅ RÉDUIT: 6 → 5
+    paddingVertical: 2, // ✅ RÉDUIT: 3 → 2
+    paddingHorizontal: 5, // ✅ RÉDUIT: 6 → 5
     backgroundColor: '#F8FAFC',
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
@@ -2116,8 +2156,8 @@ const styles = StyleSheet.create({
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
+    gap: 5, // ✅ RÉDUIT: 6 → 5
+    paddingVertical: 3, // ✅ RÉDUIT: 6 → 3
   },
   locationText: {
     fontSize: 14,
@@ -2133,7 +2173,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   characteristicsSection: {
-    gap: 8,
+    gap: 5, // ✅ RÉDUIT: 8 → 5
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -2176,9 +2216,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   priceVariations: {
-    gap: 8,
+    gap: 6, // ✅ RÉDUIT: 8 → 6
     backgroundColor: '#F9FAFB',
-    padding: 10,
+    padding: 8, // ✅ RÉDUIT: 10 → 8
     borderRadius: 10,
   },
   priceTable: {
@@ -2310,8 +2350,8 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
+    gap: 6, // ✅ RÉDUIT: 8 → 6
+    marginTop: 2, // ✅ RÉDUIT: 4 → 2
   },
   actionButton: {
     flex: 1,
@@ -2322,9 +2362,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    gap: 4, // ✅ RÉDUIT: 6 → 4
+    paddingVertical: 8, // ✅ RÉDUIT: 10 → 8
+    paddingHorizontal: 10, // ✅ RÉDUIT: 12 → 10
     borderRadius: 10,
     borderWidth: 1.5,
     backgroundColor: '#FFFFFF',
@@ -2358,7 +2398,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingTop: 10,
+    paddingTop: 6, // ✅ RÉDUIT: 10 → 6
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -2373,17 +2413,17 @@ const styles = StyleSheet.create({
   },
   // ✅ NOUVEAU : Styles pour avis/ratings et actions secondaires
   metricsCard: {
-    marginTop: 6,
+    marginTop: 4, // ✅ RÉDUIT: 6 → 4
     borderRadius: 14,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 6, // ✅ RÉDUIT: 8 → 6
+    paddingHorizontal: 8, // ✅ RÉDUIT: 10 → 8
   },
   compactStatsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
-    marginBottom: 10,
+    gap: 6, // ✅ RÉDUIT: 8 → 6
+    marginTop: 6, // ✅ RÉDUIT: 10 → 6
+    marginBottom: 6, // ✅ RÉDUIT: 10 → 6
   },
   compactStatPillMuted: {
     flexDirection: 'row',
@@ -2409,9 +2449,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   locationSection: {
-    gap: 4,
+    gap: 3, // ✅ RÉDUIT: 4 → 3
     backgroundColor: '#F8FAFC',
-    padding: 6,
+    padding: 5, // ✅ RÉDUIT: 6 → 5
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -2517,17 +2557,17 @@ const styles = StyleSheet.create({
   },
   secondaryActions: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
+    gap: 6, // ✅ RÉDUIT: 10 → 6
+    marginTop: 2, // ✅ RÉDUIT: 4 → 2
   },
   secondaryActionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    gap: 4, // ✅ RÉDUIT: 6 → 4
+    paddingVertical: 6, // ✅ RÉDUIT: 8 → 6
+    paddingHorizontal: 8, // ✅ RÉDUIT: 10 → 8
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
     borderWidth: 1,
@@ -2541,12 +2581,12 @@ const styles = StyleSheet.create({
   cardGradient: {
     borderRadius: 22,
     padding: 1,
-    marginBottom: 12,
+    marginBottom: 8, // ✅ RÉDUIT: 12 → 8
   },
   // ✅ NOUVEAU: Styles section commentaires compacte
   commentsCompactSection: {
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: 4, // ✅ RÉDUIT: 8 → 4
+    paddingTop: 4, // ✅ RÉDUIT: 8 → 4
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -2554,7 +2594,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 6, // ✅ RÉDUIT: 8 → 6
   },
   commentsCompactStats: {
     flexDirection: 'row',

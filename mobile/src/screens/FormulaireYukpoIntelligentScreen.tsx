@@ -1659,8 +1659,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               console.log('[FormulaireYukpoIntelligentScreen] ✅ Catégories suggérées (matching local):', suggestions.length);
               setSuggestedProductCategories(suggestions); // Déjà limité à 3 par le matching local
             }
-          } catch (error) {
-            console.warn('[FormulaireYukpoIntelligentScreen] Erreur chargement suggestions catégories:', error);
+          } catch (error: any) {
+            // ✅ CORRECTION 2025-11-28: Améliorer la gestion d'erreur pour voir le problème réel
+            console.warn('[FormulaireYukpoIntelligentScreen] Erreur chargement suggestions catégories:', {
+              error: error?.message || error,
+              stack: error?.stack,
+              titreService: initialValues.titre_service,
+              description: initialValues.description,
+              category: initialValues.category
+            });
+            // ✅ CORRECTION: Ne pas bloquer l'utilisateur, continuer sans suggestions
+            setSuggestedProductCategories([]);
           }
         }
 

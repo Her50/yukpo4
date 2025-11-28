@@ -1287,8 +1287,10 @@ pub async fn generate_product_video(
             }
         }
         Err(err) => {
-            warn!("[VideoGeneration] Orchestrateur immersif indisponible: {err}");
+            error!("[VideoGeneration] ❌ Orchestrateur immersif indisponible: {err}");
+            error!("[VideoGeneration] Service ID: {}, Product Index: {}", service_id, product_index);
             orchestration_warnings.push(format!("orchestrator_error: {err}"));
+            // Ne pas faire échouer la génération, continuer avec fallback
         }
     }
 
@@ -1328,14 +1330,18 @@ pub async fn generate_product_video(
                     renderer_response = Some(response);
                 }
                 Err(err) => {
-                    warn!(
-                        "[VideoGeneration] Renderer dispatcher indisponible (mode={:?}): {}",
+                    error!(
+                        "[VideoGeneration] ❌ Renderer dispatcher indisponible (mode={:?}): {}",
                         err.mode, err.message
                     );
+                    error!("[VideoGeneration] Service ID: {}, Product Index: {}, Job ID: {:?}", 
+                        service_id, product_index, job_id);
                     orchestration_warnings.push(format!(
                         "renderer_error: mode={:?} message={}",
                         err.mode, err.message
                     ));
+                    // Continuer avec le rendu local FFmpeg comme fallback
+                    info!("[VideoGeneration] Fallback sur rendu local FFmpeg");
                 }
             }
         }
@@ -1579,13 +1585,47 @@ pub async fn generate_product_video(
     let stored_video = if let Some(remote) = remote_location {
         remote
     } else {
+        // Vérifier que le fichier source existe avant de le stocker
+        if !source_master_path.exists() {
+            let error_msg = format!(
+                "Fichier vidéo source introuvable: {:?}",
+                source_master_path
+            );
+            error!("[VideoGeneration] ❌ {}", error_msg);
+            return Err(AppError::Internal(error_msg));
+        }
+        
+        // Vérifier la taille du fichier
+        if let Ok(metadata) = fs::metadata(&source_master_path).await {
+            let file_size = metadata.len();
+            info!(
+                "[VideoGeneration] Stockage vidéo: {:?}, taille: {} bytes ({:.2} MB)",
+                source_master_path,
+                file_size,
+                file_size as f64 / 1_048_576.0
+            );
+            
+            if file_size == 0 {
+                let error_msg = "Fichier vidéo généré est vide (0 bytes)".to_string();
+                error!("[VideoGeneration] ❌ {}", error_msg);
+                return Err(AppError::Internal(error_msg));
+            }
+        } else {
+            warn!("[VideoGeneration] Impossible de lire les métadonnées du fichier vidéo");
+        }
+        
         state
             .media_storage
             .store_file(&source_master_path, &storage_key, Some("video/mp4"))
             .await
             .map_err(|err| {
-                error!("[VideoGeneration] Impossible de stocker la vidéo générée: {err:?}");
-                err
+                error!("[VideoGeneration] ❌ Impossible de stocker la vidéo générée: {err:?}");
+                error!("[VideoGeneration] Fichier source: {:?}", source_master_path);
+                error!("[VideoGeneration] Storage key: {}", storage_key);
+                AppError::Internal(format!(
+                    "Impossible de stocker la vidéo générée: {}. Vérifiez les permissions de stockage et l'espace disque disponible.",
+                    err
+                ))
             })?
     };
 
@@ -2593,27 +2633,58 @@ async fn append_video_variants_to_service_data(
 }
 
 async fn run_ffmpeg(working_dir: &Path, args: Vec<String>) -> AppResult<()> {
+    let command_str = format!("ffmpeg {}", args.join(" "));
+    info!("[VideoGeneration] Exécution FFmpeg: {}", command_str);
+    
     let output = Command::new("ffmpeg")
         .current_dir(working_dir)
         .args(&args)
         .output()
         .await
         .map_err(|err| {
-            error!("[VideoGeneration] Impossible d'exécuter ffmpeg: {err:?}");
-            AppError::Internal("FFmpeg est requis pour générer les vidéos marketing.".to_string())
+            error!("[VideoGeneration] ❌ Impossible d'exécuter ffmpeg: {err:?}");
+            error!("[VideoGeneration] Commande: {}", command_str);
+            error!("[VideoGeneration] Répertoire: {:?}", working_dir);
+            AppError::Internal(format!(
+                "FFmpeg est requis pour générer les vidéos marketing. Erreur: {}. Vérifiez que FFmpeg est installé et accessible dans le PATH.",
+                err
+            ))
         })?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        error!("[VideoGeneration] FFmpeg a échoué: {}", stderr);
-        return Err(AppError::Internal(
-            "La génération de la vidéo a échoué (FFmpeg).".to_string(),
-        ));
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let exit_code = output.status.code().unwrap_or(-1);
+        
+        error!("[VideoGeneration] ❌ FFmpeg a échoué (code: {})", exit_code);
+        error!("[VideoGeneration] Commande: {}", command_str);
+        error!("[VideoGeneration] STDERR: {}", stderr);
+        if !stdout.is_empty() {
+            error!("[VideoGeneration] STDOUT: {}", stdout);
+        }
+        
+        // Extraire les erreurs pertinentes de stderr
+        let error_summary = if stderr.contains("No such file") {
+            "Fichier source introuvable"
+        } else if stderr.contains("Invalid") {
+            "Paramètres FFmpeg invalides"
+        } else if stderr.contains("Permission denied") {
+            "Permission refusée pour accéder au fichier"
+        } else if stderr.contains("codec") {
+            "Codec non supporté"
+        } else {
+            "Erreur inconnue FFmpeg"
+        };
+        
+        return Err(AppError::Internal(format!(
+            "La génération de la vidéo a échoué (FFmpeg): {}. Code de sortie: {}. Vérifiez les logs pour plus de détails.",
+            error_summary, exit_code
+        )));
     }
 
     debug!(
-        "[VideoGeneration] FFmpeg command réussie: ffmpeg {}",
-        args.join(" ")
+        "[VideoGeneration] ✅ FFmpeg command réussie: {}",
+        command_str
     );
 
     Ok(())

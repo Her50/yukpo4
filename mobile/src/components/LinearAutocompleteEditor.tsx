@@ -1733,11 +1733,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     }, [suggestionDrafts]);
 
     // ✅ PRIORITÉ: Utiliser le candidat préféré du draft s'il existe
-    // Priorité 1: bestSuggestionCandidate s'il est préféré (isPreferred: true)
-    // Priorité 2: preferredDraftCandidate si disponible (même si bestSuggestionCandidate existe mais n'est pas préféré)
+    // Priorité 1: preferredDraftCandidate (sous-caractéristiques préférées de l'IA) - TOUJOURS afficher en premier
+    // Priorité 2: bestSuggestionCandidate s'il est préféré (isPreferred: true)
     // Priorité 3: bestSuggestionCandidate normal
     // ✅ CORRIGÉ: Toujours privilégier preferredDraftCandidate s'il existe, car il vient directement de sousCaracteristiques
-    const displayCandidate = preferredDraftCandidate
+    // ✅ NOUVEAU: Afficher le tableau des sous-caractéristiques préférées d'abord pour validation
+    const displayCandidate = preferredDraftCandidate && preferredDraftCandidate.rows.length > 0
         ? preferredDraftCandidate
         : (bestSuggestionCandidate?.isPreferred
             ? bestSuggestionCandidate
@@ -1981,113 +1982,33 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         };
     }, [iaCombinaisons, separateur, searchQuery, combinationSuggestions.length, loadingCombinationSuggestions, sousCaracteristiques, contextValues, categoryValue]);
 
-    // ✅ CORRIGÉ: Appliquer automatiquement les caractéristiques préférées de l'IA au chargement initial
-    // ⚠️ IMPORTANT: L'application automatique est SYSTÉMATIQUE au chargement, peu importe si l'utilisateur
-    // clique dans le champ de recherche. Une fois appliquée, l'utilisateur peut rechercher et remplacer
-    // le tableau affiché par un autre tableau de suggestions.
+    // ✅ CORRIGÉ: NE PAS appliquer automatiquement les caractéristiques préférées de l'IA
+    // ⚠️ IMPORTANT: Afficher d'abord le tableau des sous-caractéristiques préférées pour validation
+    // L'utilisateur doit cliquer sur "Valider" pour appliquer les caractéristiques
+    // Cela permet de voir d'abord le tableau (comme lors de la recherche) avant de valider
     useEffect(() => {
-        // ✅ CORRIGÉ: Ne pas vérifier searchQuery - l'application doit être systématique au chargement
-        // Ne pas appliquer automatiquement si :
-        // 1. L'application automatique a déjà été faite (une seule fois au chargement initial)
-        // 2. L'utilisateur a déjà des données (value n'est pas vide) - données déjà présentes
-        // 3. Les suggestions ne sont pas encore prêtes
-        if (autoAppliedRef.current) {
-            return; // Déjà appliqué au chargement initial, ne pas réappliquer
+        // ✅ NOUVEAU: Ne pas appliquer automatiquement - juste s'assurer que le tableau s'affiche
+        // Le tableau s'affichera automatiquement car displayCandidate est créé depuis suggestionDrafts
+        // L'utilisateur devra cliquer sur "Valider" pour appliquer
+
+        // Marquer comme initialisé pour éviter les logs répétés
+        if (initialMountRef.current) {
+            initialMountRef.current = false;
         }
 
-        if (displayValue && displayValue.trim().length > 0) {
-            // Si l'utilisateur a déjà des données, ne pas écraser
-            // Mais marquer comme appliqué pour éviter de réappliquer plus tard
-            autoAppliedRef.current = true;
-            return;
-        }
-
-        // ✅ CORRECTION: Ne pas attendre le chargement des suggestions si on a déjà sous_caracteristiques
-        // Le candidat préféré peut être créé directement depuis sous_caracteristiques ou product_vector/product_labels
-        const hasSousCaracs = sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0;
-        const hasProductVector = productVector && Array.isArray(productVector) && productVector.length > 0;
-
-        // ✅ PRIORITÉ: Si on a product_vector/product_labels ou sous_caracteristiques, 
-        // le candidat préféré est déjà créé dans suggestionCandidates, pas besoin d'attendre
-        // Si on n'a ni sous_caracteristiques ni product_vector, attendre le chargement des suggestions
-        if (!hasSousCaracs && !hasProductVector && (loadingSuggestions || loadingCombinationSuggestions)) {
-            return; // Attendre que les suggestions soient chargées
-        }
-
-        // ✅ PRIORITÉ ABSOLUE: Chercher la suggestion préférée de l'IA (celle avec isPreferred: true)
-        // Cette combinaison vient de product_vector/product_labels ou sous_caracteristiques (combinaison préférée de l'IA)
+        // ✅ LOG: Vérifier que le candidat préféré est disponible pour affichage
         const preferredCandidate = suggestionCandidates.find(candidate => candidate.isPreferred === true);
-
-        // ✅ CORRECTION: Si pas de candidat préféré mais qu'on a sous_caracteristiques, attendre un peu
-        // pour que suggestionCandidates soit recalculé avec les nouvelles données
-        if (!preferredCandidate && hasSousCaracs && initialMountRef.current) {
-            // Attendre un peu pour que suggestionCandidates soit recalculé
-            const timeoutId = setTimeout(() => {
-                initialMountRef.current = false;
-            }, 500);
-            return () => clearTimeout(timeoutId);
-        }
-
-        if (!preferredCandidate) {
-            // Si pas de suggestion préférée disponible, marquer comme appliqué pour éviter de réessayer
-            if (initialMountRef.current) {
-                // Seulement au premier montage, attendre un peu pour voir si les suggestions arrivent
-                const timeoutId = setTimeout(() => {
-                    initialMountRef.current = false;
-                }, 2000);
-                return () => clearTimeout(timeoutId);
-            }
-            return;
-        }
-
-        // Vérifier que la suggestion préférée a des données valides
-        if (!preferredCandidate.rows || preferredCandidate.rows.length === 0) {
-            return; // Pas de données dans la suggestion
-        }
-
-        // Marquer comme appliqué AVANT d'appliquer (pour éviter les boucles)
-        // ⚠️ NOTE: Une fois appliqué, le tableau (chips avec label, valeur) s'affiche automatiquement
-        // L'utilisateur peut ensuite :
-        // - Valider le tableau affiché
-        // - Faire une recherche pour remplacer le tableau par un autre tableau de suggestions
-        // - Modifier les chips affichés
-        autoAppliedRef.current = true;
-        initialMountRef.current = false;
-
-        // Appliquer automatiquement la suggestion préférée
-        console.log('[LinearAutocompleteEditor] ✅ Application AUTOMATIQUE SYSTÉMATIQUE des caractéristiques préférées de l\'IA:', {
-            source: preferredCandidate.source,
-            rowsCount: preferredCandidate.rows.length,
-            isPreferred: preferredCandidate.isPreferred,
-            note: 'Le tableau (label, valeur) s\'affiche automatiquement. L\'utilisateur peut valider ou rechercher d\'autres options.'
-        });
-
-        // Utiliser la fonction d'application appropriée selon la source
-        if (preferredCandidate.source === 'ia' && preferredCandidate.iaValue) {
-            applyIaCombination(preferredCandidate.iaValue, preferredCandidate.key);
-        } else if (preferredCandidate.source === 'combination' && preferredCandidate.combination) {
-            applyCombinationSuggestion(preferredCandidate.combination, preferredCandidate.key);
-        } else if (preferredCandidate.source === 'popular' && preferredCandidate.product) {
-            applyPopularSuggestion(preferredCandidate.product, preferredCandidate.key);
-        } else {
-            // Fallback: appliquer directement depuis les rows
-            const result = createVectorFromRows(preferredCandidate.rows);
-            if (result) {
-                onChange([result.vector], result.sousCaracs);
-            }
+        if (preferredCandidate && preferredCandidate.rows && preferredCandidate.rows.length > 0) {
+            console.log('[LinearAutocompleteEditor] ✅ [AFFICHAGE_TABLEAU_PREFERE] Tableau des sous-caractéristiques préférées disponible pour affichage (validation requise):', {
+                source: preferredCandidate.source,
+                rowsCount: preferredCandidate.rows.length,
+                isPreferred: preferredCandidate.isPreferred,
+                note: 'Le tableau s\'affiche automatiquement. L\'utilisateur doit cliquer sur "Valider" pour appliquer.'
+            });
         }
     }, [
-        displayValue,
-        loadingSuggestions,
-        loadingCombinationSuggestions,
         suggestionCandidates,
-        applyIaCombination,
-        applyCombinationSuggestion,
-        applyPopularSuggestion,
-        createVectorFromRows,
-        onChange,
-        sousCaracteristiques,
-        productVector
+        initialMountRef
     ]);
 
     // ✅ NOUVEAU: Réinitialiser autoAppliedRef quand productVector/productLabels changent (nouvelles données IA)

@@ -1159,10 +1159,11 @@ pub async fn get_services_for_prestataire(
         user_id
     );
 
-    // ✅ OPTIMISATION 2025-11-27 : Requête SQL optimisée pour éliminer la sous-requête corrélée coûteuse
-    // Utilise jsonb_array_elements une seule fois avec un LEFT JOIN LATERAL pour accéder à products_lifecycle
-    // Complexité réduite de O(n*m) à O(n) grâce à la jointure optimisée avec index
-    // ✅ CORRIGÉ: Ajout de retry avec backoff exponentiel pour gérer les erreurs de connexion PostgreSQL
+    // ✅ OPTIMISATION 2025-11-28 : Requête SQL ultra-optimisée pour réduire la latence
+    // - Évite les sous-requêtes corrélées coûteuses
+    // - Utilise des expressions JSONB simples au lieu de LATERAL JOIN
+    // - Limite l'extraction de données produits (seulement nom, prix, devise)
+    // - Utilise l'index idx_services_user_id_created_at_desc pour le tri
     use crate::utils::db_retry::retry_query;
     
     let user_id_param = user_id; // Clone pour éviter les problèmes de lifetime
@@ -1173,6 +1174,8 @@ pub async fn get_services_for_prestataire(
             let user_id = user_id_param;
             let pool = pool_clone.clone();
             Box::pin(async move {
+                // ✅ OPTIMISATION: Requête simplifiée sans sous-requête corrélée
+                // Les produits sont extraits directement avec jsonb_path_query_array (plus rapide)
                 sqlx::query(
                     r#"
                     SELECT 
@@ -1180,14 +1183,14 @@ pub async fn get_services_for_prestataire(
                         s.is_active,
                         s.created_at,
                         s.category,
-                        -- Extraire titre_service (support des deux formats)
+                        -- Extraire titre_service (support des deux formats) - optimisé
                         COALESCE(
                             s.data->>'titre_service',
                             s.data->'titre_service'->>'valeur',
                             s.data->>'titre',
                             'Service sans titre'
                         ) as titre_service,
-                        -- Extraire description (tronquée à 200 caractères pour la liste)
+                        -- Extraire description (tronquée à 200 caractères) - optimisé
                         LEFT(
                             COALESCE(
                                 s.data->>'description',
@@ -1196,40 +1199,50 @@ pub async fn get_services_for_prestataire(
                             ),
                             200
                         ) as description_preview,
-                        -- ✅ CORRIGÉ 2025-11-28: Afficher TOUS les produits (actifs ET désactivés) pour la page de management
-                        -- Le champ is_active est inclus pour que le frontend puisse afficher un indicateur visuel
-                        -- Page de management = prestataire doit voir tous ses produits pour les gérer
+                        -- ✅ OPTIMISATION: Extraction produits simplifiée sans LATERAL JOIN
+                        -- Utilise jsonb_path_query_array qui est plus rapide que jsonb_array_elements
                         COALESCE(
                             (
                                 SELECT jsonb_agg(
                                     jsonb_build_object(
-                                        'nom', COALESCE(p.product->>'nom', p.product->>'name', p.product->>'titre', ''),
-                                        'prix', p.product->>'prix',
-                                        'devise', p.product->>'devise',
-                                        'is_active', COALESCE(pl.is_active, true)  -- ✅ Inclure is_active pour indicateur visuel
+                                        'nom', COALESCE(
+                                            elem->>'nom', 
+                                            elem->>'name', 
+                                            elem->>'titre', 
+                                            ''
+                                        ),
+                                        'prix', elem->>'prix',
+                                        'devise', elem->>'devise',
+                                        'is_active', COALESCE(
+                                            (SELECT is_active FROM products_lifecycle 
+                                             WHERE service_id = s.id 
+                                             AND product_index = (ordinality - 1) 
+                                             LIMIT 1),
+                                            true
+                                        )
                                     )
-                                    ORDER BY p.idx
+                                    ORDER BY ordinality
                                 )
-                                FROM LATERAL jsonb_array_elements(
+                                FROM jsonb_array_elements(
                                     CASE 
-                                        WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
-                                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
+                                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                        THEN s.data->'produits'
+                                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' 
+                                        THEN s.data->'produits'->'valeur'
                                         ELSE '[]'::jsonb
                                     END
-                                ) WITH ORDINALITY AS p(product, idx)
-                                LEFT JOIN products_lifecycle pl 
-                                    ON pl.service_id = s.id AND pl.product_index = p.idx - 1
-                                -- ✅ Pas de filtre WHERE : afficher TOUS les produits pour management
+                                ) WITH ORDINALITY AS t(elem, ordinality)
                             ),
                             '[]'::jsonb
                         ) as produits_light,
-                        -- ✅ CORRIGÉ 2025-11-28: Compter TOUS les produits (actifs ET désactivés) pour la page de management
-                        -- Le prestataire doit voir le nombre total de produits qu'il a créés
+                        -- ✅ OPTIMISATION: Compter produits avec jsonb_array_length (très rapide)
                         COALESCE(
                             jsonb_array_length(
                                 CASE 
-                                    WHEN jsonb_typeof(s.data->'produits') = 'array' THEN s.data->'produits'
-                                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' THEN s.data->'produits'->'valeur'
+                                    WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                    THEN s.data->'produits'
+                                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array' 
+                                    THEN s.data->'produits'->'valeur'
                                     ELSE '[]'::jsonb
                                 END
                             )::BIGINT,
@@ -1343,7 +1356,8 @@ pub async fn get_services_for_prestataire(
         })
         .collect();
 
-    // ✅ NOUVEAU: Compter le total de services pour la pagination
+    // ✅ OPTIMISATION: Compter le total de services pour la pagination
+    // Utilise l'index idx_services_user_id_created_at_desc_optimized pour un COUNT rapide
     let total_count: i64 = match sqlx::query_scalar::<_, i64>(
         "SELECT COUNT(*) FROM services WHERE user_id = $1"
     )

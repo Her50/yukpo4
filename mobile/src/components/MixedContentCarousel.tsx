@@ -66,6 +66,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     const [showChatModal, setShowChatModal] = useState(false);
     const [selectedService, setSelectedService] = useState<any>(null);
     const [selectedPrestataire, setSelectedPrestataire] = useState<any>(null);
+    const [scrollViewMounted, setScrollViewMounted] = useState(false);
 
     const clearAutoScrollTimer = () => {
         if (autoScrollTimerRef.current) {
@@ -88,6 +89,50 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         };
     }, []);
 
+    // ✅ DIAGNOSTIC: Vérifier que le ScrollView est monté
+    useEffect(() => {
+        // Vérifier périodiquement si le ScrollView est monté
+        const checkScrollView = () => {
+            if (scrollViewRef.current) {
+                try {
+                    // Tester si on peut accéder aux méthodes du ScrollView
+                    if (typeof scrollViewRef.current.scrollTo === 'function') {
+                        if (!scrollViewMounted) {
+                            console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] ScrollView monté et prêt');
+                            setScrollViewMounted(true);
+                        }
+                        return true;
+                    }
+                } catch (error) {
+                    console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Erreur vérification ScrollView:', error);
+                }
+            }
+            return false;
+        };
+
+        // Vérifier immédiatement
+        checkScrollView();
+
+        // Vérifier périodiquement (toutes les 500ms pendant 5 secondes)
+        const interval = setInterval(() => {
+            if (checkScrollView()) {
+                clearInterval(interval);
+            }
+        }, 500);
+
+        const timeout = setTimeout(() => {
+            clearInterval(interval);
+            if (!scrollViewMounted) {
+                console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView non monté après 5 secondes');
+            }
+        }, 5000);
+
+        return () => {
+            clearInterval(interval);
+            clearTimeout(timeout);
+        };
+    }, [scrollViewMounted]);
+
     // Charger le contenu mixte
     useEffect(() => {
         loadMixedContent();
@@ -96,110 +141,189 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     // ✅ Réinitialiser l'index et la pause quand le contenu change
     useEffect(() => {
         const safeContent = Array.isArray(content) ? content : [];
+        console.log('[MixedContentCarousel] 🔄 [DIAGNOSTIC] Réinitialisation après changement de contenu:', {
+            contentLength: safeContent.length,
+            hasScrollViewRef: !!scrollViewRef.current
+        });
+
         if (safeContent.length === 0) {
             setCurrentIndex(0);
+            console.log('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Contenu vide, index réinitialisé à 0');
             return;
         }
 
         requestAnimationFrame(() => {
-            scrollViewRef.current?.scrollTo({ x: 0, animated: false });
-            setCurrentIndex(0);
-            setIsPaused(false);
+            if (scrollViewRef.current) {
+                try {
+                    scrollViewRef.current.scrollTo({ x: 0, animated: false });
+                    setCurrentIndex(0);
+                    setIsPaused(false);
+                    console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Scroll réinitialisé à 0, index:', 0, 'pause:', false);
+                } catch (error) {
+                    console.error('[MixedContentCarousel] ❌ [DIAGNOSTIC] Erreur réinitialisation scroll:', error);
+                }
+            } else {
+                console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView ref null lors de la réinitialisation');
+                setCurrentIndex(0);
+                setIsPaused(false);
+            }
         });
     }, [content.length]);
 
     // ✅ Démarrer le scroll automatique après la première mise en page
     useEffect(() => {
+        // ✅ DIAGNOSTIC: Log visible pour comprendre l'état
+        console.log('[MixedContentCarousel] 🔍 [DIAGNOSTIC] Vérification scroll initial:', {
+            isAutoScrollDisabled,
+            contentLength: Array.isArray(content) ? content.length : 0,
+            currentIndex,
+            isPaused,
+            hasScrollViewRef: !!scrollViewRef.current,
+            scrollViewType: scrollViewRef.current ? typeof scrollViewRef.current.scrollTo : 'null'
+        });
+
         if (isAutoScrollDisabled) {
             clearAutoScrollTimer();
-            // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
-            console.debug('[MixedContentCarousel] ⏸️ Scroll automatique désactivé (configuration)');
+            console.log('[MixedContentCarousel] ⏸️ [DIAGNOSTIC] Scroll automatique désactivé (configuration CRASH_PREVENTION_CONFIG.DISABLE_MIXED_CONTENT_AUTOSCROLL)');
             return;
         }
 
         const safeContent = Array.isArray(content) ? content : [];
-        // ✅ CORRIGÉ: Log en debug pour éviter le spam
-        console.debug('[MixedContentCarousel] 🔍 Vérification scroll initial:', {
-            contentLength: safeContent.length,
-            currentIndex,
-            isPaused,
-            isAutoScrollDisabled
-        });
 
         if (safeContent.length > 1 && currentIndex === 0 && !isPaused) {
-            // ✅ CORRIGÉ: Log en debug pour éviter le spam
-            console.debug('[MixedContentCarousel] ⏱️ Programmation scroll initial dans 2 secondes...');
+            console.log('[MixedContentCarousel] ⏱️ [DIAGNOSTIC] Programmation scroll initial dans 2 secondes...', {
+                contentLength: safeContent.length,
+                currentIndex,
+                isPaused,
+                scrollViewMounted
+            });
+
             const initialTimer = setTimeout(() => {
                 const safeContent = Array.isArray(content) ? content : [];
-                if (scrollViewRef.current && safeContent.length > 1) {
+                console.log('[MixedContentCarousel] 🎬 [DIAGNOSTIC] Tentative scroll initial après 2s:', {
+                    hasScrollViewRef: !!scrollViewRef.current,
+                    scrollViewMounted,
+                    contentLength: safeContent.length,
+                    scrollViewReady: scrollViewRef.current ? typeof scrollViewRef.current.scrollTo === 'function' : false
+                });
+
+                if (scrollViewRef.current && safeContent.length > 1 && scrollViewMounted) {
                     // ✅ CORRIGÉ: Vérifier que scrollTo est disponible
                     if (typeof scrollViewRef.current.scrollTo !== 'function') {
-                        console.warn('[MixedContentCarousel] ⚠️ scrollTo n\'est pas une fonction');
+                        console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] scrollTo n\'est pas une fonction');
                         return;
                     }
 
-                    // ✅ CORRIGÉ: Log en debug pour éviter le spam
-                    console.debug('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial (index 0 → 1)');
                     // ✅ CORRIGÉ: Calculer la position correctement (nextIndex * SNAP_INTERVAL)
                     const nextIndex = 1;
                     const scrollPosition = nextIndex * SNAP_INTERVAL;
 
+                    console.log('[MixedContentCarousel] 🎯 [DIAGNOSTIC] Exécution scroll automatique initial:', {
+                        nextIndex,
+                        scrollPosition,
+                        SNAP_INTERVAL,
+                        CARD_WIDTH,
+                        CARD_MARGIN
+                    });
+
                     // ✅ CORRIGÉ: Utiliser requestAnimationFrame pour s'assurer que le layout est prêt
                     requestAnimationFrame(() => {
                         if (scrollViewRef.current) {
-                            scrollViewRef.current.scrollTo({
-                                x: scrollPosition,
-                                animated: true,
-                            });
-                            setCurrentIndex(nextIndex);
+                            try {
+                                scrollViewRef.current.scrollTo({
+                                    x: scrollPosition,
+                                    animated: true,
+                                });
+                                setCurrentIndex(nextIndex);
+                                console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Scroll initial exécuté avec succès vers index', nextIndex);
+                            } catch (error) {
+                                console.error('[MixedContentCarousel] ❌ [DIAGNOSTIC] Erreur lors du scroll initial:', error);
+                            }
+                        } else {
+                            console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView ref null dans requestAnimationFrame');
                         }
                     });
                 } else {
-                    console.warn('[MixedContentCarousel] ⚠️ ScrollView ref null ou contenu insuffisant lors du scroll initial');
+                    console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView ref null ou contenu insuffisant lors du scroll initial:', {
+                        hasScrollViewRef: !!scrollViewRef.current,
+                        scrollViewMounted,
+                        contentLength: safeContent.length,
+                        reason: !scrollViewRef.current ? 'ScrollView ref null' :
+                            !scrollViewMounted ? 'ScrollView non monté' :
+                                safeContent.length <= 1 ? 'Contenu insuffisant' : 'Raison inconnue'
+                    });
                 }
             }, 2000);
 
             return () => clearTimeout(initialTimer);
-        } else if (safeContent.length <= 1) {
-            // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
-            console.debug('[MixedContentCarousel] Pas assez de contenu pour le scroll automatique:', safeContent.length);
+        } else {
+            // ✅ DIAGNOSTIC: Log visible pour comprendre pourquoi le scroll ne démarre pas
+            console.log('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Scroll initial non démarré:', {
+                contentLength: safeContent.length,
+                currentIndex,
+                isPaused,
+                reason: safeContent.length <= 1 ? 'Pas assez de contenu (besoin > 1)' :
+                    currentIndex !== 0 ? `Index actuel ${currentIndex} (besoin 0)` :
+                        isPaused ? 'En pause' : 'Raison inconnue'
+            });
         }
-    }, [content.length, isPaused, currentIndex, isAutoScrollDisabled, content]);
+    }, [content.length, isPaused, currentIndex, isAutoScrollDisabled, content, scrollViewMounted]);
 
     const loadMixedContent = async () => {
         try {
             setLoading(true);
-            console.log('[MixedContentCarousel] 🎬 Démarrage chargement contenu mixte...');
+            console.log('[MixedContentCarousel] 🎬 [DIAGNOSTIC] Démarrage chargement contenu mixte...', {
+                userId,
+                userBehaviorCount: userBehavior.length,
+                sessionId
+            });
 
             // Construire les paramètres
             const params = new URLSearchParams();
             if (userBehavior.length > 0) {
                 params.append('categories', userBehavior.join(','));
-                console.log('[MixedContentCarousel] Catégories comportement:', userBehavior);
+                console.log('[MixedContentCarousel] [DIAGNOSTIC] Catégories comportement:', userBehavior);
             }
             if (userId) {
                 params.append('user_id', userId);
             }
             params.append('session_id', sessionId);
 
-            console.log('[MixedContentCarousel] 🔗 Appel API:', `/api/content/mixed?${params.toString()}`);
-            const response = await apiGet(`/api/content/mixed?${params.toString()}`);
-            console.log('[MixedContentCarousel] 📦 Réponse API:', { success: response.success, hasData: !!response.data, dataLength: Array.isArray(response.data) ? response.data.length : 0 });
+            const apiUrl = `/api/content/mixed?${params.toString()}`;
+            console.log('[MixedContentCarousel] 🔗 [DIAGNOSTIC] Appel API:', apiUrl);
+
+            const startTime = Date.now();
+            const response = await apiGet(apiUrl);
+            const loadTime = Date.now() - startTime;
+
+            console.log('[MixedContentCarousel] 📦 [DIAGNOSTIC] Réponse API reçue:', {
+                success: response.success,
+                hasData: !!response.data,
+                dataLength: Array.isArray(response.data) ? response.data.length : 0,
+                loadTime: `${loadTime}ms`,
+                dataType: typeof response.data,
+                isArray: Array.isArray(response.data)
+            });
 
             if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
-                console.log(`[MixedContentCarousel] ✅ ${response.data.length} éléments de contenu mixte chargés`);
+                console.log(`[MixedContentCarousel] ✅ [DIAGNOSTIC] ${response.data.length} éléments de contenu mixte chargés`);
                 setContent(response.data);
+                console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Contenu défini dans le state, longueur:', response.data.length);
             } else {
                 // ✅ FALLBACK: Charger les produits organiques si pas de contenu mixte
-                console.log('[MixedContentCarousel] ⚠️ Pas de contenu mixte, chargement des produits organiques...');
+                console.log('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Pas de contenu mixte, chargement des produits organiques...', {
+                    success: response.success,
+                    hasData: !!response.data,
+                    dataType: typeof response.data
+                });
                 await loadOrganicProducts();
             }
 
             setLoading(false);
         } catch (error) {
-            console.error('[MixedContentCarousel] ❌ Erreur chargement:', error);
+            console.error('[MixedContentCarousel] ❌ [DIAGNOSTIC] Erreur chargement:', error);
             // ✅ FALLBACK: En cas d'erreur, charger les produits organiques
-            console.log('[MixedContentCarousel] 🔄 Basculement vers produits organiques (fallback)...');
+            console.log('[MixedContentCarousel] 🔄 [DIAGNOSTIC] Basculement vers produits organiques (fallback)...');
             await loadOrganicProducts();
             setLoading(false);
         }
@@ -243,22 +367,44 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     // ✅ NOUVEAU: Charger les produits organiques en fallback
     const loadOrganicProducts = async () => {
         try {
-            console.log('[MixedContentCarousel] Chargement des produits organiques...');
+            console.log('[MixedContentCarousel] 🔄 [DIAGNOSTIC] Chargement des produits organiques...');
 
             // ✅ CORRIGÉ: Retirer le paramètre include_products qui cause une erreur 400
             // Essayer d'abord l'API récente
+            console.log('[MixedContentCarousel] [DIAGNOSTIC] Tentative API /api/services/recent?limit=20');
+            const startTime = Date.now();
             let response = await apiGet('/api/services/recent?limit=20');
+            const loadTime = Date.now() - startTime;
 
             // Si ça ne marche pas, essayer l'API standard
             if (!response.success || !response.data || !Array.isArray(response.data)) {
-                console.log('[MixedContentCarousel] API recent échouée, essai API standard...');
+                console.log('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] API recent échouée, essai API standard...', {
+                    success: response.success,
+                    hasData: !!response.data,
+                    isArray: Array.isArray(response.data)
+                });
+                const startTime2 = Date.now();
                 response = await apiGet('/api/services?limit=20');
+                const loadTime2 = Date.now() - startTime2;
+                console.log('[MixedContentCarousel] [DIAGNOSTIC] Réponse API standard:', {
+                    success: response.success,
+                    hasData: !!response.data,
+                    isArray: Array.isArray(response.data),
+                    loadTime: `${loadTime2}ms`
+                });
+            } else {
+                console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Réponse API recent réussie:', {
+                    success: response.success,
+                    dataLength: Array.isArray(response.data) ? response.data.length : 0,
+                    loadTime: `${loadTime}ms`
+                });
             }
 
             if (response.success && response.data && Array.isArray(response.data)) {
                 const organicContent: ContentItem[] = [];
+                console.log('[MixedContentCarousel] [DIAGNOSTIC] Traitement de', response.data.length, 'services...');
 
-                response.data.forEach((service: any) => {
+                response.data.forEach((service: any, serviceIndex: number) => {
                     // ✅ CORRIGÉ: Utiliser extractProduits pour gérer toutes les structures
                     const produits = extractProduits(service);
 
@@ -322,11 +468,9 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                     }
                 });
 
-                // ✅ CORRIGÉ: Log en debug pour éviter le spam
-                console.debug(`[MixedContentCarousel] ✅ ${organicContent.length} produits organiques chargés`);
+                console.log(`[MixedContentCarousel] ✅ [DIAGNOSTIC] ${organicContent.length} produits organiques chargés`);
                 if (organicContent.length === 0) {
-                    // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
-                    console.debug('[MixedContentCarousel] ⚠️ Aucun produit trouvé dans les services. Structure des données:', {
+                    console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Aucun produit trouvé dans les services. Structure des données:', {
                         servicesCount: response.data.length,
                         firstService: response.data[0] ? {
                             id: response.data[0].id,
@@ -339,9 +483,9 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                     });
                 }
                 setContent(organicContent);
+                console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Contenu organique défini dans le state, longueur:', organicContent.length);
             } else {
-                // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
-                console.debug('[MixedContentCarousel] ⚠️ Aucun produit organique trouvé - Réponse API invalide:', {
+                console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Aucun produit organique trouvé - Réponse API invalide:', {
                     success: response.success,
                     hasData: !!response.data,
                     isArray: Array.isArray(response.data),
@@ -350,7 +494,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 setContent([]);
             }
         } catch (error) {
-            console.error('[MixedContentCarousel] ❌ Erreur chargement produits organiques:', error);
+            console.error('[MixedContentCarousel] ❌ [DIAGNOSTIC] Erreur chargement produits organiques:', error);
             setContent([]);
         }
     };
@@ -381,52 +525,60 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
         const safeContent = Array.isArray(content) ? content : [];
 
+        // ✅ DIAGNOSTIC: Log visible pour comprendre l'état du scroll automatique
+        console.log('[MixedContentCarousel] 🔄 [DIAGNOSTIC] Vérification auto-scroll continu:', {
+            isAutoScrollDisabled,
+            contentLength: safeContent.length,
+            currentIndex,
+            isPaused,
+            hasScrollViewRef: !!scrollViewRef.current,
+            scrollViewMounted
+        });
+
         if (isAutoScrollDisabled) {
-            // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
-            console.debug('[MixedContentCarousel] ⏸️ Scroll automatique désactivé (configuration)');
+            console.log('[MixedContentCarousel] ⏸️ [DIAGNOSTIC] Scroll automatique désactivé (configuration)');
             return;
         }
 
         if (safeContent.length <= 1) {
-            // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
-            console.debug('[MixedContentCarousel] Pas assez de contenu pour le scroll automatique:', safeContent.length);
+            console.log('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Pas assez de contenu pour le scroll automatique:', safeContent.length);
             return;
         }
 
         if (isPaused) {
-            // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
-            console.debug('[MixedContentCarousel] ⏸️ Scroll automatique en pause');
+            console.log('[MixedContentCarousel] ⏸️ [DIAGNOSTIC] Scroll automatique en pause');
             return;
         }
 
         const currentItem = safeContent[currentIndex] ?? safeContent[0];
         if (!currentItem) {
-            console.warn('[MixedContentCarousel] ⚠️ Item actuel introuvable:', { currentIndex, contentLength: safeContent.length });
+            console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Item actuel introuvable:', { currentIndex, contentLength: safeContent.length });
             return;
         }
 
         const delay = Math.max(calculateDelay(currentItem), 3000);
-        // ✅ CORRIGÉ: Log en debug pour éviter le spam (se déclenche fréquemment)
-        console.debug('[MixedContentCarousel] ⏱️ Programmation autoscroll', {
+        console.log('[MixedContentCarousel] ⏱️ [DIAGNOSTIC] Programmation autoscroll', {
             delay,
             currentIndex,
             contentLength: safeContent.length,
             itemType: currentItem.type,
-            isPaid: currentItem.is_paid
+            isPaid: currentItem.is_paid,
+            nextScrollIn: `${(delay / 1000).toFixed(1)}s`
         });
 
         autoScrollTimerRef.current = setTimeout(() => {
             // ✅ CORRIGÉ: Vérifier que le ScrollView est monté et que le contenu est chargé
-            if (!scrollViewRef.current) {
-                // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas rare mais normal)
-                console.debug('[MixedContentCarousel] ⚠️ ScrollView ref null, scroll annulé');
+            if (!scrollViewRef.current || !scrollViewMounted) {
+                console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView ref null ou non monté, scroll annulé:', {
+                    hasScrollViewRef: !!scrollViewRef.current,
+                    scrollViewMounted
+                });
                 return;
             }
 
             const safeContent = Array.isArray(content) ? content : [];
             if (safeContent.length <= 1) {
-                // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas normal)
-                console.debug('[MixedContentCarousel] ⚠️ Contenu insuffisant lors du scroll:', safeContent.length);
+                console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Contenu insuffisant lors du scroll:', safeContent.length);
                 return;
             }
 
@@ -434,13 +586,11 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             try {
                 // Test si le ScrollView est accessible
                 if (typeof scrollViewRef.current.scrollTo !== 'function') {
-                    // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas rare mais normal)
-                    console.debug('[MixedContentCarousel] ⚠️ ScrollView.scrollTo n\'est pas une fonction, scroll annulé');
+                    console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView.scrollTo n\'est pas une fonction, scroll annulé');
                     return;
                 }
             } catch (error) {
-                // ✅ CORRIGÉ: Log en debug pour éviter le spam (cas rare mais normal)
-                console.debug('[MixedContentCarousel] ⚠️ Erreur accès ScrollView:', error);
+                console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Erreur accès ScrollView:', error);
                 return;
             }
 
@@ -448,8 +598,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             // ✅ CORRIGÉ: Calculer la position de scroll correctement en tenant compte du padding
             const scrollPosition = nextIndex * SNAP_INTERVAL;
 
-            // ✅ CORRIGÉ: Log en debug pour éviter le spam (se déclenche fréquemment)
-            console.debug('[MixedContentCarousel] 🎬 Auto scroll exécuté', {
+            console.log('[MixedContentCarousel] 🎬 [DIAGNOSTIC] Auto scroll exécuté', {
                 currentIndex,
                 nextIndex,
                 scrollPosition,
@@ -463,20 +612,27 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 // ✅ CORRIGÉ: Utiliser requestAnimationFrame pour s'assurer que le layout est prêt
                 requestAnimationFrame(() => {
                     if (scrollViewRef.current) {
-                        scrollViewRef.current.scrollTo({
-                            x: scrollPosition,
-                            animated: true,
-                        });
-                        setCurrentIndex(nextIndex);
+                        try {
+                            scrollViewRef.current.scrollTo({
+                                x: scrollPosition,
+                                animated: true,
+                            });
+                            setCurrentIndex(nextIndex);
+                            console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Scroll exécuté avec succès vers index', nextIndex);
+                        } catch (error) {
+                            console.error('[MixedContentCarousel] ❌ [DIAGNOSTIC] Erreur lors du scrollTo:', error);
+                        }
+                    } else {
+                        console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView ref null dans requestAnimationFrame');
                     }
                 });
             } catch (error) {
-                console.error('[MixedContentCarousel] ❌ Erreur lors du scroll:', error);
+                console.error('[MixedContentCarousel] ❌ [DIAGNOSTIC] Erreur lors du scroll:', error);
             }
         }, delay);
 
         return clearAutoScrollTimer;
-    }, [content, currentIndex, isPaused, isAutoScrollDisabled]);
+    }, [content, currentIndex, isPaused, isAutoScrollDisabled, scrollViewMounted]);
 
     // ✅ Tracker la visibilité
     const trackVisibility = async (item: ContentItem, position: number) => {
@@ -613,7 +769,13 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
             {/* ✅ ScrollView horizontal avec snap corrigé */}
             <ScrollView
-                ref={scrollViewRef}
+                ref={(ref) => {
+                    scrollViewRef.current = ref;
+                    if (ref && !scrollViewMounted) {
+                        console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] ScrollView ref assigné');
+                        setScrollViewMounted(true);
+                    }
+                }}
                 horizontal
                 pagingEnabled={false}
                 snapToInterval={SNAP_INTERVAL}
@@ -631,6 +793,12 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 nestedScrollEnabled={true}
                 removeClippedSubviews={false} // ✅ CORRIGÉ: Désactiver pour éviter les problèmes de rendu
                 scrollEnabled={true} // ✅ CORRIGÉ: S'assurer que le scroll est activé
+                onLayout={() => {
+                    console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] ScrollView layout terminé');
+                    if (scrollViewRef.current && !scrollViewMounted) {
+                        setScrollViewMounted(true);
+                    }
+                }}
             >
                 {safeContent.map((item, index) => (
                     <TouchableOpacity

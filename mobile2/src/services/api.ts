@@ -98,6 +98,14 @@ const apiCall = async <T>(
 
     clearTimeout(timeoutId);
 
+    // ✅ DEBUG: Log les headers de la réponse pour /auth/login
+    if (endpoint === '/auth/login') {
+      console.log(`[Mobile API] ✅ Status de la réponse: ${response.status} ${response.statusText}`);
+      console.log(`[Mobile API] ✅ Headers de la réponse:`, Object.fromEntries(response.headers.entries()));
+      console.log(`[Mobile API] ✅ Content-Type:`, response.headers.get('content-type'));
+      console.log(`[Mobile API] ✅ Response OK:`, response.ok);
+    }
+
     // Vérifier si le token a été mis à jour
     const newToken = response.headers.get('x-new-jwt');
     if (newToken) {
@@ -113,6 +121,13 @@ const apiCall = async <T>(
     let data;
     try {
       data = await response.json();
+      // ✅ DEBUG: Log la réponse pour /auth/login
+      if (endpoint === '/auth/login') {
+        console.log(`[Mobile API] ✅ Réponse JSON parsée pour /auth/login:`, JSON.stringify(data, null, 2));
+        console.log(`[Mobile API] ✅ Type de data:`, typeof data);
+        console.log(`[Mobile API] ✅ data.token existe?:`, !!data?.token);
+        console.log(`[Mobile API] ✅ data.tokens_balance:`, data?.tokens_balance);
+      }
     } catch (jsonError) {
       console.error(`[Mobile API] Erreur parsing JSON pour ${endpoint}:`, jsonError);
       console.error(`[Mobile API] Response status: ${response.status}`);
@@ -135,6 +150,16 @@ const apiCall = async <T>(
         error: data?.message || `Erreur ${response.status}`,
         data: data,
       };
+    }
+
+    // ✅ DEBUG: Log la structure finale pour /auth/login
+    if (endpoint === '/auth/login') {
+      console.log(`[Mobile API] ✅ Structure finale retournée:`, {
+        success: true,
+        data: data,
+        'data.token': data?.token,
+        'data.tokens_balance': data?.tokens_balance,
+      });
     }
 
     return {
@@ -179,16 +204,32 @@ const apiCall = async <T>(
 export const authApi = {
   // Connexion
   login: async (email: string, password: string) => {
+    console.log('[authApi.login] Début de la connexion...');
     const response = await apiCall<{ token: string; tokens_balance: number }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
 
+    console.log('[authApi.login] Réponse complète reçue:', JSON.stringify(response, null, 2));
+    console.log('[authApi.login] response.success:', response.success);
+    console.log('[authApi.login] response.data:', response.data);
+    console.log('[authApi.login] response.data?.token:', response.data?.token);
+    console.log('[authApi.login] response.error:', response.error);
+
     if (response.data?.token) {
+      console.log('[authApi.login] ✅ Token trouvé, sauvegarde...');
       await saveAuthToken(response.data.token);
       if (response.data.tokens_balance !== undefined) {
         await AsyncStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
       }
+    } else {
+      console.error('[authApi.login] ❌ Token non trouvé dans response.data');
+      console.error('[authApi.login] Structure de response:', {
+        success: response.success,
+        hasData: !!response.data,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        data: response.data,
+      });
     }
 
     return response;

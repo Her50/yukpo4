@@ -158,17 +158,62 @@ const VideoCreationIntroScreen: React.FC = () => {
         if (userServices.length > 0) {
             const allProducts: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> = [];
 
+            // ✅ CORRECTION 2025-11-28: Fonction pour extraire les produits (tous formats)
+            const extractProduits = (service: any): any[] => {
+                const serviceData = service.data || service;
+
+                // Format 1 - produits.valeur (tableau)
+                if (serviceData?.produits?.valeur) {
+                    const valeur = serviceData.produits.valeur;
+                    if (Array.isArray(valeur) && valeur.length > 0) {
+                        const filtered = valeur.filter((v: any) => v !== null && v !== undefined && v !== '');
+                        if (filtered.length > 0) return filtered;
+                    }
+                }
+
+                // Format 2 - produits directement un tableau
+                if (Array.isArray(serviceData?.produits) && serviceData.produits.length > 0) {
+                    return serviceData.produits;
+                }
+
+                // Format 3 - produits.items ou produits.list
+                if (serviceData?.produits && typeof serviceData.produits === 'object') {
+                    const produitsObj = serviceData.produits;
+                    if (Array.isArray(produitsObj.items) && produitsObj.items.length > 0) {
+                        return produitsObj.items;
+                    } else if (Array.isArray(produitsObj.list) && produitsObj.list.length > 0) {
+                        return produitsObj.list;
+                    }
+                }
+
+                // Format 4 - produits dans le service brut
+                if (Array.isArray(service.produits) && service.produits.length > 0) {
+                    return service.produits;
+                }
+
+                return [];
+            };
+
             userServices.forEach((service: any) => {
-                const produits = service.data?.produits?.valeur || service.data?.produits || [];
+                const produits = extractProduits(service);
                 const serviceId = service.id || service.service_id;
                 const serviceName = service.data?.titre_service?.valeur || service.titre || `Service #${serviceId}`;
 
                 if (Array.isArray(produits) && produits.length > 0) {
                     produits.forEach((product: any, index: number) => {
+                        // ✅ CORRECTION: Extraire le nom du produit depuis différents formats
+                        let productName = 'Produit sans nom';
+                        if (typeof product === 'string') {
+                            // Si c'est une string, prendre la première partie (avant la virgule)
+                            productName = product.split(',')[0].trim() || `Produit ${index + 1}`;
+                        } else if (typeof product === 'object' && product !== null) {
+                            productName = product.nom || product.name || product.title || product.valeur || `Produit ${index + 1}`;
+                        }
+
                         allProducts.push({
                             serviceId: Number(serviceId),
                             productIndex: index,
-                            productName: product.nom || product.name || product.title || `Produit ${index + 1}`,
+                            productName: productName,
                             serviceName: serviceName
                         });
                     });

@@ -4692,19 +4692,54 @@ pub async fn save_autocomplete_combination(
                 );
             }
 
-            // Mettre à jour dans la base
-            let _ = sqlx::query("UPDATE services SET data = $1 WHERE id = $2")
-                .bind(&service_data)
-                .bind(service_id)
-                .execute(pool)
-                .await
-                .map_err(|e| {
-                    log::error!(
-                        "[save_autocomplete_combination] Erreur UPDATE service data: {}",
-                        e
-                    );
+            // ✅ OPTIMISATION: Mettre à jour seulement data->produits au lieu de remplacer tout data
+            // Utilise jsonb_set pour mettre à jour uniquement le champ produits (plus rapide)
+            // Supporte les deux formats: data->produits (array) et data->produits->valeur (array)
+            let produits_value = if let Some(produits_obj) = service_data.get("produits") {
+                // Si c'est un objet avec "valeur", prendre la valeur
+                if let Some(obj) = produits_obj.as_object() {
+                    obj.get("valeur").cloned().unwrap_or_else(|| produits_obj.clone())
+                } else {
+                    produits_obj.clone()
+                }
+            } else {
+                serde_json::json!([])
+            };
+            
+            let _ = sqlx::query(
+                r#"
+                UPDATE services 
+                SET data = CASE
+                    WHEN jsonb_typeof(data->'produits') = 'object' AND data->'produits'->'valeur' IS NOT NULL THEN
+                        jsonb_set(
+                            data,
+                            '{produits,valeur}',
+                            $1::jsonb,
+                            true
+                        )
+                    ELSE
+                        jsonb_set(
+                            COALESCE(data, '{}'::jsonb),
+                            '{produits}',
+                            $1::jsonb,
+                            true
+                        )
+                END,
+                updated_at = NOW()
+                WHERE id = $2
+                "#
+            )
+            .bind(&produits_value)
+            .bind(service_id)
+            .execute(pool)
+            .await
+            .map_err(|e| {
+                log::error!(
+                    "[save_autocomplete_combination] Erreur UPDATE service data (optimisé): {}",
                     e
-                });
+                );
+                e
+            });
 
             log::info!(
                 "[save_autocomplete_combination] ✅ Vecteur ajouté à service.data->produits"
@@ -4753,13 +4788,22 @@ pub fn detect_lang(text: &str) -> String {
         .to_string()
 }
 
+/// Cache pour éviter les logs répétitifs d'erreur Google Translate
+static mut GOOGLE_TRANSLATE_ERROR_LOGGED: bool = false;
+
 pub async fn translate_to_en(text: &str, lang: &str) -> String {
     if lang == "eng" || lang == "und" {
         return text.to_string();
     }
     let api_key = std::env::var("GOOGLE_TRANSLATE_API_KEY").unwrap_or_default();
     if api_key.is_empty() {
-        log::warn!("[TRANSLATE] GOOGLE_TRANSLATE_API_KEY absente, retour texte original.");
+        // Logger seulement une fois
+        unsafe {
+            if !GOOGLE_TRANSLATE_ERROR_LOGGED {
+                log::warn!("[TRANSLATE] GOOGLE_TRANSLATE_API_KEY absente, retour texte original (fallback activé).");
+                GOOGLE_TRANSLATE_ERROR_LOGGED = true;
+            }
+        }
         return text.to_string();
     }
     let url = format!(
@@ -4775,19 +4819,48 @@ pub async fn translate_to_en(text: &str, lang: &str) -> String {
     });
     let resp = client.post(&url).json(&params).send().await;
     if let Ok(r) = resp {
+        let status = r.status();
+        if status == 403 || status == 401 {
+            // Erreur d'autorisation - logger seulement une fois
+            unsafe {
+                if !GOOGLE_TRANSLATE_ERROR_LOGGED {
+                    log::warn!("[TRANSLATE] Google Translate API bloquée ({}). Vérifiez la clé API et les quotas. Fallback sur texte original activé.", status);
+                    GOOGLE_TRANSLATE_ERROR_LOGGED = true;
+                }
+            }
+            return text.to_string();
+        }
         if let Ok(json) = r.json::<serde_json::Value>().await {
             if let Some(translated) = json["data"]["translations"][0]["translatedText"].as_str() {
+                // Réinitialiser le flag si la traduction réussit
+                unsafe {
+                    GOOGLE_TRANSLATE_ERROR_LOGGED = false;
+                }
                 return translated.to_string();
             } else {
-                log::warn!("[TRANSLATE] Champ 'translatedText' absent dans la réponse Google, retour texte original. Réponse: {:?}", json);
+                // Logger seulement si erreur non déjà loggée
+                unsafe {
+                    if !GOOGLE_TRANSLATE_ERROR_LOGGED {
+                        log::debug!("[TRANSLATE] Champ 'translatedText' absent dans la réponse Google, retour texte original.");
+                        GOOGLE_TRANSLATE_ERROR_LOGGED = true;
+                    }
+                }
             }
         } else {
-            log::warn!("[TRANSLATE] Impossible de parser la réponse JSON de Google, retour texte original.");
+            unsafe {
+                if !GOOGLE_TRANSLATE_ERROR_LOGGED {
+                    log::debug!("[TRANSLATE] Impossible de parser la réponse JSON de Google, retour texte original.");
+                    GOOGLE_TRANSLATE_ERROR_LOGGED = true;
+                }
+            }
         }
     } else {
-        log::warn!(
-            "[TRANSLATE] Erreur HTTP lors de l'appel Google Translate, retour texte original."
-        );
+        unsafe {
+            if !GOOGLE_TRANSLATE_ERROR_LOGGED {
+                log::debug!("[TRANSLATE] Erreur HTTP lors de l'appel Google Translate, retour texte original.");
+                GOOGLE_TRANSLATE_ERROR_LOGGED = true;
+            }
+        }
     }
     text.to_string() // fallback
 }
