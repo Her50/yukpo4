@@ -66,12 +66,26 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
                     log::warn!("🔍 Exécution du diagnostic LiveKit complet...");
                     let diagnostic = diagnose_livekit_connection(api_url, Some(api_key), Some(api_secret)).await;
                     
-                    log::warn!("📊 Résultat du diagnostic LiveKit:");
-                    log::warn!("   - Serveur accessible: {}", if diagnostic.server_reachable { "✅" } else { "❌" });
-                    log::warn!("   - Endpoint API accessible: {}", if diagnostic.api_endpoint_accessible { "✅" } else { "❌" });
-                    log::warn!("   - Authentification: {}", if diagnostic.authentication_working { "✅" } else { "❌" });
-                    log::warn!("   - API Key configurée: {}", if diagnostic.api_key_configured { "✅" } else { "❌" });
-                    log::warn!("   - API Secret configurée: {}", if diagnostic.api_secret_configured { "✅" } else { "❌" });
+                            log::warn!("📊 Résultat du diagnostic LiveKit:");
+                            log::warn!("   - Serveur accessible: {}", if diagnostic.server_reachable { "✅" } else { "❌" });
+                            log::warn!("   - Endpoint API accessible: {}", if diagnostic.api_endpoint_accessible { "✅" } else { "❌" });
+                            log::warn!("   - Authentification: {}", if diagnostic.authentication_working { "✅" } else { "❌" });
+                            log::warn!("   - API Key configurée: {}", if diagnostic.api_key_configured { "✅" } else { "❌" });
+                            log::warn!("   - API Secret configurée: {}", if diagnostic.api_secret_configured { "✅" } else { "❌" });
+                            
+                            // ✅ NOUVEAU: Afficher les vérifications automatiques
+                            if let Some(ref ip) = diagnostic.ip_address {
+                                log::warn!("   - IP: {}", ip);
+                            }
+                            if let Some(is_public) = diagnostic.ip_is_public {
+                                log::warn!("   - IP publique: {}", if is_public { "✅" } else { "❌ (privée)" });
+                            }
+                            if let Some(ref status) = diagnostic.server_status {
+                                log::warn!("   - Statut serveur: {}", status);
+                            }
+                            if let Some(ref firewall) = diagnostic.firewall_check {
+                                log::warn!("   - Firewall: {}", firewall);
+                            }
                     
                     if let Some(time_ms) = diagnostic.connection_time_ms {
                         log::warn!("   - Temps de connexion: {}ms", time_ms);
@@ -97,16 +111,44 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
 
         let mut ticker = tokio::time::interval(Duration::from_secs(CLEANUP_INTERVAL_MINUTES * 60));
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        
+        // ✅ AMÉLIORATION: Compteur pour réessayer périodiquement même après erreur
+        let mut consecutive_failures = 0;
+        const MAX_CONSECUTIVE_FAILURES: u32 = 10; // Réessayer le diagnostic après 10 échecs consécutifs
 
         loop {
             ticker.tick().await;
             if let Err(err) = cleanup_once(immediate_state.clone()).await {
-                // Ne plus logger les erreurs de connexion répétées
+                consecutive_failures += 1;
+                
+                // Ne plus logger les erreurs de connexion répétées sauf périodiquement
                 let err_str = format!("{err:?}").to_lowercase();
                 if err_str.contains("connection refused") 
                     || err_str.contains("connexion refusée")
                     || err_str.contains("tcp connect error")
                     || err_str.contains("service non disponible") {
+                    // Réessayer le diagnostic après plusieurs échecs consécutifs
+                    if consecutive_failures >= MAX_CONSECUTIVE_FAILURES {
+                        log::info!("🔄 LiveKit: {} échecs consécutifs, réexécution du diagnostic...", consecutive_failures);
+                        let config = immediate_state.live_streaming.clone();
+                        if let (Some(api_url), Some(api_key), Some(api_secret)) = (
+                            config.livekit_api_url.as_ref(),
+                            config.livekit_api_key.as_ref(),
+                            config.livekit_api_secret.as_ref(),
+                        ) {
+                            use crate::utils::livekit::diagnose_livekit_connection;
+                            let diagnostic = diagnose_livekit_connection(api_url, Some(api_key), Some(api_secret)).await;
+                            
+                            if diagnostic.server_reachable && diagnostic.authentication_working {
+                                log::info!("✅ LiveKit: Serveur maintenant accessible ! Réinitialisation du compteur.");
+                                consecutive_failures = 0;
+                                connection_error_logged.swap(false, Ordering::Relaxed);
+                            } else {
+                                log::debug!("LiveKit toujours inaccessible après {} tentatives", consecutive_failures);
+                                consecutive_failures = 0; // Réinitialiser pour éviter les logs répétés
+                            }
+                        }
+                    }
                     // Ignorer les erreurs de connexion répétées (déjà loggé une fois)
                     continue;
                 } else {
@@ -114,8 +156,9 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
                 }
             } else {
                 // Si la connexion réussit après une erreur, réinitialiser le flag
-                if connection_error_logged.swap(false, Ordering::Relaxed) {
+                if connection_error_logged.swap(false, Ordering::Relaxed) || consecutive_failures > 0 {
                     log::info!("✅ LiveKit disponible. Nettoyage automatique activé.");
+                    consecutive_failures = 0;
                 }
             }
         }

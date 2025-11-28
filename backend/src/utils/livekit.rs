@@ -2,6 +2,7 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
+use std::net::IpAddr;
 
 use crate::core::types::AppError;
 
@@ -86,6 +87,11 @@ pub struct LiveKitDiagnostic {
     pub connection_time_ms: Option<u128>,
     pub error_message: Option<String>,
     pub suggestions: Vec<String>,
+    // ✅ NOUVEAU: Vérifications automatiques
+    pub ip_is_public: Option<bool>,
+    pub ip_address: Option<String>,
+    pub firewall_check: Option<String>,
+    pub server_status: Option<String>,
 }
 
 /// Effectue un diagnostic complet de la connexion LiveKit
@@ -104,6 +110,11 @@ pub async fn diagnose_livekit_connection(
         connection_time_ms: None,
         error_message: None,
         suggestions: Vec::new(),
+        // ✅ NOUVEAU: Vérifications automatiques
+        ip_is_public: None,
+        ip_address: None,
+        firewall_check: None,
+        server_status: None,
     };
 
     // 1. Vérifier la configuration
@@ -136,25 +147,111 @@ pub async fn diagnose_livekit_connection(
             return diagnostic;
         }
     };
+    
+    diagnostic.ip_address = Some(host.clone());
+    
+    // ✅ VÉRIFICATION AUTOMATIQUE 1: Vérifier si l'IP est publique ou privée
+    let is_public_ip = check_if_public_ip(&host);
+    diagnostic.ip_is_public = Some(is_public_ip);
+    
+    if !is_public_ip {
+        diagnostic.suggestions.push(format!(
+            "⚠️ IP privée détectée ({}) - Le serveur doit être accessible depuis Internet",
+            host
+        ));
+        diagnostic.suggestions.push("  Solutions possibles:".to_string());
+        diagnostic.suggestions.push("    - Utiliser une IP publique".to_string());
+        diagnostic.suggestions.push("    - Configurer un tunnel (ngrok, cloudflare tunnel, etc.)".to_string());
+        diagnostic.suggestions.push("    - Utiliser un service LiveKit cloud (livekit.cloud)".to_string());
+    } else {
+        diagnostic.suggestions.push(format!("✅ IP publique détectée ({})", host));
+    }
+    
+    // ✅ VÉRIFICATION AUTOMATIQUE 2: Vérifier le statut du serveur (ping/connectivité)
+    let server_status_result = check_server_status(&host, port).await;
+    diagnostic.server_status = Some(server_status_result.clone());
+    
+    match server_status_result.as_str() {
+        s if s.contains("accessible") => {
+            diagnostic.suggestions.push(format!("✅ Serveur: {}", s));
+        }
+        s if s.contains("timeout") => {
+            diagnostic.suggestions.push(format!("⚠️ Serveur: {} - Le serveur ne répond pas", s));
+            diagnostic.suggestions.push("  - Vérifiez que le serveur LiveKit est démarré".to_string());
+            diagnostic.suggestions.push("  - Vérifiez les logs du serveur LiveKit".to_string());
+        }
+        s if s.contains("refusée") => {
+            diagnostic.suggestions.push(format!("❌ Serveur: {} - Connexion refusée", s));
+            diagnostic.suggestions.push("  - Le serveur LiveKit n'est probablement pas démarré".to_string());
+            diagnostic.suggestions.push("  - Vérifiez: systemctl status livekit (ou docker ps | grep livekit)".to_string());
+        }
+        _ => {}
+    }
+    
+    // ✅ VÉRIFICATION AUTOMATIQUE 3: Vérifier le firewall (test de connexion sur plusieurs ports)
+    let firewall_check_result = check_firewall(&host, port).await;
+    diagnostic.firewall_check = Some(firewall_check_result.clone());
+    
+    if firewall_check_result.contains("bloqué") || firewall_check_result.contains("fermé") {
+        diagnostic.suggestions.push(format!("⚠️ Firewall: {}", firewall_check_result));
+        diagnostic.suggestions.push(format!("  - Ouvrir le port {} dans le firewall", port));
+        diagnostic.suggestions.push(format!("  - Commande Linux: sudo ufw allow {}/tcp", port));
+        diagnostic.suggestions.push(format!("  - Commande iptables: sudo iptables -A INPUT -p tcp --dport {} -j ACCEPT", port));
+    } else if firewall_check_result.contains("accessible") {
+        diagnostic.suggestions.push(format!("✅ Firewall: {}", firewall_check_result));
+    }
 
-    // Test de connexion TCP
-    match tokio::net::TcpStream::connect(format!("{}:{}", host, port)).await {
-        Ok(_) => {
-            diagnostic.server_reachable = true;
-            diagnostic.connection_time_ms = Some(start.elapsed().as_millis());
+    // ✅ AMÉLIORATION: Test de connexion TCP avec timeout et retry
+    let mut tcp_connected = false;
+    let mut tcp_error = None;
+    
+    for attempt in 1..=3 {
+        match tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            tokio::net::TcpStream::connect(format!("{}:{}", host, port))
+        ).await {
+            Ok(Ok(_)) => {
+                diagnostic.server_reachable = true;
+                diagnostic.connection_time_ms = Some(start.elapsed().as_millis());
+                tcp_connected = true;
+                break;
+            }
+            Ok(Err(e)) => {
+                tcp_error = Some(e);
+                if attempt < 3 {
+                    // Attendre avant de réessayer
+                    tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+                }
+            }
+            Err(_) => {
+                tcp_error = Some(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Timeout de connexion TCP (5s)"
+                ));
+            }
         }
-        Err(e) => {
-            diagnostic.error_message = Some(format!("Connexion TCP refusée: {}", e));
-            diagnostic.suggestions.push(format!(
-                "Le serveur LiveKit n'est pas accessible sur {}:{}. Vérifiez que:",
-                host, port
-            ));
-            diagnostic.suggestions.push("  - Le serveur LiveKit est démarré".to_string());
-            diagnostic.suggestions.push("  - Le port est ouvert dans le firewall".to_string());
-            diagnostic.suggestions.push("  - L'IP/Port sont corrects".to_string());
-            diagnostic.suggestions.push("  - Le serveur n'est pas sur un réseau privé".to_string());
-            return diagnostic;
-        }
+    }
+    
+    if !tcp_connected {
+        let err_msg = tcp_error
+            .map(|e| format!("{}", e))
+            .unwrap_or_else(|| "Erreur inconnue".to_string());
+        
+        diagnostic.error_message = Some(format!("Connexion TCP refusée après 3 tentatives: {}", err_msg));
+        diagnostic.suggestions.push(format!(
+            "Le serveur LiveKit n'est pas accessible sur {}:{}. Vérifiez que:",
+            host, port
+        ));
+        diagnostic.suggestions.push("  - Le serveur LiveKit est démarré".to_string());
+        diagnostic.suggestions.push("  - Le port est ouvert dans le firewall".to_string());
+        diagnostic.suggestions.push("  - L'IP/Port sont corrects".to_string());
+        diagnostic.suggestions.push("  - Le serveur n'est pas sur un réseau privé".to_string());
+        diagnostic.suggestions.push(format!("  - Test manuel: telnet {} {} (ou nc -zv {} {})", host, port, host, port));
+        diagnostic.suggestions.push(format!("  - Test HTTP: curl -v http://{}:{}/", host, port));
+        
+        // Note: La vérification d'IP privée est déjà faite plus haut
+        
+        return diagnostic;
     }
 
     // 3. Tester l'endpoint API avec authentification
@@ -244,5 +341,95 @@ fn extract_host_port(url: &str) -> Option<(String, u16)> {
         Some((parts[0].to_string(), port))
     } else {
         None
+    }
+}
+
+/// ✅ Vérifie si une IP est publique ou privée
+fn check_if_public_ip(host: &str) -> bool {
+    // Essayer de parser comme IP
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        match ip {
+            IpAddr::V4(ipv4) => {
+                let octets = ipv4.octets();
+                // IPs privées:
+                // 10.0.0.0/8
+                // 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)
+                // 192.168.0.0/16
+                // 127.0.0.0/8 (localhost)
+                !(octets[0] == 10
+                    || (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31)
+                    || (octets[0] == 192 && octets[1] == 168)
+                    || (octets[0] == 127)
+                    || (octets[0] == 169 && octets[1] == 254) // Link-local
+                )
+            }
+            IpAddr::V6(_) => {
+                // Pour IPv6, on considère que les adresses commençant par fe80:: sont link-local (privées)
+                !host.starts_with("fe80::") && !host.starts_with("::1")
+            }
+        }
+    } else {
+        // Si ce n'est pas une IP, c'est probablement un hostname
+        // On considère que les hostnames sont publics (sauf localhost)
+        !host.eq_ignore_ascii_case("localhost") 
+            && !host.ends_with(".local")
+            && !host.starts_with("127.")
+            && !host.starts_with("192.168.")
+            && !host.starts_with("10.")
+    }
+}
+
+/// ✅ Vérifie le statut du serveur (ping/connectivité)
+async fn check_server_status(host: &str, port: u16) -> String {
+    // Test de connexion TCP avec timeout court
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(3),
+        tokio::net::TcpStream::connect(format!("{}:{}", host, port))
+    ).await {
+        Ok(Ok(_)) => {
+            format!("Serveur accessible sur {}:{}", host, port)
+        }
+        Ok(Err(e)) => {
+            let err_str = format!("{}", e);
+            if err_str.contains("Connection refused") {
+                format!("Connexion refusée - Le serveur LiveKit n'est probablement pas démarré sur {}:{}", host, port)
+            } else if err_str.contains("No route to host") || err_str.contains("Network unreachable") {
+                format!("Réseau inaccessible - Vérifiez la connectivité réseau vers {}:{}", host, port)
+            } else {
+                format!("Erreur de connexion: {}", e)
+            }
+        }
+        Err(_) => {
+            format!("Timeout de connexion (3s) - Le serveur {}:{} ne répond pas", host, port)
+        }
+    }
+}
+
+/// ✅ Vérifie le firewall (test de connexion sur le port)
+async fn check_firewall(host: &str, port: u16) -> String {
+    // Test de connexion avec timeout
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        tokio::net::TcpStream::connect(format!("{}:{}", host, port))
+    ).await {
+        Ok(Ok(_)) => {
+            format!("Port {} accessible - Le firewall semble ouvert", port)
+        }
+        Ok(Err(e)) => {
+            let err_str = format!("{}", e);
+            if err_str.contains("Connection refused") {
+                // Connection refused peut signifier soit serveur non démarré, soit firewall
+                format!("Port {} - Connexion refusée (serveur non démarré ou firewall bloquant)", port)
+            } else if err_str.contains("No route to host") {
+                format!("Port {} - Route inaccessible (firewall ou réseau bloquant)", port)
+            } else if err_str.contains("Connection timed out") {
+                format!("Port {} - Timeout (probablement bloqué par firewall)", port)
+            } else {
+                format!("Port {} - Erreur: {}", port, e)
+            }
+        }
+        Err(_) => {
+            format!("Port {} - Timeout (probablement bloqué par firewall)", port)
+        }
     }
 }

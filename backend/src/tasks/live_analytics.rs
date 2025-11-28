@@ -38,10 +38,16 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
         
         // Flag partagé pour limiter la verbosité des logs de connexion
         let connection_error_logged = Arc::new(AtomicBool::new(false));
+        
+        // ✅ AMÉLIORATION: Compteur pour réessayer périodiquement même après erreur
+        let mut consecutive_failures = 0u32;
+        const MAX_CONSECUTIVE_FAILURES: u32 = 20; // Réessayer le diagnostic après 20 échecs (20 minutes)
 
         loop {
             ticker.tick().await;
             if let Err(err) = sync_live_analytics(worker_state.clone()).await {
+                consecutive_failures += 1;
+                
                 // Logger une seule fois si c'est une erreur de connexion (service non disponible)
                 let err_str = format!("{err:?}").to_lowercase();
                 if err_str.contains("connection refused") 
@@ -49,7 +55,8 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
                     || err_str.contains("tcp connect error")
                     || err_str.contains("service non disponible")
                     || err_str.contains("manquant") {
-                    if !connection_error_logged.swap(true, Ordering::Relaxed) {
+                    // Réessayer le diagnostic après plusieurs échecs consécutifs
+                    if !connection_error_logged.swap(true, Ordering::Relaxed) || consecutive_failures >= MAX_CONSECUTIVE_FAILURES {
                         let config = worker_state.live_streaming.clone();
                         
                         // ✅ DIAGNOSTIC COMPLET LiveKit
@@ -66,6 +73,20 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
                             log::warn!("   - Endpoint API accessible: {}", if diagnostic.api_endpoint_accessible { "✅" } else { "❌" });
                             log::warn!("   - Authentification: {}", if diagnostic.authentication_working { "✅" } else { "❌" });
                             
+                            // ✅ NOUVEAU: Afficher les vérifications automatiques
+                            if let Some(ref ip) = diagnostic.ip_address {
+                                log::warn!("   - IP: {}", ip);
+                            }
+                            if let Some(is_public) = diagnostic.ip_is_public {
+                                log::warn!("   - IP publique: {}", if is_public { "✅" } else { "❌ (privée)" });
+                            }
+                            if let Some(ref status) = diagnostic.server_status {
+                                log::warn!("   - Statut serveur: {}", status);
+                            }
+                            if let Some(ref firewall) = diagnostic.firewall_check {
+                                log::warn!("   - Firewall: {}", firewall);
+                            }
+                            
                             if let Some(ref err_msg) = diagnostic.error_message {
                                 log::warn!("   - Erreur: {}", err_msg);
                             }
@@ -77,7 +98,16 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
                                 }
                             }
                             
-                            log::info!("ℹ️ LiveKit non disponible (service optionnel). Synchronisation analytics désactivée.");
+                            if diagnostic.server_reachable && diagnostic.authentication_working {
+                                log::info!("✅ LiveKit: Serveur maintenant accessible ! Réinitialisation du compteur.");
+                                consecutive_failures = 0;
+                                connection_error_logged.swap(false, Ordering::Relaxed);
+                            } else {
+                                log::info!("ℹ️ LiveKit non disponible (service optionnel). Synchronisation analytics désactivée.");
+                                if consecutive_failures >= MAX_CONSECUTIVE_FAILURES {
+                                    consecutive_failures = 0; // Réinitialiser pour éviter les logs répétés
+                                }
+                            }
                         } else {
                             log::warn!("⚠️ LiveKit: Variables d'environnement manquantes. Vérifiez LIVEKIT_API_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET sur Render.com");
                         }
@@ -89,8 +119,9 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
                 }
             } else {
                 // Si la connexion réussit après une erreur, réinitialiser le flag
-                if connection_error_logged.swap(false, Ordering::Relaxed) {
+                if connection_error_logged.swap(false, Ordering::Relaxed) || consecutive_failures > 0 {
                     log::info!("✅ LiveKit disponible. Synchronisation analytics activée.");
+                    consecutive_failures = 0;
                 }
             }
         }
