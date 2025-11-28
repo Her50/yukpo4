@@ -55,18 +55,8 @@ use crate::{
     routers::router_modalities,
     routes::products_management::{delete_product, toggle_product_status, update_product},
     routes::{
-        ai_chat_routes::ai_chat_routes,
-        appliance_model_routes::appliance_model_routes,
-        diagnostic_routes::diagnostic_routes,
-        health_structure_routes::health_structure_routes,
         media_upload_routes::{serve_proof_media_file, upload_proof_media_file},
-        nearby_services_routes::nearby_services_routes,
-        phone_model_routes::phone_model_routes,
         places_routes::{autocomplete_places, fetch_place_photo},
-        popular_products_routes::popular_products_routes,
-        recommendation_routes::recommendation_routes,
-        vehicle_model_routes::vehicle_model_routes,
-        weather_routes::weather_routes,
     },
     services::creer_service,
     state::AppState,
@@ -533,17 +523,12 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .layer(axum::middleware::from_fn(jwt_auth));
 
-    let app = Router::new()
-        .merge(weather_routes(state.clone()))
-        .merge(nearby_services_routes(state.clone()))
-        .merge(ai_chat_routes(state.clone()))
-        .merge(health_structure_routes(state.clone()))
-        .merge(vehicle_model_routes(state.clone()))
-        .merge(appliance_model_routes(state.clone()))
-        .merge(phone_model_routes(state.clone()))
-        .merge(popular_products_routes(state.clone()))
-        .merge(crate::routes::product_reactions_routes::product_reactions_routes(state.clone())) // ✅ NOUVEAU: Réactions produits
-        .merge(diagnostic_routes(state.clone())); // ✅ NOUVEAU 2025-11-04: Routes de diagnostic
+    let app = Router::new();
+    // ⚠️ Routes supprimées car déjà mergées dans lib.rs :
+    // - weather_routes, nearby_services_routes, ai_chat_routes, health_structure_routes
+    // - vehicle_model_routes, appliance_model_routes, phone_model_routes
+    // - popular_products_routes, product_reactions_routes, diagnostic_routes
+    // Ces routes sont mergées explicitement dans lib.rs pour éviter les conflits
 
     // ✅ NOUVEAU: Routes pour système de publicité (intégrées directement)
     use crate::controllers::media_product_controller;
@@ -610,16 +595,15 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let media_fallback_route =
         Router::new().route("/api/media/files/{*file_path}", get(serve_media_file));
 
-    // ✅ NOUVEAU: Routes pour statistiques de tokens
-    let token_stats_routes_merged = crate::routes::token_stats_routes::token_stats_routes();
+    // ⚠️ Routes supprimées car déjà mergées dans lib.rs :
+    // - recommendation_routes, token_stats_routes
+    // Ces routes sont mergées explicitement dans lib.rs pour éviter les conflits
 
     // Combinaison des routes
     public_routes
         .merge(protected_routes)
         .merge(app)
         .merge(publicite_routes_inline)
-        .merge(recommendation_routes())
-        .merge(token_stats_routes_merged)
         .merge(modality_routes)
         .merge(media_fallback_route) // ⚠️ Route wildcard en dernier
         .with_state(state)
