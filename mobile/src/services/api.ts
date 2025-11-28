@@ -218,16 +218,21 @@ export const apiCall = async <T>(
     // ✅ CORRIGÉ 2025-11-28: Gérer les réponses 404 et autres erreurs avant parsing JSON
     const contentType = response.headers.get('content-type');
     const isJson = contentType && contentType.includes('application/json');
-    const hasBody = response.headers.get('content-length') !== '0' &&
-      response.headers.get('content-length') !== null;
+    const contentLength = response.headers.get('content-length');
+    // ✅ CORRECTION CRITIQUE: Ne pas se fier uniquement à content-length
+    // Si Content-Type est application/json, on doit essayer de parser même sans content-length
+    const hasBody = contentLength !== '0' && contentLength !== null;
+    const shouldTryParseJson = isJson && (hasBody || response.ok); // Essayer si JSON ou si réponse OK
 
     // ✅ DEBUG: Log pour /auth/login
     if (endpoint === '/auth/login') {
       console.log(`[Mobile API] ✅ Status: ${response.status} ${response.statusText}`);
       console.log(`[Mobile API] ✅ Content-Type:`, contentType);
+      console.log(`[Mobile API] ✅ Content-Length:`, contentLength);
       console.log(`[Mobile API] ✅ Response OK:`, response.ok);
-      console.log(`[Mobile API] ✅ Has Body:`, hasBody);
+      console.log(`[Mobile API] ✅ Has Body (from header):`, hasBody);
       console.log(`[Mobile API] ✅ Is JSON:`, isJson);
+      console.log(`[Mobile API] ✅ Should try parse JSON:`, shouldTryParseJson);
     }
 
     // Si c'est une erreur 404 ou 500 sans body, ne pas essayer de parser JSON
@@ -244,13 +249,25 @@ export const apiCall = async <T>(
     const responseClone = response.clone();
 
     try {
-      if (hasBody && isJson) {
-        data = await response.json();
-        // ✅ DEBUG: Log la réponse JSON parsée pour /auth/login
-        if (endpoint === '/auth/login') {
-          console.log(`[Mobile API] ✅ JSON parsé:`, JSON.stringify(data, null, 2));
-          console.log(`[Mobile API] ✅ data.token existe?:`, !!data?.token);
-          console.log(`[Mobile API] ✅ data.tokens_balance:`, data?.tokens_balance);
+      // ✅ CORRECTION CRITIQUE: Essayer de parser JSON si Content-Type est application/json
+      // même si content-length n'est pas présent (certains serveurs ne l'envoient pas)
+      if (shouldTryParseJson) {
+        try {
+          data = await response.json();
+          // ✅ DEBUG: Log la réponse JSON parsée pour /auth/login
+          if (endpoint === '/auth/login') {
+            console.log(`[Mobile API] ✅ JSON parsé avec succès:`, JSON.stringify(data, null, 2));
+            console.log(`[Mobile API] ✅ data.token existe?:`, !!data?.token);
+            console.log(`[Mobile API] ✅ data.tokens_balance:`, data?.tokens_balance);
+          }
+        } catch (jsonParseError) {
+          // Si le parsing JSON échoue, essayer de lire comme texte
+          console.error(`[Mobile API] ⚠️ Erreur parsing JSON, essai texte:`, jsonParseError);
+          const textData = await responseClone.text();
+          if (endpoint === '/auth/login') {
+            console.log(`[Mobile API] ⚠️ Réponse texte:`, textData);
+          }
+          data = { raw: textData };
         }
       } else if (hasBody) {
         const textData = await response.text();
@@ -259,9 +276,25 @@ export const apiCall = async <T>(
           console.log(`[Mobile API] ⚠️ Réponse non-JSON:`, textData);
         }
       } else {
-        data = {};
-        if (endpoint === '/auth/login') {
-          console.log(`[Mobile API] ⚠️ Réponse sans body`);
+        // ✅ DERNIER RECOURS: Essayer quand même de parser si Content-Type est JSON
+        // même sans content-length (certains serveurs ne l'envoient pas)
+        if (isJson && response.ok) {
+          try {
+            data = await response.json();
+            if (endpoint === '/auth/login') {
+              console.log(`[Mobile API] ✅ JSON parsé (sans content-length):`, JSON.stringify(data, null, 2));
+            }
+          } catch (e) {
+            data = {};
+            if (endpoint === '/auth/login') {
+              console.log(`[Mobile API] ⚠️ Réponse sans body (tentative échouée)`);
+            }
+          }
+        } else {
+          data = {};
+          if (endpoint === '/auth/login') {
+            console.log(`[Mobile API] ⚠️ Réponse sans body`);
+          }
         }
       }
     } catch (jsonError) {
