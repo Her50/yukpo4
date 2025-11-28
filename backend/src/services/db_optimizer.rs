@@ -1,10 +1,10 @@
 use log::{info, warn};
-use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use base64::{engine::general_purpose::STANDARD, Engine};
 
 lazy_static::lazy_static! {
     static ref QUERY_CACHE: Arc<RwLock<HashMap<String, (Vec<u8>, u64)>>> = Arc::new(RwLock::new(HashMap::new()));
@@ -319,13 +319,13 @@ impl DbOptimizer {
         // Cache Redis
         if let Some(redis) = &self.redis_client {
             if let Ok(serialized) = bincode::serialize(data) {
-                if let Ok(mut conn) = redis.get_multiplexed_async_connection().await {
-                    if let Err(e) = conn
-                        .set_ex::<&str, Vec<u8>, ()>(key, serialized, CACHE_TTL as u64)
-                        .await
-                    {
-                        warn!("Erreur cache Redis: {}", e);
-                    }
+                // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+                use crate::utils::redis_helper;
+                
+                // Convertir Vec<u8> en String pour le helper
+                let serialized_str = STANDARD.encode(&serialized);
+                if let Err(e) = redis_helper::set_with_retry(redis, key, &serialized_str, Some(CACHE_TTL as u64)).await {
+                    warn!("[DBOptimizer] Redis indisponible pour cache {}: {}. L'opération continue sans cache.", key, e);
                 }
             }
         }
@@ -357,10 +357,20 @@ impl DbOptimizer {
         key: &str,
     ) -> Result<T, Box<dyn std::error::Error>> {
         if let Some(redis) = &self.redis_client {
-            let mut conn = redis.get_multiplexed_async_connection().await?;
-            let data: Vec<u8> = conn.get(key).await?;
-            let result: T = bincode::deserialize(&data)?;
-            Ok(result)
+            // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+            use crate::utils::redis_helper;
+            
+            match redis_helper::get_with_retry(redis, key).await {
+                Ok(Some(serialized_str)) => {
+                    // Décoder depuis base64
+                    let data = STANDARD.decode(&serialized_str)
+                        .map_err(|e| format!("Erreur décodage base64: {}", e))?;
+                    let result: T = bincode::deserialize(&data)?;
+                    Ok(result)
+                }
+                Ok(None) => Err("Clé non trouvée dans le cache".into()),
+                Err(e) => Err(format!("Redis indisponible: {}", e).into()),
+            }
         } else {
             Err("Redis non disponible".into())
         }
@@ -407,9 +417,14 @@ impl DbOptimizer {
 
         // Nettoyer le cache Redis (optionnel)
         if let Some(redis) = &self.redis_client {
-            if let Ok(_conn) = redis.get_multiplexed_async_connection().await {
-                // Redis g?re automatiquement l'expiration
-                info!("Cache cleanup termin?");
+            // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+            use crate::utils::redis_helper;
+            
+            // Vérifier simplement que Redis est disponible (cleanup automatique via TTL)
+            if redis_helper::check_redis_health(redis).await {
+                info!("Cache cleanup terminé (Redis disponible)");
+            } else {
+                log::debug!("Cache cleanup terminé (Redis non disponible, cleanup mémoire uniquement)");
             }
         }
     }

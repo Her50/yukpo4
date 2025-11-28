@@ -1,6 +1,5 @@
 use crate::{config::timeouts::get_geocoding_timeout, core::types::AppError};
 use log::{error, info, warn};
-use redis::AsyncCommands;
 use reqwest;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json;
@@ -451,26 +450,23 @@ impl GeocodingService {
         let Some(client) = &self.redis_client else {
             return Ok(None);
         };
-        match client.get_multiplexed_async_connection().await {
-            Ok(mut conn) => match conn.get::<_, Option<String>>(key).await {
-                Ok(Some(payload)) => match serde_json::from_str::<T>(&payload) {
-                    Ok(value) => Ok(Some(value)),
-                    Err(err) => {
-                        warn!(
-                            "[Geocoding] Impossible de parser le cache {}: {:?}",
-                            key, err
-                        );
-                        Ok(None)
-                    }
-                },
-                Ok(None) => Ok(None),
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        use crate::utils::redis_helper;
+        
+        match redis_helper::get_with_retry(client, key).await {
+            Ok(Some(payload)) => match serde_json::from_str::<T>(&payload) {
+                Ok(value) => Ok(Some(value)),
                 Err(err) => {
-                    warn!("[Geocoding] Lecture cache Redis échouée: {:?}", err);
+                    warn!(
+                        "[Geocoding] Impossible de parser le cache {}: {:?}",
+                        key, err
+                    );
                     Ok(None)
                 }
             },
-            Err(err) => {
-                warn!("[Geocoding] Connexion Redis indisponible: {:?}", err);
+            Ok(None) => Ok(None),
+            Err(e) => {
+                warn!("[Geocoding] Redis indisponible pour {}: {}. Retour None.", key, e);
                 Ok(None)
             }
         }
@@ -495,14 +491,15 @@ impl GeocodingService {
             }
         };
 
-        if let Ok(mut conn) = client.get_multiplexed_async_connection().await {
-            let ttl_seconds = min(self.cache_ttl.as_secs(), i64::MAX as u64);
-            if let Err(err) = conn.set_ex::<_, _, ()>(key, payload, ttl_seconds).await {
-                warn!(
-                    "[Geocoding] Impossible d'écrire le cache {}: {:?}",
-                    key, err
-                );
-            }
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        use crate::utils::redis_helper;
+        
+        let ttl_seconds = min(self.cache_ttl.as_secs(), i64::MAX as u64);
+        if let Err(e) = redis_helper::set_with_retry(client, key, &payload, Some(ttl_seconds)).await {
+            warn!(
+                "[Geocoding] Redis indisponible pour set {}: {}. L'opération continue sans cache.",
+                key, e
+            );
         }
 
         Ok(())

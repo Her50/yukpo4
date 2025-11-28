@@ -220,11 +220,9 @@ async fn update_progress(
     current: usize,
     total: usize,
 ) -> Result<(), AppError> {
-    let mut conn = redis_client
-        .get_multiplexed_async_connection()
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur Redis: {}", e)))?;
-
+    // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+    use crate::utils::redis_helper;
+    
     let key = format!("combination_progress:{}", session_id);
 
     let progress = serde_json::json!({
@@ -235,14 +233,9 @@ async fn update_progress(
         "updated_at": chrono::Utc::now().to_rfc3339(),
     });
 
-    let _: () = redis::cmd("SET")
-        .arg(&key)
-        .arg(progress.to_string())
-        .arg("EX")
-        .arg(3600) // Expire après 1h
-        .query_async(&mut conn)
+    redis_helper::set_with_retry(redis_client, &key, &progress.to_string(), Some(3600))
         .await
-        .map_err(|e| AppError::Internal(format!("Erreur Redis SET: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur Redis SET (après retry): {}", e)))?;
 
     Ok(())
 }
@@ -252,11 +245,9 @@ async fn mark_generation_completed(
     redis_client: &redis::Client,
     session_id: &str,
 ) -> Result<(), AppError> {
-    let mut conn = redis_client
-        .get_multiplexed_async_connection()
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur Redis: {}", e)))?;
-
+    // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+    use crate::utils::redis_helper;
+    
     let key = format!("combination_progress:{}", session_id);
 
     let progress = serde_json::json!({
@@ -264,14 +255,9 @@ async fn mark_generation_completed(
         "updated_at": chrono::Utc::now().to_rfc3339(),
     });
 
-    let _: () = redis::cmd("SET")
-        .arg(&key)
-        .arg(progress.to_string())
-        .arg("EX")
-        .arg(7200) // Garde 2h après complétion
-        .query_async(&mut conn)
+    redis_helper::set_with_retry(redis_client, &key, &progress.to_string(), Some(7200))
         .await
-        .map_err(|e| AppError::Internal(format!("Erreur Redis SET: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur Redis SET (après retry): {}", e)))?;
 
     Ok(())
 }

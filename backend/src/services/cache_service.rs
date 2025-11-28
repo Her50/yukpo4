@@ -39,39 +39,34 @@ impl CacheService {
             return Ok(None);
         };
 
-        match client.get_multiplexed_async_connection().await {
-            Ok(mut conn) => {
-                match conn.get::<_, Option<String>>(key).await {
-                    Ok(Some(payload)) => {
-                        match serde_json::from_str::<T>(&payload) {
-                            Ok(value) => {
-                                log::debug!("[CacheService] Cache hit pour: {}", key);
-                                Ok(Some(value))
-                            }
-                            Err(err) => {
-                                log::warn!(
-                                    "[CacheService] Erreur parsing cache {}: {:?}",
-                                    key,
-                                    err
-                                );
-                                // Supprimer la clé invalide
-                                let _ = conn.del::<_, ()>(key).await;
-                                Ok(None)
-                            }
-                        }
-                    }
-                    Ok(None) => {
-                        log::debug!("[CacheService] Cache miss pour: {}", key);
-                        Ok(None)
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        use crate::utils::redis_helper;
+        
+        match redis_helper::get_with_retry(client, key).await {
+            Ok(Some(payload)) => {
+                match serde_json::from_str::<T>(&payload) {
+                    Ok(value) => {
+                        log::debug!("[CacheService] Cache hit pour: {}", key);
+                        Ok(Some(value))
                     }
                     Err(err) => {
-                        log::warn!("[CacheService] Erreur lecture Redis {}: {:?}", key, err);
+                        log::warn!(
+                            "[CacheService] Erreur parsing cache {}: {:?}",
+                            key,
+                            err
+                        );
+                        // Supprimer la clé invalide (avec retry)
+                        let _ = redis_helper::del_with_retry(client, key).await;
                         Ok(None)
                     }
                 }
             }
-            Err(err) => {
-                log::warn!("[CacheService] Connexion Redis indisponible: {:?}", err);
+            Ok(None) => {
+                log::debug!("[CacheService] Cache miss pour: {}", key);
+                Ok(None)
+            }
+            Err(e) => {
+                log::warn!("[CacheService] Redis indisponible pour {}: {}. Retour None.", key, e);
                 Ok(None)
             }
         }
@@ -104,17 +99,16 @@ impl CacheService {
             }
         };
 
-        match client.get_multiplexed_async_connection().await {
-            Ok(mut conn) => {
-                let ttl_seconds = ttl.as_secs().min(i64::MAX as u64);
-                if let Err(err) = conn.set_ex::<_, _, ()>(key, payload, ttl_seconds).await {
-                    log::warn!("[CacheService] Erreur écriture cache {}: {:?}", key, err);
-                } else {
-                    log::debug!("[CacheService] Cache set pour: {} (TTL: {}s)", key, ttl_seconds);
-                }
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        use crate::utils::redis_helper;
+        
+        let ttl_seconds = ttl.as_secs().min(i64::MAX as u64);
+        match redis_helper::set_with_retry(client, key, &payload, Some(ttl_seconds)).await {
+            Ok(_) => {
+                log::debug!("[CacheService] Cache set pour: {} (TTL: {}s)", key, ttl_seconds);
             }
-            Err(err) => {
-                log::warn!("[CacheService] Connexion Redis indisponible: {:?}", err);
+            Err(e) => {
+                log::warn!("[CacheService] Redis indisponible pour set {}: {}. L'opération continue sans cache.", key, e);
             }
         }
 
@@ -127,16 +121,15 @@ impl CacheService {
             return Ok(());
         };
 
-        match client.get_multiplexed_async_connection().await {
-            Ok(mut conn) => {
-                if let Err(err) = conn.del::<_, ()>(key).await {
-                    log::warn!("[CacheService] Erreur suppression cache {}: {:?}", key, err);
-                } else {
-                    log::debug!("[CacheService] Cache supprimé: {}", key);
-                }
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        use crate::utils::redis_helper;
+        
+        match redis_helper::del_with_retry(client, key).await {
+            Ok(_) => {
+                log::debug!("[CacheService] Cache supprimé: {}", key);
             }
-            Err(err) => {
-                log::warn!("[CacheService] Connexion Redis indisponible: {:?}", err);
+            Err(e) => {
+                log::warn!("[CacheService] Redis indisponible pour delete {}: {}. L'opération continue.", key, e);
             }
         }
 
@@ -149,33 +142,31 @@ impl CacheService {
             return Ok(0);
         };
 
-        match client.get_multiplexed_async_connection().await {
-            Ok(mut conn) => {
-                match redis::cmd("KEYS").arg(pattern).query_async(&mut conn).await {
-                    Ok(keys) => {
-                        let keys: Vec<String> = keys;
-                        if keys.is_empty() {
-                            return Ok(0);
-                        }
-                        match conn.del::<_, ()>(keys.clone()).await {
-                            Ok(_) => {
-                                log::debug!("[CacheService] {} clés supprimées pour pattern: {}", keys.len(), pattern);
-                                Ok(keys.len())
-                            }
-                            Err(err) => {
-                                log::warn!("[CacheService] Erreur suppression pattern {}: {:?}", pattern, err);
-                                Ok(0)
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        log::warn!("[CacheService] Erreur recherche pattern {}: {:?}", pattern, err);
-                        Ok(0)
-                    }
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        use crate::utils::redis_helper;
+        
+        match redis_helper::execute_with_retry(
+            client,
+            |mut conn| async move {
+                let keys: Vec<String> = redis::cmd("KEYS").arg(pattern).query_async(&mut conn).await?;
+                if keys.is_empty() {
+                    Ok(0)
+                } else {
+                    conn.del::<_, ()>(keys.clone()).await?;
+                    Ok(keys.len())
                 }
+            },
+            3,
+            500,
+        ).await {
+            Ok(count) => {
+                if count > 0 {
+                    log::debug!("[CacheService] {} clés supprimées pour pattern: {}", count, pattern);
+                }
+                Ok(count)
             }
-            Err(err) => {
-                log::warn!("[CacheService] Connexion Redis indisponible: {:?}", err);
+            Err(e) => {
+                log::warn!("[CacheService] Redis indisponible pour delete_pattern {}: {}. Retour 0.", pattern, e);
                 Ok(0)
             }
         }
@@ -187,16 +178,18 @@ impl CacheService {
             return Ok(false);
         };
 
-        match client.get_multiplexed_async_connection().await {
-            Ok(mut conn) => match conn.exists::<_, bool>(key).await {
-                Ok(exists) => Ok(exists),
-                Err(err) => {
-                    log::warn!("[CacheService] Erreur vérification existence {}: {:?}", key, err);
-                    Ok(false)
-                }
-            },
-            Err(err) => {
-                log::warn!("[CacheService] Connexion Redis indisponible: {:?}", err);
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        use crate::utils::redis_helper;
+        
+        match redis_helper::execute_with_retry(
+            client,
+            |mut conn| async move { conn.exists::<_, bool>(key).await },
+            3,
+            500,
+        ).await {
+            Ok(exists) => Ok(exists),
+            Err(e) => {
+                log::warn!("[CacheService] Redis indisponible pour exists {}: {}. Retour false.", key, e);
                 Ok(false)
             }
         }

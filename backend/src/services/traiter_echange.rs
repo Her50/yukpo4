@@ -126,19 +126,30 @@ pub async fn traiter_echange(
     // --- V?rification de doublon d'?change (avec cache Redis) ---
     let cache_key = format!("echange_duplicate:{}:{}:{}", user_id, &offre, &besoin);
     if let Some(redis) = redis_client {
-        let mut conn = redis
-            .get_multiplexed_async_connection()
-            .await
-            .map_err(|e| {
-                log::warn!("[TRAITER_ECHANGE] Erreur connexion Redis: {}", e);
-                crate::core::types::AppError::Internal("Erreur cache Redis".to_string())
-            })?;
-
-        if let Ok(exists) = conn.exists::<_, bool>(&cache_key).await {
-            if exists {
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        use crate::utils::redis_helper;
+        
+        let cache_key_clone = cache_key.clone();
+        match redis_helper::execute_with_retry(
+            redis,
+            move |mut conn| {
+                let cache_key = cache_key_clone.clone();
+                async move { conn.exists::<_, bool>(&cache_key).await }
+            },
+            3,
+            500,
+        ).await {
+            Ok(true) => {
                 return Ok(
-                    serde_json::json!({"error": "Un ?change identique existe d?j? pour cet utilisateur."}),
+                    serde_json::json!({"error": "Un échange identique existe déjà pour cet utilisateur."}),
                 );
+            }
+            Ok(false) => {
+                // Pas de doublon, continuer
+            }
+            Err(e) => {
+                log::warn!("[TRAITER_ECHANGE] Redis indisponible pour vérification doublon: {}. Vérification en base de données.", e);
+                // Continuer avec la vérification en base (fallback)
             }
         }
     }
@@ -156,15 +167,12 @@ pub async fn traiter_echange(
     if doublon.is_some() {
         // Mettre en cache le doublon
         if let Some(redis) = redis_client {
-            let mut conn = redis
-                .get_multiplexed_async_connection()
-                .await
-                .map_err(|e| {
-                    log::warn!("[TRAITER_ECHANGE] Erreur connexion Redis: {}", e);
-                    crate::core::types::AppError::Internal("Erreur cache Redis".to_string())
-                })?;
-            let _: Result<(), redis::RedisError> =
-                conn.set_ex(&cache_key, "1", CACHE_TTL as u64).await;
+            // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+            use crate::utils::redis_helper;
+            
+            if let Err(e) = redis_helper::set_with_retry(redis, &cache_key, "1", Some(CACHE_TTL as u64)).await {
+                log::warn!("[TRAITER_ECHANGE] Redis indisponible pour mise en cache doublon: {}. L'opération continue.", e);
+            }
         }
         return Ok(
             serde_json::json!({"error": "Un ?change identique existe d?j? pour cet utilisateur."}),

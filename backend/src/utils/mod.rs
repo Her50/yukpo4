@@ -7,3 +7,4 @@ pub mod jwt_manager;
 pub mod lang;
 pub mod livekit;
 pub mod log;
+pub mod redis_helper;

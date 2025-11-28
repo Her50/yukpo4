@@ -105,24 +105,36 @@ impl BrollService {
         }
 
         let key = self.cache_key(request);
-        let mut conn = self
-            .redis_client
-            .get_multiplexed_async_connection()
-            .await
-            .map_err(|err| {
-                AppError::Internal(format!("Connexion Redis b-roll impossible: {err}"))
-            })?;
-
-        let cached: Option<Vec<u8>> = conn.get(&key).await.unwrap_or(None);
-        if let Some(bytes) = cached {
-            match serde_json::from_slice::<BrollClip>(&bytes) {
-                Ok(mut clip) => {
-                    if clip.local_path.exists() {
-                        clip.variants.retain(|variant| variant.path.exists());
-                        return Ok(Some(clip));
+        let key_clone = key.clone();
+        
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        use crate::utils::redis_helper;
+        
+        match redis_helper::execute_with_retry(
+            &self.redis_client,
+            move |mut conn| {
+                let key = key_clone.clone();
+                async move { conn.get::<_, Option<Vec<u8>>>(&key).await }
+            },
+            3,
+            500,
+        ).await {
+            Ok(Some(bytes)) => {
+                match serde_json::from_slice::<BrollClip>(&bytes) {
+                    Ok(mut clip) => {
+                        if clip.local_path.exists() {
+                            clip.variants.retain(|variant| variant.path.exists());
+                            return Ok(Some(clip));
+                        }
                     }
+                    Err(err) => debug!("[Broll] cache invalide: {err:?}"),
                 }
-                Err(err) => debug!("[Broll] cache invalide: {err:?}"),
+            }
+            Ok(None) => {
+                // Pas de cache, continuer
+            }
+            Err(e) => {
+                debug!("[Broll] Redis indisponible pour get {}: {}. Pas de cache.", key, e);
             }
         }
 
@@ -135,22 +147,38 @@ impl BrollService {
         }
 
         let key = self.cache_key(request);
-        let mut conn = self
-            .redis_client
-            .get_multiplexed_async_connection()
-            .await
-            .map_err(|err| {
-                AppError::Internal(format!("Connexion Redis b-roll impossible: {err}"))
-            })?;
-
+        let key_clone = key.clone();
+        
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        use crate::utils::redis_helper;
+        
         let payload = serde_json::to_vec(clip).map_err(|err| {
             AppError::Internal(format!("Sérialisation cache b-roll impossible: {err}"))
         })?;
         let ttl = self.config.cache.ttl.as_secs();
-        let _: () = conn
-            .set_ex(key, payload, ttl)
-            .await
-            .map_err(|err| AppError::Internal(format!("Écriture cache b-roll: {err}")))?;
+        let payload_clone = payload.clone();
+        
+        // Utiliser execute_with_retry pour Vec<u8>
+        match redis_helper::execute_with_retry(
+            &self.redis_client,
+            move |mut conn| {
+                let key = key_clone.clone();
+                let payload = payload_clone.clone();
+                async move {
+                    conn.set_ex::<_, _, ()>(&key, &payload, ttl).await?;
+                    Ok(())
+                }
+            },
+            3,
+            500,
+        ).await {
+            Ok(_) => {
+                debug!("[Broll] Cache mis à jour: {}", key);
+            }
+            Err(e) => {
+                debug!("[Broll] Redis indisponible pour set {}: {}. L'opération continue sans cache.", key, e);
+            }
+        }
         Ok(())
     }
 

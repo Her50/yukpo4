@@ -183,6 +183,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::info!("   Après: {}...", redis_url.chars().take(50).collect::<String>());
     }
     
+    // ✅ NOUVEAU: Normaliser l'URL Redis pour ajouter le numéro de base de données si absent
+    // Format attendu: rediss://[user]:[password]@[host]:[port]/[db]
+    // Upstash utilise généralement la base 0 par défaut
+    if !redis_url.contains("/") || (!redis_url.ends_with("/0") && !redis_url.ends_with("/1") && !redis_url.ends_with("/2") && !redis_url.ends_with("/3") && !redis_url.ends_with("/4") && !redis_url.ends_with("/5") && !redis_url.ends_with("/6") && !redis_url.ends_with("/7") && !redis_url.ends_with("/8") && !redis_url.ends_with("/9")) {
+        // Si l'URL se termine par un port sans base de données, ajouter /0
+        if redis_url.matches(':').count() >= 2 && !redis_url.contains("/") {
+            redis_url.push_str("/0");
+            log::info!("✅ Redis: Numéro de base de données ajouté (/0)");
+        } else if redis_url.ends_with('/') {
+            redis_url.push_str("0");
+            log::info!("✅ Redis: Numéro de base de données ajouté (0)");
+        }
+    }
+    
     // ✅ CORRECTION: Si l'URL utilise déjà rediss:// mais la connexion échoue,
     // le problème est probablement la feature TLS (native-tls vs rustls-tls)
     // Nous utilisons maintenant native-tls dans Cargo.toml (redis 0.26 nécessite native-tls)
@@ -233,58 +247,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::warn!("⚠️ Redis: URL Upstash détectée mais n'utilise pas rediss:// - Conversion automatique devrait avoir eu lieu");
     }
 
-    // Créer un client Redis et tester la connexion
+    // Créer un client Redis et tester la connexion avec retry
     let (redis_client, redis_available_for_ws) = match RedisClient::open(redis_url.clone()) {
         Ok(client) => {
-            // Tester la connexion réelle avec un timeout
-            let test_conn = tokio::time::timeout(
-                std::time::Duration::from_secs(5), // Augmenté à 5 secondes
-                client.get_multiplexed_async_connection(),
-            )
-            .await;
+            // ✅ CORRIGÉ: Utiliser le helper Redis avec retry pour tester la connexion
+            use yukpomnang_backend::utils::redis_helper;
             
-            match test_conn {
-                Ok(Ok(_)) => {
+            // Tester la connexion avec retry (3 tentatives, 1 seconde entre chaque)
+            match redis_helper::check_redis_health(&client).await {
+                true => {
                     log::info!("✅ Connexion Redis établie avec succès");
                     println!("✅ Connexion Redis établie - Backend v2.1.4");
                     (client, true)
                 }
-                Ok(Err(e)) => {
-                    let err_msg = format!("{}", e);
-                    log::warn!("⚠️ Redis: Échec de connexion - URL: {}... Erreur: {}", redis_url_display, err_msg);
-                    if err_msg.contains("TLS") || err_msg.contains("tls") || err_msg.contains("feature is not enabled") {
-                        log::warn!("   💡 Erreur TLS détectée. Pour Upstash, utilisez 'rediss://' (avec double 's')");
-                        log::warn!("      Format attendu: rediss://default:[password]@[endpoint].upstash.io:6379");
-                        log::warn!("      La feature rustls-tls est activée dans Cargo.toml. Vérifiez votre URL Redis.");
-                        log::info!("ℹ️ Redis non disponible (service optionnel). WebSocket fonctionnera sans Redis.");
-                    } else if err_msg.contains("Name or service not known") || err_msg.contains("failed to lookup address") {
-                        log::warn!("   💡 Problème DNS détecté. Vérifiez:");
-                        log::warn!("      - Que l'endpoint Redis est correct (ex: [instance].upstash.io)");
-                        log::warn!("      - Que l'URL utilise 'rediss://' (avec 's') pour Upstash avec TLS");
-                        log::warn!("      - Format attendu: rediss://default:[password]@[endpoint].upstash.io:6379");
-                        log::info!("ℹ️ Redis non disponible (service optionnel). WebSocket fonctionnera sans Redis.");
-                    } else if err_msg.contains("Connection refused") {
-                        log::warn!("   💡 Connexion refusée. Vérifiez que le serveur Redis est accessible.");
-                        log::info!("ℹ️ Redis non disponible (service optionnel). WebSocket fonctionnera sans Redis.");
-                    } else {
-                        log::warn!("⚠️ Redis URL configurée mais connexion impossible: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
-                    }
-                    // Créer un client factice pour les autres services qui peuvent gérer l'absence de Redis
-                    let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
-                        RedisClient::open("redis://localhost:9999/0")
-                            .expect("Impossible de créer un client Redis factice")
-                    });
-                    (dummy_client, false)
-                }
-                Err(_e) => {
-                    log::warn!("⚠️ Redis: Timeout de connexion (5s) - URL: {}... Vérifiez que le serveur Redis est accessible.", redis_url_display);
-                    log::info!("ℹ️ Redis timeout de connexion (service optionnel). WebSocket de livraison fonctionnera sans Redis.");
-                    // Créer un client factice pour les autres services qui peuvent gérer l'absence de Redis
-                    let dummy_client = RedisClient::open("redis://invalid-host:6379/0").unwrap_or_else(|_| {
-                        RedisClient::open("redis://localhost:9999/0")
-                            .expect("Impossible de créer un client Redis factice")
-                    });
-                    (dummy_client, false)
+                false => {
+                    log::warn!("⚠️ Redis: Échec de connexion après retry - URL: {}...", redis_url_display);
+                    log::warn!("   💡 Redis sera désactivé pour le WebSocket mais les services utiliseront retry automatique");
+                    log::info!("ℹ️ Redis non disponible au démarrage (service optionnel). Les services réessayeront automatiquement.");
+                    // ✅ CORRIGÉ: Utiliser le vrai client même si la connexion échoue au démarrage
+                    // Le helper Redis réessayera automatiquement lors des opérations
+                    (client, false)
                 }
             }
         }
@@ -294,7 +276,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if err_msg.contains("TLS") || err_msg.contains("tls") || err_msg.contains("feature is not enabled") {
                 log::warn!("   💡 Erreur TLS: Pour Upstash, utilisez 'rediss://' (avec double 's')");
                 log::warn!("      Format: rediss://default:[password]@[endpoint].upstash.io:6379");
-                log::warn!("      La feature rustls-tls est activée dans Cargo.toml pour le support TLS.");
+                log::warn!("      La feature native-tls-comp est activée dans Cargo.toml pour le support TLS.");
             } else {
                 log::warn!("⚠️ Erreur création client Redis: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
             }
@@ -381,6 +363,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(tasks::delivery_timeout_monitor::start_delivery_timeout_monitor(app_state.clone()));
     // ✅ Monitor des timeouts de validation de commandes
     tokio::spawn(tasks::order_timeout_monitor::start_order_timeout_monitor(app_state.clone()));
+    
+    // ✅ NOUVEAU: Healthcheck périodique Redis pour détecter les changements d'état
+    let redis_client_healthcheck = redis_client.clone();
+    tokio::spawn(async move {
+        use yukpomnang_backend::utils::redis_helper;
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60)); // Toutes les minutes
+        let mut last_status = false;
+        
+        loop {
+            interval.tick().await;
+            let current_status = redis_helper::check_redis_health(&redis_client_healthcheck).await;
+            
+            if current_status != last_status {
+                if current_status {
+                    log::info!("✅ [Redis Healthcheck] Redis est maintenant disponible");
+                } else {
+                    log::warn!("⚠️ [Redis Healthcheck] Redis n'est plus disponible");
+                }
+                last_status = current_status;
+            }
+        }
+    });
 
     // ✅ Tâches de recalcul périodique des statistiques (Phase 6)
     let pool_clone_category_stats = Arc::new(app_state.pg.clone());

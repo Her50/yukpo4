@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Duration, Utc};
 use log::{error, info};
-use redis::AsyncCommands;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -156,35 +155,40 @@ pub struct SocialAccountRecord {
 }
 
 pub async fn create_oauth_state(redis: &redis::Client, user_id: i32) -> AppResult<String> {
-    let mut conn = redis
-        .get_multiplexed_async_connection()
-        .await
-        .map_err(|e| AppError::Internal(format!("Redis connection error: {e}")))?;
+    // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+    use crate::utils::redis_helper;
+    
     let state_id = format!("{}:{}", user_id, Uuid::new_v4());
     let key = format!("social_oauth:{}", &state_id);
-    conn.set_ex::<_, _, ()>(key, user_id, 600)
+    
+    redis_helper::set_with_retry(redis, &key, &user_id.to_string(), Some(600))
         .await
-        .map_err(|e| AppError::Internal(format!("Redis set_ex error: {e}")))?;
+        .map_err(|e| AppError::Internal(format!("Redis set_ex error (après retry): {e}")))?;
     Ok(state_id)
 }
 
 pub async fn consume_oauth_state(redis: &redis::Client, state: &str) -> AppResult<Option<i32>> {
-    let mut conn = redis
-        .get_multiplexed_async_connection()
-        .await
-        .map_err(|e| AppError::Internal(format!("Redis connection error: {e}")))?;
+    // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+    use crate::utils::redis_helper;
+    
     let key = format!("social_oauth:{}", state);
-    let user_id: Option<i32> = conn
-        .get(&key)
-        .await
-        .map_err(|e| AppError::Internal(format!("Redis get error: {e}")))?;
-    if user_id.is_some() {
-        let _: () = conn
-            .del(key)
-            .await
-            .map_err(|e| AppError::Internal(format!("Redis del error: {e}")))?;
-    }
-    Ok(user_id)
+    
+    // Récupérer la valeur avec retry
+    let user_id_str = match redis_helper::get_with_retry(redis, &key).await {
+        Ok(Some(val)) => val,
+        Ok(None) => return Ok(None),
+        Err(e) => return Err(AppError::Internal(format!("Redis get error (après retry): {e}"))),
+    };
+    
+    // Parser user_id
+    let user_id: i32 = user_id_str
+        .parse()
+        .map_err(|_| AppError::Internal("Invalid user_id format in Redis".to_string()))?;
+    
+    // Supprimer la clé après consommation
+    let _ = redis_helper::del_with_retry(redis, &key).await;
+    
+    Ok(Some(user_id))
 }
 
 pub async fn exchange_youtube_code(

@@ -1,5 +1,4 @@
 use crate::core::types::AppError;
-use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -98,26 +97,28 @@ impl EmbeddingTracker {
 
     /// ? R?cup?re le statut d'embedding d'un service
     pub async fn get_status(&self, service_id: i32) -> Result<EmbeddingStatus, AppError> {
-        let mut redis_con = self
-            .redis_client
-            .get_multiplexed_async_connection()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur connexion Redis: {}", e)))?;
+        use crate::utils::redis_helper;
 
         let key = format!("embedding_status:{}", service_id);
-        let status_json: Option<String> = redis_con
-            .get(&key)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur lecture Redis: {}", e)))?;
-
-        if let Some(json) = status_json {
-            let status: EmbeddingStatus = serde_json::from_str(&json)
-                .map_err(|e| AppError::Internal(format!("Erreur parsing JSON: {}", e)))?;
-            Ok(status)
-        } else {
-            // Si pas de statut en cache, cr?er un statut par d?faut
-            let status = EmbeddingStatus::new(service_id);
-            Ok(status)
+        
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
+        match redis_helper::get_with_retry(&self.redis_client, &key).await {
+            Ok(Some(json)) => {
+                let status: EmbeddingStatus = serde_json::from_str(&json)
+                    .map_err(|e| AppError::Internal(format!("Erreur parsing JSON: {}", e)))?;
+                Ok(status)
+            }
+            Ok(None) => {
+                // Si pas de statut en cache, cr?er un statut par d?faut
+                let status = EmbeddingStatus::new(service_id);
+                Ok(status)
+            }
+            Err(e) => {
+                // ✅ CORRIGÉ: Si Redis n'est pas disponible, retourner un statut par défaut au lieu d'échouer
+                log::warn!("⚠️ [EmbeddingTracker] Redis indisponible pour get_status (service {}): {}. Utilisation statut par défaut.", service_id, e);
+                let status = EmbeddingStatus::new(service_id);
+                Ok(status)
+            }
         }
     }
 
@@ -127,28 +128,29 @@ impl EmbeddingTracker {
         service_id: i32,
         status: EmbeddingStatus,
     ) -> Result<(), AppError> {
-        let mut redis_con = self
-            .redis_client
-            .get_multiplexed_async_connection()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur connexion Redis: {}", e)))?;
+        use crate::utils::redis_helper;
 
         let key = format!("embedding_status:{}", service_id);
         let status_json = serde_json::to_string(&status)
             .map_err(|e| AppError::Internal(format!("Erreur s?rialisation JSON: {}", e)))?;
 
+        // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         // Stocker avec expiration de 24h
-        let _: () = redis_con
-            .set_ex(&key, status_json, 86400)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur ?criture Redis: {}", e)))?;
-
-        log::info!(
-            "[EMBEDDING_TRACKER] Statut mis ? jour pour service {}: {:?}",
-            service_id,
-            status.status
-        );
-        Ok(())
+        match redis_helper::set_with_retry(&self.redis_client, &key, &status_json, Some(86400)).await {
+            Ok(_) => {
+                log::info!(
+                    "[EMBEDDING_TRACKER] Statut mis ? jour pour service {}: {:?}",
+                    service_id,
+                    status.status
+                );
+                Ok(())
+            }
+            Err(e) => {
+                // ✅ CORRIGÉ: Si Redis n'est pas disponible, logger un avertissement mais ne pas échouer
+                log::warn!("⚠️ [EmbeddingTracker] Redis indisponible pour update_status (service {}): {}. L'opération continue sans cache.", service_id, e);
+                Ok(())
+            }
+        }
     }
 
     /// ? R?cup?re le statut de tous les services d'un utilisateur
