@@ -19,7 +19,7 @@ struct LiveSessionUpdateRow {
 
 use crate::{
     config::live_streaming::LiveStreamingConfig, state::AppState,
-    utils::livekit::generate_server_access_token,
+    utils::livekit::{diagnose_livekit_connection, generate_server_access_token},
 };
 
 const SYNC_INTERVAL_SECS: u64 = 60;
@@ -51,15 +51,35 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
                     || err_str.contains("manquant") {
                     if !connection_error_logged.swap(true, Ordering::Relaxed) {
                         let config = worker_state.live_streaming.clone();
-                        let api_url = config.livekit_api_url.as_ref()
-                            .map(|u| format!("{}...", u.chars().take(30).collect::<String>()))
-                            .unwrap_or_else(|| "NON DÉFINIE".to_string());
                         
-                        if err_str.contains("manquant") {
-                            log::warn!("⚠️ LiveKit: Variables d'environnement manquantes. Vérifiez LIVEKIT_API_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET sur Render.com");
-                        } else {
-                            log::warn!("⚠️ LiveKit: Connexion impossible - URL: {}. Vérifiez que LIVEKIT_API_URL est correcte sur Render.com", api_url);
+                        // ✅ DIAGNOSTIC COMPLET LiveKit
+                        if let (Some(api_url), Some(api_key), Some(api_secret)) = (
+                            config.livekit_api_url.as_ref(),
+                            config.livekit_api_key.as_ref(),
+                            config.livekit_api_secret.as_ref(),
+                        ) {
+                            log::warn!("🔍 Exécution du diagnostic LiveKit complet...");
+                            let diagnostic = diagnose_livekit_connection(api_url, Some(api_key), Some(api_secret)).await;
+                            
+                            log::warn!("📊 Résultat du diagnostic LiveKit:");
+                            log::warn!("   - Serveur accessible: {}", if diagnostic.server_reachable { "✅" } else { "❌" });
+                            log::warn!("   - Endpoint API accessible: {}", if diagnostic.api_endpoint_accessible { "✅" } else { "❌" });
+                            log::warn!("   - Authentification: {}", if diagnostic.authentication_working { "✅" } else { "❌" });
+                            
+                            if let Some(ref err_msg) = diagnostic.error_message {
+                                log::warn!("   - Erreur: {}", err_msg);
+                            }
+                            
+                            if !diagnostic.suggestions.is_empty() {
+                                log::warn!("   💡 Suggestions:");
+                                for suggestion in &diagnostic.suggestions {
+                                    log::warn!("      {}", suggestion);
+                                }
+                            }
+                            
                             log::info!("ℹ️ LiveKit non disponible (service optionnel). Synchronisation analytics désactivée.");
+                        } else {
+                            log::warn!("⚠️ LiveKit: Variables d'environnement manquantes. Vérifiez LIVEKIT_API_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET sur Render.com");
                         }
                     }
                     // Ignorer les erreurs de connexion répétées
@@ -138,9 +158,11 @@ async fn list_livekit_rooms(
             // Améliorer le message d'erreur pour les connexions refusées
             let err_msg = format!("{}", e);
             if err_msg.contains("Connection refused") || err_msg.contains("tcp connect error") {
-                anyhow::anyhow!("LiveKit service non disponible: connexion refusée")
+                anyhow::anyhow!("LiveKit service non disponible: connexion refusée à {}. Vérifiez que le serveur est démarré et accessible depuis Render.", base_url)
+            } else if err_msg.contains("timeout") {
+                anyhow::anyhow!("LiveKit service timeout: le serveur {} ne répond pas dans les 10 secondes. Vérifiez la connectivité réseau.", base_url)
             } else {
-                anyhow::anyhow!(e).context("appel ListRooms")
+                anyhow::anyhow!(e).context(format!("appel ListRooms sur {}", base_url))
             }
         })?;
 

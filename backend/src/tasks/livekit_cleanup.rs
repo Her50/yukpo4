@@ -9,7 +9,7 @@ use serde_json::json;
 
 use crate::{
     config::live_streaming::LiveStreamingConfig, state::AppState,
-    utils::livekit::generate_server_access_token,
+    utils::livekit::{diagnose_livekit_connection, generate_server_access_token},
 };
 
 const CLEANUP_INTERVAL_MINUTES: u64 = 15;
@@ -52,36 +52,46 @@ pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
             }
         }
         
-        // Si toutes les tentatives ont échoué, logger l'erreur
-        if let Some(err) = last_err {
-            // Logger une seule fois si c'est une erreur de connexion (service non disponible)
-            let err_str = format!("{err:?}").to_lowercase();
-            if err_str.contains("connection refused") 
-                || err_str.contains("connexion refusée")
-                || err_str.contains("tcp connect error")
-                || err_str.contains("service non disponible")
-                || err_str.contains("manquant")
-                || err_str.contains("timeout") {
-                if !connection_error_logged_first.swap(true, Ordering::Relaxed) {
-                    let config = immediate_state.live_streaming.clone();
-                    let api_url = config.livekit_api_url.as_ref()
-                        .map(|u| format!("{}...", u.chars().take(30).collect::<String>()))
-                        .unwrap_or_else(|| "NON DÉFINIE".to_string());
+        // Si toutes les tentatives ont échoué, effectuer un diagnostic complet
+        if let Some(_err) = last_err {
+            if !connection_error_logged_first.swap(true, Ordering::Relaxed) {
+                let config = immediate_state.live_streaming.clone();
+                
+                // ✅ DIAGNOSTIC COMPLET LiveKit
+                if let (Some(api_url), Some(api_key), Some(api_secret)) = (
+                    config.livekit_api_url.as_ref(),
+                    config.livekit_api_key.as_ref(),
+                    config.livekit_api_secret.as_ref(),
+                ) {
+                    log::warn!("🔍 Exécution du diagnostic LiveKit complet...");
+                    let diagnostic = diagnose_livekit_connection(api_url, Some(api_key), Some(api_secret)).await;
                     
-                    if err_str.contains("manquant") {
-                        log::warn!("⚠️ LiveKit: Variables d'environnement manquantes. Vérifiez LIVEKIT_API_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET sur Render.com");
-                    } else if err_str.contains("timeout") {
-                        log::warn!("⚠️ LiveKit: Timeout de connexion après {} tentatives - URL: {}", max_retries, api_url);
-                        log::warn!("   💡 Le serveur LiveKit peut être en cours de démarrage. Les tentatives continueront toutes les {} minutes.", CLEANUP_INTERVAL_MINUTES);
-                        log::info!("ℹ️ LiveKit non disponible pour le moment (service optionnel). Nettoyage automatique désactivé.");
-                    } else {
-                        log::warn!("⚠️ LiveKit: Connexion impossible après {} tentatives - URL: {}", max_retries, api_url);
-                        log::warn!("   💡 Vérifiez que le serveur LiveKit est accessible et démarré.");
-                        log::info!("ℹ️ LiveKit non disponible (service optionnel). Nettoyage automatique désactivé.");
+                    log::warn!("📊 Résultat du diagnostic LiveKit:");
+                    log::warn!("   - Serveur accessible: {}", if diagnostic.server_reachable { "✅" } else { "❌" });
+                    log::warn!("   - Endpoint API accessible: {}", if diagnostic.api_endpoint_accessible { "✅" } else { "❌" });
+                    log::warn!("   - Authentification: {}", if diagnostic.authentication_working { "✅" } else { "❌" });
+                    log::warn!("   - API Key configurée: {}", if diagnostic.api_key_configured { "✅" } else { "❌" });
+                    log::warn!("   - API Secret configurée: {}", if diagnostic.api_secret_configured { "✅" } else { "❌" });
+                    
+                    if let Some(time_ms) = diagnostic.connection_time_ms {
+                        log::warn!("   - Temps de connexion: {}ms", time_ms);
                     }
+                    
+                    if let Some(ref err_msg) = diagnostic.error_message {
+                        log::warn!("   - Erreur: {}", err_msg);
+                    }
+                    
+                    if !diagnostic.suggestions.is_empty() {
+                        log::warn!("   💡 Suggestions:");
+                        for suggestion in &diagnostic.suggestions {
+                            log::warn!("      {}", suggestion);
+                        }
+                    }
+                    
+                    log::info!("ℹ️ LiveKit non disponible (service optionnel). Nettoyage automatique désactivé.");
+                } else {
+                    log::warn!("⚠️ LiveKit: Variables d'environnement manquantes. Vérifiez LIVEKIT_API_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET sur Render.com");
                 }
-            } else {
-                log::warn!("LiveKit cleanup initial failed after {} retries: {err:?}", max_retries);
             }
         }
 
@@ -154,9 +164,11 @@ async fn cleanup_rooms(client: &Client, config: &LiveStreamingConfig) -> Result<
             // Améliorer le message d'erreur pour les connexions refusées
             let err_msg = format!("{}", e);
             if err_msg.contains("Connection refused") || err_msg.contains("tcp connect error") {
-                anyhow!("LiveKit service non disponible: connexion refusée")
+                anyhow!("LiveKit service non disponible: connexion refusée à {}. Vérifiez que le serveur est démarré et accessible depuis Render.", base_url)
+            } else if err_msg.contains("timeout") {
+                anyhow!("LiveKit service timeout: le serveur {} ne répond pas dans les 10 secondes. Vérifiez la connectivité réseau.", base_url)
             } else {
-                anyhow!(e).context("appel ListRooms")
+                anyhow!(e).context(format!("appel ListRooms sur {}", base_url))
             }
         })?;
 

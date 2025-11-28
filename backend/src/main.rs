@@ -167,8 +167,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("✅ Client MongoDB initialisé");
 
     // Configuration Redis avec test de connexion
-    let redis_url =
+    let mut redis_url =
         env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
+
+    // ✅ CORRECTION: Convertir automatiquement redis:// en rediss:// pour Upstash avec TLS
+    // Note: Si l'URL a déjà rediss://, cette conversion ne fait rien
+    if redis_url.contains("upstash.io") && redis_url.starts_with("redis://") {
+        redis_url = redis_url.replace("redis://", "rediss://");
+        log::info!("✅ Redis: URL corrigée automatiquement pour Upstash TLS (redis:// → rediss://)");
+    }
+    
+    // ✅ CORRECTION: Si l'URL utilise déjà rediss:// mais la connexion échoue,
+    // le problème est probablement la feature TLS (native-tls vs rustls-tls)
+    // Nous utilisons maintenant rustls-tls dans Cargo.toml pour une meilleure compatibilité
 
     // Valider le format de l'URL Redis
     let redis_url_valid = validate_redis_url(&redis_url);

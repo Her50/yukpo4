@@ -9,9 +9,13 @@ use sqlx::PgPool;
 pub async fn reindex_all_services(pool: &PgPool) -> Result<usize, sqlx::Error> {
     info!("🔄 Début réindexation des services existants...");
 
+    // ✅ OPTIMISATION: Utiliser l'index GIN pour accélérer la requête
     // Récupérer tous les services actifs avec leurs produits
     let services = sqlx::query_as::<_, (i32, Value)>(
-        "SELECT id, data FROM services WHERE is_active = TRUE AND data->'produits' IS NOT NULL",
+        "SELECT id, data FROM services 
+         WHERE is_active = TRUE 
+         AND data->'produits' IS NOT NULL
+         ORDER BY id",
     )
     .fetch_all(pool)
     .await?;
@@ -105,9 +109,19 @@ pub async fn reindex_all_services(pool: &PgPool) -> Result<usize, sqlx::Error> {
         .execute(pool)
         .await;
 
-        if let Err(e) = result_char {
-            error!("❌ Erreur réindexation service {}: {}", service_id, e);
-            continue;
+        match result_char {
+            Ok(result) => {
+                if result.rows_affected() == 0 {
+                    // Service déjà indexé
+                    info!("ℹ️ Service {} déjà indexé dans autocomplete_characteristics", service_id);
+                } else {
+                    info!("✅ Service {} indexé dans autocomplete_characteristics", service_id);
+                }
+            }
+            Err(e) => {
+                error!("❌ Erreur réindexation service {}: {}", service_id, e);
+                continue;
+            }
         }
 
         // Insérer dans autocomplete_combinations
@@ -126,13 +140,25 @@ pub async fn reindex_all_services(pool: &PgPool) -> Result<usize, sqlx::Error> {
         .execute(pool)
         .await;
 
-        if let Err(e) = result_comb {
-            error!(
-                "❌ Erreur autocomplete_combinations service {}: {}",
-                service_id, e
-            );
+        match result_comb {
+            Ok(result) => {
+                if result.rows_affected() == 0 {
+                    info!("ℹ️ Service {} déjà indexé dans autocomplete_combinations", service_id);
+                } else {
+                    info!("✅ Service {} indexé/mis à jour dans autocomplete_combinations", service_id);
+                }
+            }
+            Err(e) => {
+                error!(
+                    "❌ Erreur autocomplete_combinations service {}: {}",
+                    service_id, e
+                );
+                continue; // Ne pas compter ce service si erreur
+            }
         }
 
+        // ✅ CORRECTION: Compter uniquement si au moins une insertion a réussi
+        // (même si c'était un UPDATE, le service est bien indexé)
         indexed_count += 1;
 
         if indexed_count % 10 == 0 {
