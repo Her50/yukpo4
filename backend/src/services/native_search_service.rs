@@ -1315,7 +1315,7 @@ AND (
 ORDER BY fulltext_score DESC
 LIMIT 100
         "#,
-            partial_conditions, partial_conditions
+            partial_conditions, partial_conditions, partial_conditions
         );
 
         // ✅ CORRECTION 2025-11-27 : Utiliser retry_query pour cohérence et meilleure gestion d'erreurs

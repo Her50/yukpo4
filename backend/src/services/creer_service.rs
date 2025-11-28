@@ -2410,10 +2410,13 @@ pub async fn creer_service(
 
             // ✅ NOUVEAU: Transformer variation_prix en format variants/has_variant pour ProductCard
             // Le ProductCard cherche product.variants et product.has_variant
-            if let Some(variation_prix) = produit_obj.get("variation_prix")
+            // Cloner d'abord pour éviter les conflits d'emprunt
+            let variation_prix_clone = produit_obj.get("variation_prix")
                 .or_else(|| produit_obj.get("variabilite_prix"))
                 .or_else(|| produit_obj.get("price_variant"))
-            {
+                .cloned();
+            
+            if let Some(variation_prix) = variation_prix_clone {
                 if let Some(variation_obj) = variation_prix.as_object() {
                     if let Some(modalites) = variation_obj.get("modalites").and_then(|v| v.as_array()) {
                         if !modalites.is_empty() {
@@ -2442,6 +2445,7 @@ pub async fn creer_service(
                                 })
                                 .collect();
                             
+                            let modalites_len = modalites.len();
                             produit_obj.insert("has_variant".to_string(), serde_json::Value::Bool(true));
                             produit_obj.insert("variants".to_string(), serde_json::Value::Array(variants));
                             
@@ -2453,7 +2457,7 @@ pub async fn creer_service(
                             log::info!(
                                 "[creer_service] ✅ Variations de prix transformées en variants pour produit {}: {} variantes",
                                 product_index,
-                                modalites.len()
+                                modalites_len
                             );
                         }
                     }
@@ -2598,10 +2602,13 @@ pub async fn creer_service(
                 
                 // ✅ NOUVEAU: Transformer variation_prix en format variants/has_variant pour ProductCard (même si pas de médias)
                 // Le ProductCard cherche product.variants et product.has_variant
-                if let Some(variation_prix) = first_product_obj.get("variation_prix")
+                // Cloner d'abord pour éviter les conflits d'emprunt
+                let variation_prix_clone = first_product_obj.get("variation_prix")
                     .or_else(|| first_product_obj.get("variabilite_prix"))
                     .or_else(|| first_product_obj.get("price_variant"))
-                {
+                    .cloned();
+                
+                if let Some(variation_prix) = variation_prix_clone {
                     if let Some(variation_obj) = variation_prix.as_object() {
                         if let Some(modalites) = variation_obj.get("modalites").and_then(|v| v.as_array()) {
                             if !modalites.is_empty() {
@@ -2630,6 +2637,7 @@ pub async fn creer_service(
                                     })
                                     .collect();
                                 
+                                let modalites_len = modalites.len();
                                 first_product_obj.insert("has_variant".to_string(), serde_json::Value::Bool(true));
                                 first_product_obj.insert("variants".to_string(), serde_json::Value::Array(variants));
                                 
@@ -2640,7 +2648,7 @@ pub async fn creer_service(
                                 
                                 log::info!(
                                     "[creer_service] ✅ Variations de prix transformées en variants pour premier produit: {} variantes",
-                                    modalites.len()
+                                    modalites_len
                                 );
                             }
                         }

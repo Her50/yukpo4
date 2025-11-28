@@ -1600,7 +1600,7 @@ Format JSON attendu :
                                     );
 
                                     // ✅ CORRIGÉ 2025-11-28 : Fusionner avec les données seeds existantes au lieu de remplacer
-                                    if let Some(mut info_obj) = combination_info.as_object_mut() {
+                                    if let Some(info_obj) = combination_info.as_object_mut() {
                                         info_obj.insert("estimated_total".to_string(), json!(estimated_total));
                                         info_obj.insert("estimated_time_seconds".to_string(), json!(estimated_time));
                                         info_obj.insert("progress_endpoint".to_string(), json!(format!("/api/combinations/progress/{}", session_id)));

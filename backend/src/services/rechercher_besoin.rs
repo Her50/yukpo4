@@ -692,14 +692,15 @@ pub async fn rechercher_besoin_direct(
                                         .collect();
                                     if !images_vec.is_empty() {
                                         // Fusionner avec les images existantes
-                                        let existing_images = enriched_result["images"]
+                                        let existing_images: Vec<serde_json::Value> = enriched_result["images"]
                                             .as_array()
-                                            .cloned()
-                                            .unwrap_or_else(|| serde_json::json!([]));
-                                        let mut merged = existing_images.as_array().unwrap().clone();
+                                            .map(|arr| arr.iter().cloned().collect())
+                                            .unwrap_or_else(Vec::new);
+                                        let mut merged = existing_images;
                                         for img in images_vec {
-                                            if !merged.contains(&json!(img)) {
-                                                merged.push(json!(img));
+                                            let img_json = json!(img);
+                                            if !merged.contains(&img_json) {
+                                                merged.push(img_json);
                                             }
                                         }
                                         enriched_result["images"] = json!(merged);
@@ -717,14 +718,15 @@ pub async fn rechercher_besoin_direct(
                                         .collect();
                                     if !videos_vec.is_empty() {
                                         // Fusionner avec les vidéos existantes
-                                        let existing_videos = enriched_result["videos"]
+                                        let existing_videos: Vec<serde_json::Value> = enriched_result["videos"]
                                             .as_array()
-                                            .cloned()
-                                            .unwrap_or_else(|| serde_json::json!([]));
-                                        let mut merged = existing_videos.as_array().unwrap().clone();
+                                            .map(|arr| arr.iter().cloned().collect())
+                                            .unwrap_or_else(Vec::new);
+                                        let mut merged = existing_videos;
                                         for vid in videos_vec {
-                                            if !merged.contains(&json!(vid)) {
-                                                merged.push(json!(vid));
+                                            let vid_json = json!(vid);
+                                            if !merged.contains(&vid_json) {
+                                                merged.push(vid_json);
                                             }
                                         }
                                         enriched_result["videos"] = json!(merged);
