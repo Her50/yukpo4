@@ -109,10 +109,17 @@ CREATE INDEX IF NOT EXISTS idx_services_description_fts
 ON services USING GIN (to_tsvector('french', COALESCE(data->>'description', data->'description'->>'valeur', '')))
 WHERE is_active = true;
 
--- Index GIN pour recherche full-text avec unaccent (gestion accents)
-CREATE INDEX IF NOT EXISTS idx_services_titre_service_unaccent_fts 
-ON services USING GIN (to_tsvector('french', unaccent(COALESCE(data->>'titre_service', data->'titre_service'->>'valeur', ''))))
-WHERE is_active = true;
+-- ❌ DÉSACTIVÉ: Index GIN pour recherche full-text avec unaccent (gestion accents)
+-- NOTE: Cet index ne peut pas être créé car unaccent() n'est pas marqué IMMUTABLE par défaut
+-- Pour l'activer, il faudrait créer une fonction wrapper IMMUTABLE:
+-- CREATE OR REPLACE FUNCTION unaccent_immutable(text) RETURNS text AS $$
+--   SELECT unaccent('unaccent', $1);
+-- $$ LANGUAGE sql IMMUTABLE;
+-- Puis utiliser unaccent_immutable() dans l'index.
+-- Pour l'instant, l'index idx_services_titre_service_fts (sans unaccent) suffit.
+-- CREATE INDEX IF NOT EXISTS idx_services_titre_service_unaccent_fts 
+-- ON services USING GIN (to_tsvector('french', unaccent(COALESCE(data->>'titre_service', data->'titre_service'->>'valeur', ''))))
+-- WHERE is_active = true;
 
 -- ============================================
 -- 7. COMMENTAIRES POUR DOCUMENTATION
