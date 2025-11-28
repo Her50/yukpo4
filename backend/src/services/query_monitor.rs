@@ -118,7 +118,7 @@ impl QueryMonitor {
         let mut slow_queries = 0u64;
         let mut total_duration = 0.0;
         let mut slowest_query: Option<QueryMetrics> = None;
-        let mut queries_by_endpoint = HashMap::new();
+        let queries_by_endpoint = HashMap::new();
 
         for metrics in metrics_map.values() {
             total_queries += metrics.execution_count;

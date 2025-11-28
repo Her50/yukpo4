@@ -19,14 +19,69 @@ Write-Host "  Serveur: $SERVER_USER@$SERVER_IP" -ForegroundColor White
 Write-Host "  Port LiveKit: $LIVEKIT_PORT" -ForegroundColor White
 Write-Host ""
 
-# Vérifier SSH
+# Vérifier SSH avec détection améliorée
 Write-Host "1. Verification de SSH..." -ForegroundColor Yellow
-try {
-    $sshVersion = ssh -V 2>&1
-    Write-Host "[OK] SSH disponible: $sshVersion" -ForegroundColor Green
-} catch {
+
+# Chercher SSH dans les emplacements courants
+$sshPaths = @(
+    "$env:ProgramFiles\OpenSSH-Win64\ssh.exe",
+    "$env:ProgramFiles\OpenSSH\ssh.exe",
+    "${env:ProgramFiles(x86)}\OpenSSH-Win64\ssh.exe"
+)
+
+$sshFound = $false
+$sshPath = $null
+
+# Vérifier les chemins possibles
+foreach ($path in $sshPaths) {
+    if (Test-Path $path) {
+        Write-Host "[OK] SSH trouve: $path" -ForegroundColor Green
+        $sshFound = $true
+        $sshPath = $path
+        break
+    }
+    else {
+        Write-Host "[INFO] Non trouve: $path" -ForegroundColor Gray
+    }
+}
+
+# Si pas trouvé, essayer via PATH
+if (-not $sshFound) {
+    Write-Host "" -ForegroundColor Gray
+    Write-Host "Recherche SSH dans PATH..." -ForegroundColor Gray
+    
+    # Configurer PATH avec Machine et User
+    $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    
+    try {
+        $sshCommand = Get-Command ssh -ErrorAction SilentlyContinue
+        if ($sshCommand) {
+            $sshPath = $sshCommand.Source
+            Write-Host "[OK] SSH trouve via PATH: $sshPath" -ForegroundColor Green
+            $sshFound = $true
+        }
+    }
+    catch {
+        Write-Host "[INFO] SSH non trouve via PATH" -ForegroundColor Gray
+    }
+}
+
+# Vérifier la version SSH
+if ($sshFound) {
+    try {
+        $sshVersion = ssh -V 2>&1
+        Write-Host "[OK] Version SSH: $sshVersion" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "[ATTENTION] Impossible de verifier la version SSH" -ForegroundColor Yellow
+    }
+}
+else {
+    Write-Host "" -ForegroundColor Red
     Write-Host "[ERREUR] SSH n'est pas installe ou non accessible" -ForegroundColor Red
-    Write-Host "  Installez OpenSSH ou utilisez PuTTY/WinSCP" -ForegroundColor Yellow
+    Write-Host "  Installez OpenSSH:" -ForegroundColor Yellow
+    Write-Host "    - Windows 10/11: Parametres > Applications > Fonctionnalites optionnelles > OpenSSH Client" -ForegroundColor White
+    Write-Host "    - Ou telechargez: https://github.com/PowerShell/Win32-OpenSSH/releases" -ForegroundColor White
     exit 1
 }
 
@@ -57,18 +112,24 @@ $remoteScriptPath = "/tmp/deploy_livekit_cloud.sh"
 # Option 1: Utiliser SCP pour transférer puis SSH pour exécuter
 Write-Host "  Transfert du script vers le serveur..." -ForegroundColor Gray
 try {
+    # S'assurer que le PATH est configuré
+    $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    
     # Transférer le script
     $scpCommand = "scp `"$deployScript`" ${SERVER_USER}@${SERVER_IP}:${remoteScriptPath}"
     Write-Host "  Commande: $scpCommand" -ForegroundColor DarkGray
-    Invoke-Expression $scpCommand
+    & cmd /c $scpCommand
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[OK] Script transfere" -ForegroundColor Green
-    } else {
-        Write-Host "[ERREUR] Erreur lors du transfert" -ForegroundColor Red
+    }
+    else {
+        Write-Host "[ERREUR] Erreur lors du transfert (code: $LASTEXITCODE)" -ForegroundColor Red
+        Write-Host "  Verifiez vos identifiants SSH et la connexion au serveur" -ForegroundColor Yellow
         exit 1
     }
-} catch {
+}
+catch {
     Write-Host "[ERREUR] Erreur SCP: $_" -ForegroundColor Red
     Write-Host ""
     Write-Host "ALTERNATIVE: Transferez manuellement le script:" -ForegroundColor Yellow
@@ -83,20 +144,25 @@ Write-Host "  Execution du script sur le serveur..." -ForegroundColor Gray
 Write-Host "  (Cela peut prendre 2-3 minutes)" -ForegroundColor Gray
 Write-Host ""
 
+# S'assurer que le PATH est configuré
+$env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+
 $sshCommand = "ssh ${SERVER_USER}@${SERVER_IP} 'chmod +x $remoteScriptPath && $remoteScriptPath'"
 
 try {
-    Invoke-Expression $sshCommand
+    & cmd /c $sshCommand
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
         Write-Host "[OK] Deploiement termine!" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host ""
-        Write-Host "[ATTENTION] Le script s'est execute mais il y a peut-etre des erreurs" -ForegroundColor Yellow
+        Write-Host "[ATTENTION] Le script s'est execute mais il y a peut-etre des erreurs (code: $LASTEXITCODE)" -ForegroundColor Yellow
         Write-Host "  Verifiez les logs ci-dessus" -ForegroundColor Yellow
     }
-} catch {
+}
+catch {
     Write-Host ""
     Write-Host "[ERREUR] Erreur SSH: $_" -ForegroundColor Red
     Write-Host ""
@@ -112,15 +178,20 @@ Write-Host "4. Verification finale..." -ForegroundColor Yellow
 Start-Sleep -Seconds 5
 
 try {
+    # S'assurer que le PATH est configuré
+    $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    
     $testCommand = "ssh ${SERVER_USER}@${SERVER_IP} 'docker ps --filter name=livekit-server --format `"{{.Status}}`"'"
-    $status = Invoke-Expression $testCommand 2>&1
+    $status = & cmd /c $testCommand 2>&1
     
     if ($status -match "Up") {
         Write-Host "[OK] LiveKit est en cours d'execution sur le serveur" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "[ATTENTION] Statut LiveKit: $status" -ForegroundColor Yellow
     }
-} catch {
+}
+catch {
     Write-Host "[ATTENTION] Impossible de verifier le statut" -ForegroundColor Yellow
 }
 
@@ -136,10 +207,12 @@ try {
         Write-Host "[OK] LiveKit est accessible depuis l'exterieur!" -ForegroundColor Green
         Write-Host "  URL: http://${SERVER_IP}:${LIVEKIT_PORT}/" -ForegroundColor Cyan
         Write-Host "  Code HTTP: $httpCode" -ForegroundColor Gray
-    } else {
+    }
+    else {
         Write-Host "[ATTENTION] LiveKit repond avec le code: $httpCode" -ForegroundColor Yellow
     }
-} catch {
+}
+catch {
     Write-Host "[ATTENTION] LiveKit n'est pas encore accessible depuis l'exterieur" -ForegroundColor Yellow
     Write-Host "  Erreur: $_" -ForegroundColor Gray
     Write-Host "  Cela peut prendre quelques minutes pour que le firewall se mette a jour" -ForegroundColor Gray
