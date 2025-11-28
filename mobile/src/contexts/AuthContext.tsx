@@ -112,25 +112,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<void> => {
     try {
       setLoading(true);
+      console.log('[AuthContext] Tentative de connexion pour:', email);
 
       const response = await authApi.login(email, password);
+      console.log('[AuthContext] Réponse login complète:', JSON.stringify(response, null, 2));
+      console.log('[AuthContext] response.success:', response.success);
+      console.log('[AuthContext] response.data:', response.data);
+      console.log('[AuthContext] response.data?.token:', response.data?.token);
 
-      if (response.success && response.data?.token) {
-        const decoded = jwtDecode<DecodedToken>(response.data.token);
+      // ✅ CORRECTION: Vérifier plusieurs formats de réponse possibles
+      let token: string | undefined = undefined;
+
+      if (response.success && response.data) {
+        // Format attendu: { success: true, data: { token, tokens_balance } }
+        token = response.data.token;
+
+        // ✅ FALLBACK: Si le token n'est pas dans data, vérifier si data est directement le token
+        if (!token && typeof response.data === 'object') {
+          // Vérifier si response.data est directement { token, tokens_balance }
+          token = (response.data as any)?.token;
+        }
+      }
+
+      console.log('[AuthContext] Token extrait:', token ? '✅ Présent' : '❌ Absent');
+      console.log('[AuthContext] Structure response:', {
+        success: response.success,
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        tokenInData: !!response.data?.token,
+      });
+
+      if (token) {
+        console.log('[AuthContext] ✅ Token reçu, décodage JWT...');
+        const decoded = jwtDecode<DecodedToken>(token);
 
         if (decoded.exp * 1000 > Date.now()) {
           // Sauvegarder le token
-          await AsyncStorage.setItem('auth_token', response.data.token);
+          await AsyncStorage.setItem('auth_token', token);
 
           const userData: User = {
             id: String(decoded.sub),
             email: decoded.email,
             role: decoded.role,
             name: decoded.name || decoded.email.split('@')[0] || 'Utilisateur',
-            credits: decoded.tokens_balance ?? 0,
+            credits: decoded.tokens_balance ?? (response.data as any)?.tokens_balance ?? 0,
             phone: '',
             photo: '',
-            token: response.data.token
+            token: token
           };
 
           setUser(userData);
@@ -139,7 +168,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             const pushModule = await import('../services/pushNotifications');
             if (pushModule?.registerForPushNotificationsAsync) {
-              pushModule.registerForPushNotificationsAsync(response.data.token).catch(() => {
+              pushModule.registerForPushNotificationsAsync(token).catch(() => {
                 // Push échoue silencieusement
               });
             }

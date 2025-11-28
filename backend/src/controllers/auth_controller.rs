@@ -80,10 +80,14 @@ pub async fn login_handler(
         user.tokens_balance,
         &secret,
     )?;
-    Ok(Json(serde_json::json!({
+    let response_data = serde_json::json!({
         "token": jwt,
         "tokens_balance": user.tokens_balance
-    })))
+    });
+    info!("[login_handler] ✅ Réponse login générée: token présent={}, tokens_balance={}", 
+          !response_data["token"].as_str().unwrap_or("").is_empty(),
+          response_data["tokens_balance"]);
+    Ok(Json(response_data))
 }
 
 #[derive(Deserialize)]

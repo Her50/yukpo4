@@ -221,6 +221,15 @@ export const apiCall = async <T>(
     const hasBody = response.headers.get('content-length') !== '0' &&
       response.headers.get('content-length') !== null;
 
+    // ✅ DEBUG: Log pour /auth/login
+    if (endpoint === '/auth/login') {
+      console.log(`[Mobile API] ✅ Status: ${response.status} ${response.statusText}`);
+      console.log(`[Mobile API] ✅ Content-Type:`, contentType);
+      console.log(`[Mobile API] ✅ Response OK:`, response.ok);
+      console.log(`[Mobile API] ✅ Has Body:`, hasBody);
+      console.log(`[Mobile API] ✅ Is JSON:`, isJson);
+    }
+
     // Si c'est une erreur 404 ou 500 sans body, ne pas essayer de parser JSON
     if (!response.ok && (!hasBody || !isJson)) {
       const statusText = response.statusText || `Erreur ${response.status}`;
@@ -237,11 +246,23 @@ export const apiCall = async <T>(
     try {
       if (hasBody && isJson) {
         data = await response.json();
+        // ✅ DEBUG: Log la réponse JSON parsée pour /auth/login
+        if (endpoint === '/auth/login') {
+          console.log(`[Mobile API] ✅ JSON parsé:`, JSON.stringify(data, null, 2));
+          console.log(`[Mobile API] ✅ data.token existe?:`, !!data?.token);
+          console.log(`[Mobile API] ✅ data.tokens_balance:`, data?.tokens_balance);
+        }
       } else if (hasBody) {
         const textData = await response.text();
         data = { raw: textData };
+        if (endpoint === '/auth/login') {
+          console.log(`[Mobile API] ⚠️ Réponse non-JSON:`, textData);
+        }
       } else {
         data = {};
+        if (endpoint === '/auth/login') {
+          console.log(`[Mobile API] ⚠️ Réponse sans body`);
+        }
       }
     } catch (jsonError) {
       console.error(`[Mobile API] Erreur parsing JSON pour ${endpoint}:`, jsonError);
@@ -260,11 +281,31 @@ export const apiCall = async <T>(
     }
 
     if (!response.ok) {
+      // ✅ DEBUG: Log pour /auth/login même en cas d'erreur
+      if (endpoint === '/auth/login') {
+        console.error(`[Mobile API] ❌ Response not OK:`, {
+          status: response.status,
+          statusText: response.statusText,
+          data: data,
+        });
+      }
       return {
         success: false,
         error: data?.message || data?.error || `Erreur ${response.status}`,
         data: data,
       };
+    }
+
+    // ✅ DEBUG: Log la structure finale pour /auth/login
+    if (endpoint === '/auth/login') {
+      console.log(`[Mobile API] ✅ Structure finale retournée:`, {
+        success: true,
+        data: data,
+        'data.token': data?.token,
+        'data.tokens_balance': data?.tokens_balance,
+        'typeof data': typeof data,
+        'data keys': data ? Object.keys(data) : [],
+      });
     }
 
     return {
@@ -309,16 +350,32 @@ export const apiCall = async <T>(
 export const authApi = {
   // Connexion
   login: async (email: string, password: string) => {
+    console.log('[authApi.login] Début de la connexion...');
     const response = await apiCall<{ token: string; tokens_balance: number }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
 
+    console.log('[authApi.login] Réponse complète reçue:', JSON.stringify(response, null, 2));
+    console.log('[authApi.login] response.success:', response.success);
+    console.log('[authApi.login] response.data:', response.data);
+    console.log('[authApi.login] response.data?.token:', response.data?.token);
+    console.log('[authApi.login] response.error:', response.error);
+
     if (response.data?.token) {
+      console.log('[authApi.login] ✅ Token trouvé, sauvegarde...');
       await saveAuthToken(response.data.token);
       if (response.data.tokens_balance !== undefined) {
         await AsyncStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
       }
+    } else {
+      console.error('[authApi.login] ❌ Token non trouvé dans response.data');
+      console.error('[authApi.login] Structure de response:', {
+        success: response.success,
+        hasData: !!response.data,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        data: response.data,
+      });
     }
 
     return response;
