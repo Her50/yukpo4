@@ -3,7 +3,7 @@ use axum::{
     Json,
 };
 use base64::Engine;
-use log::{error, info};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -381,7 +381,55 @@ pub async fn generate_video_style(
         lang: payload.lang.unwrap_or_else(|| "fr".to_string()),
     };
 
-    let suggestion = state.ia.generate_video_style(&request).await?;
+    // ✅ CORRECTION: Gestion d'erreur robuste avec fallback vers valeurs par défaut
+    let suggestion = match state.ia.generate_video_style(&request).await {
+        Ok(suggestion) => suggestion,
+        Err(err) => {
+            error!(
+                "[generate_video_style] Erreur génération style IA: {} - Utilisation valeurs par défaut",
+                err
+            );
+            
+            // Fallback vers des valeurs par défaut basées sur le channel
+            let default_suggestion = match payload.channel.as_str() {
+                "tiktok" | "shorts" | "reels" => VideoStyleSuggestion {
+                    effects: vec!["Zoom dynamique".to_string(), "Texte animé".to_string()],
+                    transitions: vec!["Cut rapide".to_string(), "Glitch".to_string()],
+                    color_palette: Some("#FF006E #FFBE0B".to_string()),
+                    overlay_tips: vec!["Texte en haut".to_string(), "CTA en bas".to_string()],
+                    music_hint: Some("Beat énergique 120-140 BPM".to_string()),
+                },
+                "story" | "instagram" => VideoStyleSuggestion {
+                    effects: vec!["Fade doux".to_string(), "Overlay élégant".to_string()],
+                    transitions: vec!["Fade".to_string(), "Slide".to_string()],
+                    color_palette: Some("#6366F1 #8B5CF6".to_string()),
+                    overlay_tips: vec!["Texte centré".to_string(), "Brand discret".to_string()],
+                    music_hint: Some("Ambiance douce et premium".to_string()),
+                },
+                "cinematic" | "youtube" => VideoStyleSuggestion {
+                    effects: vec!["Slow motion".to_string(), "Focus blur".to_string()],
+                    transitions: vec!["Crossfade".to_string(), "Wipe".to_string()],
+                    color_palette: Some("#1E293B #64748B".to_string()),
+                    overlay_tips: vec!["Titre élégant".to_string(), "Sous-titre discret".to_string()],
+                    music_hint: Some("Orchestre épique ou ambient".to_string()),
+                },
+                _ => VideoStyleSuggestion {
+                    effects: vec!["Zoom".to_string(), "Pan".to_string()],
+                    transitions: vec!["Cut".to_string(), "Fade".to_string()],
+                    color_palette: Some("#6366F1 #10B981".to_string()),
+                    overlay_tips: vec!["Texte informatif".to_string()],
+                    music_hint: Some("Musique générique".to_string()),
+                },
+            };
+            
+            warn!(
+                "[generate_video_style] Style IA indisponible, utilisation valeurs par défaut pour channel: {}",
+                payload.channel
+            );
+            
+            default_suggestion
+        }
+    };
 
     Ok(Json(VideoStyleResponse {
         success: true,

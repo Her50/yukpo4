@@ -54,6 +54,7 @@ const normalizeCategoryKey = (product: Record<string, any>): string | null => {
         ?? extractValue(product?.categorie)
         ?? extractValue(product?.category)
         ?? extractValue(product?.type)
+        ?? extractValue(product?.service_category)  // ✅ CORRECTION 2025-11-28: Support service_category depuis backend
         ?? extractValue(product?.serviceCategorie);
 
     return raw ? raw.toLowerCase() : null;
@@ -1180,8 +1181,16 @@ const MesProduitsScreen: React.FC = () => {
         openTeamManager(undefined);
     };
 
-    const handleManageMembersForService = (serviceId: string) => {
-        openTeamManager(serviceId);
+    const handleManageMembersForService = (serviceId: string | number | undefined) => {
+        // ✅ CORRECTION: Vérifier que serviceId est valide
+        if (!serviceId) {
+            Alert.alert(
+                'Erreur',
+                'Impossible de gérer les membres : service ID manquant.'
+            );
+            return;
+        }
+        openTeamManager(String(serviceId));
     };
 
     // ✅ NOUVEAU 2025-11-06: Éditer les informations générales du service
@@ -1722,7 +1731,18 @@ const MesProduitsScreen: React.FC = () => {
                 <View style={styles.secondaryActions}>
                     <TouchableOpacity
                         style={styles.iconButton}
-                        onPress={() => handleManageMembersForService(product.serviceId)}
+                        onPress={() => {
+                            // ✅ CORRECTION: Vérifier que serviceId existe avant d'appeler
+                            const serviceId = product.serviceId || product.data?.serviceId;
+                            if (serviceId) {
+                                handleManageMembersForService(serviceId);
+                            } else {
+                                Alert.alert(
+                                    'Erreur',
+                                    'Impossible de gérer les membres : service ID manquant pour ce produit.'
+                                );
+                            }
+                        }}
                     >
                         <SafeIcon name="users" size={20} color="#6366F1" />
                     </TouchableOpacity>
@@ -1755,6 +1775,18 @@ const MesProduitsScreen: React.FC = () => {
                         <TouchableOpacity
                             style={styles.iconButton}
                             onPress={() => {
+                                // ✅ CORRECTION: Vérifier que serviceId et product_index existent
+                                const serviceId = product.serviceId || product.data?.serviceId;
+                                const productIndex = product.product_index ?? product.data?.product_index ?? 0;
+
+                                if (!serviceId) {
+                                    Alert.alert(
+                                        'Erreur',
+                                        'Impossible de configurer la livraison : service ID manquant pour ce produit.'
+                                    );
+                                    return;
+                                }
+
                                 setDeliveryConfigProduct(product);
                                 setShowDeliveryConfigModal(true);
                             }}

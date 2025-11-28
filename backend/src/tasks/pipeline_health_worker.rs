@@ -8,8 +8,6 @@ use tokio::sync::Mutex;
 use crate::services::pipeline_health_service::{compute_pipeline_health, PipelineHealthStatus};
 use crate::state::AppState;
 
-const HEALTHCHECK_INTERVAL_SECS: u64 = 300; // 5 minutes
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct LastSnapshot {
     status: String,
@@ -22,9 +20,15 @@ pub fn start_pipeline_health_worker(state: Arc<AppState>) {
     let last_snapshot = Arc::new(Mutex::new(None::<LastSnapshot>));
     let webhook_url = std::env::var("PIPELINE_ALERT_WEBHOOK").ok();
     let http_client = Arc::new(Client::new());
+    
+    // Intervalle configurable via variable d'environnement (défaut: 300s = 5 minutes)
+    let healthcheck_interval_secs: u64 = std::env::var("PIPELINE_HEALTH_CHECK_INTERVAL_SECS")
+        .unwrap_or_else(|_| "300".to_string())
+        .parse()
+        .unwrap_or(300);
 
     tokio::spawn(async move {
-        let mut ticker = tokio::time::interval(Duration::from_secs(HEALTHCHECK_INTERVAL_SECS));
+        let mut ticker = tokio::time::interval(Duration::from_secs(healthcheck_interval_secs));
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {

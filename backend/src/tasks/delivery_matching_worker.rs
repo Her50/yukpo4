@@ -22,9 +22,21 @@ pub struct DeliveryMatchingWorkerConfig {
 
 impl Default for DeliveryMatchingWorkerConfig {
     fn default() -> Self {
+        // Intervalle configurable via variable d'environnement (défaut: 30s)
+        let interval_seconds: i64 = std::env::var("DELIVERY_MATCHING_WORKER_INTERVAL_SECS")
+            .unwrap_or_else(|_| "30".to_string())
+            .parse()
+            .unwrap_or(30) as i64;
+        
+        // Taille de batch configurable via variable d'environnement (défaut: 10)
+        let batch_size: usize = std::env::var("DELIVERY_MATCHING_WORKER_BATCH_SIZE")
+            .unwrap_or_else(|_| "10".to_string())
+            .parse()
+            .unwrap_or(10);
+        
         Self {
-            batch_size: 10,
-            interval_seconds: 30,
+            batch_size,
+            interval_seconds,
         }
     }
 }

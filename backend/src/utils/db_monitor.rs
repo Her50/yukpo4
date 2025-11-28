@@ -6,10 +6,15 @@ use std::time::Duration;
 use tokio::time::interval;
 
 /// Démarre un monitor de santé du pool de connexions
-/// Vérifie la santé toutes les 30 secondes
+/// Vérifie la santé toutes les 30 secondes (configurable via DB_HEALTH_CHECK_INTERVAL_SECS)
 pub async fn start_db_health_monitor(pool: PgPool) {
-    let mut interval = interval(Duration::from_secs(30));
+    let interval_secs: u64 = std::env::var("DB_HEALTH_CHECK_INTERVAL_SECS")
+        .unwrap_or_else(|_| "30".to_string())
+        .parse()
+        .unwrap_or(30);
+    let mut interval = interval(Duration::from_secs(interval_secs));
     
+    let log_interval_secs = interval_secs; // Pour le log dans le spawn
     tokio::spawn(async move {
         loop {
             interval.tick().await;
@@ -63,6 +68,6 @@ pub async fn start_db_health_monitor(pool: PgPool) {
         }
     });
     
-    log::info!("✅ DB Health Monitor démarré (vérification toutes les 30s)");
+    log::info!("✅ DB Health Monitor démarré (vérification toutes les {}s)", interval_secs);
 }
 

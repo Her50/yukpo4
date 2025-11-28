@@ -487,19 +487,26 @@ pub async fn validate_video_generation_prerequisites(
                 checked_sources.join(", ")
             };
             
+            // ✅ CORRECTION: Message d'erreur amélioré avec guidance claire
             let error_msg = format!(
                 "Impossible de générer la vidéo : Aucune image trouvée.\n\n\
                 Sources vérifiées : {}\n\n\
                 Solutions possibles :\n\
                 • Ajouter des images dans la médiathèque du service\n\
                 • Ajouter des images au produit spécifique (index {})\n\
-                • Activer 'auto_generate_images: true' pour générer automatiquement des images avec l'IA",
+                • Activer 'auto_generate_images: true' pour générer automatiquement des images avec l'IA\n\n\
+                Note : La génération automatique d'images IA est recommandée si vous n'avez pas d'images disponibles.",
                 sources_checked,
                 product_index
             );
             
-            warn!("[VideoGeneration] ❌ Validation échouée pour service_id={}, product_index={}: {}", 
-                service_id, product_index, error_msg);
+            warn!(
+                "[VideoGeneration] ❌ Validation échouée pour service_id={}, product_index={}, auto_generate_images={}:\n{}", 
+                service_id, 
+                product_index,
+                payload.auto_generate_images.unwrap_or(false),
+                error_msg
+            );
             
             return Err(AppError::BadRequest(error_msg));
         }

@@ -249,22 +249,28 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                 </View>
 
                 <ScrollView style={styles.modalContent}>
-                    {SERVICE_TEAM_ROLES.map(role => (
-                        <TouchableOpacity
-                            key={role.id}
-                            style={[
-                                styles.roleOption,
-                                selectedRole?.id === role.id && styles.roleOptionSelected
-                            ]}
-                            onPress={() => setSelectedRole(role)}
-                        >
-                            <View style={styles.roleOptionHeader}>
-                                <SafeIcon name={role.icon} size={20} color={role.color} />
-                                <Text style={styles.roleOptionName}>{role.name}</Text>
-                            </View>
-                            <Text style={styles.roleOptionDescription}>{role.description}</Text>
-                        </TouchableOpacity>
-                    ))}
+                    {Array.isArray(SERVICE_TEAM_ROLES) && SERVICE_TEAM_ROLES.length > 0 ? (
+                        SERVICE_TEAM_ROLES.map(role => (
+                            <TouchableOpacity
+                                key={role?.id || `role-${role?.name || 'unknown'}`}
+                                style={[
+                                    styles.roleOption,
+                                    selectedRole?.id === role?.id && styles.roleOptionSelected
+                                ]}
+                                onPress={() => setSelectedRole(role)}
+                            >
+                                <View style={styles.roleOptionHeader}>
+                                    <SafeIcon name={role?.icon || 'user'} size={20} color={role?.color || '#6B7280'} />
+                                    <Text style={styles.roleOptionName}>{role?.name || 'Rôle inconnu'}</Text>
+                                </View>
+                                <Text style={styles.roleOptionDescription}>{role?.description || 'Aucune description'}</Text>
+                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyStateText}>Aucun rôle disponible</Text>
+                        </View>
+                    )}
 
                     <NativeButton
                         title="Confirmer"
@@ -318,22 +324,28 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>Rôle</Text>
-                        {SERVICE_TEAM_ROLES.map(role => (
-                            <TouchableOpacity
-                                key={role.id}
-                                style={[
-                                    styles.roleOption,
-                                    inviteRole?.id === role.id && styles.roleOptionSelected
-                                ]}
-                                onPress={() => setInviteRole(role)}
-                            >
-                                <View style={styles.roleOptionHeader}>
-                                    <SafeIcon name={role.icon} size={20} color={role.color} />
-                                    <Text style={styles.roleOptionName}>{role.name}</Text>
-                                </View>
-                                <Text style={styles.roleOptionDescription}>{role.description}</Text>
-                            </TouchableOpacity>
-                        ))}
+                        {Array.isArray(SERVICE_TEAM_ROLES) && SERVICE_TEAM_ROLES.length > 0 ? (
+                            SERVICE_TEAM_ROLES.map(role => (
+                                <TouchableOpacity
+                                    key={role?.id || `role-${role?.name || 'unknown'}`}
+                                    style={[
+                                        styles.roleOption,
+                                        inviteRole?.id === role?.id && styles.roleOptionSelected
+                                    ]}
+                                    onPress={() => setInviteRole(role)}
+                                >
+                                    <View style={styles.roleOptionHeader}>
+                                        <SafeIcon name={role?.icon || 'user'} size={20} color={role?.color || '#6B7280'} />
+                                        <Text style={styles.roleOptionName}>{role?.name || 'Rôle inconnu'}</Text>
+                                    </View>
+                                    <Text style={styles.roleOptionDescription}>{role?.description || 'Aucune description'}</Text>
+                                </TouchableOpacity>
+                            ))
+                        ) : (
+                            <View style={styles.emptyState}>
+                                <Text style={styles.emptyStateText}>Aucun rôle disponible</Text>
+                            </View>
+                        )}
                     </View>
 
                     <NativeButton
@@ -407,7 +419,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                 {invitations && Array.isArray(invitations) && invitations.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Invitations en attente</Text>
-                        {invitations.map((invitation, index) => (
+                        {invitations.filter(inv => inv && inv.id).map((invitation, index) => (
                             <NativeCard key={invitation?.id || `invitation-${index}`} style={styles.invitationCard}>
                                 <View style={styles.invitationContent}>
                                     <Text style={styles.invitationEmail}>{invitation?.email || 'Email inconnu'}</Text>

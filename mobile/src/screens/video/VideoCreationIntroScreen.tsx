@@ -11,6 +11,8 @@ import VideoExampleModal from '../../components/VideoExampleModal';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { extractProductName, extractServiceName } from '../../utils/displayHelpers';
+import { normalizeServiceProducts } from '../../utils/productNormalizer';
 import { apiCallWithRetry } from '../../utils/retryWithBackoff';
 import { navigateToVideoWizard } from '../../utils/videoNavigation';
 
@@ -158,57 +160,19 @@ const VideoCreationIntroScreen: React.FC = () => {
         if (userServices.length > 0) {
             const allProducts: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> = [];
 
-            // ✅ CORRECTION 2025-11-28: Fonction pour extraire les produits (tous formats)
-            const extractProduits = (service: any): any[] => {
-                const serviceData = service.data || service;
-
-                // Format 1 - produits.valeur (tableau)
-                if (serviceData?.produits?.valeur) {
-                    const valeur = serviceData.produits.valeur;
-                    if (Array.isArray(valeur) && valeur.length > 0) {
-                        const filtered = valeur.filter((v: any) => v !== null && v !== undefined && v !== '');
-                        if (filtered.length > 0) return filtered;
-                    }
-                }
-
-                // Format 2 - produits directement un tableau
-                if (Array.isArray(serviceData?.produits) && serviceData.produits.length > 0) {
-                    return serviceData.produits;
-                }
-
-                // Format 3 - produits.items ou produits.list
-                if (serviceData?.produits && typeof serviceData.produits === 'object') {
-                    const produitsObj = serviceData.produits;
-                    if (Array.isArray(produitsObj.items) && produitsObj.items.length > 0) {
-                        return produitsObj.items;
-                    } else if (Array.isArray(produitsObj.list) && produitsObj.list.length > 0) {
-                        return produitsObj.list;
-                    }
-                }
-
-                // Format 4 - produits dans le service brut
-                if (Array.isArray(service.produits) && service.produits.length > 0) {
-                    return service.produits;
-                }
-
-                return [];
-            };
-
             userServices.forEach((service: any) => {
-                const produits = extractProduits(service);
                 const serviceId = service.id || service.service_id;
-                const serviceName = service.data?.titre_service?.valeur || service.titre || `Service #${serviceId}`;
+
+                // ✅ CORRECTION: Utiliser extractServiceName pour éviter l'affichage de JSON
+                const serviceName = extractServiceName(service, `Service #${serviceId}`);
+
+                // ✅ CORRECTION: Utiliser normalizeServiceProducts qui gère tous les formats
+                const produits = normalizeServiceProducts(service.data?.produits || service.produits);
 
                 if (Array.isArray(produits) && produits.length > 0) {
                     produits.forEach((product: any, index: number) => {
-                        // ✅ CORRECTION: Extraire le nom du produit depuis différents formats
-                        let productName = 'Produit sans nom';
-                        if (typeof product === 'string') {
-                            // Si c'est une string, prendre la première partie (avant la virgule)
-                            productName = product.split(',')[0].trim() || `Produit ${index + 1}`;
-                        } else if (typeof product === 'object' && product !== null) {
-                            productName = product.nom || product.name || product.title || product.valeur || `Produit ${index + 1}`;
-                        }
+                        // ✅ CORRECTION: Utiliser extractProductName pour éviter l'affichage de JSON
+                        const productName = extractProductName(product, `Produit ${index + 1}`);
 
                         allProducts.push({
                             serviceId: Number(serviceId),

@@ -296,25 +296,45 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             const response = await apiGet(apiUrl);
             const loadTime = Date.now() - startTime;
 
+            // ✅ CORRIGÉ: Extraire le tableau depuis response.data.data si nécessaire
+            let mixedContentArray: any[] = [];
+            if (response.success && response.data) {
+                if (Array.isArray(response.data)) {
+                    mixedContentArray = response.data;
+                } else if (typeof response.data === 'object' && response.data !== null && 'data' in response.data) {
+                    const dataObj = response.data as { data?: any };
+                    if (dataObj.data && Array.isArray(dataObj.data)) {
+                        mixedContentArray = dataObj.data;
+                    }
+                }
+            }
+
+            const responseDataMixed = response.data as any;
             console.log('[MixedContentCarousel] 📦 [DIAGNOSTIC] Réponse API reçue:', {
                 success: response.success,
                 hasData: !!response.data,
-                dataLength: Array.isArray(response.data) ? response.data.length : 0,
+                hasDataData: !!(responseDataMixed?.data),
+                dataLength: mixedContentArray.length,
                 loadTime: `${loadTime}ms`,
                 dataType: typeof response.data,
-                isArray: Array.isArray(response.data)
+                isArray: Array.isArray(response.data),
+                isDataArray: Array.isArray(responseDataMixed?.data)
             });
 
-            if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
-                console.log(`[MixedContentCarousel] ✅ [DIAGNOSTIC] ${response.data.length} éléments de contenu mixte chargés`);
-                setContent(response.data);
-                console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Contenu défini dans le state, longueur:', response.data.length);
+            if (mixedContentArray.length > 0) {
+                console.log(`[MixedContentCarousel] ✅ [DIAGNOSTIC] ${mixedContentArray.length} éléments de contenu mixte chargés`);
+                setContent(mixedContentArray);
+                console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Contenu défini dans le state, longueur:', mixedContentArray.length);
             } else {
                 // ✅ FALLBACK: Charger les produits organiques si pas de contenu mixte
+                const responseDataMixed2 = response.data as any;
                 console.log('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Pas de contenu mixte, chargement des produits organiques...', {
                     success: response.success,
                     hasData: !!response.data,
-                    dataType: typeof response.data
+                    hasDataData: !!(responseDataMixed2?.data),
+                    dataType: typeof response.data,
+                    isArray: Array.isArray(response.data),
+                    isDataArray: Array.isArray(responseDataMixed2?.data)
                 });
                 await loadOrganicProducts();
             }
@@ -376,35 +396,73 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             let response = await apiGet('/api/services/recent?limit=20');
             const loadTime = Date.now() - startTime;
 
+            // ✅ CORRIGÉ: Extraire le tableau de services depuis response.data.data
+            // Le backend retourne {success: true, data: [...], count: 20}
+            // apiCall met cette réponse dans response.data, donc le tableau est dans response.data.data
+            let servicesArray: any[] = [];
+            if (response.success && response.data) {
+                // Vérifier si response.data est directement un tableau (ancien format)
+                if (Array.isArray(response.data)) {
+                    servicesArray = response.data;
+                }
+                // Sinon, vérifier si response.data.data est un tableau (nouveau format backend)
+                else if (typeof response.data === 'object' && response.data !== null && 'data' in response.data) {
+                    const dataObj = response.data as { data?: any };
+                    if (dataObj.data && Array.isArray(dataObj.data)) {
+                        servicesArray = dataObj.data;
+                    }
+                }
+            }
+
             // Si ça ne marche pas, essayer l'API standard
-            if (!response.success || !response.data || !Array.isArray(response.data)) {
+            if (servicesArray.length === 0) {
+                const responseData = response.data as any;
                 console.log('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] API recent échouée, essai API standard...', {
                     success: response.success,
                     hasData: !!response.data,
-                    isArray: Array.isArray(response.data)
+                    hasDataData: !!(responseData?.data),
+                    isArray: Array.isArray(response.data),
+                    isDataArray: Array.isArray(responseData?.data)
                 });
                 const startTime2 = Date.now();
                 response = await apiGet('/api/services?limit=20');
                 const loadTime2 = Date.now() - startTime2;
+
+                // Réessayer d'extraire le tableau
+                if (response.success && response.data) {
+                    if (Array.isArray(response.data)) {
+                        servicesArray = response.data;
+                    } else if (typeof response.data === 'object' && response.data !== null && 'data' in response.data) {
+                        const dataObj = response.data as { data?: any };
+                        if (dataObj.data && Array.isArray(dataObj.data)) {
+                            servicesArray = dataObj.data;
+                        }
+                    }
+                }
+
+                const responseData2 = response.data as any;
                 console.log('[MixedContentCarousel] [DIAGNOSTIC] Réponse API standard:', {
                     success: response.success,
                     hasData: !!response.data,
+                    hasDataData: !!(responseData2?.data),
                     isArray: Array.isArray(response.data),
+                    isDataArray: Array.isArray(responseData2?.data),
+                    servicesArrayLength: servicesArray.length,
                     loadTime: `${loadTime2}ms`
                 });
             } else {
                 console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Réponse API recent réussie:', {
                     success: response.success,
-                    dataLength: Array.isArray(response.data) ? response.data.length : 0,
+                    dataLength: servicesArray.length,
                     loadTime: `${loadTime}ms`
                 });
             }
 
-            if (response.success && response.data && Array.isArray(response.data)) {
+            if (servicesArray.length > 0) {
                 const organicContent: ContentItem[] = [];
-                console.log('[MixedContentCarousel] [DIAGNOSTIC] Traitement de', response.data.length, 'services...');
+                console.log('[MixedContentCarousel] [DIAGNOSTIC] Traitement de', servicesArray.length, 'services...');
 
-                response.data.forEach((service: any, serviceIndex: number) => {
+                servicesArray.forEach((service: any, serviceIndex: number) => {
                     // ✅ CORRIGÉ: Utiliser extractProduits pour gérer toutes les structures
                     const produits = extractProduits(service);
 
@@ -471,25 +529,29 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 console.log(`[MixedContentCarousel] ✅ [DIAGNOSTIC] ${organicContent.length} produits organiques chargés`);
                 if (organicContent.length === 0) {
                     console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Aucun produit trouvé dans les services. Structure des données:', {
-                        servicesCount: response.data.length,
-                        firstService: response.data[0] ? {
-                            id: response.data[0].id,
-                            hasData: !!response.data[0].data,
-                            dataKeys: response.data[0].data ? Object.keys(response.data[0].data) : [],
-                            hasProduits: !!response.data[0].data?.produits,
-                            produitsType: typeof response.data[0].data?.produits,
-                            produitsValue: response.data[0].data?.produits
+                        servicesCount: servicesArray.length,
+                        firstService: servicesArray[0] ? {
+                            id: servicesArray[0].id,
+                            hasData: !!servicesArray[0].data,
+                            dataKeys: servicesArray[0].data ? Object.keys(servicesArray[0].data) : [],
+                            hasProduits: !!servicesArray[0].data?.produits,
+                            produitsType: typeof servicesArray[0].data?.produits,
+                            produitsValue: servicesArray[0].data?.produits
                         } : null
                     });
                 }
                 setContent(organicContent);
                 console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Contenu organique défini dans le state, longueur:', organicContent.length);
             } else {
+                const responseData3 = response.data as any;
                 console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Aucun produit organique trouvé - Réponse API invalide:', {
                     success: response.success,
                     hasData: !!response.data,
+                    hasDataData: !!(responseData3?.data),
                     isArray: Array.isArray(response.data),
-                    dataType: typeof response.data
+                    isDataArray: Array.isArray(responseData3?.data),
+                    dataType: typeof response.data,
+                    servicesArrayLength: servicesArray.length
                 });
                 setContent([]);
             }

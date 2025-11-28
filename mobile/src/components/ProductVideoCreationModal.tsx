@@ -417,12 +417,27 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             try {
                 const result = await fetchFn();
                 return result;
-            } catch (error) {
+            } catch (error: any) {
                 retryCount++;
+                const errorMsg = error?.message || String(error);
+                const isTimeout = errorMsg.toLowerCase().includes('timeout') || errorMsg.toLowerCase().includes('timed out');
+                const isNetworkError = errorMsg.toLowerCase().includes('network') || errorMsg.toLowerCase().includes('fetch');
+
                 if (retryCount >= maxRetries) {
                     console.warn(`[ProductVideoCreationModal] Coach IA: ${type} indisponible après ${maxRetries} tentatives`, error);
+                    // ✅ AMÉLIORATION: Logger plus de détails pour debugging
+                    console.warn(`[ProductVideoCreationModal] Dernière erreur pour ${type}:`, {
+                        message: errorMsg,
+                        isTimeout,
+                        isNetworkError,
+                        stack: error?.stack
+                    });
                     return null;
                 }
+
+                // ✅ AMÉLIORATION: Log des retries pour debugging
+                console.log(`[ProductVideoCreationModal] Coach IA ${type}: Tentative ${retryCount + 1}/${maxRetries} (erreur: ${errorMsg.substring(0, 50)})`);
+
                 // Exponential backoff: 1s, 2s, 4s
                 const delay = Math.pow(2, retryCount) * 1000;
                 await new Promise(resolve => setTimeout(resolve, delay));
@@ -517,10 +532,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 if (briefResult) {
                     setBriefVariants(briefResult);
                 } else {
-                    // Utiliser valeurs par défaut
+                    // ✅ CORRECTION: Utiliser valeurs par défaut avec notification silencieuse
                     const defaultBrief = getDefaultCoachData('brief');
                     if (defaultBrief?.variants) {
+                        console.log('[ProductVideoCreationModal] Coach IA: Utilisation valeurs par défaut pour brief');
                         setBriefVariants(defaultBrief.variants);
+                    } else {
+                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de générer brief, même avec valeurs par défaut');
                     }
                 }
             }
@@ -551,10 +569,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 if (styleResult) {
                     setStyleSuggestion(styleResult);
                 } else {
-                    // Utiliser valeurs par défaut
+                    // ✅ CORRECTION: Utiliser valeurs par défaut avec notification silencieuse
                     const defaultStyle = getDefaultCoachData('style');
                     if (defaultStyle?.suggestion) {
+                        console.log('[ProductVideoCreationModal] Coach IA: Utilisation valeurs par défaut pour style');
                         setStyleSuggestion(defaultStyle.suggestion);
+                    } else {
+                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de générer style, même avec valeurs par défaut');
                     }
                 }
             }
@@ -582,10 +603,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 if (planResult) {
                     setDistributionPlan(planResult);
                 } else {
-                    // Utiliser valeurs par défaut
+                    // ✅ CORRECTION: Utiliser valeurs par défaut avec notification silencieuse
                     const defaultPlan = getDefaultCoachData('plan');
                     if (defaultPlan?.plan) {
+                        console.log('[ProductVideoCreationModal] Coach IA: Utilisation valeurs par défaut pour plan');
                         setDistributionPlan(defaultPlan.plan);
+                    } else {
+                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de générer plan, même avec valeurs par défaut');
                     }
                 }
             }
@@ -1266,6 +1290,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             use_product_gallery: useProductGallery,
             use_service_mediatech: useMediatechLibrary,
             include_publicite_assets: includePubliciteAssets,
+            // ✅ CORRECTION: Activer la génération automatique d'images si aucune image n'est disponible
+            auto_generate_images: true,
             publish_to_chat: publishToChat,
             publish_to_product_card: publishToProductCard,
             storyboard: scriptNotes
@@ -1306,9 +1332,35 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             await onSuccess(result);
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur génération vidéo:', error);
+
+            // ✅ CORRECTION: Améliorer les messages d'erreur avec des détails spécifiques
+            let errorMessage = 'Nous ne parvenons pas à générer la vidéo.';
+
+            if (error?.message) {
+                const msg = error.message.toLowerCase();
+                if (msg.includes('aucune image') || msg.includes('image trouvée')) {
+                    errorMessage = 'Aucune image disponible pour générer la vidéo.\n\n' +
+                        'Solutions :\n' +
+                        '• Ajoutez des images dans la médiathèque du service\n' +
+                        '• Ajoutez des images au produit\n' +
+                        '• La génération automatique d\'images IA sera activée lors de la prochaine tentative';
+                } else if (msg.includes('400') || msg.includes('bad request')) {
+                    errorMessage = 'Demande invalide.\n\n' +
+                        'Vérifiez que tous les champs sont correctement remplis et réessayez.';
+                } else if (msg.includes('500') || msg.includes('internal')) {
+                    errorMessage = 'Erreur serveur temporaire.\n\n' +
+                        'Veuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.';
+                } else if (msg.includes('timeout') || msg.includes('timed out')) {
+                    errorMessage = 'La génération prend plus de temps que prévu.\n\n' +
+                        'La vidéo est peut-être en cours de création. Vérifiez vos vidéos dans quelques instants.';
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+
             Alert.alert(
                 'Génération impossible',
-                error?.message || 'Nous ne parvenons pas à générer la vidéo. Vérifiez votre connexion et réessayez.'
+                errorMessage + '\n\nVérifiez votre connexion et réessayez.'
             );
         } finally {
             setIsSubmitting(false);

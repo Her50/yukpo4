@@ -37,6 +37,8 @@ import {
     VideoGenerationPayload
 } from '../../types/VideoGeneration';
 import type { CreateVoiceProfilePayload, MusicMode } from '../../types/audio';
+import { extractDescription, extractProductName, extractServiceName, safeStringDisplay } from '../../utils/displayHelpers';
+import { normalizeServiceProducts } from '../../utils/productNormalizer';
 import { apiCallWithRetry } from '../../utils/retryWithBackoff';
 import { clearVideoDraft, loadVideoDraft, saveVideoDraft } from '../../utils/videoDraftStorage';
 
@@ -120,6 +122,8 @@ const VideoCreationWizardScreen: React.FC = () => {
     );
 
     const [step, setStep] = useState<WizardStep>(1);
+    // ✅ NOUVEAU: Tracking des étapes complétées
+    const [completedSteps, setCompletedSteps] = useState<Set<WizardStep>>(new Set());
     const [loadingService, setLoadingService] = useState(true);
     const [costEstimation, setCostEstimation] = useState<VideoCostEstimation | null>(null);
     const [costLoading, setCostLoading] = useState(false);
@@ -317,6 +321,74 @@ const VideoCreationWizardScreen: React.FC = () => {
         deleteProfile,
     } = useVoiceProfiles({ serviceId });
 
+    // ✅ NOUVEAU: Fonction pour marquer une étape comme complétée
+    const markStepCompleted = useCallback((stepNum: WizardStep) => {
+        setCompletedSteps((prev) => new Set([...prev, stepNum]));
+    }, []);
+
+    // ✅ NOUVEAU: Validation avant navigation vers étape suivante
+    const validateStepCompletion = useCallback((stepNum: WizardStep): { canProceed: boolean; error?: string } => {
+        switch (stepNum) {
+            case 1:
+                // Valider que le brief ou les templates sont définis
+                if (brief.trim().length === 0 && !storyTemplateId) {
+                    return {
+                        canProceed: false,
+                        error: 'Veuillez renseigner un brief ou sélectionner un template narratif.'
+                    };
+                }
+                if (!selectedStyle) {
+                    return {
+                        canProceed: false,
+                        error: 'Veuillez sélectionner un style de vidéo.'
+                    };
+                }
+                return { canProceed: true };
+            case 2:
+                // Valider étape 2 (optionnel - médias peuvent être auto-sélectionnés)
+                // Pas de validation stricte ici
+                return { canProceed: true };
+            case 3:
+                // Validation finale avant génération
+                return { canProceed: true };
+            default:
+                return { canProceed: false, error: 'Étape invalide' };
+        }
+    }, [brief, storyTemplateId, selectedStyle]);
+
+    // ✅ NOUVEAU: Calculer la progression globale
+    const globalProgress = useMemo(() => {
+        const totalSteps = 3;
+        const completed = completedSteps.size;
+        // Inclure l'étape actuelle si elle est validée
+        const currentStepValidated = validateStepCompletion(step).canProceed;
+        const effectiveCompleted = currentStepValidated ? completed + 1 : completed;
+        return Math.min(Math.round((effectiveCompleted / totalSteps) * 100), 100);
+    }, [completedSteps, step, validateStepCompletion]);
+
+    // ✅ NOUVEAU: Vérifier lors de la navigation
+    const handleStepChange = useCallback((newStep: WizardStep) => {
+        const currentStepNum = step;
+
+        // Si on revient en arrière, c'est toujours OK
+        if (newStep < currentStepNum) {
+            setStep(newStep);
+            return;
+        }
+
+        // Si on avance, valider l'étape actuelle
+        const validation = validateStepCompletion(currentStepNum);
+        if (validation.canProceed) {
+            markStepCompleted(currentStepNum);
+            setStep(newStep);
+        } else {
+            Alert.alert(
+                'Étape incomplète',
+                validation.error || 'Veuillez compléter les informations requises avant de continuer.'
+            );
+        }
+    }, [step, validateStepCompletion, markStepCompleted]);
+
     const fetchServiceDetails = useCallback(async () => {
         if (!serviceId && serviceId !== 0) {
             setLoadingService(false);
@@ -351,25 +423,38 @@ const VideoCreationWizardScreen: React.FC = () => {
             const response = await apiCallWithRetry(() => apiGet<any>(`/api/services/${serviceId}`));
             if (response.success && response.data) {
                 const service = response.data;
-                setServiceName(service.titre || service.name || `Service #${serviceId}`);
-                const produits = service.data?.produits?.valeur || service.data?.produits || [];
+
+                // ✅ CORRECTION: Utiliser extractServiceName pour éviter l'affichage de JSON
+                setServiceName(extractServiceName(service, `Service #${serviceId}`));
+
+                // ✅ CORRECTION: Normaliser les produits avec normalizeServiceProducts
+                const produits = normalizeServiceProducts(service.data?.produits);
 
                 // ✅ Phase 7 - Amélioration 21 : Auto-remplissage Brief IA depuis description produit/service
                 if (typeof productIndex === 'number' && produits[productIndex]) {
                     const p = produits[productIndex];
-                    setProductName(p.nom || p.name || p.title || t('videoWizard.defaultProduct'));
 
-                    // Priorité 1 : Description du produit si disponible
-                    const productDesc = p.description || p.desc;
+                    // ✅ CORRECTION: Utiliser extractProductName pour éviter l'affichage de JSON
+                    setProductName(extractProductName(p, t('videoWizard.defaultProduct')));
+
+                    // ✅ CORRECTION: Utiliser extractDescription pour éviter l'affichage de JSON dans TextInput
+                    const productDesc = extractDescription(p.description || p.desc, '');
                     if (productDesc && !brief) {
                         setBrief(productDesc);
-                    } else if (produits.length <= 2 && service.description && !brief) {
-                        // Priorité 2 : Description du service si ≤ 2 produits
-                        setBrief(service.description);
+                    } else {
+                        const serviceDesc = extractDescription(service.description, '');
+                        if (produits.length <= 2 && serviceDesc && !brief) {
+                            // Priorité 2 : Description du service si ≤ 2 produits
+                            setBrief(serviceDesc);
+                        }
                     }
-                } else if (service.description && !brief) {
-                    // Si pas de produit spécifique, utiliser description service
-                    setBrief(service.description);
+                } else {
+                    // ✅ CORRECTION: Utiliser extractDescription pour éviter l'affichage de JSON
+                    const serviceDesc = extractDescription(service.description, '');
+                    if (serviceDesc && !brief) {
+                        // Si pas de produit spécifique, utiliser description service
+                        setBrief(serviceDesc);
+                    }
                 }
             } else {
                 // ✅ CORRIGÉ: Afficher un message d'erreur si le service n'est pas trouvé
@@ -787,6 +872,8 @@ const VideoCreationWizardScreen: React.FC = () => {
 
             if (estimation) {
                 setCostEstimation(estimation);
+                // ✅ CORRECTION: Marquer étape 1 complétée et passer à l'étape 2
+                markStepCompleted(1);
                 setStep(2);
             } else {
                 const errorMsg = response.message || t('videoWizard.alert.retrySoon') || 'Erreur lors de l\'estimation.';
@@ -1372,8 +1459,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     </View>
                                 ) : (
                                     <View style={styles.summaryContainer}>
-                                        <Text style={styles.summaryTitle}>{serviceName}</Text>
-                                        <Text style={styles.summarySubtitle}>{productName}</Text>
+                                        <Text style={styles.summaryTitle}>{safeStringDisplay(serviceName, `Service #${serviceId}`)}</Text>
+                                        <Text style={styles.summarySubtitle}>{safeStringDisplay(productName, t('videoWizard.defaultProduct'))}</Text>
                                     </View>
                                 )}
                                 {costLoading && (
@@ -1615,6 +1702,17 @@ const VideoCreationWizardScreen: React.FC = () => {
                                             />
                                         ))}
                                     </View>
+                                ) : mediaItems.length === 0 ? (
+                                    <View style={styles.emptyMediaState}>
+                                        <SafeIcon name="image-off" size={32} color={modernColors.textSecondary} />
+                                        <Text style={styles.emptyMediaTitle}>Aucun média disponible</Text>
+                                        <Text style={styles.emptyMediaText}>
+                                            Les médias seront automatiquement sélectionnés depuis votre service et produit.
+                                        </Text>
+                                        <Text style={styles.emptyMediaHint}>
+                                            Vous pouvez aussi ajouter des médias dans la médiathèque de votre service.
+                                        </Text>
+                                    </View>
                                 ) : (
                                     <FlatList
                                         data={mediaItems}
@@ -1631,9 +1729,26 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     {t('videoWizard.sections.timeline') || 'Montage par scène'}
                                 </Text>
                                 {scenesDraft.length === 0 ? (
-                                    <Text style={styles.summaryText}>
-                                        {t('videoWizard.summary.noScenes') || 'Aucune scène définie.'}
-                                    </Text>
+                                    <View style={styles.emptyScenesState}>
+                                        <SafeIcon name="film" size={48} color={modernColors.textSecondary} />
+                                        <Text style={styles.emptyScenesTitle}>
+                                            {t('videoWizard.summary.noScenes') || 'Aucune scène définie'}
+                                        </Text>
+                                        <Text style={styles.emptyScenesText}>
+                                            Génère un storyboard pour créer des scènes automatiquement, ou configure-les manuellement.
+                                        </Text>
+                                        <NativeButton
+                                            title="Générer storyboard"
+                                            variant="primary"
+                                            size="small"
+                                            onPress={handleGenerateStoryboard}
+                                            disabled={storyboardLoading}
+                                            style={{ marginTop: 12 }}
+                                        />
+                                        <Text style={styles.emptyScenesHint}>
+                                            Les scènes seront créées automatiquement lors de la génération si le storyboard est activé.
+                                        </Text>
+                                    </View>
                                 ) : (
                                     <>
                                         <ScrollView
@@ -1835,12 +1950,12 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 <NativeButton
                                     title={t('videoWizard.buttons.prevStepShort')}
                                     variant="secondary"
-                                    onPress={() => setStep(1)}
+                                    onPress={() => handleStepChange(1)}
                                 />
                                 <NativeButton
                                     title={t('videoWizard.buttons.previewTimeline')}
                                     variant="primary"
-                                    onPress={() => setStep(3)}
+                                    onPress={() => handleStepChange(3)}
                                 />
                             </View>
                         </View>
@@ -1857,10 +1972,10 @@ const VideoCreationWizardScreen: React.FC = () => {
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>{t('videoWizard.sections.summary')}</Text>
                                 <Text style={styles.summaryText}>
-                                    {t('videoWizard.summary.service')} : {serviceName || `Service #${serviceId}`}
+                                    {t('videoWizard.summary.service')} : {safeStringDisplay(serviceName, `Service #${serviceId}`)}
                                 </Text>
                                 <Text style={styles.summaryText}>
-                                    {t('videoWizard.summary.product')} : {productName}
+                                    {t('videoWizard.summary.product')} : {safeStringDisplay(productName, t('videoWizard.defaultProduct'))}
                                 </Text>
                                 <Text style={styles.summaryText}>
                                     {t('videoWizard.summary.style')} : {selectedStyle}
@@ -2015,7 +2130,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     testID="video-next-step-button"
                                     title={t('videoWizard.buttons.prevStepShort')}
                                     variant="secondary"
-                                    onPress={() => setStep(2)}
+                                    onPress={() => handleStepChange(2)}
                                 />
                                 <NativeButton
                                     testID="video-preview-short-button"
@@ -2055,7 +2170,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <View style={styles.stepHeaderText}>
+                <View style={styles.stepHeaderContent}>
                     {loadingService ? (
                         <>
                             <LoadingSkeleton width={140} height={16} style={styles.headerSkeletonPrimary} />
@@ -2064,11 +2179,83 @@ const VideoCreationWizardScreen: React.FC = () => {
                     ) : (
                         <>
                             <Text style={styles.stepService}>{serviceName}</Text>
-                            <Text style={styles.stepTitle}>{format('videoWizard.meta.stepCountShort', { step })}</Text>
+                            {/* ✅ NOUVEAU: Indicateur visuel des étapes */}
+                            {(() => {
+                                const stepLabels = [
+                                    t('videoWizard.steps.step1') || 'Configuration',
+                                    t('videoWizard.steps.step2') || 'Médias',
+                                    t('videoWizard.steps.step3') || 'Résumé'
+                                ];
+
+                                return (
+                                    <>
+                                        <View style={styles.stepsIndicator}>
+                                            {[1, 2, 3].map((stepNum) => {
+                                                const isCompleted = completedSteps.has(stepNum as WizardStep);
+                                                const isActive = step === stepNum;
+
+                                                return (
+                                                    <React.Fragment key={stepNum}>
+                                                        <TouchableOpacity
+                                                            style={[
+                                                                styles.stepDot,
+                                                                isCompleted && styles.stepDotCompleted,
+                                                                isActive && styles.stepDotActive
+                                                            ]}
+                                                            onPress={() => {
+                                                                // ✅ Navigation avec validation
+                                                                if (stepNum < step || isCompleted) {
+                                                                    handleStepChange(stepNum as WizardStep);
+                                                                }
+                                                            }}
+                                                            disabled={!isCompleted && stepNum !== step && stepNum > step}
+                                                        >
+                                                            {isCompleted ? (
+                                                                <SafeIcon name="check" size={16} color="#FFF" />
+                                                            ) : (
+                                                                <Text style={[
+                                                                    styles.stepNumber,
+                                                                    isActive && styles.stepNumberActive
+                                                                ]}>
+                                                                    {stepNum}
+                                                                </Text>
+                                                            )}
+                                                        </TouchableOpacity>
+                                                        {stepNum < 3 && (
+                                                            <View style={[
+                                                                styles.stepConnector,
+                                                                isCompleted && styles.stepConnectorCompleted
+                                                            ]} />
+                                                        )}
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </View>
+                                        <Text style={styles.stepTitle}>
+                                            {stepLabels[step - 1]} ({step}/3)
+                                        </Text>
+                                    </>
+                                );
+                            })()}
                         </>
                     )}
                 </View>
                 <View style={{ width: 24 }} />
+            </View>
+
+            {/* ✅ NOUVEAU: Barre de progression globale */}
+            <View style={styles.globalProgressContainer}>
+                <View style={styles.globalProgressBar}>
+                    <View
+                        style={[
+                            styles.globalProgressFill,
+                            { width: `${globalProgress}%` }
+                        ]}
+                    />
+                </View>
+                <Text style={styles.globalProgressText}>
+                    {globalProgress}% complété
+                </Text>
             </View>
 
             {renderStepContent()}
@@ -2096,6 +2283,11 @@ const styles = StyleSheet.create({
     stepHeaderText: {
         flex: 1,
         alignItems: 'center',
+    },
+    stepHeaderContent: {
+        flex: 1,
+        alignItems: 'center',
+        gap: 8,
     },
     headerSkeletonPrimary: {
         marginBottom: 6,
@@ -2430,6 +2622,73 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.textSecondary,
     },
+    // ✅ NOUVEAU: Styles pour l'indicateur d'étapes
+    stepsIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 4,
+        marginBottom: 4,
+    },
+    stepDot: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: modernColors.surface,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    stepDotCompleted: {
+        backgroundColor: modernColors.success,
+        borderColor: modernColors.success,
+    },
+    stepDotActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    stepNumber: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+    },
+    stepNumberActive: {
+        color: '#FFF',
+    },
+    stepConnector: {
+        width: 24,
+        height: 2,
+        backgroundColor: modernColors.border,
+    },
+    stepConnectorCompleted: {
+        backgroundColor: modernColors.success,
+    },
+    // ✅ NOUVEAU: Barre de progression globale
+    globalProgressContainer: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        backgroundColor: modernColors.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    globalProgressBar: {
+        height: 4,
+        backgroundColor: modernColors.border,
+        borderRadius: 2,
+        overflow: 'hidden',
+        marginBottom: 6,
+    },
+    globalProgressFill: {
+        height: '100%',
+        backgroundColor: modernColors.primary,
+        borderRadius: 2,
+    },
+    globalProgressText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+    },
     costBadge: {
         marginTop: 12,
         paddingVertical: 10,
@@ -2499,6 +2758,51 @@ const styles = StyleSheet.create({
     modalStepLabel: {
         fontSize: 15,
         color: modernColors.text,
+    },
+    // ✅ NOUVEAU: Styles pour les états vides
+    emptyScenesState: {
+        alignItems: 'center',
+        padding: 32,
+        gap: 12,
+    },
+    emptyScenesTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    emptyScenesText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    emptyScenesHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        fontStyle: 'italic',
+        marginTop: 8,
+    },
+    emptyMediaState: {
+        alignItems: 'center',
+        padding: 24,
+        gap: 8,
+    },
+    emptyMediaTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    emptyMediaText: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+    },
+    emptyMediaHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        marginTop: 4,
     },
 });
 

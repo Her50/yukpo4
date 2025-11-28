@@ -10,6 +10,7 @@ import {
     ProgressStep,
     VideoCostEstimation
 } from '../../types/VideoGeneration';
+import { safeStringDisplay } from '../../utils/displayHelpers';
 
 interface ResultParams {
     result: GeneratedVideoResponse;
@@ -86,7 +87,7 @@ const VideoGenerationResultScreen: React.FC = () => {
                 <NativeCard style={styles.videoCard}>
                     <Text style={styles.sectionTitle}>Vidéo master</Text>
                     <Text style={styles.videoUrl} numberOfLines={2}>
-                        {result.video_url}
+                        {safeStringDisplay(result.video_url, 'URL non disponible')}
                     </Text>
                     <NativeButton
                         title="Lire la vidéo"

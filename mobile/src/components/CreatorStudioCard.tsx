@@ -18,6 +18,7 @@ import SafeIcon from './SafeIcon';
 import { useCreatorStudio } from '../hooks/useCreatorStudio';
 import { CreateDeliveryRequestPayload } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { safeStringDisplay } from '../utils/displayHelpers';
 
 const VEHICLE_OPTIONS = [
     {
@@ -399,7 +400,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                     <Text style={styles.kicker}>Studio créateur Yukpo</Text>
                     <Text style={styles.title}>Preview intelligente</Text>
                     <Text style={styles.subtitle}>
-                        {serviceName ?? 'Service'} · {productName ?? 'Produit'}
+                        {safeStringDisplay(serviceName, 'Service')} · {safeStringDisplay(productName, 'Produit')}
                     </Text>
                 </View>
                 <View style={styles.badge}>

@@ -48,18 +48,23 @@ impl AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let status = match self {
-            AppError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-            AppError::Forbidden(_) => StatusCode::FORBIDDEN,
-            AppError::NotFound(_) => StatusCode::NOT_FOUND,
-            AppError::Conflict(_) => StatusCode::CONFLICT,
-            AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
-            AppError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        let (status, error_code) = match &self {
+            AppError::Unauthorized(_) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED"),
+            AppError::Forbidden(_) => (StatusCode::FORBIDDEN, "FORBIDDEN"),
+            AppError::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
+            AppError::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
+            AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
+            AppError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR"),
+            AppError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
         };
 
         let msg = self.to_string();
-        let body = Json(json!({ "error": msg }));
+        // ✅ CORRECTION: Format d'erreur structuré avec code et message
+        let body = Json(json!({ 
+            "error": msg,
+            "code": error_code,
+            "status": status.as_u16()
+        }));
         (status, body).into_response()
     }
 }

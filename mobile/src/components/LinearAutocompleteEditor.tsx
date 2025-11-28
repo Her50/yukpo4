@@ -2249,6 +2249,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 )}
             </View>
 
+            {/* ✅ CORRECTION: Afficher le tableau même si des chips existent déjà - forcer l'affichage pour validation */}
             {(loadingSuggestions || loadingCombinationSuggestions || displayCandidate || combinationError) && (
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
@@ -2257,6 +2258,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         <ActivityIndicator size="small" color={modernColors.primary} style={{ marginVertical: 12 }} />
                     )}
 
+                    {/* ✅ CORRECTION: Forcer l'affichage du tableau des sous-caractéristiques préférées même si des chips existent déjà */}
+                    {/* Le tableau doit TOUJOURS s'afficher pour que l'utilisateur puisse valider/modifier */}
                     {!loadingSuggestions && !loadingCombinationSuggestions && displayCandidate && (
                         <View key={displayCandidate.key} style={styles.suggestionCard}>
                             <View style={styles.suggestionCardHeader}>

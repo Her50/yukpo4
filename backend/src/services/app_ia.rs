@@ -609,27 +609,82 @@ impl AppIA {
             .collect::<Vec<String>>()
             .join("\n");
 
+        // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
-            "Tu es l'assistant IA officiel de Yukpomnang. Génére des sous-titres professionnels en langue {lang} \
-pour la vidéo d'un produit nommé \"{product_name}\".\n\
-Durée approximative: {duration} secondes.\n\
-Réponds STRICTEMENT avec un JSON de la forme {{\"subtitles\":[{{\"start\":\"00:00:00,000\",\"end\":\"00:00:04,500\",\"text\":\"...\"}}, ...]}}.\n\
-Les timestamps doivent être au format HH:MM:SS,mmm (virgule comme séparateur millisecondes).\n\
-Voici l'outline chronologique des scènes:\n{outline}",
+            "Tu es l'assistant IA officiel de Yukpomnang. Génére des sous-titres professionnels en langue {lang} pour la vidéo d'un produit nommé \"{product_name}\".
+
+IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
+
+Durée approximative: {duration} secondes.
+Format JSON attendu: {{\"subtitles\":[{{\"start\":\"00:00:00,000\",\"end\":\"00:00:04,500\",\"text\":\"...\"}}, ...]}}
+Les timestamps doivent être au format HH:MM:SS,mmm (virgule comme séparateur millisecondes).
+
+Voici l'outline chronologique des scènes:
+{outline}
+
+Réponds SEULEMENT le JSON, rien d'autre.",
+            lang = lang,
+            product_name = product_name,
             duration = duration_seconds,
             outline = serialized_outline
         );
 
-        let (_, response, _) = self.predict(&prompt).await?;
-        let json_block = extract_json_block(&response).ok_or_else(|| {
-            AppError::Internal("Réponse IA sous-titres invalide (JSON manquant)".to_string())
-        })?;
+        // ✅ CORRECTION: Gestion d'erreur robuste avec logging détaillé
+        let response = match self.predict(&prompt).await {
+            Ok((model_name, response, tokens)) => {
+                log::info!(
+                    "[AppIA::generate_subtitles_srt] ✅ Prédiction réussie avec {} ({} tokens)",
+                    model_name, tokens
+                );
+                response
+            }
+            Err(err) => {
+                log::error!(
+                    "[AppIA::generate_subtitles_srt] ❌ Échec prédiction IA: {} - Product: {}",
+                    err,
+                    product_name
+                );
+                return Err(err);
+            }
+        };
 
-        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
-            AppError::Internal(format!(
-                "JSON sous-titres IA illisible: {err} - {json_block}"
-            ))
-        })?;
+        let json_block = match extract_json_block(&response) {
+            Some(block) => {
+                log::debug!(
+                    "[AppIA::generate_subtitles_srt] ✅ JSON extrait ({} chars)",
+                    block.len()
+                );
+                block
+            }
+            None => {
+                log::error!(
+                    "[AppIA::generate_subtitles_srt] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                    response.len(),
+                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                );
+                return Err(AppError::Internal(format!(
+                    "Réponse IA sous-titres invalide (JSON manquant). Réponse reçue: {}",
+                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                )));
+            }
+        };
+
+        // ✅ CORRECTION: Utiliser explicitement &json_block pour le parsing
+        let parsed: Value = match serde_json::from_str(&json_block) {
+            Ok(value) => value,
+            Err(err) => {
+                log::error!(
+                    "[AppIA::generate_subtitles_srt] ❌ JSON malformé: {} - JSON: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                );
+                return Err(AppError::Internal(format!(
+                    "JSON sous-titres IA illisible: {}. JSON reçu: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                )));
+            }
+        };
 
         let subtitles = parsed
             .get("subtitles")
@@ -692,10 +747,22 @@ Voici l'outline chronologique des scènes:\n{outline}",
             return Ok(None);
         }
 
+        // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
-            "Tu es le moteur TTS neural officiel de Yukpomnang. Génère un JSON strict \
-{{\"audio_base64\":\"...\",\"format\":\"mp3\"}} contenant l'audio encodé en base64 (mp3 48kHz, voix naturelle, langue {lang}). \
-Ne retourne aucun autre texte. Texte à vocaliser:\n```{script}```"
+            "Tu es le moteur TTS neural officiel de Yukpomnang.
+
+IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
+
+Format JSON attendu: {{\"audio_base64\":\"...\",\"format\":\"mp3\"}}
+- audio_base64: audio encodé en base64 (mp3 48kHz, voix naturelle)
+- format: \"mp3\"
+
+Langue: {lang}
+Texte à vocaliser: {script}
+
+Réponds SEULEMENT le JSON, rien d'autre.",
+            lang = lang,
+            script = script
         );
 
         let (_, response, _) = self.predict(&prompt).await?;
@@ -704,7 +771,13 @@ Ne retourne aucun autre texte. Texte à vocaliser:\n```{script}```"
             None => return Ok(None),
         };
 
-        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
+        // ✅ CORRECTION: Utiliser explicitement &json_block pour le parsing
+        let parsed: Value = serde_json::from_str(&json_block).map_err(|err| {
+            log::error!(
+                "[AppIA::generate_tts_audio] ❌ JSON malformé: {} - JSON: {}",
+                err,
+                if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+            );
             AppError::Internal(format!("JSON TTS IA invalide: {err} - {json_block}"))
         })?;
 
@@ -2166,21 +2239,33 @@ Ne retourne aucun autre texte. Texte à vocaliser:\n```{script}```"
 
         let variants = request.variant_count.clamp(1, 5);
 
+        // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
             "Tu es le directeur marketing IA de Yukpomnang. Génère {variants} variantes pour une courte vidéo produit.
-Langue cible: {lang}.
-Réponds STRICTEMENT avec le JSON suivant :\n{{\n  \"variants\": [\n    {{\n      \"headline\": \"...\",\n      \"call_to_action\": \"...\",\n      \"script_outline\": [\"...\"],\n      \"hook\": \"...\",\n      \"voiceover\": \"...\",\n      \"hashtags\": [\"...\"]\n    }}\n  ]\n}}
 
-Contraintes : 4 à 6 éléments dans script_outline, CTA concret, hashtags (max 3) adaptés au canal, voix off <= 80 mots.
+IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
+
+Format JSON attendu:
+{{\"variants\": [{{\"headline\": \"...\", \"call_to_action\": \"...\", \"script_outline\": [\"...\"], \"hook\": \"...\", \"voiceover\": \"...\", \"hashtags\": [\"...\"]}}]}}
+
+Contraintes:
+- 4 à 6 éléments dans script_outline
+- CTA concret
+- Hashtags (max 3) adaptés au canal
+- Voix off <= 80 mots
 
 Données produit:
 - Nom: {name}
 - Description: {description}
 - Prix: {price}
 - Promotion: {promotion}
-- Points forts:\n{highlights}
+- Points forts:
+{highlights}
 - Audience cible: {audience}
-- Style attendu: {tone}",
+- Style attendu: {tone}
+- Langue: {lang}
+
+Réponds SEULEMENT le JSON, rien d'autre.",
             variants = variants,
             lang = request.lang,
             name = request.product_name,
@@ -2195,13 +2280,61 @@ Données produit:
             tone = request.tone.clone().unwrap_or_else(|| "TikTok dynamique".to_string()),
         );
 
-        let (_, response, _) = self.predict(&prompt).await?;
-        let json_block = extract_json_block(&response).ok_or_else(|| {
-            AppError::Internal("Réponse IA vidéo invalide (JSON manquant)".to_string())
-        })?;
-        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
-            AppError::Internal(format!("JSON vidéo IA illisible: {err} - {json_block}"))
-        })?;
+        // ✅ CORRECTION: Gestion d'erreur robuste avec logging détaillé
+        let response = match self.predict(&prompt).await {
+            Ok((model_name, response, tokens)) => {
+                log::info!(
+                    "[AppIA::generate_video_briefs] ✅ Prédiction réussie avec {} ({} tokens)",
+                    model_name, tokens
+                );
+                response
+            }
+            Err(err) => {
+                log::error!(
+                    "[AppIA::generate_video_briefs] ❌ Échec prédiction IA: {} - Product: {}",
+                    err,
+                    request.product_name
+                );
+                return Err(err);
+            }
+        };
+
+        let json_block = match extract_json_block(&response) {
+            Some(block) => {
+                log::debug!(
+                    "[AppIA::generate_video_briefs] ✅ JSON extrait ({} chars)",
+                    block.len()
+                );
+                block
+            }
+            None => {
+                log::error!(
+                    "[AppIA::generate_video_briefs] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                    response.len(),
+                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                );
+                return Err(AppError::Internal(format!(
+                    "Réponse IA vidéo invalide (JSON manquant). Réponse reçue: {}",
+                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                )));
+            }
+        };
+
+        let parsed: Value = match serde_json::from_str(&json_block) {
+            Ok(value) => value,
+            Err(err) => {
+                log::error!(
+                    "[AppIA::generate_video_briefs] ❌ JSON malformé: {} - JSON: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                );
+                return Err(AppError::Internal(format!(
+                    "JSON vidéo IA illisible: {}. JSON reçu: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                )));
+            }
+        };
 
         let variants = parsed
             .get("variants")
@@ -2279,11 +2412,29 @@ Données produit:
                 .join("\n")
         };
 
+        // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
-            "Tu es le directeur artistique IA de Yukpomnang. Pour un format {channel}, propose une direction visuelle concise en JSON STRICT :\n{{\n  \"effects\": [\"...\"],\n  \"transitions\": [\"...\"],\n  \"color_palette\": \"...\",\n  \"overlay_tips\": [\"...\"],\n  \"music_hint\": \"...\"\n}}\n
-Contraintes : maximum 4 éléments dans effects/transitions/overlay_tips. Color_palette = 2-3 couleurs (hex ou noms). music_hint <= 15 mots.
+            "Tu es le directeur artistique IA de Yukpomnang. Pour un format {channel}, propose une direction visuelle concise.
 
-Données :\n- Produit : {product_type}\n- Ton : {tone}\n- Promotion : {promotion}\n- Points clés :\n{highlights}\n- Langue : {lang}",
+IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
+
+Format JSON attendu:
+{{\"effects\": [\"...\"], \"transitions\": [\"...\"], \"color_palette\": \"...\", \"overlay_tips\": [\"...\"], \"music_hint\": \"...\"}}
+
+Contraintes:
+- Maximum 4 éléments dans effects/transitions/overlay_tips
+- Color_palette = 2-3 couleurs (hex ou noms)
+- music_hint <= 15 mots
+
+Données:
+- Produit: {product_type}
+- Ton: {tone}
+- Promotion: {promotion}
+- Points clés:
+{highlights}
+- Langue: {lang}
+
+Réponds SEULEMENT le JSON, rien d'autre.",
             channel = request.channel,
             product_type = request.product_type.as_deref().unwrap_or("générique"),
             tone = request.tone.as_deref().unwrap_or("TikTok dynamique"),
@@ -2292,13 +2443,65 @@ Données :\n- Produit : {product_type}\n- Ton : {tone}\n- Promotion : {promotion
             lang = request.lang,
         );
 
-        let (_, response, _) = self.predict(&prompt).await?;
-        let json_block = extract_json_block(&response).ok_or_else(|| {
-            AppError::Internal("Réponse IA style invalide (JSON manquant)".to_string())
-        })?;
-        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
-            AppError::Internal(format!("JSON style IA illisible: {err} - {json_block}"))
-        })?;
+        // ✅ CORRECTION: Gestion d'erreur robuste avec logging détaillé
+        let response = match self.predict(&prompt).await {
+            Ok((model_name, response, tokens)) => {
+                log::info!(
+                    "[AppIA::generate_video_style] ✅ Prédiction réussie avec {} ({} tokens)",
+                    model_name, tokens
+                );
+                response
+            }
+            Err(err) => {
+                log::error!(
+                    "[AppIA::generate_video_style] ❌ Échec prédiction IA: {} - Channel: {}, Product: {:?}",
+                    err,
+                    request.channel,
+                    request.product_type
+                );
+                // Retourner l'erreur pour que le contrôleur utilise le fallback
+                return Err(err);
+            }
+        };
+
+        let json_block = match extract_json_block(&response) {
+            Some(block) => block,
+            None => {
+                log::error!(
+                    "[AppIA::generate_video_style] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                    response.len(),
+                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                );
+                // Retourner l'erreur pour que le contrôleur utilise le fallback
+                return Err(AppError::Internal(format!(
+                    "Réponse IA style invalide (JSON manquant). Réponse reçue: {}",
+                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                )));
+            }
+        };
+        
+        log::debug!(
+            "[AppIA::generate_video_style] ✅ JSON extrait ({} chars): {}",
+            json_block.len(),
+            if json_block.len() > 300 { format!("{}...", &json_block[..300]) } else { json_block.clone() }
+        );
+
+        let parsed: Value = match serde_json::from_str(&json_block) {
+            Ok(value) => value,
+            Err(err) => {
+                log::error!(
+                    "[AppIA::generate_video_style] ❌ JSON malformé: {} - JSON: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                );
+                // Retourner l'erreur pour que le contrôleur utilise le fallback
+                return Err(AppError::Internal(format!(
+                    "JSON style IA illisible: {}. JSON reçu: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                )));
+            }
+        };
 
         let mut suggestion = VideoStyleSuggestion::default();
         suggestion.effects = parsed
@@ -2352,20 +2555,28 @@ Données :\n- Produit : {product_type}\n- Ton : {tone}\n- Promotion : {promotion
         &self,
         request: &MediaAnalysisRequest,
     ) -> AppResult<MediaAnalysisResult> {
+        // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
             "Tu es l'expert vision IA de Yukpomnang. À partir des informations suivantes, déduis le ressenti visuel.
-Réponds STRICTEMENT avec :\n{{\n  \"dominant_colors\": [\"...\"],\n  \"detected_objects\": [\"...\"],\n  \"ambiance\": \"...\",\n  \"marketing_angle\": \"...\"\n}}
 
-Produit : {name}
-Description : {description}
-Tags : {tags}
-Langue : {lang}
+IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
 
-Contraintes :
-- dominant_colors : max 3 valeurs (palette hex ou nom).
-- detected_objects : liste de 3-5 éléments maximum.
-- ambiance : phrase <= 10 mots.
-- marketing_angle : phrase marketing <= 15 mots, orientée conversion.",
+Format JSON attendu:
+{{\"dominant_colors\": [\"...\"], \"detected_objects\": [\"...\"], \"ambiance\": \"...\", \"marketing_angle\": \"...\"}}
+
+Contraintes:
+- dominant_colors : max 3 valeurs (palette hex ou nom)
+- detected_objects : liste de 3-5 éléments maximum
+- ambiance : phrase <= 10 mots
+- marketing_angle : phrase marketing <= 15 mots, orientée conversion
+
+Données:
+- Produit: {name}
+- Description: {description}
+- Tags: {tags}
+- Langue: {lang}
+
+Réponds SEULEMENT le JSON, rien d'autre.",
             name = request.product_name,
             description = request.description.clone().unwrap_or_else(|| "Non renseignée".to_string()),
             tags = if request.media_tags.is_empty() {
@@ -2376,14 +2587,62 @@ Contraintes :
             lang = request.lang,
         );
 
-        let (_, response, _) = self.predict(&prompt).await?;
-        let json_block = extract_json_block(&response)
-            .ok_or_else(|| AppError::Internal("Réponse IA analyse média invalide".to_string()))?;
-        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
-            AppError::Internal(format!(
-                "JSON analyse média illisible: {err} - {json_block}"
-            ))
-        })?;
+        // ✅ CORRECTION: Gestion d'erreur robuste avec logging détaillé
+        let response = match self.predict(&prompt).await {
+            Ok((model_name, response, tokens)) => {
+                log::info!(
+                    "[AppIA::analyze_media] ✅ Prédiction réussie avec {} ({} tokens)",
+                    model_name, tokens
+                );
+                response
+            }
+            Err(err) => {
+                log::error!(
+                    "[AppIA::analyze_media] ❌ Échec prédiction IA: {} - Product: {}",
+                    err,
+                    request.product_name
+                );
+                return Err(err);
+            }
+        };
+
+        let json_block = match extract_json_block(&response) {
+            Some(block) => {
+                log::debug!(
+                    "[AppIA::analyze_media] ✅ JSON extrait ({} chars)",
+                    block.len()
+                );
+                block
+            }
+            None => {
+                log::error!(
+                    "[AppIA::analyze_media] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                    response.len(),
+                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                );
+                return Err(AppError::Internal(format!(
+                    "Réponse IA analyse média invalide (JSON manquant). Réponse reçue: {}",
+                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                )));
+            }
+        };
+
+        // ✅ CORRECTION: Utiliser explicitement &json_block pour le parsing avec logging
+        let parsed: Value = match serde_json::from_str(&json_block) {
+            Ok(value) => value,
+            Err(err) => {
+                log::error!(
+                    "[AppIA::analyze_media] ❌ JSON malformé: {} - JSON: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                );
+                return Err(AppError::Internal(format!(
+                    "JSON analyse média illisible: {}. JSON reçu: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                )));
+            }
+        };
 
         let mut result = MediaAnalysisResult::default();
         result.dominant_colors = parsed
@@ -2430,15 +2689,29 @@ Contraintes :
             request.channels.join(", ")
         };
 
+        // ✅ CORRECTION: Prompt amélioré pour forcer un JSON pur sans markdown
         let prompt = format!(
-            "Tu es le stratège diffusion de Yukpomnang. Produit un plan succinct en JSON STRICT :\n{{\n  \"summary\": \"...\",\n  \"hashtags\": [\"...\"],\n  \"schedule\": [\n    {{ \"channel\": \"...\", \"best_time\": \"...\", \"call_to_action\": \"...\" }}\n  ]\n}}
-        Contraintes : summary <= 30 mots, hashtags max 5, best_time = format local (ex: \"Lundi 18h\"), call_to_action <= 12 mots.
+            "Tu es le stratège diffusion de Yukpomnang. Produit un plan succinct.
 
-Produit : {product}
-Canaux : {channels}
-Audience : {audience}
-Angle marketing : {angle}
-Langue : {lang}",
+IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
+
+Format JSON attendu:
+{{\"summary\": \"...\", \"hashtags\": [\"...\"], \"schedule\": [{{\"channel\": \"...\", \"best_time\": \"...\", \"call_to_action\": \"...\"}}]}}
+
+Contraintes:
+- summary <= 30 mots
+- hashtags max 5
+- best_time = format local (ex: \"Lundi 18h\")
+- call_to_action <= 12 mots
+
+Données:
+- Produit: {product}
+- Canaux: {channels}
+- Audience: {audience}
+- Angle marketing: {angle}
+- Langue: {lang}
+
+Réponds SEULEMENT le JSON, rien d'autre.",
             product = request.product_name,
             channels = channels,
             audience = request
@@ -2452,12 +2725,61 @@ Langue : {lang}",
             lang = request.lang,
         );
 
-        let (_, response, _) = self.predict(&prompt).await?;
-        let json_block = extract_json_block(&response)
-            .ok_or_else(|| AppError::Internal("Réponse IA diffusion invalide".to_string()))?;
-        let parsed: Value = serde_json::from_str(json_block).map_err(|err| {
-            AppError::Internal(format!("JSON diffusion IA illisible: {err} - {json_block}"))
-        })?;
+        // ✅ CORRECTION: Gestion d'erreur robuste avec logging détaillé
+        let response = match self.predict(&prompt).await {
+            Ok((model_name, response, tokens)) => {
+                log::info!(
+                    "[AppIA::generate_distribution_plan] ✅ Prédiction réussie avec {} ({} tokens)",
+                    model_name, tokens
+                );
+                response
+            }
+            Err(err) => {
+                log::error!(
+                    "[AppIA::generate_distribution_plan] ❌ Échec prédiction IA: {} - Product: {}",
+                    err,
+                    request.product_name
+                );
+                return Err(err);
+            }
+        };
+
+        let json_block = match extract_json_block(&response) {
+            Some(block) => {
+                log::debug!(
+                    "[AppIA::generate_distribution_plan] ✅ JSON extrait ({} chars)",
+                    block.len()
+                );
+                block
+            }
+            None => {
+                log::error!(
+                    "[AppIA::generate_distribution_plan] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                    response.len(),
+                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                );
+                return Err(AppError::Internal(format!(
+                    "Réponse IA diffusion invalide (JSON manquant). Réponse reçue: {}",
+                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                )));
+            }
+        };
+
+        let parsed: Value = match serde_json::from_str(&json_block) {
+            Ok(value) => value,
+            Err(err) => {
+                log::error!(
+                    "[AppIA::generate_distribution_plan] ❌ JSON malformé: {} - JSON: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                );
+                return Err(AppError::Internal(format!(
+                    "JSON diffusion IA illisible: {}. JSON reçu: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                )));
+            }
+        };
 
         let mut suggestion = DistributionSuggestion::default();
         suggestion.summary = parsed
@@ -2503,10 +2825,56 @@ Langue : {lang}",
     }
 }
 
-fn extract_json_block(response: &str) -> Option<&str> {
-    let start = response.find('{')?;
-    let end = response.rfind('}')?;
-    (start < end).then_some(&response[start..=end])
+/// ✅ CORRECTION: Extraction JSON robuste qui gère les code blocks markdown
+fn extract_json_block(response: &str) -> Option<String> {
+    let trimmed = response.trim();
+    
+    // 1. Si la réponse est entourée de ```json ou ```, extraire le contenu
+    if trimmed.starts_with("```json") || trimmed.starts_with("```") {
+        let start_marker = if trimmed.starts_with("```json") {
+            "```json"
+        } else {
+            "```"
+        };
+        
+        // Trouver la fin du code block
+        let start_idx = start_marker.len();
+        let end_marker = "\n```";
+        if let Some(end_idx) = trimmed[start_idx..].find(end_marker) {
+            let json_content = &trimmed[start_idx..start_idx + end_idx];
+            return Some(json_content.trim().to_string());
+        }
+        // Si pas de ``` de fin, prendre jusqu'à la fin
+        let json_content = &trimmed[start_idx..];
+        return Some(json_content.trim().to_string());
+    }
+    
+    // 2. Chercher un bloc JSON entre { et } (méthode originale améliorée)
+    if let Some(start) = trimmed.find('{') {
+        // Compter les accolades pour trouver la fin correcte
+        let mut depth = 0;
+        let mut end_pos = None;
+        
+        for (idx, ch) in trimmed[start..].char_indices() {
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end_pos = Some(start + idx);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        
+        if let Some(end) = end_pos {
+            return Some(trimmed[start..=end].to_string());
+        }
+    }
+    
+    None
 }
 
 fn format_timestamp(value: f32) -> String {

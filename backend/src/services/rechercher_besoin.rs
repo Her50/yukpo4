@@ -57,80 +57,116 @@ async fn search_services_fallback(
         return Ok(Vec::new());
     }
 
-    // Recherche SQL avec LIKE pour chaque terme
-    let mut all_results = Vec::new();
-
-    for term in search_terms {
-        let search_pattern = format!("%{}%", term);
-        let services: Vec<ServiceSearchRow> = sqlx::query_as(
-            r#"
-            SELECT s.id,
-                   s.user_id,
-                   s.data,
-                   s.is_active,
-                   s.created_at
+    // ✅ OPTIMISÉ 2025-11-28: Recherche SQL optimisée avec CTE pour éviter les multiples passes sur jsonb_array_elements
+    // Au lieu d'exécuter une requête par terme dans une boucle, on fait une seule requête avec tous les termes
+    // Utilise des CTE (Common Table Expressions) pour extraire les produits une seule fois
+    
+    // Construire les conditions de recherche pour tous les termes avec OR
+    // On utilise une approche avec unnest pour itérer sur les patterns
+    let search_patterns: Vec<String> = search_terms.iter().map(|t| format!("%{}%", t)).collect();
+    
+    // Construire la requête SQL optimisée avec CTE
+    let sql = r#"
+        WITH search_patterns AS (
+            -- Convertir le tableau de patterns en lignes
+            SELECT unnest($1::text[]) as pattern
+        ),
+        products_extracted AS (
+            -- ✅ OPTIMISÉ: Extraire les produits UNE SEULE FOIS au lieu de N fois (N = nombre de termes)
+            SELECT 
+                s.id as service_id,
+                s.user_id,
+                s.data,
+                s.is_active,
+                s.created_at,
+                CASE 
+                    WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                    THEN s.data->'produits'
+                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                    THEN s.data->'produits'->'valeur'
+                    ELSE '[]'::jsonb
+                END as products_array
             FROM services s
             WHERE s.is_active = true
-            AND (
-                s.data::text ILIKE $1
-                OR s.data->>'titre_service' ILIKE $1
-                OR s.data->>'description_service' ILIKE $1
-                OR s.data->>'category' ILIKE $1
-                OR s.category ILIKE $1
-                -- ✅ NETTOYÉ 2025-11-27 : Plus de recherche dans specialized_type (recherche générale uniquement)
-                OR EXISTS (
-                    SELECT 1 
-                    FROM jsonb_array_elements(
-                        CASE 
-                            WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                            THEN s.data->'produits'
-                            WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                            THEN s.data->'produits'->'valeur'
-                            ELSE '[]'::jsonb
-                        END
-                    ) AS product
-                    WHERE 
-                        product->>'name' ILIKE $1
-                        OR product->>'nom' ILIKE $1
-                        OR product->>'description' ILIKE $1
-                        OR product->>'type' ILIKE $1
-                        OR product->>'marque' ILIKE $1
-                        OR product->>'modele' ILIKE $1
-                        OR product->>'titre' ILIKE $1
-                        OR product->>'quartier' ILIKE $1
-                        OR product->>'ville' ILIKE $1
-                        OR product->>'categorieQuincaillerie' ILIKE $1
-                        OR product->>'categorieElectromenager' ILIKE $1
-                        OR product->>'matiere' ILIKE $1
-                        OR product->>'couleur' ILIKE $1
-                )
-            )
-            ORDER BY s.created_at DESC
-            "#
+        ),
+        products_matched AS (
+            -- ✅ OPTIMISÉ: Vérifier les correspondances produits en une seule passe avec tous les patterns
+            SELECT DISTINCT
+                pe.service_id,
+                pe.user_id,
+                pe.data,
+                pe.is_active,
+                pe.created_at
+            FROM products_extracted pe
+            CROSS JOIN search_patterns sp
+            LEFT JOIN LATERAL jsonb_array_elements(pe.products_array) AS product ON true
+            WHERE 
+                -- Recherche dans les champs principaux du service
+                pe.data::text ILIKE sp.pattern
+                OR pe.data->>'titre_service' ILIKE sp.pattern
+                OR pe.data->>'description_service' ILIKE sp.pattern
+                OR pe.data->>'category' ILIKE sp.pattern
+                OR pe.data->'category'->>'valeur' ILIKE sp.pattern
+                -- Recherche dans les produits
+                OR product->>'name' ILIKE sp.pattern
+                OR product->>'nom' ILIKE sp.pattern
+                OR product->>'description' ILIKE sp.pattern
+                OR product->>'type' ILIKE sp.pattern
+                OR product->>'marque' ILIKE sp.pattern
+                OR product->>'modele' ILIKE sp.pattern
+                OR product->>'titre' ILIKE sp.pattern
+                OR product->>'quartier' ILIKE sp.pattern
+                OR product->>'ville' ILIKE sp.pattern
+                OR product->>'categorieQuincaillerie' ILIKE sp.pattern
+                OR product->>'categorieElectromenager' ILIKE sp.pattern
+                OR product->>'matiere' ILIKE sp.pattern
+                OR product->>'couleur' ILIKE sp.pattern
         )
-        .bind(&search_pattern)
+        SELECT 
+            pm.service_id as id,
+            pm.user_id,
+            pm.data,
+            pm.is_active,
+            pm.created_at
+        FROM products_matched pm
+        ORDER BY pm.created_at DESC
+    "#;
+    
+    let services: Vec<ServiceSearchRow> = sqlx::query_as(sql)
+        .bind(&search_patterns)
         .fetch_all(pool)
         .await
         .map_err(|e| {
-            crate::core::types::AppError::Internal(format!("Erreur recherche SQL: {}", e))
+            crate::core::types::AppError::Internal(format!("Erreur recherche SQL optimisée: {}", e))
         })?;
 
-        for service in services {
-            let data: Value = service.data;
+    // ✅ OPTIMISÉ: Calculer les scores pour tous les services trouvés (une seule fois au lieu de N fois)
+    for service in services {
+        let data: Value = service.data;
 
-            // Calculer un score simple basé sur la correspondance
-            let mut score = 0.0;
-            let data_str = data.to_string().to_lowercase();
+        // Calculer un score simple basé sur la correspondance avec TOUS les termes
+        let mut score = 0.0;
+        let data_str = data.to_string().to_lowercase();
 
-            if data_str.contains(&term) {
+        // Score pour chaque terme de recherche
+        for term in &search_terms {
+            let term_lower = term.to_lowercase();
+            
+            if data_str.contains(&term_lower) {
                 score += 0.5;
             }
 
             // Bonus pour correspondance exacte dans le titre
             if let Some(titre) = data.get("titre_service") {
                 if let Some(titre_str) = titre.as_str() {
-                    if titre_str.to_lowercase().contains(&term) {
+                    if titre_str.to_lowercase().contains(&term_lower) {
                         score += 0.3;
+                    }
+                } else if let Some(titre_obj) = titre.as_object() {
+                    if let Some(valeur) = titre_obj.get("valeur").and_then(|v| v.as_str()) {
+                        if valeur.to_lowercase().contains(&term_lower) {
+                            score += 0.3;
+                        }
                     }
                 }
             }
@@ -138,69 +174,87 @@ async fn search_services_fallback(
             // Bonus pour correspondance dans la catégorie
             if let Some(cat) = data.get("category") {
                 if let Some(cat_str) = cat.as_str() {
-                    if cat_str.to_lowercase().contains(&term) {
+                    if cat_str.to_lowercase().contains(&term_lower) {
                         score += 0.2;
+                    }
+                } else if let Some(cat_obj) = cat.as_object() {
+                    if let Some(valeur) = cat_obj.get("valeur").and_then(|v| v.as_str()) {
+                        if valeur.to_lowercase().contains(&term_lower) {
+                            score += 0.2;
+                        }
                     }
                 }
             }
 
             // Bonus pour correspondance dans les produits
             if let Some(produits) = data.get("produits") {
-                if let Some(produits_array) = produits.as_array() {
-                    for product in produits_array {
+                let produits_array = if produits.is_array() {
+                    produits.as_array()
+                } else if let Some(valeur) = produits.get("valeur") {
+                    valeur.as_array()
+                } else {
+                    None
+                };
+                
+                if let Some(produits_arr) = produits_array {
+                    for product in produits_arr {
                         // Nom du produit (poids élevé)
                         if let Some(nom) = product.get("nom").and_then(|v| v.as_str()) {
-                            if nom.to_lowercase().contains(&term) {
+                            if nom.to_lowercase().contains(&term_lower) {
+                                score += 0.4;
+                            }
+                        } else if let Some(name) = product.get("name").and_then(|v| v.as_str()) {
+                            if name.to_lowercase().contains(&term_lower) {
                                 score += 0.4;
                             }
                         }
                         // Description du produit
                         if let Some(desc) = product.get("description").and_then(|v| v.as_str()) {
-                            if desc.to_lowercase().contains(&term) {
+                            if desc.to_lowercase().contains(&term_lower) {
                                 score += 0.25;
                             }
                         }
                         // Type de produit
                         if let Some(ptype) = product.get("type").and_then(|v| v.as_str()) {
-                            if ptype.to_lowercase().contains(&term) {
+                            if ptype.to_lowercase().contains(&term_lower) {
                                 score += 0.3;
                             }
                         }
                         // Marque
                         if let Some(marque) = product.get("marque").and_then(|v| v.as_str()) {
-                            if marque.to_lowercase().contains(&term) {
+                            if marque.to_lowercase().contains(&term_lower) {
                                 score += 0.25;
                             }
                         }
                         // Modèle
                         if let Some(modele) = product.get("modele").and_then(|v| v.as_str()) {
-                            if modele.to_lowercase().contains(&term) {
+                            if modele.to_lowercase().contains(&term_lower) {
                                 score += 0.25;
                             }
                         }
                     }
                 }
             }
-
-            // Bonus pour services récents
-            let days_old = chrono::Utc::now()
-                .signed_duration_since(service.created_at)
-                .num_days();
-            if days_old <= 7 {
-                score += 0.1; // Bonus pour services créés dans la semaine
-            }
-
-            let result = serde_json::json!({
-                "service_id": service.id,
-                "data": data,
-                "score": score,
-                "semantic_score": score,
-                "interaction_score": 0.0,
-                "gps": None::<String>
-            });
-
-            all_results.push(result);
         }
+
+        // Bonus pour services récents
+        let days_old = chrono::Utc::now()
+            .signed_duration_since(service.created_at)
+            .num_days();
+        if days_old <= 7 {
+            score += 0.1; // Bonus pour services créés dans la semaine
+        }
+
+        let result = serde_json::json!({
+            "service_id": service.id,
+            "data": data,
+            "score": score,
+            "semantic_score": score,
+            "interaction_score": 0.0,
+            "gps": None::<String>
+        });
+
+        all_results.push(result);
     }
 
     // Trier par score et dédupliquer

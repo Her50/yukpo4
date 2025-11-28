@@ -1219,7 +1219,10 @@ pub async fn get_services_for_prestataire(
                                              AND product_index = (ordinality - 1) 
                                              LIMIT 1),
                                             true
-                                        )
+                                        ),
+                                        -- ✅ CORRECTION 2025-11-28: Ajouter service_category pour affichage catégorie dans cartes produits
+                                        'service_category', s.category,
+                                        'serviceCategorie', s.category
                                     )
                                     ORDER BY ordinality
                                 )

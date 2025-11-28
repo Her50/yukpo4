@@ -10,11 +10,17 @@ use crate::services::smart_notification_service::SmartNotificationService;
 use crate::state::AppState;
 
 /// ✅ NOUVEAU : Tâche périodique pour monitorer les timeouts de validation de commandes
-/// Vérifie toutes les minutes les commandes avec validation_deadline expirée
+/// Vérifie toutes les minutes les commandes avec validation_deadline expirée (configurable via ORDER_TIMEOUT_MONITOR_INTERVAL_SECS)
 pub async fn start_order_timeout_monitor(state: Arc<AppState>) {
     info!("🚀 Démarrage du monitor de timeout pour les commandes...");
 
-    let mut interval_timer = interval(TokioDuration::from_secs(60)); // Vérifier toutes les minutes
+    // Intervalle configurable via variable d'environnement (défaut: 60s)
+    let interval_secs: u64 = std::env::var("ORDER_TIMEOUT_MONITOR_INTERVAL_SECS")
+        .unwrap_or_else(|_| "60".to_string())
+        .parse()
+        .unwrap_or(60);
+    
+    let mut interval_timer = interval(TokioDuration::from_secs(interval_secs));
 
     loop {
         interval_timer.tick().await;

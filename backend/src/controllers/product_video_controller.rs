@@ -39,7 +39,14 @@ pub async fn generate_video_for_product(
     );
 
     // ✅ VALIDATION PRÉVENTIVE : Vérifier les prérequis AVANT de créer le job
-    validate_video_generation_prerequisites(&state, service_id, product_index, &payload).await?;
+    validate_video_generation_prerequisites(&state, service_id, product_index, &payload).await
+        .map_err(|err| {
+            error!(
+                "[ProductVideoController] ❌ Validation échouée pour service_id={}, product_index={}: {}",
+                service_id, product_index, err
+            );
+            err
+        })?;
 
     // ✅ Créer le job seulement si la validation réussit
     let job_id = state

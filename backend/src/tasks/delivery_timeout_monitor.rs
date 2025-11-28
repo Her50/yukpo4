@@ -30,11 +30,17 @@ struct PendingDelivery {
 }
 
 /// ✅ NOUVEAU : Tâche périodique pour monitorer les timeouts de validation d'étapes
-/// Vérifie toutes les minutes les livraisons en attente de confirmation
+/// Vérifie toutes les minutes les livraisons en attente de confirmation (configurable via DELIVERY_TIMEOUT_MONITOR_INTERVAL_SECS)
 pub async fn start_delivery_timeout_monitor(state: Arc<AppState>) {
     info!("🚀 Démarrage du monitor de timeout pour les livraisons...");
 
-    let mut interval_timer = interval(TokioDuration::from_secs(60)); // Vérifier toutes les minutes
+    // Intervalle configurable via variable d'environnement (défaut: 60s)
+    let interval_secs: u64 = std::env::var("DELIVERY_TIMEOUT_MONITOR_INTERVAL_SECS")
+        .unwrap_or_else(|_| "60".to_string())
+        .parse()
+        .unwrap_or(60);
+    
+    let mut interval_timer = interval(TokioDuration::from_secs(interval_secs));
 
     loop {
         interval_timer.tick().await;

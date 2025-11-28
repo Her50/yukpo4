@@ -2,15 +2,29 @@
 use axum::{body::Body, http::Request, middleware::Next, response::Response};
 use http::StatusCode;
 
-const DEFAULT_MAX_SIZE: usize = 500_000_000; // 500 MB (augment? de 200 MB)
+// ✅ CORRECTION: Limite augmentée à 1 GB pour permettre les payloads complexes avec sous_caracteristiques
+const DEFAULT_MAX_SIZE: usize = 1_000_000_000; // 1 GB (augmenté de 500 MB)
 
 pub async fn request_size_limit(req: Request<Body>, next: Next) -> Result<Response, StatusCode> {
-    // Only check for known-sized bodies (e.g., JSON, not streaming)
+    // Vérifier la taille du body si disponible
     if let Some(len) = req.headers().get("content-length") {
-        if let Some(len) = len.to_str().ok().and_then(|s| s.parse::<usize>().ok()) {
-            if len > DEFAULT_MAX_SIZE {
-                log::warn!("Taille de requête dépassée: {} > {} bytes", len, DEFAULT_MAX_SIZE);
-                return Err(StatusCode::PAYLOAD_TOO_LARGE);
+        if let Ok(len_str) = len.to_str() {
+            if let Ok(len) = len_str.parse::<usize>() {
+                if len > DEFAULT_MAX_SIZE {
+                    log::warn!(
+                        "[request_size_limit] ❌ Taille de requête dépassée: {} bytes ({} MB) > {} bytes ({} MB)",
+                        len,
+                        len / 1_000_000,
+                        DEFAULT_MAX_SIZE,
+                        DEFAULT_MAX_SIZE / 1_000_000
+                    );
+                    return Err(StatusCode::PAYLOAD_TOO_LARGE);
+                }
+                log::debug!(
+                    "[request_size_limit] ✅ Taille requête acceptée: {} bytes ({} MB)",
+                    len,
+                    len / 1_000_000
+                );
             }
         }
     }

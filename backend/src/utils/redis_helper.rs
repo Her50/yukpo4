@@ -145,6 +145,9 @@ where
                         // Si c'est une erreur de connexion, réessayer
                         if err_msg.contains("connection") || err_msg.contains("Connection") {
                             if attempt < max_retries {
+                                // ✅ CORRECTION 2025-11-28: Timeout réduit à 100ms pour éviter les lenteurs
+                                let fast_retry_delay = if retry_delay_ms > 100 { 100 } else { retry_delay_ms };
+                                
                                 // ✅ CORRECTION 2025-11-28: Réduire les logs Redis (seulement toutes les 5 tentatives)
                                 if attempt % 5 == 0 || log::log_enabled!(log::Level::Debug) {
                                     log::debug!(
@@ -154,7 +157,7 @@ where
                                         err_msg
                                     );
                                 }
-                                sleep(Duration::from_millis(retry_delay_ms)).await;
+                                sleep(Duration::from_millis(fast_retry_delay)).await;
                                 continue;
                             }
                         } else {
@@ -168,19 +171,23 @@ where
                 let err_msg = format!("{}", e);
                 last_error = Some(err_msg.clone());
                 
-                if attempt < max_retries {
-                    // ✅ CORRECTION 2025-11-28: Réduire les logs Redis (seulement toutes les 5 tentatives)
-                    if attempt % 5 == 0 || log::log_enabled!(log::Level::Debug) {
-                        log::debug!(
-                            "⚠️ [Redis] Impossible d'obtenir une connexion (tentative {}/{}): {}. Nouvelle tentative dans {}ms...",
-                            attempt,
-                            max_retries,
-                            err_msg,
-                            retry_delay_ms
-                        );
+                    if attempt < max_retries {
+                        // ✅ CORRECTION 2025-11-28: Timeout réduit à 100ms pour éviter les lenteurs
+                        // Si Redis n'est pas disponible, ne pas bloquer les requêtes
+                        let fast_retry_delay = if retry_delay_ms > 100 { 100 } else { retry_delay_ms };
+                        
+                        // ✅ CORRECTION 2025-11-28: Réduire les logs Redis (seulement toutes les 5 tentatives)
+                        if attempt % 5 == 0 || log::log_enabled!(log::Level::Debug) {
+                            log::debug!(
+                                "⚠️ [Redis] Impossible d'obtenir une connexion (tentative {}/{}): {}. Nouvelle tentative dans {}ms...",
+                                attempt,
+                                max_retries,
+                                err_msg,
+                                fast_retry_delay
+                            );
+                        }
+                        sleep(Duration::from_millis(fast_retry_delay)).await;
                     }
-                    sleep(Duration::from_millis(retry_delay_ms)).await;
-                }
             }
         }
     }

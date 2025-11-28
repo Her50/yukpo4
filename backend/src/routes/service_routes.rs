@@ -12,6 +12,7 @@ use crate::controllers::service_controller::{
     reactivate_service,
 };
 use crate::middlewares::jwt::jwt_auth;
+use crate::middlewares::request_size_limit::request_size_limit;
 use crate::state::AppState;
 use axum::middleware;
 
@@ -23,7 +24,12 @@ pub fn service_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/services", get(get_services_list))
         .route("/services/recent", get(get_services_recent))
         .route("/services/my-services", get(get_my_services))
-        .route("/services/create", post(creer_service))
+        // ✅ CORRECTION: Route de création avec middleware de limite de taille pour éviter erreur 413
+        .route(
+            "/services/create",
+            post(creer_service)
+                .layer(middleware::from_fn(request_size_limit))
+        )
         .route("/services/filter", get(filter_services))
         .route("/services/related/{id}", get(get_related_services))
         .route("/services/last", get(get_last_service_for_user))

@@ -4,11 +4,15 @@ use tokio::time::{interval, Duration};
 
 use crate::{services::global_promo_service::GlobalPromoService, state::AppState};
 
-const GLOBAL_PROMO_POLL_INTERVAL_SECONDS: u64 = 30;
-
 pub fn start_global_promo_scheduler(state: Arc<AppState>) {
+    // Intervalle configurable via variable d'environnement (défaut: 30s)
+    let poll_interval_seconds: u64 = std::env::var("GLOBAL_PROMO_SCHEDULER_INTERVAL_SECS")
+        .unwrap_or_else(|_| "30".to_string())
+        .parse()
+        .unwrap_or(30);
+    
     tokio::spawn(async move {
-        let mut ticker = interval(Duration::from_secs(GLOBAL_PROMO_POLL_INTERVAL_SECONDS));
+        let mut ticker = interval(Duration::from_secs(poll_interval_seconds));
         loop {
             ticker.tick().await;
             GlobalPromoService::process_scheduler(state.clone()).await;

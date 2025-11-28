@@ -2061,39 +2061,91 @@ pub async fn creer_service(
                 images_to_process.extend(service_images.clone());
             }
 
-            // Extraire depuis data_processed (contient les médias base64)
+            // ✅ CORRECTION: Extraire depuis data_processed (contient les médias base64)
+            // Les médias peuvent être dans différents formats selon comment ils sont téléchargés par le mobile
             if let Some(prod_processed) = produit_from_processed {
+                log::info!(
+                    "[creer_service] 🔍 Recherche médias pour produit {} (index {}) - Clés disponibles: {:?}",
+                    product_id,
+                    product_index,
+                    prod_processed.keys().collect::<Vec<_>>()
+                );
+                
                 // Chercher dans "images" (URLs ou base64)
                 if let Some(product_images) = prod_processed.get("images").and_then(|v| v.as_array()) {
+                    let count = product_images.len();
                     images_to_process.extend(
                         product_images
                             .iter()
                             .filter_map(|v| v.as_str().map(|s| s.to_string())),
                     );
+                    if count > 0 {
+                        log::info!(
+                            "[creer_service] ✅ Trouvé {} image(s) dans champ 'images' pour produit {}",
+                            count,
+                            product_id
+                        );
+                    }
                 }
                 // Chercher dans "base64_image" (utilisé par FormulaireYukpoIntelligentScreen)
                 if let Some(base64_image) = prod_processed.get("base64_image") {
                     if let Some(base64_array) = base64_image.as_array() {
+                        let count = base64_array.len();
                         images_to_process.extend(
                             base64_array
                                 .iter()
                                 .filter_map(|v| v.as_str().map(|s| s.to_string())),
                         );
+                        if count > 0 {
+                            log::info!(
+                                "[creer_service] ✅ Trouvé {} image(s) dans champ 'base64_image' (array) pour produit {}",
+                                count,
+                                product_id
+                            );
+                        }
                     } else if let Some(base64_str) = base64_image.as_str() {
                         images_to_process.push(base64_str.to_string());
+                        log::info!(
+                            "[creer_service] ✅ Trouvé 1 image dans champ 'base64_image' (string) pour produit {}",
+                            product_id
+                        );
                     }
                 }
                 // Chercher dans "images_base64" ou "image_base64" (base64)
                 if let Some(images_base64) = prod_processed.get("images_base64").and_then(|v| v.as_array()) {
+                    let count = images_base64.len();
                     images_to_process.extend(
                         images_base64
                             .iter()
                             .filter_map(|v| v.as_str().map(|s| s.to_string())),
                     );
+                    if count > 0 {
+                        log::info!(
+                            "[creer_service] ✅ Trouvé {} image(s) dans champ 'images_base64' pour produit {}",
+                            count,
+                            product_id
+                        );
+                    }
                 }
                 if let Some(image_base64) = prod_processed.get("image_base64").and_then(|v| v.as_str()) {
                     images_to_process.push(image_base64.to_string());
+                    log::info!(
+                        "[creer_service] ✅ Trouvé 1 image dans champ 'image_base64' (string) pour produit {}",
+                        product_id
+                    );
                 }
+                
+                log::info!(
+                    "[creer_service] 📊 Total images à traiter pour produit {}: {}",
+                    product_id,
+                    images_to_process.len()
+                );
+            } else {
+                log::warn!(
+                    "[creer_service] ⚠️ produit_from_processed est None pour produit {} (index {})",
+                    product_id,
+                    product_index
+                );
             }
 
             // Nettoyer data_obj (supprimer les médias pour l'insertion)
