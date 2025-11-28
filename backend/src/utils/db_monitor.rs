@@ -14,7 +14,7 @@ pub async fn start_db_health_monitor(pool: PgPool) {
         .unwrap_or(30);
     let mut interval = interval(Duration::from_secs(interval_secs));
     
-    let log_interval_secs = interval_secs; // Pour le log dans le spawn
+    let _log_interval_secs = interval_secs; // Pour le log dans le spawn (préfixé avec _ pour éviter le warning)
     tokio::spawn(async move {
         loop {
             interval.tick().await;

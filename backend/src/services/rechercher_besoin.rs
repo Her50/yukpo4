@@ -141,6 +141,7 @@ async fn search_services_fallback(
         })?;
 
     // ✅ OPTIMISÉ: Calculer les scores pour tous les services trouvés (une seule fois au lieu de N fois)
+    let mut all_results = Vec::new();
     for service in services {
         let data: Value = service.data;
 
