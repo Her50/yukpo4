@@ -255,7 +255,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if err_msg.contains("TLS") || err_msg.contains("tls") || err_msg.contains("feature is not enabled") {
                         log::warn!("   💡 Erreur TLS détectée. Pour Upstash, utilisez 'rediss://' (avec double 's')");
                         log::warn!("      Format attendu: rediss://default:[password]@[endpoint].upstash.io:6379");
-                        log::warn!("      La feature TLS a été activée dans Cargo.toml. Vérifiez votre URL Redis.");
+                        log::warn!("      La feature rustls-tls est activée dans Cargo.toml. Vérifiez votre URL Redis.");
                         log::info!("ℹ️ Redis non disponible (service optionnel). WebSocket fonctionnera sans Redis.");
                     } else if err_msg.contains("Name or service not known") || err_msg.contains("failed to lookup address") {
                         log::warn!("   💡 Problème DNS détecté. Vérifiez:");
@@ -294,7 +294,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if err_msg.contains("TLS") || err_msg.contains("tls") || err_msg.contains("feature is not enabled") {
                 log::warn!("   💡 Erreur TLS: Pour Upstash, utilisez 'rediss://' (avec double 's')");
                 log::warn!("      Format: rediss://default:[password]@[endpoint].upstash.io:6379");
-                log::warn!("      La feature TLS est maintenant activée dans Cargo.toml.");
+                log::warn!("      La feature rustls-tls est activée dans Cargo.toml pour le support TLS.");
             } else {
                 log::warn!("⚠️ Erreur création client Redis: {}. Redis sera désactivé pour le WebSocket de livraison.", e);
             }
