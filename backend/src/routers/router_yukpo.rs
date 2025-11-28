@@ -1522,6 +1522,47 @@ Format JSON attendu :
                         Ok(seeds) => {
                             log::info!("[handle_creation_service_direct] ✅ {} seeds extraits", seeds.len());
 
+                            // ✅ NOUVEAU 2025-11-28 : Extraire les sous_caracteristiques depuis les seeds pour inclusion immédiate
+                            let mut seeds_sous_caracs = serde_json::Map::new();
+                            let mut seeds_product_vector: Vec<String> = Vec::new();
+                            let mut seeds_product_labels: Vec<String> = Vec::new();
+                            
+                            if let Some(preferred_seed) = seeds.first() {
+                                // Extraire product_vector et product_labels de la combinaison préférée
+                                seeds_product_vector = preferred_seed.product_vector.clone();
+                                seeds_product_labels = preferred_seed.product_labels.clone();
+                                
+                                // Convertir product_vector + product_labels en format sous_caracteristiques
+                                // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position dans chaque dimension
+                                // Chaque label correspond à une dimension, chaque valeur du vector correspond à la valeur choisie
+                                for (index, label) in preferred_seed.product_labels.iter().enumerate() {
+                                    if let Some(value) = preferred_seed.product_vector.get(index) {
+                                        // ✅ CORRIGÉ: Toujours créer un nouveau tableau avec la valeur préférée en PREMIÈRE position
+                                        // Cela garantit que la valeur préférée par l'IA sera toujours affichée en premier dans le formulaire
+                                        let mut values_array = vec![serde_json::Value::String(value.clone())];
+                                        
+                                        // Si d'autres valeurs existent déjà (depuis d'autres sources), les ajouter après
+                                        if let Some(existing_arr) = seeds_sous_caracs.get(label) {
+                                            if let Some(existing_vals) = existing_arr.as_array() {
+                                                for existing_val in existing_vals {
+                                                    if let Some(existing_str) = existing_val.as_str() {
+                                                        // Ne pas dupliquer la valeur préférée
+                                                        if existing_str != value {
+                                                            values_array.push(existing_val.clone());
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Insérer avec la valeur préférée en première position
+                                        seeds_sous_caracs.insert(label.clone(), serde_json::Value::Array(values_array));
+                                    }
+                                }
+                                
+                                log::info!("[handle_creation_service_direct] ✅ Sous-caractéristiques extraites depuis seeds: {} dimensions", seeds_sous_caracs.len());
+                            }
+
                             // Sauvegarder les seeds immédiatement
                             match crate::services::autocomplete_combinations_service::save_ai_combinations_batch(
                                 &state.pg,
@@ -1535,6 +1576,16 @@ Format JSON attendu :
                                     log::warn!("[handle_creation_service_direct] Erreur sauvegarde seeds: {}", e);
                                 }
                             }
+                            
+                            // ✅ NOUVEAU 2025-11-28 : Stocker les seeds pour inclusion dans la réponse
+                            combination_info = json!({
+                                "status": "in_progress",
+                                "seeds_count": seeds.len(),
+                                "seeds_available": true,
+                                "sous_caracteristiques": seeds_sous_caracs,
+                                "product_vector": seeds_product_vector,
+                                "product_labels": seeds_product_labels,
+                            });
 
                             // Estimer le nombre total de combinaisons
                             match crate::services::exhaustive_combination_generator::ExhaustiveCombinationGenerator::from_ia_response(&data) {
@@ -1548,13 +1599,24 @@ Format JSON attendu :
                                         estimated_time
                                     );
 
-                                    combination_info = json!({
-                                        "status": "in_progress",
-                                        "seeds_count": seeds.len(),
-                                        "estimated_total": estimated_total,
-                                        "estimated_time_seconds": estimated_time,
-                                        "progress_endpoint": format!("/api/combinations/progress/{}", session_id)
-                                    });
+                                    // ✅ CORRIGÉ 2025-11-28 : Fusionner avec les données seeds existantes au lieu de remplacer
+                                    if let Some(mut info_obj) = combination_info.as_object_mut() {
+                                        info_obj.insert("estimated_total".to_string(), json!(estimated_total));
+                                        info_obj.insert("estimated_time_seconds".to_string(), json!(estimated_time));
+                                        info_obj.insert("progress_endpoint".to_string(), json!(format!("/api/combinations/progress/{}", session_id)));
+                                    } else {
+                                        combination_info = json!({
+                                            "status": "in_progress",
+                                            "seeds_count": seeds.len(),
+                                            "seeds_available": true,
+                                            "sous_caracteristiques": seeds_sous_caracs,
+                                            "product_vector": seeds_product_vector,
+                                            "product_labels": seeds_product_labels,
+                                            "estimated_total": estimated_total,
+                                            "estimated_time_seconds": estimated_time,
+                                            "progress_endpoint": format!("/api/combinations/progress/{}", session_id)
+                                        });
+                                    }
 
                                     // 🚀 LANCER LA GÉNÉRATION EN BACKGROUND (non-bloquant)
                                     let state_clone = state.clone();
@@ -1628,61 +1690,86 @@ Format JSON attendu :
         .cloned()
         .unwrap_or(json!(""));
 
+    // ✅ NOUVEAU 2025-11-28 : Extraire les données des seeds depuis combination_info
+    let mut data_obj = serde_json::Map::new();
+    
+    // Ajouter les champs de base
+    data_obj.insert("titre_service".to_string(), json!({
+        "type_donnee": "string",
+        "valeur": titre_value,
+        "origine_champs": "ia"
+    }));
+    data_obj.insert("category".to_string(), json!({
+        "type_donnee": "string",
+        "valeur": category_value,
+        "origine_champs": "ia"
+    }));
+    data_obj.insert("description".to_string(), json!({
+        "type_donnee": "string",
+        "valeur": description_value,
+        "origine_champs": "ia"
+    }));
+    
+    // Champs PRODUIT
+    data_obj.insert("nom_produit".to_string(), json!({
+        "type_donnee": "string",
+        "valeur": service_data.get("nom_produit")
+            .and_then(|v| v.get("valeur"))
+            .cloned()
+            .unwrap_or(titre_value.clone()),
+        "origine_champs": "ia"
+    }));
+    data_obj.insert("categorie_produit".to_string(), json!({
+        "type_donnee": "string",
+        "valeur": service_data.get("categorie_produit")
+            .and_then(|v| v.get("valeur"))
+            .cloned()
+            .unwrap_or(category_value.clone()),
+        "origine_champs": "ia"
+    }));
+    data_obj.insert("description_produit".to_string(), json!({
+        "type_donnee": "string",
+        "valeur": service_data.get("description_produit")
+            .and_then(|v| v.get("valeur"))
+            .cloned()
+            .unwrap_or(description_value.clone()),
+        "origine_champs": "ia"
+    }));
+    data_obj.insert("is_tarissable".to_string(), json!({
+        "type_donnee": "boolean",
+        "valeur": service_data.get("is_tarissable")
+            .and_then(|v| v.get("valeur"))
+            .cloned()
+            .unwrap_or(json!(false)),
+        "origine_champs": "ia"
+    }));
+    
+    // ✅ NOUVEAU 2025-11-28 : Ajouter les données produits avec sous_caracteristiques depuis seeds
+    if let Some(seeds_available) = combination_info.get("seeds_available").and_then(|v| v.as_bool()) {
+        if seeds_available {
+            let sous_caracs = combination_info.get("sous_caracteristiques").cloned().unwrap_or(json!({}));
+            let product_vector = combination_info.get("product_vector").cloned().unwrap_or(json!([]));
+            let product_labels = combination_info.get("product_labels").cloned().unwrap_or(json!([]));
+            
+            data_obj.insert("produits".to_string(), json!({
+                "type_donnee": "autocomplete",
+                "valeur": [],
+                "sous_caracteristiques": sous_caracs,
+                "product_vector": product_vector,
+                "product_labels": product_labels,
+                "origine_champs": "ia"
+            }));
+            
+            log::info!("[handle_creation_service_direct] ✅ Données produits avec sous_caracteristiques ajoutées à la réponse");
+        }
+    }
+
     // Construire la réponse finale avec la structure attendue par le frontend
     let final_response = json!({
         "status": "success",
         "intention": "creation_service",
         "session_id": session_id,  // ✅ NOUVEAU : Session ID pour tracking
-        "data": {
-            "titre_service": {
-                "type_donnee": "string",
-                "valeur": titre_value,
-                "origine_champs": "ia"
-            },
-            "category": {
-                "type_donnee": "string",
-                "valeur": category_value,
-                "origine_champs": "ia"
-            },
-            "description": {
-                "type_donnee": "string",
-                "valeur": description_value,
-                "origine_champs": "ia"
-            },
-            // ✅ NOUVEAU 2025-11-06 : Champs PRODUIT (mapping automatique pour formulaire "Ajouter produit")
-            "nom_produit": {
-                "type_donnee": "string",
-                "valeur": service_data.get("nom_produit")
-                    .and_then(|v| v.get("valeur"))
-                    .cloned()
-                    .unwrap_or(titre_value.clone()),
-                "origine_champs": "ia"
-            },
-            "categorie_produit": {
-                "type_donnee": "string",
-                "valeur": service_data.get("categorie_produit")
-                    .and_then(|v| v.get("valeur"))
-                    .cloned()
-                    .unwrap_or(category_value.clone()),
-                "origine_champs": "ia"
-            },
-            "description_produit": {
-                "type_donnee": "string",
-                "valeur": service_data.get("description_produit")
-                    .and_then(|v| v.get("valeur"))
-                    .cloned()
-                    .unwrap_or(description_value.clone()),
-                "origine_champs": "ia"
-            },
-            "is_tarissable": {
-                "type_donnee": "boolean",
-                "valeur": service_data.get("is_tarissable")
-                    .and_then(|v| v.get("valeur"))
-                    .cloned()
-                    .unwrap_or(json!(false)),
-                "origine_champs": "ia"
-            }
-        },
+        "data": serde_json::Value::Object(data_obj),
         "tokens_consumed": tokens_consumed,
         "ia_model_used": model_name,
         "confidence": 1.0,

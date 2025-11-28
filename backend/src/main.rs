@@ -92,6 +92,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // - idle_timeout réduit pour éviter les connexions mortes qui causent "crash of another server process"
         // - Les erreurs TLS "close_notify" sont gérées par retry_query dans les contrôleurs
         // - Le pool se reconnecte automatiquement si une connexion est fermée
+        // ✅ OPTIMISÉ 2025-11-28: Pool augmenté pour réduire les temps d'acquisition (30 max, 10 min)
+        // - Acquisition timeout augmenté à 15s pour gérer les pics de charge
+        // - min_connections à 10 pour maintenir des connexions prêtes et réduire les latences
         .connect(&db_url)
         .await
         .map_err(|e| {

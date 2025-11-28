@@ -761,7 +761,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         } finally {
             setIsGeneratingBrief(false);
         }
-    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang, applyBriefVariant]);
+    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang]); // ✅ CORRIGÉ: applyBriefVariant est une fonction utilitaire stable, pas besoin de dépendance
 
     const applyStyleSuggestion = useCallback((suggestion: AIVideoStyleSuggestion) => {
         setStyleSuggestion(suggestion);
@@ -1062,6 +1062,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     }, []);
 
     // ✅ CORRIGÉ: Fonction wrapper pour applyBriefVariant avec les setters du composant
+    // ✅ CORRIGÉ 2025-11-28: Retiré les setters des dépendances car ils sont stables
     const handleApplyBriefVariant = useCallback((variant: AIVideoBriefVariant) => {
         applyBriefVariant(
             variant,
@@ -1071,7 +1072,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setVoiceoverScript,
             setVariantPickerVisible
         );
-    }, [setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible]);
+    }, []); // Setters useState sont stables, pas besoin de dépendances
 
     const coachPanel = useMemo(() => {
         if (!selectedProduct) {
@@ -1155,12 +1156,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 />
                                 <View style={styles.coachContent}>
                                     <Text style={styles.coachLabel}>Effets recommandés</Text>
-                                    {styleSuggestion.effects?.length ? (
+                                    {Array.isArray(styleSuggestion.effects) && styleSuggestion.effects.length > 0 ? (
                                         <Text style={styles.coachText} numberOfLines={2}>
                                             Effets : {styleSuggestion.effects.slice(0, 3).join(', ')}
                                         </Text>
                                     ) : null}
-                                    {styleSuggestion.transitions?.length ? (
+                                    {Array.isArray(styleSuggestion.transitions) && styleSuggestion.transitions.length > 0 ? (
                                         <Text style={styles.coachMeta}>
                                             Transitions : {styleSuggestion.transitions.slice(0, 2).join(', ')}
                                         </Text>
@@ -1214,7 +1215,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         distributionPlan,
         handleRefreshCoach,
         selectedProduct,
-        setVariantPickerVisible,
+        // ✅ CORRIGÉ: setVariantPickerVisible retiré des dépendances car c'est un setter useState stable
         styleSuggestion,
     ]);
 

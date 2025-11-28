@@ -102,9 +102,17 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Gérer les messages WebSocket
     useEffect(() => {
         const handleMessage = (message: any) => {
-            console.log('[WebSocketContext] 📨 Message reçu:', message.type);
+            // ✅ CORRIGÉ: Vérifier que message.type existe avant de le logger
+            const messageType = message?.type || message?.message_type || 'unknown';
+            console.log('[WebSocketContext] 📨 Message reçu:', messageType);
 
-            switch (message.type) {
+            // ✅ CORRIGÉ: Gérer le cas où message.type est undefined
+            if (!messageType || messageType === 'unknown' || messageType === 'undefined') {
+                console.warn('[WebSocketContext] ❓ Type de message non géré:', messageType, 'Message complet:', message);
+                return;
+            }
+
+            switch (messageType) {
                 case 'notification':
                     // Afficher une notification locale
                     const notification = message as NotificationMessage;
@@ -177,7 +185,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     break;
 
                 default:
-                    console.log('[WebSocketContext] ❓ Type de message non géré:', message.type);
+                    console.log('[WebSocketContext] ❓ Type de message non géré:', messageType);
             }
         };
 

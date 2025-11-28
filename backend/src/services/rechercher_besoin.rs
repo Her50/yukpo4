@@ -360,14 +360,15 @@ pub async fn rechercher_besoin_direct(
     let geographic_matching = Arc::new(
         crate::services::geographic_matching_service::GeographicMatchingService::new(
             pool.clone(),
-            cache_service,
+            cache_service.clone(),
             geocoding_service,
         ),
     );
     
-    // Configuration de la recherche native avec service de matching géographique
-    let native_search = NativeSearchService::with_geographic_matching(
+    // ✅ OPTIMISÉ 2025-11-28: Configuration de la recherche native avec cache Redis et matching géographique
+    let native_search = NativeSearchService::with_cache_and_geographic_matching(
         pool.clone(),
+        cache_service,
         geographic_matching,
     );
 
@@ -514,21 +515,100 @@ pub async fn rechercher_besoin_direct(
         .ok()
         .flatten();
 
-        // Construire l'objet utilisateur et prestataire
+        // ✅ NOUVEAU: Récupérer les images et vidéos depuis la table media
+        let media_rows = sqlx::query(
+            r#"
+            SELECT type, path
+            FROM media
+            WHERE service_id = $1
+            AND type IN ('image', 'video')
+            AND path IS NOT NULL
+            ORDER BY created_at ASC
+            "#
+        )
+        .bind(service_id)
+        .fetch_all(&pool)
+        .await
+        .ok()
+        .unwrap_or_default();
+
+        let mut images_vec = Vec::new();
+        let mut videos_vec = Vec::new();
+        for row in media_rows {
+            if let (Ok(media_type), Ok(path)) = (row.try_get::<String, _>("type"), row.try_get::<String, _>("path")) {
+                match media_type.as_str() {
+                    "image" => images_vec.push(path),
+                    "video" => videos_vec.push(path),
+                    _ => {}
+                }
+            }
+        }
+        let media_info = if !images_vec.is_empty() || !videos_vec.is_empty() {
+            Some((images_vec, videos_vec))
+        } else {
+            None
+        };
+
+        // ✅ NOUVEAU: Extraire l'adresse et le pays depuis service.data
+        let extract_address_from_data = |data: &Value| -> Option<String> {
+            data.get("adresse_complete")?.get("valeur")?.as_str()
+                .or_else(|| data.get("adresse")?.get("valeur")?.as_str())
+                .or_else(|| data.get("adresse_service")?.get("valeur")?.as_str())
+                .or_else(|| data.get("adresse_prestataire")?.get("valeur")?.as_str())
+                .or_else(|| data.get("localisation")?.get("valeur")?.as_str())
+                .or_else(|| {
+                    // Essayer d'extraire depuis lieu_produit
+                    data.get("lieu_produit")?.get("valeur")?.get("valeur")?.get("place_name")?.as_str()
+                        .or_else(|| data.get("lieu_produit")?.get("valeur")?.get("composants")?.get("lieu")?.get("place_name")?.as_str())
+                })
+                .map(|s| s.to_string())
+        };
+
+        let extract_country_from_data = |data: &Value| -> Option<String> {
+            data.get("pays")?.get("valeur")?.as_str()
+                .or_else(|| data.get("pays_origine")?.get("valeur")?.as_str())
+                .or_else(|| data.get("country")?.get("valeur")?.as_str())
+                .or_else(|| {
+                    // Essayer d'extraire depuis lieu_produit.components.pays
+                    data.get("lieu_produit")?.get("valeur")?.get("valeur")?.get("components")?.get("pays")?.as_str()
+                        .or_else(|| data.get("lieu_produit")?.get("valeur")?.get("composants")?.get("lieu")?.get("components")?.get("pays")?.as_str())
+                })
+                .map(|s| s.to_string())
+        };
+
+        let adresse = extract_address_from_data(&matched_service.data);
+        let pays = extract_country_from_data(&matched_service.data);
+
+        // Construire l'objet utilisateur et prestataire avec adresse et pays
         let (user_obj, prestataire_obj) = if let Some((user_id, nom_complet, avatar_url)) = user_info {
             let nom_complet_clone = nom_complet.clone();
             let avatar_url_clone = avatar_url.clone();
-            let user_obj = json!({
+            let mut user_obj = json!({
                 "id": user_id,
                 "nom_complet": nom_complet,
                 "avatar_url": avatar_url
             });
-            let prestataire_obj = json!({
+            // Ajouter adresse et pays à user_obj si disponibles
+            if let Some(ref addr) = adresse {
+                user_obj["adresse"] = json!(addr);
+            }
+            if let Some(ref country) = pays {
+                user_obj["pays"] = json!(country);
+            }
+
+            let mut prestataire_obj = json!({
                 "user_id": user_id,
                 "nom": nom_complet_clone.clone().unwrap_or_else(|| "Prestataire".to_string()),
                 "nom_complet": nom_complet_clone,
                 "avatar_url": avatar_url_clone
             });
+            // Ajouter adresse et pays à prestataire_obj si disponibles
+            if let Some(ref addr) = adresse {
+                prestataire_obj["adresse"] = json!(addr);
+            }
+            if let Some(ref country) = pays {
+                prestataire_obj["pays"] = json!(country);
+            }
             (user_obj, prestataire_obj)
         } else {
             (json!(null), json!({
@@ -572,6 +652,109 @@ pub async fn rechercher_besoin_direct(
         // Ajouter la distance si disponible
         if let Some(distance) = distance_map.get(&service_id).and_then(|d| *d) {
             enriched_result["distance_km"] = json!(distance);
+        }
+
+        // ✅ NOUVEAU: Ajouter les images et vidéos si disponibles
+        if let Some((images, videos)) = media_info {
+            if !images.is_empty() {
+                enriched_result["images"] = json!(images);
+            }
+            if !videos.is_empty() {
+                enriched_result["videos"] = json!(videos);
+            }
+        }
+
+        // ✅ NOUVEAU: Extraire aussi les images/vidéos et variations depuis service.data.produits si disponibles
+        // Le ProductCard cherche aussi dans product.images, product.videos, product.variants, product.has_variant
+        if let Some(data_obj) = matched_service.data.as_object() {
+            // Chercher dans data.produits (array ou object avec valeur)
+            if let Some(produits) = data_obj.get("produits") {
+                let produits_array = if produits.is_array() {
+                    Some(produits.as_array().unwrap())
+                } else if let Some(valeur) = produits.get("valeur") {
+                    valeur.as_array()
+                } else {
+                    None
+                };
+
+                if let Some(produits_arr) = produits_array {
+                    // Prendre le premier produit pour les images/vidéos/variations
+                    if let Some(first_product) = produits_arr.first() {
+                        if let Some(product_obj) = first_product.as_object() {
+                            // Extraire images du produit
+                            if let Some(product_images) = product_obj.get("images") {
+                                if product_images.is_array() {
+                                    let images_vec: Vec<String> = product_images
+                                        .as_array()
+                                        .unwrap()
+                                        .iter()
+                                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                        .collect();
+                                    if !images_vec.is_empty() {
+                                        // Fusionner avec les images existantes
+                                        let existing_images = enriched_result["images"]
+                                            .as_array()
+                                            .cloned()
+                                            .unwrap_or_else(|| serde_json::json!([]));
+                                        let mut merged = existing_images.as_array().unwrap().clone();
+                                        for img in images_vec {
+                                            if !merged.contains(&json!(img)) {
+                                                merged.push(json!(img));
+                                            }
+                                        }
+                                        enriched_result["images"] = json!(merged);
+                                    }
+                                }
+                            }
+                            // Extraire vidéos du produit
+                            if let Some(product_videos) = product_obj.get("videos") {
+                                if product_videos.is_array() {
+                                    let videos_vec: Vec<String> = product_videos
+                                        .as_array()
+                                        .unwrap()
+                                        .iter()
+                                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                        .collect();
+                                    if !videos_vec.is_empty() {
+                                        // Fusionner avec les vidéos existantes
+                                        let existing_videos = enriched_result["videos"]
+                                            .as_array()
+                                            .cloned()
+                                            .unwrap_or_else(|| serde_json::json!([]));
+                                        let mut merged = existing_videos.as_array().unwrap().clone();
+                                        for vid in videos_vec {
+                                            if !merged.contains(&json!(vid)) {
+                                                merged.push(json!(vid));
+                                            }
+                                        }
+                                        enriched_result["videos"] = json!(merged);
+                                    }
+                                }
+                            }
+                            
+                            // ✅ NOUVEAU: Extraire les variations de prix du produit
+                            if let Some(variants) = product_obj.get("variants") {
+                                if variants.is_array() && variants.as_array().unwrap().len() > 0 {
+                                    enriched_result["has_variant"] = json!(true);
+                                    enriched_result["variants"] = variants.clone();
+                                    // Extraire aussi variant_dimension si disponible
+                                    if let Some(variant_dimension) = product_obj.get("variant_dimension") {
+                                        enriched_result["variant_dimension"] = variant_dimension.clone();
+                                    } else if let Some(variant_dimension) = product_obj.get("dimension") {
+                                        enriched_result["variant_dimension"] = variant_dimension.clone();
+                                    }
+                                }
+                            } else if let Some(variations) = product_obj.get("variations") {
+                                // Format alternatif: variations au lieu de variants
+                                if variations.is_array() && variations.as_array().unwrap().len() > 0 {
+                                    enriched_result["has_variant"] = json!(true);
+                                    enriched_result["variants"] = variations.clone();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         enriched_results.push(enriched_result);
@@ -1114,14 +1297,15 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
     let geographic_matching = Arc::new(
         crate::services::geographic_matching_service::GeographicMatchingService::new(
             pool.clone(),
-            cache_service,
+            cache_service.clone(),
             geocoding_service,
         ),
     );
     
-    // Configuration de la recherche native avec service de matching géographique
-    let native_search = NativeSearchService::with_geographic_matching(
+    // ✅ OPTIMISÉ 2025-11-28: Configuration de la recherche native avec cache Redis et matching géographique
+    let native_search = NativeSearchService::with_cache_and_geographic_matching(
         pool.clone(),
+        cache_service,
         geographic_matching,
     );
 

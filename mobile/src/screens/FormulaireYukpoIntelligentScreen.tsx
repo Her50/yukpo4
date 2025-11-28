@@ -391,6 +391,29 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // ✅ CORRIGÉ: Vérifier plusieurs sources pour produitsData
     const produitsData = values.produits || suggestion?.data?.produits || suggestionData?.produits;
 
+    // ✅ NOUVEAU 2025-11-28: PRIORITÉ 0: Vérifier directement dans suggestion.data.produits (seeds depuis backend)
+    // Le backend inclut maintenant les seeds directement dans la réponse IA
+    if (suggestion?.data?.produits?.sous_caracteristiques &&
+      typeof suggestion.data.produits.sous_caracteristiques === 'object' &&
+      Object.keys(suggestion.data.produits.sous_caracteristiques).length > 0) {
+      const sousCaracsObj: Record<string, string[]> = {};
+      Object.entries(suggestion.data.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
+        if (Array.isArray(vals) && vals.length > 0) {
+          const allValues = vals
+            .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
+            .map((v: string) => v.trim());
+          if (allValues.length > 0) {
+            sousCaracsObj[key] = allValues;
+          }
+        }
+      });
+
+      if (Object.keys(sousCaracsObj).length > 0) {
+        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques depuis seeds IA (suggestion.data.produits):', sousCaracsObj);
+        return sousCaracsObj;
+      }
+    }
+
     // ✅ PRIORITÉ 1A: Si on a sous_caracteristiques complets, les utiliser directement
     // (Ils contiennent toutes les valeurs possibles pour chaque dimension)
     // ✅ CORRIGÉ: Vérifier aussi au niveau racine de suggestionData
@@ -442,12 +465,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       productVector.forEach((value: string, index: number) => {
         const label = productLabels[index];
         if (label && typeof label === 'string' && value && typeof value === 'string') {
+          // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position
+          // Si le label n'existe pas encore, créer un tableau avec la valeur préférée en premier
           if (!sousCaracsFromPreferred[label]) {
-            sousCaracsFromPreferred[label] = [];
-          }
-          // Ajouter uniquement la valeur de la combinaison préférée
-          if (!sousCaracsFromPreferred[label].includes(value)) {
-            sousCaracsFromPreferred[label].push(value);
+            sousCaracsFromPreferred[label] = [value];
+          } else {
+            // Si le label existe déjà, s'assurer que la valeur préférée est en première position
+            const existingValues = sousCaracsFromPreferred[label];
+            if (!existingValues.includes(value)) {
+              // Insérer la valeur préférée en première position
+              sousCaracsFromPreferred[label] = [value, ...existingValues];
+            } else {
+              // Si la valeur existe déjà mais n'est pas en première position, la déplacer
+              const filtered = existingValues.filter(v => v !== value);
+              sousCaracsFromPreferred[label] = [value, ...filtered];
+            }
           }
         }
       });
@@ -598,7 +630,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         field.typeDonnee === 'autocomplete'
       ) {
         initialBlocks[3].fields.push(field);
-        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ ajouté au bloc produits/prestations: ${field.name} (typeDonnee: ${field.typeDonnee})`);
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ ajouté au bloc produits/prestations: ${field.name} (typeDonnee: ${field.typeDonnee || 'non défini'})`);
       }
       // Bloc Médias (✅ NOUVEAU 2025-11-06: images/videos déplacées vers bloc Produits, ne garder que audios/documents)
       else if (['audios', 'documents'].includes(fieldName)) {
@@ -2469,12 +2501,39 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         productVector = Array.isArray(produitsField.product_vector) ? produitsField.product_vector : undefined;
         productLabels = Array.isArray(produitsField.product_labels) ? produitsField.product_labels : undefined;
       }
+
+      // ✅ NOUVEAU 2025-11-28: Si produitsValues est vide mais qu'on a product_vector, construire la valeur initiale
+      // Cela garantit que la combinaison préférée de l'IA est affichée dès l'ouverture du formulaire
+      if (produitsValues.length === 0 && productVector && productVector.length > 0 && safeSeparateur) {
+        const combinationString = productVector.join(safeSeparateur);
+        produitsValues = [combinationString];
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeur initiale construite depuis product_vector (combinaison préférée IA):', combinationString);
+      }
     } else if (Array.isArray(produitsField)) {
       produitsValues = produitsField
         .filter((item) => item !== null && item !== undefined)
         .map((item) => (typeof item === 'string' ? item : String(item)));
     } else if (typeof produitsField === 'string') {
       produitsValues = [produitsField];
+    }
+
+    // ✅ NOUVEAU 2025-11-28: Si produitsValues est toujours vide, construire depuis sous_caracteristiques
+    // En prenant la PREMIÈRE valeur de chaque dimension (valeur préférée par l'IA)
+    if (produitsValues.length === 0) {
+      // Essayer d'abord depuis les sous_caracteristiques déjà chargés
+      if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) {
+        const firstValues: string[] = [];
+        Object.entries(sousCaracteristiques).forEach(([label, values]) => {
+          if (Array.isArray(values) && values.length > 0 && typeof values[0] === 'string') {
+            // ✅ CRITIQUE: Prendre la PREMIÈRE valeur (valeur préférée par l'IA)
+            firstValues.push(values[0]);
+          }
+        });
+        if (firstValues.length > 0) {
+          produitsValues = [firstValues.join(safeSeparateur)];
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeur initiale construite depuis sous_caracteristiques (premières valeurs = préférées IA):', produitsValues[0]);
+        }
+      }
     }
 
     // ✅ CORRIGÉ: Toujours réextraire depuis valeursFormulaire pour garantir que les données sont à jour
@@ -2497,6 +2556,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         keys: Object.keys(sousCaracteristiques),
         count: Object.keys(sousCaracteristiques).length
       });
+
+      // ✅ NOUVEAU 2025-11-28: Si produitsValues est toujours vide, construire depuis sousCaracsFromIA
+      // En prenant la PREMIÈRE valeur de chaque dimension (valeur préférée par l'IA)
+      if (produitsValues.length === 0) {
+        const firstValues: string[] = [];
+        Object.entries(sousCaracsFromIA).forEach(([label, values]) => {
+          if (Array.isArray(values) && values.length > 0 && typeof values[0] === 'string') {
+            // ✅ CRITIQUE: Prendre la PREMIÈRE valeur (valeur préférée par l'IA)
+            firstValues.push(values[0]);
+          }
+        });
+        if (firstValues.length > 0) {
+          produitsValues = [firstValues.join(safeSeparateur)];
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeur initiale construite depuis sousCaracsFromIA (premières valeurs = préférées IA):', produitsValues[0]);
+        }
+      }
     } else {
       // Dernier fallback: objet vide
       sousCaracteristiques = sousCaracteristiques || {};
@@ -4576,6 +4651,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     origine_champs: autocompleteData.origine_champs || 'formulaire'
                   };
 
+                  // ✅ NOUVEAU: Ajouter les variations de prix dans produitObj si disponibles
+                  // Le backend transformera variation_prix en variants/has_variant
+                  if (autocompleteData.variation_prix) {
+                    produitObj.variation_prix = autocompleteData.variation_prix;
+                    produitObj.variabilite_prix = autocompleteData.variation_prix;
+                    produitObj.price_variant = autocompleteData.variation_prix;
+                  }
+                  // Vérifier aussi dans valeursFormulaire (saisie manuelle)
+                  const manualVariation = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant;
+                  if (manualVariation && !produitObj.variation_prix) {
+                    produitObj.variation_prix = manualVariation;
+                    produitObj.variabilite_prix = manualVariation;
+                    produitObj.price_variant = manualVariation;
+                  }
+
                   if (compressedMedia?.images?.length) {
                     const mergedImages = mergeMediaArrays(produitObj.images, compressedMedia.images);
                     if (mergedImages.length > 0) {
@@ -4948,7 +5038,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 {suggestion.data && Object.keys(suggestion.data).length > 0 ? (
                   <View style={styles.dataContainer}>
                     {Object.entries(suggestion.data || {}).map(([key, value], index) => {
-                      const fieldValue = typeof value === 'object' && value !== null ? (value as any).valeur || JSON.stringify(value) : value;
+                      // ✅ CORRIGÉ: Protection contre undefined/null pour éviter les erreurs de rendu
+                      let fieldValue: string = '';
+                      if (value == null) {
+                        fieldValue = '';
+                      } else if (typeof value === 'object') {
+                        fieldValue = (value as any)?.valeur != null ? String((value as any).valeur) : JSON.stringify(value);
+                      } else {
+                        fieldValue = String(value);
+                      }
                       const fieldLabel = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
                       return (
@@ -4959,8 +5057,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                           <View style={styles.dataContent}>
                             <Text style={styles.dataLabel}>{fieldLabel}</Text>
                             <Text style={styles.dataText} numberOfLines={2}>
-                              {String(fieldValue).substring(0, 100)}
-                              {String(fieldValue).length > 100 ? '...' : ''}
+                              {fieldValue.length > 100 ? fieldValue.substring(0, 100) + '...' : fieldValue}
                             </Text>
                           </View>
                         </View>

@@ -258,11 +258,21 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         suggestionData.produits.product_vector.forEach((value: string, index: number) => {
             const label = suggestionData.produits.product_labels[index];
             if (label && typeof label === 'string' && value && typeof value === 'string') {
+                // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position
+                // Si le label n'existe pas encore, créer un tableau avec la valeur préférée en premier
                 if (!sousCaracsObj[label]) {
-                    sousCaracsObj[label] = [];
-                }
-                if (!sousCaracsObj[label].includes(value)) {
-                    sousCaracsObj[label].push(value);
+                    sousCaracsObj[label] = [value];
+                } else {
+                    // Si le label existe déjà, s'assurer que la valeur préférée est en première position
+                    const existingValues = sousCaracsObj[label];
+                    if (!existingValues.includes(value)) {
+                        // Insérer la valeur préférée en première position
+                        sousCaracsObj[label] = [value, ...existingValues];
+                    } else {
+                        // Si la valeur existe déjà mais n'est pas en première position, la déplacer
+                        const filtered = existingValues.filter(v => v !== value);
+                        sousCaracsObj[label] = [value, ...filtered];
+                    }
                 }
             }
         });
@@ -309,6 +319,41 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         'XAF'
     );
 
+    // ✅ NOUVEAU 2025-11-28: Construire produitsValues initialement si vide
+    // Même logique que FormulaireYukpoIntelligentScreen pour garantir l'affichage de la combinaison préférée
+    let initialProduitsValues = prefillProduits.length > 0 ? prefillProduits : suggestionProduits;
+
+    // ✅ Si produitsValues est vide mais qu'on a product_vector, construire la valeur initiale
+    if (initialProduitsValues.length === 0) {
+        const productVector = prefill.product_vector ?? (suggestionData.produits?.product_vector && Array.isArray(suggestionData.produits.product_vector) ? suggestionData.produits.product_vector : undefined);
+        const productLabels = prefill.product_labels ?? (suggestionData.produits?.product_labels && Array.isArray(suggestionData.produits.product_labels) ? suggestionData.produits.product_labels : undefined);
+        const safeSeparateur = suggestionData.produits?.separateur || prefill.produits?.separateur || ',';
+
+        // 1. Essayer depuis product_vector (combinaison préférée)
+        if (productVector && productVector.length > 0 && safeSeparateur) {
+            const combinationString = productVector.join(safeSeparateur);
+            initialProduitsValues = [combinationString];
+            console.log('[AjouterProduitSimple] ✅ Valeur initiale construite depuis product_vector (combinaison préférée IA):', combinationString);
+        }
+        // 2. Sinon, construire depuis sous_caracteristiques en prenant la PREMIÈRE valeur de chaque dimension
+        else if (initialProduitsValues.length === 0) {
+            const finalSousCaracs = sous_caracteristiques || prefill.sous_caracteristiques || {};
+            if (finalSousCaracs && typeof finalSousCaracs === 'object' && Object.keys(finalSousCaracs).length > 0) {
+                const firstValues: string[] = [];
+                Object.entries(finalSousCaracs).forEach(([label, values]) => {
+                    if (Array.isArray(values) && values.length > 0 && typeof values[0] === 'string') {
+                        // ✅ CRITIQUE: Prendre la PREMIÈRE valeur (valeur préférée par l'IA)
+                        firstValues.push(values[0]);
+                    }
+                });
+                if (firstValues.length > 0) {
+                    initialProduitsValues = [firstValues.join(safeSeparateur)];
+                    console.log('[AjouterProduitSimple] ✅ Valeur initiale construite depuis sous_caracteristiques (premières valeurs = préférées IA):', initialProduitsValues[0]);
+                }
+            }
+        }
+    }
+
     const initialFormValues = {
         nom_produit: prefill.nom_produit ?? nom_produit,
         categorie_produit: prefill.categorie_produit ?? categorie_produit,
@@ -317,8 +362,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         devise_produit: initialCurrency,
         variabilite_prix: initialPriceVariant,
         price_variant: initialPriceVariant,
-        // ✅ CORRECTION: S'assurer que produits est toujours un tableau de strings pour LinearAutocompleteEditor
-        produits: prefillProduits.length > 0 ? prefillProduits : suggestionProduits,
+        // ✅ CORRIGÉ: Utiliser initialProduitsValues construit avec la logique ci-dessus
+        produits: initialProduitsValues,
         // ✅ CORRECTION: Utiliser sous_caracteristiques construit (avec fallback vers prefill)
         sous_caracteristiques: sous_caracteristiques || prefill.sous_caracteristiques || {},
         lieu_produit: prefill.lieu_produit ?? lieu_produit,
@@ -362,15 +407,24 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             // On doit le convertir en objet { dimension: [valeurs] } pour sous_caracteristiques
                             const sousCaracsObj: Record<string, string[]> = {};
                             if (Array.isArray(preferred.product_labels) && preferred.product_labels.length > 0) {
-                                // Grouper les labels par dimension
+                                // ✅ CRITIQUE: Grouper les labels par dimension avec la valeur préférée en PREMIÈRE position
                                 preferred.product_vector.forEach((value: string, index: number) => {
                                     const label = preferred.product_labels[index];
                                     if (label && typeof label === 'string') {
+                                        // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position
                                         if (!sousCaracsObj[label]) {
-                                            sousCaracsObj[label] = [];
-                                        }
-                                        if (!sousCaracsObj[label].includes(value)) {
-                                            sousCaracsObj[label].push(value);
+                                            sousCaracsObj[label] = [value];
+                                        } else {
+                                            // Si le label existe déjà, s'assurer que la valeur préférée est en première position
+                                            const existingValues = sousCaracsObj[label];
+                                            if (!existingValues.includes(value)) {
+                                                // Insérer la valeur préférée en première position
+                                                sousCaracsObj[label] = [value, ...existingValues];
+                                            } else {
+                                                // Si la valeur existe déjà mais n'est pas en première position, la déplacer
+                                                const filtered = existingValues.filter(v => v !== value);
+                                                sousCaracsObj[label] = [value, ...filtered];
+                                            }
                                         }
                                     }
                                 });
@@ -408,14 +462,24 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 const combinationString = preferred.product_vector.join(separateur);
                                 const sousCaracsObj: Record<string, string[]> = {};
                                 if (Array.isArray(preferred.product_labels) && preferred.product_labels.length > 0) {
+                                    // ✅ CRITIQUE: Grouper les labels par dimension avec la valeur préférée en PREMIÈRE position
                                     preferred.product_vector.forEach((value: string, index: number) => {
                                         const label = preferred.product_labels[index];
                                         if (label && typeof label === 'string') {
+                                            // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position
                                             if (!sousCaracsObj[label]) {
-                                                sousCaracsObj[label] = [];
-                                            }
-                                            if (!sousCaracsObj[label].includes(value)) {
-                                                sousCaracsObj[label].push(value);
+                                                sousCaracsObj[label] = [value];
+                                            } else {
+                                                // Si le label existe déjà, s'assurer que la valeur préférée est en première position
+                                                const existingValues = sousCaracsObj[label];
+                                                if (!existingValues.includes(value)) {
+                                                    // Insérer la valeur préférée en première position
+                                                    sousCaracsObj[label] = [value, ...existingValues];
+                                                } else {
+                                                    // Si la valeur existe déjà mais n'est pas en première position, la déplacer
+                                                    const filtered = existingValues.filter(v => v !== value);
+                                                    sousCaracsObj[label] = [value, ...filtered];
+                                                }
                                             }
                                         }
                                     });
@@ -706,10 +770,52 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 nouveauProduit.origine_champs = 'formulaire';
             }
 
+            // ✅ NOUVEAU: Transformer variation_prix en format variants/has_variant pour ProductCard
+            // Le ProductCard cherche product.variants et product.has_variant
+            const priceVariant = nouveauProduit.variabilite_prix || nouveauProduit.price_variant || nouveauProduit.variation_prix;
+            if (priceVariant && typeof priceVariant === 'object' && !Array.isArray(priceVariant)) {
+                const modalites = priceVariant.modalites || priceVariant.valeur || priceVariant;
+                if (Array.isArray(modalites) && modalites.length > 0) {
+                    // Transformer les modalités en format variants
+                    const variants = modalites.map((modalite: any) => {
+                        const variant: any = {};
+                        if (modalite.valeur || modalite.value) {
+                            variant.value = modalite.valeur || modalite.value;
+                            variant.valeur = modalite.valeur || modalite.value;
+                        }
+                        if (modalite.prix !== undefined || modalite.price !== undefined) {
+                            variant.prix = modalite.prix || modalite.price;
+                        }
+                        if (modalite.devise || modalite.currency) {
+                            variant.devise = modalite.devise || modalite.currency;
+                        }
+                        if (modalite.stock !== undefined || modalite.quantite !== undefined) {
+                            variant.stock = modalite.stock || modalite.quantite;
+                        }
+                        if (modalite.image) {
+                            variant.image = modalite.image;
+                        }
+                        return variant;
+                    });
+
+                    nouveauProduit.has_variant = true;
+                    nouveauProduit.variants = variants;
+
+                    // Ajouter aussi variant_dimension si disponible
+                    if (priceVariant.variable) {
+                        nouveauProduit.variant_dimension = priceVariant.variable;
+                    }
+
+                    console.log('[AjouterProduitSimple] ✅ Variations de prix transformées en variants:', variants.length);
+                }
+            }
+
             console.log('[AjouterProduitSimple] 📦 Données du nouveau produit (complètes):', {
                 ...nouveauProduit,
                 images: nouveauProduit.images ? `${nouveauProduit.images.length} image(s)` : 'aucune',
-                videos: nouveauProduit.videos ? `${nouveauProduit.videos.length} vidéo(s)` : 'aucune'
+                videos: nouveauProduit.videos ? `${nouveauProduit.videos.length} vidéo(s)` : 'aucune',
+                has_variant: nouveauProduit.has_variant,
+                variants_count: nouveauProduit.variants ? nouveauProduit.variants.length : 0
             });
 
             if (isEditing) {
@@ -978,12 +1084,21 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         formValues.product_vector.forEach((value: string, index: number) => {
                                             const label = formValues.product_labels[index];
                                             if (label && typeof label === 'string' && value && typeof value === 'string') {
+                                                // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position
+                                                // Si le label n'existe pas encore, créer un tableau avec la valeur préférée en premier
                                                 if (!sousCaracsFromPreferred[label]) {
-                                                    sousCaracsFromPreferred[label] = [];
-                                                }
-                                                // Ajouter uniquement la valeur de la combinaison préférée
-                                                if (!sousCaracsFromPreferred[label].includes(value)) {
-                                                    sousCaracsFromPreferred[label].push(value);
+                                                    sousCaracsFromPreferred[label] = [value];
+                                                } else {
+                                                    // Si le label existe déjà, s'assurer que la valeur préférée est en première position
+                                                    const existingValues = sousCaracsFromPreferred[label];
+                                                    if (!existingValues.includes(value)) {
+                                                        // Insérer la valeur préférée en première position
+                                                        sousCaracsFromPreferred[label] = [value, ...existingValues];
+                                                    } else {
+                                                        // Si la valeur existe déjà mais n'est pas en première position, la déplacer
+                                                        const filtered = existingValues.filter(v => v !== value);
+                                                        sousCaracsFromPreferred[label] = [value, ...filtered];
+                                                    }
                                                 }
                                             }
                                         });

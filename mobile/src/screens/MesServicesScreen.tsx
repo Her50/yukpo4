@@ -353,18 +353,37 @@ const MesServicesScreen: React.FC = () => {
       }
 
       // Sinon, vérifier s'il y a des services existants
+      // ✅ AMÉLIORATION 2025-11-28: Vérifier d'abord rawServices (services bruts), puis services (produits parsés)
+      let foundServiceId: number | undefined;
+
+      // 1. Vérifier rawServices d'abord (services bruts de l'API)
       if (rawServices && rawServices.length > 0) {
-        // Prendre le premier service actif, ou le premier service tout court
         const activeService = rawServices.find((s: any) => s.is_active !== false && s.actif !== false) || rawServices[0];
-        
+
         if (activeService && activeService.id) {
-          logger.log('[MesServicesScreen] handleAddProduct - Service existant trouvé:', activeService.id);
-          (navigation as any).navigate('AjouterProduitSimple', {
-            serviceId: typeof activeService.id === 'string' ? parseInt(activeService.id, 10) : activeService.id,
-            mode: 'create'
-          });
-          return;
+          foundServiceId = typeof activeService.id === 'string' ? parseInt(activeService.id, 10) : activeService.id;
+          logger.log('[MesServicesScreen] handleAddProduct - Service existant trouvé (rawServices):', foundServiceId);
         }
+      }
+
+      // 2. Si rawServices est vide mais services (produits) existe, extraire le serviceId depuis le premier produit
+      if (!foundServiceId && services && services.length > 0) {
+        const firstProduct = services[0];
+        const serviceId = firstProduct.service_id || firstProduct.data?.serviceId || firstProduct.id?.split('_')[0];
+
+        if (serviceId) {
+          foundServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
+          logger.log('[MesServicesScreen] handleAddProduct - Service existant trouvé (services parsés):', foundServiceId);
+        }
+      }
+
+      // 3. Si un service a été trouvé, naviguer vers AjouterProduitSimple
+      if (foundServiceId) {
+        (navigation as any).navigate('AjouterProduitSimple', {
+          serviceId: foundServiceId,
+          mode: 'create'
+        });
+        return;
       }
 
       // Aucun service existant, naviguer vers FormulaireYukpoIntelligent pour créer service + produit
@@ -377,7 +396,7 @@ const MesServicesScreen: React.FC = () => {
       logger.error('[MesServicesScreen] Erreur handleAddProduct:', error);
       Alert.alert('Erreur', 'Impossible d\'ouvrir le formulaire d\'ajout de produit');
     }
-  }, [rawServices, navigation]);
+  }, [rawServices, services, navigation]);
 
   // Fonctions de gestion des services
   const handleEditService = (service: any) => {
@@ -1026,10 +1045,7 @@ const MesServicesScreen: React.FC = () => {
             </Text>
             <NativeButton
               title="➕ Créer un nouveau produit"
-              onPress={() => (navigation as any).navigate('FormulaireYukpoIntelligent', {
-                mode: 'create',
-                focusProduct: true
-              })}
+              onPress={() => handleAddProduct()}
               variant="primary"
               size="medium"
               style={styles.createButton}

@@ -215,11 +215,34 @@ export const apiCall = async <T>(
     }
 
     let data;
+    // ✅ CORRIGÉ 2025-11-28: Gérer les réponses 404 et autres erreurs avant parsing JSON
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType && contentType.includes('application/json');
+    const hasBody = response.headers.get('content-length') !== '0' &&
+      response.headers.get('content-length') !== null;
+
+    // Si c'est une erreur 404 ou 500 sans body, ne pas essayer de parser JSON
+    if (!response.ok && (!hasBody || !isJson)) {
+      const statusText = response.statusText || `Erreur ${response.status}`;
+      return {
+        success: false,
+        error: statusText,
+        data: { status: response.status, message: statusText } as T,
+      };
+    }
+
     // ✅ CORRIGÉ: Cloner la réponse avant de la lire pour éviter "Already read"
     const responseClone = response.clone();
 
     try {
-      data = await response.json();
+      if (hasBody && isJson) {
+        data = await response.json();
+      } else if (hasBody) {
+        const textData = await response.text();
+        data = { raw: textData };
+      } else {
+        data = {};
+      }
     } catch (jsonError) {
       console.error(`[Mobile API] Erreur parsing JSON pour ${endpoint}:`, jsonError);
       console.error(`[Mobile API] Response status: ${response.status}`);
@@ -239,7 +262,7 @@ export const apiCall = async <T>(
     if (!response.ok) {
       return {
         success: false,
-        error: data?.message || `Erreur ${response.status}`,
+        error: data?.message || data?.error || `Erreur ${response.status}`,
         data: data,
       };
     }

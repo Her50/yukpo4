@@ -2408,6 +2408,58 @@ pub async fn creer_service(
                 );
             }
 
+            // ✅ NOUVEAU: Transformer variation_prix en format variants/has_variant pour ProductCard
+            // Le ProductCard cherche product.variants et product.has_variant
+            if let Some(variation_prix) = produit_obj.get("variation_prix")
+                .or_else(|| produit_obj.get("variabilite_prix"))
+                .or_else(|| produit_obj.get("price_variant"))
+            {
+                if let Some(variation_obj) = variation_prix.as_object() {
+                    if let Some(modalites) = variation_obj.get("modalites").and_then(|v| v.as_array()) {
+                        if !modalites.is_empty() {
+                            // Transformer les modalités en format variants
+                            let variants: Vec<serde_json::Value> = modalites
+                                .iter()
+                                .map(|modalite| {
+                                    let mut variant = serde_json::json!({});
+                                    if let Some(valeur) = modalite.get("valeur").or_else(|| modalite.get("value")) {
+                                        variant["value"] = valeur.clone();
+                                        variant["valeur"] = valeur.clone();
+                                    }
+                                    if let Some(prix) = modalite.get("prix").or_else(|| modalite.get("price")) {
+                                        variant["prix"] = prix.clone();
+                                    }
+                                    if let Some(devise) = modalite.get("devise").or_else(|| modalite.get("currency")) {
+                                        variant["devise"] = devise.clone();
+                                    }
+                                    if let Some(stock) = modalite.get("stock").or_else(|| modalite.get("quantite")) {
+                                        variant["stock"] = stock.clone();
+                                    }
+                                    if let Some(image) = modalite.get("image") {
+                                        variant["image"] = image.clone();
+                                    }
+                                    variant
+                                })
+                                .collect();
+                            
+                            produit_obj.insert("has_variant".to_string(), serde_json::Value::Bool(true));
+                            produit_obj.insert("variants".to_string(), serde_json::Value::Array(variants));
+                            
+                            // Ajouter aussi variant_dimension si disponible
+                            if let Some(variable) = variation_obj.get("variable") {
+                                produit_obj.insert("variant_dimension".to_string(), variable.clone());
+                            }
+                            
+                            log::info!(
+                                "[creer_service] ✅ Variations de prix transformées en variants pour produit {}: {} variantes",
+                                product_index,
+                                modalites.len()
+                            );
+                        }
+                    }
+                }
+            }
+
             saved_image_paths_by_product.push(saved_paths_for_product.clone());
 
             // Extraire les vidéos depuis data_processed (contient les médias base64)
@@ -2542,6 +2594,57 @@ pub async fn creer_service(
                         "[creer_service] ✅ CORRECTION: Champ 'images' du premier produit mis à jour avec {} chemin(s), images du service en premier",
                         saved_image_paths_by_product[0].len()
                     );
+                }
+                
+                // ✅ NOUVEAU: Transformer variation_prix en format variants/has_variant pour ProductCard (même si pas de médias)
+                // Le ProductCard cherche product.variants et product.has_variant
+                if let Some(variation_prix) = first_product_obj.get("variation_prix")
+                    .or_else(|| first_product_obj.get("variabilite_prix"))
+                    .or_else(|| first_product_obj.get("price_variant"))
+                {
+                    if let Some(variation_obj) = variation_prix.as_object() {
+                        if let Some(modalites) = variation_obj.get("modalites").and_then(|v| v.as_array()) {
+                            if !modalites.is_empty() {
+                                // Transformer les modalités en format variants
+                                let variants: Vec<serde_json::Value> = modalites
+                                    .iter()
+                                    .map(|modalite| {
+                                        let mut variant = serde_json::json!({});
+                                        if let Some(valeur) = modalite.get("valeur").or_else(|| modalite.get("value")) {
+                                            variant["value"] = valeur.clone();
+                                            variant["valeur"] = valeur.clone();
+                                        }
+                                        if let Some(prix) = modalite.get("prix").or_else(|| modalite.get("price")) {
+                                            variant["prix"] = prix.clone();
+                                        }
+                                        if let Some(devise) = modalite.get("devise").or_else(|| modalite.get("currency")) {
+                                            variant["devise"] = devise.clone();
+                                        }
+                                        if let Some(stock) = modalite.get("stock").or_else(|| modalite.get("quantite")) {
+                                            variant["stock"] = stock.clone();
+                                        }
+                                        if let Some(image) = modalite.get("image") {
+                                            variant["image"] = image.clone();
+                                        }
+                                        variant
+                                    })
+                                    .collect();
+                                
+                                first_product_obj.insert("has_variant".to_string(), serde_json::Value::Bool(true));
+                                first_product_obj.insert("variants".to_string(), serde_json::Value::Array(variants));
+                                
+                                // Ajouter aussi variant_dimension si disponible
+                                if let Some(variable) = variation_obj.get("variable") {
+                                    first_product_obj.insert("variant_dimension".to_string(), variable.clone());
+                                }
+                                
+                                log::info!(
+                                    "[creer_service] ✅ Variations de prix transformées en variants pour premier produit: {} variantes",
+                                    modalites.len()
+                                );
+                            }
+                        }
+                    }
                 }
             }
         }

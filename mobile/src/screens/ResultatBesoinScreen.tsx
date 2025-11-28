@@ -1219,10 +1219,10 @@ const ResultatBesoinScreen: React.FC = () => {
                   </View>
 
                   <View style={styles.vectorChips}>
-                    {Array.isArray(chips) && chips.length > 0 ? chips.map((chip, chipIndex) => (
-                      <View key={`${chip}-${chipIndex}`} style={styles.productChip}>
+                    {Array.isArray(chips) && chips.length > 0 ? chips.filter(chip => chip != null && String(chip).trim() !== '').map((chip, chipIndex) => (
+                      <View key={`${String(chip)}-${chipIndex}`} style={styles.productChip}>
                         <Text style={styles.productChipText} numberOfLines={1}>
-                          {chip}
+                          {String(chip)}
                         </Text>
                       </View>
                     )) : null}
@@ -1357,7 +1357,7 @@ const ResultatBesoinScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {(searchImages.length > 0 || searchDocuments.length > 0 || !!searchGPSString) && (
+        {(Array.isArray(searchImages) && searchImages.length > 0 || Array.isArray(searchDocuments) && searchDocuments.length > 0 || !!searchGPSString) && (
           <View style={styles.searchAttachmentsContainer}>
             {Array.isArray(searchImages) && searchImages.length > 0 && (
               <ScrollView
@@ -1365,9 +1365,9 @@ const ResultatBesoinScreen: React.FC = () => {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.searchImagesPreview}
               >
-                {searchImages.map((uri, index) => (
+                {searchImages.filter(uri => uri != null && String(uri).trim() !== '').map((uri, index) => (
                   <View key={`search-image-${index}`} style={styles.searchImageWrapper}>
-                    <Image source={{ uri }} style={styles.searchImage} />
+                    <Image source={{ uri: String(uri) }} style={styles.searchImage} />
                     <TouchableOpacity
                       style={styles.attachmentRemoveButton}
                       onPress={() => removeSearchImage(index)}
@@ -1381,11 +1381,11 @@ const ResultatBesoinScreen: React.FC = () => {
 
             {Array.isArray(searchDocuments) && searchDocuments.length > 0 && (
               <View style={styles.searchDocumentsList}>
-                {searchDocuments.map((doc, index) => (
+                {searchDocuments.filter(doc => doc != null && doc.name != null).map((doc, index) => (
                   <View key={`search-doc-${index}`} style={styles.searchDocumentItem}>
                     <SafeIcon name="file-text" size={14} color={modernColors.primary} />
                     <Text style={styles.searchDocumentName} numberOfLines={1}>
-                      {doc.name}
+                      {String(doc.name || 'Document')}
                     </Text>
                     <TouchableOpacity onPress={() => removeSearchDocument(index)}>
                       <Text style={styles.attachmentRemoveIcon}>✕</Text>
@@ -1585,24 +1585,24 @@ const ResultatBesoinScreen: React.FC = () => {
                 )}
               </View>
               <View style={styles.dynamicFilterOptions}>
-                {values && (values instanceof Set || Array.isArray(values)) ? Array.from(values).map((value) => {
+                {values && (values instanceof Set || Array.isArray(values)) ? Array.from(values).filter(v => v != null && v !== undefined && String(v).trim() !== '').map((value) => {
                   const isActive = selectedFilters[label] === value;
                   return (
                     <TouchableOpacity
-                      key={value}
+                      key={String(value)}
                       style={[styles.dynamicFilterChip, isActive && styles.dynamicFilterChipActive]}
                       onPress={() => setSelectedFilters((prev) => {
                         const next = { ...prev };
                         if (isActive) {
                           delete next[label];
                         } else {
-                          next[label] = value;
+                          next[label] = String(value);
                         }
                         return next;
                       })}
                     >
                       <Text style={[styles.dynamicFilterChipText, isActive && styles.dynamicFilterChipTextActive]}>
-                        {value}
+                        {String(value)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -1876,37 +1876,43 @@ const ResultatBesoinScreen: React.FC = () => {
 
           // ✅ NOUVEAU : Détecter les résultats de recherche de tickets bus directement
           if (searchMethod.includes('bus_tickets') || type === 'bus_ticket') {
-            const busTickets = Array.isArray(item) ? item : [item];
-            const agencyData = (item as any).agency || {};
+            // ✅ CORRIGÉ: Protection contre undefined/null - s'assurer que busTickets est toujours un array valide
+            let busTickets: any[] = [];
+            if (Array.isArray(item)) {
+              busTickets = item.filter(ticket => ticket != null);
+            } else if (item != null) {
+              busTickets = [item];
+            }
+            const agencyData = (item as any)?.agency || {};
 
             return (
               <AgenceVoyageResultCard
                 agency={{
-                  id: agencyData.agency_id || item.service_id,
-                  service_id: agencyData.agency_service_id || item.service_id,
-                  nom_agence: agencyData.agency_nom || data.titre_service?.valeur || item.nom || '',
-                  quartier: agencyData.agency_quartier || data.quartier,
-                  ville: agencyData.agency_ville || data.ville,
-                  telephone: agencyData.agency_telephone || data.telephone,
-                  whatsapp: agencyData.agency_whatsapp || data.whatsapp,
+                  id: agencyData.agency_id || item?.service_id,
+                  service_id: agencyData.agency_service_id || item?.service_id,
+                  nom_agence: agencyData.agency_nom || data?.titre_service?.valeur || item?.nom || '',
+                  quartier: agencyData.agency_quartier || data?.quartier,
+                  ville: agencyData.agency_ville || data?.ville,
+                  telephone: agencyData.agency_telephone || data?.telephone,
+                  whatsapp: agencyData.agency_whatsapp || data?.whatsapp,
                   peut_emettre_tickets_bus: true,
-                  distance_km: (item as any).distance_km || item.distance_km,
+                  distance_km: (item as any)?.distance_km || item?.distance_km,
                 }}
-                busTickets={Array.isArray(busTickets) ? busTickets.map((ticket: any) => ({
-                  product_id: ticket.product_id || ticket.id,
-                  product_name: ticket.product_name || ticket.name,
-                  bus_model_name: ticket.bus_model_name,
-                  total_seats: ticket.total_seats,
-                  available_seats: ticket.available_seats || 0,
-                  reserved_seats: ticket.reserved_seats || 0,
-                  bus_number: ticket.bus_number,
-                  departure_city: ticket.departure_city,
-                  arrival_city: ticket.arrival_city,
-                  departure_date: ticket.departure_date,
-                  departure_time: ticket.departure_time,
-                  ticket_price: ticket.ticket_price || ticket.price,
-                  currency: ticket.currency || 'XAF',
-                  distance_km: ticket.distance_km,
+                busTickets={Array.isArray(busTickets) && busTickets.length > 0 ? busTickets.filter(ticket => ticket != null).map((ticket: any) => ({
+                  product_id: ticket?.product_id || ticket?.id,
+                  product_name: ticket?.product_name || ticket?.name,
+                  bus_model_name: ticket?.bus_model_name,
+                  total_seats: ticket?.total_seats,
+                  available_seats: ticket?.available_seats || 0,
+                  reserved_seats: ticket?.reserved_seats || 0,
+                  bus_number: ticket?.bus_number,
+                  departure_city: ticket?.departure_city,
+                  arrival_city: ticket?.arrival_city,
+                  departure_date: ticket?.departure_date,
+                  departure_time: ticket?.departure_time,
+                  ticket_price: ticket?.ticket_price || ticket?.price,
+                  currency: ticket?.currency || 'XAF',
+                  distance_km: ticket?.distance_km,
                 })) : []}
                 onPress={() => {
                   trackNavigation('click', {
