@@ -172,14 +172,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ CORRECTION: Convertir automatiquement redis:// en rediss:// pour Upstash avec TLS
     // Note: Si l'URL a déjà rediss://, cette conversion ne fait rien
+    let original_url = redis_url.clone();
     if redis_url.contains("upstash.io") && redis_url.starts_with("redis://") {
         redis_url = redis_url.replace("redis://", "rediss://");
         log::info!("✅ Redis: URL corrigée automatiquement pour Upstash TLS (redis:// → rediss://)");
+        log::info!("   Avant: {}...", original_url.chars().take(50).collect::<String>());
+        log::info!("   Après: {}...", redis_url.chars().take(50).collect::<String>());
     }
     
     // ✅ CORRECTION: Si l'URL utilise déjà rediss:// mais la connexion échoue,
     // le problème est probablement la feature TLS (native-tls vs rustls-tls)
-    // Nous utilisons maintenant rustls-tls dans Cargo.toml pour une meilleure compatibilité
+    // Nous utilisons maintenant native-tls dans Cargo.toml (redis 0.26 nécessite native-tls)
 
     // Valider le format de l'URL Redis
     let redis_url_valid = validate_redis_url(&redis_url);
@@ -197,19 +200,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Logger l'URL Redis utilisée (masquer le mot de passe)
+    // ✅ CORRECTION: Utiliser l'URL corrigée (rediss://) pour l'affichage
     let redis_url_display = if redis_url.contains("@") {
         let parts: Vec<&str> = redis_url.split("@").collect();
         if parts.len() == 2 {
             let auth_part = parts[0].replace("redis://", "").replace("rediss://", "");
+            let protocol = if redis_url.starts_with("rediss://") { "rediss://" } else { "redis://" };
             if auth_part.contains(":") {
                 let user_pass: Vec<&str> = auth_part.split(":").collect();
                 if user_pass.len() == 2 {
-                    format!("redis://{}:***@{}", user_pass[0], parts[1])
+                    format!("{}{}:***@{}", protocol, user_pass[0], parts[1])
                 } else {
-                    format!("redis://***@{}", parts[1])
+                    format!("{}***@{}", protocol, parts[1])
                 }
             } else {
-                format!("redis://***@{}", parts[1])
+                format!("{}***@{}", protocol, parts[1])
             }
         } else {
             redis_url.chars().take(50).collect::<String>()
@@ -219,6 +224,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     log::info!("🔍 Tentative de connexion Redis: {}...", redis_url_display);
+    
+    // ✅ VÉRIFICATION: Afficher un avertissement si l'URL n'a pas été convertie mais devrait l'être
+    if redis_url.contains("upstash.io") && !redis_url.starts_with("rediss://") {
+        log::warn!("⚠️ Redis: URL Upstash détectée mais n'utilise pas rediss:// - Conversion automatique devrait avoir eu lieu");
+    }
 
     // Créer un client Redis et tester la connexion
     let (redis_client, redis_available_for_ws) = match RedisClient::open(redis_url.clone()) {
