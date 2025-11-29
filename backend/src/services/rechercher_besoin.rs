@@ -63,7 +63,7 @@ async fn search_services_fallback(
     
     // Construire les conditions de recherche pour tous les termes avec OR
     // On utilise une approche avec unnest pour itérer sur les patterns
-    let search_patterns: Vec<String> = search_terms.iter().map(|t| format!("%{}%", t)).collect();
+    // Note: search_patterns n'est plus utilisé car on utilise tsvector maintenant
     
     // ✅ OPTIMISÉ 2025-11-29: Utiliser recherche full-text PostgreSQL (tsvector) au lieu d'ILIKE
     // Performance: < 500ms au lieu de plusieurs secondes
@@ -564,8 +564,6 @@ pub async fn rechercher_besoin_direct(
     });
 
     // ✅ OPTIMISÉ 2025-11-29: Enrichir les résultats avec batch queries au lieu de N requêtes séquentielles
-    use std::collections::HashMap;
-    
     let service_ids: Vec<i32> = matches.iter().map(|m| m.service_id).collect();
     
     if service_ids.is_empty() {
