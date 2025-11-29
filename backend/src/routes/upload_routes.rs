@@ -23,7 +23,7 @@ pub fn upload_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         // ✅ Servir les fichiers temporaires uploadés
         .route(
-            "/api/media/temp/*path",
+            "/api/media/temp/{*path}",
             get(serve_temp_file)
         )
         .layer(middleware::from_fn(jwt_auth))

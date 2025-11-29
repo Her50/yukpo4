@@ -23,14 +23,18 @@ CREATE TABLE IF NOT EXISTS bus_seat_blocks (
     unblocked_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     unblocked_at TIMESTAMPTZ,
     
-    -- Contrainte unique : une place ne peut être bloquée qu'une fois à la fois
-    CONSTRAINT unique_active_seat_block UNIQUE (product_id, seat_id) WHERE is_active = TRUE
+    -- Note: Contrainte unique partielle gérée via index unique (voir après CREATE TABLE)
 );
 
 -- 2. Index pour optimiser les requêtes
 CREATE INDEX IF NOT EXISTS idx_bus_seat_blocks_product ON bus_seat_blocks(product_id);
 CREATE INDEX IF NOT EXISTS idx_bus_seat_blocks_active ON bus_seat_blocks(is_active) WHERE is_active = TRUE;
 CREATE INDEX IF NOT EXISTS idx_bus_seat_blocks_seat ON bus_seat_blocks(seat_id);
+
+-- 2.1. Index unique partiel : une place ne peut être bloquée qu'une fois à la fois (actif uniquement)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bus_seat_blocks_unique_active 
+ON bus_seat_blocks(product_id, seat_id) 
+WHERE is_active = TRUE;
 
 -- 3. Fonction pour bloquer une place manuellement
 CREATE OR REPLACE FUNCTION block_bus_seat_manually(

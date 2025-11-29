@@ -2,7 +2,6 @@ use crate::utils::jwt_manager::decode_jwt;
 use axum::body::Body;
 use axum::http::StatusCode;
 use axum::{http::Request, middleware::Next, response::Response};
-use base64::engine::general_purpose;
 use std::env;
 
 /// ? Authenticated user structure
@@ -37,7 +36,7 @@ pub async fn jwt_auth(
                     eprintln!("[DEBUG] Token de développement détecté (mode debug uniquement)");
                     let parts: Vec<&str> = token.split('.').collect();
                     if parts.len() == 3 {
-                        if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
+                        if let Ok(payload_str) = base64::engine::general_purpose::STANDARD.decode(parts[1]) {
                             if let Ok(payload) =
                                 serde_json::from_slice::<serde_json::Value>(&payload_str)
                             {
@@ -119,7 +118,7 @@ pub async fn optional_jwt_auth(mut req: Request<Body>, next: Next) -> Response {
                 if token.ends_with(".dev_signature") {
                     let parts: Vec<&str> = token.split('.').collect();
                     if parts.len() == 3 {
-                        if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
+                        if let Ok(payload_str) = base64::engine::general_purpose::STANDARD.decode(parts[1]) {
                             if let Ok(payload) =
                                 serde_json::from_slice::<serde_json::Value>(&payload_str)
                             {
