@@ -1128,6 +1128,13 @@ export const mediaApi = {
       body: JSON.stringify(payload),
     });
   },
+  // ✅ NOUVEAU: Génération de timeline de montage vidéo
+  generateVideoTimeline: async (payload: any) => {
+    return apiCall('/api/media/generate-video-timeline', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
   analyzeMedia: async (payload: any) => {
     return apiCall('/api/media/analyze', {
       method: 'POST',

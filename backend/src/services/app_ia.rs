@@ -148,6 +148,61 @@ pub struct MediaAnalysisRequest {
     pub lang: String,
 }
 
+/// ✅ NOUVEAU: Structure pour une scène de timeline
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimelineScene {
+    pub scene_index: usize,
+    pub start_time: f64,        // secondes
+    pub duration: f64,           // secondes
+    pub media_id: Option<String>,
+    pub media_url: Option<String>,
+    pub text: Option<String>,
+    pub text_position: Option<String>, // 'top' | 'center' | 'bottom'
+    pub transition: Option<String>,     // 'fade' | 'slide' | 'zoom' | 'none'
+    pub effects: Vec<String>,           // Liste des effets à appliquer
+    pub audio_cue: Option<f64>,        // Timing pour synchronisation audio (secondes)
+}
+
+/// ✅ NOUVEAU: Structure pour la timeline complète
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct VideoTimeline {
+    pub total_duration: f64,
+    pub scenes: Vec<TimelineScene>,
+}
+
+/// ✅ NOUVEAU: Requête pour générer une timeline
+#[derive(Debug, Clone, Deserialize)]
+pub struct TimelineRequest {
+    pub brief: TimelineBriefInput,
+    pub style: TimelineStyleInput,
+    pub available_media: Vec<TimelineMediaItem>,
+    pub duration_seconds: f64,
+    pub voiceover_script: Option<String>,
+    pub music_track_id: Option<String>,
+    pub lang: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TimelineBriefInput {
+    pub script_outline: Vec<String>,
+    pub headline: Option<String>,
+    pub call_to_action: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TimelineStyleInput {
+    pub effects: Vec<String>,
+    pub transitions: Vec<String>,
+    pub color_palette: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TimelineMediaItem {
+    pub id: String,
+    pub url: Option<String>,
+    pub media_type: String, // 'image' | 'video'
+}
+
 #[derive(Debug, Clone)]
 pub struct DistributionRequest {
     pub product_name: String,
@@ -451,7 +506,8 @@ impl AppIA {
             log::warn!("[AppIA] Aucun mod?le activ?, utilisation du fallback");
             let (model_name, response) = self.generate_fallback_response(prompt)?;
             let response_string = response.to_string();
-            return Ok((response_string, model_name, 5));
+            // ?? CORRECTION : L'ordre de retour doit être (model_name, response, tokens)
+            return Ok((model_name, response_string, 5));
         }
 
         // 3. ? OPTIMISATION : Timeout optimis? pour performance
@@ -498,7 +554,8 @@ impl AppIA {
             .await;
         self.record_interaction(&interaction_id, prompt, &response_string, &model_name)
             .await;
-        return Ok((response_string, model_name, 5));
+        // ?? CORRECTION : L'ordre de retour doit être (model_name, response, tokens)
+        return Ok((model_name, response_string, 5));
     }
 
     /// ??? Pr?diction multimodale avec support des images
@@ -3023,6 +3080,321 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .unwrap_or_default();
 
         Ok(suggestion)
+    }
+
+    /// ✅ NOUVEAU: Génère une timeline structurée pour le montage vidéo
+    pub async fn generate_video_timeline(
+        &self,
+        request: &TimelineRequest,
+    ) -> AppResult<VideoTimeline> {
+        let script_lines = &request.brief.script_outline;
+        let duration = request.duration_seconds;
+        let lang = request.lang.as_deref().unwrap_or("fr");
+
+        // Calculer la durée par scène (répartir équitablement)
+        let num_scenes = script_lines.len().max(1);
+        let duration_per_scene = duration / num_scenes as f64;
+        // Minimum 2 secondes par scène, maximum 8 secondes
+        let duration_per_scene = duration_per_scene.clamp(2.0, 8.0);
+
+        // Construire la liste des médias disponibles
+        let media_list = if request.available_media.is_empty() {
+            "Aucun média disponible - utiliser des images générées IA".to_string()
+        } else {
+            request
+                .available_media
+                .iter()
+                .enumerate()
+                .map(|(i, m)| {
+                    format!(
+                        "{}. {} ({})",
+                        i + 1,
+                        m.media_type,
+                        m.id
+                    )
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        };
+
+        // Construire le prompt pour l'IA
+        let effects_list = if request.style.effects.is_empty() {
+            "zoom, fade".to_string()
+        } else {
+            request.style.effects.join(", ")
+        };
+
+        let transitions_list = if request.style.transitions.is_empty() {
+            "fade, slide".to_string()
+        } else {
+            request.style.transitions.join(", ")
+        };
+
+        let prompt = format!(
+            "Tu es le monteur vidéo IA de Yukpomnang. Génère une timeline précise pour un montage vidéo.
+
+IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, SANS markdown, SANS code blocks, SANS texte avant ou après.
+
+Format JSON attendu:
+{{\"scenes\": [{{\"scene_index\": 0, \"start_time\": 0.0, \"duration\": 3.5, \"media_id\": \"...\", \"text\": \"...\", \"text_position\": \"center\", \"transition\": \"fade\", \"effects\": [\"zoom\"], \"audio_cue\": 0.0}}]}}
+
+Contraintes:
+- Durée totale: {duration} secondes
+- Durée par scène: {duration_per_scene:.1} secondes (min 2s, max 8s)
+- Nombre de scènes: {num_scenes}
+- text_position: 'top' | 'center' | 'bottom'
+- transition: 'fade' | 'slide' | 'zoom' | 'none'
+- effects: liste d'effets disponibles ({effects_list})
+- transitions disponibles: {transitions_list}
+- audio_cue: timing pour synchronisation (secondes depuis le début)
+
+Script à mettre en scène:
+{script_lines}
+
+Médias disponibles:
+{media_list}
+
+Style:
+- Effets: {effects_list}
+- Transitions: {transitions_list}
+- Palette couleurs: {color_palette}
+
+Titre: {headline}
+CTA: {cta}
+
+Langue: {lang}
+
+Réponds SEULEMENT le JSON, rien d'autre.",
+            duration = duration,
+            duration_per_scene = duration_per_scene,
+            num_scenes = num_scenes,
+            script_lines = script_lines
+                .iter()
+                .enumerate()
+                .map(|(i, line)| format!("{}. {}", i + 1, line))
+                .collect::<Vec<String>>()
+                .join("\n"),
+            media_list = media_list,
+            effects_list = effects_list,
+            transitions_list = transitions_list,
+            color_palette = request
+                .style
+                .color_palette
+                .as_deref()
+                .unwrap_or("Couleurs vives et modernes"),
+            headline = request
+                .brief
+                .headline
+                .as_deref()
+                .unwrap_or(""),
+            cta = request
+                .brief
+                .call_to_action
+                .as_deref()
+                .unwrap_or(""),
+            lang = lang,
+        );
+
+        // Appeler l'IA
+        let response = match self.predict(&prompt).await {
+            Ok((model_name, response, tokens)) => {
+                log::info!(
+                    "[AppIA::generate_video_timeline] ✅ Prédiction réussie avec {} ({} tokens)",
+                    model_name, tokens
+                );
+                response
+            }
+            Err(err) => {
+                log::error!(
+                    "[AppIA::generate_video_timeline] ❌ Échec prédiction IA: {}",
+                    err
+                );
+                return Err(err);
+            }
+        };
+
+        // Extraire le JSON
+        let json_block = match extract_json_block(&response) {
+            Some(block) => {
+                log::debug!(
+                    "[AppIA::generate_video_timeline] ✅ JSON extrait ({} chars)",
+                    block.len()
+                );
+                block
+            }
+            None => {
+                let cleaned = response.trim();
+                if cleaned.starts_with('{') || cleaned.starts_with('[') {
+                    if serde_json::from_str::<Value>(cleaned).is_ok() {
+                        log::debug!(
+                            "[AppIA::generate_video_timeline] ✅ JSON trouvé après nettoyage ({} chars)",
+                            cleaned.len()
+                        );
+                        cleaned.to_string()
+                    } else {
+                        log::error!(
+                            "[AppIA::generate_video_timeline] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                            response.len(),
+                            if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                        );
+                        return Err(AppError::Internal(format!(
+                            "Réponse IA timeline invalide (JSON manquant). Réponse reçue: {}",
+                            if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                        )));
+                    }
+                } else {
+                    log::error!(
+                        "[AppIA::generate_video_timeline] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                        response.len(),
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                    );
+                    return Err(AppError::Internal(format!(
+                        "Réponse IA timeline invalide (JSON manquant). Réponse reçue: {}",
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                    )));
+                }
+            }
+        };
+
+        // Parser le JSON
+        let parsed: Value = match serde_json::from_str(&json_block) {
+            Ok(value) => value,
+            Err(err) => {
+                log::error!(
+                    "[AppIA::generate_video_timeline] ❌ JSON malformé: {} - JSON: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                );
+                return Err(AppError::Internal(format!(
+                    "JSON timeline IA illisible: {}. JSON reçu: {}",
+                    err,
+                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                )));
+            }
+        };
+
+        // Extraire les scènes
+        let scenes_array = parsed
+            .get("scenes")
+            .and_then(Value::as_array)
+            .ok_or_else(|| AppError::Internal("JSON timeline IA sans champ 'scenes'".to_string()))?;
+
+        let mut scenes: Vec<TimelineScene> = Vec::new();
+        let mut current_time = 0.0;
+
+        for (idx, entry) in scenes_array.iter().enumerate() {
+            let scene_duration = entry
+                .get("duration")
+                .and_then(Value::as_f64)
+                .unwrap_or_else(|| {
+                    // Si pas de durée, utiliser la durée calculée
+                    if idx < script_lines.len() {
+                        duration_per_scene
+                    } else {
+                        2.0
+                    }
+                })
+                .clamp(1.0, 10.0);
+
+            let start_time = entry
+                .get("start_time")
+                .and_then(Value::as_f64)
+                .unwrap_or(current_time);
+
+            let scene = TimelineScene {
+                scene_index: entry
+                    .get("scene_index")
+                    .and_then(Value::as_u64)
+                    .map(|v| v as usize)
+                    .unwrap_or(idx),
+                start_time,
+                duration: scene_duration,
+                media_id: entry
+                    .get("media_id")
+                    .and_then(Value::as_str)
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+                media_url: entry
+                    .get("media_url")
+                    .and_then(Value::as_str)
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+                text: entry
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .or_else(|| {
+                        // Fallback: utiliser le script_outline correspondant
+                        script_lines.get(idx).cloned()
+                    }),
+                text_position: entry
+                    .get("text_position")
+                    .and_then(Value::as_str)
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| matches!(s.as_str(), "top" | "center" | "bottom")),
+                transition: entry
+                    .get("transition")
+                    .and_then(Value::as_str)
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| {
+                        matches!(
+                            s.as_str(),
+                            "fade" | "slide" | "zoom" | "none"
+                        )
+                    }),
+                effects: entry
+                    .get("effects")
+                    .and_then(Value::as_array)
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str())
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| !s.is_empty())
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                audio_cue: entry
+                    .get("audio_cue")
+                    .and_then(Value::as_f64),
+            };
+
+            scenes.push(scene);
+            current_time = start_time + scene_duration;
+        }
+
+        // Si aucune scène n'a été générée, créer une timeline basique
+        if scenes.is_empty() {
+            log::warn!(
+                "[AppIA::generate_video_timeline] ⚠️ Aucune scène générée, création timeline basique"
+            );
+            for (idx, line) in script_lines.iter().enumerate() {
+                let scene_duration = duration_per_scene;
+                scenes.push(TimelineScene {
+                    scene_index: idx,
+                    start_time: idx as f64 * scene_duration,
+                    duration: scene_duration,
+                    media_id: None,
+                    media_url: None,
+                    text: Some(line.clone()),
+                    text_position: Some("center".to_string()),
+                    transition: Some(if idx == 0 { "none".to_string() } else { "fade".to_string() }),
+                    effects: vec!["zoom".to_string()],
+                    audio_cue: Some(idx as f64 * scene_duration),
+                });
+            }
+        }
+
+        // Calculer la durée totale réelle
+        let total_duration = scenes
+            .iter()
+            .map(|s| s.start_time + s.duration)
+            .fold(0.0, f64::max);
+
+        Ok(VideoTimeline {
+            total_duration: total_duration.max(duration),
+            scenes,
+        })
     }
 }
 

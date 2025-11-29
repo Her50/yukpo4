@@ -448,6 +448,77 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
         [isFocused],
     );
 
+    // Fonction pour parser produits_indexes et extraire service_id + product_index
+    const parseProductIndex = useCallback((indexStr: string): { serviceId: number; productIndex: number } | null => {
+        if (!indexStr || typeof indexStr !== 'string') return null;
+        const parts = indexStr.split('_');
+        if (parts.length >= 2) {
+            const serviceId = parseInt(parts[0], 10);
+            const productIndex = parseInt(parts[1], 10);
+            if (!isNaN(serviceId) && !isNaN(productIndex)) {
+                return { serviceId, productIndex };
+            }
+        }
+        return null;
+    }, []);
+
+    // Handler pour le CTA (bouton "Voir le produit")
+    const handleCTAClick = useCallback(
+        async (pub: ApiPublicite, event?: any) => {
+            if (event) {
+                event.stopPropagation();
+            }
+
+            try {
+                const hasVideo = Boolean(resolveVideoSource(pub));
+                const primaryMeta = getPrimaryVideoMeta(pub, hasVideo);
+                await apiPost('/api/publicites/track-click', {
+                    publicite_id: Number(pub.id),
+                    user_id: userId,
+                    video_format: primaryMeta.format,
+                    video_source: primaryMeta.source,
+                });
+
+                // Essayer d'abord avec produits_indexes (format "service_id_product_index")
+                if (Array.isArray(pub.produits_indexes) && pub.produits_indexes.length > 0) {
+                    const firstIndex = pub.produits_indexes[0];
+                    const parsed = parseProductIndex(firstIndex);
+                    if (parsed) {
+                        // Navigation vers ProductDetail avec service_id + product_index
+                        (navigation as any).navigate('ProductDetail', {
+                            serviceId: parsed.serviceId,
+                            productIndex: parsed.productIndex,
+                        });
+                        return;
+                    }
+                }
+
+                // Fallback: utiliser produits enrichis si disponibles
+                if (Array.isArray(pub.produits) && pub.produits.length > 0) {
+                    const firstProduct = pub.produits[0];
+                    if (firstProduct?.serviceId) {
+                        // Si productIndex est disponible dans le produit enrichi
+                        if (firstProduct.productIndex !== undefined) {
+                            (navigation as any).navigate('ProductDetail', {
+                                serviceId: firstProduct.serviceId,
+                                productIndex: firstProduct.productIndex,
+                            });
+                        } else if (firstProduct.id) {
+                            // Fallback vers ChatModal si productIndex n'est pas disponible
+                            (navigation as any).navigate('ChatModal', {
+                                serviceId: firstProduct.serviceId,
+                                productId: firstProduct.id,
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('[PublicitesCarousel] Erreur tracking clic CTA:', error);
+            }
+        },
+        [navigation, userId, parseProductIndex],
+    );
+
     const handlePubliciteClick = useCallback(
         async (pub: ApiPublicite) => {
             try {
@@ -460,20 +531,13 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                     video_source: primaryMeta.source,
                 });
 
-                if (Array.isArray(pub.produits) && pub.produits.length > 0) {
-                    const firstProduct = pub.produits[0];
-                    if (firstProduct?.serviceId) {
-                        (navigation as any).navigate('ChatModal', {
-                            serviceId: firstProduct.serviceId,
-                            productId: firstProduct.id,
-                        });
-                    }
-                }
+                // Par défaut, naviguer vers le produit via CTA
+                handleCTAClick(pub);
             } catch (error) {
                 console.error('[PublicitesCarousel] Erreur tracking clic:', error);
             }
         },
-        [navigation, userId],
+        [navigation, userId, handleCTAClick],
     );
 
     const handleRetryVideo = useCallback(
@@ -597,6 +661,20 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                                                 </Text>
                                             </TouchableOpacity>
                                         )}
+                                        {/* Overlay CTA cliquable sur la vidéo */}
+                                        <TouchableOpacity
+                                            activeOpacity={0.9}
+                                            style={styles.ctaOverlay}
+                                            onPress={(event) => {
+                                                event.stopPropagation();
+                                                handleCTAClick(pub, event);
+                                            }}
+                                        >
+                                            <View style={styles.ctaOverlayContent}>
+                                                <Text style={styles.ctaOverlayText}>Voir le produit</Text>
+                                                <SafeIcon name="arrow-right" size={18} color="#fff" />
+                                            </View>
+                                        </TouchableOpacity>
                                         <View style={styles.badgesRow}>
                                             <View style={styles.squareBadge}>
                                                 <Text style={styles.squareBadgeText}>1:1</Text>
@@ -692,10 +770,14 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                                                     : t('publicite.zone.international')}
                                         </Text>
                                     </View>
-                                    <View style={styles.ctaPill}>
+                                    <TouchableOpacity
+                                        activeOpacity={0.8}
+                                        style={styles.ctaPill}
+                                        onPress={(event) => handleCTAClick(pub, event)}
+                                    >
                                         <Text style={styles.ctaText}>Voir le produit</Text>
                                         <SafeIcon name="arrow-right" size={14} color="#fff" />
-                                    </View>
+                                    </TouchableOpacity>
                                 </View>
                             </View>
                         </TouchableOpacity>
@@ -911,6 +993,34 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
         color: '#fff',
+    },
+    ctaOverlay: {
+        position: 'absolute',
+        bottom: 16,
+        left: 16,
+        right: 16,
+        zIndex: 10,
+    },
+    ctaOverlayContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 999,
+        backgroundColor: 'rgba(99, 102, 241, 0.95)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    ctaOverlayText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#fff',
+        letterSpacing: 0.3,
     },
     pagination: {
         flexDirection: 'row',

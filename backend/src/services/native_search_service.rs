@@ -1132,7 +1132,7 @@ impl NativeSearchService {
         //   CREATE INDEX IF NOT EXISTS idx_services_data_gin ON services USING GIN (data);
         //   CREATE INDEX IF NOT EXISTS idx_services_data_text ON services USING GIN (to_tsvector('french', COALESCE(data->>'titre_service'->>'valeur', '')));
         //   CREATE INDEX IF NOT EXISTS idx_autocomplete_characteristics_service_id ON autocomplete_characteristics(service_id) WHERE is_real_product = TRUE;
-        let partial_conditions = self.create_partial_match_conditions(query);
+        let partial_conditions = self.create_partial_match_conditions(query, "ape");
 
         let sql = format!(
             r#"
@@ -1254,7 +1254,7 @@ autocomplete_scored AS (
     GROUP BY ac.service_id
 )
 SELECT DISTINCT
-    pe.id,
+    pe.service_id as id,
     pe.data,
     pe.created_at,
     pe.user_id,
@@ -2096,15 +2096,15 @@ LIMIT 100
     }
 
     /// Créer une requête SQL avec correspondances partielles intelligentes
-    fn create_partial_match_conditions(&self, query: &str) -> String {
+    fn create_partial_match_conditions(&self, query: &str, table_alias: &str) -> String {
         let words: Vec<&str> = query.split_whitespace().collect();
         let mut conditions = Vec::new();
 
         for word in words {
             // Correspondances exactes
             conditions.push(format!(
-                "s.data->'titre_service'->>'valeur' ILIKE '%{}%' OR s.data->'description'->>'valeur' ILIKE '%{}%' OR s.data->'category'->>'valeur' ILIKE '%{}%'",
-                word, word, word
+                "{}.data->'titre_service'->>'valeur' ILIKE '%{}%' OR {}.data->'description'->>'valeur' ILIKE '%{}%' OR {}.data->'category'->>'valeur' ILIKE '%{}%'",
+                table_alias, word, table_alias, word, table_alias, word
             ));
 
             // Correspondances sans accents (uniquement si le mot a des accents)
@@ -2124,15 +2124,15 @@ LIMIT 100
 
             if without_accents != word {
                 conditions.push(format!(
-                    "unaccent_immutable(s.data->'titre_service'->>'valeur') ILIKE '%{}%' OR unaccent_immutable(s.data->'description'->>'valeur') ILIKE '%{}%' OR unaccent_immutable(s.data->'category'->>'valeur') ILIKE '%{}%'",
-                    without_accents, without_accents, without_accents
+                    "unaccent_immutable({}.data->'titre_service'->>'valeur') ILIKE '%{}%' OR unaccent_immutable({}.data->'description'->>'valeur') ILIKE '%{}%' OR unaccent_immutable({}.data->'category'->>'valeur') ILIKE '%{}%'",
+                    table_alias, without_accents, table_alias, without_accents, table_alias, without_accents
                 ));
             }
 
             // Correspondances bidirectionnelles : mot sans accents dans base avec accents
             conditions.push(format!(
-                "unaccent(s.data->'titre_service'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'description'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'category'->>'valeur') ILIKE '%{}%'",
-                word, word, word
+                "unaccent({}.data->'titre_service'->>'valeur') ILIKE '%{}%' OR unaccent({}.data->'description'->>'valeur') ILIKE '%{}%' OR unaccent({}.data->'category'->>'valeur') ILIKE '%{}%'",
+                table_alias, word, table_alias, word, table_alias, word
             ));
 
             // Correspondances partielles pour mots longs (ex: "gestionnaire" -> "gestion")
@@ -2141,8 +2141,8 @@ LIMIT 100
                 // Prendre seulement les 4 premiers caractères pour éviter trop de correspondances
                 let substring: String = chars[..4].iter().collect();
                 conditions.push(format!(
-                    "s.data->'titre_service'->>'valeur' ILIKE '%{}%' OR s.data->'description'->>'valeur' ILIKE '%{}%' OR s.data->'category'->>'valeur' ILIKE '%{}%'",
-                    substring, substring, substring
+                    "{}.data->'titre_service'->>'valeur' ILIKE '%{}%' OR {}.data->'description'->>'valeur' ILIKE '%{}%' OR {}.data->'category'->>'valeur' ILIKE '%{}%'",
+                    table_alias, substring, table_alias, substring, table_alias, substring
                 ));
             }
         }

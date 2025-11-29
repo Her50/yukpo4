@@ -967,7 +967,7 @@ const MesServicesScreen: React.FC = () => {
 
               {/* ✅ BOUTON GALERIE PRODUITS - Maintenant visible */}
               <TouchableOpacity
-                style={styles.headerButton}
+                style={[styles.headerButton, { backgroundColor: 'rgba(16, 185, 129, 0.3)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' }]}
                 onPress={() => setShowProductGallery(true)}
                 accessibilityLabel="Galerie Médias Produits"
               >
@@ -990,14 +990,14 @@ const MesServicesScreen: React.FC = () => {
           <View style={styles.globalMenu}>
             {/* ✅ NOUVEAU: Galerie Médias Produits - Déplacé ici pour être visible */}
             <TouchableOpacity
-              style={styles.menuItem}
+              style={[styles.menuItem, { backgroundColor: '#F0FDF4' }]}
               onPress={() => {
                 setShowGlobalMenu(false);
                 setShowProductGallery(true);
               }}
             >
               <SafeIcon name="image" size={18} color="#10B981" />
-              <Text style={styles.menuItemText}>Galerie Médias</Text>
+              <Text style={[styles.menuItemText, { color: '#059669' }]}>Galerie Médias</Text>
             </TouchableOpacity>
 
             {/* ✅ NOUVEAU: Configuration de livraison globale */}
@@ -1073,9 +1073,9 @@ const MesServicesScreen: React.FC = () => {
               <Text style={styles.menuItemText}>Publicité</Text>
             </TouchableOpacity>
 
-            {/* ✅ NOUVEAU: Mes Vidéos */}
+            {/* ✅ NOUVEAU: Mes Vidéos - Créées */}
             <TouchableOpacity
-              style={styles.menuItem}
+              style={[styles.menuItem, { backgroundColor: '#FDF2F8' }]}
               onPress={() => {
                 setShowGlobalMenu(false);
                 try {
@@ -1092,7 +1092,7 @@ const MesServicesScreen: React.FC = () => {
               }}
             >
               <SafeIcon name="video" size={18} color="#EC4899" />
-              <Text style={styles.menuItemText}>Mes Vidéos</Text>
+              <Text style={[styles.menuItemText, { color: '#BE185D' }]}>Mes Vidéos Créées</Text>
             </TouchableOpacity>
 
             {/* ✅ NOUVEAU: Participation Black Friday */}
@@ -1109,7 +1109,7 @@ const MesServicesScreen: React.FC = () => {
 
             {/* ✅ NOUVEAU: Analytiques Vidéos */}
             <TouchableOpacity
-              style={styles.menuItem}
+              style={[styles.menuItem, { backgroundColor: '#F5F3FF' }]}
               onPress={() => {
                 setShowGlobalMenu(false);
                 try {
@@ -1126,7 +1126,7 @@ const MesServicesScreen: React.FC = () => {
               }}
             >
               <SafeIcon name="bar-chart" size={18} color="#8B5CF6" />
-              <Text style={styles.menuItemText}>Analytiques Vidéos</Text>
+              <Text style={[styles.menuItemText, { color: '#6D28D9' }]}>Analytiques Vidéos</Text>
             </TouchableOpacity>
 
             {/* ✅ Bouton Paramètres */}
@@ -1327,7 +1327,6 @@ const MesServicesScreen: React.FC = () => {
                 onDelete={handleDeleteService}
                 onPromotion={handlePromotionService}
                 onViewProducts={() => navigation.navigate('MesProduits' as never)}
-                onCreateVideo={handleCreateVideo}  // ✅ NOUVEAU
               />
             )) : null}
           </View>
@@ -1402,8 +1401,20 @@ const MesServicesScreen: React.FC = () => {
         onSelectMultiple={(selectedProducts) => {
           // ✅ Mode multiple (livraison ou équipe)
           if (productSelectorMode === 'delivery') {
-            // ✅ Stocker les produits sélectionnés complets et ouvrir le modal de configuration livraison
-            setSelectedProductsForDelivery(selectedProducts);
+            // ✅ SÉCURISÉ: Normaliser les produits pour garantir que productName et serviceName sont des strings
+            const normalizedProducts = (Array.isArray(selectedProducts) ? selectedProducts : []).map(product => ({
+              serviceId: product?.serviceId || 0,
+              productIndex: product?.productIndex ?? 0,
+              productName: typeof product?.productName === 'string' ? product.productName.trim() :
+                (product?.productName && typeof product.productName === 'object' && 'valeur' in product.productName && typeof product.productName.valeur === 'string' ? product.productName.valeur.trim() :
+                  String(product?.productName || 'Produit sans nom')),
+              serviceName: typeof product?.serviceName === 'string' ? product.serviceName.trim() :
+                (product?.serviceName && typeof product.serviceName === 'object' && 'valeur' in product.serviceName && typeof product.serviceName.valeur === 'string' ? product.serviceName.valeur.trim() :
+                  String(product?.serviceName || 'Service sans nom')),
+            })).filter(p => p.serviceId > 0);
+
+            // ✅ Stocker les produits sélectionnés normalisés et ouvrir le modal de configuration livraison
+            setSelectedProductsForDelivery(normalizedProducts);
             setShowGlobalDeliveryConfig(true);
           } else if (productSelectorMode === 'team') {
             // ✅ CORRECTION: Vérifier que selectedProducts est un tableau valide
@@ -1576,8 +1587,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-    minWidth: 180,
-    zIndex: 1000,
+    minWidth: 220,
+    maxWidth: 280,
+    zIndex: 10000,
   },
   menuItem: {
     flexDirection: 'row',

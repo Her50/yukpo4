@@ -142,9 +142,10 @@ pub async fn orchestrer_intention_ia_avec_optimisations(
     log_info("[OrchestrationOptimized] Appel IA avec prompt optimis?");
     let ia_start = Instant::now();
 
+    // ?? CORRECTION : L'ordre de retour est (model_name, response, tokens)
     let (source, ia_response, _tokens_consumed): (String, String, u32) =
         match state.ia.predict(&optimized_prompt).await {
-            Ok(response) => response,
+            Ok((model_name, response, tokens)) => (model_name, response, tokens),
             Err(e) => {
                 log_error(&format!("[OrchestrationOptimized] Erreur appel IA: {}", e));
                 return Err(format!("Erreur appel IA: {}", e).into());

@@ -504,8 +504,21 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                                 is_paid: false,
                                 data: {
                                     ...productData,
-                                    serviceId: service.id,
-                                    service: service,
+                                    // ✅ CORRIGÉ: S'assurer que les propriétés principales sont au niveau racine pour ProductCard
+                                    nom: productData.nom || productData.name || productData.titre || productData.title,
+                                    prix: productData.prix || productData.price || productData.prix_produit,
+                                    description: productData.description || productData.desc || productData.description_produit,
+                                    serviceId: service.id || service.service_id,
+                                    service: {
+                                        ...service,
+                                        // ✅ CORRIGÉ: S'assurer que service.data contient les bonnes propriétés
+                                        data: service.data || {
+                                            nom_produit: productData.nom ? { valeur: productData.nom } : undefined,
+                                            titre_service: service.data?.titre_service || (service.titre ? { valeur: service.titre } : undefined),
+                                            description: productData.description ? { valeur: productData.description } : undefined,
+                                            prix_produit: productData.prix ? { valeur: productData.prix } : undefined,
+                                        }
+                                    },
                                     product_index: typeof product.product_index === 'number' ? product.product_index : index
                                 }
                             });
@@ -517,10 +530,21 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                             is_paid: false,
                             data: {
                                 ...service,
+                                // ✅ CORRIGÉ: S'assurer que les propriétés principales sont au niveau racine
                                 nom: service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.titre || service.nom || 'Service',
                                 description: service.data?.description?.valeur || service.description || 'Description du service',
                                 prix: service.prix || '0',
-                                devise: service.devise || 'XAF'
+                                devise: service.devise || 'XAF',
+                                serviceId: service.id || service.service_id,
+                                // ✅ CORRIGÉ: S'assurer que service.data est correctement structuré
+                                service: {
+                                    ...service,
+                                    data: service.data || {
+                                        titre_service: service.titre ? { valeur: service.titre } : undefined,
+                                        nom_produit: service.nom ? { valeur: service.nom } : undefined,
+                                        description: service.description ? { valeur: service.description } : undefined,
+                                    }
+                                }
                             }
                         });
                     }
@@ -812,6 +836,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
     return (
         <View style={styles.container}>
+            {/* ✅ CORRIGÉ: Conteneur avec hauteur fixe pour éviter le débordement */}
             {/* ✅ Barres de progression (comme Instagram Stories) */}
             <View style={styles.progressBars}>
                 {safeContent.map((_, index) => (
@@ -862,55 +887,79 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                     }
                 }}
             >
-                {safeContent.map((item, index) => (
-                    <TouchableOpacity
-                        key={`${item.type}-${item.data.id}-${index}`}
-                        style={[styles.card, { width: CARD_WIDTH, marginRight: CARD_MARGIN }]}
-                        activeOpacity={0.9}
-                        onPress={() => handleCardClick(item, index)}
-                    >
-                        {/* ✅ Badge Sponsorisé ou Recommandé */}
-                        <View style={[
-                            styles.badge,
-                            item.is_paid ? styles.badgePaid : styles.badgeOrganic
-                        ]}>
-                            <SafeIcon
-                                name={item.is_paid ? 'star' : 'sparkles'}
-                                size={12}
-                                color="#FFFFFF"
-                            />
-                            <Text style={styles.badgeText}>
-                                {item.is_paid ? 'Sponsorisé' : 'Pour vous'}
-                            </Text>
-                            {item.is_paid && item.boost_level && (
-                                <Text style={styles.boostLevel}>
-                                    {item.boost_level.toUpperCase()}
-                                </Text>
-                            )}
-                        </View>
-
-                        {/* ✅ Badge durée vidéo si présent */}
-                        {item.data?.videos && item.data.videos.length > 0 && (
-                            <View style={styles.videoBadge}>
-                                <SafeIcon name="video" size={14} color="#FFFFFF" />
-                                <Text style={styles.videoDuration}>0:15</Text>
-                            </View>
-                        )}
-
-                        {/* Contenu de la carte */}
-                        <ProductCard
-                            product={item.data}
-                            service={item.data.service || { id: item.data.serviceId || item.data.service_id, data: {} }}
-                            prestataire={item.data.prestataire}
+                {safeContent.map((item, index) => {
+                    // ✅ DIAGNOSTIC: Log pour comprendre les données
+                    if (__DEV__ && index === 0) {
+                        console.log('[MixedContentCarousel] 🔍 [DIAGNOSTIC] Données première carte:', {
+                            hasData: !!item.data,
+                            hasNom: !!item.data?.nom,
+                            hasService: !!item.data?.service,
+                            serviceId: item.data?.serviceId || item.data?.service_id,
+                            serviceData: item.data?.service?.data ? Object.keys(item.data.service.data) : 'no data',
+                            productKeys: item.data ? Object.keys(item.data).slice(0, 10) : []
+                        });
+                    }
+                    return (
+                        <TouchableOpacity
+                            key={`${item.type}-${item.data.id || item.data.serviceId || index}-${index}`}
+                            style={[styles.card, { width: CARD_WIDTH, marginRight: CARD_MARGIN }]}
+                            activeOpacity={0.9}
                             onPress={() => handleCardClick(item, index)}
-                            onChatPress={() => {
-                                setSelectedService(item.data.service || { id: item.data.serviceId || item.data.service_id, data: {} });
-                                setSelectedPrestataire(item.data.prestataire || null);
-                                setShowChatModal(true);
-                            }}
-                        />
-                    </TouchableOpacity>
-                ))}
+                        >
+                            {/* ✅ Badge Sponsorisé ou Recommandé */}
+                            <View style={[
+                                styles.badge,
+                                item.is_paid ? styles.badgePaid : styles.badgeOrganic
+                            ]}>
+                                <SafeIcon
+                                    name={item.is_paid ? 'star' : 'sparkles'}
+                                    size={12}
+                                    color="#FFFFFF"
+                                />
+                                <Text style={styles.badgeText}>
+                                    {item.is_paid ? 'Sponsorisé' : 'Pour vous'}
+                                </Text>
+                                {item.is_paid && item.boost_level && (
+                                    <Text style={styles.boostLevel}>
+                                        {item.boost_level.toUpperCase()}
+                                    </Text>
+                                )}
+                            </View>
+
+                            {/* ✅ Badge durée vidéo si présent */}
+                            {item.data?.videos && item.data.videos.length > 0 && (
+                                <View style={styles.videoBadge}>
+                                    <SafeIcon name="video" size={14} color="#FFFFFF" />
+                                    <Text style={styles.videoDuration}>0:15</Text>
+                                </View>
+                            )}
+
+                            {/* Contenu de la carte */}
+                            <ProductCard
+                                product={item.data}
+                                service={item.data.service || {
+                                    id: item.data.serviceId || item.data.service_id,
+                                    data: item.data.service?.data || {
+                                        titre_service: item.data.nom ? { valeur: item.data.nom } : undefined,
+                                        nom_produit: item.data.nom ? { valeur: item.data.nom } : undefined,
+                                        description: item.data.description ? { valeur: item.data.description } : undefined,
+                                        prix_produit: item.data.prix ? { valeur: item.data.prix } : undefined,
+                                    }
+                                }}
+                                prestataire={item.data.prestataire}
+                                onPress={() => handleCardClick(item, index)}
+                                onChatPress={() => {
+                                    setSelectedService(item.data.service || {
+                                        id: item.data.serviceId || item.data.service_id,
+                                        data: item.data.service?.data || {}
+                                    });
+                                    setSelectedPrestataire(item.data.prestataire || null);
+                                    setShowChatModal(true);
+                                }}
+                            />
+                        </TouchableOpacity>
+                    );
+                })}
             </ScrollView>
 
             {/* ✅ Pagination dots */}
@@ -966,6 +1015,9 @@ const styles = StyleSheet.create({
     container: {
         marginVertical: 8, // ✅ RÉDUIT: 16 → 8 pour mieux utiliser l'espace vertical
         marginTop: 4, // ✅ RÉDUIT: Moins d'espace en haut
+        height: 320, // ✅ AJOUTÉ: Hauteur fixe pour le conteneur (280px cartes + 40px pour progress bars et pagination)
+        maxHeight: 320, // ✅ AJOUTÉ: Hauteur maximale stricte
+        overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
     },
     loadingContainer: {
         padding: 40,
@@ -1007,12 +1059,15 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         marginBottom: 8,
-        minHeight: 280, // ✅ AJOUTÉ: Hauteur minimale pour garantir visibilité complète des cartes
+        height: 280, // ✅ CORRIGÉ: Hauteur fixe pour contenir les cartes (au lieu de minHeight)
+        maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
+        overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
     },
     scrollContent: {
         paddingLeft: SCREEN_PADDING, // ✅ CORRIGÉ: Padding à gauche seulement (paddingRight dans style inline)
         alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement les cartes
-        paddingVertical: 4, // ✅ AJOUTÉ: Petit padding vertical pour équilibrer
+        paddingVertical: 0, // ✅ CORRIGÉ: Pas de padding vertical pour éviter le débordement
+        height: 280, // ✅ AJOUTÉ: Hauteur fixe pour le contenu
     },
     card: {
         backgroundColor: '#FFFFFF',
@@ -1023,8 +1078,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 5,
-        maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale pour garantir visibilité complète
-        minHeight: 260, // ✅ AJOUTÉ: Hauteur minimale pour cartes avec media
+        height: 280, // ✅ CORRIGÉ: Hauteur fixe (au lieu de maxHeight) pour éviter le débordement
+        maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
     },
     badge: {
         position: 'absolute',

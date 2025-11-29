@@ -158,7 +158,8 @@ impl OptimizedIAService {
 
         // 6. Appel IA externe (DEUXI?ME APPEL IA) - Multimodal si images présentes
         let step6_start = std::time::Instant::now();
-        let (json_response, model_name, tokens_used) = if input.base64_image.is_some()
+        // ?? CORRECTION : L'ordre de retour est (model_name, response, tokens)
+        let (model_name, json_response, tokens_used) = if input.base64_image.is_some()
             && !input.base64_image.as_ref().unwrap().is_empty()
         {
             log::info!("[OptimizedIAService] Images détectées, utilisation de predict_multimodal");
@@ -344,7 +345,8 @@ impl OptimizedIAService {
             .await;
 
         // 7. Appel IA externe (le plus long) - Support multimodal UNIFI? - DEUXI?ME APPEL IA
-        let (json_response, model_name, tokens_used) = {
+        // ?? CORRECTION : L'ordre de retour est (model_name, response, tokens)
+        let (model_name, json_response, tokens_used) = {
             // ?? APPROCHE OPTIMALE : Convertir tous les modaux en images + un seul appel IA
             let all_images = convert_all_modals_to_images(input).await;
 
@@ -547,7 +549,8 @@ impl OptimizedIAService {
             .await;
 
         // 7. Appel IA externe avec optimisations GPU - Support multimodal UNIFI? - DEUXI?ME APPEL IA
-        let (json_response, model_name, tokens_used) = {
+        // ?? CORRECTION : L'ordre de retour est (model_name, response, tokens)
+        let (model_name, json_response, tokens_used) = {
             // ?? APPROCHE OPTIMALE GPU : Convertir tous les modaux en images optimis?es + un seul appel IA
             let all_images = gpu_optimizer
                 .convert_all_modals_to_images_optimized(input)
@@ -727,7 +730,8 @@ impl OptimizedIAService {
         log::info!("[OptimizedIAService] ?? Prompt généré pour création de service");
 
         // 4. Appeler l'IA pour générer le JSON structuré
-        let (json_response, model_name, tokens_used) =
+        // ?? CORRECTION : L'ordre de retour est (model_name, response, tokens)
+        let (model_name, json_response, tokens_used) =
             self.app_ia.predict(&enriched_prompt).await?;
         log::info!(
             "[OptimizedIAService] ?? Réponse IA reçue ({} tokens, modèle: {})",

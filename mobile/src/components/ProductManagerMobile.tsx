@@ -20,7 +20,7 @@ import ProductDeliveryConfigModal from './delivery/ProductDeliveryConfigModal';
 // Code corrigé (remplace @ts-ignore)
 // Code corrigé (remplace @ts-ignore)
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeInput } from './NativeDesign';
+import { NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 // Code corrigé (remplace @ts-ignore)
 // Code corrigé (remplace @ts-ignore)
@@ -2226,20 +2226,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 </View>
             ) : (
                 <>
-                    {/* ✅ NOUVEAU: Bouton configuration livraison transversale */}
-                    {!readonly && serviceId && products.filter(p => p.type !== 'prestation_service').length > 0 && (
-                        <View style={{ padding: 16, paddingBottom: 8 }}>
-                            <NativeButton
-                                title="🚚 Configurer livraison pour tous les produits"
-                                variant="secondary"
-                                onPress={() => {
-                                    setConfigProductIndex(-1); // -1 = mode transversal
-                                    setShowDeliveryConfigModal(true);
-                                }}
-                                style={{ backgroundColor: modernColors.success }}
-                            />
-                        </View>
-                    )}
+                    {/* ✅ SUPPRIMÉ: Bouton configuration livraison transversale - Déplacé dans le menu global de MesServices */}
                     <ScrollView style={styles.productsList} showsVerticalScrollIndicator={false}>
                         {products.map((product) => {
                             const typeInfo = getProductTypeInfo(product.type);
@@ -2287,19 +2274,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                         ) : (
                                                             // Produit actif → Boutons normaux + Désactiver
                                                             <>
-                                                                {/* ✅ NOUVEAU: Bouton configuration livraison (uniquement pour produits, pas prestations) */}
-                                                                {serviceId && product.type !== 'prestation_service' && (
-                                                                    <TouchableOpacity
-                                                                        style={styles.actionButton}
-                                                                        onPress={() => {
-                                                                            const index = products.findIndex(p => p.id === product.id);
-                                                                            setConfigProductIndex(index);
-                                                                            setShowDeliveryConfigModal(true);
-                                                                        }}
-                                                                    >
-                                                                        <SafeIcon name="truck" size={16} color={modernColors.success} />
-                                                                    </TouchableOpacity>
-                                                                )}
+                                                                {/* ✅ SUPPRIMÉ: Bouton configuration livraison - Déplacé dans le menu global */}
                                                                 <TouchableOpacity
                                                                     style={styles.actionButton}
                                                                     onPress={() => handleEditProduct(product)}

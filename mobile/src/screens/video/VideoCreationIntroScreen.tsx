@@ -3,6 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import ProductVideoCreationModal from '../../components/ProductVideoCreationModal';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import ServiceProductSelector from '../../components/ServiceProductSelector';
@@ -11,10 +12,11 @@ import VideoExampleModal from '../../components/VideoExampleModal';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import type { ManagedProduct } from '../../types/ManagedProduct';
+import type { GeneratedVideoResponse } from '../../types/VideoGeneration';
 import { extractProductName, extractServiceName } from '../../utils/displayHelpers';
 import { normalizeServiceProducts } from '../../utils/productNormalizer';
 import { apiCallWithRetry } from '../../utils/retryWithBackoff';
-import { navigateToVideoWizard } from '../../utils/videoNavigation';
 
 interface VideoCreationIntroParams {
     serviceId?: number;
@@ -40,6 +42,9 @@ const VideoCreationIntroScreen: React.FC = () => {
     const [availableProducts, setAvailableProducts] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
     const [showExampleModal, setShowExampleModal] = useState(false);
     const [showTutorial, setShowTutorial] = useState(false);
+    // ✅ NOUVEAU: État pour le modal de création vidéo unifié
+    const [showVideoCreationModal, setShowVideoCreationModal] = useState(false);
+    const [productsForVideoCreation, setProductsForVideoCreation] = useState<ManagedProduct[]>([]);
 
     // ✅ PHASE 3: Animations améliorées avec transitions plus fluides
     useEffect(() => {
@@ -206,17 +211,107 @@ const VideoCreationIntroScreen: React.FC = () => {
         ],
     });
 
+    // ✅ NOUVEAU: Fonction helper pour convertir un produit en ManagedProduct
+    // (Similaire à celle utilisée dans MesServicesScreen)
+    const convertToManagedProduct = (
+        service: any,
+        product: any,
+        productIndex: number
+    ): ManagedProduct | null => {
+        try {
+            const serviceId = service.id || service.service_id;
+            const serviceName = extractServiceName(service, `Service #${serviceId}`);
+
+            // Extraire les données du produit (gérer différents formats)
+            const productData = product.data || product;
+
+            return {
+                id: product.id || `${serviceId}_${productIndex}`,
+                serviceId: String(serviceId),
+                product_index: productIndex,
+                rawProductId: productIndex,
+                nom: extractProductName(product, `Produit ${productIndex + 1}`),
+                description: productData?.description || product.description || '',
+                prix: productData?.prix || product.prix || product.price,
+                devise: productData?.devise || product.devise || product.currency || 'XAF',
+                type: productData?.type || product.type || product.categorie || 'produit',
+                serviceTitre: serviceName,
+                images: productData?.images || product.images || [],
+                videos: productData?.videos || product.videos || [],
+                is_active: productData?.is_active !== false,
+                // Inclure toutes les autres propriétés
+                ...productData,
+                ...product,
+            };
+        } catch (error) {
+            console.error('[VideoCreationIntroScreen] Erreur conversion ManagedProduct:', error);
+            return null;
+        }
+    };
+
+    // ✅ NOUVEAU: Fonction pour charger les produits et ouvrir le modal
+    const openVideoCreationModal = async (selectedProduct: { serviceId: number; productIndex: number; productName: string; serviceName: string }) => {
+        try {
+            // Trouver le service correspondant
+            const service = userServices.find(
+                (s: any) => (s.id || s.service_id) === selectedProduct.serviceId
+            );
+
+            if (!service) {
+                Alert.alert('Erreur', 'Service introuvable');
+                return;
+            }
+
+            // Normaliser les produits du service
+            const produitsRaw = service.data?.produits || service.produits || service.data?.data?.produits;
+            const produits = normalizeServiceProducts(produitsRaw);
+
+            if (!Array.isArray(produits) || produits.length === 0) {
+                Alert.alert('Erreur', 'Aucun produit trouvé dans ce service');
+                return;
+            }
+
+            // Convertir tous les produits en ManagedProduct
+            const managedProducts: ManagedProduct[] = produits
+                .map((product: any, index: number) => convertToManagedProduct(service, product, index))
+                .filter((p): p is ManagedProduct => p !== null);
+
+            if (managedProducts.length === 0) {
+                Alert.alert('Erreur', 'Impossible de charger les produits');
+                return;
+            }
+
+            // Trouver le produit principal (celui sélectionné)
+            const primaryProduct = managedProducts.find(
+                (p) => p.product_index === selectedProduct.productIndex
+            ) || managedProducts[0];
+
+            // Ouvrir le modal
+            setProductsForVideoCreation(managedProducts);
+            setShowVideoCreationModal(true);
+        } catch (error) {
+            console.error('[VideoCreationIntroScreen] Erreur ouverture modal:', error);
+            Alert.alert('Erreur', 'Impossible d\'ouvrir l\'éditeur de vidéo');
+        }
+    };
+
     const handleStart = async () => {
         console.log('[VideoCreationIntroScreen] 🎬 Démarrage création vidéo', params);
 
-        // Si params déjà présents → Navigation directe
+        // ✅ UNIFIÉ: Si params déjà présents → Ouvrir directement le modal
         if (params.serviceId && params.productIndex !== undefined) {
-            const success = navigateToVideoWizard(navigation, {
-                serviceId: params.serviceId,
-                productIndex: params.productIndex,
-                productName: params.productName
-            });
-            if (success) return;
+            const service = userServices.find(
+                (s: any) => (s.id || s.service_id) === params.serviceId
+            );
+            if (service) {
+                await openVideoCreationModal({
+                    serviceId: params.serviceId,
+                    productIndex: params.productIndex,
+                    productName: params.productName || 'Produit',
+                    serviceName: extractServiceName(service, `Service #${params.serviceId}`)
+                });
+                return;
+            }
         }
 
         // Si l'utilisateur a des services → Extraire les produits
@@ -476,14 +571,16 @@ const VideoCreationIntroScreen: React.FC = () => {
                 products={availableProducts}
                 allowMultiple={true} // ✅ Permettre sélection multiple
                 onSelect={(product) => {
-                    // Mode unique (fallback)
-                    navigateToVideoWizard(navigation, product);
+                    // ✅ UNIFIÉ: Ouvrir le modal au lieu de naviguer vers wizard
+                    openVideoCreationModal(product);
+                    setShowProductSelector(false);
                 }}
                 onSelectMultiple={(selectedProducts) => {
-                    // ✅ Mode multiple : naviguer avec le premier produit pour l'instant
-                    // TODO: Adapter navigateToVideoWizard pour gérer plusieurs produits
+                    // ✅ UNIFIÉ: Pour l'instant, utiliser le premier produit sélectionné
+                    // TODO: Adapter ProductVideoCreationModal pour gérer plusieurs produits
                     if (selectedProducts.length > 0) {
-                        navigateToVideoWizard(navigation, selectedProducts[0]);
+                        openVideoCreationModal(selectedProducts[0]);
+                        setShowProductSelector(false);
                     }
                 }}
                 onClose={() => {
@@ -491,6 +588,26 @@ const VideoCreationIntroScreen: React.FC = () => {
                     setAvailableProducts([]);
                 }}
             />
+
+            {/* ✅ UNIFIÉ: Modal de création vidéo (même que dans MesServicesScreen) */}
+            {showVideoCreationModal && productsForVideoCreation.length > 0 && (
+                <ProductVideoCreationModal
+                    visible={showVideoCreationModal}
+                    primaryProduct={productsForVideoCreation[0]}
+                    products={productsForVideoCreation}
+                    onClose={() => {
+                        setShowVideoCreationModal(false);
+                        setProductsForVideoCreation([]);
+                    }}
+                    onSuccess={async (result: GeneratedVideoResponse) => {
+                        console.log('[VideoCreationIntroScreen] ✅ Vidéo créée avec succès:', result);
+                        setShowVideoCreationModal(false);
+                        setProductsForVideoCreation([]);
+                        // ✅ Optionnel: Naviguer vers l'écran de résultat
+                        // (navigation as any).navigate('VideoGenerationResult', { videoId: result.video_id });
+                    }}
+                />
+            )}
 
             {/* ✅ PHASE 2: Modal exemple vidéo */}
             <VideoExampleModal

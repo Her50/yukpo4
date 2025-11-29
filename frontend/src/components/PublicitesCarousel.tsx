@@ -395,6 +395,86 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
         };
     }, [currentIndex, orderedPublicites, userId]);
 
+    // Fonction pour parser produits_indexes et extraire service_id + product_index
+    const parseProductIndex = (indexStr: string): { serviceId: number; productIndex: number } | null => {
+        if (!indexStr || typeof indexStr !== 'string') return null;
+        const parts = indexStr.split('_');
+        if (parts.length >= 2) {
+            const serviceId = parseInt(parts[0], 10);
+            const productIndex = parseInt(parts[1], 10);
+            if (!isNaN(serviceId) && !isNaN(productIndex)) {
+                return { serviceId, productIndex };
+            }
+        }
+        return null;
+    };
+
+    // Handler pour le CTA (bouton "Voir le produit")
+    const handleCTAClick = async (pub: Publicite, event?: React.MouseEvent) => {
+        if (event) {
+            event.stopPropagation();
+        }
+
+        try {
+            const hasVideo = Boolean(resolveVideoSource(pub.raw));
+            const primaryMeta = getPrimaryVideoMeta(pub, hasVideo);
+
+            // ✅ Tracking métriques : Clic sur CTA
+            if (hasVideo) {
+                trackVideoCarousel('engagement', 'publicites-carousel', pub.id, undefined);
+            } else {
+                trackProductCarousel('click', 'publicites-carousel', pub.id);
+            }
+
+            await apiPost('/api/publicites/track-click', {
+                publicite_id: Number(pub.id),
+                user_id: userId,
+                video_format: primaryMeta.format,
+                video_source: primaryMeta.source,
+            });
+
+            // Essayer d'abord avec produits_indexes (format "service_id_product_index")
+            if (Array.isArray(pub.raw?.produits_indexes) && pub.raw.produits_indexes.length > 0) {
+                const firstIndex = pub.raw.produits_indexes[0];
+                const parsed = parseProductIndex(firstIndex);
+                if (parsed) {
+                    // Navigation vers formulaire-yukpo-intelligent avec service_id + focusProductIndex
+                    navigate('/formulaire-yukpo-intelligent', {
+                        state: {
+                            mode: 'view',
+                            serviceId: parsed.serviceId,
+                            focusProductIndex: parsed.productIndex,
+                        },
+                    });
+                    return;
+                }
+            }
+
+            // Fallback: utiliser produits enrichis si disponibles
+            if (pub.produits && pub.produits.length > 0) {
+                const firstProduct = pub.produits[0];
+
+                if (firstProduct.serviceId) {
+                    // Si productIndex est disponible dans le produit enrichi
+                    if (firstProduct.productIndex !== undefined) {
+                        navigate('/formulaire-yukpo-intelligent', {
+                            state: {
+                                mode: 'view',
+                                serviceId: firstProduct.serviceId,
+                                focusProductIndex: firstProduct.productIndex,
+                            },
+                        });
+                    } else {
+                        // Fallback vers service général
+                        navigate(`/service/${firstProduct.serviceId}`);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('[PublicitesCarousel] Erreur tracking clic CTA:', error);
+        }
+    };
+
     const handlePubliciteClick = async (pub: Publicite) => {
         try {
             const hasVideo = Boolean(resolveVideoSource(pub.raw));
@@ -414,13 +494,8 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                 video_source: primaryMeta.source,
             });
 
-            if (pub.produits && pub.produits.length > 0) {
-                const firstProduct = pub.produits[0];
-
-                if (firstProduct.serviceId) {
-                    navigate(`/service/${firstProduct.serviceId}`);
-                }
-            }
+            // Par défaut, naviguer vers le produit via CTA
+            handleCTAClick(pub);
         } catch (error) {
             console.error('[PublicitesCarousel] Erreur tracking clic:', error);
         }
@@ -554,6 +629,18 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                                                     </span>
                                                 </button>
                                             )}
+                                            {/* Overlay CTA cliquable sur la vidéo */}
+                                            <button
+                                                type="button"
+                                                className="absolute bottom-4 left-4 right-4 z-10 flex items-center justify-center gap-2 px-5 py-3 bg-indigo-600/95 hover:bg-indigo-600 text-white font-bold text-sm rounded-full shadow-lg hover:shadow-xl transition-all"
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    handleCTAClick(pub, event);
+                                                }}
+                                            >
+                                                <span>Voir le produit</span>
+                                                <ArrowRight className="w-4 h-4" />
+                                            </button>
                                             <div className="absolute inset-x-4 top-4 flex items-center justify-between">
                                                 <span className="px-3 py-1 text-xs font-semibold text-white bg-slate-950/60 rounded-full border border-white/10">
                                                     Format carré 1:1
@@ -653,6 +740,10 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                                         <button
                                             type="button"
                                             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-full shadow-sm transition-colors"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                handleCTAClick(pub, event);
+                                            }}
                                         >
                                             Voir le produit
                                             <ArrowRight className="w-4 h-4" />

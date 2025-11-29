@@ -57,6 +57,7 @@ use crate::{
         },
         immersive_timeline::ImmersiveTimeline,
         inventory_service::INVENTORY_STALE_THRESHOLD_HOURS,
+        timeline_converter::convert_timeline_json_to_immersive,
         video_analytics_service::{record_engagement, schedule_distribution_targets},
         video_job_service::try_store_progress,
         video_renderer::{RenderExecutionMode, RenderJobRequest, RenderJobResponse},
@@ -119,6 +120,8 @@ pub struct VideoGenerationPayload {
     pub publish_to_chat: Option<bool>,
     pub publish_to_product_card: Option<bool>,
     pub storyboard: Option<Vec<String>>,
+    /// ✅ NOUVEAU: Timeline structurée générée par l'IA (prioritaire sur storyboard)
+    pub timeline: Option<Value>,
     pub music_mode: Option<String>,
     pub music_volume: Option<f32>,
     pub voiceover_script: Option<String>,
@@ -637,14 +640,39 @@ pub async fn generate_product_video(
         .and_then(|profile| profile.tts_voice_hint.clone())
         .or_else(|| payload.voiceover_voice.clone());
 
-    let mut script_outline: Vec<String> = payload
-        .storyboard
-        .clone()
-        .unwrap_or_default()
-        .into_iter()
-        .map(|line| line.trim().to_string())
-        .filter(|line| !line.is_empty())
-        .collect();
+    // ✅ NOUVEAU: Vérifier si une timeline structurée est fournie
+    let has_timeline = payload.timeline.is_some();
+    
+    let mut script_outline: Vec<String> = if has_timeline {
+        // Si timeline fournie, extraire le script_outline depuis la timeline
+        payload
+            .timeline
+            .as_ref()
+            .and_then(|t| t.get("scenes"))
+            .and_then(|s| s.as_array())
+            .map(|scenes| {
+                scenes
+                    .iter()
+                    .filter_map(|scene| {
+                        scene
+                            .get("text")
+                            .and_then(|t| t.as_str())
+                            .map(|s| s.to_string())
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    } else {
+        // Sinon, utiliser le storyboard texte
+        payload
+            .storyboard
+            .clone()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|line| line.trim().to_string())
+            .filter(|line| !line.is_empty())
+            .collect()
+    };
 
     if script_outline.is_empty() || payload.auto_storyboard.unwrap_or(false) {
         script_outline = generate_storyboard_lines(
@@ -1223,6 +1251,30 @@ pub async fn generate_product_video(
         product_snapshot.as_ref(),
         script_outline.len(),
     );
+    // ✅ NOUVEAU: Si timeline structurée fournie, la convertir en ImmersiveTimeline
+    let mut immersive_timeline: Option<ImmersiveTimeline> = None;
+    if let Some(timeline_json) = &payload.timeline {
+        info!(
+            "[VideoGeneration] Timeline structurée fournie, conversion en ImmersiveTimeline"
+        );
+        // Utiliser le convertisseur dédié
+        match convert_timeline_json_to_immersive(timeline_json, 30) {
+            Ok(timeline) => {
+                immersive_timeline = Some(timeline);
+                info!(
+                    "[VideoGeneration] ✅ Timeline convertie avec succès ({} scènes)",
+                    immersive_timeline.as_ref().unwrap().scenes.len()
+                );
+            }
+            Err(err) => {
+                warn!(
+                    "[VideoGeneration] ⚠️ Impossible de convertir timeline JSON: {} - utilisation orchestrator",
+                    err
+                );
+            }
+        }
+    }
+
     let timeline_request = TimelineRequest {
         script_outline: script_outline.clone(),
         product_name: product_name.clone(),
@@ -1235,8 +1287,6 @@ pub async fn generate_product_video(
         business_context: Some(timeline_context),
         ai_template_recommendations,
     };
-
-    let mut immersive_timeline: Option<ImmersiveTimeline> = None;
     let mut immersive_analytics: Option<TimelineAnalytics> = None;
     let mut sfx_layers: Vec<audio_pipeline::AudioLayer> = Vec::new();
     let mut renderer_response: Option<RenderJobResponse> = None;

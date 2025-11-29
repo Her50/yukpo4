@@ -13,7 +13,8 @@ use crate::{
     ia::behavior_engine::{compute_behavior_score, is_suspicious},
     services::app_ia::{
         DistributionRequest, DistributionSuggestion, MediaAnalysisRequest, MediaAnalysisResult,
-        VideoBriefRequest, VideoStyleRequest, VideoStyleSuggestion,
+        TimelineRequest, TimelineBriefInput, TimelineStyleInput, TimelineMediaItem,
+        VideoBriefRequest, VideoStyleRequest, VideoStyleSuggestion, VideoTimeline,
     },
     state::AppState,
 };
@@ -605,5 +606,110 @@ pub async fn generate_distribution_plan(
     Ok(Json(DistributionResponse {
         success: true,
         plan,
+    }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TimelinePayload {
+    pub brief: TimelineBriefPayload,
+    pub style: TimelineStylePayload,
+    #[serde(default)]
+    pub available_media: Vec<TimelineMediaPayload>,
+    pub duration_seconds: f64,
+    pub voiceover_script: Option<String>,
+    pub music_track_id: Option<String>,
+    pub lang: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TimelineBriefPayload {
+    #[serde(default)]
+    pub script_outline: Vec<String>,
+    pub headline: Option<String>,
+    pub call_to_action: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TimelineStylePayload {
+    #[serde(default)]
+    pub effects: Vec<String>,
+    #[serde(default)]
+    pub transitions: Vec<String>,
+    pub color_palette: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TimelineMediaPayload {
+    pub id: String,
+    pub url: Option<String>,
+    pub media_type: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TimelineResponse {
+    pub success: bool,
+    pub timeline: VideoTimeline,
+}
+
+/// ✅ NOUVEAU: Génère une timeline structurée pour le montage vidéo
+pub async fn generate_video_timeline(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<TimelinePayload>,
+) -> AppResult<Json<TimelineResponse>> {
+    info!(
+        "[generate_video_timeline] Called - duration: {}s, scenes: {}, media: {}",
+        payload.duration_seconds,
+        payload.brief.script_outline.len(),
+        payload.available_media.len()
+    );
+
+    let request = TimelineRequest {
+        brief: TimelineBriefInput {
+            script_outline: payload.brief.script_outline,
+            headline: payload.brief.headline,
+            call_to_action: payload.brief.call_to_action,
+        },
+        style: TimelineStyleInput {
+            effects: payload.style.effects,
+            transitions: payload.style.transitions,
+            color_palette: payload.style.color_palette,
+        },
+        available_media: payload
+            .available_media
+            .into_iter()
+            .map(|m| TimelineMediaItem {
+                id: m.id,
+                url: m.url,
+                media_type: m.media_type,
+            })
+            .collect(),
+        duration_seconds: payload.duration_seconds,
+        voiceover_script: payload.voiceover_script,
+        music_track_id: payload.music_track_id,
+        lang: payload.lang,
+    };
+
+    // ✅ CORRECTION: Gestion d'erreur robuste
+    let timeline = match state.ia.generate_video_timeline(&request).await {
+        Ok(timeline) => {
+            info!(
+                "[generate_video_timeline] ✅ Timeline générée - {} scènes, durée: {:.1}s",
+                timeline.scenes.len(),
+                timeline.total_duration
+            );
+            timeline
+        }
+        Err(err) => {
+            error!(
+                "[generate_video_timeline] ❌ Erreur génération timeline IA: {}",
+                err
+            );
+            return Err(err);
+        }
+    };
+
+    Ok(Json(TimelineResponse {
+        success: true,
+        timeline,
     }))
 }

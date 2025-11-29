@@ -153,7 +153,8 @@ impl HybridImageSearchService {
             };
 
         // ✅ Appeler l'IA avec le même format que la création (base64 pur dans Vec)
-        let (json_response, model_name, tokens_used) = app_ia
+        // ?? CORRECTION : L'ordre de retour est (model_name, response, tokens)
+        let (model_name, json_response, tokens_used) = app_ia
             .predict_multimodal(&search_prompt, Some(vec![image_base64_pure]))
             .await?;
 

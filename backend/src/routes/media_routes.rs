@@ -7,7 +7,10 @@ use axum::{
 use std::sync::Arc;
 
 use crate::controllers::{
-    ia_controller::{generate_distribution_plan, generate_video_brief, generate_video_style},
+    ia_controller::{
+        generate_distribution_plan, generate_video_brief, generate_video_style,
+        generate_video_timeline,
+    },
     media_controller::{delete_media, serve_example_video, upload_media},
 };
 use crate::middlewares::jwt::jwt_auth;
@@ -23,6 +26,8 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/media/generate-video-brief", post(generate_video_brief))
         .route("/api/media/generate-video-style", post(generate_video_style))
         .route("/api/media/generate-distribution-plan", post(generate_distribution_plan))
+        // ✅ NOUVEAU 2025-11-29: Route pour génération de timeline de montage vidéo
+        .route("/api/media/generate-video-timeline", post(generate_video_timeline))
         .layer(axum::middleware::from_fn(jwt_auth))
         // Les layers globaux CORS/TraceLayer sont appliqués dans lib.rs uniquement
         .with_state(state)

@@ -118,6 +118,7 @@ pub mod social_connector_service;
 pub mod social_distribution_service;
 pub mod story_template_service;
 pub mod studio_service;
+pub mod timeline_converter; // ✅ NOUVEAU: Conversion timeline JSON -> ImmersiveTimeline
 pub mod traiter_echange;
 pub mod translation_optimizer;
 pub mod valider_echange;

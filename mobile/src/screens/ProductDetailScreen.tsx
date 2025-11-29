@@ -30,11 +30,11 @@ const ProductDetailScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const { productId, serviceId } = route.params as any;
+    const { productId, serviceId, productIndex } = route.params as any;
 
     useEffect(() => {
         loadProductDetails();
-    }, [productId, serviceId]);
+    }, [productId, serviceId, productIndex]);
 
     const loadProductDetails = async () => {
         try {
@@ -48,6 +48,7 @@ const ProductDetailScreen: React.FC = () => {
                     type: 'product',
                     productId,
                     serviceId,
+                    productIndex,
                     timestamp: Date.now()
                 }));
 
@@ -68,7 +69,7 @@ const ProductDetailScreen: React.FC = () => {
                 return;
             }
 
-            console.log('🔍 Chargement produit:', productId, 'du service:', serviceId);
+            console.log('🔍 Chargement produit:', productId || productIndex, 'du service:', serviceId);
 
             // Charger le service qui contient le produit
             const serviceResponse = await apiGet(`/api/services/${serviceId}`);
@@ -82,9 +83,24 @@ const ProductDetailScreen: React.FC = () => {
 
             // Extraire le produit spécifique
             const produits = loadedService.data?.produits?.valeur || loadedService.data?.produits || [];
-            const foundProduct = produits.find((p: any) => p.id === productId);
 
-            const productIndexValue = produits.findIndex((p: any) => p.id === productId);
+            // Priorité: utiliser productIndex si disponible, sinon productId
+            let foundProduct: any = null;
+            let productIndexValue = -1;
+
+            if (productIndex !== undefined && !isNaN(Number(productIndex))) {
+                // Utiliser productIndex directement
+                productIndexValue = Number(productIndex);
+                foundProduct = produits[productIndexValue];
+            } else if (productId) {
+                // Fallback: chercher par productId
+                foundProduct = produits.find((p: any) => p.id === productId);
+                productIndexValue = produits.findIndex((p: any) => p.id === productId);
+            } else {
+                // Si aucun des deux n'est fourni, prendre le premier produit
+                foundProduct = produits[0];
+                productIndexValue = 0;
+            }
 
             if (!foundProduct) {
                 throw new Error('Produit non trouvé dans ce service');

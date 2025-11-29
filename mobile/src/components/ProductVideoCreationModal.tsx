@@ -15,14 +15,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { config } from '../config/environment';
-import { mediaApi } from '../services/api';
+import { iaApi, mediaApi } from '../services/api';
+import { studioService, type VideoDependency } from '../services/studioService';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
-import { AIDistributionPlan, AIVideoBriefVariant, AIVideoStyleSuggestion, GeneratedVideoResponse } from '../types/VideoGeneration';
+import { AIDistributionPlan, AIVideoBriefVariant, AIVideoStyleSuggestion, GeneratedVideoResponse, VideoCostEstimateResponse, VideoCostEstimation, VideoGenerationPayload } from '../types/VideoGeneration';
 import { extractDescription, extractServiceName } from '../utils/displayHelpers';
 import { getFieldValue } from '../utils/productNormalizer';
+import { apiCallWithRetry } from '../utils/retryWithBackoff';
+import { clearVideoDraft, loadVideoDraft, saveVideoDraft, type VideoDraft } from '../utils/videoDraftStorage';
 import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
+import { TimelineEditor } from './TimelineEditor';
+import { TimelinePreview, VideoTimeline as VideoTimelineType } from './TimelinePreview';
 
 type VideoStylePreset = 'tiktok' | 'story' | 'cinematic' | 'carousel';
 type MusicMode = 'pulse' | 'lofi' | 'ambient' | 'cinematic' | 'none';
@@ -240,7 +245,7 @@ const applyBriefVariant = (
     Alert.alert('Brief appliqué', 'La variante sélectionnée a été appliquée.');
 };
 
-type ModalStep = 1 | 2 | 3 | 4;
+type ModalStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     visible,
@@ -304,6 +309,20 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [isGeneratingDistribution, setIsGeneratingDistribution] = useState<boolean>(false);
     const [coachLoading, setCoachLoading] = useState<boolean>(false);
     const coachPrefetchDoneRef = useRef(false);
+    // ✅ NOUVEAU: État pour la timeline générée
+    const [generatedTimeline, setGeneratedTimeline] = useState<VideoTimelineType | null>(null);
+    const [isGeneratingTimeline, setIsGeneratingTimeline] = useState<boolean>(false);
+    const [isEditingTimeline, setIsEditingTimeline] = useState<boolean>(false);
+
+    // ✅ NOUVEAU: États pour les fonctionnalités migrées du wizard
+    const [costEstimation, setCostEstimation] = useState<VideoCostEstimation | null>(null);
+    const [costLoading, setCostLoading] = useState<boolean>(false);
+    const [showCostEstimation, setShowCostEstimation] = useState<boolean>(false);
+    const [availableSessions, setAvailableSessions] = useState<Array<{ id: string; title?: string }>>([]);
+    const [selectedLinkedSessions, setSelectedLinkedSessions] = useState<string[]>([]);
+    const [dependencies, setDependencies] = useState<VideoDependency[]>([]);
+    const [showVideoChaining, setShowVideoChaining] = useState<boolean>(false);
+    const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
 
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const refreshMedia = useCallback(
@@ -565,6 +584,72 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 }
             }
 
+            // ✅ NOUVEAU: Génération de timeline après le style
+            if (!generatedTimeline && briefVariants.length > 0 && styleSuggestion) {
+                const selectedBrief = briefVariants[0]; // Utiliser le premier brief
+                setIsGeneratingTimeline(true);
+                try {
+                    // Préparer les médias disponibles
+                    const availableMedia = [
+                        ...productMedia.map(m => ({
+                            id: m.id.toString(),
+                            url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,
+                            media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
+                        })),
+                        ...serviceMedia.map(m => ({
+                            id: m.id.toString(),
+                            url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,
+                            media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
+                        })),
+                    ];
+
+                    const timelineResponse = await mediaApi.generateVideoTimeline({
+                        brief: {
+                            script_outline: selectedBrief.script_outline || [],
+                            headline: selectedBrief.headline,
+                            call_to_action: selectedBrief.call_to_action,
+                        },
+                        style: {
+                            effects: styleSuggestion.effects || [],
+                            transitions: styleSuggestion.transitions || [],
+                            color_palette: styleSuggestion.color_palette || undefined,
+                        },
+                        available_media: availableMedia,
+                        duration_seconds: ensureNumber(duration, 28),
+                        voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,
+                        music_track_id: selectedMusicTrackId ?? undefined,
+                        lang: subtitleLang || voiceoverLang || 'fr',
+                    });
+
+                    if (timelineResponse.success && timelineResponse.data) {
+                        const responseData = timelineResponse.data as { success?: boolean; timeline?: VideoTimelineType };
+                        if (responseData.timeline) {
+                            console.log('[ProductVideoCreationModal] ✅ Timeline générée:', responseData.timeline);
+                            setGeneratedTimeline(responseData.timeline);
+                            // ✅ NOUVEAU: Mettre à jour scriptNotes avec le texte des scènes si vide
+                            if (!scriptNotes.trim() && responseData.timeline.scenes.length > 0) {
+                                const scriptFromTimeline = responseData.timeline.scenes
+                                    .map(s => s.text)
+                                    .filter((t): t is string => t !== undefined && t.trim().length > 0)
+                                    .join('\n');
+                                if (scriptFromTimeline) {
+                                    setScriptNotes(scriptFromTimeline);
+                                }
+                            }
+                        } else {
+                            console.warn('[ProductVideoCreationModal] ⚠️ Timeline non générée, utilisation storyboard texte');
+                        }
+                    } else {
+                        console.warn('[ProductVideoCreationModal] ⚠️ Timeline non générée, utilisation storyboard texte');
+                    }
+                } catch (error) {
+                    console.error('[ProductVideoCreationModal] Erreur génération timeline:', error);
+                    // Continuer sans timeline, utiliser storyboard texte
+                } finally {
+                    setIsGeneratingTimeline(false);
+                }
+            }
+
             // ✅ AMÉLIORATION: Plan avec retry + valeurs par défaut
             if (!distributionPlan) {
                 const planResult = await fetchWithRetry(
@@ -623,12 +708,207 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         );
     }, [prefetchCoachInsights]);
 
+    // ✅ NOUVEAU: Fonction pour estimer le coût de génération
+    const handleEstimateCost = useCallback(async () => {
+        if (!selectedProduct || typeof selectedProduct.product_index !== 'number') {
+            Alert.alert('Produit requis', 'Sélectionnez d\'abord un produit.');
+            return;
+        }
+
+        const serviceId = Number(selectedProduct.serviceId);
+        if (Number.isNaN(serviceId)) {
+            Alert.alert('Service invalide', 'Impossible d\'estimer le coût.');
+            return;
+        }
+
+        try {
+            setCostLoading(true);
+            const payload: VideoGenerationPayload = {
+                style: stylePreset,
+                headline: headline.trim(),
+                call_to_action: callToAction.trim(),
+                duration_seconds: ensureNumber(duration, 28),
+                storyboard: scriptNotes
+                    .split(/\r?\n/)
+                    .map((line) => line.trim())
+                    .filter((line) => line.length > 0),
+                music_mode: musicMode !== 'none' ? musicMode : undefined,
+                music_volume: musicMode !== 'none' ? Number.parseFloat(musicVolume) : undefined,
+                voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
+                voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,
+                selected_media_ids: Array.from(selectedMediaIds),
+                use_service_mediatech: useMediatechLibrary,
+                include_publicite_assets: includePubliciteAssets,
+                generate_square_variant: generateSquareVariant,
+                generate_landscape_variant: generateLandscapeVariant,
+                distribute_channels: Array.from(selectedChannels.values()),
+            };
+
+            const response = await apiCallWithRetry(() =>
+                iaApi.estimateVideoCost(serviceId, selectedProduct.product_index, payload)
+            );
+
+            const estimationResponse = response.data as VideoCostEstimateResponse | VideoCostEstimation | undefined;
+            const estimation =
+                estimationResponse && 'data' in estimationResponse
+                    ? estimationResponse.data
+                    : (estimationResponse as VideoCostEstimation | undefined);
+
+            if (estimation) {
+                setCostEstimation(estimation);
+                setShowCostEstimation(true);
+            } else {
+                Alert.alert('Estimation impossible', 'Impossible d\'estimer le coût pour le moment. Réessayez plus tard.');
+            }
+        } catch (error: any) {
+            console.error('[ProductVideoCreationModal] Erreur estimation coût:', error);
+            let message = error?.message || 'Erreur serveur.';
+
+            if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+                message = 'Erreur de connexion. Vérifiez votre accès Internet.';
+            } else if (error?.message?.includes('timeout')) {
+                message = 'Le délai d\'attente a expiré. Réessayez.';
+            }
+
+            Alert.alert('Erreur d\'estimation', message);
+        } finally {
+            setCostLoading(false);
+        }
+    }, [
+        selectedProduct,
+        stylePreset,
+        headline,
+        callToAction,
+        duration,
+        scriptNotes,
+        musicMode,
+        musicVolume,
+        voiceoverEnabled,
+        voiceoverScript,
+        voiceoverLang,
+        selectedMediaIds,
+        useMediatechLibrary,
+        includePubliciteAssets,
+        generateSquareVariant,
+        generateLandscapeVariant,
+        selectedChannels,
+    ]);
+
+    // ✅ NOUVEAU: Charger le brouillon au démarrage
+    useEffect(() => {
+        if (!visible || !selectedProduct) return;
+
+        const loadDraft = async () => {
+            try {
+                const draft = await loadVideoDraft();
+                if (draft &&
+                    draft.serviceId === Number(selectedProduct.serviceId) &&
+                    draft.productIndex === selectedProduct.product_index) {
+                    Alert.alert(
+                        'Brouillon trouvé',
+                        'Un brouillon non terminé a été trouvé. Voulez-vous le reprendre ?',
+                        [
+                            {
+                                text: 'Non, recommencer',
+                                onPress: async () => {
+                                    await clearVideoDraft();
+                                },
+                                style: 'cancel',
+                            },
+                            {
+                                text: 'Oui, reprendre',
+                                onPress: () => {
+                                    // Restaurer les valeurs du brouillon
+                                    if (draft.headline) setHeadline(draft.headline);
+                                    if (draft.callToAction) setCallToAction(draft.callToAction);
+                                    if (draft.brief) setScriptNotes(draft.brief);
+                                    if (draft.selectedMediaIds && draft.selectedMediaIds.length > 0) {
+                                        setSelectedMediaIds(new Set(draft.selectedMediaIds));
+                                    }
+                                    if (draft.musicMode) setMusicMode(draft.musicMode as MusicMode);
+                                    if (draft.voiceoverEnabled !== undefined) setVoiceoverEnabled(draft.voiceoverEnabled);
+                                    if (draft.voiceoverLang) setVoiceoverLang(draft.voiceoverLang);
+                                    if (draft.publishChat !== undefined) setPublishToChat(draft.publishChat);
+                                    if (draft.publishCard !== undefined) setPublishToProductCard(draft.publishCard);
+                                },
+                            },
+                        ]
+                    );
+                }
+            } catch (error) {
+                console.error('[ProductVideoCreationModal] Erreur chargement brouillon:', error);
+            }
+        };
+        loadDraft();
+    }, [visible, selectedProduct]);
+
+    // ✅ NOUVEAU: Sauvegarde automatique du brouillon avec debounce
+    useEffect(() => {
+        if (!visible || !selectedProduct) return;
+
+        const draft: Partial<VideoDraft> = {
+            serviceId: Number(selectedProduct.serviceId),
+            productIndex: selectedProduct.product_index || 0,
+            productName: normalizeProductName(selectedProduct),
+            serviceName: selectedProduct.serviceTitre || '',
+            brief: scriptNotes,
+            headline,
+            callToAction,
+            selectedMediaIds: Array.from(selectedMediaIds),
+            musicMode,
+            voiceoverEnabled,
+            voiceoverLang: voiceoverLang as 'fr' | 'en',
+            publishChat: publishToChat,
+            publishCard: publishToProductCard,
+            publishSocial: selectedChannels.has('shorts') || selectedChannels.has('instagram') || selectedChannels.has('youtube'),
+        };
+        saveVideoDraft(draft);
+    }, [
+        visible,
+        selectedProduct,
+        scriptNotes,
+        headline,
+        callToAction,
+        selectedMediaIds,
+        musicMode,
+        voiceoverEnabled,
+        voiceoverLang,
+        publishToChat,
+        publishToProductCard,
+        selectedChannels,
+    ]);
+
+    // ✅ NOUVEAU: Charger les sessions disponibles pour le chaînage
+    useEffect(() => {
+        if (!visible || !showVideoChaining) return;
+
+        const loadAvailableSessions = async () => {
+            try {
+                const sessions = await studioService.listSessions();
+                setAvailableSessions(sessions.map((s) => ({
+                    id: s.id,
+                    title: (typeof s.brief === 'object' && s.brief !== null && 'title' in s.brief)
+                        ? String(s.brief.title)
+                        : undefined
+                })));
+            } catch (error) {
+                console.error('[ProductVideoCreationModal] Erreur chargement sessions:', error);
+            }
+        };
+        loadAvailableSessions();
+    }, [visible, showVideoChaining]);
+
     useEffect(() => {
         if (!visible) {
             coachPrefetchDoneRef.current = false;
             setCoachLoading(false);
             // ✅ CORRECTION: Réinitialiser l'étape quand le modal se ferme
             setActiveStep(1);
+            // ✅ NOUVEAU: Réinitialiser les états des fonctionnalités migrées
+            setCostEstimation(null);
+            setShowCostEstimation(false);
+            setShowVideoChaining(false);
+            setSelectedLinkedSessions([]);
         }
     }, [visible]);
 
@@ -1100,131 +1380,291 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         minHeight: 80 + insets.bottom,
     }), [insets.bottom]);
 
-    // ✅ NOUVEAU: Fonctions de rendu par étape
+    // ✅ NOUVEAU: Fonctions de rendu par étape - Réorganisées en 6 étapes courtes
     const renderStep1 = () => {
-        // Étape 1 : Sélection produit et médias
+        // Étape 1 : Sélection produit uniquement
         return (
             <>
                 {renderProductSelection()}
                 {coachPanel}
-                {selectedProduct && (
-                    <>
-                        {renderRelatedProducts()}
-                        <NativeCard style={styles.sectionCard}>
-                            <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>Sources médias</Text>
-                                <TouchableOpacity
-                                    style={styles.linkButton}
-                                    onPress={handleAnalyzeMedia}
-                                    disabled={isAnalyzingMedia}
-                                >
-                                    {isAnalyzingMedia ? (
-                                        <ActivityIndicator size="small" color={modernColors.primary} />
-                                    ) : (
-                                        <SafeIcon name="scan" size={16} color={modernColors.primary} />
-                                    )}
-                                    <Text style={styles.linkButtonText}>
-                                        {isAnalyzingMedia ? 'Analyse…' : 'Analyse IA'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                            <Text style={styles.sectionSubtitle}>
-                                Sélectionnez les images/vidéos à mettre en avant. Vous pouvez combiner votre
-                                galerie produit et la médiathèque générale.
-                            </Text>
-                            {Array.isArray(mediaAnalysis.dominantColors) && mediaAnalysis.dominantColors.length > 0 && (
-                                <View style={styles.mediaInsightsBox}>
-                                    <Text style={styles.mediaInsightsTitle}>Palette dominante</Text>
-                                    <View style={styles.colorRow}>
-                                        {mediaAnalysis.dominantColors.map((color, idx) => (
-                                            <View
-                                                key={`color_${idx}`}
-                                                style={[styles.colorSwatch, { backgroundColor: color }]}
-                                            >
-                                                <Text style={styles.colorLabel}>{color}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                    {mediaAnalysis.detectedObjects && mediaAnalysis.detectedObjects.length > 0 && (
-                                        <Text style={styles.mediaInsightsText}>
-                                            Objets repérés : {mediaAnalysis.detectedObjects.join(', ')}
-                                        </Text>
-                                    )}
-                                    {mediaAnalysis.ambiance && (
-                                        <Text style={styles.mediaInsightsText}>
-                                            Ambiance : {mediaAnalysis.ambiance}
-                                        </Text>
-                                    )}
-                                    {mediaAnalysis.marketingAngle && (
-                                        <Text style={styles.mediaInsightsText}>
-                                            Angle marketing : {mediaAnalysis.marketingAngle}
-                                        </Text>
-                                    )}
-                                </View>
-                            )}
-                            <View style={styles.toggleRow}>
-                                <View style={styles.toggleText}>
-                                    <Text style={styles.toggleLabel}>Galerie produit intelligente</Text>
-                                    <Text style={styles.toggleDescription}>
-                                        Yukpomnang exploitera automatiquement les images enregistrées dans cette
-                                        fiche produit.
-                                    </Text>
-                                </View>
-                                <Switch
-                                    value={useProductGallery}
-                                    onValueChange={setUseProductGallery}
-                                    trackColor={{ true: '#6366F1' }}
-                                />
-                            </View>
-                            <View style={styles.toggleRow}>
-                                <View style={styles.toggleText}>
-                                    <Text style={styles.toggleLabel}>Médiathèque du prestataire</Text>
-                                    <Text style={styles.toggleDescription}>
-                                        Ajoute vos assets généraux (logos, publicités, vidéos verticales) pour un
-                                        rendu premium.
-                                    </Text>
-                                </View>
-                                <Switch
-                                    value={useMediatechLibrary}
-                                    onValueChange={setUseMediatechLibrary}
-                                    trackColor={{ true: '#6366F1' }}
-                                />
-                            </View>
-                            <View style={styles.toggleRow}>
-                                <View style={styles.toggleText}>
-                                    <Text style={styles.toggleLabel}>Inclure vos visuels publicitaires</Text>
-                                    <Text style={styles.toggleDescription}>
-                                        Ajoute automatiquement les bannières/affiches déjà configurées dans vos
-                                        campagnes.
-                                    </Text>
-                                </View>
-                                <Switch
-                                    value={includePubliciteAssets}
-                                    onValueChange={setIncludePubliciteAssets}
-                                    trackColor={{ true: '#6366F1' }}
-                                />
-                            </View>
-                            {renderMediaGrid(
-                                productMedia,
-                                'Images et vidéos du produit',
-                                'Ajoutez des médias à cette fiche pour dynamiser la vidéo.',
-                                '#6366F1',
-                            )}
-                            {renderMediaGrid(
-                                serviceMedia,
-                                'Médiathèque prestataire',
-                                'Aucun média global enregistré pour ce service pour le moment.',
-                                '#8B5CF6',
-                            )}
-                        </NativeCard>
-                    </>
-                )}
+                {selectedProduct && renderRelatedProducts()}
             </>
         );
     };
 
     const renderStep2 = () => {
-        // Étape 2 : Configuration style et audio
+        // Étape 2 : Sélection médias uniquement
+        if (!selectedProduct) {
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Retournez à l'étape 1 pour sélectionner un produit.
+                    </Text>
+                </NativeCard>
+            );
+        }
+
+        return (
+            <NativeCard style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>📸 Sélection des médias</Text>
+                    <TouchableOpacity
+                        style={styles.linkButton}
+                        onPress={handleAnalyzeMedia}
+                        disabled={isAnalyzingMedia}
+                    >
+                        {isAnalyzingMedia ? (
+                            <ActivityIndicator size="small" color={modernColors.primary} />
+                        ) : (
+                            <SafeIcon name="scan" size={16} color={modernColors.primary} />
+                        )}
+                        <Text style={styles.linkButtonText}>
+                            {isAnalyzingMedia ? 'Analyse…' : 'Analyse IA'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+                <Text style={styles.sectionSubtitle}>
+                    Choisissez les images/vidéos à utiliser dans votre vidéo.
+                </Text>
+                {Array.isArray(mediaAnalysis.dominantColors) && mediaAnalysis.dominantColors.length > 0 && (
+                    <View style={styles.mediaInsightsBox}>
+                        <Text style={styles.mediaInsightsTitle}>Palette dominante</Text>
+                        <View style={styles.colorRow}>
+                            {mediaAnalysis.dominantColors.map((color, idx) => (
+                                <View
+                                    key={`color_${idx}`}
+                                    style={[styles.colorSwatch, { backgroundColor: color }]}
+                                >
+                                    <Text style={styles.colorLabel}>{color}</Text>
+                                </View>
+                            ))}
+                        </View>
+                        {mediaAnalysis.detectedObjects && mediaAnalysis.detectedObjects.length > 0 && (
+                            <Text style={styles.mediaInsightsText}>
+                                Objets repérés : {mediaAnalysis.detectedObjects.join(', ')}
+                            </Text>
+                        )}
+                    </View>
+                )}
+                <View style={styles.toggleRow}>
+                    <View style={styles.toggleText}>
+                        <Text style={styles.toggleLabel}>Galerie produit</Text>
+                        <Text style={styles.toggleDescription}>
+                            Utiliser les images de la fiche produit.
+                        </Text>
+                    </View>
+                    <Switch
+                        value={useProductGallery}
+                        onValueChange={setUseProductGallery}
+                        trackColor={{ true: '#6366F1' }}
+                    />
+                </View>
+                <View style={styles.toggleRow}>
+                    <View style={styles.toggleText}>
+                        <Text style={styles.toggleLabel}>Médiathèque service</Text>
+                        <Text style={styles.toggleDescription}>
+                            Ajouter vos assets généraux (logos, publicités).
+                        </Text>
+                    </View>
+                    <Switch
+                        value={useMediatechLibrary}
+                        onValueChange={setUseMediatechLibrary}
+                        trackColor={{ true: '#6366F1' }}
+                    />
+                </View>
+                <View style={styles.toggleRow}>
+                    <View style={styles.toggleText}>
+                        <Text style={styles.toggleLabel}>Visuels publicitaires</Text>
+                        <Text style={styles.toggleDescription}>
+                            Inclure les bannières de vos campagnes.
+                        </Text>
+                    </View>
+                    <Switch
+                        value={includePubliciteAssets}
+                        onValueChange={setIncludePubliciteAssets}
+                        trackColor={{ true: '#6366F1' }}
+                    />
+                </View>
+                {renderMediaGrid(
+                    productMedia,
+                    'Images et vidéos du produit',
+                    'Ajoutez des médias à cette fiche pour dynamiser la vidéo.',
+                    '#6366F1',
+                )}
+                {renderMediaGrid(
+                    serviceMedia,
+                    'Médiathèque prestataire',
+                    'Aucun média global enregistré pour ce service pour le moment.',
+                    '#8B5CF6',
+                )}
+            </NativeCard>
+        );
+    };
+
+    const renderStep3 = () => {
+        // Étape 3 : Style et effets uniquement
+        if (!selectedProduct) {
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Retournez à l'étape 1 pour sélectionner un produit.
+                    </Text>
+                </NativeCard>
+            );
+        }
+
+        return (
+            <NativeCard style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>🎨 Style et effets</Text>
+                    <TouchableOpacity
+                        style={styles.linkButton}
+                        onPress={handleGenerateStyleSuggestion}
+                        disabled={isGeneratingStyle}
+                    >
+                        {isGeneratingStyle ? (
+                            <ActivityIndicator size="small" color={modernColors.primary} />
+                        ) : (
+                            <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                        )}
+                        <Text style={styles.linkButtonText}>
+                            {isGeneratingStyle ? 'Analyse…' : 'Effets IA'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+                <Text style={styles.sectionSubtitle}>
+                    Choisissez le style visuel et les effets pour votre vidéo.
+                </Text>
+                <View style={styles.styleRow}>
+                    {VIDEO_STYLE_OPTIONS.map((option) => {
+                        const selected = stylePreset === option.key;
+                        return (
+                            <TouchableOpacity
+                                key={option.key}
+                                style={[
+                                    styles.styleChip,
+                                    selected && styles.styleChipSelected,
+                                ]}
+                                onPress={() => setStylePreset(option.key)}
+                            >
+                                <Text
+                                    style={[
+                                        styles.styleChipLabel,
+                                        selected && styles.styleChipLabelSelected,
+                                    ]}
+                                >
+                                    {option.label}
+                                </Text>
+                                <Text style={styles.styleChipDescription} numberOfLines={1}>
+                                    {option.description}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+                {styleSuggestion && (
+                    <View style={styles.suggestionSection}>
+                        <Text style={styles.suggestionTitle}>Effets recommandés</Text>
+                        <View style={styles.suggestionRow}>
+                            {Array.isArray(styleSuggestion.effects) ? styleSuggestion.effects.map((effect) => {
+                                const active = selectedEffects.has(effect);
+                                return (
+                                    <TouchableOpacity
+                                        key={`effect_${effect}`}
+                                        style={[
+                                            styles.suggestionChip,
+                                            active && styles.suggestionChipSelected,
+                                        ]}
+                                        onPress={() => toggleSelection(effect, setSelectedEffects)}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.suggestionChipText,
+                                                active && styles.suggestionChipTextSelected,
+                                            ]}
+                                        >
+                                            {effect}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            }) : null}
+                        </View>
+
+                        <Text style={styles.suggestionTitle}>Transitions</Text>
+                        <View style={styles.suggestionRow}>
+                            {Array.isArray(styleSuggestion.transitions) ? styleSuggestion.transitions.map((transition) => {
+                                const active = selectedTransitions.has(transition);
+                                return (
+                                    <TouchableOpacity
+                                        key={`transition_${transition}`}
+                                        style={[
+                                            styles.suggestionChip,
+                                            active && styles.suggestionChipSelected,
+                                        ]}
+                                        onPress={() => toggleSelection(transition, setSelectedTransitions)}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.suggestionChipText,
+                                                active && styles.suggestionChipTextSelected,
+                                            ]}
+                                        >
+                                            {transition}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            }) : null}
+                        </View>
+
+                        <Text style={styles.suggestionTitle}>Overlays & tips</Text>
+                        <View style={styles.suggestionRow}>
+                            {Array.isArray(styleSuggestion.overlay_tips) ? styleSuggestion.overlay_tips.map((tip) => {
+                                const active = selectedOverlayTips.has(tip);
+                                return (
+                                    <TouchableOpacity
+                                        key={`tip_${tip}`}
+                                        style={[
+                                            styles.suggestionChip,
+                                            active && styles.suggestionChipSelected,
+                                        ]}
+                                        onPress={() => toggleSelection(tip, setSelectedOverlayTips)}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.suggestionChipText,
+                                                active && styles.suggestionChipTextSelected,
+                                            ]}
+                                        >
+                                            {tip}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            }) : null}
+                        </View>
+
+                        <Text style={styles.suggestionTitle}>Palette de couleurs</Text>
+                        <NativeInput
+                            value={colorPalette}
+                            onChangeText={setColorPalette}
+                            placeholder={styleSuggestion.color_palette || '#6366F1 / #0EA5E9'}
+                        />
+
+                        <Text style={styles.suggestionTitle}>Ambiance musicale recommandée</Text>
+                        <NativeInput
+                            value={styleMusicHint}
+                            onChangeText={setStyleMusicHint}
+                            placeholder={styleSuggestion.music_hint || 'Ex: Beat afro-pop énergique'}
+                        />
+                    </View>
+                )}
+            </NativeCard>
+        );
+    };
+
+    const renderStep4 = () => {
+        // Étape 4 : Script et timeline uniquement
         if (!selectedProduct) {
             return (
                 <NativeCard style={styles.sectionCard}>
@@ -1240,144 +1680,64 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             <>
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Style et rythme de la vidéo</Text>
+                        <Text style={styles.sectionTitle}>📝 Script de montage</Text>
                         <TouchableOpacity
                             style={styles.linkButton}
-                            onPress={handleGenerateStyleSuggestion}
-                            disabled={isGeneratingStyle}
+                            onPress={handleGenerateBrief}
+                            disabled={isGeneratingBrief}
                         >
-                            {isGeneratingStyle ? (
+                            {isGeneratingBrief ? (
                                 <ActivityIndicator size="small" color={modernColors.primary} />
                             ) : (
                                 <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
                             )}
                             <Text style={styles.linkButtonText}>
-                                {isGeneratingStyle ? 'Analyse…' : 'Effets IA'}
+                                {isGeneratingBrief ? 'Génération…' : 'Brief IA'}
                             </Text>
                         </TouchableOpacity>
                     </View>
-                    <View style={styles.styleRow}>
-                        {VIDEO_STYLE_OPTIONS.map((option) => {
-                            const selected = stylePreset === option.key;
-                            return (
-                                <TouchableOpacity
-                                    key={option.key}
-                                    style={[
-                                        styles.styleChip,
-                                        selected && styles.styleChipSelected,
-                                    ]}
-                                    onPress={() => setStylePreset(option.key)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.styleChipLabel,
-                                            selected && styles.styleChipLabelSelected,
-                                        ]}
-                                    >
-                                        {option.label}
-                                    </Text>
-                                    <Text style={styles.styleChipDescription} numberOfLines={2}>
-                                        {option.description}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
+                    <View style={styles.fieldGroup}>
+                        <Text style={styles.fieldLabel}>Titre percutant</Text>
+                        <NativeInput
+                            value={headline}
+                            onChangeText={setHeadline}
+                            placeholder="Ex: 🚀 Promotion spéciale sur nos mèches premium !"
+                            multiline
+                            minLines={2}
+                        />
                     </View>
-                    {styleSuggestion && (
-                        <View style={styles.suggestionSection}>
-                            <Text style={styles.suggestionTitle}>Effets recommandés</Text>
-                            <View style={styles.suggestionRow}>
-                                {Array.isArray(styleSuggestion.effects) ? styleSuggestion.effects.map((effect) => {
-                                    const active = selectedEffects.has(effect);
-                                    return (
-                                        <TouchableOpacity
-                                            key={`effect_${effect}`}
-                                            style={[
-                                                styles.suggestionChip,
-                                                active && styles.suggestionChipSelected,
-                                            ]}
-                                            onPress={() => toggleSelection(effect, setSelectedEffects)}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.suggestionChipText,
-                                                    active && styles.suggestionChipTextSelected,
-                                                ]}
-                                            >
-                                                {effect}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                }) : null}
-                            </View>
-
-                            <Text style={styles.suggestionTitle}>Transitions</Text>
-                            <View style={styles.suggestionRow}>
-                                {Array.isArray(styleSuggestion.transitions) ? styleSuggestion.transitions.map((transition) => {
-                                    const active = selectedTransitions.has(transition);
-                                    return (
-                                        <TouchableOpacity
-                                            key={`transition_${transition}`}
-                                            style={[
-                                                styles.suggestionChip,
-                                                active && styles.suggestionChipSelected,
-                                            ]}
-                                            onPress={() => toggleSelection(transition, setSelectedTransitions)}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.suggestionChipText,
-                                                    active && styles.suggestionChipTextSelected,
-                                                ]}
-                                            >
-                                                {transition}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                }) : null}
-                            </View>
-
-                            <Text style={styles.suggestionTitle}>Overlays & tips</Text>
-                            <View style={styles.suggestionRow}>
-                                {Array.isArray(styleSuggestion.overlay_tips) ? styleSuggestion.overlay_tips.map((tip) => {
-                                    const active = selectedOverlayTips.has(tip);
-                                    return (
-                                        <TouchableOpacity
-                                            key={`tip_${tip}`}
-                                            style={[
-                                                styles.suggestionChip,
-                                                active && styles.suggestionChipSelected,
-                                            ]}
-                                            onPress={() => toggleSelection(tip, setSelectedOverlayTips)}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.suggestionChipText,
-                                                    active && styles.suggestionChipTextSelected,
-                                                ]}
-                                            >
-                                                {tip}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                }) : null}
-                            </View>
-
-                            <Text style={styles.suggestionTitle}>Palette de couleurs</Text>
-                            <NativeInput
-                                value={colorPalette}
-                                onChangeText={setColorPalette}
-                                placeholder={styleSuggestion.color_palette || '#6366F1 / #0EA5E9'}
-                            />
-
-                            <Text style={styles.suggestionTitle}>Ambiance musicale recommandée</Text>
-                            <NativeInput
-                                value={styleMusicHint}
-                                onChangeText={setStyleMusicHint}
-                                placeholder={styleSuggestion.music_hint || 'Ex: Beat afro-pop énergique'}
-                            />
+                    <View style={styles.fieldGroup}>
+                        <Text style={styles.fieldLabel}>Call-to-action</Text>
+                        <NativeInput
+                            value={callToAction}
+                            onChangeText={setCallToAction}
+                            placeholder="Ex: Réservez en ligne et profitez de la livraison express !"
+                            multiline
+                            minLines={2}
+                        />
+                    </View>
+                    <View style={styles.fieldGroup}>
+                        <View style={styles.fieldLabelRow}>
+                            <Text style={styles.fieldLabel}>📝 Script de montage</Text>
+                            <Text style={styles.fieldRequired}>*</Text>
                         </View>
-                    )}
+                        <Text style={styles.fieldHint}>
+                            Décrivez les messages clés, avantages, garanties. Une ligne = une scène.
+                        </Text>
+                        <NativeInput
+                            value={scriptNotes}
+                            onChangeText={setScriptNotes}
+                            placeholder={`Exemple:\nDécouvrez notre nouveau produit\nQualité premium garantie\nPrix spécial limité\nLivraison express disponible`}
+                            multiline
+                            minLines={4}
+                            style={scriptNotes.trim().length === 0 ? styles.scriptInputRequired : undefined}
+                        />
+                        {scriptNotes.trim().length === 0 && (
+                            <Text style={styles.fieldError}>
+                                ⚠️ Le script est requis pour générer la vidéo
+                            </Text>
+                        )}
+                    </View>
                     <View style={styles.durationRow}>
                         <Text style={styles.fieldLabel}>Durée cible</Text>
                         <View style={styles.durationInputRow}>
@@ -1390,16 +1750,60 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <Text style={styles.durationUnit}>secondes</Text>
                         </View>
                         <Text style={styles.durationHint}>
-                            Astuce : 25-35s performe mieux sur les réseaux sociaux. Yukpomnang gère les
-                            transitions automatiquement.
+                            Astuce : 25-35s performe mieux sur les réseaux sociaux.
                         </Text>
                     </View>
                 </NativeCard>
 
+                {/* Prévisualisation de la timeline générée */}
+                {generatedTimeline && !isEditingTimeline && (
+                    <NativeCard style={styles.sectionCard}>
+                        <TimelinePreview
+                            timeline={generatedTimeline}
+                            onEdit={() => setIsEditingTimeline(true)}
+                            onScenePress={(sceneIndex) => {
+                                console.log('[ProductVideoCreationModal] Scène pressée:', sceneIndex);
+                            }}
+                        />
+                    </NativeCard>
+                )}
+
+                {/* Éditeur de timeline */}
+                {isEditingTimeline && generatedTimeline && (
+                    <NativeCard style={styles.sectionCard}>
+                        <TimelineEditor
+                            timeline={generatedTimeline}
+                            onSave={(editedTimeline) => {
+                                setGeneratedTimeline(editedTimeline);
+                                setIsEditingTimeline(false);
+                            }}
+                            onCancel={() => setIsEditingTimeline(false)}
+                        />
+                    </NativeCard>
+                )}
+            </>
+        );
+    };
+
+    const renderStep5 = () => {
+        // Étape 5 : Audio uniquement (musique + voiceover)
+        if (!selectedProduct) {
+            return (
                 <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Ambiance musicale</Text>
+                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
                     <Text style={styles.sectionSubtitle}>
-                        Choisissez une ambiance générée automatiquement. Vous pouvez ajouter vos propres pistes via la médiathèque.
+                        Retournez à l'étape 1 pour sélectionner un produit.
+                    </Text>
+                </NativeCard>
+            );
+        }
+
+        return (
+            <>
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>🎵 Ambiance musicale</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Choisissez une ambiance générée automatiquement ou importez votre propre piste.
                     </Text>
                     <View style={styles.styleRow}>
                         {MUSIC_MODE_OPTIONS.map((option) => {
@@ -1421,7 +1825,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     >
                                         {option.label}
                                     </Text>
-                                    <Text style={styles.styleChipDescription} numberOfLines={2}>
+                                    <Text style={styles.styleChipDescription} numberOfLines={1}>
                                         {option.description}
                                     </Text>
                                 </TouchableOpacity>
@@ -1540,78 +1944,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         </View>
                     )}
                 </NativeCard>
-            </>
-        );
-    };
-
-    const renderStep3 = () => {
-        // Étape 3 : Brief et script
-        if (!selectedProduct) {
-            return (
-                <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
-                    <Text style={styles.sectionSubtitle}>
-                        Retournez à l'étape 1 pour sélectionner un produit.
-                    </Text>
-                </NativeCard>
-            );
-        }
-
-        return (
-            <>
-                <NativeCard style={styles.sectionCard}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Brief & script marketing</Text>
-                        <TouchableOpacity
-                            style={styles.linkButton}
-                            onPress={handleGenerateBrief}
-                            disabled={isGeneratingBrief}
-                        >
-                            {isGeneratingBrief ? (
-                                <ActivityIndicator size="small" color={modernColors.primary} />
-                            ) : (
-                                <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                            )}
-                            <Text style={styles.linkButtonText}>
-                                {isGeneratingBrief ? 'Génération…' : 'Brief IA'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                    <View style={styles.fieldGroup}>
-                        <Text style={styles.fieldLabel}>Titre percutant</Text>
-                        <NativeInput
-                            value={headline}
-                            onChangeText={setHeadline}
-                            placeholder="Ex: 🚀 Promotion spéciale sur nos mèches premium !"
-                            multiline
-                            minLines={2}
-                        />
-                    </View>
-                    <View style={styles.fieldGroup}>
-                        <Text style={styles.fieldLabel}>Call-to-action principal</Text>
-                        <NativeInput
-                            value={callToAction}
-                            onChangeText={setCallToAction}
-                            placeholder="Ex: Réservez en ligne et profitez de la livraison express !"
-                            multiline
-                            minLines={2}
-                        />
-                    </View>
-                    <View style={styles.fieldGroup}>
-                        <Text style={styles.fieldLabel}>Brief marketing (optionnel)</Text>
-                        <NativeInput
-                            value={scriptNotes}
-                            onChangeText={setScriptNotes}
-                            placeholder={`Décrivez les messages clés, avantages, garanties, etc.\nUne ligne = une scène.`}
-                            multiline
-                            minLines={3}
-                        />
-                    </View>
-                </NativeCard>
 
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Narration vocale IA</Text>
+                        <Text style={styles.sectionTitle}>🎤 Narration vocale IA</Text>
                         <Switch
                             value={voiceoverEnabled}
                             onValueChange={(value) => {
@@ -1635,7 +1971,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         />
                     </View>
                     <Text style={styles.sectionSubtitle}>
-                        Génère une voix off automatique (espeak doit être installé sur le serveur). Vous pouvez ajuster le script avant synthèse.
+                        Génère une voix off automatique. Vous pouvez ajuster le script avant synthèse.
                     </Text>
                     {voiceoverEnabled && (
                         <>
@@ -1649,10 +1985,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                 styles.voiceChip,
                                                 selected && styles.voiceChipSelected,
                                             ]}
-                                            onPress={() => {
-                                                setVoiceoverLang(option.value);
-                                                setSubtitleLang(option.value);
-                                            }}
+                                            onPress={() => setVoiceoverLang(option.value)}
                                         >
                                             <Text
                                                 style={[
@@ -1676,9 +2009,378 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         </>
                     )}
                 </NativeCard>
+            </>
+        );
+    };
 
+    const renderStep6 = () => {
+        // Étape 6 : Publication et distribution
+        if (!selectedProduct) {
+            return (
                 <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Informations à intégrer automatiquement</Text>
+                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Retournez à l'étape 1 pour sélectionner un produit.
+                    </Text>
+                </NativeCard>
+            );
+        }
+
+        return (
+            <>
+                {/* ✅ ESSENTIEL: Options de publication principales */}
+                <NativeCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>📤 Publication</Text>
+                    </View>
+                    <Text style={styles.sectionSubtitle}>
+                        Choisissez où votre vidéo sera automatiquement publiée après sa génération.
+                    </Text>
+                    <View style={styles.toggleRow}>
+                        <View style={styles.toggleText}>
+                            <Text style={styles.toggleLabel}>Envoyer dans le Chat Commerce</Text>
+                            <Text style={styles.toggleDescription}>
+                                Permet à vos prospects de visionner la vidéo directement dans la conversation.
+                            </Text>
+                        </View>
+                        <Switch
+                            value={publishToChat}
+                            onValueChange={setPublishToChat}
+                            trackColor={{ true: '#6366F1' }}
+                        />
+                    </View>
+                    <View style={styles.toggleRow}>
+                        <View style={styles.toggleText}>
+                            <Text style={styles.toggleLabel}>Afficher sur la carte produit</Text>
+                            <Text style={styles.toggleDescription}>
+                                Ajoute la vidéo dans la galerie principale du produit (mobile & web).
+                            </Text>
+                        </View>
+                        <Switch
+                            value={publishToProductCard}
+                            onValueChange={setPublishToProductCard}
+                            trackColor={{ true: '#6366F1' }}
+                        />
+                    </View>
+                </NativeCard>
+
+                {/* ✅ Distribution automatique avec plan IA */}
+                <NativeCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Diffusion automatique</Text>
+                        <TouchableOpacity
+                            style={styles.linkButton}
+                            onPress={handleGenerateDistribution}
+                            disabled={isGeneratingDistribution}
+                        >
+                            {isGeneratingDistribution ? (
+                                <ActivityIndicator size="small" color={modernColors.primary} />
+                            ) : (
+                                <SafeIcon name="send" size={16} color={modernColors.primary} />
+                            )}
+                            <Text style={styles.linkButtonText}>
+                                {isGeneratingDistribution ? 'Planification…' : 'Plan IA'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={styles.sectionSubtitle}>
+                        Contrôlez où la vidéo sera mise en avant immédiatement après sa génération.
+                    </Text>
+                    {distributionPlan && (
+                        <View style={styles.planBox}>
+                            {distributionPlan.summary && (
+                                <Text style={styles.planSummary}>{distributionPlan.summary}</Text>
+                            )}
+                            {distributionPlan.hashtags?.length > 0 && (
+                                <Text style={styles.planHashtags}>
+                                    Hashtags : {Array.isArray(distributionPlan.hashtags) ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}
+                                </Text>
+                            )}
+                            {distributionPlan.schedule?.length > 0 && (
+                                <View style={styles.planSchedule}>
+                                    {Array.isArray(distributionPlan.schedule) ? distributionPlan.schedule.map((item, idx) => (
+                                        <View key={`schedule_${idx}`} style={styles.planScheduleRow}>
+                                            <Text style={styles.planScheduleChannel}>{item.channel}</Text>
+                                            <Text style={styles.planScheduleTime}>{item.best_time}</Text>
+                                            {item.call_to_action && (
+                                                <Text style={styles.planScheduleCTA}>{item.call_to_action}</Text>
+                                            )}
+                                        </View>
+                                    )) : null}
+                                </View>
+                            )}
+                        </View>
+                    )}
+                    <View style={styles.toggleRow}>
+                        <View style={styles.toggleText}>
+                            <Text style={styles.toggleLabel}>Envoyer dans le Chat Commerce</Text>
+                            <Text style={styles.toggleDescription}>
+                                Permet à vos prospects de visionner la vidéo directement dans la
+                                conversation.
+                            </Text>
+                        </View>
+                        <Switch
+                            value={publishToChat}
+                            onValueChange={setPublishToChat}
+                            trackColor={{ true: '#6366F1' }}
+                        />
+                    </View>
+                    <View style={styles.toggleRow}>
+                        <View style={styles.toggleText}>
+                            <Text style={styles.toggleLabel}>Afficher sur la carte produit</Text>
+                            <Text style={styles.toggleDescription}>
+                                Ajoute la vidéo dans la galerie principale du produit (mobile & web).
+                            </Text>
+                        </View>
+                        <Switch
+                            value={publishToProductCard}
+                            onValueChange={setPublishToProductCard}
+                            trackColor={{ true: '#6366F1' }}
+                        />
+                    </View>
+                    <Text style={[styles.sectionSubtitle, { marginTop: 8 }]}>
+                        Ciblez aussi des canaux externes à planifier (export automatique disponible) :
+                    </Text>
+                    <View style={styles.voiceRow}>
+                        {DISTRIBUTION_OPTIONS.map((option) => {
+                            const selected = selectedChannels.has(option.key);
+                            return (
+                                <TouchableOpacity
+                                    key={option.key}
+                                    style={[
+                                        styles.voiceChip,
+                                        selected && styles.voiceChipSelected,
+                                    ]}
+                                    onPress={() =>
+                                        setSelectedChannels((prev) => {
+                                            const next = new Set(prev);
+                                            if (next.has(option.key)) {
+                                                next.delete(option.key);
+                                            } else {
+                                                next.add(option.key);
+                                            }
+                                            return next;
+                                        })
+                                    }
+                                >
+                                    <Text
+                                        style={[
+                                            styles.voiceChipText,
+                                            selected && styles.voiceChipTextSelected,
+                                        ]}
+                                    >
+                                        {option.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                    <Text style={styles.distributionHint}>
+                        Les canaux externes seront exportés au format adapté (carré ou paysage) pour faciliter vos publications.
+                    </Text>
+                </NativeCard>
+
+                {/* ✅ OPTIONNEL: Options avancées (pliable) */}
+                <NativeCard style={styles.sectionCard}>
+                    <TouchableOpacity
+                        style={styles.advancedOptionsHeader}
+                        onPress={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.advancedOptionsTitleRow}>
+                            <Text style={styles.sectionTitle}>⚙️ Options avancées</Text>
+                            <View style={styles.optionalBadge}>
+                                <Text style={styles.optionalBadgeText}>Optionnel</Text>
+                            </View>
+                        </View>
+                        <SafeIcon
+                            name={showAdvancedOptions ? 'chevron-up' : 'chevron-down'}
+                            size={20}
+                            color={modernColors.textSecondary}
+                        />
+                    </TouchableOpacity>
+                    {showAdvancedOptions && (
+                        <View style={styles.advancedOptionsContent}>
+                            {/* Estimation de coût */}
+                            <View style={styles.advancedSection}>
+                                <View style={styles.sectionHeader}>
+                                    <Text style={styles.advancedSectionTitle}>💰 Estimation du coût</Text>
+                                    <TouchableOpacity
+                                        style={styles.linkButton}
+                                        onPress={handleEstimateCost}
+                                        disabled={costLoading}
+                                    >
+                                        {costLoading ? (
+                                            <ActivityIndicator size="small" color={modernColors.primary} />
+                                        ) : (
+                                            <SafeIcon name="calculator" size={16} color={modernColors.primary} />
+                                        )}
+                                        <Text style={styles.linkButtonText}>
+                                            {costLoading ? 'Calcul…' : 'Estimer'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                                {showCostEstimation && costEstimation ? (
+                                    <View style={styles.costEstimationContainer}>
+                                        <View style={styles.costRow}>
+                                            <Text style={styles.costLabel}>Coût estimé :</Text>
+                                            <Text style={styles.costValue}>
+                                                {costEstimation.total_cost_fcfa?.toLocaleString('fr-FR') || costEstimation.required_fcfa?.toLocaleString('fr-FR') || 'N/A'} FCFA
+                                            </Text>
+                                        </View>
+                                        {costEstimation.breakdown && (
+                                            <View style={styles.costBreakdown}>
+                                                <View style={styles.costItem}>
+                                                    <Text style={styles.costItemLabel}>Coût tokens IA :</Text>
+                                                    <Text style={styles.costItemValue}>
+                                                        {costEstimation.breakdown.tokens_cost_usd.toFixed(2)} USD
+                                                    </Text>
+                                                </View>
+                                                {costEstimation.breakdown.audio_mastering_usd > 0 && (
+                                                    <View style={styles.costItem}>
+                                                        <Text style={styles.costItemLabel}>Mastering audio :</Text>
+                                                        <Text style={styles.costItemValue}>
+                                                            {costEstimation.breakdown.audio_mastering_usd.toFixed(2)} USD
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                                {costEstimation.breakdown.broll_generation_usd > 0 && (
+                                                    <View style={styles.costItem}>
+                                                        <Text style={styles.costItemLabel}>Génération B-roll :</Text>
+                                                        <Text style={styles.costItemValue}>
+                                                            {costEstimation.breakdown.broll_generation_usd.toFixed(2)} USD
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                        )}
+                                        {costEstimation.estimated_tokens && (
+                                            <Text style={styles.costHint}>
+                                                Tokens estimés : {costEstimation.estimated_tokens.toLocaleString('fr-FR')}
+                                            </Text>
+                                        )}
+                                        {costEstimation.affordable === false && (
+                                            <Text style={[styles.costHint, { color: '#EF4444', fontWeight: '600' }]}>
+                                                ⚠️ Solde insuffisant ({costEstimation.current_balance_fcfa?.toLocaleString('fr-FR') || 0} FCFA)
+                                            </Text>
+                                        )}
+                                    </View>
+                                ) : (
+                                    <Text style={styles.sectionSubtitle}>
+                                        Estimez le coût de génération avant de lancer la création.
+                                    </Text>
+                                )}
+                            </View>
+
+                            {/* Chaînage de vidéos */}
+                            <View style={styles.advancedSection}>
+                                <View style={styles.sectionHeader}>
+                                    <Text style={styles.advancedSectionTitle}>🔗 Chaînage de vidéos</Text>
+                                    <Switch
+                                        value={showVideoChaining}
+                                        onValueChange={setShowVideoChaining}
+                                        trackColor={{ true: '#6366F1' }}
+                                    />
+                                </View>
+                                {showVideoChaining && (
+                                    <View style={styles.videoChainingContainer}>
+                                        <Text style={styles.sectionSubtitle}>
+                                            Liez cette vidéo à des vidéos précédentes pour créer une séquence.
+                                        </Text>
+                                        {availableSessions.length > 0 ? (
+                                            <View style={styles.sessionsList}>
+                                                {availableSessions.map((session) => {
+                                                    const isSelected = selectedLinkedSessions.includes(session.id);
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={session.id}
+                                                            style={[
+                                                                styles.sessionChip,
+                                                                isSelected && styles.sessionChipSelected,
+                                                            ]}
+                                                            onPress={() => {
+                                                                if (isSelected) {
+                                                                    setSelectedLinkedSessions(
+                                                                        selectedLinkedSessions.filter((id) => id !== session.id)
+                                                                    );
+                                                                } else {
+                                                                    setSelectedLinkedSessions([
+                                                                        ...selectedLinkedSessions,
+                                                                        session.id,
+                                                                    ]);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <SafeIcon
+                                                                name={isSelected ? 'check-circle' : 'circle'}
+                                                                size={16}
+                                                                color={isSelected ? '#10B981' : modernColors.primary}
+                                                            />
+                                                            <Text
+                                                                style={[
+                                                                    styles.sessionChipText,
+                                                                    isSelected && styles.sessionChipTextSelected,
+                                                                ]}
+                                                                numberOfLines={1}
+                                                            >
+                                                                {session.title || `Session ${session.id.substring(0, 8)}`}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        ) : (
+                                            <Text style={styles.emptyStateText}>
+                                                Aucune session précédente disponible
+                                            </Text>
+                                        )}
+                                    </View>
+                                )}
+                            </View>
+
+                            {/* Formats de sortie */}
+                            <View style={styles.advancedSection}>
+                                <Text style={styles.advancedSectionTitle}>📐 Formats de sortie</Text>
+                                <Text style={styles.sectionSubtitle}>
+                                    Générer des variantes dans d'autres formats pour une diffusion multi-plateformes.
+                                </Text>
+                                <View style={styles.toggleRow}>
+                                    <View style={styles.toggleText}>
+                                        <Text style={styles.toggleLabel}>Format carré (1080x1080)</Text>
+                                        <Text style={styles.toggleDescription}>
+                                            Idéal pour Instagram, WhatsApp et fiches produits.
+                                        </Text>
+                                    </View>
+                                    <Switch
+                                        value={generateSquareVariant}
+                                        onValueChange={setGenerateSquareVariant}
+                                        trackColor={{ true: '#6366F1' }}
+                                    />
+                                </View>
+                                <View style={styles.toggleRow}>
+                                    <View style={styles.toggleText}>
+                                        <Text style={styles.toggleLabel}>Format paysage (1920x1080)</Text>
+                                        <Text style={styles.toggleDescription}>
+                                            Parfait pour écrans larges et présentations.
+                                        </Text>
+                                    </View>
+                                    <Switch
+                                        value={generateLandscapeVariant}
+                                        onValueChange={setGenerateLandscapeVariant}
+                                        trackColor={{ true: '#6366F1' }}
+                                    />
+                                </View>
+                            </View>
+                        </View>
+                    )}
+                </NativeCard>
+
+                {/* Informations à intégrer automatiquement */}
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>ℹ️ Informations automatiques</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Choisissez quelles informations du produit seront intégrées automatiquement dans la vidéo.
+                    </Text>
                     <View style={styles.toggleRow}>
                         <View style={styles.toggleText}>
                             <Text style={styles.toggleLabel}>Prix & devise</Text>
@@ -1723,163 +2425,6 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         );
     };
 
-    const renderStep4 = () => {
-        // Étape 4 : Distribution et résumé
-        if (!selectedProduct) {
-            return (
-                <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
-                    <Text style={styles.sectionSubtitle}>
-                        Retournez à l'étape 1 pour sélectionner un produit.
-                    </Text>
-                </NativeCard>
-            );
-        }
-
-        return (
-            <NativeCard style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Diffusion automatique</Text>
-                    <TouchableOpacity
-                        style={styles.linkButton}
-                        onPress={handleGenerateDistribution}
-                        disabled={isGeneratingDistribution}
-                    >
-                        {isGeneratingDistribution ? (
-                            <ActivityIndicator size="small" color={modernColors.primary} />
-                        ) : (
-                            <SafeIcon name="send" size={16} color={modernColors.primary} />
-                        )}
-                        <Text style={styles.linkButtonText}>
-                            {isGeneratingDistribution ? 'Planification…' : 'Plan IA'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-                <Text style={styles.sectionSubtitle}>
-                    Contrôlez où la vidéo sera mise en avant immédiatement après sa génération.
-                </Text>
-                {distributionPlan && (
-                    <View style={styles.planBox}>
-                        {distributionPlan.summary && (
-                            <Text style={styles.planSummary}>{distributionPlan.summary}</Text>
-                        )}
-                        {distributionPlan.hashtags?.length > 0 && (
-                            <Text style={styles.planHashtags}>
-                                Hashtags : {Array.isArray(distributionPlan.hashtags) ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}
-                            </Text>
-                        )}
-                        {distributionPlan.schedule?.length > 0 && (
-                            <View style={styles.planSchedule}>
-                                {Array.isArray(distributionPlan.schedule) ? distributionPlan.schedule.map((item, idx) => (
-                                    <View key={`schedule_${idx}`} style={styles.planScheduleRow}>
-                                        <Text style={styles.planScheduleChannel}>{item.channel}</Text>
-                                        <Text style={styles.planScheduleTime}>{item.best_time}</Text>
-                                        {item.call_to_action && (
-                                            <Text style={styles.planScheduleCTA}>{item.call_to_action}</Text>
-                                        )}
-                                    </View>
-                                )) : null}
-                            </View>
-                        )}
-                    </View>
-                )}
-                <View style={styles.toggleRow}>
-                    <View style={styles.toggleText}>
-                        <Text style={styles.toggleLabel}>Envoyer dans le Chat Commerce</Text>
-                        <Text style={styles.toggleDescription}>
-                            Permet à vos prospects de visionner la vidéo directement dans la
-                            conversation.
-                        </Text>
-                    </View>
-                    <Switch
-                        value={publishToChat}
-                        onValueChange={setPublishToChat}
-                        trackColor={{ true: '#6366F1' }}
-                    />
-                </View>
-                <View style={styles.toggleRow}>
-                    <View style={styles.toggleText}>
-                        <Text style={styles.toggleLabel}>Afficher sur la carte produit</Text>
-                        <Text style={styles.toggleDescription}>
-                            Ajoute la vidéo dans la galerie principale du produit (mobile & web).
-                        </Text>
-                    </View>
-                    <Switch
-                        value={publishToProductCard}
-                        onValueChange={setPublishToProductCard}
-                        trackColor={{ true: '#6366F1' }}
-                    />
-                </View>
-                <Text style={[styles.sectionSubtitle, { marginTop: 8 }]}>
-                    Ciblez aussi des canaux externes à planifier (export automatique disponible) :
-                </Text>
-                <View style={styles.voiceRow}>
-                    {DISTRIBUTION_OPTIONS.map((option) => {
-                        const selected = selectedChannels.has(option.key);
-                        return (
-                            <TouchableOpacity
-                                key={option.key}
-                                style={[
-                                    styles.voiceChip,
-                                    selected && styles.voiceChipSelected,
-                                ]}
-                                onPress={() =>
-                                    setSelectedChannels((prev) => {
-                                        const next = new Set(prev);
-                                        if (next.has(option.key)) {
-                                            next.delete(option.key);
-                                        } else {
-                                            next.add(option.key);
-                                        }
-                                        return next;
-                                    })
-                                }
-                            >
-                                <Text
-                                    style={[
-                                        styles.voiceChipText,
-                                        selected && styles.voiceChipTextSelected,
-                                    ]}
-                                >
-                                    {option.label}
-                                </Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
-                <Text style={styles.distributionHint}>
-                    Les canaux externes seront exportés au format adapté (carré ou paysage) pour faciliter vos publications.
-                </Text>
-                <View style={styles.toggleRow}>
-                    <View style={styles.toggleText}>
-                        <Text style={styles.toggleLabel}>Générer aussi un format carré (1080x1080)</Text>
-                        <Text style={styles.toggleDescription}>
-                            Idéal pour Instagram, WhatsApp et fiches produits.
-                        </Text>
-                    </View>
-                    <Switch
-                        value={generateSquareVariant}
-                        onValueChange={setGenerateSquareVariant}
-                        trackColor={{ true: '#6366F1' }}
-                    />
-                </View>
-                <View style={styles.toggleRow}>
-                    <View style={styles.toggleText}>
-                        <Text style={styles.toggleLabel}>Générer un format paysage (1920x1080)</Text>
-                        <Text style={styles.toggleDescription}>
-                            Parfait pour écrans larges et présentations.
-                        </Text>
-                    </View>
-                    <Switch
-                        value={generateLandscapeVariant}
-                        onValueChange={setGenerateLandscapeVariant}
-                        trackColor={{ true: '#6366F1' }}
-                    />
-                </View>
-            </NativeCard>
-        );
-    };
-
     // ✅ NOUVEAU: Fonction pour rendre le contenu de l'étape active
     const renderStepContent = () => {
         switch (activeStep) {
@@ -1891,6 +2436,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 return renderStep3();
             case 4:
                 return renderStep4();
+            case 5:
+                return renderStep5();
+            case 6:
+                return renderStep6();
             default:
                 return renderStep1();
         }
@@ -2084,6 +2633,15 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return;
         }
 
+        // ✅ NOUVEAU: Vérifier que le script est rempli
+        if (!scriptNotes.trim()) {
+            Alert.alert(
+                'Script requis',
+                'Le script de montage vidéo est requis. Décrivez les messages clés, avantages, garanties, etc. Une ligne = une scène.'
+            );
+            return;
+        }
+
         const durationSeconds = ensureNumber(duration, 28);
         if (durationSeconds < 10 || durationSeconds > 90) {
             Alert.alert('Durée invalide', 'Choisissez une durée comprise entre 10 et 90 secondes.');
@@ -2119,10 +2677,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             auto_generate_images: true,
             publish_to_chat: publishToChat,
             publish_to_product_card: publishToProductCard,
-            storyboard: scriptNotes
-                .split(/\r?\n/)
-                .map((line) => line.trim())
-                .filter((line) => line.length > 0),
+            // ✅ NOUVEAU: Utiliser la timeline générée si disponible, sinon storyboard texte
+            timeline: generatedTimeline || undefined,
+            storyboard: generatedTimeline
+                ? undefined
+                : scriptNotes
+                    .split(/\r?\n/)
+                    .map((line) => line.trim())
+                    .filter((line) => line.length > 0),
             music_mode: musicMode,
             music_volume: musicMode === 'none' ? undefined : safeMusicVolume,
             music_track_id: selectedMusicTrackId ?? undefined,
@@ -2138,6 +2700,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             style_overlay_tips: selectedOverlayTips.size > 0 ? Array.from(selectedOverlayTips) : undefined,
             style_color_palette: colorPalette.trim().length > 0 ? colorPalette.trim() : undefined,
             style_music_hint: styleMusicHint.trim().length > 0 ? styleMusicHint.trim() : undefined,
+            // ✅ NOUVEAU: Chaînage de vidéos (sessions liées)
+            linked_session_ids: selectedLinkedSessions.length > 0 ? selectedLinkedSessions : undefined,
         };
 
         setIsSubmitting(true);
@@ -2510,7 +3074,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 </Text>
                                 {/* ✅ NOUVEAU: Indicateur d'étapes */}
                                 <View style={styles.stepIndicator}>
-                                    {[1, 2, 3, 4].map((step) => (
+                                    {[1, 2, 3, 4, 5, 6].map((step) => (
                                         <View
                                             key={step}
                                             style={[
@@ -2521,7 +3085,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         />
                                     ))}
                                     <Text style={styles.stepText}>
-                                        Étape {activeStep} sur 4
+                                        Étape {activeStep} sur 6
                                     </Text>
                                 </View>
                             </View>
@@ -2574,6 +3138,49 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         title="Suivant"
                                         variant="primary"
                                         onPress={() => handleStepChange(4)}
+                                    />
+                                </View>
+                            )}
+                            {activeStep === 4 && (
+                                <View style={styles.navigationRow}>
+                                    <NativeButton
+                                        title="Précédent"
+                                        variant="secondary"
+                                        onPress={() => handleStepChange(3)}
+                                    />
+                                    <NativeButton
+                                        title="Suivant"
+                                        variant="primary"
+                                        onPress={() => handleStepChange(5)}
+                                    />
+                                </View>
+                            )}
+                            {activeStep === 5 && (
+                                <View style={styles.navigationRow}>
+                                    <NativeButton
+                                        title="Précédent"
+                                        variant="secondary"
+                                        onPress={() => handleStepChange(4)}
+                                    />
+                                    <NativeButton
+                                        title="Suivant"
+                                        variant="primary"
+                                        onPress={() => handleStepChange(6)}
+                                    />
+                                </View>
+                            )}
+                            {activeStep === 6 && (
+                                <View style={styles.navigationRow}>
+                                    <NativeButton
+                                        title="Précédent"
+                                        variant="secondary"
+                                        onPress={() => handleStepChange(5)}
+                                    />
+                                    <NativeButton
+                                        title={isSubmitting ? 'Génération en cours...' : 'Générer la vidéo'}
+                                        variant="primary"
+                                        onPress={handleSubmit}
+                                        disabled={isSubmitting || !selectedProduct}
                                     />
                                 </View>
                             )}
@@ -3288,6 +3895,162 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
         fontSize: 14,
+    },
+    // ✅ NOUVEAU: Styles pour le champ script amélioré
+    fieldLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 4,
+    },
+    fieldRequired: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#EF4444',
+    },
+    fieldHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginBottom: 8,
+        lineHeight: 16,
+    },
+    scriptInputRequired: {
+        borderColor: '#EF4444',
+        borderWidth: 2,
+    },
+    fieldError: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginTop: 4,
+        fontWeight: '500',
+    },
+    // ✅ NOUVEAU: Styles pour estimation de coût
+    costEstimationContainer: {
+        marginTop: 12,
+        padding: 16,
+        backgroundColor: '#F0FDF4',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+    },
+    costRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    costLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    costValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#10B981',
+    },
+    costBreakdown: {
+        marginTop: 8,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#BBF7D0',
+        gap: 8,
+    },
+    costItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    costItemLabel: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+    },
+    costItemValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    costHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 8,
+        fontStyle: 'italic',
+    },
+    // ✅ NOUVEAU: Styles pour chaînage de vidéos
+    videoChainingContainer: {
+        marginTop: 12,
+        gap: 12,
+    },
+    sessionsList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    sessionChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+    },
+    sessionChipSelected: {
+        backgroundColor: modernColors.primary + '15',
+        borderColor: modernColors.primary,
+    },
+    sessionChipText: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: modernColors.text,
+    },
+    sessionChipTextSelected: {
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    // ✅ NOUVEAU: Styles pour options avancées
+    advancedOptionsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 4,
+    },
+    advancedOptionsTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    optionalBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
+        backgroundColor: '#F0F9FF',
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+    },
+    optionalBadgeText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#0369A1',
+        textTransform: 'uppercase',
+    },
+    advancedOptionsContent: {
+        marginTop: 16,
+        gap: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    advancedSection: {
+        gap: 12,
+    },
+    advancedSectionTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.text,
     },
     suggestionSection: {
         marginTop: 16,

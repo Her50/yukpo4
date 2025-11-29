@@ -80,15 +80,51 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
     // Grouper par service
     const groupedByService = safeProducts.reduce((acc, product) => {
         if (!product) return acc; // ✅ Protection contre produits null/undefined
-        const key = `${product.serviceId}-${product.serviceName}`;
+
+        // ✅ SÉCURISÉ: S'assurer que serviceName est toujours une string valide pour la clé
+        const safeServiceName = (() => {
+            if (!product.serviceName) return 'Service sans nom';
+            if (typeof product.serviceName === 'string') {
+                return product.serviceName.trim() || 'Service sans nom';
+            }
+            if (typeof product.serviceName === 'object' && product.serviceName !== null) {
+                const obj = product.serviceName as any;
+                if ('valeur' in obj && typeof obj.valeur === 'string') {
+                    return obj.valeur.trim() || 'Service sans nom';
+                }
+            }
+            return String(product.serviceName) || 'Service sans nom';
+        })();
+
+        // ✅ SÉCURISÉ: S'assurer que productName est toujours une string valide
+        const safeProductName = (() => {
+            if (!product.productName) return 'Produit sans nom';
+            if (typeof product.productName === 'string') {
+                return product.productName.trim() || 'Produit sans nom';
+            }
+            if (typeof product.productName === 'object' && product.productName !== null) {
+                const obj = product.productName as any;
+                if ('valeur' in obj && typeof obj.valeur === 'string') {
+                    return obj.valeur.trim() || 'Produit sans nom';
+                }
+            }
+            return String(product.productName) || 'Produit sans nom';
+        })();
+
+        const key = `${product.serviceId}-${safeServiceName}`;
         if (!acc[key]) {
             acc[key] = {
                 serviceId: product.serviceId,
-                serviceName: product.serviceName,
+                serviceName: safeServiceName, // ✅ Toujours une string
                 products: [],
             };
         }
-        acc[key].products.push(product);
+        // ✅ Créer une copie du produit avec les noms sécurisés
+        acc[key].products.push({
+            ...product,
+            productName: safeProductName, // ✅ Toujours une string
+            serviceName: safeServiceName, // ✅ Toujours une string
+        });
         return acc;
     }, {} as Record<string, { serviceId: number; serviceName: string; products: Product[] }>);
 
@@ -112,13 +148,13 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
 
                     <Text style={styles.subtitle}>
                         {allowMultiple
-                            ? 'Choisissez un ou plusieurs produits pour lesquels vous souhaitez créer une vidéo'
-                            : 'Choisissez le produit pour lequel vous souhaitez créer une vidéo'}
+                            ? 'Choisissez un ou plusieurs produits'
+                            : 'Choisissez un produit'}
                     </Text>
                     {allowMultiple && selectedProducts.size > 0 && (
                         <View style={styles.selectionCount}>
                             <Text style={styles.selectionCountText}>
-                                {selectedProducts.size} produit(s) sélectionné(s)
+                                {String(selectedProducts.size)} produit(s) sélectionné(s)
                             </Text>
                         </View>
                     )}
@@ -131,12 +167,27 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                                     return null;
                                 }
 
+                                // ✅ SÉCURISÉ: Extraire le nom du service de manière sûre
+                                const serviceNameDisplay = (() => {
+                                    if (!service || !service.serviceName) return 'Service sans nom';
+                                    if (typeof service.serviceName === 'string') {
+                                        return service.serviceName.trim() || 'Service sans nom';
+                                    }
+                                    if (typeof service.serviceName === 'object' && service.serviceName !== null) {
+                                        const serviceNameObj = service.serviceName as any;
+                                        if ('valeur' in serviceNameObj && typeof serviceNameObj.valeur === 'string') {
+                                            return serviceNameObj.valeur.trim() || 'Service sans nom';
+                                        }
+                                    }
+                                    return String(service.serviceName) || 'Service sans nom';
+                                })();
+
                                 return (
-                                    <View key={`service-${service.serviceId || serviceIndex}`} style={styles.serviceGroup}>
+                                    <View key={`service-${String(service.serviceId || serviceIndex)}`} style={styles.serviceGroup}>
                                         <View style={styles.serviceHeader}>
                                             <SafeIcon name="briefcase" size={18} color={modernColors.primary} />
                                             <Text style={styles.serviceName}>
-                                                {service.serviceName || 'Service sans nom'}
+                                                {serviceNameDisplay}
                                             </Text>
                                         </View>
 
@@ -180,9 +231,16 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                                                 return String(productName) || 'Produit sans nom';
                                             };
 
+                                            const productNameDisplay = extractProductName(product.productName);
+
+                                            // ✅ SÉCURISÉ: S'assurer que productNameDisplay est toujours une string valide
+                                            if (!productNameDisplay || typeof productNameDisplay !== 'string') {
+                                                return null;
+                                            }
+
                                             return (
                                                 <TouchableOpacity
-                                                    key={`product-${product.serviceId}-${product.productIndex || productIndex}`}
+                                                    key={`product-${String(product.serviceId || '')}-${String(product.productIndex ?? productIndex)}`}
                                                     style={[
                                                         styles.productItem,
                                                         isSelected && styles.productItemSelected,
@@ -202,7 +260,7 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                                                                 isSelected && styles.productNameSelected,
                                                             ]}
                                                         >
-                                                            {extractProductName(product.productName)}
+                                                            {productNameDisplay}
                                                         </Text>
                                                     </View>
                                                 </TouchableOpacity>
@@ -228,8 +286,8 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                         />
                         <NativeButton
                             title={allowMultiple
-                                ? `Créer la vidéo${selectedProducts.size > 0 ? ` (${selectedProducts.size})` : ''}`
-                                : 'Créer la vidéo'}
+                                ? `Confirmer${selectedProducts.size > 0 ? ` (${String(selectedProducts.size)})` : ''}`
+                                : 'Confirmer'}
                             variant="primary"
                             size="medium"
                             onPress={handleConfirm}

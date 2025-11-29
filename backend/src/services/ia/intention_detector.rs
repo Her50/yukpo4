@@ -55,7 +55,8 @@ impl IntentionDetector {
         // 3. Appeler l'IA pour d?tecter l'intention
         let step3_start = std::time::Instant::now();
         let ia_start_time = std::time::Instant::now();
-        let (response, model_name, tokens_used) = self.app_ia.predict(&prompt).await?;
+        // ?? CORRECTION : L'ordre de retour est (model_name, response, tokens)
+        let (model_name, response, tokens_used) = self.app_ia.predict(&prompt).await?;
         let ia_time = ia_start_time.elapsed();
         let step3_time = step3_start.elapsed();
         log::info!(

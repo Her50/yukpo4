@@ -1995,7 +1995,7 @@ const formatDate = (dateStr: string): string => {
 
 const styles = StyleSheet.create({
   cardContainer: {
-    overflow: 'hidden',
+    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement du contenu
     borderRadius: 22,
     backgroundColor: 'rgba(255, 255, 255, 0.88)',
     borderWidth: 1,
@@ -2009,7 +2009,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: '100%',
     alignSelf: 'stretch',
-    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale pour garantir visibilité complète dans le carousel
+    height: 280, // ✅ CORRIGÉ: Hauteur fixe pour éviter le débordement
+    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
   },
   cardContainerCompact: {
     borderRadius: 20,
@@ -2018,6 +2019,8 @@ const styles = StyleSheet.create({
     flex: 1,
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.78)',
+    height: '100%', // ✅ AJOUTÉ: Prendre toute la hauteur disponible
+    maxHeight: 280, // ✅ AJOUTÉ: Respecter la hauteur maximale
   },
   imageContainer: {
     position: 'relative',
@@ -2144,11 +2147,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.94)',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+    flex: 1, // ✅ AJOUTÉ: Prendre l'espace disponible
+    height: 140, // ✅ CORRIGÉ: Hauteur fixe (280px total - 140px image = 140px contenu)
+    maxHeight: 140, // ✅ AJOUTÉ: Hauteur maximale stricte
+    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
+    // ✅ NOTE: Le contenu est limité à 140px pour s'adapter à la hauteur fixe de 280px de la carte
+    // Si le contenu dépasse, il sera coupé (overflow: hidden) pour maintenir la cohérence visuelle
   },
   contentCompact: {
     paddingTop: 8, // ✅ RÉDUIT: 10 → 8
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    height: 280, // ✅ AJOUTÉ: Hauteur fixe pour cartes sans médias (prend toute la hauteur disponible)
+    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
+    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
+    // ✅ NOTE: Sans médias, le contenu prend toute la hauteur de 280px
   },
   topStatsRow: {
     flexDirection: 'row',
@@ -2661,6 +2674,9 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 1,
     marginBottom: 6, // ✅ RÉDUIT: 8 → 6 (encore plus compact)
+    height: 280, // ✅ AJOUTÉ: Hauteur fixe pour éviter le débordement
+    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
+    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
   },
   // ✅ NOUVEAU: Styles section commentaires compacte
   commentsCompactSection: {

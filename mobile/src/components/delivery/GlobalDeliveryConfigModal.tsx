@@ -78,10 +78,11 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
         setLoadingLocations(true);
         try {
             const response = await deliveryApi.listStorageLocations();
-            if (response.success && response.data?.locations) {
+            if (response.success && response.data) {
+                const data = response.data as any;
                 // ✅ Sécuriser : Filtrer uniquement les lieux actifs
-                const activeLocations = Array.isArray(response.data.locations)
-                    ? response.data.locations.filter((loc: any) => loc && loc.is_active)
+                const activeLocations = Array.isArray(data?.locations)
+                    ? data.locations.filter((loc: any) => loc && loc.is_active)
                     : [];
                 setStorageLocations(activeLocations);
             }
@@ -110,10 +111,11 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
     const loadParcelTypes = async () => {
         try {
             const response = await apiGet('/api/delivery/parcel-types');
-            if (response.success && response.data?.parcel_types) {
+            if (response.success && response.data) {
+                const data = response.data as any;
                 // ✅ Sécuriser : S'assurer que parcelTypes est un tableau
-                const types = Array.isArray(response.data.parcel_types)
-                    ? response.data.parcel_types.filter((t: any) => t && t.id && t.name)
+                const types = Array.isArray(data?.parcel_types)
+                    ? data.parcel_types.filter((t: any) => t && t.id && t.name)
                     : [];
                 setParcelTypes(types);
             }
@@ -183,7 +185,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
             const results = await Promise.all(promises.flat());
 
             // ✅ Vérifier si toutes les configurations ont été appliquées avec succès
-            const successCount = results.filter(r => r.success).length;
+            const successCount = results.filter((r: any) => r && r.success === true).length;
             const totalCount = results.length;
 
             if (successCount === totalCount) {
@@ -228,6 +230,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
     // ✅ Sécuriser : Vérifier que selectedProducts est un tableau valide
     const validProducts = Array.isArray(selectedProducts) ? selectedProducts.filter(p => p && p.serviceId && typeof p.productIndex === 'number') : [];
+    const validProductsCount = validProducts.length || 0;
 
     return (
         <Modal
@@ -251,26 +254,57 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                         <View style={styles.productsHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
                             <Text style={styles.productsTitle}>
-                                Produits sélectionnés ({validProducts.length})
+                                Produits sélectionnés ({String(validProductsCount)})
                             </Text>
                         </View>
                         {validProducts.length === 0 ? (
                             <Text style={styles.emptyText}>Aucun produit sélectionné</Text>
                         ) : (
                             <ScrollView style={styles.productsList} nestedScrollEnabled>
-                                {validProducts.map((product, index) => (
-                                    <View key={`${product.serviceId}_${product.productIndex}_${index}`} style={styles.productItem}>
-                                        <SafeIcon name="check-circle" size={16} color="#10B981" />
-                                        <View style={styles.productInfo}>
-                                            <Text style={styles.productName} numberOfLines={1}>
-                                                {product.productName || 'Produit sans nom'}
-                                            </Text>
-                                            <Text style={styles.serviceName} numberOfLines={1}>
-                                                Service: {product.serviceName || 'Service sans nom'}
-                                            </Text>
+                                {validProducts.map((product, index) => {
+                                    // ✅ SÉCURISÉ: Extraire les noms de manière sûre
+                                    const productNameDisplay = (() => {
+                                        if (!product.productName) return 'Produit sans nom';
+                                        if (typeof product.productName === 'string') {
+                                            return product.productName.trim() || 'Produit sans nom';
+                                        }
+                                        if (typeof product.productName === 'object' && product.productName !== null) {
+                                            const obj = product.productName as any;
+                                            if ('valeur' in obj && typeof obj.valeur === 'string') {
+                                                return obj.valeur.trim() || 'Produit sans nom';
+                                            }
+                                        }
+                                        return String(product.productName) || 'Produit sans nom';
+                                    })();
+
+                                    const serviceNameDisplay = (() => {
+                                        if (!product.serviceName) return 'Service sans nom';
+                                        if (typeof product.serviceName === 'string') {
+                                            return product.serviceName.trim() || 'Service sans nom';
+                                        }
+                                        if (typeof product.serviceName === 'object' && product.serviceName !== null) {
+                                            const obj = product.serviceName as any;
+                                            if ('valeur' in obj && typeof obj.valeur === 'string') {
+                                                return obj.valeur.trim() || 'Service sans nom';
+                                            }
+                                        }
+                                        return String(product.serviceName) || 'Service sans nom';
+                                    })();
+
+                                    return (
+                                        <View key={`${String(product.serviceId)}_${String(product.productIndex)}_${index}`} style={styles.productItem}>
+                                            <SafeIcon name="check-circle" size={16} color="#10B981" />
+                                            <View style={styles.productInfo}>
+                                                <Text style={styles.productName} numberOfLines={1}>
+                                                    {productNameDisplay}
+                                                </Text>
+                                                <Text style={styles.serviceName} numberOfLines={1}>
+                                                    Service: {serviceNameDisplay}
+                                                </Text>
+                                            </View>
                                         </View>
-                                    </View>
-                                ))}
+                                    );
+                                })}
                             </ScrollView>
                         )}
                     </NativeCard>
@@ -468,10 +502,10 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                             style={styles.actionButton}
                         />
                         <NativeButton
-                            title={loading ? `Application à ${validProducts.length} produit(s)...` : `Appliquer à ${validProducts.length} produit(s)`}
+                            title={loading ? `Application à ${String(validProductsCount)} produit(s)...` : `Appliquer à ${String(validProductsCount)} produit(s)`}
                             variant="primary"
                             onPress={handleSave}
-                            disabled={loading || validProducts.length === 0}
+                            disabled={loading || validProductsCount === 0}
                             style={styles.actionButton}
                         />
                     </View>

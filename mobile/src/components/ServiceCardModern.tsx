@@ -23,7 +23,6 @@ interface ServiceCardModernProps {
     onDelete: (service: any) => void;
     onPromotion?: (service: any) => void;
     onViewProducts?: (service: any) => void;
-    onCreateVideo?: (service: any) => void;  // ✅ NOUVEAU : Créer une vidéo
 }
 
 const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
@@ -34,8 +33,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
     onToggleStatus,
     onDelete,
     onPromotion,
-    onViewProducts,
-    onCreateVideo  // ✅ NOUVEAU
+    onViewProducts
 }) => {
     const getStatusColor = (status: string | undefined | null) => {
         if (!status || typeof status !== 'string') return '#9E9E9E';
@@ -221,20 +219,8 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                     </TouchableOpacity>
                 </View>
 
-                {/* ✅ NOUVEAU : Seconde rangée d'actions */}
+                {/* ✅ Seconde rangée d'actions - Bouton vidéo déplacé dans le menu global */}
                 <View style={styles.actionsRow}>
-                    {/* Créer une vidéo */}
-                    {onCreateVideo && (
-                        <TouchableOpacity
-                            style={[styles.actionButton, styles.actionVideo]}
-                            onPress={() => onCreateVideo(service)}
-                            activeOpacity={0.7}
-                        >
-                            <SafeIcon name="video" size={18} color="#EC4899" />
-                            <Text style={[styles.actionLabel, { color: '#EC4899' }]}>Vidéo</Text>
-                        </TouchableOpacity>
-                    )}
-
                     {/* Promouvoir (publicité) */}
                     {onPromotion && (
                         <TouchableOpacity
