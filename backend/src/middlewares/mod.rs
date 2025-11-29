@@ -5,6 +5,7 @@ pub mod catch_unwind;
 pub mod check_input_context;
 pub mod check_tokens;
 pub mod cors;
+pub mod csrf;
 pub mod hide_headers;
 pub mod jwt;
 pub mod monitoring;

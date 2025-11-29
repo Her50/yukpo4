@@ -1,5 +1,46 @@
 use crate::config::cloud_architecture::CORSConfig;
 use axum::{extract::Request, http::HeaderValue, middleware::Next, response::Response};
+use log::warn;
+use std::env;
+
+/// ✅ SÉCURITÉ: Charge les origines autorisées depuis les variables d'environnement
+/// Format: ALLOWED_ORIGINS=https://domain1.com,https://domain2.com
+fn get_allowed_origins() -> Vec<String> {
+    let mut origins = Vec::new();
+
+    // Lire depuis la variable d'environnement
+    if let Ok(env_origins) = env::var("ALLOWED_ORIGINS") {
+        origins.extend(
+            env_origins
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
+        );
+    }
+
+    // ✅ SÉCURITÉ: En développement, ajouter localhost uniquement
+    #[cfg(debug_assertions)]
+    {
+        origins.push("http://localhost:3000".to_string());
+        origins.push("http://localhost:5173".to_string());
+        origins.push("http://localhost:8080".to_string());
+        origins.push("http://127.0.0.1:3000".to_string());
+        origins.push("http://127.0.0.1:5173".to_string());
+        origins.push("capacitor://localhost".to_string());
+        origins.push("ionic://localhost".to_string());
+    }
+
+    // Si aucune origine n'est définie, utiliser une liste minimale par défaut
+    if origins.is_empty() {
+        warn!("[CORS] Aucune origine configurée - Utilisation de la liste par défaut minimale");
+        origins = vec![
+            "https://yukpomnang.com".to_string(),
+            "https://yukpomnang.onrender.com".to_string(),
+        ];
+    }
+
+    origins
+}
 
 pub async fn cors_middleware(request: Request, next: Next) -> Response {
     // Extraire l'origin avant de consommer la request
@@ -7,61 +48,11 @@ pub async fn cors_middleware(request: Request, next: Next) -> Response {
 
     let mut response = next.run(request).await;
 
+    // ✅ SÉCURITÉ: Charger les origines autorisées depuis l'environnement
+    let allowed_origins = get_allowed_origins();
+
     let config = CORSConfig {
-        allowed_origins: vec![
-            // 🌍 Domaine principal
-            "https://yukpomnang.com".to_string(),
-            // 🚀 Plateformes de déploiement spécialisées
-            "https://yukpomnang.vercel.app".to_string(),
-            "https://yukpomnang.netlify.app".to_string(),
-            "https://yukpomnang-app.netlify.app".to_string(),
-            "https://yukpomnang.pages.dev".to_string(), // Cloudflare Pages
-            "https://yukpomnang.railway.app".to_string(),
-            "https://yukpomnang.up.railway.app".to_string(),
-            "https://yukpomnang.herokuapp.com".to_string(),
-            "https://yukpomnang.onrender.com".to_string(),
-            "https://yukpomnang.surge.sh".to_string(),
-            // ☁️ Cloud Providers
-            "https://yukpomnang.azurewebsites.net".to_string(), // Azure
-            "https://yukpomnang.appspot.com".to_string(),       // Google App Engine
-            "https://yukpomnang.run.app".to_string(),           // Google Cloud Run
-            "https://yukpomnang.firebaseapp.com".to_string(),   // Firebase Hosting
-            "https://yukpomnang.web.app".to_string(),           // Firebase Hosting
-            "https://yukpomnang.aws.amazon.com".to_string(),    // AWS
-            "https://yukpomnang.s3-website.amazonaws.com".to_string(), // AWS S3
-            "https://yukpomnang.cloudfront.net".to_string(),    // AWS CloudFront
-            "https://yukpomnang.amplifyapp.com".to_string(),    // AWS Amplify
-            // 🏢 Plateformes d'hébergement traditionnel
-            "https://yukpomnang.digitalocean.app".to_string(), // DigitalOcean
-            "https://yukpomnang.linode.com".to_string(),       // Linode
-            "https://yukpomnang.vultr.com".to_string(),        // Vultr
-            // 🔧 Plateformes de développement
-            "https://yukpomnang.gitlab.io".to_string(), // GitLab Pages
-            "https://yukpomnang.github.io".to_string(), // GitHub Pages
-            "https://yukpomnang.bitbucket.io".to_string(), // Bitbucket
-            // 🐳 Plateformes de conteneurisation (domaines personnalisés)
-            "https://yukpomnang.docker.com".to_string(),
-            "https://yukpomnang.k8s.com".to_string(),
-            // 📱 Applications mobiles
-            "capacitor://localhost".to_string(),
-            "ionic://localhost".to_string(),
-            "http://localhost".to_string(),
-            "https://localhost".to_string(),
-            // Applications mobiles en production (pas d'origin header)
-            "null".to_string(),
-            "".to_string(),
-            // 🌐 Développement local
-            "http://localhost:3000".to_string(),
-            "http://localhost:5173".to_string(),
-            "http://localhost:8080".to_string(),
-            "http://127.0.0.1:3000".to_string(),
-            "http://127.0.0.1:5173".to_string(),
-            "http://127.0.0.1:8080".to_string(),
-            // 🔄 Environnements de test
-            "https://staging.yukpomnang.com".to_string(),
-            "https://dev.yukpomnang.com".to_string(),
-            "https://test.yukpomnang.com".to_string(),
-        ],
+        allowed_origins: allowed_origins.clone(),
         allowed_methods: vec![
             "GET".to_string(),
             "POST".to_string(),
@@ -84,41 +75,46 @@ pub async fn cors_middleware(request: Request, next: Next) -> Response {
         allow_credentials: true,
     };
 
-    // Configuration CORS corrigée pour les applications mobiles
+    // ✅ SÉCURITÉ: Vérification stricte de l'origine
     if let Some(origin) = origin {
         let origin_str = origin.to_str().unwrap_or("");
 
         // Vérifier si l'origin est dans la liste autorisée
-        if config.allowed_origins.contains(&origin_str.to_string())
-            || origin_str.starts_with("http://localhost")
-            || origin_str.starts_with("https://localhost")
-            || origin_str == "capacitor://localhost"
-            || origin_str == "ionic://localhost"
-        {
+        if config.allowed_origins.contains(&origin_str.to_string()) {
             response
                 .headers_mut()
-                .insert("access-control-allow-origin", origin);
+                .insert("access-control-allow-origin", origin.clone());
             response.headers_mut().insert(
                 "access-control-allow-credentials",
                 HeaderValue::from_static("true"),
             );
         } else {
-            // Origin non autorisé, utiliser wildcard sans credentials
-            response
-                .headers_mut()
-                .insert("access-control-allow-origin", HeaderValue::from_static("*"));
+            // ✅ SÉCURITÉ: Origin non autorisé - ne pas utiliser wildcard avec credentials
+            // Loguer l'origine rejetée pour monitoring
+            warn!(
+                "[CORS] Origine non autorisée rejetée: {} (origines autorisées: {})",
+                origin_str,
+                config.allowed_origins.join(", ")
+            );
+            
+            // Ne pas autoriser cette origine
+            // Ne pas mettre de header Access-Control-Allow-Origin = * avec credentials
+            // Laisser la réponse sans header CORS = requête bloquée par le navigateur
         }
     } else {
-        // CORRECTION : Pour les applications mobiles sans origin header
-        // Utiliser une origine spécifique au lieu de wildcard
-        response.headers_mut().insert(
-            "access-control-allow-origin",
-            HeaderValue::from_static("https://yukpomnang.onrender.com"),
-        );
-        response.headers_mut().insert(
-            "access-control-allow-credentials",
-            HeaderValue::from_static("true"),
-        );
+        // ✅ SÉCURITÉ: Pour les applications mobiles sans origin header
+        // Utiliser la première origine autorisée par défaut (ou ne rien mettre)
+        if let Some(default_origin) = config.allowed_origins.first() {
+            if let Ok(header_value) = HeaderValue::from_str(default_origin) {
+                response
+                    .headers_mut()
+                    .insert("access-control-allow-origin", header_value);
+                response.headers_mut().insert(
+                    "access-control-allow-credentials",
+                    HeaderValue::from_static("true"),
+                );
+            }
+        }
     }
 
     response.headers_mut().insert(
@@ -138,13 +134,42 @@ pub async fn cors_middleware(request: Request, next: Next) -> Response {
     response
 }
 
-pub async fn cors_preflight_handler() -> Response {
+/// ✅ SÉCURITÉ: Handler preflight CORS sécurisé
+pub async fn cors_preflight_handler(req: Request<axum::body::Body>) -> Response {
     let mut response = Response::new(axum::body::Body::empty());
 
-    // Configuration ultra-permissive pour le preflight
-    response
-        .headers_mut()
-        .insert("access-control-allow-origin", HeaderValue::from_static("*"));
+    // Charger les origines autorisées
+    let allowed_origins = get_allowed_origins();
+
+    // Vérifier l'origine de la requête preflight
+    let origin = req.headers().get("origin");
+    if let Some(origin) = origin {
+        if let Ok(origin_str) = origin.to_str() {
+            if allowed_origins.contains(&origin_str.to_string()) {
+                response
+                    .headers_mut()
+                    .insert("access-control-allow-origin", origin.clone());
+                response.headers_mut().insert(
+                    "access-control-allow-credentials",
+                    HeaderValue::from_static("true"),
+                );
+            } else {
+                // ✅ SÉCURITÉ: Origin non autorisée - rejeter la requête preflight
+                warn!("[CORS] Preflight rejeté pour origine non autorisée: {}", origin_str);
+                *response.status_mut() = axum::http::StatusCode::FORBIDDEN;
+                return response;
+            }
+        }
+    } else {
+        // Pas d'origine dans preflight - utiliser la première autorisée
+        if let Some(default_origin) = allowed_origins.first() {
+            if let Ok(header_value) = HeaderValue::from_str(default_origin) {
+                response
+                    .headers_mut()
+                    .insert("access-control-allow-origin", header_value);
+            }
+        }
+    }
 
     response.headers_mut().insert(
         "access-control-allow-methods",
@@ -153,7 +178,7 @@ pub async fn cors_preflight_handler() -> Response {
 
     response.headers_mut().insert(
         "access-control-allow-headers",
-        HeaderValue::from_static("Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Cache-Control, Pragma"),
+        HeaderValue::from_static("Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Cache-Control, Pragma, X-CSRF-Token"),
     );
 
     response

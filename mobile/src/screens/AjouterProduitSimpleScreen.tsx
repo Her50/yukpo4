@@ -810,6 +810,78 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 }
             }
 
+            // ✅ NOUVEAU: Upload préalable des médias pour éviter payload trop volumineux
+            console.log('[AjouterProduitSimple] 📤 Début upload préalable des médias pour nouveau produit...');
+            try {
+                const { uploadFiles } = await import('../services/uploadApi');
+
+                // Collecter tous les médias du produit à uploader
+                const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
+
+                // Images produit
+                if (nouveauProduit.images && Array.isArray(nouveauProduit.images)) {
+                    nouveauProduit.images.forEach((img: string, idx: number) => {
+                        if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
+                            const mimeType = img.startsWith('data:')
+                                ? img.split(',')[0].split(':')[1].split(';')[0]
+                                : 'image/jpeg';
+                            filesToUpload.push({
+                                uri: img,
+                                type: mimeType,
+                                name: `prod_image_${idx}.jpg`
+                            });
+                        }
+                    });
+                }
+
+                // Vidéos produit
+                if (nouveauProduit.videos && Array.isArray(nouveauProduit.videos)) {
+                    nouveauProduit.videos.forEach((vid: string, idx: number) => {
+                        if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
+                            const mimeType = vid.startsWith('data:')
+                                ? vid.split(',')[0].split(':')[1].split(';')[0]
+                                : 'video/mp4';
+                            filesToUpload.push({
+                                uri: vid,
+                                type: mimeType,
+                                name: `prod_video_${idx}.mp4`
+                            });
+                        }
+                    });
+                }
+
+                // Uploader tous les fichiers
+                if (filesToUpload.length > 0) {
+                    console.log(`[AjouterProduitSimple] 📤 Upload de ${filesToUpload.length} fichier(s) pour nouveau produit...`);
+                    const uploadedFiles = await uploadFiles(filesToUpload);
+                    console.log('[AjouterProduitSimple] ✅ Upload réussi pour produit:', uploadedFiles.length, 'fichier(s)');
+
+                    // ✅ Remplacer base64 par URLs dans nouveauProduit
+                    // Images produit
+                    const imageUrls = uploadedFiles
+                        .filter(f => f.media_type === 'image')
+                        .map(f => f.url);
+                    if (imageUrls.length > 0) {
+                        nouveauProduit.imageUrls = imageUrls;
+                        console.log('[AjouterProduitSimple] ✅ Images produit uploadées:', imageUrls.length);
+                    }
+
+                    // Vidéos produit
+                    const videoUrls = uploadedFiles
+                        .filter(f => f.media_type === 'video')
+                        .map(f => f.url);
+                    if (videoUrls.length > 0) {
+                        nouveauProduit.videoUrls = videoUrls;
+                        console.log('[AjouterProduitSimple] ✅ Vidéos produit uploadées:', videoUrls.length);
+                    }
+                } else {
+                    console.log('[AjouterProduitSimple] ℹ️ Aucun média à uploader pour nouveau produit (déjà URLs ou vide)');
+                }
+            } catch (uploadError: any) {
+                console.warn('[AjouterProduitSimple] ⚠️ Erreur upload préalable produit, fallback base64:', uploadError.message);
+                // Fallback: continuer avec base64 si upload échoue (rétrocompatibilité)
+            }
+
             console.log('[AjouterProduitSimple] 📦 Données du nouveau produit (complètes):', {
                 ...nouveauProduit,
                 images: nouveauProduit.images ? `${nouveauProduit.images.length} image(s)` : 'aucune',

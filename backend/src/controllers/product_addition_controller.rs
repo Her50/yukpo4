@@ -521,7 +521,18 @@ async fn save_product_media(
     // Extraire les images
     let mut images_to_process: Vec<String> = Vec::new();
     
-    // Chercher dans product_data (contient les base64)
+    // ✅ NOUVEAU: Chercher d'abord dans imageUrls (upload préalable)
+    if let Some(image_urls) = product_data.get("imageUrls").and_then(|v| v.as_array()) {
+        for img in image_urls {
+            if let Some(img_str) = img.as_str() {
+                if !img_str.is_empty() {
+                    images_to_process.push(img_str.to_string());
+                }
+            }
+        }
+    }
+    
+    // Chercher dans images (URLs ou base64)
     if let Some(images) = product_data.get("images").and_then(|v| v.as_array()) {
         for img in images {
             if let Some(img_str) = img.as_str() {
@@ -532,7 +543,7 @@ async fn save_product_media(
         }
     }
     
-    // Chercher dans base64_image (utilisé par le frontend)
+    // Chercher dans base64_image (rétrocompatibilité)
     if let Some(base64_image) = product_data.get("base64_image") {
         if let Some(base64_array) = base64_image.as_array() {
             for img in base64_array {
@@ -672,7 +683,18 @@ async fn save_product_media(
     // Extraire et sauvegarder les vidéos
     let mut videos_to_process: Vec<String> = Vec::new();
     
-    // Chercher dans videos (array)
+    // ✅ NOUVEAU: Chercher d'abord dans videoUrls (upload préalable)
+    if let Some(video_urls) = product_data.get("videoUrls").and_then(|v| v.as_array()) {
+        for video in video_urls {
+            if let Some(video_str) = video.as_str() {
+                if !video_str.is_empty() {
+                    videos_to_process.push(video_str.to_string());
+                }
+            }
+        }
+    }
+    
+    // Chercher dans videos (URLs ou base64)
     if let Some(videos) = product_data.get("videos").and_then(|v| v.as_array()) {
         for video in videos {
             if let Some(video_str) = video.as_str() {
@@ -683,7 +705,7 @@ async fn save_product_media(
         }
     }
     
-    // Chercher dans video_base64 (utilisé par le frontend)
+    // Chercher dans video_base64 (rétrocompatibilité)
     if let Some(video_base64) = product_data.get("video_base64") {
         if let Some(video_array) = video_base64.as_array() {
             for video in video_array {

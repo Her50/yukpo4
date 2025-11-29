@@ -33,6 +33,7 @@ use crate::routes::{
     user_routes::user_routes,
     service_routes::service_routes,
     media_routes::media_routes,
+    upload_routes::upload_routes, // ✅ NOUVEAU: Routes upload préalable
     ia_routes::ia_routes,
     history_routes::history_routes,
     payment_routes::payment_routes,
@@ -141,6 +142,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let services = service_routes(state.clone());
     // Media routes (public ou protégées selon module)
     let media = media_routes(state.clone());
+    // ✅ NOUVEAU: Upload routes (upload préalable avant création service)
+    let uploads = upload_routes(state.clone());
     // IA routes (protégées par JWT dans le module ia_routes.rs)
     let ia = ia_routes(state.clone());
     // Echange routes (protégées par JWT dans le module echange_routes.rs)
@@ -219,6 +222,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(users)
         .merge(services)
         .merge(media)
+        .merge(uploads) // ✅ NOUVEAU: Upload préalable de fichiers
         .merge(ia)
         .merge(yukpo)
         .merge(echanges)

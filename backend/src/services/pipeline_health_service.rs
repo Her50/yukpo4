@@ -198,3 +198,33 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
         components,
     })
 }
+
+/// ✅ CORRECTION: Marque les stale jobs comme failed après un timeout
+/// Les jobs qui sont en statut 'queued' ou 'running' depuis plus de 1 heure sont marqués comme failed
+pub async fn mark_stale_jobs_as_failed(state: Arc<AppState>) -> AppResult<usize> {
+    // Marquer les jobs stale (plus de 1 heure) comme failed
+    let result = sqlx::query(
+        r#"
+        UPDATE video_generation_jobs
+        SET status = 'failed',
+            error_message = COALESCE(error_message, 'Job timeout: job bloqué depuis plus de 1 heure'),
+            updated_at = NOW()
+        WHERE status IN ('queued', 'running')
+          AND updated_at < NOW() - INTERVAL '1 hour'
+        RETURNING job_id
+        "#
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(AppError::from)?;
+
+    let count = result.len();
+    if count > 0 {
+        log::warn!(
+            "[PipelineHealth] {} stale jobs marqués comme failed (timeout > 1 heure)",
+            count
+        );
+    }
+
+    Ok(count)
+}

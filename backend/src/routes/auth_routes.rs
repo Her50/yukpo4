@@ -16,7 +16,12 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route(
             "/auth/login",
-            post(login_handler).layer(middleware::from_fn(anti_bruteforce::anti_bruteforce)),
+            post(login_handler)
+                // ✅ SÉCURITÉ: Anti-brute-force avec State pour accéder à Redis
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    anti_bruteforce::anti_bruteforce,
+                )),
         )
         .route("/auth/login", options(cors_preflight_handler))
         .route("/auth/register", post(register_user))
@@ -27,7 +32,9 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(middleware::from_fn(
             crate::middlewares::audit_log::audit_log,
         ))
-        .layer(middleware::from_fn(
+        // ✅ SÉCURITÉ: Rate limiting avec State pour accéder à Redis
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
             crate::middlewares::rate_limit::rate_limit,
         ))
         .layer(middleware::from_fn(

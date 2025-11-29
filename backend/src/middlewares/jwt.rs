@@ -30,31 +30,34 @@ pub async fn jwt_auth(
         if let Some(token) = auth_header.strip_prefix("Bearer ") {
             eprintln!("[DEBUG] Token extrait (longueur: {})", token.len());
 
-            // Mode d?veloppement : accepter les tokens de dev
-            if token.ends_with(".dev_signature") {
-                eprintln!("[DEBUG] Token de d?veloppement d?tect?");
-                let parts: Vec<&str> = token.split('.').collect();
-                if parts.len() == 3 {
-                    // D?coder le payload
-                    if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
-                        if let Ok(payload) =
-                            serde_json::from_slice::<serde_json::Value>(&payload_str)
-                        {
-                            let authenticated_user = AuthenticatedUser {
-                                id: payload["sub"].as_str().unwrap_or("1").parse().unwrap_or(1),
-                                role: payload["role"].as_str().unwrap_or("admin").to_string(),
-                            };
-                            req.extensions_mut().insert(authenticated_user.clone());
-                            eprintln!(
-                                "[DEBUG] Utilisateur dev authentifi?: {:?}",
-                                authenticated_user
-                            );
-                            return Ok(next.run(req).await);
+            // ✅ SÉCURITÉ: Tokens de développement uniquement en mode debug
+            #[cfg(debug_assertions)]
+            {
+                if token.ends_with(".dev_signature") {
+                    eprintln!("[DEBUG] Token de développement détecté (mode debug uniquement)");
+                    let parts: Vec<&str> = token.split('.').collect();
+                    if parts.len() == 3 {
+                        if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
+                            if let Ok(payload) =
+                                serde_json::from_slice::<serde_json::Value>(&payload_str)
+                            {
+                                let authenticated_user = AuthenticatedUser {
+                                    id: payload["sub"].as_str().unwrap_or("1").parse().unwrap_or(1),
+                                    role: payload["role"].as_str().unwrap_or("admin").to_string(),
+                                };
+                                req.extensions_mut().insert(authenticated_user.clone());
+                                eprintln!(
+                                    "[DEBUG] Utilisateur dev authentifié: {:?}",
+                                    authenticated_user
+                                );
+                                return Ok(next.run(req).await);
+                            }
                         }
                     }
                 }
             }
 
+            // ✅ SÉCURITÉ: JWT_SECRET obligatoire
             let secret = env::var("JWT_SECRET").map_err(|_| {
                 eprintln!("[ERROR] JWT_SECRET manquant dans les variables d'environnement");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Missing JWT_SECRET")
@@ -110,29 +113,35 @@ pub async fn optional_jwt_auth(mut req: Request<Body>, next: Next) -> Response {
 
     if let Some(auth_header) = auth_header {
         if let Some(token) = auth_header.strip_prefix("Bearer ") {
-            // Mode développement : accepter les tokens de dev
-            if token.ends_with(".dev_signature") {
-                let parts: Vec<&str> = token.split('.').collect();
-                if parts.len() == 3 {
-                    if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
-                        if let Ok(payload) =
-                            serde_json::from_slice::<serde_json::Value>(&payload_str)
-                        {
-                            let authenticated_user = AuthenticatedUser {
-                                id: payload["sub"].as_str().unwrap_or("1").parse().unwrap_or(1),
-                                role: payload["role"].as_str().unwrap_or("admin").to_string(),
-                            };
-                            req.extensions_mut().insert(authenticated_user);
-                            return next.run(req).await;
+            // ✅ SÉCURITÉ: Tokens de développement uniquement en mode debug
+            #[cfg(debug_assertions)]
+            {
+                if token.ends_with(".dev_signature") {
+                    let parts: Vec<&str> = token.split('.').collect();
+                    if parts.len() == 3 {
+                        if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
+                            if let Ok(payload) =
+                                serde_json::from_slice::<serde_json::Value>(&payload_str)
+                            {
+                                let authenticated_user = AuthenticatedUser {
+                                    id: payload["sub"].as_str().unwrap_or("1").parse().unwrap_or(1),
+                                    role: payload["role"].as_str().unwrap_or("admin").to_string(),
+                                };
+                                req.extensions_mut().insert(authenticated_user);
+                                return next.run(req).await;
+                            }
                         }
                     }
                 }
             }
 
+            // ✅ SÉCURITÉ: JWT_SECRET requis même pour optional_jwt_auth
             let secret = match env::var("JWT_SECRET") {
                 Ok(s) => s,
                 Err(_) => {
-                    // Si JWT_SECRET manquant, continuer sans authentification
+                    // Si JWT_SECRET manquant, continuer sans authentification (comportement optionnel)
+                    // Mais loguer l'erreur pour alerter
+                    log::warn!("[optional_jwt_auth] JWT_SECRET manquant - authentification ignorée");
                     return next.run(req).await;
                 }
             };

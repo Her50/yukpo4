@@ -45,6 +45,33 @@ pub struct AudioLayer {
     pub start_offset: f32,
 }
 
+/// ✅ CORRECTION: Vérifie si un fichier vidéo a un stream audio
+pub async fn has_audio_stream(video_path: &Path) -> AppResult<bool> {
+    let output = Command::new("ffprobe")
+        .args(&[
+            "-v", "error",
+            "-select_streams", "a:0",
+            "-show_entries", "stream=codec_type",
+            "-of", "csv=p=0",
+            video_path.to_string_lossy().as_ref(),
+        ])
+        .output()
+        .await
+        .map_err(|err| {
+            AppError::Internal(format!(
+                "Impossible d'exécuter ffprobe pour vérifier l'audio: {err:?}"
+            ))
+        })?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        Ok(stdout.trim() == "audio")
+    } else {
+        // Si ffprobe échoue, on assume qu'il n'y a pas d'audio
+        Ok(false)
+    }
+}
+
 /// Mixe la vidéo combinée avec les couches audio (musique, voix, SFX) et écrit `final.mp4`.
 ///
 /// Par défaut, on applique un mixage simple (musique + voix). Spatialisation et LUFS seront gérés
@@ -57,6 +84,16 @@ pub async fn mix_media_audio_tracks(
     sfx_tracks: &[AudioLayer],
     config: &AudioMixConfig,
 ) -> AppResult<PathBuf> {
+    // ✅ CORRECTION: Vérifier si la vidéo a un stream audio avant de l'utiliser
+    let video_has_audio = has_audio_stream(base_video_path).await.unwrap_or(false);
+    
+    if !video_has_audio {
+        warn!(
+            "[AudioPipeline] La vidéo {} n'a pas de stream audio, création d'un stream silencieux",
+            base_video_path.display()
+        );
+    }
+
     let mut args: Vec<String> = vec![
         "-y".to_string(),
         "-i".to_string(),
@@ -83,8 +120,20 @@ pub async fn mix_media_audio_tracks(
     }
 
     let mut filter_parts: Vec<String> = Vec::new();
-    let mut inputs_count = 1;
-    let mut mix_inputs: Vec<String> = vec!["[0:a]".to_string()];
+    let mut inputs_count = 0;
+    let mut mix_inputs: Vec<String> = Vec::new();
+    
+    // ✅ CORRECTION: Ajouter l'audio de la vidéo seulement si elle en a un
+    if video_has_audio {
+        mix_inputs.push("[0:a]".to_string());
+        inputs_count += 1;
+    } else {
+        // Créer un stream audio silencieux de la même durée que la vidéo
+        // On utilisera anullsrc pour créer un silence
+        info!("[AudioPipeline] Création d'un stream audio silencieux pour la vidéo");
+        // Note: On pourrait aussi extraire la durée de la vidéo et créer un silence
+        // Pour l'instant, on continue sans l'audio de la vidéo
+    }
 
     // Musique
     if music_track.is_some() {
@@ -123,12 +172,19 @@ pub async fn mix_media_audio_tracks(
         }
     }
 
-    let mix_filter = format!(
-        "{}amix=inputs={}:duration=first:dropout_transition=3[aout]",
-        mix_inputs.join(""),
-        inputs_count
-    );
-    filter_parts.push(mix_filter);
+    // ✅ CORRECTION: Ne créer le mix que s'il y a des inputs audio
+    if inputs_count == 0 {
+        warn!("[AudioPipeline] Aucun input audio disponible, création d'un stream silencieux");
+        // Créer un stream audio silencieux
+        filter_parts.push("anullsrc=channel_layout=stereo:sample_rate=44100[aout]".to_string());
+    } else {
+        let mix_filter = format!(
+            "{}amix=inputs={}:duration=first:dropout_transition=3[aout]",
+            mix_inputs.join(""),
+            inputs_count
+        );
+        filter_parts.push(mix_filter);
+    }
 
     // TODO (Futur): intégrer spatialisation et mastering LUFS via Dolby/AudioShake
     match config.spatialization {

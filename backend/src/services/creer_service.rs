@@ -1968,15 +1968,30 @@ pub async fn creer_service(
         }
     }
     
-    let service_images: Vec<String> = data_processed
-        .get("base64_image")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
+    // ✅ NOUVEAU: Support explicite des URLs (imageUrls, videoUrls, etc.)
+    // Priorité: imageUrls (upload préalable) > base64_image (rétrocompatibilité)
+    let service_images: Vec<String> = {
+        // Chercher d'abord dans imageUrls (upload préalable)
+        if let Some(image_urls) = data_processed.get("imageUrls")
+            .and_then(|v| v.as_array())
+        {
+            image_urls.iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect()
-        })
-        .unwrap_or_default();
+        }
+        // Fallback: base64_image (rétrocompatibilité)
+        else {
+            data_processed
+                .get("base64_image")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
+                .unwrap_or_default()
+        }
+    };
     
     log::info!(
         "[creer_service] 💾 Début sauvegarde médias pour service {} ({} images globales trouvées dans data_processed)",
@@ -2071,6 +2086,22 @@ pub async fn creer_service(
                     prod_processed.keys().collect::<Vec<_>>()
                 );
                 
+                // ✅ NOUVEAU: Chercher d'abord dans "imageUrls" (upload préalable)
+                if let Some(image_urls) = prod_processed.get("imageUrls").and_then(|v| v.as_array()) {
+                    let count = image_urls.len();
+                    images_to_process.extend(
+                        image_urls
+                            .iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                    );
+                    if count > 0 {
+                        log::info!(
+                            "[creer_service] ✅ Trouvé {} image(s) dans champ 'imageUrls' (upload préalable) pour produit {}",
+                            count,
+                            product_id
+                        );
+                    }
+                }
                 // Chercher dans "images" (URLs ou base64)
                 if let Some(product_images) = prod_processed.get("images").and_then(|v| v.as_array()) {
                     let count = product_images.len();
@@ -2087,7 +2118,7 @@ pub async fn creer_service(
                         );
                     }
                 }
-                // Chercher dans "base64_image" (utilisé par FormulaireYukpoIntelligentScreen)
+                // Chercher dans "base64_image" (rétrocompatibilité)
                 if let Some(base64_image) = prod_processed.get("base64_image") {
                     if let Some(base64_array) = base64_image.as_array() {
                         let count = base64_array.len();
@@ -2521,6 +2552,19 @@ pub async fn creer_service(
             // Extraire les vidéos depuis data_processed (contient les médias base64)
             let mut videos_to_process: Vec<String> = Vec::new();
             if let Some(prod_processed) = produit_from_processed {
+                // ✅ NOUVEAU: Chercher d'abord dans "videoUrls" (upload préalable)
+                if let Some(video_urls) = prod_processed.get("videoUrls").and_then(|v| v.as_array()) {
+                    videos_to_process.extend(
+                        video_urls
+                            .iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string())),
+                    );
+                    log::info!(
+                        "[creer_service] ✅ Trouvé {} vidéo(s) dans champ 'videoUrls' (upload préalable) pour produit {}",
+                        video_urls.len(),
+                        product_id
+                    );
+                }
                 // Chercher dans "videos" (URLs ou base64)
                 if let Some(product_videos) = prod_processed.get("videos").and_then(|v| v.as_array()) {
                     videos_to_process.extend(
@@ -2529,7 +2573,7 @@ pub async fn creer_service(
                             .filter_map(|v| v.as_str().map(|s| s.to_string())),
                     );
                 }
-                // Chercher dans "video_base64" (utilisé par FormulaireYukpoIntelligentScreen)
+                // Chercher dans "video_base64" (rétrocompatibilité)
                 if let Some(video_base64) = prod_processed.get("video_base64") {
                     if let Some(video_array) = video_base64.as_array() {
                         videos_to_process.extend(
@@ -2859,40 +2903,75 @@ pub async fn creer_service(
     }
 
     // Audios
-    if let Some(audios) = data_processed
-        .get("audio_base64")
-        .and_then(|v| v.as_array())
-    {
-        let audio_strings: Vec<String> = audios
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect();
-
-        if !audio_strings.is_empty() {
+    // ✅ NOUVEAU: Support audioUrls (upload préalable) > audio_base64 (rétrocompatibilité)
+    let audio_strings: Vec<String> = {
+        if let Some(audio_urls) = data_processed.get("audioUrls")
+            .and_then(|v| v.as_array())
+        {
+            audio_urls.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        } else {
+            data_processed
+                .get("audio_base64")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
+                .unwrap_or_default()
+        }
+    };
+    
+    if !audio_strings.is_empty() {
+        if let Some(_) = data_processed.get("audioUrls") {
             log::info!(
-                "[creer_service] Sauvegarde de {} audios pour le service {}",
-                audio_strings.len(),
-                service_id
+                "[creer_service] 📥 Traitement de {} audios depuis URLs (upload préalable)",
+                audio_strings.len()
             );
+        } else {
+            log::info!(
+                "[creer_service] 📥 Traitement de {} audios depuis base64 (rétrocompatibilité)",
+                audio_strings.len()
+            );
+        }
+        
+        log::info!(
+            "[creer_service] Sauvegarde de {} audios pour le service {}",
+            audio_strings.len(),
+            service_id
+        );
 
-            for (idx, audio_data) in audio_strings.iter().enumerate() {
-                if !is_probable_base64(audio_data) {
-                    log::warn!(
-                        "[creer_service] Audio ignoré (format non supporté) index {}",
-                        idx
-                    );
-                    continue;
-                }
-
-                let stored = match persist_base64_media(
+        for (idx, audio_data) in audio_strings.iter().enumerate() {
+                // ✅ AMÉLIORATION: Gérer URLs et base64
+                let stored = if is_url(audio_data) {
+                    download_and_save_image(
+                        storage_root.as_path(),
+                        service_id,
+                        audio_data,
+                        "audio",
+                    )
+                    .await
+                } else if is_probable_base64(audio_data) {
+                    persist_base64_media(
                     storage_root.as_path(),
                     service_id,
                     "audio",
                     audio_data,
                     "mp3",
                 )
-                .await
-                {
+                    .await
+                } else {
+                    log::warn!(
+                        "[creer_service] Audio ignoré (format non supporté) index {}: {}",
+                        idx,
+                        &audio_data[..audio_data.len().min(50)]
+                    );
+                    continue;
+                };
+
+                let stored = match stored {
                     Ok(value) => value,
                     Err(err) => {
                         log::error!("[creer_service] Erreur sauvegarde audio {}: {}", idx, err);
@@ -2924,40 +3003,75 @@ pub async fn creer_service(
     }
 
     // Vidéos
-    if let Some(videos) = data_processed
-        .get("video_base64")
-        .and_then(|v| v.as_array())
-    {
-        let video_strings: Vec<String> = videos
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect();
+    // ✅ NOUVEAU: Support videoUrls (upload préalable) > video_base64 (rétrocompatibilité)
+    let video_strings: Vec<String> = {
+        if let Some(video_urls) = data_processed.get("videoUrls")
+            .and_then(|v| v.as_array())
+        {
+            video_urls.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        } else {
+            data_processed
+                .get("video_base64")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
+                .unwrap_or_default()
+        }
+    };
 
-        if !video_strings.is_empty() {
+    if !video_strings.is_empty() {
+        if let Some(_) = data_processed.get("videoUrls") {
             log::info!(
-                "[creer_service] Sauvegarde de {} vidéos pour le service {}",
-                video_strings.len(),
-                service_id
+                "[creer_service] 📥 Traitement de {} vidéos depuis URLs (upload préalable)",
+                video_strings.len()
             );
+        } else {
+            log::info!(
+                "[creer_service] 📥 Traitement de {} vidéos depuis base64 (rétrocompatibilité)",
+                video_strings.len()
+            );
+        }
+        
+        log::info!(
+            "[creer_service] Sauvegarde de {} vidéos pour le service {}",
+            video_strings.len(),
+            service_id
+        );
 
-            for (idx, video_data) in video_strings.iter().enumerate() {
-                if !is_probable_base64(video_data) {
-                    log::warn!(
-                        "[creer_service] Vidéo ignorée (format non supporté) index {}",
-                        idx
-                    );
-                    continue;
-                }
-
-                let stored = match persist_base64_media(
+        for (idx, video_data) in video_strings.iter().enumerate() {
+                // ✅ AMÉLIORATION: Gérer URLs et base64
+                let stored = if is_url(video_data) {
+                    download_and_save_image(
+                        storage_root.as_path(),
+                        service_id,
+                        video_data,
+                        "videos",
+                    )
+                    .await
+                } else if is_probable_base64(video_data) {
+                    persist_base64_media(
                     storage_root.as_path(),
                     service_id,
                     "videos",
                     video_data,
                     "mp4",
                 )
-                .await
-                {
+                    .await
+                } else {
+                    log::warn!(
+                        "[creer_service] Vidéo ignorée (format non supporté) index {}: {}",
+                        idx,
+                        &video_data[..video_data.len().min(50)]
+                    );
+                    continue;
+                };
+
+                let stored = match stored {
                     Ok(value) => value,
                     Err(err) => {
                         log::error!("[creer_service] Erreur sauvegarde vidéo {}: {}", idx, err);
@@ -2990,47 +3104,85 @@ pub async fn creer_service(
     }
 
     // Documents
-    if let Some(docs) = data_processed.get("doc_base64").and_then(|v| v.as_array()) {
-        let doc_strings: Vec<String> = docs
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect();
+    // ✅ NOUVEAU: Support docUrls (upload préalable) > doc_base64 (rétrocompatibilité)
+    let doc_strings: Vec<String> = {
+        if let Some(doc_urls) = data_processed.get("docUrls")
+            .and_then(|v| v.as_array())
+        {
+            doc_urls.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        } else {
+            data_processed
+                .get("doc_base64")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
+                .unwrap_or_default()
+        }
+    };
 
-        if !doc_strings.is_empty() {
+    if !doc_strings.is_empty() {
+        if let Some(_) = data_processed.get("docUrls") {
             log::info!(
-                "[creer_service] Sauvegarde de {} documents pour le service {}",
-                doc_strings.len(),
-                service_id
+                "[creer_service] 📥 Traitement de {} documents depuis URLs (upload préalable)",
+                doc_strings.len()
             );
+        } else {
+            log::info!(
+                "[creer_service] 📥 Traitement de {} documents depuis base64 (rétrocompatibilité)",
+                doc_strings.len()
+            );
+        }
+        
+        log::info!(
+            "[creer_service] Sauvegarde de {} documents pour le service {}",
+            doc_strings.len(),
+            service_id
+        );
 
-            for (idx, doc_data) in doc_strings.iter().enumerate() {
-                if !is_probable_base64(doc_data) {
-                    log::warn!(
-                        "[creer_service] Document ignoré (format non supporté) index {}",
-                        idx
-                    );
-                    continue;
-                }
-
-                let stored = match persist_base64_media(
+        for (idx, doc_data) in doc_strings.iter().enumerate() {
+            // ✅ AMÉLIORATION: Gérer URLs et base64
+            let stored = if is_url(doc_data) {
+                download_and_save_image(
+                    storage_root.as_path(),
+                    service_id,
+                    doc_data,
+                    "documents",
+                )
+                .await
+            } else if is_probable_base64(doc_data) {
+                persist_base64_media(
                     storage_root.as_path(),
                     service_id,
                     "documents",
                     doc_data,
                     "pdf",
                 )
-                .await
-                {
-                    Ok(value) => value,
-                    Err(err) => {
-                        log::error!(
-                            "[creer_service] Erreur sauvegarde document {}: {}",
-                            idx,
-                            err
-                        );
-                        continue;
-                    }
-                };
+                    .await
+            } else {
+                log::warn!(
+                    "[creer_service] Document ignoré (format non supporté) index {}: {}",
+                    idx,
+                    &doc_data[..doc_data.len().min(50)]
+                );
+                continue;
+            };
+
+            let stored = match stored {
+                Ok(value) => value,
+                Err(err) => {
+                    log::error!(
+                        "[creer_service] Erreur sauvegarde document {}: {}",
+                        idx,
+                        err
+                    );
+                    continue;
+                }
+            };
 
                 let path = stored.path;
                 // ✅ MÉDIA GLOBAL DU SERVICE : Document lié au service (pas à un produit spécifique)

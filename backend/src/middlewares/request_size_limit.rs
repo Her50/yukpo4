@@ -2,8 +2,9 @@
 use axum::{body::Body, http::Request, middleware::Next, response::Response};
 use http::StatusCode;
 
-// ✅ CORRECTION: Limite augmentée à 1 GB pour permettre les payloads complexes avec sous_caracteristiques
-const DEFAULT_MAX_SIZE: usize = 1_000_000_000; // 1 GB (augmenté de 500 MB)
+// ✅ CORRECTION: Limite augmentée à 100 MB pour permettre les payloads complexes avec sous_caracteristiques
+// Note: Cette limite est en plus de la limite Axum DefaultBodyLimit qui doit être configurée sur la route
+const DEFAULT_MAX_SIZE: usize = 100_000_000; // 100 MB (raisonnable pour des services avec produits)
 
 pub async fn request_size_limit(req: Request<Body>, next: Next) -> Result<Response, StatusCode> {
     // Vérifier la taille du body si disponible
@@ -12,21 +13,30 @@ pub async fn request_size_limit(req: Request<Body>, next: Next) -> Result<Respon
             if let Ok(len) = len_str.parse::<usize>() {
                 if len > DEFAULT_MAX_SIZE {
                     log::warn!(
-                        "[request_size_limit] ❌ Taille de requête dépassée: {} bytes ({} MB) > {} bytes ({} MB)",
+                        "[request_size_limit] ❌ Taille de requête dépassée: {} bytes ({:.2} MB) > {} bytes ({:.2} MB)",
                         len,
-                        len / 1_000_000,
+                        len as f64 / 1_000_000.0,
                         DEFAULT_MAX_SIZE,
-                        DEFAULT_MAX_SIZE / 1_000_000
+                        DEFAULT_MAX_SIZE as f64 / 1_000_000.0
+                    );
+                    log::warn!(
+                        "[request_size_limit] 💡 Vérifiez que DefaultBodyLimit est configuré sur la route (min: {} MB)",
+                        (len as f64 / 1_000_000.0).ceil() as usize
                     );
                     return Err(StatusCode::PAYLOAD_TOO_LARGE);
                 }
                 log::debug!(
-                    "[request_size_limit] ✅ Taille requête acceptée: {} bytes ({} MB)",
+                    "[request_size_limit] ✅ Taille requête acceptée: {} bytes ({:.2} MB)",
                     len,
-                    len / 1_000_000
+                    len as f64 / 1_000_000.0
                 );
             }
         }
+    } else {
+        // Si pas de Content-Length, on laisse passer mais on log un avertissement
+        log::debug!(
+            "[request_size_limit] ⚠️ Pas de header Content-Length - impossible de vérifier la taille avant traitement"
+        );
     }
     Ok(next.run(req).await)
 }

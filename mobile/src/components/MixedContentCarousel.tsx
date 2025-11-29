@@ -964,7 +964,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        marginVertical: 16,
+        marginVertical: 8, // ✅ RÉDUIT: 16 → 8 pour mieux utiliser l'espace vertical
+        marginTop: 4, // ✅ RÉDUIT: Moins d'espace en haut
     },
     loadingContainer: {
         padding: 40,
@@ -1006,10 +1007,12 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         marginBottom: 8,
+        minHeight: 280, // ✅ AJOUTÉ: Hauteur minimale pour garantir visibilité complète des cartes
     },
     scrollContent: {
         paddingLeft: SCREEN_PADDING, // ✅ CORRIGÉ: Padding à gauche seulement (paddingRight dans style inline)
         alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement les cartes
+        paddingVertical: 4, // ✅ AJOUTÉ: Petit padding vertical pour équilibrer
     },
     card: {
         backgroundColor: '#FFFFFF',
@@ -1020,6 +1023,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 5,
+        maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale pour garantir visibilité complète
+        minHeight: 260, // ✅ AJOUTÉ: Hauteur minimale pour cartes avec media
     },
     badge: {
         position: 'absolute',

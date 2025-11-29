@@ -188,7 +188,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 billing_partner_label: config.billing_partner_label || undefined
             };
 
-            if (isTransversalMode && allProducts.length > 0) {
+            if (isTransversalMode && Array.isArray(allProducts) && allProducts.length > 0) {
                 let successCount = 0;
                 let errorCount = 0;
 
@@ -249,8 +249,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>
                         {isTransversalMode
-                            ? `Livraison - Tous (${allProducts.length})`
-                            : `Livraison - ${productName}`
+                            ? `Livraison - Tous (${Array.isArray(allProducts) ? allProducts.length : 0})`
+                            : `Livraison - ${productName || 'Produit'}`
                         }
                     </Text>
                     <View style={styles.headerSpacer} />
@@ -323,7 +323,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         />
                         {(config.pickup_latitude && config.pickup_longitude) && (
                             <Text style={styles.gpsText}>
-                                GPS: {config.pickup_latitude.toFixed(6)}, {config.pickup_longitude.toFixed(6)}
+                                {`GPS: ${typeof config.pickup_latitude === 'number' ? config.pickup_latitude.toFixed(6) : '0.000000'}, ${typeof config.pickup_longitude === 'number' ? config.pickup_longitude.toFixed(6) : '0.000000'}`}
                             </Text>
                         )}
                     </View>
@@ -411,7 +411,9 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     {/* Plages horaires */}
                     <View style={styles.section}>
                         <Text style={styles.label}>Plages horaires de départ *</Text>
-                        <Text style={styles.hint}>Format JSON: {'{"lundi": [{"start": "08:00", "end": "18:00"}]}'}</Text>
+                        <Text style={styles.hint}>
+                            {`Format JSON: {"lundi": [{"start": "08:00", "end": "18:00"}]}`}
+                        </Text>
                         <TextInput
                             style={[styles.input, styles.textArea]}
                             value={config.pickup_availability_schedule}
@@ -482,7 +484,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         <NativeButton
                             title={loading
                                 ? (isTransversalMode ? 'Application...' : 'Enregistrement...')
-                                : (isTransversalMode ? `Appliquer à ${allProducts.length} produit(s)` : 'Enregistrer')
+                                : (isTransversalMode ? `Appliquer à ${Array.isArray(allProducts) ? allProducts.length : 0} produit(s)` : 'Enregistrer')
                             }
                             variant="primary"
                             onPress={handleSave}

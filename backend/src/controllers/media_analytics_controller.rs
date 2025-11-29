@@ -46,13 +46,31 @@ pub async fn track_view(
     Extension(user): Extension<Option<AuthenticatedUser>>,
     Json(payload): Json<EngagementPayload>,
 ) -> AppResult<Json<serde_json::Value>> {
-    // Valider que media_id est un entier valide
-    let media_id_int = media_id.parse::<i32>().map_err(|_| {
-        crate::core::types::AppError::BadRequest(format!(
-            "media_id invalide: '{}'. Doit être un entier.",
+    // ✅ CORRECTION: Validation améliorée pour gérer "undefined" et autres valeurs invalides
+    let media_id_trimmed = media_id.trim();
+    
+    if media_id_trimmed.is_empty() || media_id_trimmed == "undefined" || media_id_trimmed == "null" {
+        return Err(crate::core::types::AppError::BadRequest(format!(
+            "media_id invalide: '{}'. Le paramètre media_id est requis et doit être un entier valide.",
             media_id
+        )));
+    }
+    
+    // Valider que media_id est un entier valide
+    let media_id_int = media_id_trimmed.parse::<i32>().map_err(|_| {
+        crate::core::types::AppError::BadRequest(format!(
+            "media_id invalide: '{}'. Doit être un entier, reçu: '{}'",
+            media_id_trimmed, media_id
         ))
     })?;
+    
+    // Valider que l'ID est positif
+    if media_id_int <= 0 {
+        return Err(crate::core::types::AppError::BadRequest(format!(
+            "media_id invalide: '{}'. Doit être un entier positif.",
+            media_id_int
+        )));
+    }
 
     info!(
         "[MediaAnalytics] Tracking view media_id={} channel={:?}",

@@ -31,31 +31,38 @@ pub fn extract_auth_user(headers: &HeaderMap) -> Result<AuthUser, (StatusCode, S
         "Invalid Authorization header".to_string(),
     ))?;
 
-    // Mode développement : accepter les tokens de dev
-    if token.ends_with(".dev_signature") {
-        let parts: Vec<&str> = token.split('.').collect();
-        if parts.len() == 3 {
-            if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
-                if let Ok(payload) = serde_json::from_slice::<serde_json::Value>(&payload_str) {
-                    return Ok(AuthUser {
-                        user_id: payload["sub"].as_str().unwrap_or("dev-user-id").to_string(),
-                        role: payload["role"].as_str().unwrap_or("admin").to_string(),
-                    });
+    // ✅ SÉCURITÉ: Tokens de développement uniquement en mode debug
+    #[cfg(debug_assertions)]
+    {
+        if token.ends_with(".dev_signature") {
+            let parts: Vec<&str> = token.split('.').collect();
+            if parts.len() == 3 {
+                if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
+                    if let Ok(payload) = serde_json::from_slice::<serde_json::Value>(&payload_str) {
+                        return Ok(AuthUser {
+                            user_id: payload["sub"].as_str().unwrap_or("dev-user-id").to_string(),
+                            role: payload["role"].as_str().unwrap_or("admin").to_string(),
+                        });
+                    }
                 }
             }
         }
+
+        if token == "dev_token_pinecone" {
+            return Ok(AuthUser {
+                user_id: "dev-user-1".to_string(),
+                role: "admin".to_string(),
+            });
+        }
     }
 
-    // Mode développement simplifié
-    if token == "dev_token_pinecone" {
-        return Ok(AuthUser {
-            user_id: "dev-user-1".to_string(),
-            role: "admin".to_string(),
-        });
-    }
-
-    // Authentification normale avec JWT
-    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev_secret".to_string());
+    // ✅ SÉCURITÉ: JWT_SECRET obligatoire en production
+    let secret = std::env::var("JWT_SECRET").map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "JWT_SECRET manquant - Configuration invalide".to_string(),
+        )
+    })?;
     let token_data: TokenData<Claims> = decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),

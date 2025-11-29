@@ -119,14 +119,57 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const type = typeParam || '';
   const mode = modeParam || 'create'; // ✅ Par défaut 'create' au lieu de 'edit'
 
+  // ✅ CORRECTION CRITIQUE: Si on arrive avec mode='add_product' ou édition de produit, rediriger vers AjouterProduitSimpleScreen
+  // Ce formulaire est dédié à la création/modification de service, pas à l'ajout/édition de produit seul
+  React.useEffect(() => {
+    // Cas 1: Mode add_product (ajout de produit)
+    if ((mode === 'add_product' || routeAddProductFlag) && serviceId) {
+      console.log('[FormulaireYukpoIntelligentScreen] 🔄 Redirection vers AjouterProduitSimpleScreen (mode add_product détecté)');
+      (navigation as any).replace('AjouterProduitSimple', {
+        serviceId: serviceId,
+        suggestionIA: {
+          data: suggestion || {}
+        },
+        mediaData: mediaData,
+        gpsData: gpsData,
+        mode: duplicateProduct ? 'duplicate' : 'create',
+        prefill: duplicateProduct || editProductData || {}
+      });
+      return;
+    }
+
+    // Cas 2: Édition d'un produit spécifique (editProductData + focusProductId + serviceId)
+    // ✅ CORRECTION: L'édition de produit doit aussi utiliser AjouterProduitSimpleScreen
+    if (mode === 'edit' && editProductData && focusProductId && serviceId) {
+      console.log('[FormulaireYukpoIntelligentScreen] 🔄 Redirection vers AjouterProduitSimpleScreen (édition produit détectée)');
+
+      // Trouver l'index du produit si possible (sinon sera null)
+      let productIndex: number | null = null;
+      if (suggestion?.data?.produits?.valeur && Array.isArray(suggestion.data.produits.valeur)) {
+        const produitsArray = suggestion.data.produits.valeur;
+        productIndex = produitsArray.findIndex((p: any) =>
+          (p.id && p.id.toString() === focusProductId.toString()) ||
+          (p.nom && p.nom === editProductData.nom)
+        );
+        if (productIndex < 0) productIndex = null;
+      }
+
+      (navigation as any).replace('AjouterProduitSimple', {
+        mode: 'edit',
+        serviceId: serviceId,
+        productId: focusProductId,
+        productIndex: productIndex,
+        prefill: editProductData,
+        suggestionIA: {
+          data: suggestion || {}
+        }
+      });
+      return;
+    }
+  }, [mode, routeAddProductFlag, serviceId, navigation, duplicateProduct, editProductData, focusProductId, suggestion, mediaData, gpsData]);
+
   // ✅ Déterminer si on est en mode lecture seule
   const isReadonly = mode === 'readonly' || mode === 'view' || readonlyParam;
-
-  // ✅ Déterminer si on duplique un produit existant
-  const isAddingProduct = !!duplicateProduct && !!serviceId;
-
-  const explicitAddProductFlag = Boolean(routeAddProductFlag);
-  const isAddingProductToExistingService = explicitAddProductFlag || mode === 'add_product' || isAddingProduct;
 
   // ✅ NOUVEAU 2025-11-06: Mode édition des infos du service (sans toucher aux produits)
   const isEditingServiceInfo = mode === 'edit_service_info' && serviceId;
@@ -1714,72 +1757,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   }, [suggestion]); // Se déclenche quand suggestion change
 
 
-  // ✅ NOUVEAU 2025-11-01: Préremplir le formulaire en mode add_product
-  useEffect(() => {
-    if (isAddingProduct && duplicateProduct && suggestion?.data) {
-      console.log('[FormulaireYukpoIntelligentScreen] 📋 MODE ADD_PRODUCT détecté - Préremplissage...');
-      console.log('[FormulaireYukpoIntelligentScreen] Service data:', suggestion.data);
-      console.log('[FormulaireYukpoIntelligentScreen] Produit à dupliquer:', duplicateProduct);
-
-      // Préremplir avec les données du service + produit dupliqué
-      const produitValues: Record<string, any> = {
-        nom_produit: duplicateProduct.nom || '',
-        prix_produit: duplicateProduct.prix || '',
-        devise_produit: duplicateProduct.devise || 'XAF',
-        description_produit: duplicateProduct.description || '',
-        categorie_produit: duplicateProduct.type || '',
-      };
-
-      // ✅ CORRECTION: Extraire produits correctement même si c'est un objet avec valeur
-      if (duplicateProduct.produits) {
-        if (typeof duplicateProduct.produits === 'object' && 'valeur' in duplicateProduct.produits) {
-          produitValues.produits = duplicateProduct.produits;
-          // S'assurer que sous_caracteristiques est aussi chargé
-          if (duplicateProduct.produits.sous_caracteristiques) {
-            produitValues.sous_caracteristiques = duplicateProduct.produits.sous_caracteristiques;
-          }
-        } else if (Array.isArray(duplicateProduct.produits)) {
-          produitValues.produits = {
-            type_donnee: 'autocomplete',
-            valeur: duplicateProduct.produits,
-            separateur: ',',
-            sous_caracteristiques: duplicateProduct.sous_caracteristiques || {},
-            identifiant_base: 'produits',
-            filtrable: true,
-            origine_champs: 'formulaire'
-          };
-        } else {
-          produitValues.produits = duplicateProduct.produits;
-        }
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ produits extrait depuis duplicateProduct:', produitValues.produits);
-      }
-
-      // Ajouter tous les autres champs du produit dupliqué
-      Object.keys(duplicateProduct).forEach(key => {
-        if (!['nom', 'prix', 'devise', 'description', 'type', 'id', 'produits'].includes(key)) {
-          produitValues[key] = duplicateProduct[key];
-        }
-      });
-
-      console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeurs produit extraites:', produitValues);
-
-      setValeursFormulaire(prev => ({
-        ...suggestion.data, // Données service complètes
-        ...produitValues // Surcharger avec produit dupliqué
-      }));
-
-      setActiveStep(2); // Aller directement au formulaire
-
-      // Focus sur le bloc produits après un court délai
-      setTimeout(() => {
-        const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
-        if (productsBlockIndex >= 0) {
-          setCurrentBlock(productsBlockIndex);
-          console.log('[FormulaireYukpoIntelligentScreen] ✅ Focus sur bloc produits, index:', productsBlockIndex);
-        }
-      }, 500);
-    }
-  }, [isAddingProduct, duplicateProduct, suggestion, blocks]);
 
   // Organiser les champs en blocs quand les composants ou valeursFormulaire changent
   useEffect(() => {
@@ -3853,192 +3830,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
       };
 
-      // ✅ SI MODE DUPLICATION PRODUIT (ancienne fonctionnalité)
-      if (isAddingProduct && serviceId) {
-        console.log('[FormulaireYukpoIntelligentScreen] 🛍️ MODE DUPLICATION - Ajout produit au service', serviceId);
-
-        // ✅ CORRECTION 2025-11-06: Construire les données COMPLÈTES du nouveau produit
-        // Inclure TOUS les champs produits + médias (images, vidéos, prix variant, etc.)
-        const nouveauProduit: any = {};
-
-        // Champs du bloc produits à extraire
-        const PRODUCT_FIELDS = [
-          'nom_produit',
-          'categorie_produit',
-          'description_produit',
-          'produits',
-          'prix',
-          'prix_produit',
-          'devise',
-          'lieu_produit',
-          'lieu_commercial',
-          'lieu_commercialisation',
-          'price_variant',   // ✅ NOUVEAU : Variations de prix
-          'variabilite_prix', // Alias de price_variant
-          'product_labels',   // ✅ NOUVEAU : Labels/tags
-          'images',           // ✅ NOUVEAU : Images produit
-          'videos',           // ✅ NOUVEAU : Vidéos produit
-          'audios',           // Éventuellement
-          'documents'         // Éventuellement
-        ];
-
-        PRODUCT_FIELDS.forEach(key => {
-          const value = valeursFormulaire[key];
-          if (value !== undefined && value !== null && value !== '') {
-            nouveauProduit[key] = value;
-          }
-        });
-
-        const compressedMedia = await getCompressedMedia();
-
-        if (compressedMedia?.images?.length) {
-          const mergedImages = mergeMediaArrays(nouveauProduit.images, compressedMedia.images);
-          if (mergedImages.length > 0) {
-            nouveauProduit.images = mergedImages;
-            nouveauProduit.base64_image = mergedImages;
-          }
-        }
-
-        if (compressedMedia?.videos?.length) {
-          const mergedVideos = mergeMediaArrays(nouveauProduit.videos, compressedMedia.videos);
-          if (mergedVideos.length > 0) {
-            nouveauProduit.videos = mergedVideos;
-            nouveauProduit.video_base64 = mergedVideos;
-          }
-        }
-
-        if (compressedMedia?.audios?.length) {
-          const mergedAudios = mergeMediaArrays(nouveauProduit.audio_base64, compressedMedia.audios);
-          if (mergedAudios.length > 0) {
-            nouveauProduit.audio_base64 = mergedAudios;
-          }
-        }
-
-        if (compressedMedia?.documents?.length) {
-          const mergedDocs = mergeMediaArrays(nouveauProduit.doc_base64, compressedMedia.documents);
-          if (mergedDocs.length > 0) {
-            nouveauProduit.doc_base64 = mergedDocs;
-          }
-        }
-
-        if (compressedMedia?.excel?.length) {
-          const mergedExcel = mergeMediaArrays(nouveauProduit.excel_base64, compressedMedia.excel);
-          if (mergedExcel.length > 0) {
-            nouveauProduit.excel_base64 = mergedExcel;
-          }
-        }
-
-        console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit (complètes):', {
-          ...nouveauProduit,
-          images: compressedMedia?.images?.length || 0,
-          videos: compressedMedia?.videos?.length || 0
-        });
-
-        // 💰 ÉTAPE 1 : Vérifier le solde (coût fixe : 3000 FCFA pour ajout produit)
-        const COUT_AJOUT_PRODUIT = 3000;
-
-        console.log('💰 [FormulaireYukpoIntelligentScreen] Vérification du solde pour ajout produit...');
-        const balanceResponse = await apiGet<{ tokens_balance: number }>('/api/users/balance');
-
-        if (!balanceResponse.success) {
-          const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
-          console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
-
-          // Si problème d'authentification, rediriger vers login
-          if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
-            Alert.alert(
-              'Session expirée',
-              'Votre session a expiré. Veuillez vous reconnecter.',
-              [{ text: 'OK', onPress: () => logout() }]
-            );
-            return;
-          }
-
-          throw new Error(errorMsg);
-        }
-
-        if (!balanceResponse.data || typeof balanceResponse.data.tokens_balance === 'undefined') {
-          console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Données solde invalides:', balanceResponse.data);
-          throw new Error('Données de solde invalides reçues du serveur');
-        }
-
-        const soldeActuel = balanceResponse.data.tokens_balance || 0;
-        console.log('💰 [FormulaireYukpoIntelligentScreen] ✅ Solde actuel récupéré:', soldeActuel);
-
-        // Vérifier si le solde est suffisant
-        if (soldeActuel < COUT_AJOUT_PRODUIT) {
-          Alert.alert(
-            '💸 Solde insuffisant',
-            `Coût d'ajout de produit : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
-            [{ text: 'OK' }]
-          );
-          return; // ❌ BLOQUE si solde insuffisant
-        }
-
-        // 💰 ÉTAPE 2 : Demander confirmation avec affichage du coût
-        Alert.alert(
-          '💰 Ajout de produit',
-          `Coût : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après ajout : ${(soldeActuel - COUT_AJOUT_PRODUIT).toLocaleString()} FCFA\n\nConfirmez-vous l'ajout de ce produit à votre service ?`,
-          [
-            {
-              text: 'Annuler',
-              style: 'cancel'
-            },
-            {
-              text: 'Confirmer',
-              onPress: async () => {
-                try {
-                  // Appeler /api/services/{serviceId}/products
-                  const userId = parseInt(user?.id || '0', 10);
-                  const response = await apiPost(`/api/services/${serviceId}/products`, {
-                    user_id: userId,
-                    product_data: nouveauProduit
-                  });
-
-                  if (!response.success) {
-                    throw new Error(response.error || 'Erreur lors de l\'ajout du produit');
-                  }
-
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', response);
-
-                  const responseData: any = response.data ?? {};
-                  const costPaid = Number(responseData.cost ?? response.cost ?? COUT_AJOUT_PRODUIT);
-                  const newBalanceValue = Number(
-                    responseData.new_balance ?? response.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT)
-                  );
-                  const productIndexResult =
-                    responseData.product_index ??
-                    response.product_index ??
-                    (typeof responseData === 'object' && responseData.data
-                      ? responseData.data.product_index
-                      : undefined);
-
-                  Alert.alert(
-                    '✅ Produit créé',
-                    `Votre nouveau produit a été ajouté au service avec succès !\n\n` +
-                    `💰 Coût: ${costPaid.toLocaleString('fr-FR')} FCFA\n` +
-                    `💳 Nouveau solde: ${newBalanceValue.toLocaleString('fr-FR')} FCFA\n` +
-                    `📦 Index produit: ${productIndexResult ?? 'non communiqué'}`,
-                    [
-                      {
-                        text: 'OK',
-                        onPress: () => {
-                          // Retour vers management du service
-                          navigation.goBack();
-                        }
-                      }
-                    ]
-                  );
-                } catch (error: any) {
-                  handleAPIError(error, 'Ajout produit', () => soumettreFormulaire());
-                }
-              }
-            }
-          ]
-        );
-
-        return; // ✅ Sortir sans exécuter la logique de création de service
-      }
 
       // ✅ SI MODE MODIFICATION (edit OU edit_service_info) : Pas d'appel IA, pas de coût
       if ((mode === 'edit' || isEditingServiceInfo) && serviceId) {
@@ -4152,83 +3943,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return; // ✅ Sortir ici pour éviter le flux de création
       }
 
-      // ✅ NOUVEAU 2025-11-01: SI MODE ADD_PRODUCT : Appeler route ajout produit incrémental
-      if (isAddingProduct && serviceId) {
-        console.log('[FormulaireYukpoIntelligentScreen] 📦 MODE ADD_PRODUCT - Ajout produit au service', serviceId);
-
-        try {
-          setIsSubmitting(true);
-
-          // Construire les données du nouveau produit uniquement
-          const nouveauProduit: Record<string, any> = {};
-
-          // Champs produits principaux
-          if (valeursFormulaire.nom_produit) nouveauProduit.nom = valeursFormulaire.nom_produit;
-          if (valeursFormulaire.prix_produit) nouveauProduit.prix = valeursFormulaire.prix_produit;
-          if (valeursFormulaire.devise_produit) nouveauProduit.devise = valeursFormulaire.devise_produit;
-          if (valeursFormulaire.description_produit) nouveauProduit.description = valeursFormulaire.description_produit;
-          if (valeursFormulaire.categorie_produit) nouveauProduit.categorie = valeursFormulaire.categorie_produit;
-
-          // Copier tous les autres champs du formulaire qui concernent le produit
-          Object.keys(valeursFormulaire).forEach(key => {
-            if (key.includes('produit') || key === 'produits') {
-              nouveauProduit[key] = valeursFormulaire[key];
-            }
-          });
-
-          console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit:', nouveauProduit);
-
-          // ✅ Appel route POST /api/services/{serviceId}/products
-          const userId = parseInt(user?.id || '0', 10);
-          const response = await apiPost(`/api/services/${serviceId}/products`, {
-            user_id: userId,
-            product_data: nouveauProduit
-          });
-
-          if (!response.success) {
-            throw new Error(response.error || 'Erreur ajout produit');
-          }
-
-          const { cost, new_balance, product_index } = response.data;
-
-          console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', {
-            cost,
-            new_balance,
-            product_index
-          });
-
-          Alert.alert(
-            '✅ Produit ajouté',
-            `Votre produit a été ajouté avec succès au service.\n\n💰 Coût: ${cost.toLocaleString()} FCFA\n💳 Nouveau solde: ${new_balance.toLocaleString()} FCFA`,
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  setSuccessData({ serviceId, cout: cost });
-                  setShowSuccessToast(true);
-                  DeviceEventEmitter.emit('service:refresh');
-
-                  if (fromMesProduits) {
-                    (navigation as any).navigate('MesProduits');
-                  } else if (fromMesServices) {
-                    (navigation as any).navigate('Main', { screen: 'Services' });
-                  } else {
-                    navigation.goBack();
-                  }
-                }
-              }
-            ]
-          );
-
-          return; // ✅ Sortir ici
-        } catch (error: any) {
-          handleAPIError(error, 'Ajout produit', () => soumettreFormulaire());
-          return;
-        } finally {
-          setIsSubmitting(false);
-          setLoading(false);
-        }
-      }
 
       // ✅ MODE CRÉATION : Vérification solde + Coût (SANS appel IA - déjà fait lors de la génération du formulaire)
       console.log('[FormulaireYukpoIntelligentScreen] 🆕 MODE CRÉATION - Utilisation des données du formulaire');
@@ -4791,10 +4505,141 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   }
                 );
 
+                // ✅ NOUVEAU: Upload préalable des médias pour éviter payload trop volumineux
+                console.log('[FormulaireYukpoIntelligentScreen] 📤 Début upload préalable des médias...');
+                try {
+                  const { uploadFiles } = await import('../services/uploadApi');
+
+                  // Collecter tous les médias à uploader
+                  const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
+
+                  // Images globales du service
+                  if (compressedMedia?.images?.length) {
+                    compressedMedia.images.forEach((img: string, idx: number) => {
+                      if (img.startsWith('data:') || img.startsWith('file://')) {
+                        const mimeType = img.startsWith('data:')
+                          ? img.split(',')[0].split(':')[1].split(';')[0]
+                          : 'image/jpeg';
+                        filesToUpload.push({
+                          uri: img,
+                          type: mimeType,
+                          name: `service_image_${idx}.jpg`
+                        });
+                      }
+                    });
+                  }
+
+                  // Médias des produits
+                  if (finalServiceData.produits?.valeur) {
+                    finalServiceData.produits.valeur.forEach((prod: any, prodIdx: number) => {
+                      // Images produit
+                      if (prod.base64_image || prod.images) {
+                        const prodImages = Array.isArray(prod.base64_image || prod.images)
+                          ? (prod.base64_image || prod.images)
+                          : [prod.base64_image || prod.images];
+                        prodImages.forEach((img: string, idx: number) => {
+                          if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
+                            const mimeType = img.startsWith('data:')
+                              ? img.split(',')[0].split(':')[1].split(';')[0]
+                              : 'image/jpeg';
+                            filesToUpload.push({
+                              uri: img,
+                              type: mimeType,
+                              name: `prod_${prodIdx}_image_${idx}.jpg`
+                            });
+                          }
+                        });
+                      }
+
+                      // Vidéos produit
+                      if (prod.video_base64 || prod.videos) {
+                        const prodVideos = Array.isArray(prod.video_base64 || prod.videos)
+                          ? (prod.video_base64 || prod.videos)
+                          : [prod.video_base64 || prod.videos];
+                        prodVideos.forEach((vid: string, idx: number) => {
+                          if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
+                            const mimeType = vid.startsWith('data:')
+                              ? vid.split(',')[0].split(':')[1].split(';')[0]
+                              : 'video/mp4';
+                            filesToUpload.push({
+                              uri: vid,
+                              type: mimeType,
+                              name: `prod_${prodIdx}_video_${idx}.mp4`
+                            });
+                          }
+                        });
+                      }
+                    });
+                  }
+
+                  // Uploader tous les fichiers
+                  if (filesToUpload.length > 0) {
+                    console.log(`[FormulaireYukpoIntelligentScreen] 📤 Upload de ${filesToUpload.length} fichier(s)...`);
+                    const uploadedFiles = await uploadFiles(filesToUpload);
+                    console.log('[FormulaireYukpoIntelligentScreen] ✅ Upload réussi:', uploadedFiles.length, 'fichier(s)');
+
+                    // ✅ Remplacer base64 par URLs dans le payload
+                    // Images globales
+                    if (compressedMedia?.images?.length && uploadedFiles.length > 0) {
+                      const imageUrls = uploadedFiles
+                        .filter(f => f.media_type === 'image')
+                        .map(f => f.url);
+                      if (imageUrls.length > 0) {
+                        finalServiceData.imageUrls = imageUrls;
+                        // Garder base64_image pour rétrocompatibilité si URLs échouent
+                        console.log('[FormulaireYukpoIntelligentScreen] ✅ Images globales uploadées:', imageUrls.length);
+                      }
+                    }
+
+                    // Médias des produits
+                    if (finalServiceData.produits?.valeur && uploadedFiles.length > 0) {
+                      let fileIndex = 0;
+                      finalServiceData.produits.valeur.forEach((prod: any, prodIdx: number) => {
+                        // Images produit
+                        if (prod.base64_image || prod.images) {
+                          const imageCount = Array.isArray(prod.base64_image || prod.images)
+                            ? (prod.base64_image || prod.images).length
+                            : 1;
+                          const prodImageUrls = uploadedFiles
+                            .slice(fileIndex, fileIndex + imageCount)
+                            .filter(f => f.media_type === 'image')
+                            .map(f => f.url);
+                          if (prodImageUrls.length > 0) {
+                            prod.imageUrls = prodImageUrls;
+                            console.log(`[FormulaireYukpoIntelligentScreen] ✅ Images produit ${prodIdx} uploadées:`, prodImageUrls.length);
+                          }
+                          fileIndex += imageCount;
+                        }
+
+                        // Vidéos produit
+                        if (prod.video_base64 || prod.videos) {
+                          const videoCount = Array.isArray(prod.video_base64 || prod.videos)
+                            ? (prod.video_base64 || prod.videos).length
+                            : 1;
+                          const prodVideoUrls = uploadedFiles
+                            .slice(fileIndex, fileIndex + videoCount)
+                            .filter(f => f.media_type === 'video')
+                            .map(f => f.url);
+                          if (prodVideoUrls.length > 0) {
+                            prod.videoUrls = prodVideoUrls;
+                            console.log(`[FormulaireYukpoIntelligentScreen] ✅ Vidéos produit ${prodIdx} uploadées:`, prodVideoUrls.length);
+                          }
+                          fileIndex += videoCount;
+                        }
+                      });
+                    }
+                  } else {
+                    console.log('[FormulaireYukpoIntelligentScreen] ℹ️ Aucun média à uploader (déjà URLs ou vide)');
+                  }
+                } catch (uploadError: any) {
+                  console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur upload préalable, fallback base64:', uploadError.message);
+                  // Fallback: continuer avec base64 si upload échoue (rétrocompatibilité)
+                }
+
                 // Le backend attend : { user_id: number, data: {...} }
                 const servicePayload = {
                   user_id: userId,
-                  data: finalServiceData, // Les données avec tokens_ia_externe inclus
+                  data: finalServiceData, // Les données avec imageUrls/videoUrls OU base64_image/video_base64 (rétrocompatibilité)
                 };
 
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Payload envoyé au backend:', JSON.stringify(servicePayload, null, 2));
@@ -5288,12 +5133,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                                 >
                                   <Text style={styles.finalActionButtonText}>
                                     {(loading || isSubmitting)
-                                      ? (isAddingProductToExistingService ? 'Création du produit...' :
-                                        isEditingServiceInfo ? 'Mise à jour...' :
-                                          mode === 'edit' ? 'Modification...' : 'Création...')
-                                      : (isAddingProductToExistingService ? 'Créer le produit' :
-                                        isEditingServiceInfo ? 'Modifier les données du service' :
-                                          mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
+                                      ? (isEditingServiceInfo ? 'Mise à jour...' :
+                                        mode === 'edit' ? 'Modification...' : 'Création...')
+                                      : (isEditingServiceInfo ? 'Modifier les données du service' :
+                                        mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
                                   </Text>
                                   <SafeIcon name="check" size={20} color="#FFFFFF" />
                                 </LinearGradient>

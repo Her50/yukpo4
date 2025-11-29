@@ -468,7 +468,7 @@ impl AppIA {
             })
             .await
             {
-                Ok(Ok((response, model_name, tokens))) => {
+                Ok(Ok((model_name, response, tokens))) => {
                     let processing_time = start_time.elapsed().unwrap().as_millis();
                     log::info!(
                         "[AppIA] ? Succ?s avec {} en {}ms ({} tokens)",
@@ -555,7 +555,7 @@ impl AppIA {
             );
 
             match timeout_future.await {
-                Ok(Ok((response, model_name, tokens_used))) => {
+                Ok(Ok((model_name, response, tokens_used))) => {
                     let elapsed = start_time.elapsed().unwrap().as_millis();
                     log::info!(
                         "[AppIA] ? Mod?le multimodal {} r?ussi en {}ms",
@@ -648,6 +648,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             }
         };
 
+        // ✅ CORRECTION: Tentative d'extraction JSON avec nettoyage amélioré
         let json_block = match extract_json_block(&response) {
             Some(block) => {
                 log::debug!(
@@ -657,6 +658,17 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 block
             }
             None => {
+                // ✅ CORRECTION: Tentative de nettoyage supplémentaire avant d'échouer
+                let cleaned = response.trim();
+                // Essayer de parser directement si la réponse entière est du JSON
+                if cleaned.starts_with('{') || cleaned.starts_with('[') {
+                    if serde_json::from_str::<Value>(cleaned).is_ok() {
+                        log::debug!(
+                            "[AppIA::generate_subtitles_srt] ✅ JSON trouvé après nettoyage ({} chars)",
+                            cleaned.len()
+                        );
+                        cleaned.to_string()
+                    } else {
                 log::error!(
                     "[AppIA::generate_subtitles_srt] ❌ JSON manquant dans réponse IA ({} chars): {}",
                     response.len(),
@@ -666,6 +678,18 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     "Réponse IA sous-titres invalide (JSON manquant). Réponse reçue: {}",
                     if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
                 )));
+                    }
+                } else {
+                    log::error!(
+                        "[AppIA::generate_subtitles_srt] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                        response.len(),
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                    );
+                    return Err(AppError::Internal(format!(
+                        "Réponse IA sous-titres invalide (JSON manquant). Réponse reçue: {}",
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                    )));
+                }
             }
         };
 
@@ -994,9 +1018,22 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .await
             .map_err(|e| format!("OpenAI JSON parse error: {}", e))?;
 
-        let content = body["choices"][0]["message"]["content"]
-            .as_str()
-            .ok_or("OpenAI response missing content")?;
+        // ✅ CORRECTION: Vérification robuste de la structure de réponse
+        let content = body
+            .get("choices")
+            .and_then(|choices| choices.as_array())
+            .and_then(|choices_array| choices_array.first())
+            .and_then(|choice| choice.get("message"))
+            .and_then(|message| message.get("content"))
+            .and_then(|content_val| content_val.as_str())
+            .ok_or_else(|| {
+                let error_msg = format!(
+                    "OpenAI response missing content. Response structure: {}",
+                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                );
+                log::error!("[OpenAI] {}", error_msg);
+                error_msg
+            })?;
 
         // Extraire les tokens r?ellement consomm?s depuis la r?ponse OpenAI
         let tokens_used = if let Some(usage) = body.get("usage") {
@@ -1078,9 +1115,22 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .await
             .map_err(|e| format!("Mistral JSON parse error: {}", e))?;
 
-        let content = body["choices"][0]["message"]["content"]
-            .as_str()
-            .ok_or("Mistral response missing content")?;
+        // ✅ CORRECTION: Vérification robuste de la structure de réponse
+        let content = body
+            .get("choices")
+            .and_then(|choices| choices.as_array())
+            .and_then(|choices_array| choices_array.first())
+            .and_then(|choice| choice.get("message"))
+            .and_then(|message| message.get("content"))
+            .and_then(|content_val| content_val.as_str())
+            .ok_or_else(|| {
+                let error_msg = format!(
+                    "Mistral response missing content. Response structure: {}",
+                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                );
+                log::error!("[Mistral] {}", error_msg);
+                error_msg
+            })?;
 
         // Extraire les tokens pour Mistral (m?me format qu'OpenAI)
         let tokens_used = if let Some(usage) = body.get("usage") {
@@ -1149,9 +1199,22 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .await
             .map_err(|e| format!("DeepSeek JSON parse error: {}", e))?;
 
-        let content = body["choices"][0]["message"]["content"]
-            .as_str()
-            .ok_or("DeepSeek response missing content")?;
+        // ✅ CORRECTION: Vérification robuste de la structure de réponse
+        let content = body
+            .get("choices")
+            .and_then(|choices| choices.as_array())
+            .and_then(|choices_array| choices_array.first())
+            .and_then(|choice| choice.get("message"))
+            .and_then(|message| message.get("content"))
+            .and_then(|content_val| content_val.as_str())
+            .ok_or_else(|| {
+                let error_msg = format!(
+                    "DeepSeek response missing content. Response structure: {}",
+                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                );
+                log::error!("[DeepSeek] {}", error_msg);
+                error_msg
+            })?;
 
         let tokens_used = if let Some(usage) = body.get("usage") {
             let prompt_tokens = usage
@@ -1248,9 +1311,25 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .await
             .map_err(|e| format!("Gemini JSON parse error: {}", e))?;
 
-        let content = body["candidates"][0]["content"]["parts"][0]["text"]
-            .as_str()
-            .ok_or("Gemini response missing content")?;
+        // ✅ CORRECTION: Vérification robuste de la structure de réponse Gemini
+        let content = body
+            .get("candidates")
+            .and_then(|candidates| candidates.as_array())
+            .and_then(|candidates_array| candidates_array.first())
+            .and_then(|candidate| candidate.get("content"))
+            .and_then(|content_obj| content_obj.get("parts"))
+            .and_then(|parts| parts.as_array())
+            .and_then(|parts_array| parts_array.first())
+            .and_then(|part| part.get("text"))
+            .and_then(|text_val| text_val.as_str())
+            .ok_or_else(|| {
+                let error_msg = format!(
+                    "Gemini response missing content. Response structure: {}",
+                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                );
+                log::error!("[Gemini] {}", error_msg);
+                error_msg
+            })?;
 
         // Extraire les tokens pour Gemini
         let tokens_used = if let Some(usage) = body.get("usageMetadata") {
@@ -1374,9 +1453,21 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .await
             .map_err(|e| format!("Anthropic JSON parse error: {}", e))?;
 
-        let content = body["content"][0]["text"]
-            .as_str()
-            .ok_or("Anthropic response missing content")?;
+        // ✅ CORRECTION: Vérification robuste de la structure de réponse Anthropic
+        let content = body
+            .get("content")
+            .and_then(|content_array| content_array.as_array())
+            .and_then(|content_array| content_array.first())
+            .and_then(|content_item| content_item.get("text"))
+            .and_then(|text_val| text_val.as_str())
+            .ok_or_else(|| {
+                let error_msg = format!(
+                    "Anthropic response missing content. Response structure: {}",
+                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                );
+                log::error!("[Anthropic] {}", error_msg);
+                error_msg
+            })?;
 
         // Extraire les tokens pour Anthropic
         let tokens_used = if let Some(usage) = body.get("usage") {
@@ -1561,9 +1652,22 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .await
             .map_err(|e| format!("OpenAI multimodal JSON parse error: {}", e))?;
 
-        let content = body["choices"][0]["message"]["content"]
-            .as_str()
-            .ok_or("OpenAI multimodal response missing content")?;
+        // ✅ CORRECTION: Vérification robuste de la structure de réponse
+        let content = body
+            .get("choices")
+            .and_then(|choices| choices.as_array())
+            .and_then(|choices_array| choices_array.first())
+            .and_then(|choice| choice.get("message"))
+            .and_then(|message| message.get("content"))
+            .and_then(|content_val| content_val.as_str())
+            .ok_or_else(|| {
+                let error_msg = format!(
+                    "OpenAI multimodal response missing content. Response structure: {}",
+                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                );
+                log::error!("[OpenAI Multimodal] {}", error_msg);
+                error_msg
+            })?;
 
         // Extraire les tokens r?ellement consomm?s depuis la r?ponse OpenAI
         let tokens_used = if let Some(usage) = body.get("usage") {
@@ -2299,6 +2403,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             }
         };
 
+        // ✅ CORRECTION: Tentative d'extraction JSON avec nettoyage amélioré
         let json_block = match extract_json_block(&response) {
             Some(block) => {
                 log::debug!(
@@ -2308,6 +2413,17 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 block
             }
             None => {
+                // ✅ CORRECTION: Tentative de nettoyage supplémentaire avant d'échouer
+                let cleaned = response.trim();
+                // Essayer de parser directement si la réponse entière est du JSON
+                if cleaned.starts_with('{') || cleaned.starts_with('[') {
+                    if serde_json::from_str::<Value>(cleaned).is_ok() {
+                        log::debug!(
+                            "[AppIA::generate_video_briefs] ✅ JSON trouvé après nettoyage ({} chars)",
+                            cleaned.len()
+                        );
+                        cleaned.to_string()
+                    } else {
                 log::error!(
                     "[AppIA::generate_video_briefs] ❌ JSON manquant dans réponse IA ({} chars): {}",
                     response.len(),
@@ -2317,6 +2433,18 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     "Réponse IA vidéo invalide (JSON manquant). Réponse reçue: {}",
                     if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
                 )));
+                    }
+                } else {
+                    log::error!(
+                        "[AppIA::generate_video_briefs] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                        response.len(),
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                    );
+                    return Err(AppError::Internal(format!(
+                        "Réponse IA vidéo invalide (JSON manquant). Réponse reçue: {}",
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                    )));
+                }
             }
         };
 
@@ -2464,9 +2592,21 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             }
         };
 
+        // ✅ CORRECTION: Tentative d'extraction JSON avec nettoyage amélioré
         let json_block = match extract_json_block(&response) {
             Some(block) => block,
             None => {
+                // ✅ CORRECTION: Tentative de nettoyage supplémentaire avant d'échouer
+                let cleaned = response.trim();
+                // Essayer de parser directement si la réponse entière est du JSON
+                if cleaned.starts_with('{') || cleaned.starts_with('[') {
+                    if serde_json::from_str::<Value>(cleaned).is_ok() {
+                        log::debug!(
+                            "[AppIA::generate_video_style] ✅ JSON trouvé après nettoyage ({} chars)",
+                            cleaned.len()
+                        );
+                        cleaned.to_string()
+                    } else {
                 log::error!(
                     "[AppIA::generate_video_style] ❌ JSON manquant dans réponse IA ({} chars): {}",
                     response.len(),
@@ -2477,6 +2617,19 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     "Réponse IA style invalide (JSON manquant). Réponse reçue: {}",
                     if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
                 )));
+                    }
+                } else {
+                    log::error!(
+                        "[AppIA::generate_video_style] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                        response.len(),
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                    );
+                    // Retourner l'erreur pour que le contrôleur utilise le fallback
+                    return Err(AppError::Internal(format!(
+                        "Réponse IA style invalide (JSON manquant). Réponse reçue: {}",
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                    )));
+                }
             }
         };
         
@@ -2606,6 +2759,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             }
         };
 
+        // ✅ CORRECTION: Tentative d'extraction JSON avec nettoyage amélioré
         let json_block = match extract_json_block(&response) {
             Some(block) => {
                 log::debug!(
@@ -2615,6 +2769,17 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 block
             }
             None => {
+                // ✅ CORRECTION: Tentative de nettoyage supplémentaire avant d'échouer
+                let cleaned = response.trim();
+                // Essayer de parser directement si la réponse entière est du JSON
+                if cleaned.starts_with('{') || cleaned.starts_with('[') {
+                    if serde_json::from_str::<Value>(cleaned).is_ok() {
+                        log::debug!(
+                            "[AppIA::analyze_media] ✅ JSON trouvé après nettoyage ({} chars)",
+                            cleaned.len()
+                        );
+                        cleaned.to_string()
+                    } else {
                 log::error!(
                     "[AppIA::analyze_media] ❌ JSON manquant dans réponse IA ({} chars): {}",
                     response.len(),
@@ -2624,6 +2789,18 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     "Réponse IA analyse média invalide (JSON manquant). Réponse reçue: {}",
                     if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
                 )));
+                    }
+                } else {
+                    log::error!(
+                        "[AppIA::analyze_media] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                        response.len(),
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                    );
+                    return Err(AppError::Internal(format!(
+                        "Réponse IA analyse média invalide (JSON manquant). Réponse reçue: {}",
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                    )));
+                }
             }
         };
 
@@ -2744,6 +2921,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             }
         };
 
+        // ✅ CORRECTION: Tentative d'extraction JSON avec nettoyage amélioré
         let json_block = match extract_json_block(&response) {
             Some(block) => {
                 log::debug!(
@@ -2753,6 +2931,17 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 block
             }
             None => {
+                // ✅ CORRECTION: Tentative de nettoyage supplémentaire avant d'échouer
+                let cleaned = response.trim();
+                // Essayer de parser directement si la réponse entière est du JSON
+                if cleaned.starts_with('{') || cleaned.starts_with('[') {
+                    if serde_json::from_str::<Value>(cleaned).is_ok() {
+                        log::debug!(
+                            "[AppIA::generate_distribution_plan] ✅ JSON trouvé après nettoyage ({} chars)",
+                            cleaned.len()
+                        );
+                        cleaned.to_string()
+                    } else {
                 log::error!(
                     "[AppIA::generate_distribution_plan] ❌ JSON manquant dans réponse IA ({} chars): {}",
                     response.len(),
@@ -2762,6 +2951,18 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     "Réponse IA diffusion invalide (JSON manquant). Réponse reçue: {}",
                     if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
                 )));
+                    }
+                } else {
+                    log::error!(
+                        "[AppIA::generate_distribution_plan] ❌ JSON manquant dans réponse IA ({} chars): {}",
+                        response.len(),
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                    );
+                    return Err(AppError::Internal(format!(
+                        "Réponse IA diffusion invalide (JSON manquant). Réponse reçue: {}",
+                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                    )));
+                }
             }
         };
 
@@ -2829,6 +3030,13 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 fn extract_json_block(response: &str) -> Option<String> {
     let trimmed = response.trim();
     
+    // ✅ CORRECTION: Vérifier si la réponse est juste un nom de modèle (ex: "openai-gpt4o")
+    // Si c'est le cas, c'est probablement une erreur de l'API, retourner None
+    if trimmed.len() < 50 && !trimmed.contains('{') && !trimmed.contains('[') {
+        // Probablement juste un nom de modèle ou un message d'erreur court
+        return None;
+    }
+    
     // 1. Si la réponse est entourée de ```json ou ```, extraire le contenu
     if trimmed.starts_with("```json") || trimmed.starts_with("```") {
         let start_marker = if trimmed.starts_with("```json") {
@@ -2842,11 +3050,18 @@ fn extract_json_block(response: &str) -> Option<String> {
         let end_marker = "\n```";
         if let Some(end_idx) = trimmed[start_idx..].find(end_marker) {
             let json_content = &trimmed[start_idx..start_idx + end_idx];
-            return Some(json_content.trim().to_string());
+            let cleaned = json_content.trim();
+            // Vérifier que c'est bien du JSON valide
+            if cleaned.starts_with('{') || cleaned.starts_with('[') {
+                return Some(cleaned.to_string());
+            }
         }
         // Si pas de ``` de fin, prendre jusqu'à la fin
         let json_content = &trimmed[start_idx..];
-        return Some(json_content.trim().to_string());
+        let cleaned = json_content.trim();
+        if cleaned.starts_with('{') || cleaned.starts_with('[') {
+            return Some(cleaned.to_string());
+        }
     }
     
     // 2. Chercher un bloc JSON entre { et } (méthode originale améliorée)
@@ -2870,7 +3085,38 @@ fn extract_json_block(response: &str) -> Option<String> {
         }
         
         if let Some(end) = end_pos {
-            return Some(trimmed[start..=end].to_string());
+            let json_candidate = trimmed[start..=end].to_string();
+            // Vérifier que c'est du JSON valide en essayant de le parser
+            if serde_json::from_str::<Value>(&json_candidate).is_ok() {
+                return Some(json_candidate);
+            }
+        }
+    }
+    
+    // 3. Chercher un tableau JSON entre [ et ]
+    if let Some(start) = trimmed.find('[') {
+        let mut depth = 0;
+        let mut end_pos = None;
+        
+        for (idx, ch) in trimmed[start..].char_indices() {
+            match ch {
+                '[' => depth += 1,
+                ']' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end_pos = Some(start + idx);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        
+        if let Some(end) = end_pos {
+            let json_candidate = trimmed[start..=end].to_string();
+            if serde_json::from_str::<Value>(&json_candidate).is_ok() {
+                return Some(json_candidate);
+            }
         }
     }
     

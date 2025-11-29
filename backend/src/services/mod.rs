@@ -23,6 +23,7 @@ pub mod content_engagement_service;
 pub mod context_enricher;
 pub mod cost_service;
 pub mod creer_service;
+pub mod upload_service; // ✅ NOUVEAU: Service pour upload préalable de fichiers
 pub mod db_optimizer;
 pub mod delivery_notification_service; // ✅ RECOMMANDATION 3: Notifications SMS/Email pour clients sans app
 pub mod delivery_payment_service; // ✅ Phase 5 - Améliorations 10-15: Gestion financière avancée

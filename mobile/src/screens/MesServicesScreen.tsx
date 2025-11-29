@@ -965,36 +965,21 @@ const MesServicesScreen: React.FC = () => {
                 <SafeIcon name="video" size={20} color="#fff" />
               </TouchableOpacity>
 
-              {/* ✅ NOUVEAU : Bouton Galerie Produits (après vidéo) */}
+              {/* ✅ BOUTON GALERIE PRODUITS - Maintenant visible */}
               <TouchableOpacity
                 style={styles.headerButton}
                 onPress={() => setShowProductGallery(true)}
+                accessibilityLabel="Galerie Médias Produits"
               >
                 <SafeIcon name="image" size={20} color="#fff" />
               </TouchableOpacity>
 
-              {/* ✅ NOUVEAU : Bouton participation Black Friday (entre vidéo et menu) */}
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => (navigation as any).navigate('GlobalPromoSubmission')}
-              >
-                <SafeIcon name="dollar-sign" size={20} color="#fff" />
-              </TouchableOpacity>
-
-              {/* ✅ Menu global avec actions (après vidéo et Black Friday) */}
+              {/* ✅ Menu global avec actions (contient les autres options) */}
               <TouchableOpacity
                 style={[styles.headerButton, styles.menuButton]}
                 onPress={() => setShowGlobalMenu(!showGlobalMenu)}
               >
                 <SafeIcon name="more-vertical" size={20} color="#fff" />
-              </TouchableOpacity>
-
-              {/* Bouton Paramètres */}
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => (navigation as any).navigate('Settings')}
-              >
-                <SafeIcon name="settings" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1003,6 +988,18 @@ const MesServicesScreen: React.FC = () => {
         {/* ✅ Menu global déroulant */}
         {showGlobalMenu && (
           <View style={styles.globalMenu}>
+            {/* ✅ NOUVEAU: Galerie Médias Produits - Déplacé ici pour être visible */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                setShowProductGallery(true);
+              }}
+            >
+              <SafeIcon name="image" size={18} color="#10B981" />
+              <Text style={styles.menuItemText}>Galerie Médias</Text>
+            </TouchableOpacity>
+
             {/* ✅ NOUVEAU: Configuration de livraison globale */}
             <TouchableOpacity
               style={styles.menuItem}
@@ -1074,6 +1071,74 @@ const MesServicesScreen: React.FC = () => {
             >
               <SafeIcon name="megaphone" size={18} color="#EC4899" />
               <Text style={styles.menuItemText}>Publicité</Text>
+            </TouchableOpacity>
+
+            {/* ✅ NOUVEAU: Mes Vidéos */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                try {
+                  const parent = (navigation as any).getParent();
+                  if (parent) {
+                    parent.navigate('VideoFeed');
+                  } else {
+                    (navigation as any).navigate('VideoFeed');
+                  }
+                } catch (error) {
+                  logger.error('Erreur navigation vers VideoFeed:', error);
+                  Alert.alert('Erreur', 'Impossible d\'ouvrir Mes Vidéos');
+                }
+              }}
+            >
+              <SafeIcon name="video" size={18} color="#EC4899" />
+              <Text style={styles.menuItemText}>Mes Vidéos</Text>
+            </TouchableOpacity>
+
+            {/* ✅ NOUVEAU: Participation Black Friday */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                (navigation as any).navigate('GlobalPromoSubmission');
+              }}
+            >
+              <SafeIcon name="dollar-sign" size={18} color="#F59E0B" />
+              <Text style={styles.menuItemText}>Black Friday</Text>
+            </TouchableOpacity>
+
+            {/* ✅ NOUVEAU: Analytiques Vidéos */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                try {
+                  const parent = (navigation as any).getParent();
+                  if (parent) {
+                    parent.navigate('VideoAnalytics');
+                  } else {
+                    (navigation as any).navigate('VideoAnalytics');
+                  }
+                } catch (error) {
+                  logger.error('Erreur navigation vers VideoAnalytics:', error);
+                  Alert.alert('Erreur', 'Impossible d\'ouvrir Analytiques Vidéos');
+                }
+              }}
+            >
+              <SafeIcon name="bar-chart" size={18} color="#8B5CF6" />
+              <Text style={styles.menuItemText}>Analytiques Vidéos</Text>
+            </TouchableOpacity>
+
+            {/* ✅ Bouton Paramètres */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                (navigation as any).navigate('Settings');
+              }}
+            >
+              <SafeIcon name="settings" size={18} color="#6B7280" />
+              <Text style={styles.menuItemText}>Paramètres</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1444,6 +1509,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap', // ✅ AJOUTÉ: Permet le retour à la ligne si nécessaire
+    gap: 8, // ✅ AJOUTÉ: Espacement entre les éléments
   },
   logoContainer: {
     flexDirection: 'row',
@@ -1457,16 +1524,22 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8, // ✅ RÉDUIT: 12 → 8 pour économiser l'espace
+    flexWrap: 'wrap', // ✅ AJOUTÉ: Permet le retour à la ligne si nécessaire
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   headerButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10, // ✅ RÉDUIT: 12 → 10 pour économiser l'espace
     paddingVertical: 8,
     borderRadius: modernStyles.borderRadius.medium,
-    gap: 6,
+    gap: 4, // ✅ RÉDUIT: 6 → 4
+    minWidth: 40, // ✅ AJOUTÉ: Largeur minimale pour garantir la visibilité
+    minHeight: 40, // ✅ AJOUTÉ: Hauteur minimale pour garantir la visibilité
   },
   analyticsButton: {
     backgroundColor: 'rgba(99, 102, 241, 0.3)', // Indigo pour Analytics

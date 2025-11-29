@@ -1136,10 +1136,17 @@ impl NativeSearchService {
 
         let sql = format!(
             r#"
-WITH products_extracted AS (
-    -- ✅ OPTIMISÉ: Extraire les produits UNE SEULE FOIS au lieu de 4-5 fois
+WITH all_products_extracted AS (
+    -- ✅ CORRIGÉ 2025-11-29: Extraire TOUS les produits de TOUS les services actifs
+    -- PAS de filtre sur titre_service/description/category ici pour permettre de trouver
+    -- des produits même si le service ne contient pas le terme recherché
     SELECT 
         s.id as service_id,
+        s.data,
+        s.created_at,
+        s.user_id,
+        s.gps,
+        s.category,
         CASE 
             WHEN jsonb_typeof(s.data->'produits') = 'array' 
             THEN s.data->'produits'
@@ -1149,56 +1156,69 @@ WITH products_extracted AS (
         END as products_array
     FROM services s
     WHERE s.is_active = true
-    AND ({})
     AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
 ),
+products_extracted AS (
+    -- ✅ Filtrer sur les PRODUITS qui matchent (GÉNÉRIQUE - utilise extract_all_product_text)
+    SELECT DISTINCT
+        ape.service_id,
+        ape.data,
+        ape.created_at,
+        ape.user_id,
+        ape.gps,
+        ape.category,
+        ape.products_array
+    FROM all_products_extracted ape
+    WHERE (
+        -- ✅ Recherche dans les PRODUITS (GÉNÉRIQUE - tous champs via extract_all_product_text)
+        EXISTS (
+            SELECT 1 
+            FROM jsonb_array_elements(ape.products_array) AS product
+            WHERE (
+                -- ✅ GÉNÉRIQUE : Recherche dans TOUS les champs du produit
+                extract_all_product_text(product) ILIKE '%' || $1 || '%'
+                -- ✅ OU recherche dans les champs principaux (pour performance)
+                OR product->>'nom' ILIKE '%' || $1 || '%'
+                OR product->>'categorie' ILIKE '%' || $1 || '%'
+                OR product->>'description' ILIKE '%' || $1 || '%'
+            )
+        )
+        -- ✅ OU recherche dans les champs service (pour services sans produits)
+        OR COALESCE(ape.data->>'titre_service', ape.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%'
+        OR COALESCE(ape.data->>'description', ape.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%'
+        OR COALESCE(ape.data->>'category', ape.data->'category'->>'valeur', ape.category, '') ILIKE '%' || $1 || '%'
+        -- ✅ Conditions partielles pour correspondances avec accents
+        OR ({})
+    )
+),
 products_scored AS (
-    -- ✅ OPTIMISÉ: Calculer tous les scores produits en une seule passe
+    -- ✅ OPTIMISÉ 2025-11-29: Calculer tous les scores produits en une seule passe (GÉNÉRIQUE)
     SELECT 
         pe.service_id,
         COALESCE(SUM(
             CASE 
-                -- ✅ OPTIMISÉ 2025-11-29: Prioriser correspondances exactes dans produits
-                WHEN LOWER(product->>'nom') = LOWER($1) THEN 25.0
-                WHEN LOWER(product->>'nom') LIKE LOWER($1) || '%' THEN 18.0
+                -- ✅ GÉNÉRIQUE : Prioriser correspondances dans extract_all_product_text (tous champs)
+                WHEN LOWER(extract_all_product_text(product)) = LOWER($1) THEN 25.0
+                WHEN LOWER(extract_all_product_text(product)) LIKE LOWER($1) || '%' THEN 18.0
+                -- Correspondances dans champs principaux (pour performance)
+                WHEN LOWER(COALESCE(product->>'nom', '')) = LOWER($1) THEN 20.0
                 WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 12.0
-                WHEN LOWER(product->>'categorie') = LOWER($1) THEN 20.0
-                WHEN LOWER(product->>'categorie') LIKE LOWER($1) || '%' THEN 15.0
                 WHEN product->>'categorie' ILIKE '%' || $1 || '%' THEN 10.0
                 WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 8.0
+                -- ✅ GÉNÉRIQUE : Correspondance dans tout le texte extrait (tous champs)
                 WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 6.0
-                WHEN product->>'type' ILIKE '%' || $1 || '%' THEN 5.0
-                WHEN product->>'marque' ILIKE '%' || $1 || '%' THEN 5.0
-                WHEN product->>'modele' ILIKE '%' || $1 || '%' THEN 5.0
-                WHEN product->>'titre' ILIKE '%' || $1 || '%' THEN 5.0
-                WHEN product->>'typeFormation' ILIKE '%' || $1 || '%' THEN 6.0
-                WHEN product->>'matieresEnseignees' ILIKE '%' || $1 || '%' THEN 5.5
-                WHEN product->>'matieres_enseignees' ILIKE '%' || $1 || '%' THEN 5.5
-                WHEN product->>'niveauxScolaires' ILIKE '%' || $1 || '%' THEN 5.5
-                WHEN product->>'niveaux_scolaires' ILIKE '%' || $1 || '%' THEN 5.5
-                WHEN product->>'concoursCibles' ILIKE '%' || $1 || '%' THEN 5.5
-                WHEN product->>'concours_cibles' ILIKE '%' || $1 || '%' THEN 5.5
-                WHEN product->>'formatFormation' ILIKE '%' || $1 || '%' THEN 4.5
-                WHEN product->>'formats' ILIKE '%' || $1 || '%' THEN 4.5
-                WHEN product->>'anciensSujetsDisponibles' ILIKE '%' || $1 || '%' THEN 4.5
-                WHEN product->'prestationsMedicales' IS NOT NULL AND EXISTS (
-                    SELECT 1 FROM jsonb_array_elements_text(product->'prestationsMedicales') prestation
-                    WHERE prestation ILIKE '%' || $1 || '%'
-                ) THEN 4.5
-                WHEN product->>'typeEtablissement' ILIKE '%' || $1 || '%' THEN 4.0
-                WHEN product->>'typeDemenagement' ILIKE '%' || $1 || '%' THEN 4.0
-                WHEN product->>'typeVehicule' ILIKE '%' || $1 || '%' THEN 3.0
-                WHEN product->>'volumeEstime' ILIKE '%' || $1 || '%' THEN 2.5
-                WHEN product->>'quartier' ILIKE '%' || $1 || '%' THEN 2.5
-                WHEN product->>'ville' ILIKE '%' || $1 || '%' THEN 2.5
                 ELSE 0.0
             END +
             CASE 
-                WHEN unaccent(COALESCE(product->>'nom', '')) ILIKE '%' || unaccent($1) || '%' THEN 12.0
-                WHEN unaccent(COALESCE(product->>'categorie', '')) ILIKE '%' || unaccent($1) || '%' THEN 10.0
-                WHEN unaccent(COALESCE(product->>'description', '')) ILIKE '%' || unaccent($1) || '%' THEN 8.0
+                -- ✅ CORRIGÉ : Utiliser unaccent_immutable() pour utiliser les index
+                WHEN unaccent_immutable(COALESCE(product->>'nom', '')) ILIKE '%' || unaccent_immutable($1) || '%' THEN 12.0
+                WHEN unaccent_immutable(COALESCE(product->>'categorie', '')) ILIKE '%' || unaccent_immutable($1) || '%' THEN 10.0
+                WHEN unaccent_immutable(COALESCE(product->>'description', '')) ILIKE '%' || unaccent_immutable($1) || '%' THEN 8.0
+                -- ✅ GÉNÉRIQUE : Recherche avec unaccent_immutable dans tout le texte
+                WHEN unaccent_immutable(extract_all_product_text(product)) ILIKE '%' || unaccent_immutable($1) || '%' THEN 6.0
                 ELSE 0.0
             END +
+            -- ✅ GÉNÉRIQUE : Full-text search sur tout le texte du produit
             ts_rank(to_tsvector('french', extract_all_product_text(product)), plainto_tsquery('french', $1)) * 10.0
         ), 0.0) as product_score,
         COALESCE(SUM(
@@ -1206,6 +1226,8 @@ products_scored AS (
                 WHEN product->>'nom' ILIKE '%' || word || '%' THEN 8.0
                 WHEN product->>'categorie' ILIKE '%' || word || '%' THEN 6.0
                 WHEN product->>'description' ILIKE '%' || word || '%' THEN 5.0
+                -- ✅ GÉNÉRIQUE : Recherche par mot dans tout le texte
+                WHEN extract_all_product_text(product) ILIKE '%' || word || '%' THEN 4.0
                 ELSE 0.0
             END
         ), 0.0) as product_word_score
@@ -1232,114 +1254,79 @@ autocomplete_scored AS (
     GROUP BY ac.service_id
 )
 SELECT DISTINCT
-    s.id,
-    s.data,
-    s.created_at,
-    s.user_id,
-    s.gps,
-    s.category,
+    pe.id,
+    pe.data,
+    pe.created_at,
+    pe.user_id,
+    pe.gps,
+    pe.category,
     (
         -- Score SERVICE (réduit)
         (
-            ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.5 +
-            ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0 +
-            ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0
+            ts_rank(to_tsvector('french', COALESCE(pe.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.5 +
+            ts_rank(to_tsvector('french', COALESCE(pe.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0 +
+            ts_rank(to_tsvector('french', COALESCE(pe.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0
         ) +
         (
-            ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'titre_service'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 2.0 +
-            ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'description'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 1.0 +
-            ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'category'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 1.5
+            -- ✅ CORRIGÉ : Utiliser unaccent_immutable() pour utiliser les index full-text
+            ts_rank(to_tsvector('french', unaccent_immutable(COALESCE(pe.data->'titre_service'->>'valeur', ''))), plainto_tsquery('french', unaccent_immutable($1))) * 2.0 +
+            ts_rank(to_tsvector('french', unaccent_immutable(COALESCE(pe.data->'description'->>'valeur', ''))), plainto_tsquery('french', unaccent_immutable($1))) * 1.0 +
+            ts_rank(to_tsvector('french', unaccent_immutable(COALESCE(pe.data->'category'->>'valeur', ''))), plainto_tsquery('french', unaccent_immutable($1))) * 1.5
         ) +
         -- ✅ OPTIMISÉ 2025-11-29: Prioriser correspondances exactes (bonus élevé)
         CASE 
-            -- Correspondance exacte dans titre (bonus très élevé)
-            WHEN LOWER(s.data->'titre_service'->>'valeur') = LOWER($1) THEN 20.0
-            WHEN LOWER(s.data->'titre_service'->>'valeur') LIKE LOWER($1) || '%' THEN 10.0
-            WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
-            -- Correspondance exacte dans category (bonus élevé)
-            WHEN LOWER(s.data->'category'->>'valeur') = LOWER($1) THEN 15.0
-            WHEN LOWER(s.data->'category'->>'valeur') LIKE LOWER($1) || '%' THEN 8.0
-            WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 4.0
-            -- Correspondance dans description (bonus moyen)
-            WHEN s.data->'description'->>'valeur' ILIKE '%' || $1 || '%' THEN 2.0
+            WHEN LOWER(pe.data->'titre_service'->>'valeur') = LOWER($1) THEN 20.0
+            WHEN LOWER(pe.data->'titre_service'->>'valeur') LIKE LOWER($1) || '%' THEN 10.0
+            WHEN pe.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
+            WHEN LOWER(pe.data->'category'->>'valeur') = LOWER($1) THEN 15.0
+            WHEN LOWER(pe.data->'category'->>'valeur') LIKE LOWER($1) || '%' THEN 8.0
+            WHEN pe.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 4.0
+            WHEN pe.data->'description'->>'valeur' ILIKE '%' || $1 || '%' THEN 2.0
             ELSE 0.0
         END +
         CASE 
-            WHEN unaccent(s.data->'titre_service'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 2.5
-            WHEN unaccent(s.data->'description'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 1.5
-            WHEN unaccent(s.data->'category'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 2.0
+            -- ✅ CORRIGÉ : Utiliser unaccent_immutable() pour utiliser les index trigram
+            WHEN unaccent_immutable(pe.data->'titre_service'->>'valeur') ILIKE '%' || unaccent_immutable($1) || '%' THEN 2.5
+            WHEN unaccent_immutable(pe.data->'description'->>'valeur') ILIKE '%' || unaccent_immutable($1) || '%' THEN 1.5
+            WHEN unaccent_immutable(pe.data->'category'->>'valeur') ILIKE '%' || unaccent_immutable($1) || '%' THEN 2.0
             ELSE 0.0
         END +
         (
             SELECT COALESCE(SUM(
                 CASE 
-                    WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || word || '%' THEN 2.0
-                    WHEN s.data->'description'->>'valeur' ILIKE '%' || word || '%' THEN 1.0
-                    WHEN s.data->'category'->>'valeur' ILIKE '%' || word || '%' THEN 1.5
+                    WHEN pe.data->'titre_service'->>'valeur' ILIKE '%' || word || '%' THEN 2.0
+                    WHEN pe.data->'description'->>'valeur' ILIKE '%' || word || '%' THEN 1.0
+                    WHEN pe.data->'category'->>'valeur' ILIKE '%' || word || '%' THEN 1.5
                     ELSE 0.0
                 END
             ), 0.0)
             FROM unnest(string_to_array($1, ' ')) AS word
         ) +
-        CASE 
-            WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' 
-                 AND s.data->'description'->>'valeur' ILIKE '%' || $1 || '%'
-            THEN 3.0
-            WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' 
-                 AND s.data->'category'->>'valeur' ILIKE '%' || $1 || '%'
-            THEN 2.0
-            ELSE 0.0
-        END +
-        CASE 
-            WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' 
-                 AND s.data->'description'->>'valeur' ILIKE '%' || $1 || '%'
-                 AND s.data->'category'->>'valeur' ILIKE '%' || $1 || '%'
-            THEN 5.0
-            ELSE 0.0
-        END +
-        CASE 
-            WHEN s.data->'titre_service'->>'valeur' NOT ILIKE '%' || $1 || '%' 
-                 AND s.data->'description'->>'valeur' ILIKE '%' || $1 || '%'
-                 AND s.data->'category'->>'valeur' NOT ILIKE '%' || $1 || '%'
-            THEN -1.0
-            ELSE 0.0
-        END +
-        CASE 
-            WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%'
-            THEN 2.0
-            ELSE 0.0
-        END +
-        CASE 
-            WHEN ({}) THEN 2.0
-            ELSE 0.0
-        END +
-        -- Score PRODUITS (utilise les CTE)
-        COALESCE(ps.product_score, 0.0) +
+        -- Score PRODUITS (utilise les CTE) - PRIORITÉ ÉLEVÉE car on cherche dans les produits
+        COALESCE(ps.product_score, 0.0) * 2.0 +
         COALESCE(ps.product_word_score, 0.0) +
         COALESCE(acs.autocomplete_score, 0.0) +
         CASE 
-            WHEN s.data->'produits'->'characteristic_vector' IS NOT NULL THEN
+            WHEN pe.data->'produits'->'characteristic_vector' IS NOT NULL THEN
                 (
                     SELECT COUNT(*)::REAL * 8.0
-                    FROM jsonb_array_elements_text(s.data->'produits'->'characteristic_vector') AS vec_val
+                    FROM jsonb_array_elements_text(pe.data->'produits'->'characteristic_vector') AS vec_val
                     WHERE vec_val ILIKE '%' || $1 || '%'
                 )
             ELSE 0.0
         END
     )::REAL as fulltext_score
-FROM services s
-LEFT JOIN products_scored ps ON ps.service_id = s.id
-LEFT JOIN autocomplete_scored acs ON acs.service_id = s.id
-WHERE s.is_active = true
-AND ({})
-AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
+FROM products_extracted pe
+LEFT JOIN products_scored ps ON ps.service_id = pe.service_id
+LEFT JOIN autocomplete_scored acs ON acs.service_id = pe.service_id
+WHERE ($2::text IS NULL OR pe.category = $2 OR pe.data->'category'->>'valeur' = $2)
 AND (
     $3::text IS NULL
     OR (
-        s.gps ILIKE '%' || $3 || '%'
+        pe.gps ILIKE '%' || $3 || '%'
         OR EXISTS (
             SELECT 1 FROM autocomplete_characteristics ac
-            WHERE ac.service_id = s.id
+            WHERE ac.service_id = pe.service_id
             AND ac.is_real_product = TRUE
             AND (
                 (
@@ -1358,7 +1345,7 @@ AND (
 ORDER BY fulltext_score DESC
 LIMIT 100
         "#,
-            partial_conditions, partial_conditions, partial_conditions
+            partial_conditions
         );
 
         // ✅ CORRECTION 2025-11-27 : Utiliser retry_query pour cohérence et meilleure gestion d'erreurs
@@ -2137,7 +2124,7 @@ LIMIT 100
 
             if without_accents != word {
                 conditions.push(format!(
-                    "unaccent(s.data->'titre_service'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'description'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'category'->>'valeur') ILIKE '%{}%'",
+                    "unaccent_immutable(s.data->'titre_service'->>'valeur') ILIKE '%{}%' OR unaccent_immutable(s.data->'description'->>'valeur') ILIKE '%{}%' OR unaccent_immutable(s.data->'category'->>'valeur') ILIKE '%{}%'",
                     without_accents, without_accents, without_accents
                 ));
             }

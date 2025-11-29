@@ -118,7 +118,11 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/places/photo", get(fetch_place_photo))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))
-        .layer(axum::middleware::from_fn(rate_limit::rate_limit))
+        // ✅ SÉCURITÉ: Rate limiting avec State pour accéder à Redis
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            rate_limit::rate_limit,
+        ))
         .layer(axum::middleware::from_fn(hide_headers::hide_headers))
         .layer(axum::middleware::from_fn(
             request_size_limit::request_size_limit,
@@ -490,7 +494,11 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(axum::middleware::from_fn(jwt_auth))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))
-        .layer(axum::middleware::from_fn(rate_limit::rate_limit))
+        // ✅ SÉCURITÉ: Rate limiting avec State pour accéder à Redis
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            rate_limit::rate_limit,
+        ))
         .layer(axum::middleware::from_fn(hide_headers::hide_headers))
         .layer(axum::middleware::from_fn(
             request_size_limit::request_size_limit,

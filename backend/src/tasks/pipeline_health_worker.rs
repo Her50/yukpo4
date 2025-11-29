@@ -33,6 +33,14 @@ pub fn start_pipeline_health_worker(state: Arc<AppState>) {
 
         loop {
             ticker.tick().await;
+            
+            // ✅ CORRECTION: Marquer les stale jobs comme failed avant de calculer le health
+            if let Err(err) = crate::services::pipeline_health_service::mark_stale_jobs_as_failed(worker_state.clone()).await {
+                log::error!(
+                    "[PipelineWorker] Impossible de marquer les stale jobs comme failed: {err:?}"
+                );
+            }
+            
             match compute_pipeline_health(worker_state.clone()).await {
                 Ok(status) => {
                     handle_status(

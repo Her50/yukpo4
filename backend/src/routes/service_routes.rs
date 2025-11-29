@@ -25,9 +25,19 @@ pub fn service_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/services/recent", get(get_services_recent))
         .route("/services/my-services", get(get_my_services))
         // ✅ CORRECTION: Route de création avec middleware de limite de taille pour éviter erreur 413
+        // 
+        // ✅ PHASE 2 MIGRATION: Limite réduite à 2 MB (JSON uniquement, sans base64)
+        // Les fichiers doivent être uploadés préalablement via POST /api/upload
+        // Voir ARCHITECTURE_UPLOAD_FICHIERS.md pour le plan complet
+        //
+        // 🔒 SÉCURITÉ: Limite raisonnable pour JSON pur (texte, nombres, URLs)
+        // Les images/vidéos doivent passer par l'endpoint upload séparé
         .route(
             "/services/create",
             post(creer_service)
+                .layer(
+                    axum::extract::DefaultBodyLimit::max(2_000_000) // ✅ 2 MB - JSON uniquement (URLs de fichiers)
+                )
                 .layer(middleware::from_fn(request_size_limit))
         )
         .route("/services/filter", get(filter_services))

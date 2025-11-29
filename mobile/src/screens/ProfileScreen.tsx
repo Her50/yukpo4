@@ -218,6 +218,20 @@ const ProfileScreen: React.FC = () => {
 
   const profileActions = [
     {
+      title: 'Mes Vidéos',
+      icon: 'video', // ✅ NOUVEAU: Accès aux vidéos créées
+      color: '#EC4899',
+      route: 'VideoFeed',
+      description: 'Voir et gérer vos vidéos créées'
+    },
+    {
+      title: 'Analytiques Vidéos',
+      icon: 'bar-chart', // ✅ NOUVEAU: Statistiques des vidéos
+      color: '#8B5CF6',
+      route: 'VideoAnalytics',
+      description: 'Statistiques et performances de vos vidéos'
+    },
+    {
       title: 'Mes Services Spécialisés',
       icon: 'layout-grid', // ✅ CORRIGÉ: Icône Lucide pour interface de gestion (tablette/grille)
       color: '#6366F1',

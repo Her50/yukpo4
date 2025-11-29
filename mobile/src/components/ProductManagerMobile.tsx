@@ -1875,23 +1875,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     const [configProductIndex, setConfigProductIndex] = useState<number | null>(null);
 
     // ✅ NOUVEAU 2025-11-01: Gérer la duplication automatique d'un produit
-    // Navigation vers FormulaireYukpoIntelligent avec mode='add_product'
+    // ✅ CORRECTION: Naviguer vers AjouterProduitSimpleScreen (formulaire dédié ajout produit)
     React.useEffect(() => {
         if (duplicateProduct && serviceId && serviceData) {
-            console.log('[ProductManagerMobile] 📋 Navigation vers formulaire pour dupliquer produit:', {
+            console.log('[ProductManagerMobile] 📋 Navigation vers AjouterProduitSimple pour dupliquer produit:', {
                 nom: duplicateProduct.nom,
                 type: duplicateProduct.type,
                 serviceId
             });
 
-            // ✅ NOUVEAU: Naviguer vers FormulaireYukpoIntelligent au lieu de dupliquer localement
-            (navigation as any).navigate('FormulaireYukpoIntelligent', {
+            // ✅ CORRECTION: Naviguer vers AjouterProduitSimpleScreen (formulaire dédié pour ajouter un produit)
+            (navigation as any).navigate('AjouterProduitSimple', {
                 serviceId: serviceId,
-                duplicateProduct: duplicateProduct,
-                serviceData: serviceData,
-                mode: 'add_product', // ✅ Mode spécial pour ajout produit
-                focusBlock: 'products',
-                fromMesProduits: true
+                prefill: duplicateProduct, // Préremplir avec le produit à dupliquer
+                mode: 'duplicate', // Mode duplication
+                suggestionIA: {
+                    data: serviceData
+                }
             });
         }
     }, [duplicateProduct, serviceId, serviceData, navigation]);
@@ -1944,27 +1944,27 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     };
 
     const handleEditProduct = (product: Product) => {
-        // ✅ NOUVEAU: Si on a serviceId, naviguer vers FormulaireYukpoIntelligentScreen
-        // Sinon, utiliser le modal interne (comportement existant pour création)
+        // ✅ CORRECTION: Naviguer vers AjouterProduitSimpleScreen en mode édition
+        // Ce formulaire est dédié à l'édition/ajout de produit, pas FormulaireYukpoIntelligent
         if (serviceId && !readonly) {
-            console.log('[ProductManagerMobile] 📝 Navigation vers formulaire d\'édition produit:', {
+            console.log('[ProductManagerMobile] 📝 Navigation vers AjouterProduitSimple pour édition produit:', {
                 productId: product.id,
                 productName: product.nom,
                 serviceId
             });
 
-            (navigation as any).navigate('FormulaireYukpoIntelligent', {
+            // Trouver l'index du produit dans la liste
+            const productIndex = products.findIndex(p => p.id === product.id);
+
+            (navigation as any).navigate('AjouterProduitSimple', {
                 mode: 'edit',
                 serviceId: serviceId,
-                suggestion: {
-                    data: serviceData || {},
-                    intention: 'modification_produit',
-                    confidence: 0.9
-                },
-                focusBlock: 'products', // Focus sur le bloc produits
-                focusProductId: product.id, // ID du produit à modifier
-                editProductData: product, // ✅ Données complètes du produit à modifier
-                fromMesProduits: true
+                productId: product.id,
+                productIndex: productIndex >= 0 ? productIndex : null,
+                prefill: product, // Données complètes du produit à modifier
+                suggestionIA: {
+                    data: serviceData || {}
+                }
             });
         }
     };
@@ -2365,12 +2365,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <TouchableOpacity
                         style={styles.addButton}
                         onPress={() => {
-                            // ✅ NOUVEAU 2025-11-01: Navigation vers FormulaireYukpoIntelligent
-                            console.log('[ProductManagerMobile] Navigation vers FormulaireYukpoIntelligent pour ajouter un produit');
-                            (navigation as any).navigate('FormulaireYukpoIntelligent', {
-                                mode: 'add_product',
+                            // ✅ CORRECTION: Navigation vers AjouterProduitSimpleScreen (formulaire dédié ajout produit)
+                            console.log('[ProductManagerMobile] Navigation vers AjouterProduitSimple pour ajouter un produit');
+                            (navigation as any).navigate('AjouterProduitSimple', {
                                 serviceId: serviceId,
-                                serviceData: serviceData
+                                suggestionIA: {
+                                    data: serviceData || {}
+                                },
+                                mode: 'create'
                             });
                         }}
                     >
@@ -2409,10 +2411,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             : (products[configProductIndex]?.nom || 'Produit')
                     }
                     allProducts={
-                        configProductIndex === -1
+                        configProductIndex === -1 && Array.isArray(products) && products.length > 0
                             ? products
-                                .map((p, idx) => ({ index: idx, name: p.nom || 'Produit' }))
-                                .filter((_, idx) => products[idx].type !== 'prestation_service')
+                                .map((p, idx) => ({ index: idx, name: p?.nom || 'Produit' }))
+                                .filter((_, idx) => products[idx]?.type !== 'prestation_service')
                             : []
                     }
                     onSuccess={() => {

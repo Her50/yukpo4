@@ -11,7 +11,11 @@ use std::sync::Arc;
 
 use crate::{
     core::types::{AppError, AppResult},
-    utils::jwt_manager::generate_jwt,
+    utils::{
+        jwt_manager::generate_jwt,
+        sanitize_logs::log_safe_email,
+        validation::{validate_email, validate_password_strength, validate_name},
+    },
 };
 
 use crate::state::AppState;
@@ -29,7 +33,14 @@ pub async fn login_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<LoginInput>,
 ) -> AppResult<Json<serde_json::Value>> {
-    info!("Appel login_handler pour email={}", payload.email);
+    // ✅ SÉCURITÉ: Valider les entrées
+    validate_email(&payload.email)?;
+    if payload.password.is_empty() {
+        return Err(AppError::BadRequest("Le mot de passe est requis".into()));
+    }
+    
+    // ✅ SÉCURITÉ: Logger l'email masqué
+    info!("Appel login_handler pour email={}", log_safe_email(&payload.email));
     let db = &state.pg;
     
     #[derive(FromRow)]
@@ -55,20 +66,28 @@ pub async fn login_handler(
     let user = match user {
         Ok(Some(u)) => u,
         Ok(None) => {
-            error!("[login_handler] Email introuvable: {}", payload.email);
-            return Err(AppError::Unauthorized("Email introuvable".into()));
+            // ✅ SÉCURITÉ: Ne pas révéler si l'email existe
+            // Utiliser un message générique pour éviter l'énumération d'emails
+            error!(
+                "[login_handler] Tentative de connexion échouée pour email={} (identifiants incorrects)",
+                log_safe_email(&payload.email)
+            );
+            return Err(AppError::Unauthorized("Identifiants incorrects".into()));
         }
         Err(e) => {
             error!("[login_handler] DB error: {e:?}");
             return Err(e.into());
         }
     };
+    
+    // ✅ SÉCURITÉ: Vérifier le mot de passe AVANT de logger quoi que ce soit
+    // Utiliser un message générique pour éviter l'énumération
     if !verify(&payload.password, &user.password_hash)? {
         error!(
-            "[login_handler] Mot de passe incorrect pour email={}",
-            payload.email
+            "[login_handler] Tentative de connexion échouée pour utilisateur id={}",
+            user.id
         );
-        return Err(AppError::Unauthorized("Mot de passe incorrect".into()));
+        return Err(AppError::Unauthorized("Identifiants incorrects".into()));
     }
     let secret = std::env::var("JWT_SECRET")
         .map_err(|_| AppError::Internal("JWT_SECRET manquant".into()))?;
@@ -105,7 +124,23 @@ pub async fn register_user(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RegisterInput>,
 ) -> impl IntoResponse {
-    info!("Appel register_user pour email={}", payload.email);
+    // ✅ SÉCURITÉ: Valider les entrées
+    validate_email(&payload.email)?;
+    validate_password_strength(&payload.password)?;
+    
+    // Valider les noms si fournis
+    if let Some(ref nom) = payload.nom {
+        validate_name(nom, "Nom")?;
+    }
+    if let Some(ref prenom) = payload.prenom {
+        validate_name(prenom, "Prénom")?;
+    }
+    if let Some(ref name) = payload.name {
+        validate_name(name, "Nom complet")?;
+    }
+    
+    // ✅ SÉCURITÉ: Logger l'email masqué
+    info!("Appel register_user pour email={}", log_safe_email(&payload.email));
     let db = &state.pg;
     let exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)",
@@ -121,10 +156,16 @@ pub async fn register_user(
         }
     };
     if exists {
-        error!("[register_user] Email deja utilise: {}", payload.email);
-        return Err(AppError::Conflict("Email deja utilise".into()));
+        error!(
+            "[register_user] Email déjà utilisé: {}",
+            log_safe_email(&payload.email)
+        );
+        return Err(AppError::Conflict("Email déjà utilisé".into()));
     }
-    let password_hash = hash(&payload.password, DEFAULT_COST)?;
+    // ✅ SÉCURITÉ: Utiliser un cost plus élevé pour bcrypt (12 au lieu de 10)
+    // DEFAULT_COST est 10, on utilise 12 pour plus de sécurité
+    const BCRYPT_COST: u32 = 12;
+    let password_hash = hash(&payload.password, BCRYPT_COST)?;
     // Valeurs par defaut pour les nouveaux utilisateurs
     let default_token_price_user = 1.0_f64;
     let default_token_price_provider = 1.0_f64;
@@ -236,15 +277,117 @@ pub async fn oauth_login_handler(
         payload.provider
     );
     let client = Client::new();
-    let user_info_url = match payload.provider.as_str() {
-        "google" => format!(
+    
+    // ✅ SÉCURITÉ: Validation OAuth améliorée
+    let (user_res, provider_name) = match payload.provider.as_str() {
+        "google" => {
+            // Pour Google, utiliser tokeninfo qui valide le token
+            let tokeninfo_url = format!(
             "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token={}",
             payload.token_id
-        ),
-        "facebook" => format!(
+            );
+            
+            let resp = client.get(&tokeninfo_url).send().await.map_err(|e| {
+                error!("[oauth_login_handler] Erreur requête Google tokeninfo: {e:?}");
+                AppError::Unauthorized("Token Google invalide".into())
+            })?;
+            
+            // Vérifier le status code
+            if !resp.status().is_success() {
+                error!("[oauth_login_handler] Google tokeninfo retourne une erreur: {}", resp.status());
+                return Err(AppError::Unauthorized("Token Google invalide ou expiré".into()));
+            }
+            
+            let user_data = resp.json::<serde_json::Value>().await.map_err(|e| {
+                error!("[oauth_login_handler] Erreur parsing JSON Google: {e:?}");
+                AppError::Unauthorized("Réponse Google invalide".into())
+            })?;
+            
+            // ✅ SÉCURITÉ: Vérifier que le token n'est pas expiré
+            if let Some(exp) = user_data.get("exp").and_then(|v| v.as_i64()) {
+                let now = chrono::Utc::now().timestamp();
+                if exp < now {
+                    error!("[oauth_login_handler] Token Google expiré (exp: {}, now: {})", exp, now);
+                    return Err(AppError::Unauthorized("Token Google expiré".into()));
+                }
+            }
+            
+            // ✅ SÉCURITÉ: Vérifier l'audience (optionnel si GOOGLE_CLIENT_ID est défini)
+            if let Ok(expected_aud) = std::env::var("GOOGLE_CLIENT_ID") {
+                if let Some(actual_aud) = user_data.get("aud").and_then(|v| v.as_str()) {
+                    if actual_aud != expected_aud {
+                        error!(
+                            "[oauth_login_handler] Audience Google invalide: attendu {}, reçu {}",
+                            expected_aud, actual_aud
+                        );
+                        return Err(AppError::Unauthorized("Token Google pour une autre application".into()));
+                    }
+                }
+            }
+            
+            (user_data, "google")
+        }
+        "facebook" => {
+            // ✅ SÉCURITÉ: Pour Facebook, d'abord vérifier le token avec debug_token
+            let app_id = std::env::var("FACEBOOK_APP_ID")
+                .map_err(|_| AppError::Internal("FACEBOOK_APP_ID manquant".into()))?;
+            let app_secret = std::env::var("FACEBOOK_APP_SECRET")
+                .map_err(|_| AppError::Internal("FACEBOOK_APP_SECRET manquant".into()))?;
+            
+            // Vérifier le token avec l'endpoint debug
+            let debug_url = format!(
+                "https://graph.facebook.com/debug_token?input_token={}&access_token={}|{}",
+                payload.token_id, app_id, app_secret
+            );
+            
+            let debug_resp = client.get(&debug_url).send().await.map_err(|e| {
+                error!("[oauth_login_handler] Erreur requête Facebook debug_token: {e:?}");
+                AppError::Unauthorized("Token Facebook invalide".into())
+            })?;
+            
+            let debug_data = debug_resp.json::<serde_json::Value>().await.map_err(|e| {
+                error!("[oauth_login_handler] Erreur parsing JSON Facebook debug: {e:?}");
+                AppError::Unauthorized("Réponse Facebook debug invalide".into())
+            })?;
+            
+            // Vérifier que le token est valide
+            if let Some(is_valid) = debug_data
+                .get("data")
+                .and_then(|d| d.get("is_valid"))
+                .and_then(|v| v.as_bool())
+            {
+                if !is_valid {
+                    error!("[oauth_login_handler] Token Facebook marqué comme invalide");
+                    return Err(AppError::Unauthorized("Token Facebook invalide".into()));
+                }
+            } else {
+                error!("[oauth_login_handler] Réponse Facebook debug invalide: {debug_data:?}");
+                return Err(AppError::Unauthorized("Token Facebook invalide".into()));
+            }
+            
+            // Maintenant récupérer les informations utilisateur
+            let user_url = format!(
             "https://graph.facebook.com/me?fields=id,name,email&access_token={}",
             payload.token_id
-        ),
+            );
+            
+            let user_resp = client.get(&user_url).send().await.map_err(|e| {
+                error!("[oauth_login_handler] Erreur requête Facebook /me: {e:?}");
+                AppError::Unauthorized("Impossible de récupérer les informations Facebook".into())
+            })?;
+            
+            if !user_resp.status().is_success() {
+                error!("[oauth_login_handler] Facebook /me retourne une erreur: {}", user_resp.status());
+                return Err(AppError::Unauthorized("Token Facebook invalide".into()));
+            }
+            
+            let user_data = user_resp.json::<serde_json::Value>().await.map_err(|e| {
+                error!("[oauth_login_handler] Erreur parsing JSON Facebook: {e:?}");
+                AppError::Unauthorized("Réponse Facebook invalide".into())
+            })?;
+            
+            (user_data, "facebook")
+        }
         _ => {
             error!(
                 "[oauth_login_handler] Fournisseur OAuth non supporté: {}",
@@ -255,29 +398,18 @@ pub async fn oauth_login_handler(
             ));
         }
     };
-    let user_res = client.get(&user_info_url).send().await;
-    let user_res = match user_res {
-        Ok(resp) => resp,
-        Err(e) => {
-            error!("[oauth_login_handler] Erreur requ?te HTTP: {e:?}");
-            return Err(e.into());
-        }
-    };
-    let user_res = user_res.json::<serde_json::Value>().await;
-    let user_res = match user_res {
-        Ok(val) => val,
-        Err(e) => {
-            error!("[oauth_login_handler] Erreur parsing JSON: {e:?}");
-            return Err(e.into());
-        }
-    };
+    
+    // Extraire l'email
     let email = user_res.get("email").and_then(|v| v.as_str());
     let email = match email {
         Some(e) => e,
         None => {
-            error!("[oauth_login_handler] Impossible de rÃ©cupÃ©rer lÃ©email dans la rÃ©ponse: {user_res:?}");
+            error!(
+                "[oauth_login_handler] Impossible de récupérer l'email dans la réponse {}: {user_res:?}",
+                provider_name
+            );
             return Err(AppError::Unauthorized(
-                "Impossible de rÃ©cupÃ©rer lÃ©email".into(),
+                "Impossible de récupérer l'email depuis le provider OAuth".into(),
             ));
         }
     };

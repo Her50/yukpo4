@@ -110,17 +110,80 @@ const VideoCreationIntroScreen: React.FC = () => {
                     ]) as Promise<any>
                 );
 
+                console.log('[VideoCreationIntroScreen] 🔍 Réponse API chargement services:', {
+                    success: response.success,
+                    hasData: !!response.data,
+                    isArray: Array.isArray(response.data),
+                    length: Array.isArray(response.data) ? response.data.length : 0,
+                    dataType: typeof response.data
+                });
+
                 if (response.success && Array.isArray(response.data)) {
                     setUserServices(response.data);
+                    console.log('[VideoCreationIntroScreen] ✅ Services chargés:', response.data.length);
+
+                    // ✅ AMÉLIORATION: Vérifier immédiatement si des produits sont disponibles
+                    let totalProducts = 0;
+                    response.data.forEach((service: any) => {
+                        const produits = normalizeServiceProducts(service.data?.produits || service.produits);
+                        if (Array.isArray(produits)) {
+                            totalProducts += produits.length;
+                        }
+                    });
+                    console.log('[VideoCreationIntroScreen] 📊 Total produits détectés:', totalProducts);
+
+                    if (totalProducts === 0) {
+                        console.warn('[VideoCreationIntroScreen] ⚠️ Aucun produit trouvé dans les services chargés');
+                    }
                 } else {
-                    console.warn('[VideoCreationIntroScreen] Réponse API invalide:', response);
+                    console.warn('[VideoCreationIntroScreen] ⚠️ Réponse API invalide:', response);
+                    // ✅ AMÉLIORATION: Afficher une alerte si la réponse est invalide
+                    if (response.success === false) {
+                        Alert.alert(
+                            'Erreur de chargement',
+                            'Impossible de charger vos services. Veuillez réessayer.',
+                            [{ text: 'OK' }]
+                        );
+                    } else if (response.data && !Array.isArray(response.data)) {
+                        // ✅ CORRECTION: Essayer d'extraire les données d'une structure imbriquée
+                        console.log('[VideoCreationIntroScreen] 🔍 Tentative extraction données depuis structure imbriquée...');
+                        let extractedData = null;
+                        if (response.data && typeof response.data === 'object') {
+                            if (Array.isArray((response.data as any).data)) {
+                                extractedData = (response.data as any).data;
+                            } else if (Array.isArray((response.data as any).services)) {
+                                extractedData = (response.data as any).services;
+                            } else if (Array.isArray((response.data as any).items)) {
+                                extractedData = (response.data as any).items;
+                            }
+                        }
+
+                        if (extractedData && Array.isArray(extractedData)) {
+                            console.log('[VideoCreationIntroScreen] ✅ Données extraites depuis structure imbriquée:', extractedData.length);
+                            setUserServices(extractedData);
+                        } else {
+                            console.error('[VideoCreationIntroScreen] ❌ Impossible d\'extraire les données');
+                            Alert.alert(
+                                'Format de données invalide',
+                                'Les données reçues ne sont pas dans le format attendu. Veuillez réessayer.',
+                                [{ text: 'OK' }]
+                            );
+                        }
+                    }
                 }
             } catch (error: any) {
-                console.error('[VideoCreationIntroScreen] Erreur chargement services:', error);
+                console.error('[VideoCreationIntroScreen] ❌ Erreur chargement services:', error);
                 if (error.message === 'Timeout') {
                     Alert.alert(
                         'Chargement lent',
                         'Le chargement prend plus de temps que prévu. Vérifiez votre connexion internet.',
+                        [{ text: 'OK' }]
+                    );
+                } else {
+                    // ✅ AMÉLIORATION: Afficher une alerte pour les autres erreurs
+                    Alert.alert(
+                        'Erreur de chargement',
+                        'Impossible de charger vos services. Veuillez réessayer plus tard.',
                         [{ text: 'OK' }]
                     );
                 }
@@ -170,53 +233,74 @@ const VideoCreationIntroScreen: React.FC = () => {
             });
 
             userServices.forEach((service: any) => {
-                const serviceId = service.id || service.service_id;
+                try {
+                    const serviceId = service.id || service.service_id;
 
-                // ✅ CORRECTION: Utiliser extractServiceName pour éviter l'affichage de JSON
-                const serviceName = extractServiceName(service, `Service #${serviceId}`);
+                    if (!serviceId) {
+                        console.warn('[VideoCreationIntroScreen] ⚠️ Service sans ID, ignoré:', service);
+                        return;
+                    }
 
-                // ✅ CORRECTION: Utiliser normalizeServiceProducts qui gère tous les formats
-                const produitsRaw = service.data?.produits || service.produits;
-                console.log('[VideoCreationIntroScreen] 🔍 Service', serviceId, 'produits raw:', {
-                    type: typeof produitsRaw,
-                    isArray: Array.isArray(produitsRaw),
-                    hasValue: !!produitsRaw,
-                    structure: produitsRaw ? Object.keys(produitsRaw) : []
-                });
+                    // ✅ CORRECTION: Utiliser extractServiceName pour éviter l'affichage de JSON
+                    const serviceName = extractServiceName(service, `Service #${serviceId}`);
 
-                const produits = normalizeServiceProducts(produitsRaw);
+                    // ✅ CORRECTION: Utiliser normalizeServiceProducts qui gère tous les formats
+                    // Essayer plusieurs sources possibles pour les produits
+                    const produitsRaw = service.data?.produits ||
+                        service.produits ||
+                        service.data?.data?.produits ||
+                        (service.data && typeof service.data === 'object' && (service.data as any).produits);
 
-                console.log('[VideoCreationIntroScreen] 🔍 Service', serviceId, 'produits normalisés:', {
-                    type: typeof produits,
-                    isArray: Array.isArray(produits),
-                    length: Array.isArray(produits) ? produits.length : 0
-                });
-
-                if (Array.isArray(produits) && produits.length > 0) {
-                    produits.forEach((product: any, index: number) => {
-                        // ✅ CORRECTION: Utiliser extractProductName pour éviter l'affichage de JSON
-                        const productName = extractProductName(product, `Produit ${index + 1}`);
-
-                        console.log('[VideoCreationIntroScreen] ✅ Produit extrait:', {
-                            serviceId: Number(serviceId),
-                            productIndex: index,
-                            productName: productName,
-                            serviceName: serviceName
-                        });
-
-                        allProducts.push({
-                            serviceId: Number(serviceId),
-                            productIndex: index,
-                            productName: productName,
-                            serviceName: serviceName
-                        });
+                    console.log('[VideoCreationIntroScreen] 🔍 Service', serviceId, 'produits raw:', {
+                        type: typeof produitsRaw,
+                        isArray: Array.isArray(produitsRaw),
+                        hasValue: !!produitsRaw,
+                        structure: produitsRaw && typeof produitsRaw === 'object' ? Object.keys(produitsRaw) : [],
+                        hasDataProduits: !!service.data?.produits,
+                        hasProduits: !!service.produits
                     });
-                } else {
-                    console.warn('[VideoCreationIntroScreen] ⚠️ Service', serviceId, 'n\'a pas de produits valides:', {
-                        produitsType: typeof produits,
-                        produitsIsArray: Array.isArray(produits),
-                        produitsLength: Array.isArray(produits) ? produits.length : 'N/A'
+
+                    const produits = normalizeServiceProducts(produitsRaw);
+
+                    console.log('[VideoCreationIntroScreen] 🔍 Service', serviceId, 'produits normalisés:', {
+                        type: typeof produits,
+                        isArray: Array.isArray(produits),
+                        length: Array.isArray(produits) ? produits.length : 0
                     });
+
+                    if (Array.isArray(produits) && produits.length > 0) {
+                        produits.forEach((product: any, index: number) => {
+                            try {
+                                // ✅ CORRECTION: Utiliser extractProductName pour éviter l'affichage de JSON
+                                const productName = extractProductName(product, `Produit ${index + 1}`);
+
+                                console.log('[VideoCreationIntroScreen] ✅ Produit extrait:', {
+                                    serviceId: Number(serviceId),
+                                    productIndex: index,
+                                    productName: productName,
+                                    serviceName: serviceName
+                                });
+
+                                allProducts.push({
+                                    serviceId: Number(serviceId),
+                                    productIndex: index,
+                                    productName: productName,
+                                    serviceName: serviceName
+                                });
+                            } catch (productError) {
+                                console.error('[VideoCreationIntroScreen] ❌ Erreur extraction produit', index, ':', productError);
+                            }
+                        });
+                    } else {
+                        console.warn('[VideoCreationIntroScreen] ⚠️ Service', serviceId, 'n\'a pas de produits valides:', {
+                            produitsType: typeof produits,
+                            produitsIsArray: Array.isArray(produits),
+                            produitsLength: Array.isArray(produits) ? produits.length : 'N/A',
+                            serviceKeys: service.data ? Object.keys(service.data) : []
+                        });
+                    }
+                } catch (serviceError) {
+                    console.error('[VideoCreationIntroScreen] ❌ Erreur traitement service:', serviceError);
                 }
             });
 

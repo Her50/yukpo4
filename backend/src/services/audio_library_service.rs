@@ -105,21 +105,95 @@ pub async fn attach_loop_to_service(
         .find(|loop_item| loop_item.id == loop_id)
         .ok_or_else(|| AppError::NotFound("Boucle audio introuvable".to_string()))?;
 
-    let response = reqwest::get(audio_loop.url).await.map_err(|err| {
-        AppError::Internal(format!("Impossible de télécharger la boucle audio: {err}"))
-    })?;
+    // ✅ CORRECTION À LA SOURCE: Retry avec timeout et fallback vers stockage local si CDN inaccessible
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|err| AppError::Internal(format!("Impossible de créer le client HTTP: {err}")))?;
 
-    if !response.status().is_success() {
-        return Err(AppError::Internal(format!(
-            "Téléchargement boucle audio impossible: statut {}",
-            response.status()
-        )));
+    let mut last_error = None;
+    let mut response = None;
+    let mut is_dns_error = false;
+    
+    // Tentative avec retry (3 tentatives)
+    for attempt in 1..=3 {
+        match client.get(audio_loop.url).send().await {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    response = Some(resp);
+                    break;
+                } else {
+                    last_error = Some(format!("Statut HTTP {} lors du téléchargement", resp.status()));
+                    if attempt < 3 {
+                        info!(
+                            "[AudioLibrary] Tentative {}/3 échouée (statut {}), retry...",
+                            attempt, resp.status()
+                        );
+                        tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+                    }
+                }
+            }
+            Err(err) => {
+                let error_msg = err.to_string();
+                last_error = Some(error_msg.clone());
+                
+                // Vérifier si c'est une erreur DNS
+                if error_msg.contains("dns error") || error_msg.contains("failed to lookup") || error_msg.contains("Name or service not known") {
+                    is_dns_error = true;
+                    warn!(
+                        "[AudioLibrary] Erreur DNS pour {}: {}. Tentative fallback local...",
+                        audio_loop.url, error_msg
+                    );
+                    break; // Sortir de la boucle pour essayer le fallback
+                }
+                
+                if attempt < 3 {
+                    info!(
+                        "[AudioLibrary] Tentative {}/3 échouée ({}), retry...",
+                        attempt, error_msg
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+                }
+            }
+        }
     }
 
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|err| AppError::Internal(format!("Erreur lecture boucle audio: {err}")))?;
+    // ✅ CORRECTION À LA SOURCE: Fallback vers stockage local si CDN inaccessible
+    let bytes = if is_dns_error || response.is_none() {
+        // Essayer de charger depuis un dossier local
+        let local_path = PathBuf::from("assets/audio").join(format!("{}.mp3", loop_id));
+        if local_path.exists() {
+            info!(
+                "[AudioLibrary] Utilisation du fichier audio local: {}",
+                local_path.display()
+            );
+            tokio::fs::read(&local_path).await.map_err(|err| {
+                AppError::Internal(format!(
+                    "Impossible de lire le fichier audio local {}: {}",
+                    local_path.display(), err
+                ))
+            })?
+        } else {
+            return Err(AppError::Internal(format!(
+                "CDN inaccessible et fichier local introuvable ({}). Configurez le CDN ou placez le fichier dans assets/audio/",
+                local_path.display()
+            )));
+        }
+    } else {
+        let response = response.ok_or_else(|| {
+            AppError::Internal(format!(
+                "Impossible de télécharger la boucle audio après 3 tentatives: {}",
+                last_error.unwrap_or_else(|| "Erreur inconnue".to_string())
+            ))
+        })?;
+        
+        response
+            .bytes()
+            .await
+            .map_err(|err| AppError::Internal(format!("Erreur lecture boucle audio: {err}")))?
+            .to_vec()
+    };
+
 
     let file_extension = audio_loop.url.rsplit('.').next().unwrap_or("mp3");
 

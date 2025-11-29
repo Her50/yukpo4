@@ -56,6 +56,57 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
         loadTeamData();
     }, [serviceId]);
 
+    // ✅ FONCTION DE MAPPING: Transformer les données backend (snake_case) vers frontend (camelCase)
+    const mapBackendMemberToFrontend = (backendMember: any): ServiceTeamMember | null => {
+        if (!backendMember || !backendMember.id) {
+            return null;
+        }
+
+        // ✅ CORRECTION CRITIQUE: Mapper les champs snake_case vers camelCase
+        const roleId = backendMember.role?.id || backendMember.role_id || 'viewer';
+
+        // ✅ CORRECTION: Calculer les permissions depuis le rôle (le backend ne les retourne pas)
+        const rolePermissions = ROLE_PERMISSIONS && typeof ROLE_PERMISSIONS === 'object'
+            ? (ROLE_PERMISSIONS[roleId] || [])
+            : [];
+        const permissions = Array.isArray(SERVICE_PERMISSIONS) && Array.isArray(rolePermissions)
+            ? SERVICE_PERMISSIONS.filter(p => p && p.id && rolePermissions.includes(p.id))
+            : [];
+
+        // ✅ CORRECTION: Mapper le rôle
+        const role: ServiceTeamRole = backendMember.role && typeof backendMember.role === 'object'
+            ? {
+                id: backendMember.role.id || roleId,
+                name: backendMember.role.name || 'Rôle inconnu',
+                description: backendMember.role.description || '',
+                level: typeof backendMember.role.level === 'number' ? backendMember.role.level : 4,
+                color: backendMember.role.color || '#6B7280',
+                icon: backendMember.role.icon || 'user'
+            }
+            : {
+                id: roleId,
+                name: 'Observateur',
+                description: 'Consultation des services',
+                level: 4,
+                color: '#6B7280',
+                icon: 'eye'
+            };
+
+        return {
+            id: String(backendMember.id),
+            userId: String(backendMember.user_id || backendMember.userId || ''),
+            userName: backendMember.username || backendMember.userName || 'Utilisateur inconnu',
+            userEmail: backendMember.email || backendMember.userEmail || '',
+            userAvatar: backendMember.avatar_url || backendMember.userAvatar || undefined,
+            role: role,
+            permissions: permissions, // ✅ CORRECTION: Permissions calculées depuis le rôle
+            serviceId: backendMember.service_id ? String(backendMember.service_id) : (backendMember.serviceId ? String(backendMember.serviceId) : undefined),
+            addedAt: backendMember.added_at || backendMember.addedAt || new Date().toISOString(),
+            addedBy: String(backendMember.added_by_username || backendMember.added_by || backendMember.addedBy || ''),
+            isActive: backendMember.is_active !== undefined ? Boolean(backendMember.is_active) : (backendMember.isActive !== undefined ? Boolean(backendMember.isActive) : true)
+        };
+    };
+
     const loadTeamData = async () => {
         try {
             setLoading(true);
@@ -69,15 +120,45 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                 const data = response.data || {};
 
                 // ✅ PROTECTION: S'assurer que members et invitations sont des tableaux valides
-                const membersData = (data && typeof data === 'object' && ('members' in data || 'members_list' in data))
-                    ? (data.members || data.members_list || [])
+                const membersData = (data && typeof data === 'object')
+                    ? ((data as any).members || (data as any).members_list || [])
                     : [];
-                const invitationsData = (data && typeof data === 'object' && ('invitations' in data || 'invitations_list' in data))
-                    ? (data.invitations || data.invitations_list || [])
+                const invitationsData = (data && typeof data === 'object')
+                    ? ((data as any).invitations || (data as any).invitations_list || [])
                     : [];
 
-                setMembers(Array.isArray(membersData) ? membersData.filter(m => m && m.id) : []);
-                setInvitations(Array.isArray(invitationsData) ? invitationsData.filter(i => i && i.id) : []);
+                // ✅ CORRECTION CRITIQUE: Mapper les membres du backend vers le format frontend
+                const mappedMembers = Array.isArray(membersData)
+                    ? membersData
+                        .map(mapBackendMemberToFrontend)
+                        .filter((m): m is ServiceTeamMember => m !== null)
+                    : [];
+
+                // ✅ CORRECTION: Mapper les invitations aussi
+                const mappedInvitations = Array.isArray(invitationsData)
+                    ? invitationsData
+                        .map((inv: any) => {
+                            if (!inv || !inv.id) return null;
+                            return {
+                                ...inv,
+                                id: String(inv.id),
+                                email: inv.email || '',
+                                role: inv.role && typeof inv.role === 'object' ? inv.role : {
+                                    id: inv.role_id || 'viewer',
+                                    name: inv.role?.name || 'Rôle inconnu',
+                                    description: inv.role?.description || '',
+                                    level: inv.role?.level || 4,
+                                    color: inv.role?.color || '#6B7280',
+                                    icon: inv.role?.icon || 'user'
+                                },
+                                invitedAt: inv.invited_at || inv.invitedAt || new Date().toISOString()
+                            };
+                        })
+                        .filter((i: any) => i !== null)
+                    : [];
+
+                setMembers(mappedMembers);
+                setInvitations(mappedInvitations);
             } else {
                 // Si l'API retourne une erreur, initialiser avec des tableaux vides
                 setMembers([]);
@@ -181,6 +262,13 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                     ? SERVICE_PERMISSIONS.filter(p => p && p.id && rolePerms.includes(p.id))
                     : [];
 
+                // ✅ PROTECTION CRITIQUE: Vérifier que members est un tableau avant map()
+                if (!Array.isArray(members)) {
+                    console.error('[ServiceTeamManager] members n\'est pas un tableau dans handleUpdateRole:', members);
+                    Alert.alert('Erreur', 'Impossible de mettre à jour le rôle : données invalides');
+                    return;
+                }
+
                 setMembers(members.map(m => {
                     if (!m || !m.id) return m; // ✅ PROTECTION: Ignorer les membres invalides
                     return m.id === memberId
@@ -215,6 +303,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             color: '#6B7280',
             icon: 'eye'
         };
+        // ✅ CORRECTION: S'assurer que permissions est toujours un tableau valide
         const permissions = Array.isArray(item.permissions) ? item.permissions : [];
 
         return (
@@ -243,7 +332,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                                 {role.name || 'Rôle inconnu'}
                             </Text>
                         </TouchableOpacity>
-                        {item.userId !== user?.id && (
+                        {String(item.userId) !== String(user?.id || '') && (
                             <TouchableOpacity
                                 style={styles.removeButton}
                                 onPress={() => handleRemoveMember(item.id)}
@@ -254,21 +343,52 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                     </View>
                 </View>
 
-                {permissions && Array.isArray(permissions) && permissions.length > 0 && (() => {
-                    // ✅ CORRECTION: S'assurer que slice() retourne toujours un tableau valide
-                    const validPermissions = Array.isArray(permissions) ? permissions.slice(0, 3).filter(p => p && p.id) : [];
+                {(() => {
+                    // ✅ CORRECTION CRITIQUE: Vérifier que permissions existe et est un tableau
+                    if (!permissions || !Array.isArray(permissions) || permissions.length === 0) {
+                        return null;
+                    }
+
+                    // ✅ CORRECTION: Gérer les deux cas - permissions comme objets ou comme IDs
+                    const validPermissions = permissions.slice(0, 3).filter(p => {
+                        if (!p) return false;
+                        // Si c'est un objet avec id, vérifier qu'il a id et name
+                        if (typeof p === 'object' && p.id) {
+                            return true;
+                        }
+                        // Si c'est une string (ID), chercher dans SERVICE_PERMISSIONS
+                        if (typeof p === 'string') {
+                            return SERVICE_PERMISSIONS && Array.isArray(SERVICE_PERMISSIONS) && SERVICE_PERMISSIONS.some(sp => sp.id === p);
+                        }
+                        return false;
+                    });
+
                     if (!validPermissions || validPermissions.length === 0) {
                         return null;
                     }
+
                     return (
                         <View style={styles.permissionsContainer}>
                             <Text style={styles.permissionsTitle}>Permissions :</Text>
                             <View style={styles.permissionsList}>
-                                {validPermissions.map((permission, idx) => (
-                                    <View key={permission?.id || `perm-${idx}`} style={styles.permissionTag}>
-                                        <Text style={styles.permissionText}>{permission?.name || 'Permission'}</Text>
-                                    </View>
-                                ))}
+                                {validPermissions.map((permission, idx) => {
+                                    // ✅ CORRECTION: Gérer les deux formats (objet ou ID string)
+                                    let permissionObj: any = null;
+                                    if (typeof permission === 'object' && permission.id) {
+                                        permissionObj = permission;
+                                    } else if (typeof permission === 'string' && SERVICE_PERMISSIONS && Array.isArray(SERVICE_PERMISSIONS)) {
+                                        permissionObj = SERVICE_PERMISSIONS.find(sp => sp.id === permission);
+                                    }
+
+                                    const permissionName = permissionObj?.name || (typeof permission === 'string' ? permission : 'Permission');
+                                    const permissionId = permissionObj?.id || (typeof permission === 'string' ? permission : `perm-${idx}`);
+
+                                    return (
+                                        <View key={permissionId} style={styles.permissionTag}>
+                                            <Text style={styles.permissionText}>{permissionName}</Text>
+                                        </View>
+                                    );
+                                })}
                                 {permissions.length > 3 && (
                                     <Text style={styles.morePermissions}>
                                         +{permissions.length - 3} autres
@@ -288,7 +408,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             animationType="slide"
             presentationStyle="pageSheet"
         >
-            <LinearGradient colors={modernColors.primaryGradient.colors} style={styles.modalContainer}>
+            <LinearGradient colors={(Array.isArray(modernColors.primaryGradient) && modernColors.primaryGradient.length >= 2) ? modernColors.primaryGradient as [string, string, ...string[]] : ['#6366F1', '#8B5CF6'] as [string, string]} style={styles.modalContainer}>
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>Changer le rôle</Text>
                     <TouchableOpacity onPress={() => setShowRoleModal(false)}>
@@ -357,7 +477,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             animationType="slide"
             presentationStyle="pageSheet"
         >
-            <LinearGradient colors={modernColors.primaryGradient.colors} style={styles.modalContainer}>
+            <LinearGradient colors={(Array.isArray(modernColors.primaryGradient) && modernColors.primaryGradient.length >= 2) ? modernColors.primaryGradient as [string, string, ...string[]] : ['#6366F1', '#8B5CF6'] as [string, string]} style={styles.modalContainer}>
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>Inviter un membre</Text>
                     <TouchableOpacity onPress={() => setShowInviteModal(false)}>
@@ -448,7 +568,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
 
     return (
         <View style={styles.container}>
-            <LinearGradient colors={modernColors.primaryGradient.colors} style={styles.header}>
+            <LinearGradient colors={(Array.isArray(modernColors.primaryGradient) && modernColors.primaryGradient.length >= 2) ? modernColors.primaryGradient as [string, string, ...string[]] : ['#6366F1', '#8B5CF6'] as [string, string]} style={styles.header}>
                 <View style={styles.headerContent}>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <SafeIcon name="arrow-left" size={24} color="#fff" />
@@ -528,11 +648,10 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                 <UserMentionPicker
                     visible={showUserPicker}
                     onClose={() => setShowUserPicker(false)}
-                    onUserSelect={(user) => {
-                        setInviteEmail(user.email || user.username);
+                    onSelectUser={(user) => {
+                        setInviteEmail(user.email || user.nom_complet || '');
                         setShowUserPicker(false);
                     }}
-                    mode="invite"
                 />
             )}
         </View>
@@ -546,8 +665,8 @@ const styles = {
     },
     loadingContainer: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: 'center' as const,
+        alignItems: 'center' as const,
         backgroundColor: '#f8fafc',
     },
     loadingText: {
@@ -562,8 +681,8 @@ const styles = {
     },
     headerContent: {
         flexDirection: 'row' as const,
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        alignItems: 'center' as const,
+        justifyContent: 'space-between' as const,
     },
     closeButton: {
         padding: 8,
@@ -584,6 +703,7 @@ const styles = {
     },
     statsContainer: {
         flexDirection: 'row' as const,
+        alignItems: 'center' as const,
         gap: 12,
         marginBottom: 24,
     },
@@ -591,6 +711,7 @@ const styles = {
         flex: 1,
         padding: 16,
         alignItems: 'center' as const,
+        justifyContent: 'center' as const,
     },
     statNumber: {
         fontSize: 24,
@@ -617,13 +738,13 @@ const styles = {
     },
     memberHeader: {
         flexDirection: 'row' as const,
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        alignItems: 'center' as const,
+        justifyContent: 'space-between' as const,
         marginBottom: 12,
     },
     memberInfo: {
         flexDirection: 'row' as const,
-        alignItems: 'center',
+        alignItems: 'center' as const,
         flex: 1,
     },
     memberAvatar: {
@@ -647,12 +768,12 @@ const styles = {
     },
     memberActions: {
         flexDirection: 'row' as const,
-        alignItems: 'center',
+        alignItems: 'center' as const,
         gap: 8,
     },
     roleBadge: {
         flexDirection: 'row' as const,
-        alignItems: 'center',
+        alignItems: 'center' as const,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12,
@@ -700,8 +821,8 @@ const styles = {
     },
     invitationContent: {
         flexDirection: 'row' as const,
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        alignItems: 'center' as const,
+        justifyContent: 'space-between' as const,
     },
     invitationEmail: {
         fontSize: 14,
@@ -721,8 +842,8 @@ const styles = {
     },
     modalHeader: {
         flexDirection: 'row' as const,
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        alignItems: 'center' as const,
+        justifyContent: 'space-between' as const,
         paddingTop: 50,
         paddingBottom: 20,
         paddingHorizontal: 20,
@@ -758,7 +879,7 @@ const styles = {
     },
     userPickerButton: {
         flexDirection: 'row' as const,
-        alignItems: 'center',
+        alignItems: 'center' as const,
         marginTop: 8,
         padding: 12,
         backgroundColor: '#F3F4F6',
@@ -783,7 +904,7 @@ const styles = {
     },
     roleOptionHeader: {
         flexDirection: 'row' as const,
-        alignItems: 'center',
+        alignItems: 'center' as const,
         marginBottom: 4,
         gap: 8,
     },

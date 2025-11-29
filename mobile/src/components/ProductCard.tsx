@@ -2009,6 +2009,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: '100%',
     alignSelf: 'stretch',
+    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale pour garantir visibilité complète dans le carousel
   },
   cardContainerCompact: {
     borderRadius: 20,
@@ -2021,7 +2022,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 120, // ✅ RÉDUIT: 140 → 120 (encore plus compact)
+    height: 140, // ✅ AUGMENTÉ: 120 → 140 pour mieux afficher les médias
     overflow: 'hidden',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,

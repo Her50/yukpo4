@@ -8,6 +8,7 @@ pub mod interaction_controller;
 pub mod media_controller;
 pub mod prestataire_controller;
 pub mod service_controller;
+pub mod upload_controller; // ✅ NOUVEAU: Contrôleur pour upload préalable de fichiers
 pub mod token_pack_controller;
 pub mod user_controller;
 // pub mod fournitures_controller;

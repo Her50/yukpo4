@@ -527,24 +527,89 @@ const VideoCreationWizardScreen: React.FC = () => {
     }, [serviceId, productIndex, t, brief, navigation]);
 
     const fetchServiceMedia = useCallback(async () => {
-        if (!serviceId) {
+        if (!serviceId || productIndex === undefined) {
+            console.warn('[VideoCreationWizard] ⚠️ serviceId ou productIndex manquant:', { serviceId, productIndex });
             return;
         }
         try {
             setMediaLoading(true);
-            // ✅ PHASE 1: Retry automatique avec backoff
-            const response = await apiCallWithRetry(() => mediaApi.getServiceMediaDetailed(serviceId));
-            if (response.success && Array.isArray(response.data)) {
-                setMediaItems(response.data as ServiceMediaItem[]);
-            } else if (response.data && Array.isArray((response.data as any).items)) {
-                setMediaItems((response.data as any).items as ServiceMediaItem[]);
+            const allMediaItems: ServiceMediaItem[] = [];
+
+            console.log('[VideoCreationWizard] 🎬 Début chargement médias pour serviceId:', serviceId, 'productIndex:', productIndex);
+
+            // ✅ CORRECTION: Charger les médias du produit spécifique
+            const productResponse = await apiCallWithRetry(() => mediaApi.getProductMedia(serviceId, productIndex));
+            console.log('[VideoCreationWizard] 🔍 Réponse getProductMedia:', {
+                success: productResponse.success,
+                hasData: !!productResponse.data,
+                isArray: Array.isArray(productResponse.data),
+                length: Array.isArray(productResponse.data) ? productResponse.data.length : 0
+            });
+
+            if (productResponse.success) {
+                if (Array.isArray(productResponse.data)) {
+                    allMediaItems.push(...productResponse.data);
+                    console.log('[VideoCreationWizard] ✅ Médias produits chargés:', productResponse.data.length);
+                } else if (productResponse.data && Array.isArray((productResponse.data as any).items)) {
+                    allMediaItems.push(...(productResponse.data as any).items);
+                    console.log('[VideoCreationWizard] ✅ Médias produits chargés (items):', (productResponse.data as any).items.length);
+                } else if (productResponse.data && Array.isArray((productResponse.data as any).media)) {
+                    allMediaItems.push(...(productResponse.data as any).media);
+                    console.log('[VideoCreationWizard] ✅ Médias produits chargés (media):', (productResponse.data as any).media.length);
+                } else {
+                    console.warn('[VideoCreationWizard] ⚠️ Format de réponse getProductMedia inattendu:', productResponse.data);
+                }
+            } else {
+                console.warn('[VideoCreationWizard] ⚠️ getProductMedia a échoué:', productResponse);
             }
-        } catch (error) {
-            console.warn('[VideoCreationWizard] Médias indisponibles', error);
+
+            // ✅ AMÉLIORATION: Si peu de médias trouvés pour ce produit, charger aussi les médias du service entier
+            // (utile pour les vidéos avec plusieurs produits ou si le produit n'a pas assez de médias)
+            if (allMediaItems.length < 3) {
+                console.log('[VideoCreationWizard] 📦 Peu de médias pour le produit (' + allMediaItems.length + '), chargement des médias du service...');
+                const serviceResponse = await apiCallWithRetry(() => mediaApi.getServiceMediaDetailed(serviceId));
+                console.log('[VideoCreationWizard] 🔍 Réponse getServiceMediaDetailed:', {
+                    success: serviceResponse.success,
+                    hasData: !!serviceResponse.data,
+                    isArray: Array.isArray(serviceResponse.data),
+                    length: Array.isArray(serviceResponse.data) ? serviceResponse.data.length : 0
+                });
+
+                if (serviceResponse.success) {
+                    let serviceMedia: ServiceMediaItem[] = [];
+                    if (Array.isArray(serviceResponse.data)) {
+                        serviceMedia = serviceResponse.data;
+                    } else if (serviceResponse.data && Array.isArray((serviceResponse.data as any).items)) {
+                        serviceMedia = (serviceResponse.data as any).items;
+                    }
+
+                    // ✅ Fusionner en évitant les doublons (par id)
+                    const existingIds = new Set(allMediaItems.map(m => m.id));
+                    const uniqueServiceMedia = serviceMedia.filter(m => !existingIds.has(m.id));
+                    allMediaItems.push(...uniqueServiceMedia);
+                    console.log('[VideoCreationWizard] ✅ Médias service ajoutés:', uniqueServiceMedia.length, '(total:', allMediaItems.length + ')');
+                } else {
+                    console.warn('[VideoCreationWizard] ⚠️ getServiceMediaDetailed a échoué:', serviceResponse);
+                }
+            }
+
+            console.log('[VideoCreationWizard] ✅ Total médias chargés:', allMediaItems.length);
+            setMediaItems(allMediaItems);
+        } catch (error: any) {
+            console.error('[VideoCreationWizard] ❌ Erreur chargement médias:', {
+                error: error?.message || String(error),
+                stack: error?.stack
+            });
+            // ✅ AMÉLIORATION: Afficher une alerte pour informer l'utilisateur
+            Alert.alert(
+                'Médias indisponibles',
+                'Impossible de charger les médias pour ce produit. Vous pouvez continuer sans médias ou réessayer plus tard.',
+                [{ text: 'OK' }]
+            );
         } finally {
             setMediaLoading(false);
         }
-    }, [serviceId]);
+    }, [serviceId, productIndex]);
 
     // ✅ PHASE 1: Charger le brouillon au démarrage
     useEffect(() => {

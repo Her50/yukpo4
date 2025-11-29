@@ -26,7 +26,6 @@ import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 import { modernColors } from '../theme/modernTheme';
 import { cleanupGhostNotifications, debugNotifications, printNotificationReport } from '../utils/debugNotifications';
-import { extractProductName, extractServiceName } from '../utils/displayHelpers';
 import { normalizeServiceProducts } from '../utils/productNormalizer';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
 
@@ -86,115 +85,24 @@ const HomeScreen: React.FC = () => {
     const [showProductSelector, setShowProductSelector] = useState(false);
     const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
 
-    // ✅ CORRECTION 2025-11-29: Fonction pour charger les produits pour le bouton vidéo
-    // ✅ AMÉLIORATION: Utilise normalizeServiceProducts et extractProductName pour une extraction correcte
-    const loadProductsForVideo = React.useCallback(async () => {
+    // ✅ CORRECTION: Fonction simplifiée pour ouvrir la création vidéo
+    // Utilise la même navigation que le bouton à l'en-tête qui fonctionne correctement
+    const handleOpenVideoCreation = React.useCallback(() => {
         try {
-            console.log('[HomeScreen] 🎬 Chargement des produits pour création vidéo...');
-            const response = await apiGet('/api/prestataire/services');
-
-            if (!response.success || !Array.isArray(response.data)) {
-                console.warn('[HomeScreen] ⚠️ Aucun service trouvé pour le bouton vidéo', {
-                    success: response.success,
-                    dataType: typeof response.data,
-                    isArray: Array.isArray(response.data)
-                });
-                setProductsForSelection([]);
-                // ✅ Afficher l'alerte seulement si on est sûr qu'il n'y a pas de produits
-                if (response.success && (!response.data || (Array.isArray(response.data) && response.data.length === 0))) {
-                    Alert.alert(
-                        'Service requis',
-                        'Pour créer une vidéo, vous devez d\'abord créer un service avec au moins un produit.',
-                        [
-                            { text: 'Annuler', style: 'cancel' },
-                            {
-                                text: 'Aller à Mes Services',
-                                onPress: () => {
-                                    try {
-                                        const parent = (navigation as any).getParent();
-                                        if (parent) {
-                                            parent.navigate('Services');
-                                        } else {
-                                            (navigation as any).navigate('Services');
-                                        }
-                                    } catch (error) {
-                                        console.error('[HomeScreen] Erreur navigation vers Services:', error);
-                                    }
-                                }
-                            }
-                        ]
-                    );
-                }
-                return;
-            }
-
-            const allProducts: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> = [];
-
-            // ✅ CORRECTION: Utiliser normalizeServiceProducts pour extraire correctement les produits
-            // (Les imports sont maintenant statiques en haut du fichier)
-
-            response.data.forEach((service: any) => {
-                const serviceId = service.id || service.service_id;
-
-                // ✅ CORRECTION: Utiliser extractServiceName pour éviter l'affichage de JSON
-                const serviceName = extractServiceName(service, `Service #${serviceId}`);
-
-                // ✅ CORRECTION: Utiliser normalizeServiceProducts pour extraire correctement les produits
-                const produits = normalizeServiceProducts(service.data?.produits || service.produits);
-
-                if (Array.isArray(produits) && produits.length > 0) {
-                    produits.forEach((product: any, index: number) => {
-                        // ✅ CORRECTION: Utiliser extractProductName pour éviter l'affichage de JSON
-                        const productName = extractProductName(product, `Produit ${index + 1}`);
-
-                        allProducts.push({
-                            serviceId: Number(serviceId),
-                            productIndex: index,
-                            productName: productName,
-                            serviceName: serviceName
-                        });
-                    });
-                }
-            });
-
-            console.log('[HomeScreen] ✅ Produits chargés pour vidéo:', {
-                count: allProducts.length,
-                products: allProducts.map(p => ({ serviceId: p.serviceId, productIndex: p.productIndex, productName: p.productName }))
-            });
-            setProductsForSelection(allProducts);
-
-            if (allProducts.length === 0) {
-                Alert.alert(
-                    'Service requis',
-                    'Pour créer une vidéo, vous devez d\'abord créer un service avec au moins un produit.',
-                    [
-                        { text: 'Annuler', style: 'cancel' },
-                        {
-                            text: 'Aller à Mes Services',
-                            onPress: () => {
-                                try {
-                                    const parent = (navigation as any).getParent();
-                                    if (parent) {
-                                        parent.navigate('Services');
-                                    } else {
-                                        (navigation as any).navigate('Services');
-                                    }
-                                } catch (error) {
-                                    console.error('[HomeScreen] Erreur navigation vers Services:', error);
-                                }
-                            }
-                        }
-                    ]
-                );
+            console.log('[HomeScreen] 🎬 Ouverture création vidéo via navigate("Video")...');
+            // ✅ Utiliser la même navigation que le bouton à l'en-tête qui fonctionne
+            const parent = (navigation as any).getParent();
+            if (parent) {
+                parent.navigate('Video');
             } else {
-                setShowProductSelector(true);
+                (navigation as any).navigate('Video');
             }
         } catch (error: any) {
-            console.error('[HomeScreen] ❌ Erreur chargement produits pour vidéo:', {
+            console.error('[HomeScreen] ❌ Erreur navigation vers création vidéo:', {
                 error: error?.message || String(error),
                 stack: error?.stack
             });
-            Alert.alert('Erreur', 'Impossible de charger vos produits. Vérifiez votre connexion.');
+            Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');
         }
     }, [navigation]);
     const [isCourier, setIsCourier] = useState(false);
@@ -608,11 +516,24 @@ const HomeScreen: React.FC = () => {
 
             console.log('[HomeScreen] Données GPS extraites:', gpsData);
 
-            // ✅ CORRECTION 2025-11-29: Vérifier si l'utilisateur a DÉJÀ un service (n'importe lequel)
-            // ✅ Utiliser /api/prestataire/services en premier (plus fiable)
-            console.log('[HomeScreen] 🔍 Vérification si utilisateur a déjà un service...');
-            let hasExistingService = false;
+            // ✅ CORRECTION 2025-11-29: Vérifier si l'utilisateur a DÉJÀ un service AVEC PRODUITS
+            // ✅ CRITIQUE: Il faut vérifier qu'il y a au moins UN PRODUIT dans le service, pas juste un service
+            console.log('[HomeScreen] 🔍 Vérification si utilisateur a déjà un service avec produits...');
+            let hasExistingServiceWithProducts = false;
             let firstServiceId: number | null = null;
+
+            // ✅ Helper: Vérifier si un service a des produits
+            const serviceHasProducts = (service: any): boolean => {
+                try {
+                    const produits = normalizeServiceProducts(service.data?.produits || service.produits);
+                    const hasProducts = Array.isArray(produits) && produits.length > 0;
+                    console.log('[HomeScreen] 🔍 Service ID', service.id || service.service_id, '- Produits:', produits.length);
+                    return hasProducts;
+                } catch (error) {
+                    console.warn('[HomeScreen] ⚠️ Erreur vérification produits service:', error);
+                    return false;
+                }
+            };
 
             try {
                 // ✅ CORRECTION: Essayer d'abord /api/prestataire/services (utilisé ailleurs dans le code)
@@ -625,19 +546,25 @@ const HomeScreen: React.FC = () => {
                 });
 
                 if (prestataireServicesResponse.success && Array.isArray(prestataireServicesResponse.data) && prestataireServicesResponse.data.length > 0) {
-                    hasExistingService = true;
-                    const firstService = prestataireServicesResponse.data[0];
-                    firstServiceId = firstService.id || firstService.service_id || null;
-                    if (firstServiceId) {
-                        console.log('[HomeScreen] ✅ Service trouvé via /api/prestataire/services (ID: ' + firstServiceId + ')');
-                        console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
-                    } else {
-                        console.warn('[HomeScreen] ⚠️ Service trouvé mais ID manquant:', firstService);
+                    // ✅ CORRECTION: Chercher le PREMIER service qui a des produits (pas juste un service)
+                    for (const service of prestataireServicesResponse.data) {
+                        const serviceId = service.id || service.service_id || null;
+                        if (serviceId && serviceHasProducts(service)) {
+                            hasExistingServiceWithProducts = true;
+                            firstServiceId = serviceId;
+                            console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/prestataire/services (ID: ' + firstServiceId + ')');
+                            console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
+                            break; // Arrêter dès qu'on trouve un service avec produits
+                        }
+                    }
+
+                    if (!hasExistingServiceWithProducts) {
+                        console.log('[HomeScreen] ℹ️ Services trouvés mais aucun n\'a de produits');
                     }
                 }
 
                 // ✅ FALLBACK 1: Si /api/prestataire/services ne fonctionne pas, essayer /api/services/last
-                if (!hasExistingService) {
+                if (!hasExistingServiceWithProducts) {
                     console.log('[HomeScreen] Tentative avec /api/services/last comme fallback...');
                     const lastServiceResponse = await apiGet('/api/services/last');
                     console.log('[HomeScreen] Réponse /api/services/last:', {
@@ -650,16 +577,22 @@ const HomeScreen: React.FC = () => {
                     if (lastServiceResponse.data) {
                         const serviceData = (lastServiceResponse.data as any)?.data || lastServiceResponse.data;
                         if (serviceData && (serviceData.id || serviceData.service_id)) {
-                            hasExistingService = true;
-                            firstServiceId = serviceData.id || serviceData.service_id;
-                            console.log('[HomeScreen] ✅ Service trouvé via /api/services/last (ID: ' + firstServiceId + ')');
-                            console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
+                            const serviceId = serviceData.id || serviceData.service_id;
+                            // ✅ CORRECTION: Vérifier que ce service a des produits
+                            if (serviceHasProducts(serviceData)) {
+                                hasExistingServiceWithProducts = true;
+                                firstServiceId = serviceId;
+                                console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/services/last (ID: ' + firstServiceId + ')');
+                                console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
+                            } else {
+                                console.log('[HomeScreen] ℹ️ Service trouvé via /api/services/last mais aucun produit détecté');
+                            }
                         }
                     }
                 }
 
                 // ✅ FALLBACK 2: Si /api/services/last ne fonctionne pas, essayer /api/services/my-services
-                if (!hasExistingService) {
+                if (!hasExistingServiceWithProducts) {
                     console.log('[HomeScreen] Tentative avec /api/services/my-services comme fallback...');
                     const servicesResponse = await apiGet('/api/services/my-services');
                     console.log('[HomeScreen] Réponse /api/services/my-services:', {
@@ -670,20 +603,26 @@ const HomeScreen: React.FC = () => {
                     });
 
                     if (servicesResponse.success && Array.isArray(servicesResponse.data) && servicesResponse.data.length > 0) {
-                        hasExistingService = true;
-                        const firstService = servicesResponse.data[0];
-                        firstServiceId = firstService.id || firstService.service_id || null;
-                        if (firstServiceId) {
-                            console.log('[HomeScreen] ✅ Service trouvé via /api/services/my-services (ID: ' + firstServiceId + ')');
-                            console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
-                        } else {
-                            console.warn('[HomeScreen] ⚠️ Service trouvé mais ID manquant:', firstService);
+                        // ✅ CORRECTION: Chercher le PREMIER service qui a des produits (pas juste un service)
+                        for (const service of servicesResponse.data) {
+                            const serviceId = service.id || service.service_id || null;
+                            if (serviceId && serviceHasProducts(service)) {
+                                hasExistingServiceWithProducts = true;
+                                firstServiceId = serviceId;
+                                console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/services/my-services (ID: ' + firstServiceId + ')');
+                                console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
+                                break; // Arrêter dès qu'on trouve un service avec produits
+                            }
+                        }
+
+                        if (!hasExistingServiceWithProducts) {
+                            console.log('[HomeScreen] ℹ️ Services trouvés via /api/services/my-services mais aucun n\'a de produits');
                         }
                     }
                 }
 
-                if (!hasExistingService) {
-                    console.log('[HomeScreen] ℹ️ Aucun service existant détecté → Formulaire COMPLET');
+                if (!hasExistingServiceWithProducts) {
+                    console.log('[HomeScreen] ℹ️ Aucun service avec produits détecté → Formulaire COMPLET');
                 }
             } catch (error: any) {
                 console.error('[HomeScreen] ❌ Erreur vérification services:', error);
@@ -692,14 +631,15 @@ const HomeScreen: React.FC = () => {
                     stack: error?.stack,
                     response: error?.response
                 });
-                // ✅ CORRECTION: En cas d'erreur, considérer qu'il n'y a pas de service et ouvrir le formulaire complet
-                hasExistingService = false;
+                // ✅ CORRECTION: En cas d'erreur, considérer qu'il n'y a pas de service avec produits et ouvrir le formulaire complet
+                hasExistingServiceWithProducts = false;
                 firstServiceId = null;
             }
 
-            // ✅ AMÉLIORATION UX: Si utilisateur a déjà un service → Formulaire SIMPLE produit seul
-            if (hasExistingService && firstServiceId) {
+            // ✅ AMÉLIORATION UX: Si utilisateur a déjà un service AVEC PRODUITS → Formulaire SIMPLE produit seul
+            if (hasExistingServiceWithProducts && firstServiceId) {
                 console.log('[HomeScreen] 🛍️ Navigation vers formulaire SIMPLE (AjouterProduitSimple)');
+                console.log('[HomeScreen] ✅ Raison: Service ID', firstServiceId, 'a déjà des produits');
                 (navigation as any).navigate('AjouterProduitSimple', {
                     serviceId: firstServiceId,
                     suggestionIA: result.data,
@@ -707,8 +647,9 @@ const HomeScreen: React.FC = () => {
                     gpsData: gpsData
                 });
             } else {
-                // ✅ Pas de service existant → Formulaire COMPLET
+                // ✅ Pas de service avec produits → Formulaire COMPLET (création service + premier produit)
                 console.log('[HomeScreen] 📝 Navigation vers formulaire COMPLET (FormulaireYukpoIntelligent)');
+                console.log('[HomeScreen] ✅ Raison: Aucun service avec produits détecté → Création complète');
                 (navigation as any).navigate('FormulaireYukpoIntelligent', {
                     suggestion: {
                         ...result.data,
@@ -1162,7 +1103,7 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingHorizontal: width > 400 ? 24 : 16,
-        paddingTop: 16, // ✅ Réduit car la recherche est maintenant fixe
+        paddingTop: 8, // ✅ RÉDUIT: 16 → 8 pour mieux utiliser l'espace en haut
         paddingBottom: 150,
         minHeight: height * 0.4, // ✅ Réduit car moins de contenu
     },
@@ -1739,8 +1680,8 @@ const styles = StyleSheet.create({
     // ✅ NOUVEAU: Styles pour le header du carousel
     carouselHeader: {
         paddingHorizontal: 20,
-        paddingTop: 8,
-        paddingBottom: 12,
+        paddingTop: 4, // ✅ RÉDUIT: 8 → 4 pour réduire l'espace en haut
+        paddingBottom: 8, // ✅ RÉDUIT: 12 → 8 pour rapprocher le titre du carousel
         backgroundColor: 'transparent',
     },
     carouselTitle: {

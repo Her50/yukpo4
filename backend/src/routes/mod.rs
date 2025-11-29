@@ -54,6 +54,7 @@ pub mod system_health_routes;
 pub mod health_routes; // ✅ Phase 10 - Routes de santé et vérification services
 pub mod token_pack_routes;
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens
+pub mod upload_routes; // ✅ NOUVEAU: Routes pour upload préalable de fichiers
 pub mod user_routes;
 pub mod vehicle_model_routes;
 pub mod weather_routes;

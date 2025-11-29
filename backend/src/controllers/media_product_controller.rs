@@ -4,6 +4,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::Row;
 use std::sync::Arc;
@@ -96,8 +97,8 @@ pub async fn get_product_media(
             is_main_image: row.get("is_main_image"),
             display_order: row.get("display_order"),
             uploaded_at: row
-                .get::<chrono::NaiveDateTime, _>("uploaded_at")
-                .to_string(),
+                .get::<DateTime<Utc>, _>("uploaded_at")
+                .to_rfc3339(),
             ai_description: row.get("ai_description"),
             ai_tags: row.get("ai_tags"),
         })

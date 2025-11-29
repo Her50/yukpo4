@@ -1276,21 +1276,45 @@ pub async fn generate_product_video(
             immersive_timeline = Some(timeline);
 
             let sfx_root = Path::new("assets/sfx");
-            if sfx_root.exists() {
+            // ✅ CORRECTION: Créer le dossier SFX s'il n'existe pas, ou utiliser un fallback gracieux
+            if !sfx_root.exists() {
+                if let Err(err) = tokio::fs::create_dir_all(sfx_root).await {
+                    warn!(
+                        "[VideoGeneration] Impossible de créer le dossier SFX ({}): {}. Continuation sans SFX.",
+                        sfx_root.display(), err
+                    );
+                    orchestration_warnings.push(format!("sfx_directory_creation_failed: {}", err));
+                } else {
+                    info!(
+                        "[VideoGeneration] Dossier SFX créé: {}",
+                        sfx_root.display()
+                    );
+                }
+            }
+            
+            if sfx_root.exists() && sfx_root.is_dir() {
                 match audio_pipeline::build_sfx_layers_from_timeline(&result.timeline, sfx_root) {
                     Ok(layers) => {
+                        if !layers.is_empty() {
+                            info!(
+                                "[VideoGeneration] {} couches SFX chargées depuis {}",
+                                layers.len(),
+                                sfx_root.display()
+                            );
+                        }
                         sfx_layers = layers;
                     }
                     Err(err) => {
-                        warn!("[VideoGeneration] Impossible de générer les SFX timeline: {err}");
+                        warn!("[VideoGeneration] Impossible de générer les SFX timeline: {err}. Continuation sans SFX.");
                         orchestration_warnings.push(format!("sfx_generation_failed: {err}"));
                     }
                 }
             } else {
                 warn!(
-                    "[VideoGeneration] Dossier SFX introuvable pour la timeline immersive (assets/sfx)"
+                    "[VideoGeneration] Dossier SFX introuvable ou inaccessible ({}). Continuation sans SFX.",
+                    sfx_root.display()
                 );
-                orchestration_warnings.push("sfx_library_missing: assets/sfx".to_string());
+                orchestration_warnings.push(format!("sfx_library_missing: {}", sfx_root.display()));
             }
         }
         Err(err) => {
@@ -2759,13 +2783,42 @@ async fn apply_crossfade_transitions(
     }
 
     if slide_filenames.len() == 1 {
+        // ✅ CORRECTION À LA SOURCE: Vérifier si la vidéo unique a un stream audio, sinon en ajouter un
         let source = session_dir.join(&slide_filenames[0]);
         let target = session_dir.join("combined.mp4");
-        fs::rename(&source, &target).await.map_err(|err| {
-            AppError::Internal(format!(
-                "Impossible de préparer la vidéo unique pour concaténation: {err}"
-            ))
-        })?;
+        
+        // Vérifier si la source a un stream audio
+        let has_audio = audio_pipeline::has_audio_stream(&source).await.unwrap_or(false);
+        
+        if has_audio {
+            // Si elle a déjà de l'audio, juste renommer
+            fs::rename(&source, &target).await.map_err(|err| {
+                AppError::Internal(format!(
+                    "Impossible de préparer la vidéo unique pour concaténation: {err}"
+                ))
+            })?;
+        } else {
+            // Si pas d'audio, ajouter un stream audio silencieux
+            let duration = slide_durations.get(0).copied().unwrap_or(4.0).max(1.0);
+            let args = vec![
+                "-y".to_string(),
+                "-i".to_string(),
+                slide_filenames[0].clone(),
+                "-f".to_string(),
+                "lavfi".to_string(),
+                "-i".to_string(),
+                format!("anullsrc=channel_layout=stereo:sample_rate=44100:duration={}", duration),
+                "-c:v".to_string(),
+                "copy".to_string(), // Copier la vidéo sans ré-encoder
+                "-c:a".to_string(),
+                "aac".to_string(),
+                "-b:a".to_string(),
+                "128k".to_string(),
+                "-shortest".to_string(),
+                "combined.mp4".to_string(),
+            ];
+            run_ffmpeg(session_dir, args).await?;
+        }
         return Ok(());
     }
 
@@ -2831,6 +2884,14 @@ async fn apply_crossfade_transitions(
         last = previous_label
     ));
 
+    // ✅ CORRECTION À LA SOURCE: Ajouter un stream audio silencieux pour éviter l'erreur "matches no streams"
+    // Calculer la durée totale de la vidéo
+    let total_duration: f32 = slide_durations.iter().sum::<f32>().max(1.0);
+    filter_parts.push(format!(
+        "anullsrc=channel_layout=stereo:sample_rate=44100:duration={duration}[aout]",
+        duration = total_duration
+    ));
+
     let filter_complex = filter_parts.join(";");
 
     args.push("-filter_complex".to_string());
@@ -2838,10 +2899,17 @@ async fn apply_crossfade_transitions(
     args.extend_from_slice(&[
         "-map".to_string(),
         "[vfinal]".to_string(),
+        "-map".to_string(),
+        "[aout]".to_string(), // ✅ CORRECTION: Mapper aussi le stream audio
         "-c:v".to_string(),
         "libx264".to_string(),
         "-preset".to_string(),
         "veryfast".to_string(),
+        "-c:a".to_string(),
+        "aac".to_string(),
+        "-b:a".to_string(),
+        "128k".to_string(),
+        "-shortest".to_string(), // S'assurer que vidéo et audio ont la même durée
         "combined.mp4".to_string(),
     ]);
 
@@ -3355,8 +3423,13 @@ async fn generate_background_music(
         _ => "sine=frequency=320:samples_per_frame=4",
     };
 
+    // ✅ CORRECTION: Utiliser un format de sortie compatible (WAV au lieu de MP3 pour éviter les problèmes de codec)
+    // On génère d'abord en WAV, puis on convertit en MP3 si nécessaire
+    let wav_path = session_dir.join(format!("temp_music_{}.wav", uuid::Uuid::new_v4()));
+    
+    // Générer la musique en WAV d'abord (plus fiable)
     let filter_complex = format!(
-        "[0:a]asetrate=44100*0.8,atempo=1.25,aresample=44100,afade=t=in:st=0:d=3,afade=t=out:st={fade_start}:d=4,volume=0.35[aout]",
+        "asetrate=44100*0.8,atempo=1.25,aresample=44100,afade=t=in:st=0:d=3,afade=t=out:st={fade_start}:d=4,volume=0.35",
         fade_start = (duration_seconds.saturating_sub(5)) as f32
     );
 
@@ -3370,15 +3443,15 @@ async fn generate_background_music(
             waveform,
             "-t",
             &duration_arg,
-            "-filter_complex",
+            "-af",
             &filter_complex,
-            "-map",
-            "[aout]",
             "-c:a",
-            "aac",
-            "-b:a",
-            "160k",
-            track_path
+            "pcm_s16le",
+            "-ar",
+            "44100",
+            "-ac",
+            "2",
+            wav_path
                 .file_name()
                 .unwrap_or_default()
                 .to_string_lossy()
@@ -3393,10 +3466,64 @@ async fn generate_background_music(
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        error!("[VideoGeneration] Génération musique échouée: {}", stderr);
+        error!("[VideoGeneration] Génération musique WAV échouée: {}", stderr);
         return Err(AppError::Internal(
-            "Génération de la musique impossible.".to_string(),
+            format!("Génération de la musique impossible: {}", stderr)
         ));
+    }
+
+    // ✅ CORRECTION: Convertir WAV en MP3 si le fichier de sortie est en MP3
+    let file_ext = track_path.extension().and_then(|s| s.to_str()).unwrap_or("mp3");
+    if file_ext == "mp3" {
+        let output = Command::new("ffmpeg")
+            .current_dir(session_dir)
+            .args([
+                "-y",
+                "-i",
+                wav_path.file_name().unwrap_or_default().to_string_lossy().as_ref(),
+                "-c:a",
+                "libmp3lame",
+            "-b:a",
+            "160k",
+                "-q:a",
+                "2",
+            track_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .as_ref(),
+        ])
+        .output()
+        .await
+        .map_err(|err| {
+                error!("[VideoGeneration] Impossible de convertir WAV en MP3: {err:?}");
+                AppError::Internal("Conversion WAV->MP3 impossible.".to_string())
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+            error!("[VideoGeneration] Conversion MP3 échouée: {}", stderr);
+            // Fallback: utiliser le WAV si la conversion échoue
+            warn!("[VideoGeneration] Utilisation du WAV comme fallback");
+            if let Err(e) = tokio::fs::copy(&wav_path, &track_path).await {
+                error!("[VideoGeneration] Impossible de copier WAV: {}", e);
+        return Err(AppError::Internal(
+                    format!("Génération musique impossible: conversion MP3 échouée et copie WAV échouée")
+                ));
+            }
+        } else {
+            // Nettoyer le fichier WAV temporaire
+            let _ = tokio::fs::remove_file(&wav_path).await;
+        }
+    } else {
+        // Si le format de sortie n'est pas MP3, utiliser directement le WAV
+        if let Err(e) = tokio::fs::copy(&wav_path, &track_path).await {
+            error!("[VideoGeneration] Impossible de copier WAV: {}", e);
+            return Err(AppError::Internal(
+                format!("Génération musique impossible: copie WAV échouée")
+            ));
+        }
+        let _ = tokio::fs::remove_file(&wav_path).await;
     }
 
     Ok(track_path)
@@ -3456,21 +3583,95 @@ async fn download_curated_audio(
     session_dir: &Path,
     loop_info: &audio_library_service::CuratedAudioLoop,
 ) -> AppResult<PathBuf> {
-    let response = reqwest::get(loop_info.url)
-        .await
-        .map_err(|err| AppError::Internal(format!("Téléchargement audio IA impossible: {err}")))?;
+    // ✅ CORRECTION À LA SOURCE: Retry avec timeout et fallback vers stockage local si CDN inaccessible
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|err| AppError::Internal(format!("Impossible de créer le client HTTP: {err}")))?;
 
-    if !response.status().is_success() {
-        return Err(AppError::Internal(format!(
-            "Téléchargement audio IA statut: {}",
-            response.status()
-        )));
+    let mut last_error = None;
+    let mut response = None;
+    let mut is_dns_error = false;
+    
+    // Tentative avec retry (3 tentatives)
+    for attempt in 1..=3 {
+        match client.get(loop_info.url).send().await {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    response = Some(resp);
+                    break;
+                } else {
+                    last_error = Some(format!("Statut HTTP {}", resp.status()));
+                    if attempt < 3 {
+                        log::info!(
+                            "[VideoGeneration] Tentative {}/3 échouée (statut {}), retry...",
+                            attempt, resp.status()
+                        );
+                        tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+                    }
+                }
+            }
+            Err(err) => {
+                let error_msg = err.to_string();
+                last_error = Some(error_msg.clone());
+                
+                // Vérifier si c'est une erreur DNS
+                if error_msg.contains("dns error") || error_msg.contains("failed to lookup") || error_msg.contains("Name or service not known") {
+                    is_dns_error = true;
+                    log::warn!(
+                        "[VideoGeneration] Erreur DNS pour {}: {}. Tentative fallback local...",
+                        loop_info.url, error_msg
+                    );
+                    break; // Sortir de la boucle pour essayer le fallback
+                }
+                
+                if attempt < 3 {
+                    log::info!(
+                        "[VideoGeneration] Tentative {}/3 échouée ({}), retry...",
+                        attempt, error_msg
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+                }
+            }
+        }
     }
 
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|err| AppError::Internal(format!("Lecture audio IA impossible: {err}")))?;
+    // ✅ CORRECTION À LA SOURCE: Fallback vers stockage local si CDN inaccessible
+    let bytes = if is_dns_error || response.is_none() {
+        // Essayer de charger depuis un dossier local
+        let local_path = PathBuf::from("assets/audio").join(format!("{}.mp3", loop_info.id));
+        if local_path.exists() {
+            log::info!(
+                "[VideoGeneration] Utilisation du fichier audio local: {}",
+                local_path.display()
+            );
+            tokio::fs::read(&local_path).await.map_err(|err| {
+                AppError::Internal(format!(
+                    "Impossible de lire le fichier audio local {}: {}",
+                    local_path.display(), err
+                ))
+            })?
+        } else {
+            return Err(AppError::Internal(format!(
+                "CDN inaccessible et fichier local introuvable ({}). Configurez le CDN ou placez le fichier dans assets/audio/",
+                local_path.display()
+            )));
+        }
+    } else {
+        let response = response.ok_or_else(|| {
+            AppError::Internal(format!(
+                "Téléchargement audio IA impossible après 3 tentatives: {}",
+                last_error.unwrap_or_else(|| "Erreur inconnue".to_string())
+            ))
+        })?;
+        
+        response
+            .bytes()
+            .await
+            .map_err(|err| AppError::Internal(format!("Lecture audio IA impossible: {err}")))?
+            .to_vec()
+    };
+
 
     let extension = loop_info
         .url
