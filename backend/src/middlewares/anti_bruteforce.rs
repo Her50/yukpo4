@@ -6,7 +6,6 @@ use axum::{http::Request, middleware::Next, response::Response};
 use http::{HeaderValue, StatusCode};
 use log::{error, warn};
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::state::AppState;
 
@@ -49,7 +48,7 @@ pub async fn anti_bruteforce(
     // Vérifier si l'IP est bloquée
     let block_key = format!("bruteforce:blocked:{}", client_ip);
     
-    let mut redis_conn = match state.redis_client.get_async_connection().await {
+    let mut redis_conn = match state.redis_client.get_multiplexed_async_connection().await {
         Ok(conn) => conn,
         Err(e) => {
             warn!("[anti_bruteforce] Redis indisponible: {} - Protection désactivée", e);

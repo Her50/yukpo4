@@ -6,7 +6,6 @@ use axum::{http::Request, middleware::Next, response::Response};
 use http::{HeaderValue, StatusCode};
 use log::warn;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::state::AppState;
 
@@ -45,15 +44,11 @@ pub async fn rate_limit(
     next: Next,
 ) -> Result<Response, StatusCode> {
     let client_ip = extract_client_ip(&req);
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
 
     let redis_key = format!("rate_limit:{}", client_ip);
 
     // Tenter d'utiliser Redis pour le rate limiting
-    let mut redis_conn = match state.redis_client.get_async_connection().await {
+    let mut redis_conn = match state.redis_client.get_multiplexed_async_connection().await {
         Ok(conn) => conn,
         Err(e) => {
             warn!("[rate_limit] Redis indisponible: {} - Rate limiting désactivé", e);

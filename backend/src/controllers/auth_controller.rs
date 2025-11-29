@@ -2,7 +2,7 @@ use axum::{
     extract::State,
     response::{IntoResponse, Json},
 };
-use bcrypt::{hash, verify, DEFAULT_COST};
+use bcrypt::{hash, verify};
 use log::{error, info};
 use reqwest::Client;
 use serde::Deserialize;

@@ -3,9 +3,8 @@
 
 use crate::core::types::{AppError, AppResult};
 use axum::extract::Multipart;
-use chrono::Utc;
-use sqlx::{FromRow, PgPool};
-use std::path::{Path, PathBuf};
+use sqlx::PgPool;
+use std::path::PathBuf;
 use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
@@ -68,15 +67,15 @@ pub async fn store_uploaded_file(
     let url = format!("/api/media/temp/{}", relative_path.replace("uploads/temp/", ""));
 
     // Optionnel: Enregistrer en DB pour tracking
+    // Note: user_id n'existe pas dans la table media, on utilise seulement service_id
     let media_id = match sqlx::query_scalar!(
         r#"
-        INSERT INTO media (service_id, type, path, uploaded_at, user_id)
-        VALUES (NULL, $1, $2, NOW(), $3)
+        INSERT INTO media (service_id, type, path, uploaded_at)
+        VALUES (NULL, $1, $2, NOW())
         RETURNING id
         "#,
         media_type,
-        relative_path,
-        user_id
+        relative_path
     )
     .fetch_optional(pool)
     .await

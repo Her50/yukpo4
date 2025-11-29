@@ -5,7 +5,7 @@
 use axum::body::Body;
 use axum::extract::State;
 use axum::{http::Request, middleware::Next, response::Response};
-use http::{HeaderValue, StatusCode};
+use http::StatusCode;
 use log::warn;
 use std::sync::Arc;
 
@@ -50,7 +50,7 @@ pub async fn csrf_protection(
     
     // Si on a un Origin, vérifier qu'il correspond aux origines autorisées
     if let Some(origin) = origin {
-        if let Ok(origin_str) = origin.to_str() {
+        if origin.to_str().is_ok() {
             // Vérifier que l'origine est dans la liste autorisée (même logique que CORS)
             // Pour l'instant, on fait confiance au middleware CORS
             // En production, on pourrait vérifier plus strictement ici
