@@ -47,7 +47,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showRoleModal, setShowRoleModal] = useState(false);
     const [selectedRole, setSelectedRole] = useState<ServiceTeamRole | null>(null);
-    const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+    const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState<ServiceTeamRole | null>(null);
     const [showUserPicker, setShowUserPicker] = useState(false);
@@ -249,25 +249,17 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             });
 
             if (response.success) {
-                // ✅ CORRECTION: S'assurer que members est un tableau avant map()
+                // ✅ PROTECTION CRITIQUE: Vérifier que members est un tableau avant map()
                 if (!Array.isArray(members)) {
                     console.error('[ServiceTeamManager] members n\'est pas un tableau:', members);
                     Alert.alert('Erreur', 'Impossible de mettre à jour le rôle : données invalides');
                     return;
                 }
 
-                // ✅ CORRECTION: S'assurer que ROLE_PERMISSIONS et SERVICE_PERMISSIONS existent
-                const rolePerms = ROLE_PERMISSIONS && typeof ROLE_PERMISSIONS === 'object' ? ROLE_PERMISSIONS[newRole?.id] : [];
+                // ✅ CORRECTION: Calculer les permissions valides depuis rolePerms déjà déclaré
                 const validPerms = Array.isArray(SERVICE_PERMISSIONS) && Array.isArray(rolePerms)
                     ? SERVICE_PERMISSIONS.filter(p => p && p.id && rolePerms.includes(p.id))
                     : [];
-
-                // ✅ PROTECTION CRITIQUE: Vérifier que members est un tableau avant map()
-                if (!Array.isArray(members)) {
-                    console.error('[ServiceTeamManager] members n\'est pas un tableau dans handleUpdateRole:', members);
-                    Alert.alert('Erreur', 'Impossible de mettre à jour le rôle : données invalides');
-                    return;
-                }
 
                 setMembers(members.map(m => {
                     if (!m || !m.id) return m; // ✅ PROTECTION: Ignorer les membres invalides
@@ -324,6 +316,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                             style={[styles.roleBadge, { backgroundColor: (role.color || '#6B7280') + '20' }]}
                             onPress={() => {
                                 setSelectedRole(role);
+                                setSelectedMemberId(item.id);
                                 setShowRoleModal(true);
                             }}
                         >
@@ -458,9 +451,10 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                     <NativeButton
                         title="Confirmer"
                         onPress={() => {
-                            if (selectedRole) {
-                                // Logique de mise à jour du rôle
+                            if (selectedRole && selectedMemberId) {
+                                handleUpdateRole(selectedMemberId, selectedRole);
                                 setShowRoleModal(false);
+                                setSelectedMemberId(null);
                             }
                         }}
                         variant="primary"
