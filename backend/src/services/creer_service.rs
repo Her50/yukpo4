@@ -3000,7 +3000,6 @@ pub async fn creer_service(
                 files_saved += 1;
             }
         }
-    }
 
     // Vidéos
     // ✅ NOUVEAU: Support videoUrls (upload préalable) > video_base64 (rétrocompatibilité)
@@ -3101,7 +3100,6 @@ pub async fn creer_service(
                 files_saved += 1;
             }
         }
-    }
 
     // Documents
     // ✅ NOUVEAU: Support docUrls (upload préalable) > doc_base64 (rétrocompatibilité)
@@ -3205,7 +3203,6 @@ pub async fn creer_service(
                 files_saved += 1;
             }
         }
-    }
 
     // Excel
     if let Some(excels) = data_processed
