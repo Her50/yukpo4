@@ -2249,8 +2249,9 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 )}
             </View>
 
-            {/* ✅ CORRECTION: Afficher le tableau même si des chips existent déjà - forcer l'affichage pour validation */}
-            {(loadingSuggestions || loadingCombinationSuggestions || displayCandidate || combinationError) && (
+            {/* ✅ CORRECTION 2025-11-29: Afficher le tableau même si des chips existent déjà - forcer l'affichage pour validation */}
+            {/* ✅ CRITIQUE: Le tableau doit TOUJOURS s'afficher au chargement si des sous-caractéristiques sont disponibles */}
+            {(loadingSuggestions || loadingCombinationSuggestions || displayCandidate || combinationError || (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0)) && (
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
 
@@ -2258,142 +2259,154 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         <ActivityIndicator size="small" color={modernColors.primary} style={{ marginVertical: 12 }} />
                     )}
 
-                    {/* ✅ CORRECTION: Forcer l'affichage du tableau des sous-caractéristiques préférées même si des chips existent déjà */}
+                    {/* ✅ CORRECTION 2025-11-29: Forcer l'affichage du tableau des sous-caractéristiques préférées même si des chips existent déjà */}
                     {/* Le tableau doit TOUJOURS s'afficher pour que l'utilisateur puisse valider/modifier */}
-                    {!loadingSuggestions && !loadingCombinationSuggestions && displayCandidate && (
-                        <View key={displayCandidate.key} style={styles.suggestionCard}>
-                            <View style={styles.suggestionCardHeader}>
-                                <View style={styles.suggestionCardHeaderLeft}>
-                                    <SafeIcon
-                                        name={
-                                            displayCandidate.source === 'popular'
-                                                ? 'gift'
-                                                : displayCandidate.source === 'combination'
-                                                    ? 'users'
-                                                    : 'sparkles'
-                                        }
-                                        size={16}
-                                        color={
-                                            displayCandidate.source === 'popular'
-                                                ? modernColors.primary
-                                                : displayCandidate.source === 'combination'
-                                                    ? '#F97316'
-                                                    : modernColors.primary
-                                        }
-                                    />
-                                    <Text style={styles.suggestionCardTitle}>{displayCandidate.title}</Text>
+                    {/* ✅ CRITIQUE: Utiliser preferredDraftCandidate directement si displayCandidate n'est pas disponible */}
+                    {!loadingSuggestions && !loadingCombinationSuggestions && (() => {
+                        // ✅ CRITIQUE: Utiliser preferredDraftCandidate en priorité si disponible, sinon displayCandidate
+                        const candidateToDisplay = (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0)
+                            ? preferredDraftCandidate
+                            : displayCandidate;
+
+                        if (!candidateToDisplay || !candidateToDisplay.rows || candidateToDisplay.rows.length === 0) {
+                            return null;
+                        }
+
+                        return (
+                            <View key={candidateToDisplay.key} style={styles.suggestionCard}>
+                                <View style={styles.suggestionCardHeader}>
+                                    <View style={styles.suggestionCardHeaderLeft}>
+                                        <SafeIcon
+                                            name={
+                                                candidateToDisplay.source === 'popular'
+                                                    ? 'gift'
+                                                    : candidateToDisplay.source === 'combination'
+                                                        ? 'users'
+                                                        : 'sparkles'
+                                            }
+                                            size={16}
+                                            color={
+                                                candidateToDisplay.source === 'popular'
+                                                    ? modernColors.primary
+                                                    : candidateToDisplay.source === 'combination'
+                                                        ? '#F97316'
+                                                        : modernColors.primary
+                                            }
+                                        />
+                                        <Text style={styles.suggestionCardTitle}>{candidateToDisplay.title}</Text>
+                                    </View>
+                                    {candidateToDisplay.isTrending && (
+                                        <View style={styles.trendingBadge}>
+                                            <Text style={styles.trendingText}>📈 TENDANCE</Text>
+                                        </View>
+                                    )}
+                                    {candidateToDisplay.isPreferred && (
+                                        <View style={styles.combinationBadge}>
+                                            <SafeIcon name="sparkles" size={12} color={modernColors.primary} />
+                                            <Text style={styles.combinationBadgeText}>IA</Text>
+                                        </View>
+                                    )}
                                 </View>
-                                {displayCandidate.isTrending && (
-                                    <View style={styles.trendingBadge}>
-                                        <Text style={styles.trendingText}>📈 TENDANCE</Text>
-                                    </View>
-                                )}
-                                {displayCandidate.isPreferred && (
-                                    <View style={styles.combinationBadge}>
-                                        <SafeIcon name="sparkles" size={12} color={modernColors.primary} />
-                                        <Text style={styles.combinationBadgeText}>IA</Text>
-                                    </View>
-                                )}
-                            </View>
 
-                            <View style={styles.suggestionTable}>
-                                {(() => {
-                                    // ✅ LOG: Affichage du tableau des caractéristiques
-                                    console.log('[LinearAutocompleteEditor] 📊 [AFFICHAGE_TABLEAU] Affichage tableau caractéristiques:', {
-                                        candidateKey: displayCandidate.key,
-                                        rowsCount: displayCandidate.rows.length,
-                                        rows: displayCandidate.rows.map(r => ({ label: r.label, value: r.value })),
-                                        source: displayCandidate.source,
-                                        isPreferred: displayCandidate.isPreferred,
-                                        timestamp: new Date().toISOString()
-                                    });
-                                    return null;
-                                })()}
-                                {displayCandidate.rows.length === 0 ? (
-                                    <Text style={styles.suggestionEmptyRow}>
-                                        Aucune modalité. Ajoutez-en pour personnaliser.
-                                    </Text>
-                                ) : (
-                                    displayCandidate.rows.map((row, rowIndex) => (
-                                        <View
-                                            key={`${displayCandidate.key}-${row.label}-${rowIndex}`}
-                                            style={[
-                                                styles.suggestionRow,
-                                                rowIndex === displayCandidate.rows.length - 1 && styles.suggestionRowLast,
-                                            ]}
-                                        >
-                                            <View style={styles.suggestionRowContent}>
-                                                <Text style={styles.suggestionCellLabel}>{row.label}</Text>
-                                                <TouchableOpacity
-                                                    onPress={() => openSuggestionEditorForRow(displayCandidate.key, rowIndex)}
-                                                    style={styles.suggestionValueTouchable}
-                                                >
-                                                    <Text style={styles.suggestionCellValue}>{row.value}</Text>
-                                                </TouchableOpacity>
+                                <View style={styles.suggestionTable}>
+                                    {(() => {
+                                        // ✅ LOG: Affichage du tableau des caractéristiques
+                                        console.log('[LinearAutocompleteEditor] 📊 [AFFICHAGE_TABLEAU] Affichage tableau caractéristiques:', {
+                                            candidateKey: candidateToDisplay.key,
+                                            rowsCount: candidateToDisplay.rows.length,
+                                            rows: candidateToDisplay.rows.map(r => ({ label: r.label, value: r.value })),
+                                            source: candidateToDisplay.source,
+                                            isPreferred: candidateToDisplay.isPreferred,
+                                            timestamp: new Date().toISOString()
+                                        });
+                                        return null;
+                                    })()}
+                                    {candidateToDisplay.rows.length === 0 ? (
+                                        <Text style={styles.suggestionEmptyRow}>
+                                            Aucune modalité. Ajoutez-en pour personnaliser.
+                                        </Text>
+                                    ) : (
+                                        candidateToDisplay.rows.map((row, rowIndex) => (
+                                            <View
+                                                key={`${candidateToDisplay.key}-${row.label}-${rowIndex}`}
+                                                style={[
+                                                    styles.suggestionRow,
+                                                    rowIndex === candidateToDisplay.rows.length - 1 && styles.suggestionRowLast,
+                                                ]}
+                                            >
+                                                <View style={styles.suggestionRowContent}>
+                                                    <Text style={styles.suggestionCellLabel}>{row.label}</Text>
+                                                    <TouchableOpacity
+                                                        onPress={() => openSuggestionEditorForRow(candidateToDisplay.key, rowIndex)}
+                                                        style={styles.suggestionValueTouchable}
+                                                    >
+                                                        <Text style={styles.suggestionCellValue}>{row.value}</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                                <View style={styles.suggestionRowActions}>
+                                                    <TouchableOpacity
+                                                        style={styles.suggestionActionButton}
+                                                        onPress={() => openSuggestionEditorForRow(candidateToDisplay.key, rowIndex)}
+                                                    >
+                                                        <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        style={styles.suggestionActionButton}
+                                                        onPress={() => handleSuggestionRowDelete(candidateToDisplay.key, rowIndex)}
+                                                    >
+                                                        <SafeIcon name="trash-2" size={14} color="#EF4444" />
+                                                    </TouchableOpacity>
+                                                </View>
                                             </View>
-                                            <View style={styles.suggestionRowActions}>
-                                                <TouchableOpacity
-                                                    style={styles.suggestionActionButton}
-                                                    onPress={() => openSuggestionEditorForRow(displayCandidate.key, rowIndex)}
-                                                >
-                                                    <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    style={styles.suggestionActionButton}
-                                                    onPress={() => handleSuggestionRowDelete(displayCandidate.key, rowIndex)}
-                                                >
-                                                    <SafeIcon name="trash-2" size={14} color="#EF4444" />
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                    ))
-                                )}
-                            </View>
+                                        ))
+                                    )}
+                                </View>
 
-                            {(displayCandidate.sellerCount ||
-                                displayCandidate.occurrences ||
-                                displayCandidate.priceDisplay) && (
-                                    <View style={styles.suggestionMeta}>
-                                        <View style={styles.suggestionMetaLeft}>
-                                            {typeof displayCandidate.sellerCount === 'number' && displayCandidate.sellerCount > 0 && (
-                                                <Text style={styles.suggestionCount}>
-                                                    👥 {displayCandidate.sellerCount} prestataire
-                                                    {displayCandidate.sellerCount > 1 ? 's' : ''}
-                                                </Text>
-                                            )}
-                                            {typeof displayCandidate.occurrences === 'number' && displayCandidate.occurrences > 0 && (
-                                                <Text style={styles.combinationOccurrence}>
-                                                    🔁 {displayCandidate.occurrences} occurrence
-                                                    {displayCandidate.occurrences > 1 ? 's' : ''}
+                                {(candidateToDisplay.sellerCount ||
+                                    candidateToDisplay.occurrences ||
+                                    candidateToDisplay.priceDisplay) && (
+                                        <View style={styles.suggestionMeta}>
+                                            <View style={styles.suggestionMetaLeft}>
+                                                {typeof candidateToDisplay.sellerCount === 'number' && candidateToDisplay.sellerCount > 0 && (
+                                                    <Text style={styles.suggestionCount}>
+                                                        👥 {candidateToDisplay.sellerCount} prestataire
+                                                        {candidateToDisplay.sellerCount > 1 ? 's' : ''}
+                                                    </Text>
+                                                )}
+                                                {typeof candidateToDisplay.occurrences === 'number' && candidateToDisplay.occurrences > 0 && (
+                                                    <Text style={styles.combinationOccurrence}>
+                                                        🔁 {candidateToDisplay.occurrences} occurrence
+                                                        {candidateToDisplay.occurrences > 1 ? 's' : ''}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                            {candidateToDisplay.priceDisplay && (
+                                                <Text style={styles.suggestionPrice}>
+                                                    💰 {candidateToDisplay.priceDisplay}
                                                 </Text>
                                             )}
                                         </View>
-                                        {displayCandidate.priceDisplay && (
-                                            <Text style={styles.suggestionPrice}>
-                                                💰 {displayCandidate.priceDisplay}
-                                            </Text>
-                                        )}
-                                    </View>
-                                )}
+                                    )}
 
-                            <View style={styles.suggestionFooter}>
-                                <TouchableOpacity
-                                    style={styles.suggestionAddButton}
-                                    onPress={() => openSuggestionAddModal(displayCandidate.key)}
-                                >
-                                    <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
-                                    <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.suggestionApplyButton}
-                                    onPress={() => handleApplySuggestion(displayCandidate)}
-                                >
-                                    <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
-                                    <Text style={styles.suggestionApplyText}>Valider</Text>
-                                </TouchableOpacity>
+                                <View style={styles.suggestionFooter}>
+                                    <TouchableOpacity
+                                        style={styles.suggestionAddButton}
+                                        onPress={() => openSuggestionAddModal(candidateToDisplay.key)}
+                                    >
+                                        <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
+                                        <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.suggestionApplyButton}
+                                        onPress={() => handleApplySuggestion(candidateToDisplay)}
+                                    >
+                                        <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
+                                        <Text style={styles.suggestionApplyText}>Valider</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
-                    )}
+                        );
+                    })()}
 
                     {!loadingSuggestions &&
                         !loadingCombinationSuggestions &&

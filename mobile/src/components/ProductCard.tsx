@@ -762,7 +762,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // Par défaut, si le type n'est pas défini, on considère que c'est un produit
   const isProduct = product.type !== 'prestation_service';
 
-  // ✅ CORRECTION 2025-11-24: Extraire le prix depuis service.data.produits si product.prix n'est pas disponible
+  // ✅ CORRECTION 2025-11-29: Extraire le prix depuis service.data.produits avec améliorations
   const extractPriceFromProductData = (serviceData: any, productIndex: number = 0): { prix: number; devise: string } => {
     if (!serviceData || typeof serviceData !== 'object') return { prix: 0, devise: 'XAF' };
 
@@ -799,15 +799,48 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
     // Si c'est un objet, extraire prix et devise
     else if (typeof targetProduct === 'object') {
-      const prix = targetProduct.prix ||
+      // ✅ AMÉLIORÉ 2025-11-29: Chercher dans plus d'endroits
+      let prix = targetProduct.prix ||
         targetProduct.prix_produit ||
+        targetProduct.price ||
         (typeof targetProduct.prix === 'string' ? parseFloat(targetProduct.prix) : 0);
+
+      // ✅ NOUVEAU: Gérer cas prix = "0", null, undefined
+      if (prix === 0 || prix === null || prix === undefined || prix === "0" || (typeof prix === 'string' && prix.trim() === "0")) {
+        // Chercher dans variants si disponible
+        if (targetProduct.variants && Array.isArray(targetProduct.variants) && targetProduct.variants.length > 0) {
+          const validVariants = targetProduct.variants.filter((v: any) => v && (v.prix || v.price) && (v.prix > 0 || v.price > 0));
+          if (validVariants.length > 0) {
+            const minVariantPrice = Math.min(...validVariants.map((v: any) => v.prix || v.price || 0));
+            if (minVariantPrice > 0) {
+              prix = minVariantPrice;
+            }
+          }
+        }
+        // Chercher aussi dans variations (format alternatif)
+        if (prix === 0 && targetProduct.variations && Array.isArray(targetProduct.variations) && targetProduct.variations.length > 0) {
+          const validVariations = targetProduct.variations.filter((v: any) => v && (v.prix || v.price) && (v.prix > 0 || v.price > 0));
+          if (validVariations.length > 0) {
+            const minVariationPrice = Math.min(...validVariations.map((v: any) => v.prix || v.price || 0));
+            if (minVariationPrice > 0) {
+              prix = minVariationPrice;
+            }
+          }
+        }
+      }
+
       const devise = targetProduct.devise ||
         targetProduct.devise_produit ||
         targetProduct.currency ||
+        targetProduct.variants?.[0]?.devise ||
+        targetProduct.variants?.[0]?.currency ||
         'XAF';
+
+      // ✅ AMÉLIORÉ: Convertir prix en number si string
+      const prixNumber = typeof prix === 'number' ? prix : (typeof prix === 'string' ? parseFloat(prix) || 0 : 0);
+
       return {
-        prix: typeof prix === 'number' ? prix : (typeof prix === 'string' ? parseFloat(prix) || 0 : 0),
+        prix: prixNumber > 0 ? prixNumber : 0,
         devise: typeof devise === 'string' ? devise : 'XAF'
       };
     }
@@ -815,13 +848,37 @@ const ProductCard: React.FC<ProductCardProps> = ({
     return { prix: 0, devise: 'XAF' };
   };
 
+  // ✅ NOUVEAU 2025-11-29: Formater prix en milliers (150000 → "150 000")
+  const formatPrice = (price: number | undefined | null): string => {
+    if (price === undefined || price === null || price === 0 || isNaN(price)) {
+      return '0';
+    }
+    return price.toLocaleString('fr-FR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+  };
+
   // Extraire le prix depuis service.data.produits si nécessaire
   const extractedPriceData = extractPriceFromProductData(service?.data, productIndex);
 
-  // Prix
+  // ✅ AMÉLIORÉ 2025-11-29: Prix avec extraction améliorée depuis multiple sources
   const displayPrice = hasVariant && variants.length > 0
-    ? Math.min(...variants.map((v: any) => v.prix || 0))
-    : product.prix || extractedPriceData.prix || 0;
+    ? Math.min(...variants.map((v: any) => v.prix || v.price || 0))
+    : (() => {
+      // Chercher dans product directement
+      let prix = product.prix || product.prix_produit || product.price;
+      // Convertir string en number si nécessaire
+      if (typeof prix === 'string') {
+        const parsed = parseFloat(prix);
+        prix = isNaN(parsed) ? 0 : parsed;
+      }
+      // Si prix = 0, null, undefined, chercher dans extractedPriceData
+      if (!prix || prix === 0 || prix === "0") {
+        prix = extractedPriceData.prix;
+      }
+      return prix || 0;
+    })();
 
   const devise = product.devise ||
     variants[0]?.devise ||
@@ -960,6 +1017,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
     product.country_label,
     product.location?.country,
     product.location?.country_code,
+    // ✅ AMÉLIORÉ 2025-11-29: Vérifier aussi dans prestataire (transmis par backend)
+    prestataire?.pays,
+    prestataire?.country,
+    prestataire?.country_name,
+    prestataire?.country_code,
     // ✅ CORRIGÉ: Vérifier aussi dans service directement
     service?.pays,
     service?.country,
@@ -1410,15 +1472,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </TouchableOpacity>
               )}
 
-              {/* ✅ CORRIGÉ: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
-              {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete) && (
+              {/* ✅ AMÉLIORÉ 2025-11-29: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
+              {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete || prestataire?.adresse) && (
                 <View style={styles.locationSection}>
                   <View style={styles.locationRow}>
                     <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
                     <Text style={styles.locationTextPrimary} numberOfLines={2}>
-                      {chosenLocation || locationVector[0] || product.adresse_complete || product.adresse || product.ville || product.region || service?.adresse_complete || service?.adresse || 'Localisation disponible'}
+                      {chosenLocation ||
+                        locationVector[0] ||
+                        product.adresse_complete ||
+                        product.adresse ||
+                        product.ville ||
+                        product.region ||
+                        prestataire?.adresse || // ✅ NOUVEAU: Vérifier prestataire.adresse
+                        service?.adresse_complete ||
+                        service?.adresse ||
+                        'Localisation disponible'}
                     </Text>
-                    {/* ✅ CORRIGÉ : Afficher le drapeau si disponible, même si générique */}
+                    {/* ✅ AMÉLIORÉ : Afficher le drapeau si disponible, même si générique */}
                     {countryFlag && countryFlag !== '🌍' && (
                       <Text style={styles.locationFlag} numberOfLines={1}>
                         {countryFlag}
@@ -1646,7 +1717,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         </View>
                         <View style={styles.cellPrice}>
                           <Text style={styles.variantPrice}>
-                            {variant.prix?.toLocaleString()}
+                            {formatPrice(variant.prix)}
                           </Text>
                           <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
                         </View>
@@ -1674,7 +1745,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   <View style={styles.priceFromContainer}>
                     <Text style={styles.priceFromLabel}>À partir de</Text>
                     <Text style={styles.priceFromValue}>
-                      {displayPrice.toLocaleString()} {devise}
+                      {formatPrice(displayPrice)} {devise}
                     </Text>
                   </View>
                 </View>
@@ -1683,7 +1754,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   <Text style={styles.priceLabel}>Prix</Text>
                   <View style={styles.priceRow}>
                     <Text style={styles.price}>
-                      {displayPrice.toLocaleString()}
+                      {formatPrice(displayPrice)}
                     </Text>
                     <Text style={styles.priceDevise}>{devise}</Text>
                   </View>
@@ -1934,6 +2005,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
+    // ✅ CORRIGÉ 2025-11-29: S'assurer que la carte s'adapte à la largeur du conteneur parent (carousel)
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
   },
   cardContainerCompact: {
     borderRadius: 20,
@@ -1946,7 +2021,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 140, // ✅ RÉDUIT: 160 → 140
+    height: 120, // ✅ RÉDUIT: 140 → 120 (encore plus compact)
     overflow: 'hidden',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
@@ -2062,15 +2137,15 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   content: {
-    paddingHorizontal: 12, // ✅ RÉDUIT: 16 → 12
-    paddingVertical: 10, // ✅ RÉDUIT: 14 → 10
-    gap: 6, // ✅ RÉDUIT: 10 → 6
+    paddingHorizontal: 10, // ✅ RÉDUIT: 12 → 10 (encore plus compact)
+    paddingVertical: 8, // ✅ RÉDUIT: 10 → 8
+    gap: 4, // ✅ RÉDUIT: 6 → 4
     backgroundColor: 'rgba(255, 255, 255, 0.94)',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
   contentCompact: {
-    paddingTop: 10, // ✅ RÉDUIT: 14 → 10
+    paddingTop: 8, // ✅ RÉDUIT: 10 → 8
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -2078,8 +2153,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 4, // ✅ RÉDUIT: 6 → 4
-    marginBottom: 0, // ✅ RÉDUIT: 2 → 0
+    gap: 3, // ✅ RÉDUIT: 4 → 3 (encore plus compact)
+    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
   },
   topStatPill: {
     flexDirection: 'row',
@@ -2094,11 +2169,11 @@ const styles = StyleSheet.create({
   topStatPillCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 5, // ✅ RÉDUIT: 6 → 5
-    paddingVertical: 2, // ✅ RÉDUIT: 3 → 2
-    borderRadius: 10, // ✅ RÉDUIT: 12 → 10
+    paddingHorizontal: 4, // ✅ RÉDUIT: 5 → 4 (encore plus compact)
+    paddingVertical: 2,
+    borderRadius: 8, // ✅ RÉDUIT: 10 → 8
     borderWidth: 1,
-    gap: 2, // ✅ RÉDUIT: 3 → 2
+    gap: 2,
   },
   topStatValue: {
     fontSize: 12,
@@ -2106,43 +2181,45 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   topStatValueCompact: {
-    fontSize: 10, // ✅ RÉDUIT: 11 → 10
+    fontSize: 9, // ✅ RÉDUIT: 10 → 9 (encore plus compact)
     fontWeight: '600',
   },
   topStatLabelCompact: {
-    fontSize: 8, // ✅ RÉDUIT: 9 → 8
+    fontSize: 7, // ✅ RÉDUIT: 8 → 7
     fontWeight: '500',
     opacity: 0.8,
-    marginLeft: 1, // ✅ RÉDUIT: 2 → 1
+    marginLeft: 1,
   },
   productName: {
-    fontSize: 15, // ✅ RÉDUIT: 16 → 15
+    fontSize: 14, // ✅ RÉDUIT: 15 → 14 (encore plus compact)
     fontWeight: '700',
     color: '#1F2937',
-    lineHeight: 20, // ✅ RÉDUIT: 22 → 20
+    lineHeight: 18, // ✅ RÉDUIT: 20 → 18
+    marginBottom: 2, // ✅ AJOUTÉ: Réduire espace après titre
   },
   prestataireRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5, // ✅ RÉDUIT: 6 → 5
-    paddingVertical: 2, // ✅ RÉDUIT: 3 → 2
-    paddingHorizontal: 5, // ✅ RÉDUIT: 6 → 5
+    gap: 4, // ✅ RÉDUIT: 5 → 4 (encore plus compact)
+    paddingVertical: 2,
+    paddingHorizontal: 4, // ✅ RÉDUIT: 5 → 4
     backgroundColor: '#F8FAFC',
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E5E7EB',
+    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
   },
   avatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22, // ✅ RÉDUIT: 26 → 22 (encore plus compact)
+    height: 22,
+    borderRadius: 11,
     borderWidth: 1,
     borderColor: '#FFF',
   },
   avatarPlaceholder: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22, // ✅ RÉDUIT: 26 → 22
+    height: 22,
+    borderRadius: 11,
     backgroundColor: modernColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2339,7 +2416,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   price: {
-    fontSize: 20,
+    fontSize: 18, // ✅ RÉDUIT: 20 → 18 (encore plus compact)
     fontWeight: '800',
     color: modernColors.primary,
   },
@@ -2350,8 +2427,8 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: 6, // ✅ RÉDUIT: 8 → 6
-    marginTop: 2, // ✅ RÉDUIT: 4 → 2
+    gap: 4, // ✅ RÉDUIT: 6 → 4 (encore plus compact)
+    marginTop: 2,
   },
   actionButton: {
     flex: 1,
@@ -2362,10 +2439,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4, // ✅ RÉDUIT: 6 → 4
-    paddingVertical: 8, // ✅ RÉDUIT: 10 → 8
-    paddingHorizontal: 10, // ✅ RÉDUIT: 12 → 10
-    borderRadius: 10,
+    gap: 3, // ✅ RÉDUIT: 4 → 3 (encore plus compact)
+    paddingVertical: 6, // ✅ RÉDUIT: 8 → 6
+    paddingHorizontal: 8, // ✅ RÉDUIT: 10 → 8
+    borderRadius: 8, // ✅ RÉDUIT: 10 → 8
     borderWidth: 1.5,
     backgroundColor: '#FFFFFF',
   },
@@ -2382,7 +2459,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   actionButtonText: {
-    fontSize: 13,
+    fontSize: 12, // ✅ RÉDUIT: 13 → 12 (encore plus compact)
     fontWeight: '600',
   },
   actionButtonTextDelivery: {
@@ -2449,12 +2526,13 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   locationSection: {
-    gap: 3, // ✅ RÉDUIT: 4 → 3
+    gap: 2, // ✅ RÉDUIT: 3 → 2 (encore plus compact)
     backgroundColor: '#F8FAFC',
-    padding: 5, // ✅ RÉDUIT: 6 → 5
+    padding: 4, // ✅ RÉDUIT: 5 → 4
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
   },
   locationTextPrimary: {
     fontSize: 14,
@@ -2581,7 +2659,7 @@ const styles = StyleSheet.create({
   cardGradient: {
     borderRadius: 22,
     padding: 1,
-    marginBottom: 8, // ✅ RÉDUIT: 12 → 8
+    marginBottom: 6, // ✅ RÉDUIT: 8 → 6 (encore plus compact)
   },
   // ✅ NOUVEAU: Styles section commentaires compacte
   commentsCompactSection: {

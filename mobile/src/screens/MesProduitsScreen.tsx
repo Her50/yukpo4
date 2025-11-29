@@ -27,24 +27,19 @@ import { apiDelete, apiGet, apiPatch, apiPost, mediaApi } from '../services/api'
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
+import { getFieldValue } from '../utils/productNormalizer';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
 
-// ✅ CORRIGÉ: Helper pour extraire valeur depuis objets structurés
+// ✅ CORRIGÉ: Utiliser getFieldValue standardisé au lieu d'extractValue locale
 const extractValue = (field: any): string | null => {
-    if (!field) return null;
-    if (typeof field === 'string') {
-        const trimmed = field.trim();
+    const value = getFieldValue(field);
+    if (!value) return null;
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
         return trimmed.length > 0 ? trimmed : null;
     }
-    if (typeof field === 'object' && field !== null) {
-        // Format structuré {valeur: "...", type_donnee: "..."}
-        if ('valeur' in field) {
-            const val = field.valeur;
-            if (typeof val === 'string') {
-                const trimmed = val.trim();
-                return trimmed.length > 0 ? trimmed : null;
-            }
-        }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
     }
     return null;
 };
@@ -1095,10 +1090,30 @@ const MesProduitsScreen: React.FC = () => {
                 }
             });
 
-            // ✅ CORRIGÉ: Gérer le nouveau format avec pagination
-            const servicesData = Array.isArray(servicesResponse.data)
-                ? servicesResponse.data
-                : (servicesResponse.data?.data || servicesResponse.data || []);
+            // ✅ CORRIGÉ: Gérer le nouveau format avec pagination et différentes structures de réponse
+            let servicesData: any[] = [];
+
+            if (servicesResponse.success && servicesResponse.data) {
+                // Essayer différentes structures possibles
+                if (Array.isArray(servicesResponse.data)) {
+                    servicesData = servicesResponse.data;
+                } else if (Array.isArray(servicesResponse.data.data)) {
+                    servicesData = servicesResponse.data.data;
+                } else if (Array.isArray(servicesResponse.data.services)) {
+                    servicesData = servicesResponse.data.services;
+                } else if (Array.isArray(servicesResponse.data.items)) {
+                    servicesData = servicesResponse.data.items;
+                } else if (servicesResponse.data && typeof servicesResponse.data === 'object') {
+                    // Si c'est un objet unique, le mettre dans un tableau
+                    servicesData = [servicesResponse.data];
+                }
+            }
+
+            console.log('[MesProduitsScreen] handleCreateNewProduct - Services trouvés:', {
+                success: servicesResponse.success,
+                servicesCount: servicesData.length,
+                dataStructure: servicesResponse.data ? Object.keys(servicesResponse.data) : 'no data'
+            });
 
             if (!servicesResponse.success || !servicesData || servicesData.length === 0) {
                 Alert.alert(
@@ -1118,24 +1133,47 @@ const MesProduitsScreen: React.FC = () => {
             // ✅ CORRECTION: servicesData est déjà déclaré ci-dessus, pas besoin de le redéclarer
             setServices(servicesData);
 
+            // ✅ CORRECTION: Extraire correctement l'ID du service (gérer différents formats)
+            const getServiceId = (service: any): number | null => {
+                if (!service) return null;
+                const id = service.id || service.service_id || service.serviceId;
+                if (id === undefined || id === null) return null;
+                return typeof id === 'string' ? parseInt(id, 10) : id;
+            };
+
             // Si un seul service, l'ouvrir directement
             if (servicesData.length === 1) {
                 const service = servicesData[0];
-                navigation.navigate('AjouterProduitSimple' as never, {
-                    mode: 'create',
-                    serviceId: service.id,
-                } as never);
+                const serviceId = getServiceId(service);
+                if (serviceId) {
+                    console.log('[MesProduitsScreen] handleCreateNewProduct - Navigation vers AjouterProduitSimple avec serviceId:', serviceId);
+                    navigation.navigate('AjouterProduitSimple' as never, {
+                        mode: 'create',
+                        serviceId: serviceId,
+                    } as never);
+                } else {
+                    console.error('[MesProduitsScreen] handleCreateNewProduct - Service ID introuvable:', service);
+                    Alert.alert('Erreur', 'Impossible de déterminer l\'ID du service');
+                }
             } else {
                 // Plusieurs services : proposer de choisir
-                const serviceOptions = servicesData.map((service: any) => ({
-                    text: service.data?.titre_service?.valeur || service.titre || `Service ${service.id}`,
-                    onPress: () => {
-                        navigation.navigate('AjouterProduitSimple' as never, {
-                            mode: 'create',
-                            serviceId: service.id,
-                        } as never);
-                    }
-                }));
+                const serviceOptions = servicesData
+                    .filter((service: any) => getServiceId(service) !== null) // Filtrer les services sans ID
+                    .map((service: any) => {
+                        const serviceId = getServiceId(service);
+                        return {
+                            text: service.data?.titre_service?.valeur || service.titre || `Service ${serviceId}`,
+                            onPress: () => {
+                                if (serviceId) {
+                                    console.log('[MesProduitsScreen] handleCreateNewProduct - Navigation vers AjouterProduitSimple avec serviceId:', serviceId);
+                                    navigation.navigate('AjouterProduitSimple' as never, {
+                                        mode: 'create',
+                                        serviceId: serviceId,
+                                    } as never);
+                                }
+                            }
+                        };
+                    });
 
                 Alert.alert(
                     '📦 Choisir un service',
@@ -2038,23 +2076,41 @@ const MesProduitsScreen: React.FC = () => {
                 onSuccess={handleVideoCreatorSuccess}
             />
             {/* ✅ NOUVEAU: Modal configuration livraison */}
-            {deliveryConfigProduct && (
-                <ProductDeliveryConfigModal
-                    visible={showDeliveryConfigModal}
-                    onClose={() => {
-                        setShowDeliveryConfigModal(false);
-                        setDeliveryConfigProduct(null);
-                    }}
-                    serviceId={parseInt(deliveryConfigProduct.serviceId, 10)}
-                    productIndex={deliveryConfigProduct.product_index ?? 0}
-                    productName={deliveryConfigProduct.nom || 'Produit'}
-                    onSuccess={() => {
-                        setShowDeliveryConfigModal(false);
-                        setDeliveryConfigProduct(null);
-                        loadProducts(true); // Recharger les produits après configuration
-                    }}
-                />
-            )}
+            {deliveryConfigProduct && (() => {
+                // ✅ CORRECTION CRITIQUE: Extraire et valider le serviceId
+                const serviceIdStr = deliveryConfigProduct.serviceId || deliveryConfigProduct.data?.serviceId;
+                const serviceIdNum = serviceIdStr ? parseInt(String(serviceIdStr), 10) : NaN;
+
+                // ✅ PROTECTION: Vérifier que serviceId est valide avant de rendre le modal
+                if (!serviceIdNum || isNaN(serviceIdNum)) {
+                    console.error('[MesProduitsScreen] ServiceId invalide pour configuration livraison:', {
+                        serviceIdStr,
+                        serviceIdNum,
+                        product: deliveryConfigProduct
+                    });
+                    return null;
+                }
+
+                const productIndex = deliveryConfigProduct.product_index ?? deliveryConfigProduct.data?.product_index ?? 0;
+
+                return (
+                    <ProductDeliveryConfigModal
+                        visible={showDeliveryConfigModal}
+                        onClose={() => {
+                            setShowDeliveryConfigModal(false);
+                            setDeliveryConfigProduct(null);
+                        }}
+                        serviceId={serviceIdNum}
+                        productIndex={productIndex}
+                        productName={deliveryConfigProduct.nom || 'Produit'}
+                        onSuccess={() => {
+                            setShowDeliveryConfigModal(false);
+                            setDeliveryConfigProduct(null);
+                            loadProducts(true); // Recharger les produits après configuration
+                        }}
+                    />
+                );
+            })()}
             <Modal
                 visible={showTeamManager}
                 animationType="slide"

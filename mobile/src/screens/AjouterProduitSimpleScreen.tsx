@@ -885,6 +885,15 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     ? 'Confirmez-vous la duplication de ce produit sur votre service ?'
                     : 'Confirmez-vous l\'ajout de ce produit à votre service ?');
 
+            console.log('[AjouterProduitSimple] 📋 Affichage confirmation création produit:', {
+                serviceId,
+                hasUser: !!user,
+                userId: user?.id,
+                productName: nouveauProduit.nom || nouveauProduit.nom_produit,
+                cost: COUT_AJOUT_PRODUIT,
+                balance: soldeActuel
+            });
+
             Alert.alert(
                 actionTitle,
                 confirmationMessage,
@@ -892,21 +901,48 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     {
                         text: 'Annuler',
                         style: 'cancel',
-                        onPress: () => setLoading(false)
+                        onPress: () => {
+                            console.log('[AjouterProduitSimple] ❌ Création annulée par l\'utilisateur');
+                            setLoading(false);
+                        }
                     },
                     {
                         text: 'Confirmer',
                         onPress: async () => {
                             try {
+                                console.log('[AjouterProduitSimple] ✅ Confirmation reçue, début création produit...');
                                 // ✅ ÉTAPE 4 : Appeler /api/services/{serviceId}/products (IDENTIQUE AU GRAND FORMULAIRE)
                                 const userId = parseInt(user?.id || '0', 10);
+
+                                if (!userId || userId === 0) {
+                                    throw new Error('ID utilisateur invalide');
+                                }
+
+                                if (!serviceId) {
+                                    throw new Error('ID service invalide');
+                                }
+
+                                console.log('[AjouterProduitSimple] 📤 Appel API création produit:', {
+                                    url: `/api/services/${serviceId}/products`,
+                                    userId,
+                                    serviceId,
+                                    productDataKeys: Object.keys(nouveauProduit)
+                                });
+
                                 const response = await apiPost(`/api/services/${serviceId}/products`, {
                                     user_id: userId,
                                     product_data: nouveauProduit
                                 });
 
+                                console.log('[AjouterProduitSimple] 📥 Réponse API création produit:', {
+                                    success: response.success,
+                                    hasData: !!response.data,
+                                    error: response.error,
+                                    message: response.message
+                                });
+
                                 if (!response.success) {
-                                    throw new Error(response.error || 'Erreur lors de l\'ajout du produit');
+                                    throw new Error(response.error || response.message || 'Erreur lors de l\'ajout du produit');
                                 }
 
                                 console.log('[AjouterProduitSimple] ✅ Produit ajouté avec succès:', response);

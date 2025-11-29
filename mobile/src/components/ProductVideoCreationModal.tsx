@@ -5,6 +5,7 @@ import {
     Alert,
     Image,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Switch,
@@ -12,11 +13,13 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { config } from '../config/environment';
 import { mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { AIDistributionPlan, AIVideoBriefVariant, AIVideoStyleSuggestion, GeneratedVideoResponse } from '../types/VideoGeneration';
+import { extractDescription, extractServiceName } from '../utils/displayHelpers';
 import { getFieldValue } from '../utils/productNormalizer';
 import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
@@ -109,31 +112,9 @@ const normalizeProductName = (product?: ManagedProduct | null): string => {
         return 'Votre produit';
     }
 
-    // ✅ CORRIGÉ: Extraire la valeur en utilisant getFieldValue pour gérer les structures wrapper
-    const nom = getFieldValue(product.nom) ||
-        getFieldValue((product as any).nom_produit) ||
-        getFieldValue(product.name) ||
-        getFieldValue(product.title) ||
-        getFieldValue((product as any).data?.nom_produit) ||
-        getFieldValue((product as any).data?.nom);
-
-    // ✅ CORRIGÉ: S'assurer que c'est toujours une string (pas un objet JSON)
-    if (typeof nom === 'string' && nom.trim()) {
-        return nom;
-    }
-
-    // Si c'est un objet, essayer de le convertir en string de manière lisible
-    if (typeof nom === 'object' && nom !== null) {
-        console.warn('[ProductVideoCreationModal] Nom de produit est un objet:', nom);
-        // Essayer d'extraire une valeur lisible
-        if ('valeur' in nom && typeof nom.valeur === 'string') {
-            return nom.valeur;
-        }
-        // Sinon, retourner un fallback
-        return 'Votre produit';
-    }
-
-    return 'Votre produit';
+    // ✅ CORRIGÉ: Utiliser extractProductName qui gère tous les cas
+    const { extractProductName } = require('../utils/displayHelpers');
+    return extractProductName(product, 'Votre produit');
 };
 
 const ensureNumber = (value: any, fallback: number): number => {
@@ -259,6 +240,8 @@ const applyBriefVariant = (
     Alert.alert('Brief appliqué', 'La variante sélectionnée a été appliquée.');
 };
 
+type ModalStep = 1 | 2 | 3 | 4;
+
 const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     visible,
     primaryProduct,
@@ -266,6 +249,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     onClose,
     onSuccess,
 }) => {
+    const insets = useSafeAreaInsets();
+    const [activeStep, setActiveStep] = useState<ModalStep>(1);
     const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(primaryProduct);
     const [selectedRelatedProducts, setSelectedRelatedProducts] = useState<Set<number>>(new Set());
     const [selectedMediaIds, setSelectedMediaIds] = useState<Set<number>>(new Set());
@@ -511,7 +496,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     async () => {
                         const response = await mediaApi.generateVideoBrief({
                             product_name: normalizeProductName(selectedProduct),
-                            description: selectedProduct.description,
+                            description: extractDescription(selectedProduct.description, ''),
                             price: priceLabel,
                             promotion: promotionValue,
                             highlights,
@@ -551,7 +536,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         const preferredChannel = channelPriority.find((key) => selectedChannels.has(key)) || 'shorts';
                         const response = await mediaApi.generateVideoStyle({
                             channel: preferredChannel,
-                            product_type: selectedProduct.type || selectedProduct.category_label,
+                            product_type: getFieldValue(selectedProduct.type) || getFieldValue(selectedProduct.category_label) || '',
                             tone: stylePreset,
                             promotion: promotionValue,
                             highlights,
@@ -642,6 +627,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         if (!visible) {
             coachPrefetchDoneRef.current = false;
             setCoachLoading(false);
+            // ✅ CORRECTION: Réinitialiser l'étape quand le modal se ferme
+            setActiveStep(1);
         }
     }, [visible]);
 
@@ -751,7 +738,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             const highlights = collectProductHighlights(selectedProduct);
             const response = await mediaApi.generateVideoBrief({
                 product_name: normalizeProductName(selectedProduct),
-                description: selectedProduct.description,
+                description: extractDescription(selectedProduct.description, ''),
                 price: priceLabel,
                 promotion: promotionValue,
                 highlights,
@@ -857,7 +844,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             const response = await mediaApi.analyzeMedia({
                 product_name: normalizeProductName(selectedProduct),
                 media_tags: tags,
-                description: selectedProduct.description,
+                description: extractDescription(selectedProduct.description, ''),
                 lang: subtitleLang || voiceoverLang,
             });
 
@@ -969,8 +956,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
 
         const productName = normalizeProductName(selectedProduct);
-        const defaultHeadline = `🎯 ${productName} en ${selectedProduct.city || 'promo'}`;
-        const defaultCTA = `📲 Contactez ${selectedProduct.serviceTitre || 'nous'} sur Yukpomnang`;
+        const defaultHeadline = `🎯 ${productName} en ${getFieldValue(selectedProduct.city) || 'promo'}`;
+        const defaultCTA = `📲 Contactez ${extractServiceName(selectedProduct, 'nous')} sur Yukpomnang`;
 
         setHeadline(defaultHeadline);
         setCallToAction(defaultCTA);
@@ -1016,7 +1003,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             } else {
                 groups.set(serviceId, {
                     serviceId,
-                    serviceTitre: product.serviceTitre || 'Service',
+                    serviceTitre: extractServiceName(product, 'Service'),
                     items: [item],
                 });
             }
@@ -1084,6 +1071,844 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return next;
         });
     }, []);
+
+    // ✅ NOUVEAU: Fonction helper pour calculer les styles dynamiquement avec insets
+    const getStepContentStyle = useCallback(() => ({
+        padding: 20,
+        gap: 20,
+        paddingBottom: 100 + insets.bottom, // ✅ Espace pour les boutons fixes + safe area
+        flexGrow: 1,
+    }), [insets.bottom]);
+
+    const getFixedBottomButtonStyle = useCallback(() => ({
+        position: 'absolute' as const,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 16),
+        backgroundColor: modernColors.background,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: modernColors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 5,
+        zIndex: 1000,
+        minHeight: 80 + insets.bottom,
+    }), [insets.bottom]);
+
+    // ✅ NOUVEAU: Fonctions de rendu par étape
+    const renderStep1 = () => {
+        // Étape 1 : Sélection produit et médias
+        return (
+            <>
+                {renderProductSelection()}
+                {coachPanel}
+                {selectedProduct && (
+                    <>
+                        {renderRelatedProducts()}
+                        <NativeCard style={styles.sectionCard}>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>Sources médias</Text>
+                                <TouchableOpacity
+                                    style={styles.linkButton}
+                                    onPress={handleAnalyzeMedia}
+                                    disabled={isAnalyzingMedia}
+                                >
+                                    {isAnalyzingMedia ? (
+                                        <ActivityIndicator size="small" color={modernColors.primary} />
+                                    ) : (
+                                        <SafeIcon name="scan" size={16} color={modernColors.primary} />
+                                    )}
+                                    <Text style={styles.linkButtonText}>
+                                        {isAnalyzingMedia ? 'Analyse…' : 'Analyse IA'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                            <Text style={styles.sectionSubtitle}>
+                                Sélectionnez les images/vidéos à mettre en avant. Vous pouvez combiner votre
+                                galerie produit et la médiathèque générale.
+                            </Text>
+                            {Array.isArray(mediaAnalysis.dominantColors) && mediaAnalysis.dominantColors.length > 0 && (
+                                <View style={styles.mediaInsightsBox}>
+                                    <Text style={styles.mediaInsightsTitle}>Palette dominante</Text>
+                                    <View style={styles.colorRow}>
+                                        {mediaAnalysis.dominantColors.map((color, idx) => (
+                                            <View
+                                                key={`color_${idx}`}
+                                                style={[styles.colorSwatch, { backgroundColor: color }]}
+                                            >
+                                                <Text style={styles.colorLabel}>{color}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                    {mediaAnalysis.detectedObjects && mediaAnalysis.detectedObjects.length > 0 && (
+                                        <Text style={styles.mediaInsightsText}>
+                                            Objets repérés : {mediaAnalysis.detectedObjects.join(', ')}
+                                        </Text>
+                                    )}
+                                    {mediaAnalysis.ambiance && (
+                                        <Text style={styles.mediaInsightsText}>
+                                            Ambiance : {mediaAnalysis.ambiance}
+                                        </Text>
+                                    )}
+                                    {mediaAnalysis.marketingAngle && (
+                                        <Text style={styles.mediaInsightsText}>
+                                            Angle marketing : {mediaAnalysis.marketingAngle}
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
+                            <View style={styles.toggleRow}>
+                                <View style={styles.toggleText}>
+                                    <Text style={styles.toggleLabel}>Galerie produit intelligente</Text>
+                                    <Text style={styles.toggleDescription}>
+                                        Yukpomnang exploitera automatiquement les images enregistrées dans cette
+                                        fiche produit.
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={useProductGallery}
+                                    onValueChange={setUseProductGallery}
+                                    trackColor={{ true: '#6366F1' }}
+                                />
+                            </View>
+                            <View style={styles.toggleRow}>
+                                <View style={styles.toggleText}>
+                                    <Text style={styles.toggleLabel}>Médiathèque du prestataire</Text>
+                                    <Text style={styles.toggleDescription}>
+                                        Ajoute vos assets généraux (logos, publicités, vidéos verticales) pour un
+                                        rendu premium.
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={useMediatechLibrary}
+                                    onValueChange={setUseMediatechLibrary}
+                                    trackColor={{ true: '#6366F1' }}
+                                />
+                            </View>
+                            <View style={styles.toggleRow}>
+                                <View style={styles.toggleText}>
+                                    <Text style={styles.toggleLabel}>Inclure vos visuels publicitaires</Text>
+                                    <Text style={styles.toggleDescription}>
+                                        Ajoute automatiquement les bannières/affiches déjà configurées dans vos
+                                        campagnes.
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={includePubliciteAssets}
+                                    onValueChange={setIncludePubliciteAssets}
+                                    trackColor={{ true: '#6366F1' }}
+                                />
+                            </View>
+                            {renderMediaGrid(
+                                productMedia,
+                                'Images et vidéos du produit',
+                                'Ajoutez des médias à cette fiche pour dynamiser la vidéo.',
+                                '#6366F1',
+                            )}
+                            {renderMediaGrid(
+                                serviceMedia,
+                                'Médiathèque prestataire',
+                                'Aucun média global enregistré pour ce service pour le moment.',
+                                '#8B5CF6',
+                            )}
+                        </NativeCard>
+                    </>
+                )}
+            </>
+        );
+    };
+
+    const renderStep2 = () => {
+        // Étape 2 : Configuration style et audio
+        if (!selectedProduct) {
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Retournez à l'étape 1 pour sélectionner un produit.
+                    </Text>
+                </NativeCard>
+            );
+        }
+
+        return (
+            <>
+                <NativeCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Style et rythme de la vidéo</Text>
+                        <TouchableOpacity
+                            style={styles.linkButton}
+                            onPress={handleGenerateStyleSuggestion}
+                            disabled={isGeneratingStyle}
+                        >
+                            {isGeneratingStyle ? (
+                                <ActivityIndicator size="small" color={modernColors.primary} />
+                            ) : (
+                                <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                            )}
+                            <Text style={styles.linkButtonText}>
+                                {isGeneratingStyle ? 'Analyse…' : 'Effets IA'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.styleRow}>
+                        {VIDEO_STYLE_OPTIONS.map((option) => {
+                            const selected = stylePreset === option.key;
+                            return (
+                                <TouchableOpacity
+                                    key={option.key}
+                                    style={[
+                                        styles.styleChip,
+                                        selected && styles.styleChipSelected,
+                                    ]}
+                                    onPress={() => setStylePreset(option.key)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.styleChipLabel,
+                                            selected && styles.styleChipLabelSelected,
+                                        ]}
+                                    >
+                                        {option.label}
+                                    </Text>
+                                    <Text style={styles.styleChipDescription} numberOfLines={2}>
+                                        {option.description}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                    {styleSuggestion && (
+                        <View style={styles.suggestionSection}>
+                            <Text style={styles.suggestionTitle}>Effets recommandés</Text>
+                            <View style={styles.suggestionRow}>
+                                {Array.isArray(styleSuggestion.effects) ? styleSuggestion.effects.map((effect) => {
+                                    const active = selectedEffects.has(effect);
+                                    return (
+                                        <TouchableOpacity
+                                            key={`effect_${effect}`}
+                                            style={[
+                                                styles.suggestionChip,
+                                                active && styles.suggestionChipSelected,
+                                            ]}
+                                            onPress={() => toggleSelection(effect, setSelectedEffects)}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.suggestionChipText,
+                                                    active && styles.suggestionChipTextSelected,
+                                                ]}
+                                            >
+                                                {effect}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                }) : null}
+                            </View>
+
+                            <Text style={styles.suggestionTitle}>Transitions</Text>
+                            <View style={styles.suggestionRow}>
+                                {Array.isArray(styleSuggestion.transitions) ? styleSuggestion.transitions.map((transition) => {
+                                    const active = selectedTransitions.has(transition);
+                                    return (
+                                        <TouchableOpacity
+                                            key={`transition_${transition}`}
+                                            style={[
+                                                styles.suggestionChip,
+                                                active && styles.suggestionChipSelected,
+                                            ]}
+                                            onPress={() => toggleSelection(transition, setSelectedTransitions)}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.suggestionChipText,
+                                                    active && styles.suggestionChipTextSelected,
+                                                ]}
+                                            >
+                                                {transition}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                }) : null}
+                            </View>
+
+                            <Text style={styles.suggestionTitle}>Overlays & tips</Text>
+                            <View style={styles.suggestionRow}>
+                                {Array.isArray(styleSuggestion.overlay_tips) ? styleSuggestion.overlay_tips.map((tip) => {
+                                    const active = selectedOverlayTips.has(tip);
+                                    return (
+                                        <TouchableOpacity
+                                            key={`tip_${tip}`}
+                                            style={[
+                                                styles.suggestionChip,
+                                                active && styles.suggestionChipSelected,
+                                            ]}
+                                            onPress={() => toggleSelection(tip, setSelectedOverlayTips)}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.suggestionChipText,
+                                                    active && styles.suggestionChipTextSelected,
+                                                ]}
+                                            >
+                                                {tip}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                }) : null}
+                            </View>
+
+                            <Text style={styles.suggestionTitle}>Palette de couleurs</Text>
+                            <NativeInput
+                                value={colorPalette}
+                                onChangeText={setColorPalette}
+                                placeholder={styleSuggestion.color_palette || '#6366F1 / #0EA5E9'}
+                            />
+
+                            <Text style={styles.suggestionTitle}>Ambiance musicale recommandée</Text>
+                            <NativeInput
+                                value={styleMusicHint}
+                                onChangeText={setStyleMusicHint}
+                                placeholder={styleSuggestion.music_hint || 'Ex: Beat afro-pop énergique'}
+                            />
+                        </View>
+                    )}
+                    <View style={styles.durationRow}>
+                        <Text style={styles.fieldLabel}>Durée cible</Text>
+                        <View style={styles.durationInputRow}>
+                            <NativeInput
+                                value={duration}
+                                onChangeText={setDuration}
+                                keyboardType="numeric"
+                                style={styles.durationInput}
+                            />
+                            <Text style={styles.durationUnit}>secondes</Text>
+                        </View>
+                        <Text style={styles.durationHint}>
+                            Astuce : 25-35s performe mieux sur les réseaux sociaux. Yukpomnang gère les
+                            transitions automatiquement.
+                        </Text>
+                    </View>
+                </NativeCard>
+
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Ambiance musicale</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Choisissez une ambiance générée automatiquement. Vous pouvez ajouter vos propres pistes via la médiathèque.
+                    </Text>
+                    <View style={styles.styleRow}>
+                        {MUSIC_MODE_OPTIONS.map((option) => {
+                            const selected = musicMode === option.key;
+                            return (
+                                <TouchableOpacity
+                                    key={option.key}
+                                    style={[
+                                        styles.styleChip,
+                                        selected && styles.styleChipSelected,
+                                    ]}
+                                    onPress={() => setMusicMode(option.key)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.styleChipLabel,
+                                            selected && styles.styleChipLabelSelected,
+                                        ]}
+                                    >
+                                        {option.label}
+                                    </Text>
+                                    <Text style={styles.styleChipDescription} numberOfLines={2}>
+                                        {option.description}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                    {musicMode !== 'none' && (
+                        <View style={styles.fieldGroup}>
+                            <Text style={styles.fieldLabel}>Volume musique (0.10 - 0.60)</Text>
+                            <NativeInput
+                                value={musicVolume}
+                                onChangeText={setMusicVolume}
+                                keyboardType="decimal-pad"
+                            />
+                            <View style={styles.audioActionsRow}>
+                                <TouchableOpacity
+                                    style={styles.audioImportButton}
+                                    onPress={handleImportAudioTrack}
+                                    disabled={isUploadingAudio}
+                                >
+                                    {isUploadingAudio ? (
+                                        <ActivityIndicator size="small" color={modernColors.primary} />
+                                    ) : (
+                                        <SafeIcon name="plus" size={16} color={modernColors.primary} />
+                                    )}
+                                    <Text style={styles.audioImportText}>
+                                        {isUploadingAudio ? 'Import en cours…' : "Importer une piste depuis l'appareil"}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                            {availableAudioTracks.length > 0 && (
+                                <>
+                                    <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
+                                        Sélectionner une piste audio existante
+                                    </Text>
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={styles.audioRow}
+                                    >
+                                        {availableAudioTracks.map((track) => {
+                                            const selected = selectedMusicTrackId === track.id;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={`audio_${track.id}`}
+                                                    style={[
+                                                        styles.audioChip,
+                                                        selected && styles.audioChipSelected,
+                                                    ]}
+                                                    onPress={() => setSelectedMusicTrackId(selected ? null : track.id)}
+                                                >
+                                                    <SafeIcon
+                                                        name={selected ? 'music' : 'headphones'}
+                                                        size={16}
+                                                        color={selected ? '#0EA5E9' : modernColors.primary}
+                                                    />
+                                                    <Text
+                                                        style={[
+                                                            styles.audioChipText,
+                                                            selected && styles.audioChipTextSelected,
+                                                        ]}
+                                                        numberOfLines={1}
+                                                    >
+                                                        {track.ai_description || `Piste ${track.id}`}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </ScrollView>
+                                </>
+                            )}
+                            {audioLibrary.length > 0 && (
+                                <>
+                                    <Text style={[styles.fieldLabel, { marginTop: 16 }]}>
+                                        Bibliothèque audio Yukpomnang
+                                    </Text>
+                                    {loadingLibrary ? (
+                                        <View style={styles.audioRow}>
+                                            <ActivityIndicator size="small" color={modernColors.primary} />
+                                        </View>
+                                    ) : (
+                                        <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            contentContainerStyle={styles.audioRow}
+                                        >
+                                            {audioLibrary.map((loop) => {
+                                                const isAttaching = attachingLoopId === loop.id;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={loop.id}
+                                                        style={styles.audioChip}
+                                                        onPress={() => handleAttachAudioLoop(loop.id)}
+                                                        disabled={isAttaching}
+                                                    >
+                                                        {isAttaching ? (
+                                                            <ActivityIndicator size="small" color={modernColors.primary} />
+                                                        ) : (
+                                                            <SafeIcon name="download-cloud" size={16} color={modernColors.primary} />
+                                                        )}
+                                                        <View style={{ flex: 1 }}>
+                                                            <Text style={styles.audioChipText} numberOfLines={1}>
+                                                                {loop.title}
+                                                            </Text>
+                                                            <Text style={styles.audioChipSubtitle} numberOfLines={1}>
+                                                                {loop.genre} • {loop.bpm} BPM
+                                                            </Text>
+                                                        </View>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </ScrollView>
+                                    )}
+                                </>
+                            )}
+                        </View>
+                    )}
+                </NativeCard>
+            </>
+        );
+    };
+
+    const renderStep3 = () => {
+        // Étape 3 : Brief et script
+        if (!selectedProduct) {
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Retournez à l'étape 1 pour sélectionner un produit.
+                    </Text>
+                </NativeCard>
+            );
+        }
+
+        return (
+            <>
+                <NativeCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Brief & script marketing</Text>
+                        <TouchableOpacity
+                            style={styles.linkButton}
+                            onPress={handleGenerateBrief}
+                            disabled={isGeneratingBrief}
+                        >
+                            {isGeneratingBrief ? (
+                                <ActivityIndicator size="small" color={modernColors.primary} />
+                            ) : (
+                                <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                            )}
+                            <Text style={styles.linkButtonText}>
+                                {isGeneratingBrief ? 'Génération…' : 'Brief IA'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.fieldGroup}>
+                        <Text style={styles.fieldLabel}>Titre percutant</Text>
+                        <NativeInput
+                            value={headline}
+                            onChangeText={setHeadline}
+                            placeholder="Ex: 🚀 Promotion spéciale sur nos mèches premium !"
+                            multiline
+                            minLines={2}
+                        />
+                    </View>
+                    <View style={styles.fieldGroup}>
+                        <Text style={styles.fieldLabel}>Call-to-action principal</Text>
+                        <NativeInput
+                            value={callToAction}
+                            onChangeText={setCallToAction}
+                            placeholder="Ex: Réservez en ligne et profitez de la livraison express !"
+                            multiline
+                            minLines={2}
+                        />
+                    </View>
+                    <View style={styles.fieldGroup}>
+                        <Text style={styles.fieldLabel}>Brief marketing (optionnel)</Text>
+                        <NativeInput
+                            value={scriptNotes}
+                            onChangeText={setScriptNotes}
+                            placeholder={`Décrivez les messages clés, avantages, garanties, etc.\nUne ligne = une scène.`}
+                            multiline
+                            minLines={3}
+                        />
+                    </View>
+                </NativeCard>
+
+                <NativeCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Narration vocale IA</Text>
+                        <Switch
+                            value={voiceoverEnabled}
+                            onValueChange={(value) => {
+                                setVoiceoverEnabled(value);
+                                if (value && voiceoverScript.trim().length === 0) {
+                                    const storyboardLines = scriptNotes
+                                        .split(/\r?\n/)
+                                        .map((line) => line.trim())
+                                        .filter((line) => line.length > 0);
+                                    setVoiceoverScript(
+                                        buildDefaultVoiceover(
+                                            normalizeProductName(selectedProduct),
+                                            headline,
+                                            callToAction,
+                                            storyboardLines,
+                                        ),
+                                    );
+                                }
+                            }}
+                            trackColor={{ true: '#6366F1' }}
+                        />
+                    </View>
+                    <Text style={styles.sectionSubtitle}>
+                        Génère une voix off automatique (espeak doit être installé sur le serveur). Vous pouvez ajuster le script avant synthèse.
+                    </Text>
+                    {voiceoverEnabled && (
+                        <>
+                            <View style={styles.voiceRow}>
+                                {VOICE_LANG_OPTIONS.map((option) => {
+                                    const selected = voiceoverLang === option.value;
+                                    return (
+                                        <TouchableOpacity
+                                            key={option.value}
+                                            style={[
+                                                styles.voiceChip,
+                                                selected && styles.voiceChipSelected,
+                                            ]}
+                                            onPress={() => {
+                                                setVoiceoverLang(option.value);
+                                                setSubtitleLang(option.value);
+                                            }}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.voiceChipText,
+                                                    selected && styles.voiceChipTextSelected,
+                                                ]}
+                                            >
+                                                {option.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                            <NativeInput
+                                value={voiceoverScript}
+                                onChangeText={setVoiceoverScript}
+                                placeholder="Texte de narration..."
+                                multiline
+                                minLines={3}
+                            />
+                        </>
+                    )}
+                </NativeCard>
+
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Informations à intégrer automatiquement</Text>
+                    <View style={styles.toggleRow}>
+                        <View style={styles.toggleText}>
+                            <Text style={styles.toggleLabel}>Prix & devise</Text>
+                            <Text style={styles.toggleDescription}>
+                                Affiche automatiquement le prix actuel du produit.
+                            </Text>
+                        </View>
+                        <Switch
+                            value={includePrice}
+                            onValueChange={setIncludePrice}
+                            trackColor={{ true: '#6366F1' }}
+                        />
+                    </View>
+                    <View style={styles.toggleRow}>
+                        <View style={styles.toggleText}>
+                            <Text style={styles.toggleLabel}>Promotions actives</Text>
+                            <Text style={styles.toggleDescription}>
+                                Ajoute badges et messages promo détectés dans votre fiche produit.
+                            </Text>
+                        </View>
+                        <Switch
+                            value={includePromotion}
+                            onValueChange={setIncludePromotion}
+                            trackColor={{ true: '#6366F1' }}
+                        />
+                    </View>
+                    <View style={styles.toggleRow}>
+                        <View style={styles.toggleText}>
+                            <Text style={styles.toggleLabel}>Coordonnées & CTA</Text>
+                            <Text style={styles.toggleDescription}>
+                                Ajoute votre CTA + boutons vers le chat Yukpomnang.
+                            </Text>
+                        </View>
+                        <Switch
+                            value={includeContact}
+                            onValueChange={setIncludeContact}
+                            trackColor={{ true: '#6366F1' }}
+                        />
+                    </View>
+                </NativeCard>
+            </>
+        );
+    };
+
+    const renderStep4 = () => {
+        // Étape 4 : Distribution et résumé
+        if (!selectedProduct) {
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Sélectionnez d'abord un produit</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Retournez à l'étape 1 pour sélectionner un produit.
+                    </Text>
+                </NativeCard>
+            );
+        }
+
+        return (
+            <NativeCard style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Diffusion automatique</Text>
+                    <TouchableOpacity
+                        style={styles.linkButton}
+                        onPress={handleGenerateDistribution}
+                        disabled={isGeneratingDistribution}
+                    >
+                        {isGeneratingDistribution ? (
+                            <ActivityIndicator size="small" color={modernColors.primary} />
+                        ) : (
+                            <SafeIcon name="send" size={16} color={modernColors.primary} />
+                        )}
+                        <Text style={styles.linkButtonText}>
+                            {isGeneratingDistribution ? 'Planification…' : 'Plan IA'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+                <Text style={styles.sectionSubtitle}>
+                    Contrôlez où la vidéo sera mise en avant immédiatement après sa génération.
+                </Text>
+                {distributionPlan && (
+                    <View style={styles.planBox}>
+                        {distributionPlan.summary && (
+                            <Text style={styles.planSummary}>{distributionPlan.summary}</Text>
+                        )}
+                        {distributionPlan.hashtags?.length > 0 && (
+                            <Text style={styles.planHashtags}>
+                                Hashtags : {Array.isArray(distributionPlan.hashtags) ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}
+                            </Text>
+                        )}
+                        {distributionPlan.schedule?.length > 0 && (
+                            <View style={styles.planSchedule}>
+                                {Array.isArray(distributionPlan.schedule) ? distributionPlan.schedule.map((item, idx) => (
+                                    <View key={`schedule_${idx}`} style={styles.planScheduleRow}>
+                                        <Text style={styles.planScheduleChannel}>{item.channel}</Text>
+                                        <Text style={styles.planScheduleTime}>{item.best_time}</Text>
+                                        {item.call_to_action && (
+                                            <Text style={styles.planScheduleCTA}>{item.call_to_action}</Text>
+                                        )}
+                                    </View>
+                                )) : null}
+                            </View>
+                        )}
+                    </View>
+                )}
+                <View style={styles.toggleRow}>
+                    <View style={styles.toggleText}>
+                        <Text style={styles.toggleLabel}>Envoyer dans le Chat Commerce</Text>
+                        <Text style={styles.toggleDescription}>
+                            Permet à vos prospects de visionner la vidéo directement dans la
+                            conversation.
+                        </Text>
+                    </View>
+                    <Switch
+                        value={publishToChat}
+                        onValueChange={setPublishToChat}
+                        trackColor={{ true: '#6366F1' }}
+                    />
+                </View>
+                <View style={styles.toggleRow}>
+                    <View style={styles.toggleText}>
+                        <Text style={styles.toggleLabel}>Afficher sur la carte produit</Text>
+                        <Text style={styles.toggleDescription}>
+                            Ajoute la vidéo dans la galerie principale du produit (mobile & web).
+                        </Text>
+                    </View>
+                    <Switch
+                        value={publishToProductCard}
+                        onValueChange={setPublishToProductCard}
+                        trackColor={{ true: '#6366F1' }}
+                    />
+                </View>
+                <Text style={[styles.sectionSubtitle, { marginTop: 8 }]}>
+                    Ciblez aussi des canaux externes à planifier (export automatique disponible) :
+                </Text>
+                <View style={styles.voiceRow}>
+                    {DISTRIBUTION_OPTIONS.map((option) => {
+                        const selected = selectedChannels.has(option.key);
+                        return (
+                            <TouchableOpacity
+                                key={option.key}
+                                style={[
+                                    styles.voiceChip,
+                                    selected && styles.voiceChipSelected,
+                                ]}
+                                onPress={() =>
+                                    setSelectedChannels((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(option.key)) {
+                                            next.delete(option.key);
+                                        } else {
+                                            next.add(option.key);
+                                        }
+                                        return next;
+                                    })
+                                }
+                            >
+                                <Text
+                                    style={[
+                                        styles.voiceChipText,
+                                        selected && styles.voiceChipTextSelected,
+                                    ]}
+                                >
+                                    {option.label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+                <Text style={styles.distributionHint}>
+                    Les canaux externes seront exportés au format adapté (carré ou paysage) pour faciliter vos publications.
+                </Text>
+                <View style={styles.toggleRow}>
+                    <View style={styles.toggleText}>
+                        <Text style={styles.toggleLabel}>Générer aussi un format carré (1080x1080)</Text>
+                        <Text style={styles.toggleDescription}>
+                            Idéal pour Instagram, WhatsApp et fiches produits.
+                        </Text>
+                    </View>
+                    <Switch
+                        value={generateSquareVariant}
+                        onValueChange={setGenerateSquareVariant}
+                        trackColor={{ true: '#6366F1' }}
+                    />
+                </View>
+                <View style={styles.toggleRow}>
+                    <View style={styles.toggleText}>
+                        <Text style={styles.toggleLabel}>Générer un format paysage (1920x1080)</Text>
+                        <Text style={styles.toggleDescription}>
+                            Parfait pour écrans larges et présentations.
+                        </Text>
+                    </View>
+                    <Switch
+                        value={generateLandscapeVariant}
+                        onValueChange={setGenerateLandscapeVariant}
+                        trackColor={{ true: '#6366F1' }}
+                    />
+                </View>
+            </NativeCard>
+        );
+    };
+
+    // ✅ NOUVEAU: Fonction pour rendre le contenu de l'étape active
+    const renderStepContent = () => {
+        switch (activeStep) {
+            case 1:
+                return renderStep1();
+            case 2:
+                return renderStep2();
+            case 3:
+                return renderStep3();
+            case 4:
+                return renderStep4();
+            default:
+                return renderStep1();
+        }
+    };
+
+    // ✅ NOUVEAU: Fonction pour gérer la navigation entre les étapes
+    const handleStepChange = (newStep: ModalStep) => {
+        // Validation basique : on ne peut pas avancer si aucun produit n'est sélectionné (sauf étape 1)
+        if (newStep > 1 && !selectedProduct) {
+            Alert.alert(
+                'Produit requis',
+                'Veuillez d\'abord sélectionner un produit à l\'étape 1.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+        setActiveStep(newStep);
+    };
 
     // ✅ CORRIGÉ: Fonction wrapper pour applyBriefVariant avec les setters du composant
     // ✅ CORRIGÉ 2025-11-28: Retiré les setters des dépendances car ils sont stables
@@ -1393,7 +2218,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 {normalizeProductName(selectedProduct)}
                             </Text>
                             <Text style={styles.selectedProductService} numberOfLines={1}>
-                                {selectedProduct.serviceTitre || 'Service'}
+                                {extractServiceName(selectedProduct, 'Service')}
                             </Text>
                             {(() => {
                                 const prix = getFieldValue(selectedProduct.prix);
@@ -1440,7 +2265,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             return (
                                 <View key={group.serviceId || 'unknown'} style={styles.productGroup}>
                                     <Text style={styles.productGroupTitle}>
-                                        {group.serviceTitre || 'Service sans nom'}
+                                        {extractServiceName(group, 'Service sans nom')}
                                     </Text>
                                     {group.items.map((product, idx) => {
                                         // ✅ CORRIGÉ: Vérifier que product est défini
@@ -1677,756 +2502,96 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 <View style={styles.overlay}>
                     <NativeCard style={styles.modalCard}>
                         <View style={styles.modalHeader}>
-                            <View>
+                            <View style={{ flex: 1 }}>
                                 <Text style={styles.modalTitle}>Studio vidéo produit</Text>
                                 <Text style={styles.modalSubtitle}>
                                     Assemblez en 30 secondes une vidéo verticale prête pour TikTok, Reels et votre fiche
                                     produit.
                                 </Text>
+                                {/* ✅ NOUVEAU: Indicateur d'étapes */}
+                                <View style={styles.stepIndicator}>
+                                    {[1, 2, 3, 4].map((step) => (
+                                        <View
+                                            key={step}
+                                            style={[
+                                                styles.stepDot,
+                                                activeStep === step && styles.stepDotActive,
+                                                activeStep > step && styles.stepDotCompleted,
+                                            ]}
+                                        />
+                                    ))}
+                                    <Text style={styles.stepText}>
+                                        Étape {activeStep} sur 4
+                                    </Text>
+                                </View>
                             </View>
                             <TouchableOpacity onPress={onClose} disabled={isSubmitting} style={styles.closeButton}>
                                 <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                            {renderProductSelection()}
-                            {coachPanel}
-
-                            {selectedProduct && (
-                                <>
-                                    <NativeCard style={styles.sectionCard}>
-                                        <View style={styles.sectionHeader}>
-                                            <Text style={styles.sectionTitle}>Brief & script marketing</Text>
-                                            <TouchableOpacity
-                                                style={styles.linkButton}
-                                                onPress={handleGenerateBrief}
-                                                disabled={isGeneratingBrief}
-                                            >
-                                                {isGeneratingBrief ? (
-                                                    <ActivityIndicator size="small" color={modernColors.primary} />
-                                                ) : (
-                                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                                                )}
-                                                <Text style={styles.linkButtonText}>
-                                                    {isGeneratingBrief ? 'Génération…' : 'Brief IA'}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        <View style={styles.fieldGroup}>
-                                            <Text style={styles.fieldLabel}>Titre percutant</Text>
-                                            <NativeInput
-                                                value={headline}
-                                                onChangeText={setHeadline}
-                                                placeholder="Ex: 🚀 Promotion spéciale sur nos mèches premium !"
-                                                multiline
-                                                minLines={2}
-                                            />
-                                        </View>
-                                        <View style={styles.fieldGroup}>
-                                            <Text style={styles.fieldLabel}>Call-to-action principal</Text>
-                                            <NativeInput
-                                                value={callToAction}
-                                                onChangeText={setCallToAction}
-                                                placeholder="Ex: Réservez en ligne et profitez de la livraison express !"
-                                                multiline
-                                                minLines={2}
-                                            />
-                                        </View>
-                                        <View style={styles.fieldGroup}>
-                                            <Text style={styles.fieldLabel}>Brief marketing (optionnel)</Text>
-                                            <NativeInput
-                                                value={scriptNotes}
-                                                onChangeText={setScriptNotes}
-                                                placeholder={`Décrivez les messages clés, avantages, garanties, etc.\nUne ligne = une scène.`}
-                                                multiline
-                                                minLines={3}
-                                            />
-                                        </View>
-                                    </NativeCard>
-
-                                    <NativeCard style={styles.sectionCard}>
-                                        <View style={styles.sectionHeader}>
-                                            <Text style={styles.sectionTitle}>Style et rythme de la vidéo</Text>
-                                            <TouchableOpacity
-                                                style={styles.linkButton}
-                                                onPress={handleGenerateStyleSuggestion}
-                                                disabled={isGeneratingStyle}
-                                            >
-                                                {isGeneratingStyle ? (
-                                                    <ActivityIndicator size="small" color={modernColors.primary} />
-                                                ) : (
-                                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                                                )}
-                                                <Text style={styles.linkButtonText}>
-                                                    {isGeneratingStyle ? 'Analyse…' : 'Effets IA'}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        <View style={styles.styleRow}>
-                                            {VIDEO_STYLE_OPTIONS.map((option) => {
-                                                const selected = stylePreset === option.key;
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={option.key}
-                                                        style={[
-                                                            styles.styleChip,
-                                                            selected && styles.styleChipSelected,
-                                                        ]}
-                                                        onPress={() => setStylePreset(option.key)}
-                                                    >
-                                                        <Text
-                                                            style={[
-                                                                styles.styleChipLabel,
-                                                                selected && styles.styleChipLabelSelected,
-                                                            ]}
-                                                        >
-                                                            {option.label}
-                                                        </Text>
-                                                        <Text style={styles.styleChipDescription} numberOfLines={2}>
-                                                            {option.description}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-                                        </View>
-                                        {styleSuggestion && (
-                                            <View style={styles.suggestionSection}>
-                                                <Text style={styles.suggestionTitle}>Effets recommandés</Text>
-                                                <View style={styles.suggestionRow}>
-                                                    {Array.isArray(styleSuggestion.effects) ? styleSuggestion.effects.map((effect) => {
-                                                        const active = selectedEffects.has(effect);
-                                                        return (
-                                                            <TouchableOpacity
-                                                                key={`effect_${effect}`}
-                                                                style={[
-                                                                    styles.suggestionChip,
-                                                                    active && styles.suggestionChipSelected,
-                                                                ]}
-                                                                onPress={() => toggleSelection(effect, setSelectedEffects)}
-                                                            >
-                                                                <Text
-                                                                    style={[
-                                                                        styles.suggestionChipText,
-                                                                        active && styles.suggestionChipTextSelected,
-                                                                    ]}
-                                                                >
-                                                                    {effect}
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                        );
-                                                    }) : null}
-                                                </View>
-
-                                                <Text style={styles.suggestionTitle}>Transitions</Text>
-                                                <View style={styles.suggestionRow}>
-                                                    {Array.isArray(styleSuggestion.transitions) ? styleSuggestion.transitions.map((transition) => {
-                                                        const active = selectedTransitions.has(transition);
-                                                        return (
-                                                            <TouchableOpacity
-                                                                key={`transition_${transition}`}
-                                                                style={[
-                                                                    styles.suggestionChip,
-                                                                    active && styles.suggestionChipSelected,
-                                                                ]}
-                                                                onPress={() => toggleSelection(transition, setSelectedTransitions)}
-                                                            >
-                                                                <Text
-                                                                    style={[
-                                                                        styles.suggestionChipText,
-                                                                        active && styles.suggestionChipTextSelected,
-                                                                    ]}
-                                                                >
-                                                                    {transition}
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                        );
-                                                    }) : null}
-                                                </View>
-
-                                                <Text style={styles.suggestionTitle}>Overlays & tips</Text>
-                                                <View style={styles.suggestionRow}>
-                                                    {Array.isArray(styleSuggestion.overlay_tips) ? styleSuggestion.overlay_tips.map((tip) => {
-                                                        const active = selectedOverlayTips.has(tip);
-                                                        return (
-                                                            <TouchableOpacity
-                                                                key={`tip_${tip}`}
-                                                                style={[
-                                                                    styles.suggestionChip,
-                                                                    active && styles.suggestionChipSelected,
-                                                                ]}
-                                                                onPress={() => toggleSelection(tip, setSelectedOverlayTips)}
-                                                            >
-                                                                <Text
-                                                                    style={[
-                                                                        styles.suggestionChipText,
-                                                                        active && styles.suggestionChipTextSelected,
-                                                                    ]}
-                                                                >
-                                                                    {tip}
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                        );
-                                                    }) : null}
-                                                </View>
-
-                                                <Text style={styles.suggestionTitle}>Palette de couleurs</Text>
-                                                <NativeInput
-                                                    value={colorPalette}
-                                                    onChangeText={setColorPalette}
-                                                    placeholder={styleSuggestion.color_palette || '#6366F1 / #0EA5E9'}
-                                                />
-
-                                                <Text style={styles.suggestionTitle}>Ambiance musicale recommandée</Text>
-                                                <NativeInput
-                                                    value={styleMusicHint}
-                                                    onChangeText={setStyleMusicHint}
-                                                    placeholder={styleSuggestion.music_hint || 'Ex: Beat afro-pop énergique'}
-                                                />
-                                            </View>
-                                        )}
-                                        <View style={styles.durationRow}>
-                                            <Text style={styles.fieldLabel}>Durée cible</Text>
-                                            <View style={styles.durationInputRow}>
-                                                <NativeInput
-                                                    value={duration}
-                                                    onChangeText={setDuration}
-                                                    keyboardType="numeric"
-                                                    style={styles.durationInput}
-                                                />
-                                                <Text style={styles.durationUnit}>secondes</Text>
-                                            </View>
-                                            <Text style={styles.durationHint}>
-                                                Astuce : 25-35s performe mieux sur les réseaux sociaux. Yukpomnang gère les
-                                                transitions automatiquement.
-                                            </Text>
-                                        </View>
-                                    </NativeCard>
-
-                                    <NativeCard style={styles.sectionCard}>
-                                        <Text style={styles.sectionTitle}>Ambiance musicale</Text>
-                                        <Text style={styles.sectionSubtitle}>
-                                            Choisissez une ambiance générée automatiquement. Vous pouvez ajouter vos propres pistes via la médiathèque.
-                                        </Text>
-                                        <View style={styles.styleRow}>
-                                            {MUSIC_MODE_OPTIONS.map((option) => {
-                                                const selected = musicMode === option.key;
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={option.key}
-                                                        style={[
-                                                            styles.styleChip,
-                                                            selected && styles.styleChipSelected,
-                                                        ]}
-                                                        onPress={() => setMusicMode(option.key)}
-                                                    >
-                                                        <Text
-                                                            style={[
-                                                                styles.styleChipLabel,
-                                                                selected && styles.styleChipLabelSelected,
-                                                            ]}
-                                                        >
-                                                            {option.label}
-                                                        </Text>
-                                                        <Text style={styles.styleChipDescription} numberOfLines={2}>
-                                                            {option.description}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-                                        </View>
-                                        {musicMode !== 'none' && (
-                                            <View style={styles.fieldGroup}>
-                                                <Text style={styles.fieldLabel}>Volume musique (0.10 - 0.60)</Text>
-                                                <NativeInput
-                                                    value={musicVolume}
-                                                    onChangeText={setMusicVolume}
-                                                    keyboardType="decimal-pad"
-                                                />
-                                                <View style={styles.audioActionsRow}>
-                                                    <TouchableOpacity
-                                                        style={styles.audioImportButton}
-                                                        onPress={handleImportAudioTrack}
-                                                        disabled={isUploadingAudio}
-                                                    >
-                                                        {isUploadingAudio ? (
-                                                            <ActivityIndicator size="small" color={modernColors.primary} />
-                                                        ) : (
-                                                            <SafeIcon name="plus" size={16} color={modernColors.primary} />
-                                                        )}
-                                                        <Text style={styles.audioImportText}>
-                                                            {isUploadingAudio ? 'Import en cours…' : "Importer une piste depuis l'appareil"}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                                {availableAudioTracks.length > 0 && (
-                                                    <>
-                                                        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
-                                                            Sélectionner une piste audio existante
-                                                        </Text>
-                                                        <ScrollView
-                                                            horizontal
-                                                            showsHorizontalScrollIndicator={false}
-                                                            contentContainerStyle={styles.audioRow}
-                                                        >
-                                                            {availableAudioTracks.map((track) => {
-                                                                const selected = selectedMusicTrackId === track.id;
-                                                                return (
-                                                                    <TouchableOpacity
-                                                                        key={`audio_${track.id}`}
-                                                                        style={[
-                                                                            styles.audioChip,
-                                                                            selected && styles.audioChipSelected,
-                                                                        ]}
-                                                                        onPress={() => setSelectedMusicTrackId(selected ? null : track.id)}
-                                                                    >
-                                                                        <SafeIcon
-                                                                            name={selected ? 'music' : 'headphones'}
-                                                                            size={16}
-                                                                            color={selected ? '#0EA5E9' : modernColors.primary}
-                                                                        />
-                                                                        <Text
-                                                                            style={[
-                                                                                styles.audioChipText,
-                                                                                selected && styles.audioChipTextSelected,
-                                                                            ]}
-                                                                            numberOfLines={1}
-                                                                        >
-                                                                            {track.ai_description || `Piste ${track.id}`}
-                                                                        </Text>
-                                                                    </TouchableOpacity>
-                                                                );
-                                                            })}
-                                                        </ScrollView>
-                                                    </>
-                                                )}
-                                                {audioLibrary.length > 0 && (
-                                                    <>
-                                                        <Text style={[styles.fieldLabel, { marginTop: 16 }]}>
-                                                            Bibliothèque audio Yukpomnang
-                                                        </Text>
-                                                        {loadingLibrary ? (
-                                                            <View style={styles.audioRow}>
-                                                                <ActivityIndicator size="small" color={modernColors.primary} />
-                                                            </View>
-                                                        ) : (
-                                                            <ScrollView
-                                                                horizontal
-                                                                showsHorizontalScrollIndicator={false}
-                                                                contentContainerStyle={styles.audioRow}
-                                                            >
-                                                                {audioLibrary.map((loop) => {
-                                                                    const isAttaching = attachingLoopId === loop.id;
-                                                                    return (
-                                                                        <TouchableOpacity
-                                                                            key={loop.id}
-                                                                            style={styles.audioChip}
-                                                                            onPress={() => handleAttachAudioLoop(loop.id)}
-                                                                            disabled={isAttaching}
-                                                                        >
-                                                                            {isAttaching ? (
-                                                                                <ActivityIndicator size="small" color={modernColors.primary} />
-                                                                            ) : (
-                                                                                <SafeIcon name="download-cloud" size={16} color={modernColors.primary} />
-                                                                            )}
-                                                                            <View style={{ flex: 1 }}>
-                                                                                <Text style={styles.audioChipText} numberOfLines={1}>
-                                                                                    {loop.title}
-                                                                                </Text>
-                                                                                <Text style={styles.audioChipSubtitle} numberOfLines={1}>
-                                                                                    {loop.genre} • {loop.bpm} BPM
-                                                                                </Text>
-                                                                            </View>
-                                                                        </TouchableOpacity>
-                                                                    );
-                                                                })}
-                                                            </ScrollView>
-                                                        )}
-                                                    </>
-                                                )}
-                                            </View>
-                                        )}
-                                    </NativeCard>
-
-                                    <NativeCard style={styles.sectionCard}>
-                                        <Text style={styles.sectionTitle}>Informations à intégrer automatiquement</Text>
-                                        <View style={styles.toggleRow}>
-                                            <View style={styles.toggleText}>
-                                                <Text style={styles.toggleLabel}>Prix & devise</Text>
-                                                <Text style={styles.toggleDescription}>
-                                                    Affiche automatiquement le prix actuel du produit.
-                                                </Text>
-                                            </View>
-                                            <Switch
-                                                value={includePrice}
-                                                onValueChange={setIncludePrice}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                        <View style={styles.toggleRow}>
-                                            <View style={styles.toggleText}>
-                                                <Text style={styles.toggleLabel}>Promotions actives</Text>
-                                                <Text style={styles.toggleDescription}>
-                                                    Ajoute badges et messages promo détectés dans votre fiche produit.
-                                                </Text>
-                                            </View>
-                                            <Switch
-                                                value={includePromotion}
-                                                onValueChange={setIncludePromotion}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                        <View style={styles.toggleRow}>
-                                            <View style={styles.toggleText}>
-                                                <Text style={styles.toggleLabel}>Coordonnées & CTA</Text>
-                                                <Text style={styles.toggleDescription}>
-                                                    Ajoute votre CTA + boutons vers le chat Yukpomnang.
-                                                </Text>
-                                            </View>
-                                            <Switch
-                                                value={includeContact}
-                                                onValueChange={setIncludeContact}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                    </NativeCard>
-
-                                    {renderRelatedProducts()}
-
-                                    <NativeCard style={styles.sectionCard}>
-                                        <View style={styles.sectionHeader}>
-                                            <Text style={styles.sectionTitle}>Narration vocale IA</Text>
-                                            <Switch
-                                                value={voiceoverEnabled}
-                                                onValueChange={(value) => {
-                                                    setVoiceoverEnabled(value);
-                                                    if (value && voiceoverScript.trim().length === 0) {
-                                                        const storyboardLines = scriptNotes
-                                                            .split(/\r?\n/)
-                                                            .map((line) => line.trim())
-                                                            .filter((line) => line.length > 0);
-                                                        setVoiceoverScript(
-                                                            buildDefaultVoiceover(
-                                                                normalizeProductName(selectedProduct),
-                                                                headline,
-                                                                callToAction,
-                                                                storyboardLines,
-                                                            ),
-                                                        );
-                                                    }
-                                                }}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                        <Text style={styles.sectionSubtitle}>
-                                            Génère une voix off automatique (espeak doit être installé sur le serveur). Vous pouvez ajuster le script avant synthèse.
-                                        </Text>
-                                        {voiceoverEnabled && (
-                                            <>
-                                                <View style={styles.voiceRow}>
-                                                    {VOICE_LANG_OPTIONS.map((option) => {
-                                                        const selected = voiceoverLang === option.value;
-                                                        return (
-                                                            <TouchableOpacity
-                                                                key={option.value}
-                                                                style={[
-                                                                    styles.voiceChip,
-                                                                    selected && styles.voiceChipSelected,
-                                                                ]}
-                                                                onPress={() => {
-                                                                    setVoiceoverLang(option.value);
-                                                                    setSubtitleLang(option.value);
-                                                                }}
-                                                            >
-                                                                <Text
-                                                                    style={[
-                                                                        styles.voiceChipText,
-                                                                        selected && styles.voiceChipTextSelected,
-                                                                    ]}
-                                                                >
-                                                                    {option.label}
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                        );
-                                                    })}
-                                                </View>
-                                                <NativeInput
-                                                    value={voiceoverScript}
-                                                    onChangeText={setVoiceoverScript}
-                                                    placeholder="Texte de narration..."
-                                                    multiline
-                                                    minLines={3}
-                                                />
-                                            </>
-                                        )}
-                                    </NativeCard>
-
-                                    <NativeCard style={styles.sectionCard}>
-                                        <View style={styles.sectionHeader}>
-                                            <Text style={styles.sectionTitle}>Sources médias</Text>
-                                            <TouchableOpacity
-                                                style={styles.linkButton}
-                                                onPress={handleAnalyzeMedia}
-                                                disabled={isAnalyzingMedia}
-                                            >
-                                                {isAnalyzingMedia ? (
-                                                    <ActivityIndicator size="small" color={modernColors.primary} />
-                                                ) : (
-                                                    <SafeIcon name="scan" size={16} color={modernColors.primary} />
-                                                )}
-                                                <Text style={styles.linkButtonText}>
-                                                    {isAnalyzingMedia ? 'Analyse…' : 'Analyse IA'}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        <Text style={styles.sectionSubtitle}>
-                                            Sélectionnez les images/vidéos à mettre en avant. Vous pouvez combiner votre
-                                            galerie produit et la médiathèque générale.
-                                        </Text>
-                                        {Array.isArray(mediaAnalysis.dominantColors) && mediaAnalysis.dominantColors.length > 0 && (
-                                            <View style={styles.mediaInsightsBox}>
-                                                <Text style={styles.mediaInsightsTitle}>Palette dominante</Text>
-                                                <View style={styles.colorRow}>
-                                                    {mediaAnalysis.dominantColors.map((color, idx) => (
-                                                        <View
-                                                            key={`color_${idx}`}
-                                                            style={[styles.colorSwatch, { backgroundColor: color }]}
-                                                        >
-                                                            <Text style={styles.colorLabel}>{color}</Text>
-                                                        </View>
-                                                    ))}
-                                                </View>
-                                                {mediaAnalysis.detectedObjects && mediaAnalysis.detectedObjects.length > 0 && (
-                                                    <Text style={styles.mediaInsightsText}>
-                                                        Objets repérés : {mediaAnalysis.detectedObjects.join(', ')}
-                                                    </Text>
-                                                )}
-                                                {mediaAnalysis.ambiance && (
-                                                    <Text style={styles.mediaInsightsText}>
-                                                        Ambiance : {mediaAnalysis.ambiance}
-                                                    </Text>
-                                                )}
-                                                {mediaAnalysis.marketingAngle && (
-                                                    <Text style={styles.mediaInsightsText}>
-                                                        Angle marketing : {mediaAnalysis.marketingAngle}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                        )}
-                                        <View style={styles.toggleRow}>
-                                            <View style={styles.toggleText}>
-                                                <Text style={styles.toggleLabel}>Galerie produit intelligente</Text>
-                                                <Text style={styles.toggleDescription}>
-                                                    Yukpomnang exploitera automatiquement les images enregistrées dans cette
-                                                    fiche produit.
-                                                </Text>
-                                            </View>
-                                            <Switch
-                                                value={useProductGallery}
-                                                onValueChange={setUseProductGallery}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                        <View style={styles.toggleRow}>
-                                            <View style={styles.toggleText}>
-                                                <Text style={styles.toggleLabel}>Médiathèque du prestataire</Text>
-                                                <Text style={styles.toggleDescription}>
-                                                    Ajoute vos assets généraux (logos, publicités, vidéos verticales) pour un
-                                                    rendu premium.
-                                                </Text>
-                                            </View>
-                                            <Switch
-                                                value={useMediatechLibrary}
-                                                onValueChange={setUseMediatechLibrary}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                        <View style={styles.toggleRow}>
-                                            <View style={styles.toggleText}>
-                                                <Text style={styles.toggleLabel}>Inclure vos visuels publicitaires</Text>
-                                                <Text style={styles.toggleDescription}>
-                                                    Ajoute automatiquement les bannières/affiches déjà configurées dans vos
-                                                    campagnes.
-                                                </Text>
-                                            </View>
-                                            <Switch
-                                                value={includePubliciteAssets}
-                                                onValueChange={setIncludePubliciteAssets}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                        {renderMediaGrid(
-                                            productMedia,
-                                            'Images et vidéos du produit',
-                                            'Ajoutez des médias à cette fiche pour dynamiser la vidéo.',
-                                            '#6366F1',
-                                        )}
-                                        {renderMediaGrid(
-                                            serviceMedia,
-                                            'Médiathèque prestataire',
-                                            'Aucun média global enregistré pour ce service pour le moment.',
-                                            '#8B5CF6',
-                                        )}
-                                    </NativeCard>
-
-                                    <NativeCard style={styles.sectionCard}>
-                                        <View style={styles.sectionHeader}>
-                                            <Text style={styles.sectionTitle}>Diffusion automatique</Text>
-                                            <TouchableOpacity
-                                                style={styles.linkButton}
-                                                onPress={handleGenerateDistribution}
-                                                disabled={isGeneratingDistribution}
-                                            >
-                                                {isGeneratingDistribution ? (
-                                                    <ActivityIndicator size="small" color={modernColors.primary} />
-                                                ) : (
-                                                    <SafeIcon name="send" size={16} color={modernColors.primary} />
-                                                )}
-                                                <Text style={styles.linkButtonText}>
-                                                    {isGeneratingDistribution ? 'Planification…' : 'Plan IA'}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        <Text style={styles.sectionSubtitle}>
-                                            Contrôlez où la vidéo sera mise en avant immédiatement après sa génération.
-                                        </Text>
-                                        {distributionPlan && (
-                                            <View style={styles.planBox}>
-                                                {distributionPlan.summary && (
-                                                    <Text style={styles.planSummary}>{distributionPlan.summary}</Text>
-                                                )}
-                                                {distributionPlan.hashtags?.length > 0 && (
-                                                    <Text style={styles.planHashtags}>
-                                                        Hashtags : {Array.isArray(distributionPlan.hashtags) ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}
-                                                    </Text>
-                                                )}
-                                                {distributionPlan.schedule?.length > 0 && (
-                                                    <View style={styles.planSchedule}>
-                                                        {Array.isArray(distributionPlan.schedule) ? distributionPlan.schedule.map((item, idx) => (
-                                                            <View key={`schedule_${idx}`} style={styles.planScheduleRow}>
-                                                                <Text style={styles.planScheduleChannel}>{item.channel}</Text>
-                                                                <Text style={styles.planScheduleTime}>{item.best_time}</Text>
-                                                                {item.call_to_action && (
-                                                                    <Text style={styles.planScheduleCTA}>{item.call_to_action}</Text>
-                                                                )}
-                                                            </View>
-                                                        )) : null}
-                                                    </View>
-                                                )}
-                                            </View>
-                                        )}
-                                        <View style={styles.toggleRow}>
-                                            <View style={styles.toggleText}>
-                                                <Text style={styles.toggleLabel}>Envoyer dans le Chat Commerce</Text>
-                                                <Text style={styles.toggleDescription}>
-                                                    Permet à vos prospects de visionner la vidéo directement dans la
-                                                    conversation.
-                                                </Text>
-                                            </View>
-                                            <Switch
-                                                value={publishToChat}
-                                                onValueChange={setPublishToChat}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                        <View style={styles.toggleRow}>
-                                            <View style={styles.toggleText}>
-                                                <Text style={styles.toggleLabel}>Afficher sur la carte produit</Text>
-                                                <Text style={styles.toggleDescription}>
-                                                    Ajoute la vidéo dans la galerie principale du produit (mobile & web).
-                                                </Text>
-                                            </View>
-                                            <Switch
-                                                value={publishToProductCard}
-                                                onValueChange={setPublishToProductCard}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                        <Text style={[styles.sectionSubtitle, { marginTop: 8 }]}>
-                                            Ciblez aussi des canaux externes à planifier (export automatique disponible) :
-                                        </Text>
-                                        <View style={styles.voiceRow}>
-                                            {DISTRIBUTION_OPTIONS.map((option) => {
-                                                const selected = selectedChannels.has(option.key);
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={option.key}
-                                                        style={[
-                                                            styles.voiceChip,
-                                                            selected && styles.voiceChipSelected,
-                                                        ]}
-                                                        onPress={() =>
-                                                            setSelectedChannels((prev) => {
-                                                                const next = new Set(prev);
-                                                                if (next.has(option.key)) {
-                                                                    next.delete(option.key);
-                                                                } else {
-                                                                    next.add(option.key);
-                                                                }
-                                                                return next;
-                                                            })
-                                                        }
-                                                    >
-                                                        <Text
-                                                            style={[
-                                                                styles.voiceChipText,
-                                                                selected && styles.voiceChipTextSelected,
-                                                            ]}
-                                                        >
-                                                            {option.label}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-                                        </View>
-                                        <Text style={styles.distributionHint}>
-                                            Les canaux externes seront exportés au format adapté (carré ou paysage) pour faciliter vos publications.
-                                        </Text>
-                                        <View style={styles.toggleRow}>
-                                            <View style={styles.toggleText}>
-                                                <Text style={styles.toggleLabel}>Générer aussi un format carré (1080x1080)</Text>
-                                                <Text style={styles.toggleDescription}>
-                                                    Idéal pour Instagram, WhatsApp et fiches produits.
-                                                </Text>
-                                            </View>
-                                            <Switch
-                                                value={generateSquareVariant}
-                                                onValueChange={setGenerateSquareVariant}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                        <View style={styles.toggleRow}>
-                                            <View style={styles.toggleText}>
-                                                <Text style={styles.toggleLabel}>Générer un format paysage (1920x1080)</Text>
-                                                <Text style={styles.toggleDescription}>
-                                                    Parfait pour écrans larges et présentations.
-                                                </Text>
-                                            </View>
-                                            <Switch
-                                                value={generateLandscapeVariant}
-                                                onValueChange={setGenerateLandscapeVariant}
-                                                trackColor={{ true: '#6366F1' }}
-                                            />
-                                        </View>
-                                    </NativeCard>
-                                </>
-                            )}
+                        <ScrollView
+                            style={styles.modalBody}
+                            contentContainerStyle={getStepContentStyle()}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            {renderStepContent()}
                         </ScrollView>
 
-                        <View style={styles.actionsRow}>
-                            <NativeButton
-                                title="Annuler"
-                                variant="outline"
-                                onPress={onClose}
-                                disabled={isSubmitting}
-                                style={styles.actionButton}
-                            />
-                            <NativeButton
-                                title={isSubmitting ? 'Génération en cours...' : 'Créer la vidéo maintenant'}
-                                onPress={handleSubmit}
-                                disabled={isSubmitting || !selectedProduct}
-                                style={styles.primaryActionButton}
-                            />
+                        {/* ✅ NOUVEAU: Boutons de navigation par étape */}
+                        <View style={getFixedBottomButtonStyle()}>
+                            {activeStep === 1 && (
+                                <NativeButton
+                                    title={selectedProduct ? "Suivant" : "Sélectionnez un produit"}
+                                    variant="primary"
+                                    size="large"
+                                    onPress={() => handleStepChange(2)}
+                                    disabled={!selectedProduct}
+                                />
+                            )}
+                            {activeStep === 2 && (
+                                <View style={styles.navigationRow}>
+                                    <NativeButton
+                                        title="Précédent"
+                                        variant="secondary"
+                                        onPress={() => handleStepChange(1)}
+                                    />
+                                    <NativeButton
+                                        title="Suivant"
+                                        variant="primary"
+                                        onPress={() => handleStepChange(3)}
+                                    />
+                                </View>
+                            )}
+                            {activeStep === 3 && (
+                                <View style={styles.navigationRow}>
+                                    <NativeButton
+                                        title="Précédent"
+                                        variant="secondary"
+                                        onPress={() => handleStepChange(2)}
+                                    />
+                                    <NativeButton
+                                        title="Suivant"
+                                        variant="primary"
+                                        onPress={() => handleStepChange(4)}
+                                    />
+                                </View>
+                            )}
+                            {activeStep === 4 && (
+                                <View style={styles.navigationRow}>
+                                    <NativeButton
+                                        title="Précédent"
+                                        variant="secondary"
+                                        onPress={() => handleStepChange(3)}
+                                    />
+                                    <NativeButton
+                                        title={isSubmitting ? 'Génération en cours...' : 'Créer la vidéo maintenant'}
+                                        variant="primary"
+                                        onPress={handleSubmit}
+                                        disabled={isSubmitting || !selectedProduct}
+                                    />
+                                </View>
+                            )}
                         </View>
                     </NativeCard>
                 </View>
@@ -3025,6 +3190,39 @@ const styles = StyleSheet.create({
     },
     primaryActionButton: {
         flex: 1.4,
+    },
+    // ✅ NOUVEAU: Styles pour le système d'étapes
+    stepIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 12,
+    },
+    stepDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: modernColors.border,
+    },
+    stepDotActive: {
+        backgroundColor: modernColors.primary,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    stepDotCompleted: {
+        backgroundColor: '#10B981',
+    },
+    stepText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginLeft: 4,
+        fontWeight: '500',
+    },
+    navigationRow: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
     },
     variantModalBackdrop: {
         flex: 1,

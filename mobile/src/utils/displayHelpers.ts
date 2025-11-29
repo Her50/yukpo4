@@ -109,12 +109,20 @@ export const extractProductName = (product: any, fallback: string = 'Produit'): 
         getFieldValue(product.name),
         getFieldValue(product.title),
         getFieldValue(product.nom_produit),
+        // ✅ CORRECTION: Gérer le cas où product.valeur est un objet avec nom
+        product.valeur && typeof product.valeur === 'object' && 'nom' in product.valeur ? getFieldValue(product.valeur.nom) : null,
+        product.valeur && typeof product.valeur === 'object' && 'nom_produit' in product.valeur ? getFieldValue(product.valeur.nom_produit) : null,
+        // ✅ CORRECTION: Gérer le cas où product.data contient le nom
+        product.data?.nom ? getFieldValue(product.data.nom) : null,
+        product.data?.nom_produit ? getFieldValue(product.data.nom_produit) : null,
+        // ✅ CORRECTION: Valeurs directes (fallback)
         product.nom,
         product.name,
         product.title,
         product.nom_produit,
-        product.valeur, // En cas de wrapper direct
-    ];
+        // ✅ CORRECTION: Si product.valeur est une string directe
+        typeof product.valeur === 'string' ? product.valeur : null,
+    ].filter(c => c !== null && c !== undefined);
 
     for (const candidate of candidates) {
         const normalized = safeStringDisplay(candidate, '');
@@ -136,12 +144,29 @@ export const extractProductName = (product: any, fallback: string = 'Produit'): 
 export const extractDescription = (value: any, fallback: string = ''): string => {
     if (!value) return fallback;
 
-    // Essayer d'extraire depuis un wrapper
-    const extracted = getFieldValue(value);
+    // ✅ CORRECTION: Gérer plusieurs formats de description
+    const candidates = [
+        // Essayer d'extraire depuis un wrapper
+        getFieldValue(value),
+        // Si value est un objet avec description
+        value.description ? getFieldValue(value.description) : null,
+        value.desc ? getFieldValue(value.desc) : null,
+        // Si value.description existe directement
+        value.description,
+        value.desc,
+        // Si value.valeur est une string
+        typeof value.valeur === 'string' ? value.valeur : null,
+        // Valeur directe
+        typeof value === 'string' ? value : null,
+    ].filter(c => c !== null && c !== undefined);
 
-    // Utiliser la valeur extraite ou la valeur originale
-    const candidate = extracted !== null && extracted !== undefined ? extracted : value;
+    for (const candidate of candidates) {
+        const normalized = safeStringDisplay(candidate, '');
+        if (normalized && normalized !== '') {
+            return normalized;
+        }
+    }
 
-    return safeStringDisplay(candidate, fallback);
+    return fallback;
 };
 

@@ -1,4 +1,3 @@
-import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
@@ -12,8 +11,8 @@ import {
 } from 'react-native';
 import { apiGet, apiPost, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { NativeButton } from '../NativeDesign';
 import SafeIcon from '../SafeIcon';
-import { NativeButton, NativeInput } from '../NativeDesign';
 
 interface ProductDeliveryConfigModalProps {
     visible: boolean;
@@ -273,31 +272,38 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         <TouchableOpacity
                             style={styles.select}
                             onPress={() => {
+                                // ✅ CORRECTION: S'assurer que storageLocations est un tableau valide
+                                const validLocations = Array.isArray(storageLocations)
+                                    ? storageLocations.filter(loc => loc && loc.is_active)
+                                    : [];
                                 const options = [
                                     { text: 'Aucun (utiliser adresse manuelle)', onPress: () => setConfig(prev => ({ ...prev, storage_location_id: undefined })) },
-                                    ...storageLocations
-                                        .filter(loc => loc.is_active)
-                                        .map(location => ({
-                                            text: `${location.name} - ${location.address}`,
-                                            onPress: () => {
-                                                setConfig(prev => ({
-                                                    ...prev,
-                                                    storage_location_id: location.id,
-                                                    pickup_address: location.address,
-                                                    pickup_latitude: location.latitude,
-                                                    pickup_longitude: location.longitude,
-                                                }));
-                                            }
-                                        })),
+                                    ...validLocations.map(location => ({
+                                        text: `${location.name || 'Lieu'} - ${location.address || 'Adresse inconnue'}`,
+                                        onPress: () => {
+                                            setConfig(prev => ({
+                                                ...prev,
+                                                storage_location_id: location.id,
+                                                pickup_address: location.address || '',
+                                                pickup_latitude: location.latitude || 0,
+                                                pickup_longitude: location.longitude || 0,
+                                            }));
+                                        }
+                                    })),
                                     { text: 'Annuler', style: 'cancel' as const }
                                 ];
                                 Alert.alert('Sélectionner un lieu de stock', '', options);
                             }}
                         >
                             <Text style={styles.selectText}>
-                                {config.storage_location_id
-                                    ? storageLocations.find(loc => loc.id === config.storage_location_id)?.name || 'Lieu de stock sélectionné'
-                                    : 'Aucun (utiliser adresse manuelle)'}
+                                {(() => {
+                                    // ✅ CORRECTION: S'assurer que storageLocations est un tableau valide avant find()
+                                    if (!config.storage_location_id || !Array.isArray(storageLocations)) {
+                                        return 'Aucun (utiliser adresse manuelle)';
+                                    }
+                                    const found = storageLocations.find(loc => loc && loc.id === config.storage_location_id);
+                                    return found?.name || 'Lieu de stock sélectionné';
+                                })()}
                             </Text>
                         </TouchableOpacity>
                         {loadingLocations && (
@@ -328,7 +334,9 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         <TouchableOpacity
                             style={styles.select}
                             onPress={() => {
-                                const options = parcelTypes.map(t => ({
+                                // ✅ CORRECTION: S'assurer que parcelTypes est un tableau valide
+                                const validParcelTypes = Array.isArray(parcelTypes) ? parcelTypes.filter(t => t && t.id && t.name) : [];
+                                const options = validParcelTypes.map(t => ({
                                     text: `${t.name}${t.description ? ` - ${t.description}` : ''}`,
                                     onPress: () => setConfig(prev => ({ ...prev, required_vehicle_type_id: t.id }))
                                 }));
@@ -337,7 +345,14 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             }}
                         >
                             <Text style={[styles.selectText, !config.required_vehicle_type_id && styles.selectPlaceholder]}>
-                                {parcelTypes.find(t => t.id === config.required_vehicle_type_id)?.name || 'Sélectionner...'}
+                                {(() => {
+                                    // ✅ CORRECTION: S'assurer que parcelTypes est un tableau valide avant find()
+                                    if (!config.required_vehicle_type_id || !Array.isArray(parcelTypes)) {
+                                        return 'Sélectionner...';
+                                    }
+                                    const found = parcelTypes.find(t => t && t.id === config.required_vehicle_type_id);
+                                    return found?.name || 'Sélectionner...';
+                                })()}
                             </Text>
                             <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
                         </TouchableOpacity>

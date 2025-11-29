@@ -248,12 +248,23 @@ impl NativeSearchService {
 
         // Normaliser la requête
         let normalized_query = self.normalize_query_advanced(search_query);
+        
+        // ✅ NOUVEAU 2025-11-29: Détecter la catégorie probable à partir de la requête
+        // Exemple: "électricien" → "électricité"
+        let detected_category = self.detect_category_from_query(&normalized_query);
+        let effective_category_filter = category_filter.or(detected_category.as_deref());
+        if detected_category.is_some() {
+            log_info(&format!(
+                "[NativeSearch] Catégorie détectée depuis requête: '{}' → '{}'",
+                search_query, detected_category.as_ref().unwrap()
+            ));
+        }
 
         // Recherche full-text principale avec filtrage GPS
         let mut fulltext_results = self
             .fulltext_search_with_gps(
                 &normalized_query,
-                category_filter,
+                effective_category_filter,
                 location_or_input_filter, // ✅ Input complet pour pré-filtre lieu
                 gps_zone,
                 search_radius_km,
@@ -266,7 +277,7 @@ impl NativeSearchService {
             let trigram_results = self
                 .trigram_search_with_gps(
                     &normalized_query,
-                    category_filter,
+                    effective_category_filter,
                     location_or_input_filter, // ✅ Input complet pour pré-filtre lieu
                     gps_zone,
                     search_radius_km,
@@ -289,7 +300,7 @@ impl NativeSearchService {
             let keyword_results = self
                 .keyword_search_with_gps(
                     &normalized_query,
-                    category_filter,
+                    effective_category_filter,
                     location_or_input_filter, // ✅ Input complet pour pré-filtre lieu
                     gps_zone,
                     search_radius_km,
@@ -307,34 +318,42 @@ impl NativeSearchService {
             }
         }
 
-        // ✅ OPTIMISÉ 2025-11-28: Paralléliser l'enrichissement Google Places au lieu de séquentiel
-        use futures::future::join_all;
-        let service_ids: Vec<i32> = fulltext_results.iter().map(|r| r.service_id).collect();
-        let enrichment_results: Vec<_> = join_all(service_ids.iter().map(|&service_id| {
-            let pool = &self.pool;
-            async move {
-                let mut data = serde_json::json!({});
-                let result = crate::services::enrich_google_places::enrich_service_with_google_places_data(
-                    pool,
-                    service_id,
-                    &mut data
-                ).await;
-                (service_id, result.map(|_| data))
-            }
-        })).await;
-        
-        // Appliquer les enrichissements aux résultats
-        for (service_id, enriched_data_result) in enrichment_results {
-            if let Ok(enriched_data) = enriched_data_result {
-                if let Some(result) = fulltext_results.iter_mut().find(|r| r.service_id == service_id) {
-                    // Fusionner les données enrichies avec les données existantes
-                    if let Some(obj) = enriched_data.as_object() {
-                        for (key, value) in obj {
-                            result.data[key] = value.clone();
+        // ✅ OPTIMISÉ 2025-11-29: Limiter enrichissement Google Places pour performance (seulement 10 premiers résultats)
+        // L'enrichissement Google Places peut prendre 100-500ms par service, donc on limite pour éviter ralentissement
+        if fulltext_results.len() <= 10 {
+            use futures::future::join_all;
+            let service_ids: Vec<i32> = fulltext_results.iter().map(|r| r.service_id).collect();
+            let enrichment_results: Vec<_> = join_all(service_ids.iter().map(|&service_id| {
+                let pool = &self.pool;
+                async move {
+                    let mut data = serde_json::json!({});
+                    let result = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                        pool,
+                        service_id,
+                        &mut data
+                    ).await;
+                    (service_id, result.map(|_| data))
+                }
+            })).await;
+            
+            // Appliquer les enrichissements aux résultats
+            for (service_id, enriched_data_result) in enrichment_results {
+                if let Ok(enriched_data) = enriched_data_result {
+                    if let Some(result) = fulltext_results.iter_mut().find(|r| r.service_id == service_id) {
+                        // Fusionner les données enrichies avec les données existantes
+                        if let Some(obj) = enriched_data.as_object() {
+                            for (key, value) in obj {
+                                result.data[key] = value.clone();
+                            }
                         }
                     }
                 }
             }
+        } else {
+            log_info(&format!(
+                "[NativeSearch] ⚡ Enrichissement Google Places désactivé pour {} résultats (> 10) pour performance",
+                fulltext_results.len()
+            ));
         }
 
         // Trier les résultats (pas de limite)
@@ -1139,9 +1158,14 @@ products_scored AS (
         pe.service_id,
         COALESCE(SUM(
             CASE 
-                WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 15.0
-                WHEN product->>'categorie' ILIKE '%' || $1 || '%' THEN 12.0
-                WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 10.0
+                -- ✅ OPTIMISÉ 2025-11-29: Prioriser correspondances exactes dans produits
+                WHEN LOWER(product->>'nom') = LOWER($1) THEN 25.0
+                WHEN LOWER(product->>'nom') LIKE LOWER($1) || '%' THEN 18.0
+                WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 12.0
+                WHEN LOWER(product->>'categorie') = LOWER($1) THEN 20.0
+                WHEN LOWER(product->>'categorie') LIKE LOWER($1) || '%' THEN 15.0
+                WHEN product->>'categorie' ILIKE '%' || $1 || '%' THEN 10.0
+                WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 8.0
                 WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 6.0
                 WHEN product->>'type' ILIKE '%' || $1 || '%' THEN 5.0
                 WHEN product->>'marque' ILIKE '%' || $1 || '%' THEN 5.0
@@ -1226,10 +1250,18 @@ SELECT DISTINCT
             ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'description'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 1.0 +
             ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'category'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 1.5
         ) +
+        -- ✅ OPTIMISÉ 2025-11-29: Prioriser correspondances exactes (bonus élevé)
         CASE 
-            WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 3.0
+            -- Correspondance exacte dans titre (bonus très élevé)
+            WHEN LOWER(s.data->'titre_service'->>'valeur') = LOWER($1) THEN 20.0
+            WHEN LOWER(s.data->'titre_service'->>'valeur') LIKE LOWER($1) || '%' THEN 10.0
+            WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
+            -- Correspondance exacte dans category (bonus élevé)
+            WHEN LOWER(s.data->'category'->>'valeur') = LOWER($1) THEN 15.0
+            WHEN LOWER(s.data->'category'->>'valeur') LIKE LOWER($1) || '%' THEN 8.0
+            WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 4.0
+            -- Correspondance dans description (bonus moyen)
             WHEN s.data->'description'->>'valeur' ILIKE '%' || $1 || '%' THEN 2.0
-            WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 2.5
             ELSE 0.0
         END +
         CASE 
@@ -1974,6 +2006,49 @@ LIMIT 100
     }
 
     /// Normalisation avancée avec gestion des accents et variantes
+    /// ✅ NOUVEAU 2025-11-29: Détecter la catégorie probable à partir de la requête
+    /// Exemple: "électricien" → "électricité", "plombier" → "plomberie"
+    fn detect_category_from_query(&self, query: &str) -> Option<String> {
+        let query_lower = query.to_lowercase();
+        
+        // Mapping profession → catégorie
+        let category_mappings = vec![
+            ("électricien", "électricité"),
+            ("electricien", "électricité"),
+            ("plombier", "plomberie"),
+            ("plomberie", "plomberie"),
+            ("menuisier", "menuiserie"),
+            ("menuiserie", "menuiserie"),
+            ("maçon", "maçonnerie"),
+            ("maçonnerie", "maçonnerie"),
+            ("peintre", "peinture"),
+            ("peinture", "peinture"),
+            ("couvreur", "couverture"),
+            ("couverture", "couverture"),
+            ("chauffeur", "transport"),
+            ("taxi", "transport"),
+            ("livreur", "livraison"),
+            ("livraison", "livraison"),
+            ("restaurant", "restauration"),
+            ("restauration", "restauration"),
+            ("coiffeur", "coiffure"),
+            ("coiffure", "coiffure"),
+            ("médecin", "santé"),
+            ("medecin", "santé"),
+            ("pharmacie", "santé"),
+            ("hôpital", "santé"),
+            ("hopital", "santé"),
+        ];
+        
+        for (profession, category) in category_mappings {
+            if query_lower.contains(profession) {
+                return Some(category.to_string());
+            }
+        }
+        
+        None
+    }
+
     fn normalize_query_advanced(&self, query: &str) -> String {
         // Normalisation de base
         let normalized = query

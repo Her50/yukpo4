@@ -160,6 +160,15 @@ const VideoCreationIntroScreen: React.FC = () => {
         if (userServices.length > 0) {
             const allProducts: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> = [];
 
+            console.log('[VideoCreationIntroScreen] 🔍 Analyse des services:', {
+                servicesCount: userServices.length,
+                services: userServices.map(s => ({
+                    id: s.id || s.service_id,
+                    hasData: !!s.data,
+                    hasProduits: !!(s.data?.produits || s.produits)
+                }))
+            });
+
             userServices.forEach((service: any) => {
                 const serviceId = service.id || service.service_id;
 
@@ -167,12 +176,33 @@ const VideoCreationIntroScreen: React.FC = () => {
                 const serviceName = extractServiceName(service, `Service #${serviceId}`);
 
                 // ✅ CORRECTION: Utiliser normalizeServiceProducts qui gère tous les formats
-                const produits = normalizeServiceProducts(service.data?.produits || service.produits);
+                const produitsRaw = service.data?.produits || service.produits;
+                console.log('[VideoCreationIntroScreen] 🔍 Service', serviceId, 'produits raw:', {
+                    type: typeof produitsRaw,
+                    isArray: Array.isArray(produitsRaw),
+                    hasValue: !!produitsRaw,
+                    structure: produitsRaw ? Object.keys(produitsRaw) : []
+                });
+
+                const produits = normalizeServiceProducts(produitsRaw);
+
+                console.log('[VideoCreationIntroScreen] 🔍 Service', serviceId, 'produits normalisés:', {
+                    type: typeof produits,
+                    isArray: Array.isArray(produits),
+                    length: Array.isArray(produits) ? produits.length : 0
+                });
 
                 if (Array.isArray(produits) && produits.length > 0) {
                     produits.forEach((product: any, index: number) => {
                         // ✅ CORRECTION: Utiliser extractProductName pour éviter l'affichage de JSON
                         const productName = extractProductName(product, `Produit ${index + 1}`);
+
+                        console.log('[VideoCreationIntroScreen] ✅ Produit extrait:', {
+                            serviceId: Number(serviceId),
+                            productIndex: index,
+                            productName: productName,
+                            serviceName: serviceName
+                        });
 
                         allProducts.push({
                             serviceId: Number(serviceId),
@@ -181,8 +211,16 @@ const VideoCreationIntroScreen: React.FC = () => {
                             serviceName: serviceName
                         });
                     });
+                } else {
+                    console.warn('[VideoCreationIntroScreen] ⚠️ Service', serviceId, 'n\'a pas de produits valides:', {
+                        produitsType: typeof produits,
+                        produitsIsArray: Array.isArray(produits),
+                        produitsLength: Array.isArray(produits) ? produits.length : 'N/A'
+                    });
                 }
             });
+
+            console.log('[VideoCreationIntroScreen] 📊 Total produits extraits:', allProducts.length);
 
             if (allProducts.length === 0) {
                 Alert.alert(

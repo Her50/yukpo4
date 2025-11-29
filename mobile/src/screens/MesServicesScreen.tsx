@@ -6,7 +6,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, DeviceEventEmitter, Dimensions, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import GlobalDeliveryConfigModal from '../components/delivery/GlobalDeliveryConfigModal';
 import { NativeButton, NativeCard } from '../components/NativeDesign';
+import ProductGalleryModal from '../components/ProductGalleryModal';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
 import ServiceCardModern from '../components/ServiceCardModern';
@@ -18,6 +20,7 @@ import { modernColors, modernStyles } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { CacheManager, createCacheKey } from '../utils/cache';
+import { extractProductName, extractServiceName } from '../utils/displayHelpers';
 import { logger } from '../utils/logger';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
 
@@ -44,19 +47,25 @@ const MesServicesScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'tous' | 'actif' | 'inactif'>('tous');
-  // ✅ NOUVEAU : États pour gestion d'équipe
+  // ✅ États pour gestion d'équipe globale (depuis menu)
   const [showTeamManager, setShowTeamManager] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showProductSelector, setShowProductSelector] = useState(false);
+  const [productSelectorMode, setProductSelectorMode] = useState<'team' | 'delivery' | null>(null); // Mode du sélecteur
   const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
-  // ✅ NOUVEAU: État pour le menu global
+  // ✅ État pour le menu global
   const [showGlobalMenu, setShowGlobalMenu] = useState(false);
+  // ✅ NOUVEAU: États pour configuration globale de livraison
+  const [showGlobalDeliveryConfig, setShowGlobalDeliveryConfig] = useState(false);
+  const [selectedProductsForDelivery, setSelectedProductsForDelivery] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
   // ✅ NOUVEAU: États pour le modal de création de vidéo
   const [showVideoCreationModal, setShowVideoCreationModal] = useState(false);
   const [productsForVideoCreation, setProductsForVideoCreation] = useState<ManagedProduct[]>([]);
   const [selectedServiceForVideo, setSelectedServiceForVideo] = useState<Service | null>(null);
   // ✅ NOUVEAU: État pour stocker les services bruts (pour détecter si service existe)
   const [rawServices, setRawServices] = useState<any[]>([]);
+  // ✅ NOUVEAU: État pour la galerie de produits
+  const [showProductGallery, setShowProductGallery] = useState(false);
 
   // ✅ OPTIMISATION: Fonction pour parser un produit (extrait pour réutilisabilité)
   const parseProduct = useCallback((product: any, index: number, service: any, serviceId: string, serviceTitre: string): Service | null => {
@@ -64,9 +73,10 @@ const MesServicesScreen: React.FC = () => {
       let productTitle = '';
       let productDescription = '';
 
-      if (typeof product === 'string') {
-        const parts = product.split(',').map(p => p.trim());
-        productTitle = parts[0] || `Produit ${index + 1}`;
+      if (typeof product === 'string' && product.trim()) {
+        // ✅ CORRECTION: S'assurer que product est une string valide avant split
+        const parts = product.split(',').map((p: string) => (p || '').trim()).filter((p: string) => p.length > 0);
+        productTitle = (parts && parts.length > 0 && parts[0]) ? parts[0] : `Produit ${index + 1}`;
 
         if (parts.length >= 3) {
           let lastNumericIndex = -1;
@@ -199,10 +209,13 @@ const MesServicesScreen: React.FC = () => {
         }
       } catch (e) {
         // Ce n'est pas du JSON, peut-être une string simple avec séparateur
-        const parts = serviceData.produits.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0);
-        if (parts.length > 0) {
-          logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits (string séparée):', parts.length);
-          return parts;
+        // ✅ CORRECTION: Vérifier que serviceData.produits est une string avant split
+        if (typeof serviceData.produits === 'string' && serviceData.produits.trim()) {
+          const parts = serviceData.produits.split(',').map((p: string) => (p || '').trim()).filter((p: string) => p.length > 0);
+          if (parts && parts.length > 0) {
+            logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits (string séparée):', parts.length);
+            return parts;
+          }
         }
       }
     }
@@ -276,8 +289,9 @@ const MesServicesScreen: React.FC = () => {
         const servicesArray = Array.isArray(data) ? data : [];
         setRawServices(servicesArray);
 
-        // ✅ OPTIMISATION: Utiliser useMemo pour parser les produits (plus efficace)
-        const allProducts: Service[] = [];
+        // ✅ IMPORTANT: On extrait et affiche les PRODUITS (pas les services)
+        // Chaque produit est parsé depuis les services de l'utilisateur
+        const allProducts: Service[] = []; // Note: Type Service mais contient des produits
 
         if (Array.isArray(data)) {
           data.forEach((service: any) => {
@@ -287,21 +301,22 @@ const MesServicesScreen: React.FC = () => {
               service.titre ||
               'Service sans titre';
 
-            // ✅ OPTIMISATION: Utiliser la fonction extractProduits
+            // ✅ Extraire les produits depuis le service
             const produits = extractProduits(service);
 
             if (produits && produits.length > 0) {
               produits.forEach((product: any, index: number) => {
+                // ✅ Parser chaque produit (l'ID sera "serviceId_productIndex")
                 const parsed = parseProduct(product, index, service, serviceId, serviceTitre);
                 if (parsed) {
-                  allProducts.push(parsed);
+                  allProducts.push(parsed); // ✅ Ajouter le produit à la liste
                 }
               });
             }
           });
         }
 
-        // Trier les produits du plus récent au plus ancien
+        // ✅ Trier les produits du plus récent au plus ancien
         allProducts.sort((a: any, b: any) => {
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -313,6 +328,8 @@ const MesServicesScreen: React.FC = () => {
         // ✅ OPTIMISATION: Sauvegarder dans le cache
         await CacheManager.set(cacheKey, allProducts);
 
+        // ✅ IMPORTANT: allProducts contient les PRODUITS de l'utilisateur (pas les services)
+        // On les stocke dans "services" pour compatibilité avec le reste du code
         setServices(allProducts);
       } else {
         logger.error('[MesServicesScreen] ❌ Erreur API ou pas de données:', {
@@ -396,7 +413,7 @@ const MesServicesScreen: React.FC = () => {
   };
 
   // ✅ NOUVEAU: Fonction pour gérer l'ajout de produit (détecte si service existe)
-  const handleAddProduct = useCallback((serviceId?: number | string) => {
+  const handleAddProduct = useCallback(async (serviceId?: number | string) => {
     try {
       // Si un serviceId est fourni, naviguer directement vers AjouterProduitSimple
       if (serviceId) {
@@ -406,6 +423,14 @@ const MesServicesScreen: React.FC = () => {
           mode: 'create'
         });
         return;
+      }
+
+      // ✅ CORRECTION: Si rawServices est vide ou en cours de chargement, recharger les services d'abord
+      if ((!rawServices || rawServices.length === 0) && !loading) {
+        logger.log('[MesServicesScreen] handleAddProduct - rawServices vide, rechargement des services...');
+        await loadServices(true);
+        // Attendre un peu pour que setRawServices soit effectif
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Sinon, vérifier s'il y a des services existants
@@ -433,8 +458,28 @@ const MesServicesScreen: React.FC = () => {
         }
       }
 
+      // ✅ CORRECTION: Si toujours pas de service trouvé, faire un appel API direct pour vérifier
+      if (!foundServiceId) {
+        logger.log('[MesServicesScreen] handleAddProduct - Aucun service dans l\'état, vérification API directe...');
+        try {
+          const directResponse = await apiGet('/api/prestataire/services');
+          if (directResponse.success && Array.isArray(directResponse.data) && directResponse.data.length > 0) {
+            const directData = Array.isArray(directResponse.data) ? directResponse.data :
+              (directResponse.data?.data || directResponse.data?.services || []);
+            if (directData.length > 0) {
+              const firstService = directData[0];
+              foundServiceId = typeof firstService.id === 'string' ? parseInt(firstService.id, 10) : firstService.id;
+              logger.log('[MesServicesScreen] handleAddProduct - Service trouvé via API directe:', foundServiceId);
+            }
+          }
+        } catch (apiError) {
+          logger.error('[MesServicesScreen] handleAddProduct - Erreur vérification API directe:', apiError);
+        }
+      }
+
       // 3. Si un service a été trouvé, naviguer vers AjouterProduitSimple
       if (foundServiceId) {
+        logger.log('[MesServicesScreen] handleAddProduct - Navigation vers AjouterProduitSimple avec serviceId:', foundServiceId);
         (navigation as any).navigate('AjouterProduitSimple', {
           serviceId: foundServiceId,
           mode: 'create'
@@ -452,7 +497,7 @@ const MesServicesScreen: React.FC = () => {
       logger.error('[MesServicesScreen] Erreur handleAddProduct:', error);
       Alert.alert('Erreur', 'Impossible d\'ouvrir le formulaire d\'ajout de produit');
     }
-  }, [rawServices, services, navigation]);
+  }, [rawServices, services, navigation, loading, loadServices]);
 
   // Fonctions de gestion des services
   const handleEditService = (service: any) => {
@@ -672,11 +717,54 @@ const MesServicesScreen: React.FC = () => {
     );
   };
 
-  // ✅ NOUVEAU : Handler pour gérer l'équipe d'un service
-  const handleManageTeam = (service: Service) => {
-    setSelectedService(service);
+  // ✅ Handler pour gérer l'équipe du SERVICE qui contient le produit
+  // Note: "service" est en fait un PRODUIT (affiche les produits dans MesServices)
+  // Il faut extraire le serviceId du service qui contient ce produit
+  const handleManageTeam = (product: Service) => {
+    // ✅ CORRECTION CRITIQUE: product est un produit affiché dans MesServices
+    // L'ID du produit est au format "serviceId_productIndex" (ex: "123_0")
+    // Il faut extraire le serviceId du SERVICE qui contient ce produit
+    const realServiceId = product.service_id ||
+      product.data?.serviceId ||
+      (typeof product.id === 'string' && product.id.includes('_')
+        ? product.id.split('_')[0]
+        : product.id);
+
+    // Créer un objet avec le serviceId du SERVICE pour ServiceTeamManager
+    // ServiceTeamManager gère l'équipe du SERVICE, pas du produit
+    const serviceForTeam = {
+      ...product,
+      id: realServiceId, // ✅ Utiliser le serviceId du SERVICE parent
+      service_id: realServiceId
+    };
+
+    setSelectedService(serviceForTeam);
     setShowTeamManager(true);
   };
+
+  // ✅ Fonction pour préparer la liste des produits pour le sélecteur
+  const prepareProductsForSelector = useCallback((): Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> => {
+    const productsList: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> = [];
+
+    services.forEach((product: Service) => {
+      const serviceId = product.service_id || product.data?.serviceId || (typeof product.id === 'string' && product.id.includes('_') ? parseInt(product.id.split('_')[0], 10) : parseInt(String(product.id), 10));
+      const productIndex = product.product_index ?? product.data?.product_index ?? 0;
+      // ✅ CORRECTION: Utiliser extractProductName et extractServiceName pour une extraction correcte
+      const productName = extractProductName(product, 'Produit sans nom');
+      const serviceName = extractServiceName(product, 'Service sans titre');
+
+      if (serviceId && !isNaN(serviceId)) {
+        productsList.push({
+          serviceId: typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
+          productIndex: typeof productIndex === 'number' ? productIndex : parseInt(String(productIndex), 10),
+          productName: String(productName),
+          serviceName: String(serviceName)
+        });
+      }
+    });
+
+    return productsList;
+  }, [services]);
 
   const handleCreateVideo = (productItem: any) => {
     // ✅ CORRECTION: productItem est en fait un produit (car services contient les produits)
@@ -685,9 +773,16 @@ const MesServicesScreen: React.FC = () => {
 
     logger.log('[MesServicesScreen] handleCreateVideo - Service ID:', serviceId, 'Produit:', productItem.id);
 
+    // ✅ CORRECTION: S'assurer que services est un tableau avant filter
+    if (!Array.isArray(services)) {
+      Alert.alert('Erreur', 'Impossible de créer une vidéo : données de services invalides');
+      return;
+    }
+
     // Regrouper tous les produits du même service
     const produitsDuService = services.filter((s: Service) => {
-      const sServiceId = s.service_id || s.data?.serviceId || s.id?.split('_')[0];
+      if (!s) return false; // ✅ PROTECTION: Ignorer les services null/undefined
+      const sServiceId = s.service_id || s.data?.serviceId || (typeof s.id === 'string' && s.id.includes('_') ? s.id.split('_')[0] : s.id);
       return sServiceId === serviceId;
     });
 
@@ -710,8 +805,14 @@ const MesServicesScreen: React.FC = () => {
       return;
     }
 
+    // ✅ CORRECTION: S'assurer que produitsDuService est un tableau avant map
+    if (!Array.isArray(produitsDuService) || produitsDuService.length === 0) {
+      Alert.alert('Erreur', 'Aucun produit trouvé pour ce service');
+      return;
+    }
+
     // Convertir les produits en ManagedProduct pour le modal
-    const managedProducts: ManagedProduct[] = produitsDuService.map((product: any) => ({
+    const managedProducts: ManagedProduct[] = produitsDuService.filter((p: any) => p != null).map((product: any) => ({
       id: product.id || `prod_${product.product_index || 0}`,
       serviceId: serviceId.toString(),
       product_index: product.product_index || product.data?.product_index || 0,
@@ -731,7 +832,7 @@ const MesServicesScreen: React.FC = () => {
       navigateToVideoWizard(navigation, {
         serviceId: Number(serviceId),
         productIndex: product.product_index || 0,
-        productName: product.nom || 'Produit'
+        productName: extractProductName(product, 'Produit')
       });
       return;
     }
@@ -812,12 +913,18 @@ const MesServicesScreen: React.FC = () => {
   };
 
   // Filtrer les services selon le filtre sélectionné
-  const filteredServices = Array.isArray(services) ? services.filter((service) => {
-    if (filter === 'tous') return true;
-    if (filter === 'actif') return service.status === 'active';
-    if (filter === 'inactif') return service.status === 'inactive';
-    return true;
-  }) : [];
+  // ✅ CORRECTION: S'assurer que services est un tableau et filtrer uniquement les services valides
+  const filteredServices = Array.isArray(services)
+    ? services.filter((service) => {
+      // ✅ PROTECTION: Ignorer les services null/undefined
+      if (!service) return false;
+
+      if (filter === 'tous') return true;
+      if (filter === 'actif') return service.status === 'active';
+      if (filter === 'inactif') return service.status === 'inactive';
+      return true;
+    })
+    : [];
 
   if (loading) {
     return (
@@ -858,6 +965,14 @@ const MesServicesScreen: React.FC = () => {
                 <SafeIcon name="video" size={20} color="#fff" />
               </TouchableOpacity>
 
+              {/* ✅ NOUVEAU : Bouton Galerie Produits (après vidéo) */}
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => setShowProductGallery(true)}
+              >
+                <SafeIcon name="image" size={20} color="#fff" />
+              </TouchableOpacity>
+
               {/* ✅ NOUVEAU : Bouton participation Black Friday (entre vidéo et menu) */}
               <TouchableOpacity
                 style={styles.headerButton}
@@ -885,16 +1000,43 @@ const MesServicesScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* ✅ NOUVEAU: Menu global déroulant */}
+        {/* ✅ Menu global déroulant */}
         {showGlobalMenu && (
           <View style={styles.globalMenu}>
+            {/* ✅ NOUVEAU: Configuration de livraison globale */}
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
                 setShowGlobalMenu(false);
-                // Ouvrir le gestionnaire d'équipe global
-                setSelectedService(null);
-                setShowTeamManager(true);
+                // ✅ Préparer la liste des produits et ouvrir le sélecteur
+                const productsList = prepareProductsForSelector();
+                if (productsList.length === 0) {
+                  Alert.alert('Aucun produit', 'Vous devez d\'abord créer des produits avant de configurer la livraison.');
+                  return;
+                }
+                setProductsForSelection(productsList);
+                setProductSelectorMode('delivery');
+                setShowProductSelector(true);
+              }}
+            >
+              <SafeIcon name="truck" size={18} color="#10B981" />
+              <Text style={styles.menuItemText}>Configuration livraison</Text>
+            </TouchableOpacity>
+
+            {/* ✅ Bouton Membres existant - amélioré pour sélection produits/services */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowGlobalMenu(false);
+                // ✅ Préparer la liste des produits et ouvrir le sélecteur
+                const productsList = prepareProductsForSelector();
+                if (productsList.length === 0) {
+                  Alert.alert('Aucun produit', 'Vous devez d\'abord créer des produits avant de gérer l\'équipe.');
+                  return;
+                }
+                setProductsForSelection(productsList);
+                setProductSelectorMode('team');
+                setShowProductSelector(true);
               }}
             >
               <SafeIcon name="users" size={18} color="#6366F1" />
@@ -975,14 +1117,14 @@ const MesServicesScreen: React.FC = () => {
 
           <NativeCard style={styles.statCard}>
             <Text style={[styles.statNumber, { color: '#10B981' }]}>
-              {services.filter(s => s.status === 'active').length}
+              {String(Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0)}
             </Text>
             <Text style={styles.statLabel}>Actifs</Text>
           </NativeCard>
 
           <NativeCard style={styles.statCard}>
             <Text style={[styles.statNumber, { color: '#F97316' }]}>
-              {services.filter(s => s.status === 'inactive').length}
+              {String(Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0)}
             </Text>
             <Text style={styles.statLabel}>En pause</Text>
           </NativeCard>
@@ -1048,7 +1190,7 @@ const MesServicesScreen: React.FC = () => {
               styles.filterChipText,
               filter === 'actif' && styles.filterChipTextActive
             ]}>
-              Actifs ({services.filter(s => s.status === 'active').length})
+              Actifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0})
             </Text>
           </TouchableOpacity>
 
@@ -1068,7 +1210,7 @@ const MesServicesScreen: React.FC = () => {
               styles.filterChipText,
               filter === 'inactif' && styles.filterChipTextActive
             ]}>
-              Inactifs ({services.filter(s => s.status === 'inactive').length})
+              Inactifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0})
             </Text>
           </TouchableOpacity>
 
@@ -1109,9 +1251,9 @@ const MesServicesScreen: React.FC = () => {
           </View>
         ) : (
           <View style={styles.servicesContainer}>
-            {Array.isArray(filteredServices) && filteredServices.length > 0 ? filteredServices.map((service) => (
+            {Array.isArray(filteredServices) && filteredServices.length > 0 ? filteredServices.filter(service => service != null).map((service) => (
               <ServiceCardModern
-                key={service.id}
+                key={service?.id || `service-${Math.random()}`}
                 service={service}
                 onEdit={handleEditService}
                 onView={handleViewService}
@@ -1120,7 +1262,6 @@ const MesServicesScreen: React.FC = () => {
                 onDelete={handleDeleteService}
                 onPromotion={handlePromotionService}
                 onViewProducts={() => navigation.navigate('MesProduits' as never)}
-                onManageTeam={handleManageTeam}  // ✅ NOUVEAU
                 onCreateVideo={handleCreateVideo}  // ✅ NOUVEAU
               />
             )) : null}
@@ -1162,7 +1303,7 @@ const MesServicesScreen: React.FC = () => {
           onRequestClose={() => setShowTeamManager(false)}
         >
           <ServiceTeamManager
-            serviceId={selectedService ? selectedService.id.toString() : undefined}
+            serviceId={selectedService ? (selectedService.id?.toString() || selectedService.service_id?.toString() || undefined) : undefined}
             onClose={() => {
               setShowTeamManager(false);
               setSelectedService(null);
@@ -1179,18 +1320,69 @@ const MesServicesScreen: React.FC = () => {
         </Modal>
       )}
 
-      {/* ✅ NOUVEAU: Sélecteur de produit pour création vidéo */}
+      {/* ✅ Sélecteur de produit - Mode multiple pour livraison/équipe ou unique pour vidéo */}
       <ServiceProductSelector
         visible={showProductSelector}
         products={productsForSelection}
+        allowMultiple={productSelectorMode !== null} // ✅ Mode multiple pour livraison/équipe
         onSelect={(product) => {
-          navigateToVideoWizard(navigation, product);
+          // ✅ Mode unique (vidéo)
+          if (!productSelectorMode) {
+            navigateToVideoWizard(navigation, product);
+          }
           setShowProductSelector(false);
           setProductsForSelection([]);
+          setProductSelectorMode(null);
+        }}
+        onSelectMultiple={(selectedProducts) => {
+          // ✅ Mode multiple (livraison ou équipe)
+          if (productSelectorMode === 'delivery') {
+            // ✅ Stocker les produits sélectionnés complets et ouvrir le modal de configuration livraison
+            setSelectedProductsForDelivery(selectedProducts);
+            setShowGlobalDeliveryConfig(true);
+          } else if (productSelectorMode === 'team') {
+            // ✅ CORRECTION: Vérifier que selectedProducts est un tableau valide
+            if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
+              Alert.alert('Erreur', 'Aucun produit sélectionné');
+              setShowProductSelector(false);
+              setProductSelectorMode(null);
+              return;
+            }
+            // Extraire les serviceIds uniques et ouvrir le gestionnaire d'équipe
+            const validProducts = selectedProducts.filter(p => p && p.serviceId != null);
+            const uniqueServiceIds = [...new Set(validProducts.map(p => String(p.serviceId || '')))].filter(id => id);
+            if (uniqueServiceIds.length === 1) {
+              // Un seul service : ouvrir avec ce serviceId
+              setSelectedService({ id: uniqueServiceIds[0], service_id: uniqueServiceIds[0] } as Service);
+            } else {
+              // Plusieurs services : ouvrir en mode global (tous services)
+              setSelectedService(null);
+            }
+            setShowTeamManager(true);
+          }
+          setShowProductSelector(false);
+          setProductsForSelection([]);
+          setProductSelectorMode(null);
         }}
         onClose={() => {
           setShowProductSelector(false);
           setProductsForSelection([]);
+          setProductSelectorMode(null);
+        }}
+      />
+
+      {/* ✅ NOUVEAU: Modal de configuration de livraison globale */}
+      <GlobalDeliveryConfigModal
+        visible={showGlobalDeliveryConfig}
+        selectedProducts={selectedProductsForDelivery}
+        onClose={() => {
+          setShowGlobalDeliveryConfig(false);
+          setSelectedProductsForDelivery([]);
+        }}
+        onSuccess={() => {
+          setShowGlobalDeliveryConfig(false);
+          setSelectedProductsForDelivery([]);
+          loadServices(true); // Recharger les produits après configuration
         }}
       />
 
@@ -1208,6 +1400,13 @@ const MesServicesScreen: React.FC = () => {
           onSuccess={handleVideoCreationSuccess}
         />
       )}
+
+      {/* ✅ NOUVEAU : Modal de galerie produits */}
+      <ProductGalleryModal
+        visible={showProductGallery}
+        services={services}
+        onClose={() => setShowProductGallery(false)}
+      />
     </View>
   );
 };

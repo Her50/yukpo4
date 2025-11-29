@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CreatorStudioCard } from '../../components/CreatorStudioCard';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
@@ -108,6 +109,7 @@ const VideoCreationWizardScreen: React.FC = () => {
     const route = useRoute();
     const params = (route.params || {}) as WizardParams;
     const { t } = useLanguageSafe();
+    const insets = useSafeAreaInsets();
 
     const format = useCallback(
         (key: string, params: Record<string, string | number>) => {
@@ -145,6 +147,8 @@ const VideoCreationWizardScreen: React.FC = () => {
     const [currentSceneIndex, setCurrentSceneIndex] = useState<number>(0);
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
     const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+    // ✅ CORRECTION: Flag pour éviter les toasts multiples
+    const completionHandledRef = useRef(false);
 
     const [brief, setBrief] = useState('');
     const [headline, setHeadline] = useState('');
@@ -172,6 +176,24 @@ const VideoCreationWizardScreen: React.FC = () => {
     const [availableSessions, setAvailableSessions] = useState<Array<{ id: string; title?: string }>>([]);
     const [selectedLinkedSessions, setSelectedLinkedSessions] = useState<string[]>([]);
     const [dependencies, setDependencies] = useState<VideoDependency[]>([]);
+
+    // ✅ CORRECTION: Fonction helper pour calculer les styles dynamiquement avec insets
+    const getStepContentStyle = useCallback(() => ({
+        padding: 20,
+        gap: 20,
+        // ✅ CORRECTION: Calculer dynamiquement le paddingBottom en fonction de la hauteur des boutons + safe area
+        // Hauteur bouton (~60px) + padding top (16px) + padding bottom (20-34px) + safe area bottom + marge (20px)
+        paddingBottom: 100 + insets.bottom, // ✅ Augmenté pour garantir que tout le contenu est visible
+        // ✅ CORRECTION: Utiliser flexGrow au lieu de minHeight pour permettre le scroll complet
+        flexGrow: 1,
+    }), [insets.bottom]);
+
+    const getFixedBottomButtonStyle = useCallback(() => ({
+        ...styles.fixedBottomButtonBase,
+        // ✅ CORRECTION: Utiliser insets.bottom pour gérer dynamiquement la safe area
+        paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 16), // ✅ Ajuster pour safe area
+        minHeight: 80 + insets.bottom, // ✅ Hauteur minimale pour garantir la visibilité
+    }), [insets.bottom]);
 
     const templateOptions =
         storyTemplates.length > 0 ? storyTemplates : FALLBACK_STORY_TEMPLATES;
@@ -1135,6 +1157,12 @@ const VideoCreationWizardScreen: React.FC = () => {
                 }
 
                 if (job.status === 'completed') {
+                    // ✅ CORRECTION: Éviter les toasts multiples avec un flag
+                    if (completionHandledRef.current) {
+                        return;
+                    }
+                    completionHandledRef.current = true;
+
                     stopPolling();
                     resetProgress();
                     setCurrentJobId(null);
@@ -1149,12 +1177,19 @@ const VideoCreationWizardScreen: React.FC = () => {
                             productIndex,
                         } as never);
                     } else {
+                        // ✅ CORRECTION: Afficher l'alert une seule fois
                         Alert.alert(
                             t('videoWizard.alert.renderDoneTitle'),
                             t('videoWizard.alert.renderDoneMessage'),
                         );
                     }
                 } else if (job.status === 'failed') {
+                    // ✅ CORRECTION: Éviter les toasts multiples avec un flag
+                    if (completionHandledRef.current) {
+                        return;
+                    }
+                    completionHandledRef.current = true;
+
                     stopPolling();
                     failProgress();
                     resetProgress();
@@ -1271,6 +1306,8 @@ const VideoCreationWizardScreen: React.FC = () => {
         };
 
         try {
+            // ✅ CORRECTION: Réinitialiser le flag de complétion avant de démarrer
+            completionHandledRef.current = false;
             setIsGenerating(true);
             // ✅ PHASE 2: Enregistrer le temps de début pour calculer le temps estimé
             setGenerationStartTime(Date.now());
@@ -1446,7 +1483,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 return (
                     <Animated.View style={stepAnimatedStyle}>
                         <ScrollView
-                            contentContainerStyle={styles.stepContent}
+                            contentContainerStyle={getStepContentStyle()}
                             showsVerticalScrollIndicator={false}
                             style={styles.scrollView}
                         >
@@ -1668,7 +1705,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                             </NativeCard>
 
                         </ScrollView>
-                        <View style={styles.fixedBottomButton}>
+                        <View style={getFixedBottomButtonStyle()}>
                             <NativeButton
                                 title={costLoading ? t('videoWizard.buttons.estimating') : t('videoWizard.buttons.nextStepGeneric')}
                                 variant="primary"
@@ -1684,7 +1721,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 return (
                     <Animated.View style={stepAnimatedStyle}>
                         <ScrollView
-                            contentContainerStyle={styles.stepContent}
+                            contentContainerStyle={getStepContentStyle()}
                             showsVerticalScrollIndicator={false}
                             style={styles.scrollView}
                         >
@@ -1945,7 +1982,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                             />
 
                         </ScrollView>
-                        <View style={styles.fixedBottomButton}>
+                        <View style={getFixedBottomButtonStyle()}>
                             <View style={styles.navigationRow}>
                                 <NativeButton
                                     title={t('videoWizard.buttons.prevStepShort')}
@@ -1965,7 +2002,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 return (
                     <Animated.View style={stepAnimatedStyle}>
                         <ScrollView
-                            contentContainerStyle={styles.stepContent}
+                            contentContainerStyle={getStepContentStyle()}
                             showsVerticalScrollIndicator={false}
                             style={styles.scrollView}
                         >
@@ -2124,7 +2161,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                             </NativeCard>
 
                         </ScrollView>
-                        <View style={styles.fixedBottomButton}>
+                        <View style={getFixedBottomButtonStyle()}>
                             <View style={styles.navigationRow}>
                                 <NativeButton
                                     testID="video-next-step-button"
@@ -2306,21 +2343,13 @@ const styles = StyleSheet.create({
         flex: 1,
         // ✅ CORRECTION: S'assurer que le ScrollView est visible et scrollable
     },
-    stepContent: {
-        padding: 20,
-        gap: 20,
-        paddingBottom: Platform.OS === 'ios' ? 140 : 130, // ✅ Espace pour le bouton fixe + safe area + marge supplémentaire
-        // ✅ CORRECTION: Utiliser flexGrow au lieu de minHeight pour permettre le scroll complet
-        flexGrow: 1,
-    },
-    fixedBottomButton: {
+    fixedBottomButtonBase: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
         paddingHorizontal: 20,
         paddingTop: 16,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 20, // ✅ Ajuster pour safe area iOS (home indicator)
         backgroundColor: modernColors.background,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: modernColors.border,
@@ -2330,7 +2359,6 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 5,
         zIndex: 1000, // ✅ S'assurer que les boutons sont au-dessus
-        minHeight: Platform.OS === 'ios' ? 90 : 76, // ✅ Hauteur minimale pour garantir la visibilité
     },
     pickerButton: {
         flexDirection: 'row',

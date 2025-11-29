@@ -23,7 +23,6 @@ interface ServiceCardModernProps {
     onDelete: (service: any) => void;
     onPromotion?: (service: any) => void;
     onViewProducts?: (service: any) => void;
-    onManageTeam?: (service: any) => void;  // ✅ NOUVEAU : Gérer l'équipe
     onCreateVideo?: (service: any) => void;  // ✅ NOUVEAU : Créer une vidéo
 }
 
@@ -36,10 +35,10 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
     onDelete,
     onPromotion,
     onViewProducts,
-    onManageTeam,  // ✅ NOUVEAU
     onCreateVideo  // ✅ NOUVEAU
 }) => {
-    const getStatusColor = (status: string) => {
+    const getStatusColor = (status: string | undefined | null) => {
+        if (!status || typeof status !== 'string') return '#9E9E9E';
         switch (status) {
             case 'active': return '#4CAF50';
             case 'inactive': return '#9E9E9E';
@@ -48,7 +47,8 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
         }
     };
 
-    const getStatusText = (status: string) => {
+    const getStatusText = (status: string | undefined | null) => {
+        if (!status || typeof status !== 'string') return 'Inconnu';
         switch (status) {
             case 'active': return 'Actif';
             case 'inactive': return 'Inactif';
@@ -94,9 +94,9 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                     <Text style={styles.title} numberOfLines={2}>
                         {service.title || 'Service sans titre'}
                     </Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(service.status) }]}>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(service?.status) }]}>
                         <Text style={styles.statusText}>
-                            {getStatusText(service.status)}
+                            {getStatusText(service?.status)}
                         </Text>
                     </View>
                 </View>
@@ -111,55 +111,71 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
             <View style={styles.serviceInfo}>
                 <View style={styles.infoRow}>
                     <SafeIcon name="calendar" size={14} color="#666" />
-                    <Text style={styles.infoText}>Créé le {formatDate(service.createdAt)}</Text>
+                    <Text style={styles.infoText}>Créé le {formatDate(service.createdAt || service.created_at || '')}</Text>
                 </View>
-                {service.views !== undefined && (
+                {service.views !== undefined && service.views != null && (
                     <View style={styles.infoRow}>
                         <SafeIcon name="eye" size={14} color="#3B82F6" />
-                        <Text style={styles.infoText}>{service.views} vues</Text>
+                        <Text style={styles.infoText}>{String(service.views || 0)} vues</Text>
                     </View>
                 )}
-                {service.interactions !== undefined && (
+                {service.interactions !== undefined && service.interactions != null && (
                     <View style={styles.infoRow}>
-                        <Text style={styles.infoText}>📊 {service.interactions} interactions</Text>
+                        <Text style={styles.infoText}>📊 {String(service.interactions || 0)} interactions</Text>
                     </View>
                 )}
                 {/* Nombre de produits - Cliquable comme statistique */}
-                {service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur) && service.data.produits.valeur.length > 0 && (
-                    <TouchableOpacity
-                        style={styles.productsStatRow}
-                        onPress={() => onViewProducts && onViewProducts(service)}
-                        activeOpacity={0.6}
-                    >
-                        <SafeIcon name="package" size={14} color="#6366F1" />
-                        <Text style={styles.productsStatText}>
-                            {service.data.produits.valeur.length} produit{service.data.produits.valeur.length > 1 ? 's' : ''}
-                        </Text>
-                        <SafeIcon name="chevron-right" size={12} color="#6366F1" />
-                    </TouchableOpacity>
-                )}
+                {(() => {
+                    // ✅ CORRECTION: Vérifier et sécuriser l'accès aux produits
+                    const produits = service?.data?.produits?.valeur;
+                    if (!produits || !Array.isArray(produits) || produits.length === 0) {
+                        return null;
+                    }
+                    const produitsCount = produits.length || 0;
+                    return (
+                        <TouchableOpacity
+                            style={styles.productsStatRow}
+                            onPress={() => onViewProducts && onViewProducts(service)}
+                            activeOpacity={0.6}
+                        >
+                            <SafeIcon name="package" size={14} color="#6366F1" />
+                            <Text style={styles.productsStatText}>
+                                {produitsCount} produit{produitsCount > 1 ? 's' : ''}
+                            </Text>
+                            <SafeIcon name="chevron-right" size={12} color="#6366F1" />
+                        </TouchableOpacity>
+                    );
+                })()}
             </View>
 
             {/* Badge Produits - Bien visible */}
-            {service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur) && service.data.produits.valeur.length > 0 && (
-                <TouchableOpacity
-                    style={styles.productsBadge}
-                    onPress={() => onViewProducts && onViewProducts(service)}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.productsBadgeContent}>
-                        <SafeIcon name="package" size={18} color="#FFFFFF" />
-                        <View style={styles.productsBadgeTextContainer}>
-                            <Text style={styles.productsBadgeCount}>
-                                {service.data.produits.valeur.length} produit{service.data.produits.valeur.length > 1 ? 's' : ''}
-                            </Text>
-                            <Text style={styles.productsBadgeAction}>
-                                Voir le détail →
-                            </Text>
+            {(() => {
+                // ✅ CORRECTION: Vérifier et sécuriser l'accès aux produits
+                const produits = service?.data?.produits?.valeur;
+                if (!produits || !Array.isArray(produits) || produits.length === 0) {
+                    return null;
+                }
+                const produitsCount = produits.length || 0;
+                return (
+                    <TouchableOpacity
+                        style={styles.productsBadge}
+                        onPress={() => onViewProducts && onViewProducts(service)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.productsBadgeContent}>
+                            <SafeIcon name="package" size={18} color="#FFFFFF" />
+                            <View style={styles.productsBadgeTextContainer}>
+                                <Text style={styles.productsBadgeCount}>
+                                    {produitsCount} produit{produitsCount > 1 ? 's' : ''}
+                                </Text>
+                                <Text style={styles.productsBadgeAction}>
+                                    Voir le détail →
+                                </Text>
+                            </View>
                         </View>
-                    </View>
-                </TouchableOpacity>
-            )}
+                    </TouchableOpacity>
+                );
+            })()}
 
             {/* Actions - Design amélioré avec labels */}
             <View style={styles.actionsContainer}>
@@ -219,18 +235,6 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         </TouchableOpacity>
                     )}
 
-                    {/* Gérer l'équipe */}
-                    {onManageTeam && (
-                        <TouchableOpacity
-                            style={[styles.actionButton, styles.actionTeam]}
-                            onPress={() => onManageTeam(service)}
-                            activeOpacity={0.7}
-                        >
-                            <SafeIcon name="users" size={18} color="#6366F1" />
-                            <Text style={[styles.actionLabel, { color: '#6366F1' }]}>Équipe</Text>
-                        </TouchableOpacity>
-                    )}
-
                     {/* Promouvoir (publicité) */}
                     {onPromotion && (
                         <TouchableOpacity
@@ -245,17 +249,17 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
 
                     {/* Activer/Désactiver */}
                     <TouchableOpacity
-                        style={[styles.actionButton, service.status === 'active' ? styles.actionDeactivate : styles.actionActivate]}
+                        style={[styles.actionButton, (service?.status || 'inactive') === 'active' ? styles.actionDeactivate : styles.actionActivate]}
                         onPress={() => onToggleStatus(service)}
                         activeOpacity={0.7}
                     >
                         <SafeIcon
-                            name={service.status === 'active' ? 'pause-circle' : 'play-circle'}
+                            name={(service?.status || 'inactive') === 'active' ? 'pause-circle' : 'play-circle'}
                             size={18}
-                            color={service.status === 'active' ? '#F97316' : '#10B981'}
+                            color={(service?.status || 'inactive') === 'active' ? '#F97316' : '#10B981'}
                         />
-                        <Text style={[styles.actionLabel, { color: service.status === 'active' ? '#F97316' : '#10B981' }]}>
-                            {service.status === 'active' ? 'Désactiver' : 'Activer'}
+                        <Text style={[styles.actionLabel, { color: (service?.status || 'inactive') === 'active' ? '#F97316' : '#10B981' }]}>
+                            {(service?.status || 'inactive') === 'active' ? 'Désactiver' : 'Activer'}
                         </Text>
                     </TouchableOpacity>
                 </View>

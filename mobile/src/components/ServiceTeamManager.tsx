@@ -69,8 +69,12 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                 const data = response.data || {};
 
                 // ✅ PROTECTION: S'assurer que members et invitations sont des tableaux valides
-                const membersData = data.members || data.members_list || [];
-                const invitationsData = data.invitations || data.invitations_list || [];
+                const membersData = (data && typeof data === 'object' && ('members' in data || 'members_list' in data))
+                    ? (data.members || data.members_list || [])
+                    : [];
+                const invitationsData = (data && typeof data === 'object' && ('invitations' in data || 'invitations_list' in data))
+                    ? (data.invitations || data.invitations_list || [])
+                    : [];
 
                 setMembers(Array.isArray(membersData) ? membersData.filter(m => m && m.id) : []);
                 setInvitations(Array.isArray(invitationsData) ? invitationsData.filter(i => i && i.id) : []);
@@ -97,11 +101,16 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
         }
 
         try {
+            // ✅ CORRECTION: Vérifier que ROLE_PERMISSIONS existe et contient les permissions du rôle
+            const rolePerms = (ROLE_PERMISSIONS && typeof ROLE_PERMISSIONS === 'object' && inviteRole?.id)
+                ? (ROLE_PERMISSIONS[inviteRole.id] || [])
+                : [];
+
             const response = await apiPost('/api/services/team/invite', {
                 serviceId,
                 email: inviteEmail,
                 role: inviteRole.id,
-                permissions: ROLE_PERMISSIONS[inviteRole.id]
+                permissions: Array.isArray(rolePerms) ? rolePerms : []
             });
 
             if (response.success) {
@@ -148,17 +157,36 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
 
     const handleUpdateRole = async (memberId: string, newRole: ServiceTeamRole) => {
         try {
+            // ✅ CORRECTION: Vérifier que ROLE_PERMISSIONS existe et contient les permissions du rôle
+            const rolePerms = (ROLE_PERMISSIONS && typeof ROLE_PERMISSIONS === 'object' && newRole?.id)
+                ? (ROLE_PERMISSIONS[newRole.id] || [])
+                : [];
+
             const response = await apiPatch(`/api/services/team/members/${memberId}`, {
                 role: newRole.id,
-                permissions: ROLE_PERMISSIONS[newRole.id]
+                permissions: Array.isArray(rolePerms) ? rolePerms : []
             });
 
             if (response.success) {
-                setMembers(members.map(m =>
-                    m.id === memberId
-                        ? { ...m, role: newRole, permissions: SERVICE_PERMISSIONS.filter(p => ROLE_PERMISSIONS[newRole.id].includes(p.id)) }
-                        : m
-                ));
+                // ✅ CORRECTION: S'assurer que members est un tableau avant map()
+                if (!Array.isArray(members)) {
+                    console.error('[ServiceTeamManager] members n\'est pas un tableau:', members);
+                    Alert.alert('Erreur', 'Impossible de mettre à jour le rôle : données invalides');
+                    return;
+                }
+
+                // ✅ CORRECTION: S'assurer que ROLE_PERMISSIONS et SERVICE_PERMISSIONS existent
+                const rolePerms = ROLE_PERMISSIONS && typeof ROLE_PERMISSIONS === 'object' ? ROLE_PERMISSIONS[newRole?.id] : [];
+                const validPerms = Array.isArray(SERVICE_PERMISSIONS) && Array.isArray(rolePerms)
+                    ? SERVICE_PERMISSIONS.filter(p => p && p.id && rolePerms.includes(p.id))
+                    : [];
+
+                setMembers(members.map(m => {
+                    if (!m || !m.id) return m; // ✅ PROTECTION: Ignorer les membres invalides
+                    return m.id === memberId
+                        ? { ...m, role: newRole, permissions: validPerms }
+                        : m;
+                }));
                 Alert.alert('Succès', 'Rôle mis à jour avec succès');
             }
         } catch (error) {
@@ -173,8 +201,21 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             return null;
         }
 
-        const role = item.role || SERVICE_TEAM_ROLES[3]; // Fallback vers 'viewer' si role est undefined
-        const permissions = item.permissions || [];
+        // ✅ CORRECTION CRITIQUE: S'assurer que SERVICE_TEAM_ROLES existe avant d'y accéder
+        const defaultRole = (Array.isArray(SERVICE_TEAM_ROLES) && SERVICE_TEAM_ROLES.length > 3)
+            ? SERVICE_TEAM_ROLES[3]
+            : (Array.isArray(SERVICE_TEAM_ROLES) && SERVICE_TEAM_ROLES.length > 0
+                ? SERVICE_TEAM_ROLES[SERVICE_TEAM_ROLES.length - 1]
+                : null);
+        const role = item.role || defaultRole || {
+            id: 'viewer',
+            name: 'Observateur',
+            description: 'Consultation des services',
+            level: 4,
+            color: '#6B7280',
+            icon: 'eye'
+        };
+        const permissions = Array.isArray(item.permissions) ? item.permissions : [];
 
         return (
             <NativeCard style={styles.memberCard}>
@@ -213,23 +254,30 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                     </View>
                 </View>
 
-                {permissions && Array.isArray(permissions) && permissions.length > 0 && (
-                    <View style={styles.permissionsContainer}>
-                        <Text style={styles.permissionsTitle}>Permissions :</Text>
-                        <View style={styles.permissionsList}>
-                            {permissions.slice(0, 3).map((permission, idx) => (
-                                <View key={permission?.id || `perm-${idx}`} style={styles.permissionTag}>
-                                    <Text style={styles.permissionText}>{permission?.name || 'Permission'}</Text>
-                                </View>
-                            ))}
-                            {permissions.length > 3 && (
-                                <Text style={styles.morePermissions}>
-                                    +{permissions.length - 3} autres
-                                </Text>
-                            )}
+                {permissions && Array.isArray(permissions) && permissions.length > 0 && (() => {
+                    // ✅ CORRECTION: S'assurer que slice() retourne toujours un tableau valide
+                    const validPermissions = Array.isArray(permissions) ? permissions.slice(0, 3).filter(p => p && p.id) : [];
+                    if (!validPermissions || validPermissions.length === 0) {
+                        return null;
+                    }
+                    return (
+                        <View style={styles.permissionsContainer}>
+                            <Text style={styles.permissionsTitle}>Permissions :</Text>
+                            <View style={styles.permissionsList}>
+                                {validPermissions.map((permission, idx) => (
+                                    <View key={permission?.id || `perm-${idx}`} style={styles.permissionTag}>
+                                        <Text style={styles.permissionText}>{permission?.name || 'Permission'}</Text>
+                                    </View>
+                                ))}
+                                {permissions.length > 3 && (
+                                    <Text style={styles.morePermissions}>
+                                        +{permissions.length - 3} autres
+                                    </Text>
+                                )}
+                            </View>
                         </View>
-                    </View>
-                )}
+                    );
+                })()}
             </NativeCard>
         );
     };
@@ -249,10 +297,29 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                 </View>
 
                 <ScrollView style={styles.modalContent}>
-                    {Array.isArray(SERVICE_TEAM_ROLES) && SERVICE_TEAM_ROLES.length > 0 ? (
-                        SERVICE_TEAM_ROLES.map(role => (
+                    {(() => {
+                        // ✅ CORRECTION CRITIQUE: Vérifier que SERVICE_TEAM_ROLES existe et est un tableau
+                        if (!SERVICE_TEAM_ROLES || !Array.isArray(SERVICE_TEAM_ROLES) || SERVICE_TEAM_ROLES.length === 0) {
+                            return (
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.emptyStateText}>Aucun rôle disponible</Text>
+                                </View>
+                            );
+                        }
+
+                        // ✅ PROTECTION: Filtrer les rôles invalides avant de mapper
+                        const validRoles = SERVICE_TEAM_ROLES.filter(r => r && r.id && r.name);
+                        if (validRoles.length === 0) {
+                            return (
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.emptyStateText}>Aucun rôle valide disponible</Text>
+                                </View>
+                            );
+                        }
+
+                        return validRoles.map(role => (
                             <TouchableOpacity
-                                key={role?.id || `role-${role?.name || 'unknown'}`}
+                                key={role.id || `role-${role.name || 'unknown'}`}
                                 style={[
                                     styles.roleOption,
                                     selectedRole?.id === role?.id && styles.roleOptionSelected
@@ -265,12 +332,8 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                                 </View>
                                 <Text style={styles.roleOptionDescription}>{role?.description || 'Aucune description'}</Text>
                             </TouchableOpacity>
-                        ))
-                    ) : (
-                        <View style={styles.emptyState}>
-                            <Text style={styles.emptyStateText}>Aucun rôle disponible</Text>
-                        </View>
-                    )}
+                        ));
+                    })()}
 
                     <NativeButton
                         title="Confirmer"
@@ -324,10 +387,29 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>Rôle</Text>
-                        {Array.isArray(SERVICE_TEAM_ROLES) && SERVICE_TEAM_ROLES.length > 0 ? (
-                            SERVICE_TEAM_ROLES.map(role => (
+                        {(() => {
+                            // ✅ CORRECTION CRITIQUE: Vérifier que SERVICE_TEAM_ROLES existe et est un tableau
+                            if (!SERVICE_TEAM_ROLES || !Array.isArray(SERVICE_TEAM_ROLES) || SERVICE_TEAM_ROLES.length === 0) {
+                                return (
+                                    <View style={styles.emptyState}>
+                                        <Text style={styles.emptyStateText}>Aucun rôle disponible</Text>
+                                    </View>
+                                );
+                            }
+
+                            // ✅ PROTECTION: Filtrer les rôles invalides avant de mapper
+                            const validRoles = SERVICE_TEAM_ROLES.filter(r => r && r.id && r.name);
+                            if (validRoles.length === 0) {
+                                return (
+                                    <View style={styles.emptyState}>
+                                        <Text style={styles.emptyStateText}>Aucun rôle valide disponible</Text>
+                                    </View>
+                                );
+                            }
+
+                            return validRoles.map(role => (
                                 <TouchableOpacity
-                                    key={role?.id || `role-${role?.name || 'unknown'}`}
+                                    key={role.id || `role-${role.name || 'unknown'}`}
                                     style={[
                                         styles.roleOption,
                                         inviteRole?.id === role?.id && styles.roleOptionSelected
@@ -340,12 +422,8 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                                     </View>
                                     <Text style={styles.roleOptionDescription}>{role?.description || 'Aucune description'}</Text>
                                 </TouchableOpacity>
-                            ))
-                        ) : (
-                            <View style={styles.emptyState}>
-                                <Text style={styles.emptyStateText}>Aucun rôle disponible</Text>
-                            </View>
-                        )}
+                            ));
+                        })()}
                     </View>
 
                     <NativeButton
@@ -416,24 +494,31 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                     )}
                 </View>
 
-                {invitations && Array.isArray(invitations) && invitations.length > 0 && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Invitations en attente</Text>
-                        {invitations.filter(inv => inv && inv.id).map((invitation, index) => (
-                            <NativeCard key={invitation?.id || `invitation-${index}`} style={styles.invitationCard}>
-                                <View style={styles.invitationContent}>
-                                    <Text style={styles.invitationEmail}>{invitation?.email || 'Email inconnu'}</Text>
-                                    <Text style={styles.invitationRole}>{invitation?.role?.name || 'Rôle inconnu'}</Text>
-                                    <Text style={styles.invitationDate}>
-                                        {invitation?.invitedAt
-                                            ? `Invité le ${new Date(invitation.invitedAt).toLocaleDateString()}`
-                                            : 'Date inconnue'}
-                                    </Text>
-                                </View>
-                            </NativeCard>
-                        ))}
-                    </View>
-                )}
+                {invitations && Array.isArray(invitations) && invitations.length > 0 && (() => {
+                    // ✅ CORRECTION: S'assurer que le filter retourne toujours un tableau valide
+                    const validInvitations = invitations.filter(inv => inv && inv.id);
+                    if (!validInvitations || validInvitations.length === 0) {
+                        return null;
+                    }
+                    return (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Invitations en attente</Text>
+                            {validInvitations.map((invitation, index) => (
+                                <NativeCard key={invitation?.id || `invitation-${index}`} style={styles.invitationCard}>
+                                    <View style={styles.invitationContent}>
+                                        <Text style={styles.invitationEmail}>{invitation?.email || 'Email inconnu'}</Text>
+                                        <Text style={styles.invitationRole}>{invitation?.role?.name || 'Rôle inconnu'}</Text>
+                                        <Text style={styles.invitationDate}>
+                                            {invitation?.invitedAt
+                                                ? `Invité le ${new Date(invitation.invitedAt).toLocaleDateString()}`
+                                                : 'Date inconnue'}
+                                        </Text>
+                                    </View>
+                                </NativeCard>
+                            ))}
+                        </View>
+                    );
+                })()}
             </ScrollView>
 
             {renderRoleModal()}
