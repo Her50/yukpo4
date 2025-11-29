@@ -66,7 +66,7 @@ pub async fn rate_limit(
     // Utiliser Redis pour compter les requêtes
     let current_count: u32 = match redis::cmd("GET")
         .arg(&redis_key)
-        .query_async(&mut redis_conn)
+        .query_async::<Option<u32>>(&mut redis_conn)
         .await
     {
         Ok(count) => count.unwrap_or(0),

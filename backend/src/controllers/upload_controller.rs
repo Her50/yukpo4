@@ -13,9 +13,7 @@ use axum::{
 };
 use log::info;
 use serde::Serialize;
-use sqlx::PgPool;
 use std::sync::Arc;
-use crate::middlewares::jwt::AuthenticatedUser;
 
 #[derive(Debug, Serialize)]
 pub struct UploadResponse {
@@ -84,13 +82,18 @@ pub async fn serve_temp_file(
         .map_err(|_| crate::core::types::AppError::Internal("Erreur lecture fichier".to_string()))?;
 
     // Déterminer le Content-Type
-    let content_type = infer_content_type(&path);
+    let content_type_str = infer_content_type(&path);
 
+    use axum::http::HeaderValue;
+    let content_type = HeaderValue::from_static(content_type_str);
+    let content_length = HeaderValue::from_str(&bytes.len().to_string())
+        .unwrap_or_else(|_| HeaderValue::from_static("0"));
+    
     Ok((
         StatusCode::OK,
         [
             (axum::http::header::CONTENT_TYPE, content_type),
-            (axum::http::header::CONTENT_LENGTH, bytes.len().to_string()),
+            (axum::http::header::CONTENT_LENGTH, content_length),
         ],
         bytes,
     ))

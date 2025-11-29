@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
-use log::{error, info};
+use log::{error, info, warn};
 use serde::Serialize;
 use sqlx::FromRow;
 use tokio::io::AsyncWriteExt;

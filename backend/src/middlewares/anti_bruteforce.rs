@@ -92,7 +92,7 @@ pub async fn anti_bruteforce(
     // Compter les tentatives récentes
     let attempt_count: u32 = match redis::cmd("GET")
         .arg(&attempt_key)
-        .query_async(&mut redis_conn)
+        .query_async::<Option<u32>>(&mut redis_conn)
         .await
     {
         Ok(count) => count.unwrap_or(0),
