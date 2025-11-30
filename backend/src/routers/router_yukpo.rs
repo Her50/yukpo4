@@ -796,8 +796,8 @@ async fn handle_direct_search(
                 // ✅ APPELER RECHERCHE avec l'input combiné
                 let (mut result, tokens_consumed_search) = rechercher_besoin_direct(
                     &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
-                    _state.cache_service.clone(), // ✅ CORRIGÉ: Réutiliser le cache service
-                    _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique
+                    Some(_state.cache_service.clone()), // ✅ CORRIGÉ: Réutiliser le cache service
+                    Some(_state.geographic_matching.clone()), // ✅ CORRIGÉ: Réutiliser le matching géographique
                     Some(user.id),
                     &combined_search_text,
                     gps_zone,
@@ -929,8 +929,8 @@ async fn handle_direct_search(
 
                     let (result, tokens_consumed) = rechercher_besoin_direct(
                         &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
-                        _state.cache_service.clone(), // ✅ CORRIGÉ: Réutiliser le cache service
-                        _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique
+                        Some(_state.cache_service.clone()), // ✅ CORRIGÉ: Réutiliser le cache service
+                        Some(_state.geographic_matching.clone()), // ✅ CORRIGÉ: Réutiliser le matching géographique
                         Some(user.id),
                         &user_text,
                         gps_zone,
@@ -1014,8 +1014,8 @@ async fn handle_direct_search(
     let (mut result, tokens_consumed) =
         rechercher_besoin_direct(
             &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
-            _state.cache_service.clone(), // ✅ CORRIGÉ: Réutiliser le cache service
-            _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique
+            Some(_state.cache_service.clone()), // ✅ CORRIGÉ: Réutiliser le cache service
+            Some(_state.geographic_matching.clone()), // ✅ CORRIGÉ: Réutiliser le matching géographique
             Some(user.id), 
             &user_text, 
             gps_zone, 

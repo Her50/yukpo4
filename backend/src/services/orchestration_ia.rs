@@ -1799,8 +1799,8 @@ async fn router_metier_ultra_optimise(
             let (result, tokens_consumed) =
                 crate::services::rechercher_besoin::rechercher_besoin_direct(
                     &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
-                    _state.cache_service.clone(), // ✅ CORRIGÉ: Réutiliser le cache service
-                    _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique
+                    Some(_state.cache_service.clone()), // ✅ CORRIGÉ: Réutiliser le cache service
+                    Some(_state.geographic_matching.clone()), // ✅ CORRIGÉ: Réutiliser le matching géographique
                     _user_id, 
                     user_text, 
                     None, // Pas de zone GPS pour cette recherche
