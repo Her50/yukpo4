@@ -1775,31 +1775,44 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // ✅ NOUVEAU: Afficher le tableau des sous-caractéristiques préférées d'abord pour validation
     // ✅ CORRECTION 2025-11-29: Afficher le tableau EN PRIORITÉ même si des chips validés existent déjà
     // Le tableau doit s'afficher en premier pour permettre la validation/modification avant d'afficher les chips
-    // ✅ CORRECTION RACINE: Créer le candidat final SYNCHRONEMENT depuis les données disponibles
-    // Ce candidat sera TOUJOURS disponible si les données sont présentes, garantissant l'affichage automatique
+    const displayCandidate = preferredDraftCandidate && preferredDraftCandidate.rows.length > 0
+        ? preferredDraftCandidate
+        : (bestSuggestionCandidate?.isPreferred
+            ? bestSuggestionCandidate
+            : bestSuggestionCandidate);
+
+    // ✅ CORRECTION RACINE ABSOLUE: Créer le candidat final DIRECTEMENT depuis les props brutes
+    // PRIORITÉ ABSOLUE: productVector/productLabels > sousCaracteristiques (props brutes) > normalizedSousCaracteristiques > preferredDraftCandidate > displayCandidate
+    // Utiliser les props BRUTES directement pour éviter tout problème de timing avec les normalisations
     const finalCandidateToDisplay = useMemo(() => {
-        // PRIORITÉ 1: Utiliser preferredDraftCandidate s'il existe
-        if (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0) {
-            return preferredDraftCandidate;
-        }
-
-        // PRIORITÉ 2: Utiliser displayCandidate (bestSuggestionCandidate)
-        if (displayCandidate && displayCandidate.rows && displayCandidate.rows.length > 0) {
-            return displayCandidate;
-        }
-
-        // PRIORITÉ 3: Créer DIRECTEMENT depuis les données disponibles (garantit l'affichage au premier rendu)
         const draftKey = 'ia-sous-caracteristiques-preferred';
         let rows: Array<{ label: string; value: string }> = [];
 
-        // Créer depuis productVector/productLabels si disponible
-        if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
+        // ✅ PRIORITÉ 1 ABSOLUE: Créer DIRECTEMENT depuis productVector/productLabels (props brutes, TOUJOURS disponibles si données IA présentes)
+        if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0 && productVector.length === productLabels.length) {
             rows = productVector.map((val, idx) => ({
                 label: productLabels[idx] || `Caractéristique ${idx + 1}`,
                 value: val
             })).filter(row => row.value && typeof row.value === 'string' && row.value.trim().length > 0);
         }
-        // Sinon créer depuis sousCaracteristiques
+        // ✅ PRIORITÉ 2: Créer DIRECTEMENT depuis sousCaracteristiques (prop brute, pas normalized)
+        else if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && !Array.isArray(sousCaracteristiques)) {
+            const keys = Object.keys(sousCaracteristiques);
+            if (keys.length > 0) {
+                Object.entries(sousCaracteristiques).forEach(([charKey, values]) => {
+                    if (Array.isArray(values) && values.length > 0) {
+                        const firstValue = values[0];
+                        if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+                            rows.push({
+                                label: charKey,
+                                value: firstValue,
+                            });
+                        }
+                    }
+                });
+            }
+        }
+        // ✅ PRIORITÉ 3: Utiliser normalizedSousCaracteristiques si props brutes non disponibles
         else if (normalizedSousCaracteristiques && typeof normalizedSousCaracteristiques === 'object' && Object.keys(normalizedSousCaracteristiques).length > 0) {
             Object.entries(normalizedSousCaracteristiques).forEach(([charKey, values]) => {
                 if (Array.isArray(values) && values.length > 0) {
@@ -1814,7 +1827,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             });
         }
 
-        // Si on a des rows, créer et retourner le candidat
+        // Si on a créé des rows depuis les props brutes, créer et retourner le candidat
         if (rows.length > 0) {
             return {
                 key: draftKey,
@@ -1826,14 +1839,18 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             } as SuggestionCandidate;
         }
 
-        return null;
-    }, [preferredDraftCandidate, displayCandidate, productVector, productLabels, normalizedSousCaracteristiques]);
+        // ✅ PRIORITÉ 4: Utiliser preferredDraftCandidate s'il existe (déjà créé depuis les données)
+        if (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0) {
+            return preferredDraftCandidate;
+        }
 
-    const displayCandidate = preferredDraftCandidate && preferredDraftCandidate.rows.length > 0
-        ? preferredDraftCandidate
-        : (bestSuggestionCandidate?.isPreferred
-            ? bestSuggestionCandidate
-            : bestSuggestionCandidate);
+        // ✅ PRIORITÉ 5: Utiliser displayCandidate (bestSuggestionCandidate) s'il existe
+        if (displayCandidate && displayCandidate.rows && displayCandidate.rows.length > 0) {
+            return displayCandidate;
+        }
+
+        return null;
+    }, [productVector, productLabels, sousCaracteristiques, normalizedSousCaracteristiques, preferredDraftCandidate, displayCandidate]);
 
 
     const handleApplySuggestion = useCallback(
@@ -2317,224 +2334,176 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 )}
             </View>
 
-            {/* ✅ CORRECTION 2025-11-29: Afficher le tableau même si des chips existent déjà - forcer l'affichage pour validation */}
-            {/* ✅ CRITIQUE: Le tableau doit TOUJOURS s'afficher au chargement si des sous-caractéristiques sont disponibles */}
-            {/* ✅ NOUVEAU: Afficher le tableau EN PREMIER, même si des chips validés existent déjà */}
-            {/* ✅ CORRIGÉ 2025-12-01: Afficher aussi si sousCaracteristiques est disponible (même si draft pas encore créé) */}
-            {/* ✅ CORRECTION CRITIQUE: Afficher le tableau automatiquement si sousCaracteristiques existe, même sans displayCandidate */}
-            {(loadingSuggestions || loadingCombinationSuggestions || displayCandidate || combinationError ||
-                (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0) ||
-                (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) ||
-                (productVector && productLabels && Array.isArray(productVector) && productVector.length > 0)) && (
-                    <View style={styles.suggestionsContainer}>
-                        <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
+            {/* ✅ CORRECTION RACINE: Afficher le tableau UNIQUEMENT si pas encore validé (pas de chips) */}
+            {/* Si chips.length > 0, c'est qu'on a déjà validé, donc on cache le tableau et on affiche seulement les chips (miniatures) */}
+            {/* Le tableau s'affiche au chargement pour permettre la validation, puis disparaît après validation */}
+            {chips.length === 0 && (loadingSuggestions || loadingCombinationSuggestions || finalCandidateToDisplay || combinationError) && (
+                <View style={styles.suggestionsContainer}>
+                    <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
 
-                        {(loadingSuggestions || loadingCombinationSuggestions) && (
-                            <ActivityIndicator size="small" color={modernColors.primary} style={{ marginVertical: 12 }} />
-                        )}
+                    {(loadingSuggestions || loadingCombinationSuggestions) && (
+                        <ActivityIndicator size="small" color={modernColors.primary} style={{ marginVertical: 12 }} />
+                    )}
 
-                        {/* ✅ CORRECTION 2025-11-29: Forcer l'affichage du tableau des sous-caractéristiques préférées même si des chips existent déjà */}
-                        {/* Le tableau doit TOUJOURS s'afficher pour que l'utilisateur puisse valider/modifier */}
-                        {/* ✅ CORRIGÉ 2025-12-01: preferredDraftCandidate est maintenant créé directement depuis sousCaracteristiques dans useMemo */}
-                        {/* Donc il devrait toujours exister si sousCaracteristiques est disponible */}
-                        {!loadingSuggestions && !loadingCombinationSuggestions && (() => {
-                            // ✅ CORRECTION RACINE: Créer le candidat DIRECTEMENT depuis les données disponibles si nécessaire
-                            // Cela garantit que le tableau s'affiche TOUJOURS si les données sont disponibles, même au premier rendu
-                            let candidateToDisplay = (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0)
-                                ? preferredDraftCandidate
-                                : displayCandidate;
+                    {/* ✅ CORRECTION: Le tableau s'affiche UNIQUEMENT si pas encore validé (chips.length === 0) */}
+                    {/* Après validation, le tableau disparaît et seuls les chips s'affichent */}
+                    {/* ✅ CORRIGÉ 2025-12-01: preferredDraftCandidate est maintenant créé directement depuis sousCaracteristiques dans useMemo */}
+                    {/* Donc il devrait toujours exister si sousCaracteristiques est disponible */}
+                    {!loadingSuggestions && !loadingCombinationSuggestions && (() => {
+                        // ✅ CORRECTION RACINE: Utiliser finalCandidateToDisplay qui est créé SYNCHRONEMENT depuis les données
+                        // Ce candidat est TOUJOURS disponible si les données existent, garantissant l'affichage automatique
+                        const candidateToDisplay = finalCandidateToDisplay;
 
-                            // ✅ CRITIQUE: Si aucun candidat n'existe mais que les données sont disponibles, créer un candidat DIRECTEMENT
-                            if ((!candidateToDisplay || !candidateToDisplay.rows || candidateToDisplay.rows.length === 0)) {
-                                const draftKey = 'ia-sous-caracteristiques-preferred';
-                                let rows: Array<{ label: string; value: string }> = [];
+                        // Si aucun candidat n'existe, ne rien afficher (mais cela ne devrait jamais arriver si les données sont disponibles)
+                        if (!candidateToDisplay || !candidateToDisplay.rows || candidateToDisplay.rows.length === 0) {
+                            return null;
+                        }
 
-                                // PRIORITÉ 1: Créer depuis productVector/productLabels si disponible
-                                if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
-                                    rows = productVector.map((val, idx) => ({
-                                        label: productLabels[idx] || `Caractéristique ${idx + 1}`,
-                                        value: val
-                                    })).filter(row => row.value && typeof row.value === 'string' && row.value.trim().length > 0);
-                                }
-                                // PRIORITÉ 2: Créer depuis sousCaracteristiques
-                                else if (normalizedSousCaracteristiques && typeof normalizedSousCaracteristiques === 'object' && Object.keys(normalizedSousCaracteristiques).length > 0) {
-                                    Object.entries(normalizedSousCaracteristiques).forEach(([charKey, values]) => {
-                                        if (Array.isArray(values) && values.length > 0) {
-                                            const firstValue = values[0];
-                                            if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-                                                rows.push({
-                                                    label: charKey,
-                                                    value: firstValue,
-                                                });
+                        return (
+                            <View key={candidateToDisplay.key} style={styles.suggestionCard}>
+                                <View style={styles.suggestionCardHeader}>
+                                    <View style={styles.suggestionCardHeaderLeft}>
+                                        <SafeIcon
+                                            name={
+                                                candidateToDisplay.source === 'popular'
+                                                    ? 'gift'
+                                                    : candidateToDisplay.source === 'combination'
+                                                        ? 'users'
+                                                        : 'sparkles'
                                             }
-                                        }
-                                    });
-                                }
-
-                                // Si on a créé des rows, créer le candidat
-                                if (rows.length > 0) {
-                                    candidateToDisplay = {
-                                        key: draftKey,
-                                        source: 'ia' as SuggestionSource,
-                                        rows: rows,
-                                        score: 15,
-                                        title: 'Caractéristiques suggérées par l\'IA',
-                                        isPreferred: true,
-                                    } as SuggestionCandidate;
-                                }
-                            }
-
-                            // Si toujours aucun candidat, ne rien afficher
-                            if (!candidateToDisplay || !candidateToDisplay.rows || candidateToDisplay.rows.length === 0) {
-                                return null;
-                            }
-
-                            return (
-                                <View key={candidateToDisplay.key} style={styles.suggestionCard}>
-                                    <View style={styles.suggestionCardHeader}>
-                                        <View style={styles.suggestionCardHeaderLeft}>
-                                            <SafeIcon
-                                                name={
-                                                    candidateToDisplay.source === 'popular'
-                                                        ? 'gift'
-                                                        : candidateToDisplay.source === 'combination'
-                                                            ? 'users'
-                                                            : 'sparkles'
-                                                }
-                                                size={16}
-                                                color={
-                                                    candidateToDisplay.source === 'popular'
-                                                        ? modernColors.primary
-                                                        : candidateToDisplay.source === 'combination'
-                                                            ? '#F97316'
-                                                            : modernColors.primary
-                                                }
-                                            />
-                                            <Text style={styles.suggestionCardTitle}>{candidateToDisplay.title}</Text>
+                                            size={16}
+                                            color={
+                                                candidateToDisplay.source === 'popular'
+                                                    ? modernColors.primary
+                                                    : candidateToDisplay.source === 'combination'
+                                                        ? '#F97316'
+                                                        : modernColors.primary
+                                            }
+                                        />
+                                        <Text style={styles.suggestionCardTitle}>{candidateToDisplay.title}</Text>
+                                    </View>
+                                    {candidateToDisplay.isTrending && (
+                                        <View style={styles.trendingBadge}>
+                                            <Text style={styles.trendingText}>📈 TENDANCE</Text>
                                         </View>
-                                        {candidateToDisplay.isTrending && (
-                                            <View style={styles.trendingBadge}>
-                                                <Text style={styles.trendingText}>📈 TENDANCE</Text>
-                                            </View>
-                                        )}
-                                        {candidateToDisplay.isPreferred && (
-                                            <View style={styles.combinationBadge}>
-                                                <SafeIcon name="sparkles" size={12} color={modernColors.primary} />
-                                                <Text style={styles.combinationBadgeText}>IA</Text>
-                                            </View>
-                                        )}
-                                    </View>
+                                    )}
+                                    {candidateToDisplay.isPreferred && (
+                                        <View style={styles.combinationBadge}>
+                                            <SafeIcon name="sparkles" size={12} color={modernColors.primary} />
+                                            <Text style={styles.combinationBadgeText}>IA</Text>
+                                        </View>
+                                    )}
+                                </View>
 
-                                    <View style={styles.suggestionTable}>
-                                        {candidateToDisplay.rows.length === 0 ? (
-                                            <Text style={styles.suggestionEmptyRow}>
-                                                Aucune modalité. Ajoutez-en pour personnaliser.
-                                            </Text>
-                                        ) : (
-                                            candidateToDisplay.rows.map((row, rowIndex) => (
-                                                <View
-                                                    key={`${candidateToDisplay.key}-${row.label}-${rowIndex}`}
-                                                    style={[
-                                                        styles.suggestionRow,
-                                                        rowIndex === candidateToDisplay.rows.length - 1 && styles.suggestionRowLast,
-                                                    ]}
-                                                >
-                                                    <View style={styles.suggestionRowContent}>
-                                                        <Text style={styles.suggestionCellLabel}>{row.label}</Text>
-                                                        <TouchableOpacity
-                                                            onPress={() => openSuggestionEditorForRow(candidateToDisplay.key, rowIndex)}
-                                                            style={styles.suggestionValueTouchable}
-                                                        >
-                                                            <Text style={styles.suggestionCellValue}>{row.value}</Text>
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                    <View style={styles.suggestionRowActions}>
-                                                        <TouchableOpacity
-                                                            style={styles.suggestionActionButton}
-                                                            onPress={() => openSuggestionEditorForRow(candidateToDisplay.key, rowIndex)}
-                                                        >
-                                                            <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity
-                                                            style={styles.suggestionActionButton}
-                                                            onPress={() => handleSuggestionRowDelete(candidateToDisplay.key, rowIndex)}
-                                                        >
-                                                            <SafeIcon name="trash-2" size={14} color="#EF4444" />
-                                                        </TouchableOpacity>
-                                                    </View>
+                                <View style={styles.suggestionTable}>
+                                    {candidateToDisplay.rows.length === 0 ? (
+                                        <Text style={styles.suggestionEmptyRow}>
+                                            Aucune modalité. Ajoutez-en pour personnaliser.
+                                        </Text>
+                                    ) : (
+                                        candidateToDisplay.rows.map((row, rowIndex) => (
+                                            <View
+                                                key={`${candidateToDisplay.key}-${row.label}-${rowIndex}`}
+                                                style={[
+                                                    styles.suggestionRow,
+                                                    rowIndex === candidateToDisplay.rows.length - 1 && styles.suggestionRowLast,
+                                                ]}
+                                            >
+                                                <View style={styles.suggestionRowContent}>
+                                                    <Text style={styles.suggestionCellLabel}>{row.label}</Text>
+                                                    <TouchableOpacity
+                                                        onPress={() => openSuggestionEditorForRow(candidateToDisplay.key, rowIndex)}
+                                                        style={styles.suggestionValueTouchable}
+                                                    >
+                                                        <Text style={styles.suggestionCellValue}>{row.value}</Text>
+                                                    </TouchableOpacity>
                                                 </View>
-                                            ))
-                                        )}
-                                    </View>
+                                                <View style={styles.suggestionRowActions}>
+                                                    <TouchableOpacity
+                                                        style={styles.suggestionActionButton}
+                                                        onPress={() => openSuggestionEditorForRow(candidateToDisplay.key, rowIndex)}
+                                                    >
+                                                        <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        style={styles.suggestionActionButton}
+                                                        onPress={() => handleSuggestionRowDelete(candidateToDisplay.key, rowIndex)}
+                                                    >
+                                                        <SafeIcon name="trash-2" size={14} color="#EF4444" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        ))
+                                    )}
+                                </View>
 
-                                    {(candidateToDisplay.sellerCount ||
-                                        candidateToDisplay.occurrences ||
-                                        candidateToDisplay.priceDisplay) && (
-                                            <View style={styles.suggestionMeta}>
-                                                <View style={styles.suggestionMetaLeft}>
-                                                    {typeof candidateToDisplay.sellerCount === 'number' && candidateToDisplay.sellerCount > 0 && (
-                                                        <Text style={styles.suggestionCount}>
-                                                            👥 {candidateToDisplay.sellerCount} prestataire
-                                                            {candidateToDisplay.sellerCount > 1 ? 's' : ''}
-                                                        </Text>
-                                                    )}
-                                                    {typeof candidateToDisplay.occurrences === 'number' && candidateToDisplay.occurrences > 0 && (
-                                                        <Text style={styles.combinationOccurrence}>
-                                                            🔁 {candidateToDisplay.occurrences} occurrence
-                                                            {candidateToDisplay.occurrences > 1 ? 's' : ''}
-                                                        </Text>
-                                                    )}
-                                                </View>
-                                                {candidateToDisplay.priceDisplay && (
-                                                    <Text style={styles.suggestionPrice}>
-                                                        💰 {candidateToDisplay.priceDisplay}
+                                {(candidateToDisplay.sellerCount ||
+                                    candidateToDisplay.occurrences ||
+                                    candidateToDisplay.priceDisplay) && (
+                                        <View style={styles.suggestionMeta}>
+                                            <View style={styles.suggestionMetaLeft}>
+                                                {typeof candidateToDisplay.sellerCount === 'number' && candidateToDisplay.sellerCount > 0 && (
+                                                    <Text style={styles.suggestionCount}>
+                                                        👥 {candidateToDisplay.sellerCount} prestataire
+                                                        {candidateToDisplay.sellerCount > 1 ? 's' : ''}
+                                                    </Text>
+                                                )}
+                                                {typeof candidateToDisplay.occurrences === 'number' && candidateToDisplay.occurrences > 0 && (
+                                                    <Text style={styles.combinationOccurrence}>
+                                                        🔁 {candidateToDisplay.occurrences} occurrence
+                                                        {candidateToDisplay.occurrences > 1 ? 's' : ''}
                                                     </Text>
                                                 )}
                                             </View>
-                                        )}
+                                            {candidateToDisplay.priceDisplay && (
+                                                <Text style={styles.suggestionPrice}>
+                                                    💰 {candidateToDisplay.priceDisplay}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    )}
 
-                                    <View style={styles.suggestionFooter}>
-                                        <TouchableOpacity
-                                            style={styles.suggestionAddButton}
-                                            onPress={() => openSuggestionAddModal(candidateToDisplay.key)}
-                                        >
-                                            <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
-                                            <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={styles.suggestionApplyButton}
-                                            onPress={() => {
-                                                handleApplySuggestion(candidateToDisplay);
-                                            }}
-                                            activeOpacity={0.7}
-                                        >
-                                            <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
-                                            <Text style={styles.suggestionApplyText}>Valider</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                                <View style={styles.suggestionFooter}>
+                                    <TouchableOpacity
+                                        style={styles.suggestionAddButton}
+                                        onPress={() => openSuggestionAddModal(candidateToDisplay.key)}
+                                    >
+                                        <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
+                                        <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.suggestionApplyButton}
+                                        onPress={() => {
+                                            handleApplySuggestion(candidateToDisplay);
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
+                                        <Text style={styles.suggestionApplyText}>Valider</Text>
+                                    </TouchableOpacity>
                                 </View>
-                            );
-                        })()}
+                            </View>
+                        );
+                    })()}
 
-                        {!loadingSuggestions &&
-                            !loadingCombinationSuggestions &&
-                            !displayCandidate &&
-                            !combinationError && (
-                                <Text style={styles.noSuggestionsText}>
-                                    Aucune caractéristique pertinente trouvée.
-                                </Text>
-                            )}
-
-                        {combinationError && (
-                            <Text style={styles.combinationError}>{combinationError}</Text>
+                    {!loadingSuggestions &&
+                        !loadingCombinationSuggestions &&
+                        !finalCandidateToDisplay &&
+                        !combinationError && (
+                            <Text style={styles.noSuggestionsText}>
+                                Aucune caractéristique pertinente trouvée.
+                            </Text>
                         )}
-                    </View>
-                )}
 
-            {/* ✅ NOUVEAU: Afficher les chips validés même si le tableau est affiché (après validation, on affiche les deux) */}
-            {/* Vecteur affiché en chips */}
-            {/* ✅ CORRECTION: Afficher les chips après validation, même si le tableau est toujours visible pour modifications */}
-            {chips.length > 0 ? (
+                    {combinationError && (
+                        <Text style={styles.combinationError}>{combinationError}</Text>
+                    )}
+                </View>
+            )}
+
+            {/* ✅ Afficher les chips validés (miniatures avec scroll horizontal) APRÈS validation */}
+            {/* Le tableau disparaît après validation, seuls les chips restent visibles */}
+            {chips.length > 0 && (
                 <View style={[styles.vectorContainer, styles.vectorContainerActive]}>
                     <ScrollView
                         horizontal
@@ -2582,7 +2551,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         })}
                     </ScrollView>
                 </View>
-            ) : null}
+            )}
 
 
             {/* Modal Édition */}
@@ -3510,4 +3479,114 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         marginBottom: 4,
     },
-    combinat
+    combinationCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    combinationCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+    },
+    combinationCardHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        flexShrink: 1,
+    },
+    combinationCardTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#1F2937',
+    },
+    combinationBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 999,
+        backgroundColor: modernColors.primary + '1A',
+    },
+    combinationBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    combinationTable: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 10,
+        overflow: 'hidden',
+    },
+    combinationRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+        gap: 12,
+    },
+    combinationRowLast: {
+        borderBottomWidth: 0,
+    },
+    combinationCellLabel: {
+        flex: 0.45,
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+        textTransform: 'capitalize',
+    },
+    combinationCellValue: {
+        flex: 0.55,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1F2937',
+        textAlign: 'right',
+    },
+    combinationMeta: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    combinationMetaLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    combinationUsage: {
+        fontSize: 11,
+        color: '#6B7280',
+    },
+    combinationOccurrence: {
+        fontSize: 11,
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    combinationPrice: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#059669',
+    },
+    combinationApply: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+    },
+});
+
+export default LinearAutocompleteEditor;

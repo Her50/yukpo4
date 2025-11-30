@@ -139,7 +139,7 @@ struct ProcessedImageResult {
 async fn process_single_image_for_product(
     storage_root: &PathBuf,
     service_id: i32,
-    product_id: &str,
+    _product_id: &str,
     product_index: usize,
     image_index: usize,
     image_data: &str,

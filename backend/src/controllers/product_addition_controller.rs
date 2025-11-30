@@ -739,7 +739,7 @@ async fn save_product_media(
                         is_main
                     ));
                 }
-                Ok((image_index, is_main, Ok(None))) => {
+                Ok((image_index, _is_main, Ok(None))) => {
                     log_warn(&format!(
                         "[add_product_to_service] ⚠️ Image {} du produit {} ignorée",
                         image_index + 1,

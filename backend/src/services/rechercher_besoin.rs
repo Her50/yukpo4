@@ -1,5 +1,6 @@
 use crate::core::types::AppResult;
 use sqlx::{FromRow, Row};
+use std::sync::Arc;
 
 #[derive(FromRow)]
 struct ServiceSearchRow {
@@ -407,7 +408,6 @@ pub async fn rechercher_besoin_direct(
 ) -> AppResult<(Value, u32)> {
     use crate::services::orchestration_ia::extract_keywords_from_text;
     use crate::utils::log::log_info;
-    use std::sync::Arc;
 
     log_info(&format!("[RECHERCHE_DIRECTE] Recherche directe avec texte utilisateur: '{}' (GPS: {:?}, Rayon: {:?}km, specialized_type: {:?})", 
         user_text, gps_zone, search_radius_km, specialized_type));
@@ -613,7 +613,7 @@ pub async fn rechercher_besoin_direct(
         "#
     )
     .bind(&service_ids)
-    .fetch_all(&pool)
+    .fetch_all(pool)
     .await
     .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur batch query service_user_info: {}", e)))?
     .into_iter()
@@ -660,7 +660,7 @@ pub async fn rechercher_besoin_direct(
             "#
         )
         .bind(&service_ids)
-        .fetch_all(&pool)
+        .fetch_all(pool)
         .await
         .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur batch query product_info: {}", e)))?;
         
@@ -683,7 +683,7 @@ pub async fn rechercher_besoin_direct(
             "#
         )
         .bind(&service_ids)
-        .fetch_all(&pool)
+        .fetch_all(pool)
         .await
         .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur batch query media: {}", e)))?;
         
