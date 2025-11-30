@@ -505,7 +505,7 @@ pub async fn rechercher_besoin_direct(
             ));
             // Fallback vers recherche SQL simple avec tous les mots-clés
             let fallback_results =
-                search_services_direct_fallback(&pool, primary_keyword, &keywords).await?;
+                search_services_direct_fallback(&pool, &primary_keyword, &keywords).await?;
             log_info(&format!(
                 "[RECHERCHE_DIRECTE] Fallback SQL réussi avec {} résultats",
                 fallback_results.len()

@@ -525,7 +525,7 @@ async fn ensure_product_in_lifecycle(
     pool: &sqlx::PgPool,
     service_id: i32,
     product_index: i32,
-    service_data: &Value,
+    _service_data: &Value,
     product_name: &str,
     product_type: &str,
 ) -> AppResult<()> {

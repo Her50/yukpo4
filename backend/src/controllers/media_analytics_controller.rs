@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Json, Path, Query, State},
+    extract::{rejection::JsonRejection, Json, Path, Query, State},
     Extension,
 };
 use log::info;
@@ -44,7 +44,7 @@ pub async fn track_view(
     State(state): State<Arc<AppState>>,
     Path(media_id): Path<String>,
     Extension(user): Extension<Option<AuthenticatedUser>>,
-    payload: Result<Json<EngagementPayload>, axum::extract::JsonRejection>,
+    payload: Result<Json<EngagementPayload>, JsonRejection>,
 ) -> AppResult<Json<serde_json::Value>> {
     // ✅ CORRECTION 2025-12-01: Validation media_id AVANT le parsing JSON pour éviter 500
     let media_id_trimmed = media_id.trim();
@@ -89,10 +89,10 @@ pub async fn track_view(
         state,
         media_id_int,
         "view",
-        payload.channel,
+        payload.channel.clone(),
         user.map(|u| u.id),
-        payload.session_id,
-        payload.metadata,
+        payload.session_id.clone(),
+        payload.metadata.clone(),
     )
     .await?;
 
@@ -103,7 +103,7 @@ pub async fn track_share(
     State(state): State<Arc<AppState>>,
     Path(media_id): Path<i32>,
     Extension(user): Extension<Option<AuthenticatedUser>>,
-    payload: Result<Json<EngagementPayload>, axum::extract::JsonRejection>,
+    payload: Result<Json<EngagementPayload>, JsonRejection>,
 ) -> AppResult<Json<serde_json::Value>> {
     // ✅ CORRECTION 2025-12-01: Gérer l'erreur de parsing JSON gracieusement (retourner 400 au lieu de 500)
     let payload = payload.map_err(|e| {
@@ -121,10 +121,10 @@ pub async fn track_share(
         state,
         media_id,
         "share",
-        payload.channel,
+        payload.channel.clone(),
         user.map(|u| u.id),
-        payload.session_id,
-        payload.metadata,
+        payload.session_id.clone(),
+        payload.metadata.clone(),
     )
     .await?;
 
