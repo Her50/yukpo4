@@ -39,6 +39,7 @@ interface VideoExample {
 
 // ✅ NOUVEAU: Collection d'exemples avec les 4 styles
 // Les exemples réels seront chargés depuis l'API et remplaceront ces valeurs par défaut
+// ✅ CORRECTION: Utiliser uniquement la vidéo exemple qui existe réellement
 const VIDEO_EXAMPLES: VideoExample[] = [
     {
         id: 'tiktok',
@@ -46,8 +47,8 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         label: 'TikTok Boost',
         description: 'Transitions rapides, texte dynamique, format vertical 9:16',
         icon: '🎬',
-        videoUrl: `${API_BASE_URL}/api/media/examples/tiktok-demo.mp4`,
-        thumbnail: `${API_BASE_URL}/api/media/examples/tiktok-thumbnail.jpg`, // ✅ Thumbnail par défaut
+        videoUrl: `${API_BASE_URL}/api/media/examples/video-creation-demo.mp4`, // ✅ Utiliser la vidéo qui existe
+        thumbnail: undefined, // ✅ Pas de thumbnail par défaut pour éviter les 404
         stats: {
             views: '2.5K',
             engagement: '15%',
@@ -61,8 +62,8 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         label: 'Story Produit',
         description: 'Narration douce, highlight des atouts, superpositions élégantes',
         icon: '📚',
-        videoUrl: `${API_BASE_URL}/api/media/examples/story-demo.mp4`,
-        thumbnail: `${API_BASE_URL}/api/media/examples/story-thumbnail.jpg`, // ✅ Thumbnail par défaut
+        videoUrl: `${API_BASE_URL}/api/media/examples/video-creation-demo.mp4`, // ✅ Utiliser la vidéo qui existe
+        thumbnail: undefined, // ✅ Pas de thumbnail par défaut pour éviter les 404
         stats: {
             views: '1.8K',
             engagement: '22%',
@@ -76,8 +77,8 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         label: 'Ciné Premium',
         description: 'Animations lentes, focus sur détails, ambiance immersive',
         icon: '🎨',
-        videoUrl: `${API_BASE_URL}/api/media/examples/cinematic-demo.mp4`,
-        thumbnail: `${API_BASE_URL}/api/media/examples/cinematic-thumbnail.jpg`, // ✅ Thumbnail par défaut
+        videoUrl: `${API_BASE_URL}/api/media/examples/video-creation-demo.mp4`, // ✅ Utiliser la vidéo qui existe
+        thumbnail: undefined, // ✅ Pas de thumbnail par défaut pour éviter les 404
         stats: {
             views: '3.2K',
             engagement: '18%',
@@ -91,8 +92,8 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         label: 'Carousel Flash',
         description: 'Slides punchy, CTA répétés, idéal publicités express',
         icon: '🔄',
-        videoUrl: `${API_BASE_URL}/api/media/examples/carousel-demo.mp4`,
-        thumbnail: `${API_BASE_URL}/api/media/examples/carousel-thumbnail.jpg`, // ✅ Thumbnail par défaut
+        videoUrl: `${API_BASE_URL}/api/media/examples/video-creation-demo.mp4`, // ✅ Utiliser la vidéo qui existe
+        thumbnail: undefined, // ✅ Pas de thumbnail par défaut pour éviter les 404
         stats: {
             views: '1.5K',
             engagement: '25%',
@@ -171,35 +172,47 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
     const loadRealExamples = useCallback(async () => {
         setLoadingExamples(true);
         try {
-            // 1. Charger les vidéos depuis l'API
-            const videosResponse = await apiGet('/api/videos/my-videos');
-            const showcaseResponse = await apiGet('/api/content/mixed?limit=20&include_videos=true');
-
             const allVideos: any[] = [];
 
-            // Ajouter les vidéos de l'utilisateur
-            if (videosResponse.success && Array.isArray(videosResponse.data)) {
-                allVideos.push(...videosResponse.data.map((v: any) => ({ ...v, source: 'my-videos' })));
+            // 1. Charger les vidéos depuis l'API (avec gestion d'erreur gracieuse)
+            try {
+                const videosResponse = await apiGet('/api/videos/my-videos');
+                // Ajouter les vidéos de l'utilisateur
+                if (videosResponse.success && Array.isArray(videosResponse.data)) {
+                    allVideos.push(...videosResponse.data.map((v: any) => ({ ...v, source: 'my-videos' })));
+                }
+            } catch (error) {
+                // ✅ CORRECTION: Gérer l'erreur 500 gracieusement
+                console.warn('[VideoExampleModal] Erreur chargement /api/videos/my-videos:', error);
+                // Continuer avec les exemples par défaut
             }
 
-            // Ajouter les vidéos du feed (meilleures performances)
-            if (showcaseResponse.success && Array.isArray(showcaseResponse.data)) {
-                showcaseResponse.data.forEach((item: any) => {
-                    const video = item?.videos?.[0] || item?.video_url || item?.videoUrl;
-                    if (video) {
-                        allVideos.push({
-                            id: item.id || `showcase-${Math.random()}`,
-                            video_url: video,
-                            thumbnail: item.thumbnails?.[0] || item.thumbnail || item.images?.[0],
-                            service_id: item.service_id || item.serviceId,
-                            description: item.description || item.titre || item.nom,
-                            style_preset: item.video_style || item.style_preset || extractStyleFromVideo(item),
-                            views: item.views || item.engagement?.views || 0,
-                            likes: item.likes || item.engagement?.likes || 0,
-                            source: 'showcase',
-                        });
-                    }
-                });
+            // 2. Essayer de charger depuis /api/content/mixed (peut ne pas exister)
+            try {
+                const showcaseResponse = await apiGet('/api/content/mixed?limit=20&include_videos=true');
+                // Ajouter les vidéos du feed (meilleures performances)
+                if (showcaseResponse.success && Array.isArray(showcaseResponse.data)) {
+                    showcaseResponse.data.forEach((item: any) => {
+                        const video = item?.videos?.[0] || item?.video_url || item?.videoUrl;
+                        if (video) {
+                            allVideos.push({
+                                id: item.id || `showcase-${Math.random()}`,
+                                video_url: video,
+                                thumbnail: item.thumbnails?.[0] || item.thumbnail || item.images?.[0],
+                                service_id: item.service_id || item.serviceId,
+                                description: item.description || item.titre || item.nom,
+                                style_preset: item.video_style || item.style_preset || extractStyleFromVideo(item),
+                                views: item.views || item.engagement?.views || 0,
+                                likes: item.likes || item.engagement?.likes || 0,
+                                source: 'showcase',
+                            });
+                        }
+                    });
+                }
+            } catch (error) {
+                // ✅ CORRECTION: Gérer l'erreur 404 gracieusement (endpoint peut ne pas exister)
+                console.warn('[VideoExampleModal] Endpoint /api/content/mixed non disponible:', error);
+                // Continuer sans cette source de données
             }
 
             // 2. Grouper par style et prendre la meilleure vidéo de chaque style
@@ -288,6 +301,7 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
     useEffect(() => {
         if (visible) {
             setCurrentIndex(0);
+            // ✅ CORRECTION: Réinitialiser les erreurs et le chargement quand le modal s'ouvre
             setVideoErrors({});
             setVideoLoading(
                 examples.reduce((acc, example) => {
@@ -295,23 +309,47 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
                     return acc;
                 }, {} as Record<string, boolean>)
             );
+        } else {
+            // ✅ CORRECTION: Réinitialiser aussi quand le modal se ferme pour éviter les états persistants
+            setVideoErrors({});
+            setVideoLoading({});
         }
     }, [visible, examples]);
 
     // ✅ NOUVEAU: Charger les exemples réels quand le modal s'ouvre
     useEffect(() => {
         if (visible) {
-            loadRealExamples();
+            // ✅ CORRECTION: Utiliser un timeout pour éviter les appels multiples
+            const timeoutId = setTimeout(() => {
+                loadRealExamples();
+            }, 100);
+            return () => clearTimeout(timeoutId);
         }
-    }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [visible, loadRealExamples]);
 
     const handleVideoError = (exampleId: string, error: any) => {
-        console.warn(`[VideoExampleModal] Erreur chargement vidéo ${exampleId}:`, error);
-        setVideoErrors(prev => ({ ...prev, [exampleId]: true }));
+        // ✅ CORRECTION: Éviter les logs répétés et la boucle infinie
+        if (!videoErrors[exampleId]) {
+            console.warn(`[VideoExampleModal] Erreur chargement vidéo ${exampleId}:`, error);
+        }
+        // ✅ CORRECTION: Marquer l'erreur et arrêter le chargement pour éviter la boucle
+        setVideoErrors(prev => {
+            if (prev[exampleId]) {
+                // Déjà en erreur, ne pas re-trigger
+                return prev;
+            }
+            return { ...prev, [exampleId]: true };
+        });
         setVideoLoading(prev => ({ ...prev, [exampleId]: false }));
     };
 
     const handleVideoLoad = (exampleId: string) => {
+        // ✅ CORRECTION: S'assurer que l'erreur est réinitialisée si la vidéo charge avec succès
+        setVideoErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[exampleId];
+            return newErrors;
+        });
         setVideoLoading(prev => ({ ...prev, [exampleId]: false }));
     };
 
@@ -376,8 +414,9 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
                                         style={styles.thumbnailImage}
                                         resizeMode="cover"
                                         onError={() => {
-                                            // ✅ CORRECTION 2025-12-01: Gérer les erreurs 404 pour les thumbnails
-                                            console.warn('[VideoExampleModal] Erreur chargement thumbnail:', item.thumbnail);
+                                            // ✅ CORRECTION 2025-12-01: Gérer les erreurs 404 pour les thumbnails silencieusement
+                                            // Ne pas logger en warning pour éviter le spam dans les logs
+                                            // Le thumbnail sera simplement ignoré et on affichera le loader
                                         }}
                                     />
                                     <View style={styles.thumbnailOverlay}>
@@ -393,17 +432,35 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
                             )}
                         </>
                     )}
-                    {/* ✅ Afficher la vidéo seulement si elle est chargée */}
-                    {!isLoadingVideo && !isError && (
+                    {/* ✅ Afficher la vidéo seulement si elle est chargée et pas en erreur */}
+                    {!isLoadingVideo && !isError && item.videoUrl && (
                         <Video
+                            key={`video-${item.id}-${item.videoUrl}`} // ✅ CORRECTION: Key unique pour forcer le remount si l'URL change
                             source={{ uri: item.videoUrl }}
                             style={styles.video}
                             resizeMode={ResizeMode.CONTAIN}
                             shouldPlay={false}
                             isLooping={false}
                             useNativeControls={true}
-                            onError={(error) => handleVideoError(item.id, error)}
-                            onLoad={() => handleVideoLoad(item.id)}
+                            onError={(error) => {
+                                // ✅ CORRECTION: Éviter la boucle infinie en marquant l'erreur immédiatement
+                                // Ne logger qu'une seule fois pour éviter le spam
+                                if (!videoErrors[item.id]) {
+                                    console.warn(`[VideoExampleModal] Erreur chargement vidéo ${item.id}:`, error);
+                                }
+                                handleVideoError(item.id, error);
+                            }}
+                            onLoad={() => {
+                                // ✅ CORRECTION: Marquer comme chargé pour éviter les rechargements
+                                handleVideoLoad(item.id);
+                            }}
+                            onLoadStart={() => {
+                                // ✅ CORRECTION: S'assurer que l'état de chargement est correct
+                                // Ne pas réinitialiser si déjà en erreur
+                                if (!videoErrors[item.id]) {
+                                    setVideoLoading(prev => ({ ...prev, [item.id]: true }));
+                                }
+                            }}
                         />
                     )}
                     {/* ✅ Fallback si erreur */}

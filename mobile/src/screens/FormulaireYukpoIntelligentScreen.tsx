@@ -298,10 +298,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       .replace(/\\n/g, '\n');
   }, []);
   const handleMediaHorizontalScrollStart = useCallback(() => {
+    // ✅ CORRIGÉ: Ne pas désactiver complètement, permettre le scroll entre blocs
+    // Le scroll horizontal entre blocs reste actif même pendant le scroll des médias
+    // On ne désactive que temporairement pour éviter les conflits
     setBlockHorizontalScrollEnabled(false);
+    // ✅ Réactiver automatiquement après un court délai pour permettre le scroll entre blocs
+    setTimeout(() => {
+      setBlockHorizontalScrollEnabled(true);
+    }, 500);
   }, []);
 
   const handleMediaHorizontalScrollEnd = useCallback(() => {
+    // ✅ CORRIGÉ: Réactiver immédiatement le scroll horizontal entre blocs
     setBlockHorizontalScrollEnabled(true);
   }, []);
 
@@ -5113,6 +5121,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                         nestedScrollEnabled={true}
+                        scrollEnabled={true}
+                        // ✅ CORRIGÉ: Permettre le scroll horizontal même dans le bloc produit
+                        directionalLockEnabled={false}
                       >
                         <View style={styles.sectionContainer}>
                           <LinearGradient

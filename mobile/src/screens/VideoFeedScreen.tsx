@@ -1179,12 +1179,21 @@ const VideoFeedScreen: React.FC = () => {
 
     const handleOpenCreation = useCallback(
         async (source?: FeedItem) => {
-            // ✅ CORRECTION: Ouvrir directement VideoCreationIntroScreen (page d'introduction du montage)
-            // qui mène ensuite au VideoCreationWizardScreen (montage en 6 étapes)
-            // Même UX que le bouton vidéo dans MesProduitsScreen
-            (navigation as any).navigate('VideoCreationIntro');
+            const inventory = await ensureCreatorInventory();
+            if (!inventory || inventory.length === 0) {
+                return;
+            }
+            if (source?.serviceId) {
+                const match = inventory.find(
+                    (product) => product.serviceId === String(source.serviceId),
+                );
+                setCreationPrimaryProduct(match ?? null);
+            } else {
+                setCreationPrimaryProduct(null);
+            }
+            setCreationModalVisible(true);
         },
-        [navigation],
+        [ensureCreatorInventory],
     );
 
     const logLiveInteraction = useCallback(

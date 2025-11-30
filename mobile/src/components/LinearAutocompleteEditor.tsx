@@ -565,6 +565,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         return sousCaracteristiques;
     }, [sousCaracteristiques]);
 
+
     // ✅ PROTECTION ULTIME 2025-11-06: S'assurer que displayValue est TOUJOURS une string
     // ✅ CORRIGÉ: Ne pas logger de warning si value est simplement vide (c'est normal pour un champ non rempli)
     const displayValue = (() => {
@@ -841,7 +842,13 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             setLoadingSuggestions(false);
             setLoadingCombinationSuggestions(false);
             setCombinationError(null);
-            setSuggestionDrafts({});
+            // ✅ CORRECTION RACINE: TOUJOURS garder le draft préféré après validation pour permettre les modifications
+            // Le tableau doit rester visible avec les données validées pour que l'utilisateur puisse continuer à modifier
+            const preferredKey = 'ia-sous-caracteristiques-preferred';
+            setSuggestionDrafts((prev) => ({
+                ...prev,
+                [preferredKey]: rows.map(r => ({ ...r })), // Toujours mettre à jour le draft préféré avec les rows validées
+            }));
         },
         [createVectorFromRows, onChange, suggestionDrafts]
     );
@@ -1362,10 +1369,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         sousCaracteristiques,
     ]);
 
-    // ✅ NOUVEAU: Charger immédiatement les sous-caractéristiques préférées de l'IA dès qu'elles sont disponibles
-    // Ce useEffect s'exécute indépendamment des autres suggestions pour garantir l'affichage immédiat
-    // ✅ CORRIGÉ: S'exécuter aussi quand productVector/productLabels changent pour garantir l'affichage automatique
-    // ✅ CORRIGÉ 2025-12-01: S'exécuter IMMÉDIATEMENT au montage si sousCaracteristiques est disponible
+    // ✅ CORRECTION RACINE: Synchroniser suggestionDrafts avec les données sources pour permettre les modifications
+    // Ce useEffect maintient suggestionDrafts en synchronisation avec les données, mais ne bloque plus l'affichage
     useEffect(() => {
         const key = 'ia-sous-caracteristiques-preferred';
         const rows: Array<{ label: string; value: string }> = [];
@@ -1376,102 +1381,44 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 label: productLabels[idx] || `Caractéristique ${idx + 1}`,
                 value: val
             })).filter(row => row.value && typeof row.value === 'string' && row.value.trim().length > 0));
-            console.log('[LinearAutocompleteEditor] ✅ Rows créées depuis productVector/productLabels:', {
-                rowsCount: rows.length,
-                rows: rows.map(r => `${r.label}: ${r.value}`)
-            });
         }
         // ✅ PRIORITÉ 2: Utiliser sousCaracteristiques (fallback)
-        else if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) {
-            const sousCaracsKeys = Object.keys(sousCaracteristiques);
-            sousCaracsKeys.forEach((charKey) => {
-                const values = sousCaracteristiques[charKey];
+        else if (normalizedSousCaracteristiques && typeof normalizedSousCaracteristiques === 'object' && Object.keys(normalizedSousCaracteristiques).length > 0) {
+            Object.entries(normalizedSousCaracteristiques).forEach(([charKey, values]) => {
                 if (Array.isArray(values) && values.length > 0) {
-                    // Prendre la première valeur (choix préféré de l'IA)
                     const firstValue = values[0];
                     if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
                         rows.push({
                             label: charKey,
                             value: firstValue,
                         });
-                    } else {
-                        console.warn('[LinearAutocompleteEditor] ⚠️ Première valeur invalide pour', charKey, ':', firstValue);
                     }
-                } else {
-                    console.warn('[LinearAutocompleteEditor] ⚠️ Valeurs invalides pour', charKey, ':', values);
                 }
-            });
-            console.log('[LinearAutocompleteEditor] ✅ Rows créées depuis sousCaracteristiques:', {
-                rowsCount: rows.length,
-                rows: rows.map(r => `${r.label}: ${r.value}`)
             });
         }
 
-        // ✅ CORRIGÉ 2025-12-01: Toujours mettre à jour suggestionDrafts si on a des rows, même si c'était vide avant
-        // Cela garantit que le tableau s'affiche dès que les données sont disponibles
+        // Mettre à jour suggestionDrafts seulement si on a des rows à synchroniser et si les données ont changé
         if (rows.length > 0) {
             setSuggestionDrafts((prev) => {
                 const existing = prev[key];
                 // Vérifier si les données ont changé
-                if (existing && existing.length === rows.length) {
-                    const hasChanged = existing.some((row, idx) => {
+                if (existing && existing.length === rows.length &&
+                    !existing.some((row, idx) => {
                         const newRow = rows[idx];
                         return !newRow || row.label !== newRow.label || row.value !== newRow.value;
-                    });
-                    if (!hasChanged) {
-                        console.log('[LinearAutocompleteEditor] ✅ Données identiques, pas de mise à jour nécessaire');
-                        return prev; // Pas de changement, ne pas mettre à jour
-                    }
+                    })) {
+                    // Données identiques, pas de mise à jour nécessaire
+                    return prev;
                 }
 
-                console.log('[LinearAutocompleteEditor] ✅ Mise à jour suggestionDrafts avec', rows.length, 'rows pour affichage automatique');
+                // Mettre à jour avec les nouvelles données
                 return {
                     ...prev,
-                    [key]: rows,
+                    [key]: rows.map(r => ({ ...r })),
                 };
             });
-        } else {
-            // ✅ CORRIGÉ 2025-12-01: Si rows est vide mais que sousCaracteristiques existe, créer quand même un draft vide
-            // pour permettre l'affichage du tableau (qui affichera "Aucune modalité")
-            if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) {
-                // Créer des rows depuis toutes les valeurs disponibles (pas seulement la première)
-                const allRows: Array<{ label: string; value: string }> = [];
-                Object.entries(sousCaracteristiques).forEach(([charKey, values]) => {
-                    if (Array.isArray(values) && values.length > 0) {
-                        // Prendre la première valeur comme valeur par défaut
-                        const firstValue = values[0];
-                        if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-                            allRows.push({
-                                label: charKey,
-                                value: firstValue,
-                            });
-                        }
-                    }
-                });
-
-                if (allRows.length > 0) {
-                    setSuggestionDrafts((prev) => {
-                        const existing = prev[key];
-                        if (existing && existing.length === allRows.length) {
-                            const hasChanged = existing.some((row, idx) => {
-                                const newRow = allRows[idx];
-                                return !newRow || row.label !== newRow.label || row.value !== newRow.value;
-                            });
-                            if (!hasChanged) {
-                                return prev;
-                            }
-                        }
-
-                        console.log('[LinearAutocompleteEditor] ✅ Mise à jour suggestionDrafts (fallback) avec', allRows.length, 'rows');
-                        return {
-                            ...prev,
-                            [key]: allRows,
-                        };
-                    });
-                }
-            }
         }
-    }, [sousCaracteristiques, productVector, productLabels]);
+    }, [normalizedSousCaracteristiques, productVector, productLabels, suggestionDrafts]);
 
     // ✅ CORRECTION FINALE 2025-11-06 : Recherche progressive SANS useEffect
     // Le useEffect avec searchSuggestions cause des problèmes de closure
@@ -1751,26 +1698,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     const bestSuggestionCandidate = suggestionCandidates.length > 0 ? suggestionCandidates[0] : null;
 
-    // ✅ NOUVEAU: Créer un candidat depuis suggestionDrafts si les sous-caractéristiques préférées sont disponibles
-    // ✅ CORRIGÉ 2025-12-01: Créer le candidat DIRECTEMENT depuis sousCaracteristiques pour garantir qu'il existe toujours
-    // Cela garantit que le tableau s'affiche automatiquement dès que les données sont disponibles, sans attendre le useEffect
+    // ✅ CORRECTION RACINE: Créer preferredDraftCandidate SYNCHRONEMENT depuis les props, SANS dépendre de suggestionDrafts
+    // Cela garantit que le candidat existe dès le premier rendu si les données sont disponibles
     const preferredDraftCandidate = useMemo(() => {
         const draftKey = 'ia-sous-caracteristiques-preferred';
 
-        // ✅ PRIORITÉ 1: Utiliser le draft s'il existe déjà (mis à jour par useEffect)
-        const draftRows = suggestionDrafts[draftKey];
-        if (draftRows && draftRows.length > 0) {
-            return {
-                key: draftKey,
-                source: 'ia' as SuggestionSource,
-                rows: draftRows,
-                score: 15,
-                title: 'Caractéristiques suggérées par l\'IA',
-                isPreferred: true,
-            } as SuggestionCandidate;
-        }
-
-        // ✅ PRIORITÉ 2: Créer directement depuis productVector/productLabels si disponibles (ordre correct)
+        // ✅ PRIORITÉ 1: Créer directement depuis productVector/productLabels si disponibles (ordre correct, données préférées par l'IA)
         if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
             const rows = productVector.map((val, idx) => ({
                 label: productLabels[idx] || `Caractéristique ${idx + 1}`,
@@ -1789,10 +1722,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
         }
 
-        // ✅ PRIORITÉ 3: Créer directement depuis sousCaracteristiques (fallback)
-        if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) {
+        // ✅ PRIORITÉ 2: Créer directement depuis sousCaracteristiques (fallback)
+        if (normalizedSousCaracteristiques && typeof normalizedSousCaracteristiques === 'object' && Object.keys(normalizedSousCaracteristiques).length > 0) {
             const rows: Array<{ label: string; value: string }> = [];
-            Object.entries(sousCaracteristiques).forEach(([charKey, values]) => {
+            Object.entries(normalizedSousCaracteristiques).forEach(([charKey, values]) => {
                 if (Array.isArray(values) && values.length > 0) {
                     // Prendre la première valeur (choix préféré de l'IA)
                     const firstValue = values[0];
@@ -1817,8 +1750,22 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
         }
 
+        // ✅ PRIORITÉ 3: Utiliser le draft s'il existe déjà (mis à jour par useEffect) - seulement comme fallback
+        const draftRows = suggestionDrafts[draftKey];
+        if (draftRows && draftRows.length > 0) {
+            return {
+                key: draftKey,
+                source: 'ia' as SuggestionSource,
+                rows: draftRows,
+                score: 15,
+                title: 'Caractéristiques suggérées par l\'IA',
+                isPreferred: true,
+            } as SuggestionCandidate;
+        }
+
         return null;
-    }, [suggestionDrafts, sousCaracteristiques, productVector, productLabels]);
+    }, [normalizedSousCaracteristiques, productVector, productLabels, suggestionDrafts]);
+
 
     // ✅ PRIORITÉ: Utiliser le candidat préféré du draft s'il existe
     // Priorité 1: preferredDraftCandidate (sous-caractéristiques préférées de l'IA) - TOUJOURS afficher en premier
@@ -1828,28 +1775,66 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // ✅ NOUVEAU: Afficher le tableau des sous-caractéristiques préférées d'abord pour validation
     // ✅ CORRECTION 2025-11-29: Afficher le tableau EN PRIORITÉ même si des chips validés existent déjà
     // Le tableau doit s'afficher en premier pour permettre la validation/modification avant d'afficher les chips
+    // ✅ CORRECTION RACINE: Créer le candidat final SYNCHRONEMENT depuis les données disponibles
+    // Ce candidat sera TOUJOURS disponible si les données sont présentes, garantissant l'affichage automatique
+    const finalCandidateToDisplay = useMemo(() => {
+        // PRIORITÉ 1: Utiliser preferredDraftCandidate s'il existe
+        if (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0) {
+            return preferredDraftCandidate;
+        }
+
+        // PRIORITÉ 2: Utiliser displayCandidate (bestSuggestionCandidate)
+        if (displayCandidate && displayCandidate.rows && displayCandidate.rows.length > 0) {
+            return displayCandidate;
+        }
+
+        // PRIORITÉ 3: Créer DIRECTEMENT depuis les données disponibles (garantit l'affichage au premier rendu)
+        const draftKey = 'ia-sous-caracteristiques-preferred';
+        let rows: Array<{ label: string; value: string }> = [];
+
+        // Créer depuis productVector/productLabels si disponible
+        if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
+            rows = productVector.map((val, idx) => ({
+                label: productLabels[idx] || `Caractéristique ${idx + 1}`,
+                value: val
+            })).filter(row => row.value && typeof row.value === 'string' && row.value.trim().length > 0);
+        }
+        // Sinon créer depuis sousCaracteristiques
+        else if (normalizedSousCaracteristiques && typeof normalizedSousCaracteristiques === 'object' && Object.keys(normalizedSousCaracteristiques).length > 0) {
+            Object.entries(normalizedSousCaracteristiques).forEach(([charKey, values]) => {
+                if (Array.isArray(values) && values.length > 0) {
+                    const firstValue = values[0];
+                    if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+                        rows.push({
+                            label: charKey,
+                            value: firstValue,
+                        });
+                    }
+                }
+            });
+        }
+
+        // Si on a des rows, créer et retourner le candidat
+        if (rows.length > 0) {
+            return {
+                key: draftKey,
+                source: 'ia' as SuggestionSource,
+                rows: rows,
+                score: 15,
+                title: 'Caractéristiques suggérées par l\'IA',
+                isPreferred: true,
+            } as SuggestionCandidate;
+        }
+
+        return null;
+    }, [preferredDraftCandidate, displayCandidate, productVector, productLabels, normalizedSousCaracteristiques]);
+
     const displayCandidate = preferredDraftCandidate && preferredDraftCandidate.rows.length > 0
         ? preferredDraftCandidate
         : (bestSuggestionCandidate?.isPreferred
             ? bestSuggestionCandidate
             : bestSuggestionCandidate);
 
-    // ✅ LOG: Candidat sélectionné pour affichage
-    useEffect(() => {
-        if (displayCandidate) {
-            console.log('[LinearAutocompleteEditor] ✅ [CANDIDAT_SELECTIONNE] Candidat sélectionné pour affichage tableau:', {
-                key: displayCandidate.key,
-                source: displayCandidate.source,
-                rowsCount: displayCandidate.rows.length,
-                isPreferred: displayCandidate.isPreferred,
-                title: displayCandidate.title,
-                rows: displayCandidate.rows.map(r => `${r.label}: ${r.value}`),
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            console.log('[LinearAutocompleteEditor] ⚠️ [CANDIDAT_SELECTIONNE] Aucun candidat disponible pour affichage');
-        }
-    }, [displayCandidate?.key, displayCandidate?.rows.length]);
 
     const handleApplySuggestion = useCallback(
         (candidate: SuggestionCandidate | null) => {
@@ -1871,11 +1856,6 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 // ✅ CORRIGÉ: Gérer le cas où le candidat vient de preferredDraftCandidate (pas de iaValue mais des rows)
                 if (candidate.key === 'ia-sous-caracteristiques-preferred' && candidate.rows && candidate.rows.length > 0) {
                     // Utiliser directement les rows du candidat
-                    console.log('[LinearAutocompleteEditor] ✅ [VALIDATION] Application du candidat préféré:', {
-                        key: candidate.key,
-                        rowsCount: candidate.rows.length,
-                        rows: candidate.rows.map(r => `${r.label}: ${r.value}`)
-                    });
                     applySuggestionDraft(candidate.key, candidate.rows);
                     return;
                 }
@@ -1886,10 +1866,6 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 } else {
                     // ✅ CORRIGÉ 2025-12-01: Si le candidat IA n'a pas d'iaValue mais a des rows, utiliser les rows
                     if (candidate.rows && candidate.rows.length > 0) {
-                        console.log('[LinearAutocompleteEditor] ✅ [VALIDATION] Application candidat IA avec rows:', {
-                            key: candidate.key,
-                            rowsCount: candidate.rows.length
-                        });
                         applySuggestionDraft(candidate.key, candidate.rows);
                     }
                 }
@@ -2111,15 +2087,6 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         }
 
         // ✅ LOG: Vérifier que le candidat préféré est disponible pour affichage
-        const preferredCandidate = suggestionCandidates.find(candidate => candidate.isPreferred === true);
-        if (preferredCandidate && preferredCandidate.rows && preferredCandidate.rows.length > 0) {
-            console.log('[LinearAutocompleteEditor] ✅ [AFFICHAGE_TABLEAU_PREFERE] Tableau des sous-caractéristiques préférées disponible pour affichage (validation requise):', {
-                source: preferredCandidate.source,
-                rowsCount: preferredCandidate.rows.length,
-                isPreferred: preferredCandidate.isPreferred,
-                note: 'Le tableau s\'affiche automatiquement. L\'utilisateur doit cliquer sur "Valider" pour appliquer.'
-            });
-        }
     }, [
         suggestionCandidates,
         initialMountRef
@@ -2134,19 +2101,6 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         }
     }, [productVector, productLabels]);
 
-    // ✅ NOUVEAU: Forcer l'affichage automatique du tableau dès que displayCandidate est disponible
-    // Ce useEffect garantit que le tableau s'affiche automatiquement sans attendre l'application de la suggestion
-    useEffect(() => {
-        if (displayCandidate && displayCandidate.isPreferred && displayCandidate.rows.length > 0) {
-            console.log('[LinearAutocompleteEditor] ✅ [AFFICHAGE_AUTOMATIQUE] Tableau disponible pour affichage automatique:', {
-                key: displayCandidate.key,
-                rowsCount: displayCandidate.rows.length,
-                source: displayCandidate.source
-            });
-            // Le tableau s'affichera automatiquement car displayCandidate est défini
-            // Pas besoin d'appliquer la suggestion ici, juste s'assurer que le tableau est visible
-        }
-    }, [displayCandidate?.key, displayCandidate?.rows.length]);
 
     // Modifier une caractéristique
     const handleModifyChip = (chipIndex: number) => {
@@ -2367,9 +2321,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             {/* ✅ CRITIQUE: Le tableau doit TOUJOURS s'afficher au chargement si des sous-caractéristiques sont disponibles */}
             {/* ✅ NOUVEAU: Afficher le tableau EN PREMIER, même si des chips validés existent déjà */}
             {/* ✅ CORRIGÉ 2025-12-01: Afficher aussi si sousCaracteristiques est disponible (même si draft pas encore créé) */}
+            {/* ✅ CORRECTION CRITIQUE: Afficher le tableau automatiquement si sousCaracteristiques existe, même sans displayCandidate */}
             {(loadingSuggestions || loadingCombinationSuggestions || displayCandidate || combinationError ||
                 (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0) ||
-                (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0)) && (
+                (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) ||
+                (productVector && productLabels && Array.isArray(productVector) && productVector.length > 0)) && (
                     <View style={styles.suggestionsContainer}>
                         <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
 
@@ -2382,12 +2338,53 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         {/* ✅ CORRIGÉ 2025-12-01: preferredDraftCandidate est maintenant créé directement depuis sousCaracteristiques dans useMemo */}
                         {/* Donc il devrait toujours exister si sousCaracteristiques est disponible */}
                         {!loadingSuggestions && !loadingCombinationSuggestions && (() => {
-                            // ✅ CRITIQUE: Utiliser preferredDraftCandidate en priorité si disponible, sinon displayCandidate
-                            // preferredDraftCandidate devrait maintenant toujours exister si sousCaracteristiques est disponible
-                            const candidateToDisplay = (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0)
+                            // ✅ CORRECTION RACINE: Créer le candidat DIRECTEMENT depuis les données disponibles si nécessaire
+                            // Cela garantit que le tableau s'affiche TOUJOURS si les données sont disponibles, même au premier rendu
+                            let candidateToDisplay = (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0)
                                 ? preferredDraftCandidate
                                 : displayCandidate;
 
+                            // ✅ CRITIQUE: Si aucun candidat n'existe mais que les données sont disponibles, créer un candidat DIRECTEMENT
+                            if ((!candidateToDisplay || !candidateToDisplay.rows || candidateToDisplay.rows.length === 0)) {
+                                const draftKey = 'ia-sous-caracteristiques-preferred';
+                                let rows: Array<{ label: string; value: string }> = [];
+
+                                // PRIORITÉ 1: Créer depuis productVector/productLabels si disponible
+                                if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
+                                    rows = productVector.map((val, idx) => ({
+                                        label: productLabels[idx] || `Caractéristique ${idx + 1}`,
+                                        value: val
+                                    })).filter(row => row.value && typeof row.value === 'string' && row.value.trim().length > 0);
+                                }
+                                // PRIORITÉ 2: Créer depuis sousCaracteristiques
+                                else if (normalizedSousCaracteristiques && typeof normalizedSousCaracteristiques === 'object' && Object.keys(normalizedSousCaracteristiques).length > 0) {
+                                    Object.entries(normalizedSousCaracteristiques).forEach(([charKey, values]) => {
+                                        if (Array.isArray(values) && values.length > 0) {
+                                            const firstValue = values[0];
+                                            if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+                                                rows.push({
+                                                    label: charKey,
+                                                    value: firstValue,
+                                                });
+                                            }
+                                        }
+                                    });
+                                }
+
+                                // Si on a créé des rows, créer le candidat
+                                if (rows.length > 0) {
+                                    candidateToDisplay = {
+                                        key: draftKey,
+                                        source: 'ia' as SuggestionSource,
+                                        rows: rows,
+                                        score: 15,
+                                        title: 'Caractéristiques suggérées par l\'IA',
+                                        isPreferred: true,
+                                    } as SuggestionCandidate;
+                                }
+                            }
+
+                            // Si toujours aucun candidat, ne rien afficher
                             if (!candidateToDisplay || !candidateToDisplay.rows || candidateToDisplay.rows.length === 0) {
                                 return null;
                             }
@@ -2429,18 +2426,6 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                     </View>
 
                                     <View style={styles.suggestionTable}>
-                                        {(() => {
-                                            // ✅ LOG: Affichage du tableau des caractéristiques
-                                            console.log('[LinearAutocompleteEditor] 📊 [AFFICHAGE_TABLEAU] Affichage tableau caractéristiques:', {
-                                                candidateKey: candidateToDisplay.key,
-                                                rowsCount: candidateToDisplay.rows.length,
-                                                rows: candidateToDisplay.rows.map(r => ({ label: r.label, value: r.value })),
-                                                source: candidateToDisplay.source,
-                                                isPreferred: candidateToDisplay.isPreferred,
-                                                timestamp: new Date().toISOString()
-                                            });
-                                            return null;
-                                        })()}
                                         {candidateToDisplay.rows.length === 0 ? (
                                             <Text style={styles.suggestionEmptyRow}>
                                                 Aucune modalité. Ajoutez-en pour personnaliser.
@@ -2519,12 +2504,6 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         <TouchableOpacity
                                             style={styles.suggestionApplyButton}
                                             onPress={() => {
-                                                console.log('[LinearAutocompleteEditor] ✅ [CLIC_VALIDATION] Bouton Valider cliqué:', {
-                                                    candidateKey: candidateToDisplay.key,
-                                                    candidateSource: candidateToDisplay.source,
-                                                    rowsCount: candidateToDisplay.rows?.length || 0,
-                                                    hasRows: !!(candidateToDisplay.rows && candidateToDisplay.rows.length > 0)
-                                                });
                                                 handleApplySuggestion(candidateToDisplay);
                                             }}
                                             activeOpacity={0.7}
@@ -2552,10 +2531,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     </View>
                 )}
 
-            {/* ✅ NOUVEAU: Afficher les chips validés SEULEMENT si le tableau n'est pas affiché ou s'il a été validé */}
+            {/* ✅ NOUVEAU: Afficher les chips validés même si le tableau est affiché (après validation, on affiche les deux) */}
             {/* Vecteur affiché en chips */}
-            {/* ✅ CORRECTION: Cacher les chips si le tableau est affiché et n'a pas encore été validé */}
-            {chips.length > 0 && !(preferredDraftCandidate && preferredDraftCandidate.rows.length > 0) && !displayCandidate ? (
+            {/* ✅ CORRECTION: Afficher les chips après validation, même si le tableau est toujours visible pour modifications */}
+            {chips.length > 0 ? (
                 <View style={[styles.vectorContainer, styles.vectorContainerActive]}>
                     <ScrollView
                         horizontal
@@ -3531,114 +3510,4 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         marginBottom: 4,
     },
-    combinationCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        gap: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    combinationCardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 10,
-    },
-    combinationCardHeaderLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        flexShrink: 1,
-    },
-    combinationCardTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#1F2937',
-    },
-    combinationBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 999,
-        backgroundColor: modernColors.primary + '1A',
-    },
-    combinationBadgeText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    combinationTable: {
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 10,
-        overflow: 'hidden',
-    },
-    combinationRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-        gap: 12,
-    },
-    combinationRowLast: {
-        borderBottomWidth: 0,
-    },
-    combinationCellLabel: {
-        flex: 0.45,
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#6B7280',
-        textTransform: 'capitalize',
-    },
-    combinationCellValue: {
-        flex: 0.55,
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#1F2937',
-        textAlign: 'right',
-    },
-    combinationMeta: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    combinationMetaLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    combinationUsage: {
-        fontSize: 11,
-        color: '#6B7280',
-    },
-    combinationOccurrence: {
-        fontSize: 11,
-        color: modernColors.primary,
-        fontWeight: '600',
-    },
-    combinationPrice: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#059669',
-    },
-    combinationApply: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        fontStyle: 'italic',
-    },
-});
-
-export default LinearAutocompleteEditor;
+    combinat

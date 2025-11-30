@@ -132,17 +132,21 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let protected_routes = Router::new()
         .route(
             "/api/ia/auto",
-            post(handle_yukpo).layer(axum::middleware::from_fn_with_state(
-                state.clone(),
-                check_tokens,
-            )),
+            post(handle_yukpo)
+                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // ✅ 200 MB - pour permettre images/vidéos base64
+                .layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    check_tokens,
+                )),
         )
         .route(
             "/api/ia/creation-service",
-            post(handle_creation_service_direct).layer(axum::middleware::from_fn_with_state(
-                state.clone(),
-                check_tokens,
-            )),
+            post(handle_creation_service_direct)
+                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // ✅ 200 MB - pour permettre images/vidéos/documents base64
+                .layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    check_tokens,
+                )),
         )
         .route(
             "/api/ia/generate-subtitles",
@@ -177,10 +181,12 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(axum::middleware::from_fn(jwt_auth))
         .route(
             "/api/search/direct",
-            post(handle_direct_search).layer(axum::middleware::from_fn_with_state(
-                state.clone(),
-                check_tokens,
-            )),
+            post(handle_direct_search)
+                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // ✅ 200 MB - pour permettre recherche avec images base64
+                .layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    check_tokens,
+                )),
         )
         // Nouveau endpoint pour consulter les m?triques d'optimisation
         .route("/api/ia/metrics", get(handle_optimization_metrics))
@@ -301,9 +307,13 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ NOUVEAU: Route pour modifier un produit spécifique (avec historique)
         .route("/api/products/{product_id}/update", patch(update_product))
         // ✅ NOUVEAU 2025-11-01: Route pour ajouter un produit incrémental (coût fixe 2000 FCFA)
+        // ✅ CORRIGÉ 2025-12-01: Ajout DefaultBodyLimit pour éviter erreur 413 (Payload Too Large)
         .route(
             "/api/services/{service_id}/products",
-            post(add_product_to_service),
+            post(add_product_to_service)
+                .layer(
+                    axum::extract::DefaultBodyLimit::max(200_000_000) // ✅ 200 MB - pour permettre images/vidéos base64 volumineuses
+                ),
         )
         // ✅ NOUVEAU 2025-11-01: Routes pour cycle de vie produits (désactivation/réactivation)
         .route(
@@ -590,7 +600,9 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ Phase 9 - Amélioration : Routes pour upload de médias de preuve de livraison
         .route(
             "/api/media/upload-proof",
-            post(upload_proof_media_file).layer(axum::middleware::from_fn(jwt_auth)),
+            post(upload_proof_media_file)
+                .layer(axum::extract::DefaultBodyLimit::max(100_000_000)) // ✅ 100 MB - pour upload de médias de preuve
+                .layer(axum::middleware::from_fn(jwt_auth)),
         )
         .route(
             "/api/media/proof/{*filename}",
@@ -783,6 +795,9 @@ async fn handle_direct_search(
 
                 // ✅ APPELER RECHERCHE avec l'input combiné
                 let (mut result, tokens_consumed_search) = rechercher_besoin_direct(
+                    &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
+                    _state.cache_service.clone(), // ✅ CORRIGÉ: Réutiliser le cache service
+                    _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique
                     Some(user.id),
                     &combined_search_text,
                     gps_zone,
@@ -913,6 +928,9 @@ async fn handle_direct_search(
                     let search_radius_km = Some(50);
 
                     let (result, tokens_consumed) = rechercher_besoin_direct(
+                        &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
+                        _state.cache_service.clone(), // ✅ CORRIGÉ: Réutiliser le cache service
+                        _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique
                         Some(user.id),
                         &user_text,
                         gps_zone,
@@ -994,7 +1012,16 @@ async fn handle_direct_search(
 
     // Recherche directe sans détection d'intention, avec filtrage GPS
     let (mut result, tokens_consumed) =
-        rechercher_besoin_direct(Some(user.id), &user_text, gps_zone, search_radius_km, specialized_type).await?;
+        rechercher_besoin_direct(
+            &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
+            _state.cache_service.clone(), // ✅ CORRIGÉ: Réutiliser le cache service
+            _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique
+            Some(user.id), 
+            &user_text, 
+            gps_zone, 
+            search_radius_km, 
+            specialized_type
+        ).await?;
 
     // ✅ ENRICHIR avec données de publicité et booster scores
     if let Some(resultats) = result.get_mut("resultats").and_then(|r| r.as_array_mut()) {

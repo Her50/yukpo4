@@ -88,8 +88,38 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
 
         try {
             if (!location) {
-                console.log('[WeatherForecastModal] Pas de position GPS, utilisation des données mockées');
-                throw new Error('Position GPS requise');
+                // Pas de position GPS disponible - cas normal, utiliser données mockées
+                console.log('[WeatherForecastModal] ℹ️ Pas de position GPS, utilisation des données mockées');
+                // Ne pas lancer d'erreur, utiliser directement les données mockées
+                const mockForecast: WeatherForecast[] = [];
+                const { descriptions, icons, temperatureRange, humidityRange, windSpeedRange } = WEATHER_CONFIG.MOCK_DATA;
+
+                for (let i = 0; i < requestedDays; i++) {
+                    const date = new Date();
+                    date.setDate(date.getDate() + i);
+                    const descIndex = Math.floor(Math.random() * descriptions.length);
+
+                    const mockDay: WeatherForecast = {
+                        date: formatDate(date.toISOString().split('T')[0]).date,
+                        day: formatDate(date.toISOString().split('T')[0]).day,
+                        temperature: {
+                            min: Math.round(temperatureRange.min + Math.random() * 8),
+                            max: Math.round(temperatureRange.min + 8 + Math.random() * 10)
+                        },
+                        description: descriptions[descIndex],
+                        icon: icons[descIndex],
+                        humidity: Math.round(humidityRange.min + Math.random() * (humidityRange.max - humidityRange.min)),
+                        windSpeed: Math.round(windSpeedRange.min + Math.random() * (windSpeedRange.max - windSpeedRange.min)),
+                        precipitation: Math.random() > 0.7 ? Math.round(Math.random() * 10) : 0
+                    };
+
+                    mockForecast.push(mockDay);
+                }
+
+                setForecast(mockForecast);
+                setError(null);
+                setLoading(false);
+                return;
             }
 
             // Récupérer la clé API depuis le backend
@@ -205,8 +235,20 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
 
             console.log('[WeatherForecastModal] Prévisions traitées:', forecastData.length, 'jours');
             setForecast(forecastData);
-        } catch (err) {
-            console.error('[WeatherForecastModal] Erreur prévisions météo, utilisation des données mockées:', err);
+        } catch (err: any) {
+            // Distinguer les erreurs attendues (GPS, API non configurée) des vraies erreurs
+            const errorMessage = err?.message || '';
+            const isExpectedError =
+                errorMessage.includes('Position GPS requise') ||
+                errorMessage.includes('Clé API météo non configurée');
+
+            if (isExpectedError) {
+                // Erreur attendue - logger en info/warning, pas en error
+                console.log('[WeatherForecastModal] ℹ️', errorMessage, '- utilisation des données mockées');
+            } else {
+                // Vraie erreur (API, réseau, etc.) - logger en warning
+                console.warn('[WeatherForecastModal] ⚠️ Erreur prévisions météo, utilisation des données mockées:', errorMessage);
+            }
 
             // Fallback vers des données mockées étendues
             const mockForecast: WeatherForecast[] = [];

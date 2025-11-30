@@ -17,6 +17,8 @@ struct UserGpsRow {
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use uuid::Uuid;
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
 
 // ✅ NOUVEAU 2025-11-01 : Configuration des coûts de création de services et produits
 mod service_costs {
@@ -121,6 +123,119 @@ fn is_probable_base64(data: &str) -> bool {
 /// ✅ NOUVEAU: Vérifie si une chaîne est une URL HTTP/HTTPS
 fn is_url(data: &str) -> bool {
     data.starts_with("http://") || data.starts_with("https://")
+}
+
+// ✅ OPTIMISÉ: Structure pour stocker les résultats du traitement parallèle d'une image
+struct ProcessedImageResult {
+    image_index: usize,
+    is_main: bool,
+    file_path: String,
+    image_signature: serde_json::Value,
+    image_hash: String,
+    image_metadata: serde_json::Value,
+}
+
+// ✅ OPTIMISÉ: Fonction helper pour traiter une seule image en parallèle (sans transaction)
+async fn process_single_image_for_product(
+    storage_root: &PathBuf,
+    service_id: i32,
+    product_id: &str,
+    product_index: usize,
+    image_index: usize,
+    image_data: &str,
+) -> AppResult<Option<ProcessedImageResult>> {
+    if image_data.is_empty() {
+        return Ok(None);
+    }
+
+    let is_main = image_index == 0;
+
+    log::info!(
+        "[process_single_image_for_product] 🖼️ Traitement image {} de produit {} (main: {})",
+        image_index, product_index, is_main
+    );
+
+    // Sauvegarder l'image (opération I/O lourde - peut être parallélisée)
+    let stored = if is_url(image_data) {
+        download_and_save_image(storage_root.as_path(), service_id, image_data, "images").await
+    } else if is_probable_base64(image_data) {
+        persist_base64_media(storage_root.as_path(), service_id, "images", image_data, "jpg").await
+    } else {
+        log::warn!(
+            "[process_single_image_for_product] Image ignorée (format non supporté) pour produit {}",
+            product_index
+        );
+        return Ok(None);
+    };
+
+    let stored = match stored {
+        Ok(value) => value,
+        Err(err) => {
+            log::error!(
+                "[process_single_image_for_product] Erreur sauvegarde image produit {}: {}",
+                product_index, err
+            );
+            return Err(err);
+        }
+    };
+
+    let StoredMedia {
+        path: file_path,
+        bytes: image_bytes,
+    } = stored;
+
+    #[cfg(not(feature = "image_search"))]
+    let _ = &image_bytes;
+
+    // Générer signature d'image si disponible (opération CPU lourde - peut être parallélisée)
+    #[cfg(feature = "image_search")]
+    let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+        match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
+            Ok(signature) => {
+                let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| {
+                    serde_json::json!({
+                        "width": 0,
+                        "height": 0,
+                        "format": "jpeg",
+                        "file_size": image_bytes.len(),
+                        "dominant_colors": [],
+                        "color_histogram": [],
+                        "edge_density": 0.0,
+                        "brightness": 0.0,
+                        "contrast": 0.0,
+                    })
+                });
+                let hash = format!("{:x}", md5::compute(&image_bytes));
+                (
+                    serde_json::to_value(&signature).unwrap_or_default(),
+                    hash,
+                    metadata,
+                )
+            }
+            Err(e) => {
+                log::warn!("[process_single_image_for_product] Erreur signature: {}", e);
+                (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+            }
+        }
+    } else {
+        (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+    };
+
+    #[cfg(not(feature = "image_search"))]
+    let (image_signature, image_hash, image_metadata) = (
+        serde_json::Value::Null,
+        String::new(),
+        serde_json::Value::Null,
+    );
+
+    Ok(Some(ProcessedImageResult {
+        image_index,
+        is_main,
+        file_path,
+        image_signature,
+        image_hash,
+        image_metadata,
+    }))
 }
 
 fn produits_array_mut(data_obj: &mut serde_json::Value) -> Option<&mut Vec<serde_json::Value>> {
@@ -2194,121 +2309,84 @@ pub async fn creer_service(
                     0
                 };
 
+                log::info!(
+                    "[creer_service] 🚀 Traitement parallèle de {} images pour produit {}",
+                    images_to_process.len(),
+                    product_index
+                );
+
+                // ✅ OPTIMISÉ: Traiter les images en PARALLÈLE (sauvegarde disque + signatures)
+                let mut futures = FuturesUnordered::new();
+
                 for (image_index, image_data) in images_to_process.iter().enumerate() {
                     if image_data.is_empty() {
                         continue;
                     }
 
-                    let is_main = image_index == 0;
+                    let image_data = image_data.clone();
+                    let storage_root_clone = storage_root.clone();
+                    let product_id_clone = product_id.clone();
 
-                    log::info!(
-                        "[creer_service] 🖼️ Image {} de produit {} (main: {}): {}",
-                        image_index,
-                        product_index,
-                        is_main,
-                        &image_data[..image_data.len().min(50)]
-                    );
-
-                    // ✅ AMÉLIORATION: Gérer les URLs HTTP/HTTPS en téléchargeant et sauvegardant l'image
-                    let stored = if is_url(image_data) {
-                        download_and_save_image(
-                            storage_root.as_path(),
+                    futures.push(tokio::spawn(async move {
+                        process_single_image_for_product(
+                            &storage_root_clone,
                             service_id,
-                            image_data,
-                            "images",
-                        )
-                        .await
-                    } else if is_probable_base64(image_data) {
-                        persist_base64_media(
-                            storage_root.as_path(),
-                            service_id,
-                            "images",
-                            image_data,
-                            "jpg",
-                        )
-                        .await
-                    } else {
-                        log::warn!(
-                            "[creer_service] Image ignorée (format non supporté) pour produit {}: {}",
+                            &product_id_clone,
                             product_index,
-                            &image_data[..image_data.len().min(100)]
-                        );
-                        continue;
-                    };
+                            image_index,
+                            &image_data,
+                        ).await
+                    }));
+                }
 
-                    let stored = match stored {
-                        Ok(value) => value,
-                        Err(err) => {
+                // Collecter les résultats au fur et à mesure qu'ils arrivent
+                let mut processed_images: Vec<(usize, ProcessedImageResult)> = Vec::new();
+                while let Some(result) = futures.next().await {
+                    match result {
+                        Ok(Ok(Some(processed))) => {
+                            processed_images.push((processed.image_index, processed));
+                        }
+                        Ok(Ok(None)) => {
+                            // Image ignorée (format non supporté)
+                        }
+                        Ok(Err(e)) => {
                             log::error!(
-                                "[creer_service] Erreur sauvegarde image produit {}: {}",
+                                "[creer_service] ❌ Erreur traitement image du produit {}: {}",
                                 product_index,
-                                err
+                                e
                             );
-                            continue;
                         }
-                    };
-
-                    let StoredMedia {
-                        path: file_path,
-                        bytes: image_bytes,
-                    } = stored;
-
-                    #[cfg(not(feature = "image_search"))]
-                    let _ = &image_bytes;
-
-                    #[cfg(feature = "image_search")]
-                    let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
-                        match crate::services::image_search_service::ImageSearchService::
-                            generate_image_signature(&image_bytes)
-                        {
-                            Ok(signature) => {
-                                let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| {
-                                    serde_json::json!({
-                                        "width": 0,
-                                        "height": 0,
-                                        "format": "jpeg",
-                                        "file_size": image_bytes.len(),
-                                        "dominant_colors": [],
-                                        "color_histogram": [],
-                                        "edge_density": 0.0,
-                                        "brightness": 0.0,
-                                        "contrast": 0.0,
-                                    })
-                                });
-                                let hash = format!("{:x}", md5::compute(&image_bytes));
-                                (
-                                    serde_json::to_value(&signature).unwrap_or_default(),
-                                    hash,
-                                    metadata,
-                                )
-                            }
-                            Err(e) => {
-                                log::warn!("[creer_service] Erreur signature: {}", e);
-                                (
-                                    serde_json::Value::Null,
-                                    String::new(),
-                                    serde_json::Value::Null,
-                                )
-                            }
+                        Err(e) => {
+                            log::error!(
+                                "[creer_service] ❌ Erreur task image du produit {}: {}",
+                                product_index,
+                                e
+                            );
                         }
-                    } else {
-                        (
-                            serde_json::Value::Null,
-                            String::new(),
-                            serde_json::Value::Null,
-                        )
-                    };
+                    }
+                }
 
-                    #[cfg(not(feature = "image_search"))]
-                    let (image_signature, image_hash, image_metadata) = (
-                        serde_json::Value::Null,
-                        String::new(),
-                        serde_json::Value::Null,
-                    );
+                // Trier par index pour préserver l'ordre
+                processed_images.sort_by_key(|(idx, _)| *idx);
+
+                log::info!(
+                    "[creer_service] ✅ {} images traitées en parallèle pour produit {}",
+                    processed_images.len(),
+                    product_index
+                );
+
+                // ✅ Insérer les résultats dans la transaction (séquentiel mais rapide)
+                for (image_index, processed) in processed_images {
+                    let ProcessedImageResult {
+                        is_main,
+                        file_path,
+                        image_signature,
+                        image_hash,
+                        image_metadata,
+                        ..
+                    } = processed;
 
                     // ✅ MÉDIA DE PRODUIT : Image liée à un produit spécifique
-                    // Liaison SANS AMBIGUÏTÉ via (service_id, product_index)
-                    // product_id = ID du produit (ex: "prod_0"), product_index = index dans service.data->'produits'[]
                     if let Err(e) = sqlx::query(
                         r#"
                         INSERT INTO media (
@@ -2333,22 +2411,12 @@ pub async fn creer_service(
                     .execute(&mut *tx)
                     .await
                     {
-                        // ✅ CORRIGÉ: Gestion d'erreur améliorée avec détails
                         log::error!(
                             "[creer_service] ❌ Erreur insertion media produit {} (index {}): {}",
                             product_id,
                             product_index,
                             e
                         );
-                        log::error!(
-                            "[creer_service] Détails insertion: service_id={}, product_id={}, product_index={}, path={}",
-                            service_id,
-                            product_id,
-                            product_index,
-                            file_path
-                        );
-                        // Ne pas continuer - l'erreur pourrait être critique (contrainte, type, etc.)
-                        // Mais ne pas faire échouer toute la création de service pour un seul média
                         continue;
                     } else {
                         log::info!(
@@ -2360,116 +2428,123 @@ pub async fn creer_service(
                         );
                     }
 
-                    let product_name = produit_obj
-                        .get("nom")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
-                    let product_description = produit_obj
-                        .get("description")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
-                    let product_marque = produit_obj.get("marque").and_then(|v| v.as_str());
-                    let product_category = produit_obj
-                        .get("categorie")
-                        .or_else(|| produit_obj.get("category"))
-                        .and_then(|v| v.as_str());
-                    let product_couleurs: Vec<String> = produit_obj
-                        .get("couleurs")
-                        .and_then(|v| v.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                .collect()
-                        })
-                        .unwrap_or_default();
-
-                    let ai_description = if !product_description.is_empty() {
-                        product_description.to_string()
-                    } else if !product_name.is_empty() {
-                        format!(
-                            "{} - {}",
-                            product_name,
-                            produit_obj
-                                .get("prix")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("")
-                        )
-                    } else {
-                        String::new()
-                    };
-
-                    let mut ai_tags: Vec<String> = Vec::new();
-                    if !product_name.is_empty() {
-                        ai_tags.push(product_name.to_string());
-                    }
-                    if let Some(marque) = product_marque {
-                        ai_tags.push(marque.to_string());
-                    }
-                    ai_tags.extend(product_couleurs.clone());
-                    if let Some(cat) = product_category {
-                        ai_tags.push(cat.to_string());
-                    }
-
-                    let mut ai_metadata = serde_json::json!({});
-                    if let Some(marque) = product_marque {
-                        ai_metadata["marque"] = serde_json::json!(marque);
-                    }
-                    if !product_couleurs.is_empty() {
-                        ai_metadata["couleurs"] = serde_json::json!(product_couleurs);
-                    }
-                    if let Some(prix) = produit_obj.get("prix").and_then(|v| v.as_str()) {
-                        ai_metadata["prix"] = serde_json::json!(prix);
-                    }
-
-                    if !ai_description.is_empty() || !ai_tags.is_empty() {
-                        if let Err(e) = sqlx::query(
-                            r#"
-                            UPDATE media
-                            SET ai_description = $1,
-                                ai_tags = $2,
-                                ai_category = $3,
-                                ai_metadata = $4,
-                                ai_analyzed_at = $5,
-                                ai_confidence = 0.95
-                            WHERE service_id = $6 AND path = $7
-                            "#,
-                        )
-                        .bind(if ai_description.is_empty() {
-                            None::<String>
-                        } else {
-                            Some(ai_description.clone())
-                        })
-                        .bind(if ai_tags.is_empty() {
-                            None::<Vec<String>>
-                        } else {
-                            Some(ai_tags.clone())
-                        })
-                        .bind(product_category)
-                        .bind(if ai_metadata.is_null() {
-                            None::<serde_json::Value>
-                        } else {
-                            Some(ai_metadata.clone())
-                        })
-                        .bind(Utc::now().naive_utc())
-                        .bind(service_id)
-                        .bind(&file_path)
-                        .execute(&mut *tx)
-                        .await
-                        {
-                            log::warn!("[creer_service] ⚠️ Erreur mise à jour media.ai_*: {}", e);
-                        } else {
-                            log::info!(
-                                "[creer_service] ✅ Image cataloguée avec données produit ({} tags)",
-                                ai_tags.len()
-                            );
-                        }
-                    }
-
+                    // Ajouter le chemin aux chemins sauvegardés
+                    saved_paths_for_product.push(file_path.clone());
                     files_saved += 1;
                     if product_index == 0 && image_index < service_image_count {
                         saved_service_images.push(file_path.clone());
                     }
-                    saved_paths_for_product.push(file_path.clone());
+                    
+                    // ✅ Extraction des métadonnées produit pour mise à jour AI (une seule fois par produit)
+                    if image_index == 0 {
+                        let product_name = produit_obj
+                            .get("nom")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let product_description = produit_obj
+                            .get("description")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let product_marque = produit_obj.get("marque").and_then(|v| v.as_str());
+                        let product_category = produit_obj
+                            .get("categorie")
+                            .or_else(|| produit_obj.get("category"))
+                            .and_then(|v| v.as_str());
+                        let product_couleurs: Vec<String> = produit_obj
+                            .get("couleurs")
+                            .and_then(|v| v.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                    .collect()
+                            })
+                            .unwrap_or_default();
+
+                        let ai_description = if !product_description.is_empty() {
+                            product_description.to_string()
+                        } else if !product_name.is_empty() {
+                            format!(
+                                "{} - {}",
+                                product_name,
+                                produit_obj
+                                    .get("prix")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                            )
+                        } else {
+                            String::new()
+                        };
+
+                        let mut ai_tags: Vec<String> = Vec::new();
+                        if !product_name.is_empty() {
+                            ai_tags.push(product_name.to_string());
+                        }
+                        if let Some(marque) = product_marque {
+                            ai_tags.push(marque.to_string());
+                        }
+                        ai_tags.extend(product_couleurs.clone());
+                        if let Some(cat) = product_category {
+                            ai_tags.push(cat.to_string());
+                        }
+
+                        let mut ai_metadata = serde_json::json!({});
+                        if let Some(marque) = product_marque {
+                            ai_metadata["marque"] = serde_json::json!(marque);
+                        }
+                        if !product_couleurs.is_empty() {
+                            ai_metadata["couleurs"] = serde_json::json!(product_couleurs);
+                        }
+                        if let Some(prix) = produit_obj.get("prix").and_then(|v| v.as_str()) {
+                            ai_metadata["prix"] = serde_json::json!(prix);
+                        }
+
+                        // Mettre à jour toutes les images du produit avec les métadonnées AI
+                        if !ai_description.is_empty() || !ai_tags.is_empty() {
+                            if let Err(e) = sqlx::query(
+                                r#"
+                                UPDATE media
+                                SET ai_description = $1,
+                                    ai_tags = $2,
+                                    ai_category = $3,
+                                    ai_metadata = $4,
+                                    ai_analyzed_at = $5,
+                                    ai_confidence = 0.95
+                                WHERE service_id = $6 AND product_id = $7 AND product_index = $8
+                                "#,
+                            )
+                            .bind(if ai_description.is_empty() {
+                                None::<String>
+                            } else {
+                                Some(ai_description.clone())
+                            })
+                            .bind(if ai_tags.is_empty() {
+                                None::<Vec<String>>
+                            } else {
+                                Some(ai_tags.clone())
+                            })
+                            .bind(product_category)
+                            .bind(if ai_metadata.is_null() {
+                                None::<serde_json::Value>
+                            } else {
+                                Some(ai_metadata.clone())
+                            })
+                            .bind(Utc::now().naive_utc())
+                            .bind(service_id)
+                            .bind(&product_id)
+                            .bind(product_index as i32)
+                            .execute(&mut *tx)
+                            .await
+                            {
+                                log::warn!("[creer_service] ⚠️ Erreur mise à jour media.ai_*: {}", e);
+                            } else {
+                                log::info!(
+                                    "[creer_service] ✅ Images cataloguées avec données produit ({} tags)",
+                                    ai_tags.len()
+                                );
+                            }
+                        }
+                    }
+                    
                     log::info!(
                         "[creer_service] ✅ Image {}/{} du produit {} sauvegardée (main: {})",
                         image_index + 1,

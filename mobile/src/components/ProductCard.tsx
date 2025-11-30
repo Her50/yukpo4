@@ -685,13 +685,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
   googlePhotoUrls.forEach(addImage);
 
   const images = orderedImages;
-  const videos: string[] = Array.isArray(product.videos)
+  // ✅ CORRIGÉ: Construire les URLs complètes pour les vidéos avant de les passer au carousel
+  const rawVideos: string[] = Array.isArray(product.videos)
     ? product.videos.filter(Boolean)
     : productVideosFromService.length > 0
       ? productVideosFromService // ✅ NOUVEAU: Utiliser videos depuis service.data.produits si disponible
       : Array.isArray(service?.videos)
         ? (service?.videos as string[]).filter(Boolean)
         : [];
+  // ✅ CORRIGÉ: Construire les URLs complètes pour chaque vidéo
+  const videos: string[] = rawVideos
+    .map(vid => buildMediaUrl(vid))
+    .filter((vid): vid is string => typeof vid === 'string' && vid.length > 0);
 
   const googleRating =
     typeof googlePlaceMeta?.rating === 'number' ? googlePlaceMeta.rating : null;
@@ -1370,7 +1375,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <TouchableOpacity
             style={styles.touchableContainer}
             activeOpacity={0.9}
-            onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
+            onPress={onPress || (() => {
+              // ✅ CORRIGÉ: Vérifier et convertir serviceId en string avant navigation
+              const targetServiceId = product.service_id || service?.id;
+              if (!targetServiceId) {
+                Alert.alert('Erreur', 'Service introuvable : ID manquant');
+                return;
+              }
+              navigation.navigate('ServiceDetail' as any, { serviceId: String(targetServiceId) });
+            })}
           >
             {/* Carousel d'images/vidéos avec support variation */}
             {hasMedia && (
@@ -1790,7 +1803,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
                 <TouchableOpacity
                   style={[styles.actionButtonModern, styles.actionButtonView]}
-                  onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
+                  onPress={onPress || (() => {
+                    // ✅ CORRIGÉ: Vérifier et convertir serviceId en string avant navigation
+                    const targetServiceId = product.service_id || service?.id;
+                    if (!targetServiceId) {
+                      Alert.alert('Erreur', 'Service introuvable : ID manquant');
+                      return;
+                    }
+                    navigation.navigate('ServiceDetail' as any, { serviceId: String(targetServiceId) });
+                  })}
                 >
                   <SafeIcon name="eye" size={16} color="#6B7280" />
                   <Text style={[styles.actionButtonText, styles.actionButtonTextView]} numberOfLines={1}>

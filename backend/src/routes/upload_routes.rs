@@ -18,7 +18,7 @@ pub fn upload_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/upload",
             post(upload_files)
                 .layer(
-                    axum::extract::DefaultBodyLimit::max(50_000_000) // 50 MB total (plusieurs fichiers)
+                    axum::extract::DefaultBodyLimit::max(200_000_000) // ✅ 200 MB total - pour permettre plusieurs fichiers volumineux
                 )
         )
         // ✅ Servir les fichiers temporaires uploadés

@@ -8,7 +8,8 @@ pub fn mobile_logs_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route(
             "/api/mobile-logs",
-            post(mobile_logs_controller::receive_mobile_logs),
+            post(mobile_logs_controller::receive_mobile_logs)
+                .layer(axum::extract::DefaultBodyLimit::max(10_000_000)), // ✅ 10 MB - pour permettre l'envoi de logs volumineux
         )
         .with_state(state)
 }

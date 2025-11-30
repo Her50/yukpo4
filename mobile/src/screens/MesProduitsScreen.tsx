@@ -1600,31 +1600,40 @@ const MesProduitsScreen: React.FC = () => {
         const categorieRaw = product.categorie_produit || product.categorie || product.category;
         const descriptionRaw = product.description || product.description_produit;
 
-        // ✅ CORRECTION: Ne pas écraser si déjà présent dans prefill
-        if (!prefill.nom_produit) {
-            prefill.nom_produit = extractValue(nomRaw) || (typeof nomRaw === 'string' ? nomRaw : '');
+        // ✅ CORRECTION: Ne pas écraser si déjà présent dans prefill, mais toujours extraire correctement
+        if (!prefill.nom_produit || prefill.nom_produit === '') {
+            const nomValue = extractValue(nomRaw);
+            prefill.nom_produit = nomValue !== undefined && nomValue !== null
+                ? (typeof nomValue === 'string' ? nomValue : String(nomValue))
+                : (typeof nomRaw === 'string' ? nomRaw : '');
         }
-        if (!prefill.categorie_produit) {
-            prefill.categorie_produit = extractValue(categorieRaw) || (typeof categorieRaw === 'string' ? categorieRaw : '');
+        if (!prefill.categorie_produit || prefill.categorie_produit === '') {
+            const categorieValue = extractValue(categorieRaw);
+            prefill.categorie_produit = categorieValue !== undefined && categorieValue !== null
+                ? (typeof categorieValue === 'string' ? categorieValue : String(categorieValue))
+                : (typeof categorieRaw === 'string' ? categorieRaw : '');
         }
-        if (!prefill.description_produit) {
-            prefill.description_produit = extractValue(descriptionRaw) || (typeof descriptionRaw === 'string' ? descriptionRaw : '');
+        if (!prefill.description_produit || prefill.description_produit === '') {
+            const descriptionValue = extractValue(descriptionRaw);
+            prefill.description_produit = descriptionValue !== undefined && descriptionValue !== null
+                ? (typeof descriptionValue === 'string' ? descriptionValue : String(descriptionValue))
+                : (typeof descriptionRaw === 'string' ? descriptionRaw : '');
         }
 
         // ✅ CORRECTION: Extraire prix depuis objets structurés
-        // Ne pas écraser si déjà présent dans prefill
-        if (!prefill.prix_produit) {
+        // Ne pas écraser si déjà présent dans prefill, mais toujours extraire correctement
+        if (!prefill.prix_produit || prefill.prix_produit === '' || prefill.prix_produit === '0') {
             const prixRaw = product.prix_produit || product.prix;
             const prixValue = extractValue(prixRaw);
 
-            if (prixValue !== undefined && prixValue !== null) {
+            if (prixValue !== undefined && prixValue !== null && prixValue !== '' && prixValue !== '0') {
                 prefill.prix_produit = typeof prixValue === 'number'
                     ? prixValue.toString()
                     : (typeof prixValue === 'string' ? prixValue : String(prixValue));
-            } else if (product.prix !== undefined && product.prix !== null) {
+            } else if (product.prix !== undefined && product.prix !== null && product.prix !== '' && product.prix !== 0) {
                 prefill.prix_produit = typeof product.prix === 'number'
                     ? product.prix.toString()
-                    : product.prix;
+                    : (typeof product.prix === 'string' ? product.prix : String(product.prix));
             }
         }
 
@@ -1633,6 +1642,18 @@ const MesProduitsScreen: React.FC = () => {
         if (!prefill.devise_produit) {
             const deviseRaw = product.devise_produit || product.devise;
             prefill.devise_produit = extractValue(deviseRaw) || (typeof deviseRaw === 'string' ? deviseRaw : 'XAF');
+        }
+
+        // ✅ CORRECTION CRITIQUE: Extraire lieu_produit depuis objets structurés avec tous les fallbacks
+        // Ne pas écraser si déjà présent dans prefill
+        if (!prefill.lieu_produit) {
+            const lieuRaw = product.lieu_produit || product.lieu || product.lieu_commercial || product.lieu_commercialisation || product.location;
+            const lieuValue = extractValue(lieuRaw);
+            if (lieuValue !== undefined && lieuValue !== null) {
+                prefill.lieu_produit = typeof lieuValue === 'string' ? lieuValue : String(lieuValue);
+            } else if (typeof lieuRaw === 'string' && lieuRaw.trim().length > 0) {
+                prefill.lieu_produit = lieuRaw.trim();
+            }
         }
 
         // ✅ CORRECTION CRITIQUE: Gestion des produits (autocomplete) avec extraction depuis objets structurés
@@ -1704,8 +1725,19 @@ const MesProduitsScreen: React.FC = () => {
             }
         }
 
-        prefill.variabilite_prix = product.variabilite_prix || product.price_variant || null;
-        prefill.lieu_produit = product.lieu_produit || product.lieu || product.location || null;
+        // ✅ CORRECTION CRITIQUE: Extraire variabilite_prix depuis objets structurés
+        // Ne pas écraser si déjà présent dans prefill
+        if (!prefill.variabilite_prix && !prefill.price_variant) {
+            const variantRaw = product.variabilite_prix || product.price_variant || product.variation_prix;
+            const variantValue = extractValue(variantRaw);
+            if (variantValue !== undefined && variantValue !== null) {
+                prefill.variabilite_prix = variantValue;
+                prefill.price_variant = variantValue;
+            } else if (variantRaw !== undefined && variantRaw !== null) {
+                prefill.variabilite_prix = variantRaw;
+                prefill.price_variant = variantRaw;
+            }
+        }
 
         // ✅ CORRECTION CRITIQUE: Médias avec extraction depuis objets structurés et toutes variantes
         const extractMediaArray = (field: any): any[] => {
@@ -1757,6 +1789,10 @@ const MesProduitsScreen: React.FC = () => {
         if (product.combinaison_brute) {
             prefill.combinaison_brute = product.combinaison_brute;
         }
+        // ✅ CORRECTION CRITIQUE: Préserver product_vector et product_labels pour reconstruction des caractéristiques
+        if (Array.isArray(product.product_vector)) {
+            prefill.product_vector = product.product_vector;
+        }
         if (Array.isArray(product.product_labels)) {
             prefill.product_labels = product.product_labels;
         }
@@ -1803,18 +1839,22 @@ const MesProduitsScreen: React.FC = () => {
         delete prefill.shares;
         delete prefill.saves;
 
-        // ✅ DEBUG: Log pour vérifier le contenu du prefill
+        // ✅ DEBUG: Log pour vérifier le contenu du prefill (avec détails pour debugging)
         console.log('[MesProduitsScreen] buildProductPrefill - Prefill généré:', {
-            nom_produit: prefill.nom_produit,
-            categorie_produit: prefill.categorie_produit,
-            description_produit: prefill.description_produit,
-            prix_produit: prefill.prix_produit,
-            devise_produit: prefill.devise_produit,
-            produits: prefill.produits ? (Array.isArray(prefill.produits) ? prefill.produits.length : 'non-array') : 'undefined',
-            sous_caracteristiques: prefill.sous_caracteristiques ? 'présent' : 'absent',
-            lieu_produit: prefill.lieu_produit,
+            nom_produit: prefill.nom_produit || 'VIDE',
+            categorie_produit: prefill.categorie_produit || 'VIDE',
+            description_produit: prefill.description_produit || 'VIDE',
+            prix_produit: prefill.prix_produit || 'VIDE',
+            devise_produit: prefill.devise_produit || 'VIDE',
+            produits: prefill.produits ? (Array.isArray(prefill.produits) ? `${prefill.produits.length} élément(s)` : 'non-array') : 'VIDE',
+            sous_caracteristiques: prefill.sous_caracteristiques
+                ? (typeof prefill.sous_caracteristiques === 'object' ? `${Object.keys(prefill.sous_caracteristiques).length} dimension(s)` : 'présent')
+                : 'VIDE',
+            lieu_produit: prefill.lieu_produit || 'VIDE',
+            variabilite_prix: prefill.variabilite_prix ? 'présent' : 'VIDE',
+            price_variant: prefill.price_variant ? 'présent' : 'VIDE',
             totalKeys: Object.keys(prefill).length,
-            allKeys: Object.keys(prefill)
+            allKeys: Object.keys(prefill).filter(k => !['images', 'videos', 'audios', 'documents'].includes(k))
         });
 
         return prefill;

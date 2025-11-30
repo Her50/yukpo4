@@ -1,4 +1,5 @@
 // Service de push notifications avec Expo
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -6,6 +7,38 @@ import { API_BASE_URL } from '../config/api.config';
 
 // ✅ CORRIGÉ: Utilise la configuration centralisée
 const API_URL = API_BASE_URL;
+
+/**
+ * Obtenir le projectId Expo depuis la configuration
+ * @returns Le projectId ou null si non disponible
+ */
+function getExpoProjectId(): string | null {
+    try {
+        // Essayer d'obtenir depuis Constants.expoConfig (recommandé)
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+        if (projectId && typeof projectId === 'string') {
+            return projectId;
+        }
+
+        // Fallback: essayer depuis Constants.manifest2 (nouveau système)
+        const manifestProjectId = (Constants as any).manifest2?.extra?.eas?.projectId;
+        if (manifestProjectId && typeof manifestProjectId === 'string') {
+            return manifestProjectId;
+        }
+
+        // Fallback: essayer depuis Constants.manifest (ancien système)
+        const legacyProjectId = (Constants as any).manifest?.extra?.eas?.projectId;
+        if (legacyProjectId && typeof legacyProjectId === 'string') {
+            return legacyProjectId;
+        }
+
+        console.warn('[PushNotifications] ⚠️ ProjectId Expo non trouvé dans la configuration');
+        return null;
+    } catch (error) {
+        console.error('[PushNotifications] ❌ Erreur récupération projectId:', error);
+        return null;
+    }
+}
 
 // Configuration du comportement des notifications
 Notifications.setNotificationHandler({
@@ -48,26 +81,48 @@ export async function registerForPushNotificationsAsync(userToken: string): Prom
         // Obtenir le token Expo Push
         let expoPushToken: string;
         try {
+            // ✅ CORRIGÉ: Obtenir le projectId depuis la configuration Expo
+            const projectId = getExpoProjectId();
+            if (!projectId) {
+                console.warn('[PushNotifications] ⚠️ ProjectId Expo non disponible, impossible d\'obtenir le token push');
+                return null;
+            }
+
+            console.log('[PushNotifications] 📋 Utilisation projectId Expo:', projectId.substring(0, 8) + '...');
+
             const tokenData = await Notifications.getExpoPushTokenAsync({
-                projectId: '39f01dbb-43a0-4fd9-9ba6-a5db1e999ec8' // Votre project ID Expo
+                projectId: projectId
             });
             expoPushToken = tokenData.data;
             console.log('[PushNotifications] ✅ Token Expo obtenu:', expoPushToken.substring(0, 20) + '...');
         } catch (tokenError: any) {
             // Gestion spécifique de l'erreur Firebase sur Android
             if (Platform.OS === 'android' && tokenError?.code === 'E_REGISTRATION_FAILED') {
-                console.error('[PushNotifications] ❌ Firebase non configuré pour Android');
-                console.error('[PushNotifications] 📖 Suivez le guide: https://docs.expo.dev/push-notifications/fcm-credentials/');
-                console.error('[PushNotifications] 💡 Actions requises:');
-                console.error('[PushNotifications]    1. Créer un projet Firebase');
-                console.error('[PushNotifications]    2. Télécharger google-services.json');
-                console.error('[PushNotifications]    3. Placer dans mobile/android/app/');
-                console.error('[PushNotifications]    4. Configurer app.json avec les credentials');
+                console.warn('[PushNotifications] ⚠️ Firebase non configuré pour Android');
+                console.warn('[PushNotifications] 📖 Suivez le guide: https://docs.expo.dev/push-notifications/fcm-credentials/');
                 // Ne pas faire crasher l'app, retourner null gracieusement
                 return null;
             }
-            // Relancer l'erreur pour les autres cas
-            throw tokenError;
+
+            // Gestion de l'erreur EXPERIENCE_NOT_FOUND (expérience Expo non trouvée)
+            const errorMessage = tokenError?.message || '';
+            const errorString = JSON.stringify(tokenError || {});
+            if (
+                errorMessage.includes('EXPERIENCE_NOT_FOUND') ||
+                errorString.includes('EXPERIENCE_NOT_FOUND') ||
+                errorMessage.includes('does not exist') ||
+                tokenError?.code === 'ERR_NOTIFICATIONS_SERVER_ERROR'
+            ) {
+                console.warn('[PushNotifications] ⚠️ Expérience Expo non trouvée ou non configurée');
+                console.warn('[PushNotifications] 💡 Vérifiez que le projectId Expo est correct dans app.json');
+                // Ne pas faire crasher l'app, retourner null gracieusement
+                return null;
+            }
+
+            // Pour les autres erreurs, logger en warning plutôt qu'en erreur
+            console.warn('[PushNotifications] ⚠️ Erreur lors de la récupération du token Expo:', tokenError?.message || tokenError);
+            // Ne pas faire crasher l'app, retourner null gracieusement
+            return null;
         }
 
         // Configurer le canal de notifications pour Android

@@ -1304,9 +1304,9 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingHorizontal: width > 400 ? 24 : 16,
-        paddingTop: 16, // ✅ AUGMENTÉ: 4 → 16 pour garantir marge supérieure suffisante
-        paddingBottom: 200, // ✅ AUGMENTÉ: 150 → 200 pour garantir marge inférieure suffisante (évite que la navigation cache les produits)
-        minHeight: height * 0.5, // ✅ AUGMENTÉ: 0.4 → 0.5 pour plus d'espace d'affichage des produits
+        paddingTop: 8, // ✅ RÉDUIT: 16 → 8 pour réduire l'espace en haut et afficher les cartes plus tôt
+        paddingBottom: 100, // ✅ OPTIMISÉ: 200 → 100 (60px navigation + 40px marge de sécurité) pour éviter que la navigation cache les produits
+        minHeight: height * 0.5,
     },
     descriptionContainer: {
         marginBottom: 16,
@@ -1881,14 +1881,14 @@ const styles = StyleSheet.create({
     // ✅ NOUVEAU: Styles pour le header du carousel
     carouselHeader: {
         paddingHorizontal: 20,
-        paddingTop: 4, // ✅ RÉDUIT: 8 → 4 pour réduire l'espace en haut
-        paddingBottom: 8, // ✅ RÉDUIT: 12 → 8 pour rapprocher le titre du carousel
+        paddingTop: 0, // ✅ RÉDUIT: 4 → 0 pour éliminer l'espace en haut et afficher les cartes immédiatement
+        paddingBottom: 8, // ✅ CONSERVÉ: 8 pour espacement minimal entre titre et carousel
         backgroundColor: 'transparent',
     },
     // ✅ NOUVEAU: Wrapper pour le carousel avec marges garantissant visibilité complète
     carouselWrapper: {
-        marginTop: 20, // ✅ Marge supérieure pour voir le bord supérieur des produits
-        marginBottom: 40, // ✅ Marge inférieure pour voir le bord inférieur des produits (évite que la navigation cache)
+        marginTop: 8, // ✅ RÉDUIT: 20 → 8 pour afficher les cartes plus près du haut
+        marginBottom: 80, // ✅ AUGMENTÉ: 40 → 80 (60px navigation + 20px marge) pour garantir que toute la carte est visible sans scroll
     },
     carouselTitle: {
         fontSize: 20,

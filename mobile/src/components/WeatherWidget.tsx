@@ -1,3 +1,4 @@
+import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getWeatherApiKey } from '../config/weatherConfig';
@@ -25,6 +26,8 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showForecastModal, setShowForecastModal] = useState(false);
+    const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [gpsPermissionRequested, setGpsPermissionRequested] = useState(false);
 
     // Fonction pour obtenir l'icône météo basée sur la description
     const getWeatherIcon = (description: string): string => {
@@ -38,17 +41,87 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
         return '🌤️';
     };
 
+    /**
+     * Demander les permissions GPS et obtenir la position actuelle
+     */
+    const requestGPSLocation = async (): Promise<{ lat: number; lng: number } | null> => {
+        try {
+            // Vérifier les permissions existantes
+            const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+
+            if (existingStatus !== 'granted') {
+                // Demander la permission
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                setGpsPermissionRequested(true);
+
+                if (status !== 'granted') {
+                    console.log('[WeatherWidget] ℹ️ Permission GPS refusée par l\'utilisateur');
+                    return null;
+                }
+            }
+
+            // Obtenir la position actuelle avec timeout
+            const locationPromise = Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+            });
+
+            const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('GPS timeout après 10 secondes')), 10000)
+            );
+
+            const currentLocation = await Promise.race([locationPromise, timeoutPromise]);
+
+            if (currentLocation?.coords) {
+                const coords = {
+                    lat: currentLocation.coords.latitude,
+                    lng: currentLocation.coords.longitude
+                };
+                setGpsLocation(coords);
+                console.log('[WeatherWidget] ✅ Position GPS obtenue:', coords);
+                return coords;
+            }
+
+            return null;
+        } catch (error: any) {
+            console.log('[WeatherWidget] ℹ️ Impossible d\'obtenir la position GPS:', error.message);
+            return null;
+        }
+    };
+
     // Fonction pour récupérer la météo avec OpenWeatherMap
     const fetchWeather = async () => {
-        console.log('[WeatherWidget] Début fetchWeather, location:', location);
+        console.log('[WeatherWidget] Début fetchWeather, location prop:', location);
 
         setLoading(true);
         setError(null);
 
         try {
-            if (!location) {
-                console.log('[WeatherWidget] Pas de position GPS, utilisation des données mockées');
-                throw new Error('Position GPS requise');
+            // Utiliser la location prop en priorité, sinon essayer d'obtenir via GPS
+            let currentLocation = location || gpsLocation;
+
+            if (!currentLocation) {
+                // Essayer d'obtenir la position GPS si pas encore demandée
+                if (!gpsPermissionRequested) {
+                    console.log('[WeatherWidget] 📍 Tentative d\'obtention de la position GPS...');
+                    currentLocation = await requestGPSLocation();
+                }
+            }
+
+            if (!currentLocation) {
+                // Pas de position GPS disponible - utiliser données mockées
+                console.log('[WeatherWidget] ℹ️ Pas de position GPS disponible, utilisation des données mockées');
+                const mockWeather: WeatherData = {
+                    temperature: Math.round(20 + Math.random() * 15), // 20-35°C
+                    description: ['Ensoleillé', 'Nuageux', 'Pluvieux', 'Orageux'][Math.floor(Math.random() * 4)],
+                    humidity: Math.round(40 + Math.random() * 40), // 40-80%
+                    windSpeed: Math.round(5 + Math.random() * 15), // 5-20 km/h
+                    location: 'Yaoundé, Cameroun',
+                    icon: getWeatherIcon('Ensoleillé')
+                };
+                setWeather(mockWeather);
+                setError(null);
+                setLoading(false);
+                return;
             }
 
             // Récupérer la clé API depuis le backend
@@ -61,13 +134,13 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
             }
 
             // Appel API météo actuelle
-            const url = `https://api.openweathermap.org/data/2.5/weather?lat=${location.lat}&lon=${location.lng}&appid=${API_KEY}&units=metric&lang=fr`;
+            const url = `https://api.openweathermap.org/data/2.5/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}&appid=${API_KEY}&units=metric&lang=fr`;
             console.log('[WeatherWidget] Appel API météo:', url.replace(API_KEY, '***'));
 
             const response = await fetch(url);
 
             if (!response.ok) {
-                console.error('[WeatherWidget] Erreur API météo:', response.status, response.statusText);
+                console.warn('[WeatherWidget] ⚠️ Erreur API météo:', response.status, response.statusText);
                 throw new Error(`Erreur API météo: ${response.status}`);
             }
 
@@ -75,7 +148,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
             console.log('[WeatherWidget] Données météo reçues:', data);
 
             // Géocodage inverse pour obtenir le nom de la ville
-            const geocodeUrl = `https://api.openweathermap.org/geo/1.0/reverse?lat=${location.lat}&lon=${location.lng}&limit=1&appid=${API_KEY}`;
+            const geocodeUrl = `https://api.openweathermap.org/geo/1.0/reverse?lat=${currentLocation.lat}&lon=${currentLocation.lng}&limit=1&appid=${API_KEY}`;
             const geocodeResponse = await fetch(geocodeUrl);
             const geocodeData = await geocodeResponse.json();
 
@@ -93,8 +166,21 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
 
             console.log('[WeatherWidget] Données météo traitées:', weatherData);
             setWeather(weatherData);
-        } catch (err) {
-            console.error('[WeatherWidget] Erreur météo, utilisation des données mockées:', err);
+        } catch (err: any) {
+            // Distinguer les erreurs attendues (GPS, API non configurée) des vraies erreurs
+            const errorMessage = err?.message || '';
+            const isExpectedError =
+                errorMessage.includes('Position GPS requise') ||
+                errorMessage.includes('Clé API météo non configurée') ||
+                errorMessage.includes('GPS timeout');
+
+            if (isExpectedError) {
+                // Erreur attendue - logger en info, pas en error
+                console.log('[WeatherWidget] ℹ️', errorMessage, '- utilisation des données mockées');
+            } else {
+                // Vraie erreur (API, réseau, etc.) - logger en warning
+                console.warn('[WeatherWidget] ⚠️ Erreur météo, utilisation des données mockées:', errorMessage);
+            }
 
             // Fallback vers des données mockées en cas d'erreur
             const mockWeather: WeatherData = {
@@ -102,7 +188,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
                 description: ['Ensoleillé', 'Nuageux', 'Pluvieux', 'Orageux'][Math.floor(Math.random() * 4)],
                 humidity: Math.round(40 + Math.random() * 40), // 40-80%
                 windSpeed: Math.round(5 + Math.random() * 15), // 5-20 km/h
-                location: location ? 'Position actuelle' : 'Yaoundé, Cameroun',
+                location: (location || gpsLocation) ? 'Position actuelle' : 'Yaoundé, Cameroun',
                 icon: getWeatherIcon('Ensoleillé')
             };
 

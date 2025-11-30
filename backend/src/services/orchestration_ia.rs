@@ -1798,7 +1798,12 @@ async fn router_metier_ultra_optimise(
             // NOUVEAU : Recherche directe avec le texte original de l'utilisateur
             let (result, tokens_consumed) =
                 crate::services::rechercher_besoin::rechercher_besoin_direct(
-                    _user_id, user_text, None, // Pas de zone GPS pour cette recherche
+                    &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
+                    _state.cache_service.clone(), // ✅ CORRIGÉ: Réutiliser le cache service
+                    _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique
+                    _user_id, 
+                    user_text, 
+                    None, // Pas de zone GPS pour cette recherche
                     None, // Pas de rayon GPS pour cette recherche
                     None, // ✅ Pas de specialized_type (recherche générale)
                 )

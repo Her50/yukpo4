@@ -396,6 +396,9 @@ pub fn valider_besoin_json(data: &Value) -> Result<Value, crate::core::types::Ap
 
 /// ?? Recherche directe avec le texte original de l'utilisateur (sans IA)
 pub async fn rechercher_besoin_direct(
+    pool: &sqlx::PgPool, // ✅ CORRIGÉ: Utiliser le pool existant au lieu de créer une nouvelle connexion
+    cache_service: Option<Arc<crate::services::cache_service::CacheService>>, // ✅ CORRIGÉ: Réutiliser le cache service
+    geographic_matching: Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>, // ✅ CORRIGÉ: Réutiliser le matching géographique
     user_id: Option<i32>,
     user_text: &str,
     gps_zone: Option<&str>,        // Nouveau paramètre GPS
@@ -404,6 +407,7 @@ pub async fn rechercher_besoin_direct(
 ) -> AppResult<(Value, u32)> {
     use crate::services::orchestration_ia::extract_keywords_from_text;
     use crate::utils::log::log_info;
+    use std::sync::Arc;
 
     log_info(&format!("[RECHERCHE_DIRECTE] Recherche directe avec texte utilisateur: '{}' (GPS: {:?}, Rayon: {:?}km, specialized_type: {:?})", 
         user_text, gps_zone, search_radius_km, specialized_type));
@@ -439,28 +443,27 @@ pub async fn rechercher_besoin_direct(
         primary_keyword
     ));
 
-    let pool = sqlx::PgPool::connect(
-        &std::env::var("DATABASE_URL").expect("DATABASE_URL doit être défini"),
-    )
-    .await
-    .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur connexion base: {}", e)))?;
-
-    // ✅ Phase 10 - Initialiser le service de matching géographique pour enrichir les distances
-    use crate::services::cache_service::CacheService;
-    use crate::services::geocoding_service::GeocodingService;
-    use std::sync::Arc;
+    // ✅ CORRIGÉ 2025-12-01: Réutiliser les services existants ou créer seulement si nécessaire
+    let cache_service = cache_service.unwrap_or_else(|| {
+        use crate::services::cache_service::CacheService;
+        let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
+        let redis_client = redis::Client::open(redis_url).ok();
+        Arc::new(CacheService::new(redis_client))
+    });
     
-    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
-    let redis_client = redis::Client::open(redis_url).ok();
-    let cache_service = Arc::new(CacheService::new(redis_client.clone()));
-    let geocoding_service = GeocodingService::with_cache(redis_client.clone());
-    let geographic_matching = Arc::new(
-        crate::services::geographic_matching_service::GeographicMatchingService::new(
-            pool.clone(),
-            cache_service.clone(),
-            geocoding_service,
-        ),
-    );
+    let geographic_matching = geographic_matching.unwrap_or_else(|| {
+        use crate::services::geocoding_service::GeocodingService;
+        let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
+        let redis_client = redis::Client::open(redis_url).ok();
+        let geocoding_service = GeocodingService::with_cache(redis_client.clone());
+        Arc::new(
+            crate::services::geographic_matching_service::GeographicMatchingService::new(
+                pool.clone(),
+                cache_service.clone(),
+                geocoding_service,
+            ),
+        )
+    });
     
     // ✅ OPTIMISÉ 2025-11-28: Configuration de la recherche native avec cache Redis et matching géographique
     let native_search = NativeSearchService::with_cache_and_geographic_matching(
@@ -636,10 +639,10 @@ pub async fn rechercher_besoin_direct(
         product_labels: Option<Vec<String>>,
         location_vector: Option<Vec<String>>,
         chosen_location: Option<String>,
-        usage_count: Option<i64>,
+        usage_count: Option<i32>, // ✅ CORRIGÉ: INTEGER (INT4) dans DB, pas i64 (INT8)
     }
     
-    let product_info_map: HashMap<i32, (Option<Vec<String>>, Option<Vec<String>>, Option<Vec<String>>, Option<String>, Option<i64>)> = {
+    let product_info_map: HashMap<i32, (Option<Vec<String>>, Option<Vec<String>>, Option<Vec<String>>, Option<String>, Option<i32>)> = {
         let rows = sqlx::query_as::<_, ProductInfoRow>(
             r#"
             SELECT DISTINCT ON (ac.service_id)

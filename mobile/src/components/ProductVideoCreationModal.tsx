@@ -1907,34 +1907,33 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             {audioLibrary.length > 0 && (
                                 <>
                                     <Text style={[styles.fieldLabel, { marginTop: 16 }]}>
-                                        Bibliothèque audio Yukpomnang
+                                        Bibliothèque audio Yukpo
                                     </Text>
                                     {loadingLibrary ? (
-                                        <View style={styles.audioRow}>
+                                        <View style={styles.audioRowGrid}>
                                             <ActivityIndicator size="small" color={modernColors.primary} />
                                         </View>
                                     ) : (
-                                        <ScrollView
-                                            horizontal
-                                            showsHorizontalScrollIndicator={false}
-                                            contentContainerStyle={styles.audioRow}
-                                        >
+                                        <View style={styles.audioRowGrid}>
                                             {audioLibrary.map((loop) => {
                                                 const isAttaching = attachingLoopId === loop.id;
                                                 return (
                                                     <TouchableOpacity
                                                         key={loop.id}
-                                                        style={styles.audioChip}
+                                                        style={[
+                                                            styles.audioChipGrid,
+                                                            isAttaching && styles.audioChipSelected,
+                                                        ]}
                                                         onPress={() => handleAttachAudioLoop(loop.id)}
                                                         disabled={isAttaching}
                                                     >
                                                         {isAttaching ? (
                                                             <ActivityIndicator size="small" color={modernColors.primary} />
                                                         ) : (
-                                                            <SafeIcon name="tablet" size={20} color={modernColors.primary} />
+                                                            <SafeIcon name="music" size={18} color={modernColors.primary} />
                                                         )}
                                                         <View style={{ flex: 1 }}>
-                                                            <Text style={styles.audioChipText} numberOfLines={1}>
+                                                            <Text style={styles.audioChipText} numberOfLines={2}>
                                                                 {loop.title}
                                                             </Text>
                                                             <Text style={styles.audioChipSubtitle} numberOfLines={1}>
@@ -1944,7 +1943,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                     </TouchableOpacity>
                                                 );
                                             })}
-                                        </ScrollView>
+                                        </View>
                                     )}
                                 </>
                             )}
@@ -3620,20 +3619,20 @@ const styles = StyleSheet.create({
     styleRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 8, // ✅ CORRIGÉ: Réduit de 12 à 8 pour garantir 2 colonnes
         marginTop: 12,
-        justifyContent: 'space-between', // ✅ AJOUTÉ: Espacement uniforme entre les colonnes
+        justifyContent: 'flex-start', // ✅ CORRIGÉ: flex-start au lieu de space-between pour meilleur contrôle
     },
     styleChip: {
-        // ✅ CORRIGÉ 2025-11-30: 2 colonnes avec taille réduite pour meilleure UX
-        // Calcul: (100% - 12px) / 2 ≈ 48% par colonne
-        width: '48%', // ✅ Largeur fixe pour garantir 2 colonnes
-        minWidth: 0, // ✅ AJOUTÉ: Permet au width de fonctionner correctement
-        borderRadius: 12, // ✅ Réduit de 14 à 12
+        // ✅ CORRIGÉ: 2 colonnes avec taille réduite pour meilleure UX
+        // Calcul: (100% - 8px gap) / 2 = 46% par colonne pour garantir l'affichage
+        width: '46%', // ✅ CORRIGÉ: Réduit de 48% à 46% pour garantir 2 colonnes avec gap
+        minWidth: 0, // ✅ Permet au width de fonctionner correctement
+        borderRadius: 10, // ✅ Réduit de 12 à 10
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        padding: 10, // ✅ Réduit de 12 à 10
-        gap: 4, // ✅ Réduit de 6 à 4
+        padding: 8, // ✅ CORRIGÉ: Réduit de 10 à 8 pour plus de compacité
+        gap: 3, // ✅ Réduit de 4 à 3
         backgroundColor: '#F8FAFC',
     },
     styleChipSelected: {
@@ -3641,7 +3640,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#EEF2FF',
     },
     styleChipLabel: {
-        fontSize: 12, // ✅ Réduit de 13 à 12
+        fontSize: 11, // ✅ CORRIGÉ: Réduit de 12 à 11 pour plus de compacité
         fontWeight: '700',
         color: modernColors.text,
     },
@@ -3649,9 +3648,9 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
     },
     styleChipDescription: {
-        fontSize: 11, // ✅ Réduit de 12 à 11
+        fontSize: 10, // ✅ CORRIGÉ: Réduit de 11 à 10 pour plus de compacité
         color: modernColors.textSecondary,
-        lineHeight: 14, // ✅ Réduit de 16 à 14
+        lineHeight: 12, // ✅ CORRIGÉ: Réduit de 14 à 12
     },
     voiceRow: {
         flexDirection: 'row',
@@ -3665,27 +3664,26 @@ const styles = StyleSheet.create({
         gap: 12,
         paddingVertical: 8,
     },
-    // ✅ AJOUTÉ: Style pour afficher les ambiances musicales en 2 colonnes
+    // ✅ CORRIGÉ: Style pour afficher les ambiances musicales en 2 colonnes
     audioRowGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 8, // ✅ CORRIGÉ: Réduit de 12 à 8 pour garantir 2 colonnes
         marginTop: 12,
-        justifyContent: 'space-between', // ✅ Espacement uniforme entre les colonnes
+        justifyContent: 'flex-start', // ✅ CORRIGÉ: flex-start au lieu de space-between pour meilleur contrôle
     },
-    // ✅ AJOUTÉ: Style pour les cartes d'ambiances musicales en 2 colonnes
-    // ✅ CORRIGÉ 2025-11-30: Taille réduite pour meilleure UX
+    // ✅ CORRIGÉ: Style pour les cartes d'ambiances musicales en 2 colonnes
     audioChipGrid: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 12, // ✅ Réduit de 14 à 12
-        paddingVertical: 8, // ✅ Réduit de 10 à 8
-        borderRadius: 12, // ✅ Réduit de 14 à 12
+        gap: 6, // ✅ CORRIGÉ: Réduit de 8 à 6
+        paddingHorizontal: 10, // ✅ CORRIGÉ: Réduit de 12 à 10
+        paddingVertical: 8,
+        borderRadius: 10, // ✅ CORRIGÉ: Réduit de 12 à 10
         borderWidth: 1,
         borderColor: '#E2E8F0',
         backgroundColor: '#F8FAFC',
-        width: '48%', // ✅ Largeur fixe pour garantir 2 colonnes
+        width: '46%', // ✅ CORRIGÉ: Réduit de 48% à 46% pour garantir 2 colonnes avec gap
         minWidth: 0, // ✅ Permet au width de fonctionner correctement
     },
     audioActionsRow: {

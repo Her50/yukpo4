@@ -2,9 +2,9 @@
 use axum::{body::Body, http::Request, middleware::Next, response::Response};
 use http::StatusCode;
 
-// ✅ CORRECTION: Limite augmentée à 100 MB pour permettre les payloads complexes avec sous_caracteristiques
+// ✅ CORRECTION: Limite augmentée à 200 MB pour permettre les payloads complexes avec médias base64
 // Note: Cette limite est en plus de la limite Axum DefaultBodyLimit qui doit être configurée sur la route
-const DEFAULT_MAX_SIZE: usize = 100_000_000; // 100 MB (raisonnable pour des services avec produits)
+const DEFAULT_MAX_SIZE: usize = 200_000_000; // 200 MB (cohérent avec frontend et nginx)
 
 pub async fn request_size_limit(req: Request<Body>, next: Next) -> Result<Response, StatusCode> {
     // Vérifier la taille du body si disponible

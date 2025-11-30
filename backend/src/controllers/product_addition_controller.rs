@@ -20,6 +20,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
 
 #[derive(Debug, Deserialize)]
 pub struct AddProductRequest {
@@ -500,6 +502,129 @@ struct SavedMediaPaths {
     videos: Option<Vec<String>>,
 }
 
+// ✅ OPTIMISÉ: Fonction helper pour traiter une seule image en parallèle
+async fn process_single_image_async(
+    storage_root: &PathBuf,
+    service_id: i32,
+    product_id: &str,
+    product_index: usize,
+    image_index: usize,
+    image_data: &str,
+    is_main: bool,
+    pool: &sqlx::PgPool,
+) -> AppResult<Option<String>> {
+    use crate::utils::log::{log_error, log_info, log_warn};
+
+    if image_data.is_empty() {
+        return Ok(None);
+    }
+
+    log_info(&format!(
+        "[process_single_image_async] 🖼️ Traitement image {} de produit {} (main: {})",
+        image_index, product_index, is_main
+    ));
+
+    // Sauvegarder l'image
+    let stored = if is_url(image_data) {
+        download_and_save_image(storage_root.as_path(), service_id, image_data, "images").await
+    } else if is_probable_base64(image_data) {
+        persist_base64_media(storage_root.as_path(), service_id, "images", image_data, "jpg").await
+    } else {
+        log_warn(&format!(
+            "[process_single_image_async] Image ignorée (format non supporté) pour produit {}",
+            product_index
+        ));
+        return Ok(None);
+    };
+
+    let stored = match stored {
+        Ok(value) => value,
+        Err(err) => {
+            log_error(&format!(
+                "[process_single_image_async] Erreur sauvegarde image produit {}: {}",
+                product_index, err
+            ));
+            return Err(err);
+        }
+    };
+
+    let file_path = stored.path;
+    #[cfg(feature = "image_search")]
+    let image_bytes = stored.bytes;
+    #[cfg(not(feature = "image_search"))]
+    let _image_bytes = stored.bytes;
+
+    // Générer signature d'image si disponible
+    #[cfg(feature = "image_search")]
+    let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+        match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
+            Ok(signature) => {
+                let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| {
+                    serde_json::json!({
+                        "width": 0,
+                        "height": 0,
+                        "format": "jpeg",
+                        "file_size": image_bytes.len(),
+                    })
+                });
+                let hash = format!("{:x}", md5::compute(&image_bytes));
+                (
+                    serde_json::to_value(&signature).unwrap_or_default(),
+                    hash,
+                    metadata,
+                )
+            }
+            Err(e) => {
+                log_warn(&format!("[process_single_image_async] Erreur signature: {}", e));
+                (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+            }
+        }
+    } else {
+        (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+    };
+
+    #[cfg(not(feature = "image_search"))]
+    let (image_signature, image_hash, image_metadata) = (
+        serde_json::Value::Null,
+        String::new(),
+        serde_json::Value::Null,
+    );
+
+    // Insérer dans la table media
+    if let Err(e) = sqlx::query(
+        r#"
+        INSERT INTO media (
+            service_id, product_id, product_index, type, path,
+            is_main_image, display_order, uploaded_at,
+            image_signature, image_hash, image_metadata
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        "#,
+    )
+    .bind(service_id)
+    .bind(product_id)
+    .bind(product_index as i32)
+    .bind("image")
+    .bind(&file_path)
+    .bind(is_main)
+    .bind(image_index as i32)
+    .bind(Utc::now().naive_utc())
+    .bind(image_signature)
+    .bind(image_hash)
+    .bind(image_metadata)
+    .execute(pool)
+    .await
+    {
+        log_error(&format!(
+            "[process_single_image_async] Erreur insertion media image: {}",
+            e
+        ));
+        return Err(AppError::Internal(format!("Erreur insertion media: {}", e)));
+    }
+
+    Ok(Some(file_path))
+}
+
 // ✅ NOUVEAU 2025-11-26: Fonction helper pour sauvegarder les médias d'un produit
 async fn save_product_media(
     state: &Arc<AppState>,
@@ -560,123 +685,97 @@ async fn save_product_media(
         }
     }
 
-    // Sauvegarder les images
-    for (image_index, image_data) in images_to_process.iter().enumerate() {
-        if image_data.is_empty() {
-            continue;
-        }
-
-        let is_main = image_index == 0;
-
+    // ✅ OPTIMISÉ: Sauvegarder les images en PARALLÈLE pour améliorer les performances
+    if !images_to_process.is_empty() {
         log_info(&format!(
-            "[add_product_to_service] 🖼️ Sauvegarde image {} de produit {} (main: {})",
-            image_index, product_index, is_main
+            "[add_product_to_service] 🚀 Traitement parallèle de {} images pour produit {}",
+            images_to_process.len(),
+            product_index
         ));
 
-        let stored = if is_url(image_data) {
-            download_and_save_image(storage_root.as_path(), service_id, image_data, "images").await
-        } else if is_probable_base64(image_data) {
-            persist_base64_media(storage_root.as_path(), service_id, "images", image_data, "jpg").await
-        } else {
-            log_warn(&format!(
-                "[add_product_to_service] Image ignorée (format non supporté) pour produit {}",
-                product_index
-            ));
-            continue;
-        };
+        let pool = state.pg.clone();
+        let mut futures = FuturesUnordered::new();
 
-        let stored = match stored {
-            Ok(value) => value,
-            Err(err) => {
-                log_error(&format!(
-                    "[add_product_to_service] Erreur sauvegarde image produit {}: {}",
-                    product_index, err
-                ));
+        // Créer une future pour chaque image
+        for (image_index, image_data) in images_to_process.iter().enumerate() {
+            if image_data.is_empty() {
                 continue;
             }
-        };
 
-        let file_path = stored.path;
-        #[cfg(feature = "image_search")]
-        let image_bytes = stored.bytes;
-        #[cfg(not(feature = "image_search"))]
-        let _image_bytes = stored.bytes;
+            let is_main = image_index == 0;
+            let image_data = image_data.clone();
+            let storage_root_clone = storage_root.clone();
+            let service_id_clone = service_id;
+            let product_id_clone = product_id.clone();
+            let product_index_clone = product_index;
+            let pool_clone = pool.clone();
 
-        // Générer signature d'image si disponible
-        #[cfg(feature = "image_search")]
-        let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
-            match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
-                Ok(signature) => {
-                    let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| {
-                        serde_json::json!({
-                            "width": 0,
-                            "height": 0,
-                            "format": "jpeg",
-                            "file_size": image_bytes.len(),
-                        })
-                    });
-                    let hash = format!("{:x}", md5::compute(&image_bytes));
-                    (
-                        serde_json::to_value(&signature).unwrap_or_default(),
-                        hash,
-                        metadata,
-                    )
-                }
-                Err(e) => {
-                    log_warn(&format!("[add_product_to_service] Erreur signature: {}", e));
-                    (serde_json::Value::Null, String::new(), serde_json::Value::Null)
-                }
-            }
-        } else {
-            (serde_json::Value::Null, String::new(), serde_json::Value::Null)
-        };
+            futures.push(tokio::spawn(async move {
+                let result = process_single_image_async(
+                    &storage_root_clone,
+                    service_id_clone,
+                    &product_id_clone,
+                    product_index_clone,
+                    image_index,
+                    &image_data,
+                    is_main,
+                    &pool_clone,
+                ).await;
 
-        #[cfg(not(feature = "image_search"))]
-        let (image_signature, image_hash, image_metadata) = (
-            serde_json::Value::Null,
-            String::new(),
-            serde_json::Value::Null,
-        );
-
-        // Insérer dans la table media
-        if let Err(e) = sqlx::query(
-            r#"
-            INSERT INTO media (
-                service_id, product_id, product_index, type, path,
-                is_main_image, display_order, uploaded_at,
-                image_signature, image_hash, image_metadata
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            "#,
-        )
-        .bind(service_id)
-        .bind(&product_id)
-        .bind(product_index as i32)
-        .bind("image")
-        .bind(&file_path)
-        .bind(is_main)
-        .bind(image_index as i32)
-        .bind(Utc::now().naive_utc())
-        .bind(image_signature)
-        .bind(image_hash)
-        .bind(image_metadata)
-        .execute(&state.pg)
-        .await
-        {
-            log_error(&format!(
-                "[add_product_to_service] Erreur insertion media image: {}",
-                e
-            ));
-            continue;
+                (image_index, is_main, result)
+            }));
         }
 
-        saved_images.push(file_path);
+        // Collecter les résultats au fur et à mesure qu'ils arrivent
+        let mut results: Vec<(usize, bool, Option<String>)> = Vec::new();
+        while let Some(result) = futures.next().await {
+            match result {
+                Ok((image_index, is_main, Ok(Some(file_path)))) => {
+                    results.push((image_index, is_main, Some(file_path)));
+                    log_info(&format!(
+                        "[add_product_to_service] ✅ Image {} du produit {} traitée en parallèle (main: {})",
+                        image_index + 1,
+                        product_index,
+                        is_main
+                    ));
+                }
+                Ok((image_index, is_main, Ok(None))) => {
+                    log_warn(&format!(
+                        "[add_product_to_service] ⚠️ Image {} du produit {} ignorée",
+                        image_index + 1,
+                        product_index
+                    ));
+                }
+                Ok((image_index, _is_main, Err(e))) => {
+                    log_error(&format!(
+                        "[add_product_to_service] ❌ Erreur traitement image {} du produit {}: {}",
+                        image_index + 1,
+                        product_index,
+                        e
+                    ));
+                }
+                Err(e) => {
+                    log_error(&format!(
+                        "[add_product_to_service] ❌ Erreur task image du produit {}: {}",
+                        product_index,
+                        e
+                    ));
+                }
+            }
+        }
+
+        // Trier par index pour préserver l'ordre et ajouter aux images sauvegardées
+        results.sort_by_key(|(idx, _, _)| *idx);
+        for (_idx, _is_main, file_path_opt) in results {
+            if let Some(file_path) = file_path_opt {
+                saved_images.push(file_path);
+            }
+        }
+
         log_info(&format!(
-            "[add_product_to_service] ✅ Image {}/{} du produit {} sauvegardée (main: {})",
-            image_index + 1,
-            images_to_process.len(),
-            product_index,
-            is_main
+            "[add_product_to_service] ✅ {} images sauvegardées en parallèle pour produit {}",
+            saved_images.len(),
+            product_index
         ));
     }
 

@@ -13,7 +13,7 @@ struct ProductLifecycleServiceRow {
     is_active: Option<bool>,
     auto_deactivate_at: Option<DateTime<Utc>>,
     last_reactivated_at: Option<DateTime<Utc>>,
-    reactivation_cost: Option<i64>,
+    reactivation_cost: Option<i32>, // ✅ CORRIGÉ: INTEGER (INT4) dans DB, pas i64 (INT8)
     deactivation_count: Option<i32>,
     #[sqlx(rename = "service_data")]
     service_data: Value,

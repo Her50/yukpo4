@@ -355,26 +355,45 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     }
 
     // ✅ CORRECTION CRITIQUE: Prioriser le prefill pour l'édition/duplication
-    // Si on est en mode edit ou duplicate, utiliser directement les valeurs du prefill
+    // Si on est en mode edit ou duplicate, utiliser DIRECTEMENT les valeurs du prefill (même si vides)
+    // Cela garantit que toutes les données sont chargées depuis le produit existant
     const initialFormValues = {
         // ✅ PRIORITÉ 1: prefill (données du produit existant pour édition/duplication)
-        // ✅ PRIORITÉ 2: suggestionData (données IA si disponibles)
-        nom_produit: (isEditing || isDuplicate) && prefill.nom_produit ? prefill.nom_produit : (prefill.nom_produit ?? nom_produit ?? ''),
-        categorie_produit: (isEditing || isDuplicate) && prefill.categorie_produit ? prefill.categorie_produit : (prefill.categorie_produit ?? categorie_produit ?? ''),
-        description_produit: (isEditing || isDuplicate) && prefill.description_produit ? prefill.description_produit : (prefill.description_produit ?? description_produit ?? ''),
-        prix_produit: (isEditing || isDuplicate) && prefill.prix_produit ? prefill.prix_produit : (prefill.prix_produit ?? prix_produit ?? ''),
-        devise_produit: (isEditing || isDuplicate) && prefill.devise_produit ? prefill.devise_produit : initialCurrency,
-        variabilite_prix: (isEditing || isDuplicate) && prefill.variabilite_prix ? prefill.variabilite_prix : (initialPriceVariant || prefill.price_variant || null),
-        price_variant: (isEditing || isDuplicate) && prefill.price_variant ? prefill.price_variant : (initialPriceVariant || prefill.variabilite_prix || null),
+        // En mode edit/duplicate, utiliser TOUJOURS le prefill (même si vide), sinon utiliser fallback
+        nom_produit: (isEditing || isDuplicate)
+            ? (prefill.nom_produit !== undefined ? prefill.nom_produit : '')
+            : (prefill.nom_produit ?? nom_produit ?? ''),
+        categorie_produit: (isEditing || isDuplicate)
+            ? (prefill.categorie_produit !== undefined ? prefill.categorie_produit : '')
+            : (prefill.categorie_produit ?? categorie_produit ?? ''),
+        description_produit: (isEditing || isDuplicate)
+            ? (prefill.description_produit !== undefined ? prefill.description_produit : '')
+            : (prefill.description_produit ?? description_produit ?? ''),
+        prix_produit: (isEditing || isDuplicate)
+            ? (prefill.prix_produit !== undefined ? prefill.prix_produit : '')
+            : (prefill.prix_produit ?? prix_produit ?? ''),
+        devise_produit: (isEditing || isDuplicate)
+            ? (prefill.devise_produit !== undefined ? prefill.devise_produit : initialCurrency)
+            : (prefill.devise_produit ?? initialCurrency),
+        variabilite_prix: (isEditing || isDuplicate)
+            ? (prefill.variabilite_prix !== undefined ? prefill.variabilite_prix : (prefill.price_variant || null))
+            : (initialPriceVariant || prefill.price_variant || prefill.variabilite_prix || null),
+        price_variant: (isEditing || isDuplicate)
+            ? (prefill.price_variant !== undefined ? prefill.price_variant : (prefill.variabilite_prix || null))
+            : (initialPriceVariant || prefill.variabilite_prix || prefill.price_variant || null),
         // ✅ CORRIGÉ: Pour produits, utiliser prefill.produits si disponible (mode edit/duplicate)
-        produits: (isEditing || isDuplicate) && prefill.produits && Array.isArray(prefill.produits) && prefill.produits.length > 0
-            ? prefill.produits
+        produits: (isEditing || isDuplicate)
+            ? (prefill.produits !== undefined
+                ? (Array.isArray(prefill.produits) ? prefill.produits : [])
+                : initialProduitsValues)
             : initialProduitsValues,
         // ✅ CORRECTION: Utiliser sous_caracteristiques depuis prefill en priorité pour edit/duplicate
-        sous_caracteristiques: (isEditing || isDuplicate) && prefill.sous_caracteristiques
-            ? prefill.sous_caracteristiques
-            : (sous_caracteristiques || prefill.sous_caracteristiques || {}),
-        lieu_produit: (isEditing || isDuplicate) && prefill.lieu_produit ? prefill.lieu_produit : (prefill.lieu_produit ?? lieu_produit ?? null),
+        sous_caracteristiques: (isEditing || isDuplicate)
+            ? (prefill.sous_caracteristiques !== undefined ? prefill.sous_caracteristiques : {})
+            : (prefill.sous_caracteristiques || sous_caracteristiques || {}),
+        lieu_produit: (isEditing || isDuplicate)
+            ? (prefill.lieu_produit !== undefined ? prefill.lieu_produit : null)
+            : (prefill.lieu_produit ?? lieu_produit ?? null),
         // ✅ CRITIQUE: Pour les médias, utiliser prefill en priorité pour edit/duplicate
         images: (isEditing || isDuplicate) && prefilledImages.length > 0 ? prefilledImages : initialProductImages,
         videos: (isEditing || isDuplicate) && prefilledVideos.length > 0 ? prefilledVideos : initialProductVideos,
@@ -392,21 +411,33 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         if (isEditing || isDuplicate) {
             console.log('[AjouterProduitSimple] 📝 Mode:', mode);
             console.log('[AjouterProduitSimple] 📦 Prefill reçu:', {
-                nom_produit: prefill.nom_produit,
-                categorie_produit: prefill.categorie_produit,
-                description_produit: prefill.description_produit,
-                prix_produit: prefill.prix_produit,
-                devise_produit: prefill.devise_produit,
-                produits: prefill.produits,
+                nom_produit: prefill.nom_produit || 'VIDE',
+                categorie_produit: prefill.categorie_produit || 'VIDE',
+                description_produit: prefill.description_produit || 'VIDE',
+                prix_produit: prefill.prix_produit || 'VIDE',
+                devise_produit: prefill.devise_produit || 'VIDE',
+                produits: prefill.produits
+                    ? (Array.isArray(prefill.produits) ? `${prefill.produits.length} élément(s)` : 'non-array')
+                    : 'VIDE',
+                lieu_produit: prefill.lieu_produit || 'VIDE',
+                variabilite_prix: prefill.variabilite_prix ? 'présent' : 'VIDE',
+                sous_caracteristiques: prefill.sous_caracteristiques
+                    ? (typeof prefill.sous_caracteristiques === 'object' ? `${Object.keys(prefill.sous_caracteristiques).length} dimension(s)` : 'présent')
+                    : 'VIDE',
                 images_count: Array.isArray(prefill.images) ? prefill.images.length : 0,
                 videos_count: Array.isArray(prefill.videos) ? prefill.videos.length : 0,
-                has_sous_caracteristiques: !!prefill.sous_caracteristiques,
             });
             console.log('[AjouterProduitSimple] 📝 Valeurs initiales formValues:', {
-                nom_produit: initialFormValues.nom_produit,
-                categorie_produit: initialFormValues.categorie_produit,
-                description_produit: initialFormValues.description_produit,
-                prix_produit: initialFormValues.prix_produit,
+                nom_produit: initialFormValues.nom_produit || 'VIDE',
+                categorie_produit: initialFormValues.categorie_produit || 'VIDE',
+                description_produit: initialFormValues.description_produit || 'VIDE',
+                prix_produit: initialFormValues.prix_produit || 'VIDE',
+                devise_produit: initialFormValues.devise_produit || 'VIDE',
+                lieu_produit: initialFormValues.lieu_produit || 'VIDE',
+                produits_count: Array.isArray(initialFormValues.produits) ? initialFormValues.produits.length : 0,
+                has_sous_caracteristiques: initialFormValues.sous_caracteristiques && typeof initialFormValues.sous_caracteristiques === 'object'
+                    ? Object.keys(initialFormValues.sous_caracteristiques).length
+                    : 0,
                 images_count: Array.isArray(initialFormValues.images) ? initialFormValues.images.length : 0,
             });
         }
