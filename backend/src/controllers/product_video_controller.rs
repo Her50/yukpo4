@@ -236,7 +236,9 @@ pub async fn get_my_videos(
     info!("[ProductVideoController] ✅ {} vidéo(s) trouvée(s) pour user_id={}", videos.len(), user.id);
 
     // Construire l'URL complète pour chaque vidéo
-    let api_base_url = state.config.api_base_url.clone();
+    let api_base_url = std::env::var("PUBLIC_BASE_URL")
+        .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+        .unwrap_or_else(|_| "http://localhost:3000".to_string());
     let formatted_videos: Vec<UserVideo> = videos
         .into_iter()
         .map(|row| {

@@ -2065,7 +2065,8 @@ LIMIT 100
     /// Exemple: "plombier" → "plombier | plomberie"
     /// Permet au full-text search de matcher les variations
     fn expand_search_query_with_variations(&self, query: &str) -> String {
-        let query_lower = query.to_lowercase().trim();
+        let query_lowercase = query.to_lowercase();
+        let query_lower = query_lowercase.trim();
         let mut expanded_terms = vec![query_lower.to_string()];
         
         // Mapping bidirectionnel : profession ↔ activité
