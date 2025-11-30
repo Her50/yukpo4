@@ -1121,7 +1121,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 }
             });
 
-            const response = await mediaApi.analyzeMedia({
+            // ✅ CORRECTION: Utiliser iaApi.analyzeMedia() au lieu de mediaApi.analyzeMedia()
+            // L'endpoint correct est /api/ia/media-analysis, pas /api/media/analyze
+            const response = await iaApi.analyzeMedia({
                 product_name: normalizeProductName(selectedProduct),
                 media_tags: tags,
                 description: extractDescription(selectedProduct.description, ''),
@@ -1861,18 +1863,15 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
                                         Sélectionner une piste audio existante
                                     </Text>
-                                    <ScrollView
-                                        horizontal
-                                        showsHorizontalScrollIndicator={false}
-                                        contentContainerStyle={styles.audioRow}
-                                    >
+                                    {/* ✅ CORRIGÉ: Affichage en 2 colonnes au lieu d'un scroll horizontal */}
+                                    <View style={styles.audioRowGrid}>
                                         {availableAudioTracks.map((track) => {
                                             const selected = selectedMusicTrackId === track.id;
                                             return (
                                                 <TouchableOpacity
                                                     key={`audio_${track.id}`}
                                                     style={[
-                                                        styles.audioChip,
+                                                        styles.audioChipGrid,
                                                         selected && styles.audioChipSelected,
                                                     ]}
                                                     onPress={() => setSelectedMusicTrackId(selected ? null : track.id)}
@@ -1887,14 +1886,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                             styles.audioChipText,
                                                             selected && styles.audioChipTextSelected,
                                                         ]}
-                                                        numberOfLines={1}
+                                                        numberOfLines={2}
                                                     >
                                                         {track.ai_description || `Piste ${track.id}`}
                                                     </Text>
                                                 </TouchableOpacity>
                                             );
                                         })}
-                                    </ScrollView>
+                                    </View>
                                 </>
                             )}
                             {audioLibrary.length > 0 && (
@@ -1924,7 +1923,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                         {isAttaching ? (
                                                             <ActivityIndicator size="small" color={modernColors.primary} />
                                                         ) : (
-                                                            <SafeIcon name="download-cloud" size={16} color={modernColors.primary} />
+                                                            <SafeIcon name="music" size={20} color={modernColors.primary} />
                                                         )}
                                                         <View style={{ flex: 1 }}>
                                                             <Text style={styles.audioChipText} numberOfLines={1}>
@@ -2063,6 +2062,39 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         />
                     </View>
                 </NativeCard>
+
+                {/* ✅ AJOUTÉ: Prévisualisation de la timeline générée à l'étape 6 */}
+                {generatedTimeline && !isEditingTimeline && (
+                    <NativeCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>🎬 Structure de la vidéo</Text>
+                        </View>
+                        <Text style={styles.sectionSubtitle}>
+                            Visualisez la structure de votre vidéo avant la génération finale.
+                        </Text>
+                        <TimelinePreview
+                            timeline={generatedTimeline}
+                            onEdit={() => setIsEditingTimeline(true)}
+                            onScenePress={(sceneIndex) => {
+                                console.log('[ProductVideoCreationModal] Scène pressée:', sceneIndex);
+                            }}
+                        />
+                    </NativeCard>
+                )}
+
+                {/* ✅ AJOUTÉ: Éditeur de timeline à l'étape 6 */}
+                {isEditingTimeline && generatedTimeline && (
+                    <NativeCard style={styles.sectionCard}>
+                        <TimelineEditor
+                            timeline={generatedTimeline}
+                            onSave={(editedTimeline) => {
+                                setGeneratedTimeline(editedTimeline);
+                                setIsEditingTimeline(false);
+                            }}
+                            onCancel={() => setIsEditingTimeline(false)}
+                        />
+                    </NativeCard>
+                )}
 
                 {/* ✅ Distribution automatique avec plan IA */}
                 <NativeCard style={styles.sectionCard}>
@@ -3133,11 +3165,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         title="Précédent"
                                         variant="secondary"
                                         onPress={() => handleStepChange(2)}
+                                        style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
                                     />
                                     <NativeButton
                                         title="Suivant"
                                         variant="primary"
                                         onPress={() => handleStepChange(4)}
+                                        style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
                                     />
                                 </View>
                             )}
@@ -3147,11 +3181,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         title="Précédent"
                                         variant="secondary"
                                         onPress={() => handleStepChange(3)}
+                                        style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
                                     />
                                     <NativeButton
                                         title="Suivant"
                                         variant="primary"
                                         onPress={() => handleStepChange(5)}
+                                        style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
                                     />
                                 </View>
                             )}
@@ -3161,11 +3197,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         title="Précédent"
                                         variant="secondary"
                                         onPress={() => handleStepChange(4)}
+                                        style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
                                     />
                                     <NativeButton
                                         title="Suivant"
                                         variant="primary"
                                         onPress={() => handleStepChange(6)}
+                                        style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
                                     />
                                 </View>
                             )}
@@ -3184,21 +3222,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     />
                                 </View>
                             )}
-                            {activeStep === 4 && (
-                                <View style={styles.navigationRow}>
-                                    <NativeButton
-                                        title="Précédent"
-                                        variant="secondary"
-                                        onPress={() => handleStepChange(3)}
-                                    />
-                                    <NativeButton
-                                        title={isSubmitting ? 'Génération en cours...' : 'Créer la vidéo maintenant'}
-                                        variant="primary"
-                                        onPress={handleSubmit}
-                                        disabled={isSubmitting || !selectedProduct}
-                                    />
-                                </View>
-                            )}
+                            {/* ✅ SUPPRIMÉ: Doublon de boutons pour l'étape 4 - Les boutons sont déjà gérés au-dessus */}
                         </View>
                     </NativeCard>
                 </View>
@@ -3312,11 +3336,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: 12,
+        gap: 8, // ✅ AJOUTÉ: Espacement entre titre et bouton
     },
     sectionTitle: {
         fontSize: 16,
         fontWeight: '700',
         color: modernColors.text,
+        flexShrink: 1, // ✅ AJOUTÉ: Permet au titre de se rétrécir si nécessaire pour laisser de l'espace au bouton
     },
     sectionSubtitle: {
         fontSize: 13,
@@ -3381,6 +3407,8 @@ const styles = StyleSheet.create({
         gap: 6,
         paddingHorizontal: 12,
         paddingVertical: 6,
+        minWidth: 100, // ✅ AJOUTÉ: Largeur minimale pour que "Analyse IA" soit entièrement visible
+        flexShrink: 0, // ✅ AJOUTÉ: Empêcher le bouton de rétrécir
         borderRadius: 999,
         backgroundColor: '#EEF2FF',
         borderWidth: 1,
@@ -3390,6 +3418,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.primary,
         fontWeight: '600',
+        flexShrink: 0, // ✅ AJOUTÉ: Empêcher le texte de se rétrécir
     },
     selectedProductContainer: {
         flexDirection: 'row',
@@ -3487,9 +3516,13 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         gap: 12,
         marginTop: 12,
+        justifyContent: 'space-between', // ✅ AJOUTÉ: Espacement uniforme entre les colonnes
     },
     styleChip: {
-        flexBasis: '48%',
+        // ✅ CORRIGÉ: 2 colonnes avec gap de 12px
+        // Calcul: (100% - 12px) / 2 ≈ 48% par colonne
+        width: '48%', // ✅ Largeur fixe pour garantir 2 colonnes
+        minWidth: 0, // ✅ AJOUTÉ: Permet au width de fonctionner correctement
         borderRadius: 14,
         borderWidth: 1,
         borderColor: '#E2E8F0',
@@ -3525,6 +3558,28 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         paddingVertical: 8,
+    },
+    // ✅ AJOUTÉ: Style pour afficher les ambiances musicales en 2 colonnes
+    audioRowGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginTop: 12,
+        justifyContent: 'space-between', // ✅ Espacement uniforme entre les colonnes
+    },
+    // ✅ AJOUTÉ: Style pour les cartes d'ambiances musicales en 2 colonnes
+    audioChipGrid: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+        width: '48%', // ✅ Largeur fixe pour garantir 2 colonnes
+        minWidth: 0, // ✅ Permet au width de fonctionner correctement
     },
     audioActionsRow: {
         flexDirection: 'row',
@@ -3830,6 +3885,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         width: '100%',
+        justifyContent: 'space-between', // ✅ AJOUTÉ: Positionner Précédent à gauche et Suivant à droite
+    },
+    navigationButtonLeft: {
+        flex: 0, // ✅ AJOUTÉ: Ne pas prendre tout l'espace
+        minWidth: 120, // ✅ AJOUTÉ: Largeur minimale pour le bouton
+    },
+    navigationButtonRight: {
+        flex: 0, // ✅ AJOUTÉ: Ne pas prendre tout l'espace
+        minWidth: 120, // ✅ AJOUTÉ: Largeur minimale pour le bouton
+        marginLeft: 'auto', // ✅ AJOUTÉ: Pousser le bouton vers la droite
     },
     variantModalBackdrop: {
         flex: 1,

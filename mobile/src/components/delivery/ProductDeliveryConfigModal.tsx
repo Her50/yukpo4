@@ -19,7 +19,7 @@ interface ProductDeliveryConfigModalProps {
     onClose: () => void;
     serviceId: number;
     productIndex: number; // -1 pour mode transversal
-    productName: string;
+    productName: string | any; // ✅ CORRECTION: Accepter any pour gérer les cas où ce n'est pas une string
     onSuccess?: () => void;
     allProducts?: Array<{ index: number; name: string }>;
 }
@@ -39,6 +39,44 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     onSuccess,
     allProducts = []
 }) => {
+    // ✅ CORRECTION CRITIQUE: Normaliser productName pour s'assurer que c'est toujours une string valide
+    const normalizedProductName = React.useMemo(() => {
+        if (!productName) return 'Produit';
+        if (typeof productName === 'string') {
+            const trimmed = productName.trim();
+            return trimmed.length > 0 ? trimmed : 'Produit';
+        }
+        if (typeof productName === 'number' || typeof productName === 'boolean') {
+            return String(productName);
+        }
+        // Si c'est un objet, essayer d'extraire une valeur string
+        if (typeof productName === 'object') {
+            if ('valeur' in productName && typeof productName.valeur === 'string') {
+                return productName.valeur.trim() || 'Produit';
+            }
+            if ('nom' in productName && typeof productName.nom === 'string') {
+                return productName.nom.trim() || 'Produit';
+            }
+            if ('name' in productName && typeof productName.name === 'string') {
+                return productName.name.trim() || 'Produit';
+            }
+        }
+        // Fallback: convertir en string
+        try {
+            const str = String(productName);
+            return str && str !== '[object Object]' ? str : 'Produit';
+        } catch {
+            return 'Produit';
+        }
+    }, [productName]);
+
+    // ✅ CORRECTION: Normaliser allProducts pour s'assurer que c'est toujours un tableau valide
+    const normalizedAllProducts = React.useMemo(() => {
+        if (!allProducts) return [];
+        if (!Array.isArray(allProducts)) return [];
+        return allProducts.filter(p => p && (typeof p.index === 'number' || typeof p.name === 'string'));
+    }, [allProducts]);
+
     const isTransversalMode = productIndex === -1;
     const [loading, setLoading] = useState(false);
     const [parcelTypes, setParcelTypes] = useState<ParcelType[]>([]);
@@ -83,8 +121,11 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         setLoadingLocations(true);
         try {
             const response = await deliveryApi.listStorageLocations();
-            if (response.success && response.data?.locations) {
-                setStorageLocations(response.data.locations);
+            if (response.success && response.data && typeof response.data === 'object' && 'locations' in response.data) {
+                const data = response.data as any;
+                if (Array.isArray(data.locations)) {
+                    setStorageLocations(data.locations);
+                }
             }
         } catch (error) {
             console.error('Erreur chargement lieux de stock:', error);
@@ -111,8 +152,11 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const loadParcelTypes = async () => {
         try {
             const response = await apiGet('/api/delivery/parcel-types');
-            if (response.success && response.data?.parcel_types) {
-                setParcelTypes(response.data.parcel_types);
+            if (response.success && response.data && typeof response.data === 'object' && 'parcel_types' in response.data) {
+                const data = response.data as any;
+                if (Array.isArray(data.parcel_types)) {
+                    setParcelTypes(data.parcel_types);
+                }
             }
         } catch (error) {
             console.error('Erreur chargement types de colis:', error);
@@ -122,22 +166,23 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const loadExistingConfig = async () => {
         try {
             const response = await apiGet(`/api/delivery/product-config/${serviceId}/${productIndex}`);
-            if (response.success && response.data?.config) {
-                const c = response.data.config;
+            if (response.success && response.data && typeof response.data === 'object' && 'config' in response.data) {
+                const data = response.data as any;
+                const c = data.config;
                 setConfig({
-                    pickup_address: c.pickup_address || '',
-                    pickup_latitude: c.pickup_latitude || 0,
-                    pickup_longitude: c.pickup_longitude || 0,
-                    storage_location_id: c.storage_location_id || undefined, // ✅ Phase 9 - Amélioration 32
-                    required_vehicle_type_id: c.required_vehicle_type_id || 0,
+                    pickup_address: (typeof c.pickup_address === 'string' ? c.pickup_address : '') || '',
+                    pickup_latitude: (typeof c.pickup_latitude === 'number' ? c.pickup_latitude : 0) || 0,
+                    pickup_longitude: (typeof c.pickup_longitude === 'number' ? c.pickup_longitude : 0) || 0,
+                    storage_location_id: (typeof c.storage_location_id === 'number' ? c.storage_location_id : undefined), // ✅ Phase 9 - Amélioration 32
+                    required_vehicle_type_id: (typeof c.required_vehicle_type_id === 'number' ? c.required_vehicle_type_id : 0) || 0,
                     weight_kg: c.weight_kg ? String(c.weight_kg) : '',
                     volume_cm3: c.volume_cm3 ? String(c.volume_cm3) : '',
-                    requires_isothermal: c.requires_isothermal || false,
-                    requires_fragile_handling: c.requires_fragile_handling || false,
+                    requires_isothermal: typeof c.requires_isothermal === 'boolean' ? c.requires_isothermal : false,
+                    requires_fragile_handling: typeof c.requires_fragile_handling === 'boolean' ? c.requires_fragile_handling : false,
                     pickup_availability_schedule: JSON.stringify(c.pickup_availability_schedule || {}, null, 2),
-                    pickup_instructions: c.pickup_instructions || '',
-                    billing_mode: c.billing_mode || 'standard',
-                    billing_partner_label: c.billing_partner_label || ''
+                    pickup_instructions: (typeof c.pickup_instructions === 'string' ? c.pickup_instructions : '') || '',
+                    billing_mode: (typeof c.billing_mode === 'string' ? c.billing_mode : 'standard') || 'standard',
+                    billing_partner_label: (typeof c.billing_partner_label === 'string' ? c.billing_partner_label : '') || ''
                 });
             }
         } catch (error) {
@@ -147,11 +192,13 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
     const handleSave = async () => {
         // Validation
-        if (!config.pickup_address.trim()) {
+        const pickupAddress = typeof config.pickup_address === 'string' ? config.pickup_address : '';
+        if (!pickupAddress.trim()) {
             Alert.alert('Erreur', 'L\'adresse de départ est obligatoire');
             return;
         }
-        if (!config.required_vehicle_type_id) {
+        const vehicleTypeId = typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0;
+        if (!vehicleTypeId) {
             Alert.alert('Erreur', 'Le type de véhicule est obligatoire');
             return;
         }
@@ -171,28 +218,28 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         setLoading(true);
         try {
             const payload = {
-                service_id: serviceId,
-                product_index: productIndex,
-                pickup_address: config.pickup_address,
-                pickup_latitude: config.pickup_latitude,
-                pickup_longitude: config.pickup_longitude,
-                storage_location_id: config.storage_location_id || null, // ✅ Phase 9 - Amélioration 32
-                required_vehicle_type_id: config.required_vehicle_type_id,
-                weight_kg: config.weight_kg ? parseFloat(config.weight_kg) : undefined,
-                volume_cm3: config.volume_cm3 ? parseFloat(config.volume_cm3) : undefined,
-                requires_isothermal: config.requires_isothermal,
-                requires_fragile_handling: config.requires_fragile_handling,
+                service_id: typeof serviceId === 'number' ? serviceId : 0,
+                product_index: typeof productIndex === 'number' ? productIndex : 0,
+                pickup_address: typeof config.pickup_address === 'string' ? config.pickup_address : '',
+                pickup_latitude: typeof config.pickup_latitude === 'number' ? config.pickup_latitude : 0,
+                pickup_longitude: typeof config.pickup_longitude === 'number' ? config.pickup_longitude : 0,
+                storage_location_id: typeof config.storage_location_id === 'number' ? config.storage_location_id : null, // ✅ Phase 9 - Amélioration 32
+                required_vehicle_type_id: typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0,
+                weight_kg: (typeof config.weight_kg === 'string' && config.weight_kg.trim()) ? parseFloat(config.weight_kg) : undefined,
+                volume_cm3: (typeof config.volume_cm3 === 'string' && config.volume_cm3.trim()) ? parseFloat(config.volume_cm3) : undefined,
+                requires_isothermal: typeof config.requires_isothermal === 'boolean' ? config.requires_isothermal : false,
+                requires_fragile_handling: typeof config.requires_fragile_handling === 'boolean' ? config.requires_fragile_handling : false,
                 pickup_availability_schedule: schedule,
-                pickup_instructions: config.pickup_instructions || undefined,
-                billing_mode: config.billing_mode,
-                billing_partner_label: config.billing_partner_label || undefined
+                pickup_instructions: (typeof config.pickup_instructions === 'string' && config.pickup_instructions.trim()) ? config.pickup_instructions : undefined,
+                billing_mode: typeof config.billing_mode === 'string' ? config.billing_mode : 'standard',
+                billing_partner_label: (typeof config.billing_partner_label === 'string' && config.billing_partner_label.trim()) ? config.billing_partner_label : undefined
             };
 
-            if (isTransversalMode && Array.isArray(allProducts) && allProducts.length > 0) {
+            if (isTransversalMode && normalizedAllProducts.length > 0) {
                 let successCount = 0;
                 let errorCount = 0;
 
-                for (const product of allProducts) {
+                for (const product of normalizedAllProducts) {
                     try {
                         const response = await apiPost('/api/delivery/product-config', {
                             ...payload,
@@ -249,8 +296,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>
                         {isTransversalMode
-                            ? `Livraison - Tous (${Array.isArray(allProducts) ? allProducts.length : 0})`
-                            : `Livraison - ${productName || 'Produit'}`
+                            ? `Livraison - Tous (${normalizedAllProducts.length})`
+                            : `Livraison - ${normalizedProductName}`
                         }
                     </Text>
                     <View style={styles.headerSpacer} />
@@ -276,21 +323,21 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                 const validLocations = Array.isArray(storageLocations)
                                     ? storageLocations.filter(loc => loc && loc.is_active)
                                     : [];
-                                const options = [
+                                const options: Array<{ text: string; onPress?: () => void; style?: 'cancel' | 'destructive' | 'default' }> = [
                                     { text: 'Aucun (utiliser adresse manuelle)', onPress: () => setConfig(prev => ({ ...prev, storage_location_id: undefined })) },
                                     ...validLocations.map(location => ({
-                                        text: `${location.name || 'Lieu'} - ${location.address || 'Adresse inconnue'}`,
+                                        text: `${String(location?.name || 'Lieu')} - ${String(location?.address || 'Adresse inconnue')}`,
                                         onPress: () => {
                                             setConfig(prev => ({
                                                 ...prev,
-                                                storage_location_id: location.id,
-                                                pickup_address: location.address || '',
-                                                pickup_latitude: location.latitude || 0,
-                                                pickup_longitude: location.longitude || 0,
+                                                storage_location_id: typeof location.id === 'number' ? location.id : undefined,
+                                                pickup_address: typeof location.address === 'string' ? location.address : '',
+                                                pickup_latitude: typeof location.latitude === 'number' ? location.latitude : 0,
+                                                pickup_longitude: typeof location.longitude === 'number' ? location.longitude : 0,
                                             }));
                                         }
                                     })),
-                                    { text: 'Annuler', style: 'cancel' as const }
+                                    { text: 'Annuler', style: 'cancel' }
                                 ];
                                 Alert.alert('Sélectionner un lieu de stock', '', options);
                             }}
@@ -302,12 +349,12 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                         return 'Aucun (utiliser adresse manuelle)';
                                     }
                                     const found = storageLocations.find(loc => loc && loc.id === config.storage_location_id);
-                                    return found?.name || 'Lieu de stock sélectionné';
+                                    return String(found?.name || 'Lieu de stock sélectionné');
                                 })()}
                             </Text>
                         </TouchableOpacity>
                         {loadingLocations && (
-                            <Text style={styles.hintText}>Chargement des lieux de stock...</Text>
+                            <Text style={styles.hint}>Chargement des lieux de stock...</Text>
                         )}
                     </View>
 
@@ -321,7 +368,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             placeholder="Adresse complète"
                             multiline
                         />
-                        {(config.pickup_latitude && config.pickup_longitude) && (
+                        {((typeof config.pickup_latitude === 'number' && config.pickup_latitude !== 0) || (typeof config.pickup_longitude === 'number' && config.pickup_longitude !== 0)) && (
                             <Text style={styles.gpsText}>
                                 {`GPS: ${typeof config.pickup_latitude === 'number' ? config.pickup_latitude.toFixed(6) : '0.000000'}, ${typeof config.pickup_longitude === 'number' ? config.pickup_longitude.toFixed(6) : '0.000000'}`}
                             </Text>
@@ -336,11 +383,11 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             onPress={() => {
                                 // ✅ CORRECTION: S'assurer que parcelTypes est un tableau valide
                                 const validParcelTypes = Array.isArray(parcelTypes) ? parcelTypes.filter(t => t && t.id && t.name) : [];
-                                const options = validParcelTypes.map(t => ({
-                                    text: `${t.name}${t.description ? ` - ${t.description}` : ''}`,
-                                    onPress: () => setConfig(prev => ({ ...prev, required_vehicle_type_id: t.id }))
+                                const options: Array<{ text: string; onPress?: () => void; style?: 'cancel' | 'destructive' | 'default' }> = validParcelTypes.map(t => ({
+                                    text: `${String(t?.name || '')}${t?.description ? ` - ${String(t.description)}` : ''}`,
+                                    onPress: () => setConfig(prev => ({ ...prev, required_vehicle_type_id: typeof t.id === 'number' ? t.id : 0 }))
                                 }));
-                                options.push({ text: 'Annuler', style: 'cancel' as const });
+                                options.push({ text: 'Annuler', style: 'cancel' });
                                 Alert.alert('Sélectionner un type', '', options);
                             }}
                         >
@@ -351,7 +398,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                         return 'Sélectionner...';
                                     }
                                     const found = parcelTypes.find(t => t && t.id === config.required_vehicle_type_id);
-                                    return found?.name || 'Sélectionner...';
+                                    return String(found?.name || 'Sélectionner...');
                                 })()}
                             </Text>
                             <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
@@ -484,7 +531,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         <NativeButton
                             title={loading
                                 ? (isTransversalMode ? 'Application...' : 'Enregistrement...')
-                                : (isTransversalMode ? `Appliquer à ${Array.isArray(allProducts) ? allProducts.length : 0} produit(s)` : 'Enregistrer')
+                                : (isTransversalMode ? `Appliquer à ${normalizedAllProducts.length} produit(s)` : 'Enregistrer')
                             }
                             variant="primary"
                             onPress={handleSave}

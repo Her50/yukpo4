@@ -21,6 +21,7 @@ import { NativeCard } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
+import ServiceMediaGallery from '../components/ServiceMediaGallery';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch, apiPost, mediaApi } from '../services/api';
@@ -215,6 +216,8 @@ const MesProduitsScreen: React.FC = () => {
     const [showMenuModal, setShowMenuModal] = useState(false);
     const [showDeliveryConfigModal, setShowDeliveryConfigModal] = useState(false);
     const [deliveryConfigProduct, setDeliveryConfigProduct] = useState<ManagedProduct | null>(null);
+    const [showMediaGallery, setShowMediaGallery] = useState(false);
+    const [selectedServiceForGallery, setSelectedServiceForGallery] = useState<any>(null);
     const scrollY = useMemo(() => new Animated.Value(0), []);
     const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
 
@@ -1769,32 +1772,9 @@ const MesProduitsScreen: React.FC = () => {
                 <View style={styles.secondaryActions}>
                     <TouchableOpacity
                         style={styles.iconButton}
-                        onPress={() => {
-                            // ✅ CORRECTION: Vérifier que serviceId existe avant d'appeler
-                            const serviceId = product.serviceId || product.data?.serviceId;
-                            if (serviceId) {
-                                handleManageMembersForService(serviceId);
-                            } else {
-                                Alert.alert(
-                                    'Erreur',
-                                    'Impossible de gérer les membres : service ID manquant pour ce produit.'
-                                );
-                            }
-                        }}
-                    >
-                        <SafeIcon name="users" size={20} color="#6366F1" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.iconButton}
                         onPress={() => handleShareProduct(product)}
                     >
                         <SafeIcon name="share-2" size={20} color="#3B82F6" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.iconButton}
-                        onPress={() => openVideoCreatorForProduct(product)}
-                    >
-                        <SafeIcon name="video" size={20} color="#EC4899" />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.iconButton}
@@ -1808,30 +1788,6 @@ const MesProduitsScreen: React.FC = () => {
                     >
                         <SafeIcon name="bar-chart-2" size={20} color="#10B981" />
                     </TouchableOpacity>
-                    {/* ✅ NOUVEAU: Bouton configuration livraison (uniquement pour produits, pas prestations) */}
-                    {product.type !== 'prestation_service' && (
-                        <TouchableOpacity
-                            style={styles.iconButton}
-                            onPress={() => {
-                                // ✅ CORRECTION: Vérifier que serviceId et product_index existent
-                                const serviceId = product.serviceId || product.data?.serviceId;
-                                const productIndex = product.product_index ?? product.data?.product_index ?? 0;
-
-                                if (!serviceId) {
-                                    Alert.alert(
-                                        'Erreur',
-                                        'Impossible de configurer la livraison : service ID manquant pour ce produit.'
-                                    );
-                                    return;
-                                }
-
-                                setDeliveryConfigProduct(product);
-                                setShowDeliveryConfigModal(true);
-                            }}
-                        >
-                            <SafeIcon name="truck" size={20} color="#10B981" />
-                        </TouchableOpacity>
-                    )}
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => handlePromoteProduct(product)}
@@ -1850,14 +1806,62 @@ const MesProduitsScreen: React.FC = () => {
         );
     };
 
+    // ✅ Fonction pour ouvrir la configuration de livraison pour un produit spécifique
+    const handleOpenDeliveryConfig = (product: ManagedProduct) => {
+        setShowMenuModal(false);
+        const serviceId = product.serviceId || product.data?.serviceId;
+        const productIndex = product.product_index ?? product.data?.product_index ?? 0;
+
+        if (!serviceId) {
+            Alert.alert(
+                'Erreur',
+                'Impossible de configurer la livraison : service ID manquant pour ce produit.'
+            );
+            return;
+        }
+
+        setDeliveryConfigProduct(product);
+        setShowDeliveryConfigModal(true);
+    };
+
     // ✅ Menu regroupant toutes les actions
     const menuActions = [
+        {
+            label: 'Configuration livraison',
+            icon: 'truck',
+            onPress: () => {
+                setShowMenuModal(false);
+                if (filteredProducts && filteredProducts.length > 0) {
+                    // Prendre le premier produit actif, sinon le premier disponible
+                    const firstProduct = filteredProducts.find(p => p.is_active) || filteredProducts[0];
+                    handleOpenDeliveryConfig(firstProduct);
+                } else {
+                    Alert.alert('Aucun produit', 'Vous devez d\'abord créer un produit pour configurer la livraison.');
+                }
+            },
+        },
         {
             label: 'Membres',
             icon: 'users',
             onPress: () => {
                 setShowMenuModal(false);
                 handleManageMembers();
+            },
+        },
+        {
+            label: 'Mes videos',
+            icon: 'video',
+            onPress: () => {
+                setShowMenuModal(false);
+                (navigation as any).navigate('VideoFeed');
+            },
+        },
+        {
+            label: 'Analytics des videos',
+            icon: 'bar-chart-2',
+            onPress: () => {
+                setShowMenuModal(false);
+                (navigation as any).navigate('VideoAnalytics');
             },
         },
         {
@@ -1870,18 +1874,10 @@ const MesProduitsScreen: React.FC = () => {
         },
         {
             label: 'Statistiques',
-            icon: 'bar-chart-2',
+            icon: 'trending-up',
             onPress: () => {
                 setShowMenuModal(false);
                 handleViewGlobalStats();
-            },
-        },
-        {
-            label: 'Studio vidéo',
-            icon: 'video',
-            onPress: () => {
-                setShowMenuModal(false);
-                openVideoCreatorGlobal();
             },
         },
         {
@@ -1922,12 +1918,26 @@ const MesProduitsScreen: React.FC = () => {
                             subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
                             rightSlot={(
                                 <View style={styles.headerActions}>
-                                    {/* ✅ ORDRE CORRIGÉ : Vidéo → Black Friday → Menu (trois points) */}
+                                    {/* ✅ ORDRE CORRIGÉ : Vidéo → Galerie médias → Black Friday → Menu (trois points) */}
                                     <TouchableOpacity
                                         style={styles.headerIconButton}
                                         onPress={openVideoCreatorGlobal}
                                     >
                                         <SafeIcon name="video" size={18} color={modernColors.primary} />
+                                    </TouchableOpacity>
+                                    {/* ✅ NOUVEAU : Bouton galerie médias des produits */}
+                                    <TouchableOpacity
+                                        style={styles.headerIconButton}
+                                        onPress={() => {
+                                            if (services && services.length > 0) {
+                                                setSelectedServiceForGallery(services[0]);
+                                                setShowMediaGallery(true);
+                                            } else {
+                                                Alert.alert('Aucun service', 'Vous devez d\'abord créer un service pour accéder à la galerie médias.');
+                                            }
+                                        }}
+                                    >
+                                        <SafeIcon name="image" size={18} color={modernColors.primary} />
                                     </TouchableOpacity>
                                     {/* ✅ NOUVEAU : Bouton participation Black Friday */}
                                     <TouchableOpacity
@@ -2093,6 +2103,38 @@ const MesProduitsScreen: React.FC = () => {
 
                 const productIndex = deliveryConfigProduct.product_index ?? deliveryConfigProduct.data?.product_index ?? 0;
 
+                // ✅ CORRECTION CRITIQUE: Normaliser productName pour s'assurer que c'est toujours une string valide
+                const getProductName = (product: any): string => {
+                    if (!product) return 'Produit';
+                    // Essayer plusieurs champs possibles
+                    const candidates = [
+                        product.nom,
+                        product.nom_produit,
+                        product.name,
+                        product.title,
+                        product.data?.nom,
+                        product.data?.nom_produit,
+                        product.data?.name
+                    ];
+                    for (const candidate of candidates) {
+                        if (candidate && typeof candidate === 'string') {
+                            const trimmed = candidate.trim();
+                            if (trimmed.length > 0) return trimmed;
+                        }
+                        // Si c'est un objet avec une propriété 'valeur'
+                        if (candidate && typeof candidate === 'object' && 'valeur' in candidate) {
+                            const valeur = candidate.valeur;
+                            if (valeur && typeof valeur === 'string') {
+                                const trimmed = valeur.trim();
+                                if (trimmed.length > 0) return trimmed;
+                            }
+                        }
+                    }
+                    return 'Produit';
+                };
+
+                const productName = getProductName(deliveryConfigProduct);
+
                 return (
                     <ProductDeliveryConfigModal
                         visible={showDeliveryConfigModal}
@@ -2102,7 +2144,7 @@ const MesProduitsScreen: React.FC = () => {
                         }}
                         serviceId={serviceIdNum}
                         productIndex={productIndex}
-                        productName={deliveryConfigProduct.nom || 'Produit'}
+                        productName={productName}
                         onSuccess={() => {
                             setShowDeliveryConfigModal(false);
                             setDeliveryConfigProduct(null);
@@ -2156,6 +2198,18 @@ const MesProduitsScreen: React.FC = () => {
                     </View>
                 </TouchableOpacity>
             </Modal>
+
+            {/* ✅ Modal galerie médias des produits */}
+            {selectedServiceForGallery && (
+                <ServiceMediaGallery
+                    visible={showMediaGallery}
+                    service={selectedServiceForGallery}
+                    onClose={() => {
+                        setShowMediaGallery(false);
+                        setSelectedServiceForGallery(null);
+                    }}
+                />
+            )}
         </View>
     );
 };

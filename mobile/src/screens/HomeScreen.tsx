@@ -210,6 +210,7 @@ const HomeScreen: React.FC = () => {
         }
     };
 
+
     // Charger le comportement utilisateur au démarrage
     React.useEffect(() => {
         const loadUserBehavior = async () => {
@@ -522,22 +523,74 @@ const HomeScreen: React.FC = () => {
             let hasExistingServiceWithProducts = false;
             let firstServiceId: number | null = null;
 
-            // ✅ Helper: Vérifier si un service a des produits
+            // ✅ Helper: Vérifier si un service a des produits (AMÉLIORÉ)
             const serviceHasProducts = (service: any): boolean => {
                 try {
-                    const produits = normalizeServiceProducts(service.data?.produits || service.produits);
-                    const hasProducts = Array.isArray(produits) && produits.length > 0;
-                    console.log('[HomeScreen] 🔍 Service ID', service.id || service.service_id, '- Produits:', produits.length);
-                    return hasProducts;
+                    // ✅ AMÉLIORATION: Logs détaillés pour diagnostic
+                    const serviceId = service.id || service.service_id;
+                    console.log('[HomeScreen] 🔍 Analyse service:', {
+                        serviceId: serviceId,
+                        hasData: !!service.data,
+                        hasProduits: !!service.data?.produits,
+                        hasListeproduit: !!service.data?.listeproduit, // ✅ NOUVEAU
+                        hasProduitsDirect: !!service.produits,
+                        produitsType: typeof (service.data?.produits || service.produits),
+                        produitsIsArray: Array.isArray(service.data?.produits || service.produits),
+                        produitsKeys: service.data?.produits && typeof service.data.produits === 'object'
+                            ? Object.keys(service.data.produits)
+                            : [],
+                        dataKeys: service.data ? Object.keys(service.data) : [] // ✅ NOUVEAU: Voir toutes les clés
+                    });
+
+                    // ✅ AMÉLIORATION: Vérifier plusieurs chemins possibles pour les produits
+                    const produitsPaths = [
+                        service.data?.produits,
+                        service.data?.listeproduit, // ✅ NOUVEAU: Format alternatif
+                        service.produits,
+                        service.data?.data?.produits, // ✅ NOUVEAU: Structure imbriquée
+                        service.listeproduit // ✅ NOUVEAU: Format alternatif
+                    ];
+
+                    for (const produitsField of produitsPaths) {
+                        if (produitsField) {
+                            const produits = normalizeServiceProducts(produitsField);
+                            if (Array.isArray(produits) && produits.length > 0) {
+                                console.log('[HomeScreen] ✅ Service ID', serviceId, '- Produits trouvés:', produits.length, '- Chemin:', produitsField === service.data?.produits ? 'data.produits' :
+                                    produitsField === service.data?.listeproduit ? 'data.listeproduit' :
+                                        produitsField === service.produits ? 'produits' :
+                                            produitsField === service.data?.data?.produits ? 'data.data.produits' : 'listeproduit');
+                                return true;
+                            }
+                        }
+                    }
+
+                    // Si aucun chemin n'a fonctionné mais qu'un champ produits existe
+                    if (service.data?.produits || service.produits || service.data?.listeproduit) {
+                        console.warn('[HomeScreen] ⚠️ Service a un champ produits mais normalizeServiceProducts retourne vide:', {
+                            rawProduits: JSON.stringify(service.data?.produits || service.produits || service.data?.listeproduit).substring(0, 300),
+                            allDataKeys: service.data ? Object.keys(service.data) : []
+                        });
+                    }
+
+                    return false;
                 } catch (error) {
-                    console.warn('[HomeScreen] ⚠️ Erreur vérification produits service:', error);
+                    console.error('[HomeScreen] ⚠️ Erreur vérification produits service:', {
+                        error: error,
+                        serviceId: service.id || service.service_id,
+                        serviceDataKeys: service.data ? Object.keys(service.data) : []
+                    });
                     return false;
                 }
             };
 
+            // Variables pour le résumé final
+            let prestataireServicesResponse: any = null;
+            let lastServiceResponse: any = null;
+            let servicesResponse: any = null;
+
             try {
                 // ✅ CORRECTION: Essayer d'abord /api/prestataire/services (utilisé ailleurs dans le code)
-                const prestataireServicesResponse = await apiGet('/api/prestataire/services');
+                prestataireServicesResponse = await apiGet('/api/prestataire/services');
                 console.log('[HomeScreen] Réponse /api/prestataire/services:', {
                     success: prestataireServicesResponse.success,
                     hasData: !!prestataireServicesResponse.data,
@@ -545,9 +598,30 @@ const HomeScreen: React.FC = () => {
                     length: Array.isArray(prestataireServicesResponse.data) ? prestataireServicesResponse.data.length : 0
                 });
 
-                if (prestataireServicesResponse.success && Array.isArray(prestataireServicesResponse.data) && prestataireServicesResponse.data.length > 0) {
+                // ✅ CORRECTION: Gérer le cas où la réponse est un objet avec pagination
+                let servicesArray: any[] = [];
+                if (prestataireServicesResponse.success && prestataireServicesResponse.data) {
+                    if (Array.isArray(prestataireServicesResponse.data)) {
+                        servicesArray = prestataireServicesResponse.data;
+                    } else if (prestataireServicesResponse.data.data && Array.isArray(prestataireServicesResponse.data.data)) {
+                        // Format avec pagination: {data: [...], pagination: {...}}
+                        servicesArray = prestataireServicesResponse.data.data;
+                        console.log('[HomeScreen] ✅ Format avec pagination détecté, services extraits:', servicesArray.length);
+                    } else if (prestataireServicesResponse.data.services && Array.isArray(prestataireServicesResponse.data.services)) {
+                        servicesArray = prestataireServicesResponse.data.services;
+                        console.log('[HomeScreen] ✅ Format avec clé services détecté, services extraits:', servicesArray.length);
+                    } else {
+                        console.warn('[HomeScreen] ⚠️ Format de réponse inattendu:', {
+                            type: typeof prestataireServicesResponse.data,
+                            isArray: Array.isArray(prestataireServicesResponse.data),
+                            keys: typeof prestataireServicesResponse.data === 'object' ? Object.keys(prestataireServicesResponse.data) : []
+                        });
+                    }
+                }
+
+                if (servicesArray.length > 0) {
                     // ✅ CORRECTION: Chercher le PREMIER service qui a des produits (pas juste un service)
-                    for (const service of prestataireServicesResponse.data) {
+                    for (const service of servicesArray) {
                         const serviceId = service.id || service.service_id || null;
                         if (serviceId && serviceHasProducts(service)) {
                             hasExistingServiceWithProducts = true;
@@ -561,12 +635,21 @@ const HomeScreen: React.FC = () => {
                     if (!hasExistingServiceWithProducts) {
                         console.log('[HomeScreen] ℹ️ Services trouvés mais aucun n\'a de produits');
                     }
+                } else if (prestataireServicesResponse.success) {
+                    console.log('[HomeScreen] ⚠️ Réponse réussie mais aucun service extrait, format:', {
+                        hasData: !!prestataireServicesResponse.data,
+                        isArray: Array.isArray(prestataireServicesResponse.data),
+                        dataType: typeof prestataireServicesResponse.data,
+                        dataKeys: prestataireServicesResponse.data && typeof prestataireServicesResponse.data === 'object'
+                            ? Object.keys(prestataireServicesResponse.data)
+                            : []
+                    });
                 }
 
                 // ✅ FALLBACK 1: Si /api/prestataire/services ne fonctionne pas, essayer /api/services/last
                 if (!hasExistingServiceWithProducts) {
                     console.log('[HomeScreen] Tentative avec /api/services/last comme fallback...');
-                    const lastServiceResponse = await apiGet('/api/services/last');
+                    lastServiceResponse = await apiGet('/api/services/last');
                     console.log('[HomeScreen] Réponse /api/services/last:', {
                         success: lastServiceResponse.success,
                         hasData: !!lastServiceResponse.data,
@@ -594,7 +677,7 @@ const HomeScreen: React.FC = () => {
                 // ✅ FALLBACK 2: Si /api/services/last ne fonctionne pas, essayer /api/services/my-services
                 if (!hasExistingServiceWithProducts) {
                     console.log('[HomeScreen] Tentative avec /api/services/my-services comme fallback...');
-                    const servicesResponse = await apiGet('/api/services/my-services');
+                    servicesResponse = await apiGet('/api/services/my-services');
                     console.log('[HomeScreen] Réponse /api/services/my-services:', {
                         success: servicesResponse.success,
                         hasData: !!servicesResponse.data,
@@ -621,15 +704,57 @@ const HomeScreen: React.FC = () => {
                     }
                 }
 
+                // ✅ FALLBACK 3: Si toutes les vérifications échouent, essayer /api/products/my-products
+                if (!hasExistingServiceWithProducts) {
+                    console.log('[HomeScreen] Tentative avec /api/products/my-products comme dernier fallback...');
+                    try {
+                        const productsResponse = await apiGet('/api/products/my-products');
+                        console.log('[HomeScreen] Réponse /api/products/my-products:', {
+                            success: productsResponse.success,
+                            hasData: !!productsResponse.data,
+                            isArray: Array.isArray(productsResponse.data),
+                            length: Array.isArray(productsResponse.data) ? productsResponse.data.length : 0
+                        });
+
+                        if (productsResponse.success && Array.isArray(productsResponse.data) && productsResponse.data.length > 0) {
+                            // Si l'utilisateur a des produits, trouver le service associé au premier produit
+                            const firstProduct = productsResponse.data[0];
+                            const serviceId = firstProduct.service_id || firstProduct.serviceId || firstProduct.service?.id;
+                            if (serviceId) {
+                                hasExistingServiceWithProducts = true;
+                                firstServiceId = serviceId;
+                                console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/products/my-products (ID: ' + firstServiceId + ')');
+                                console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
+                            } else {
+                                console.warn('[HomeScreen] ⚠️ Produits trouvés mais service_id manquant dans le premier produit');
+                            }
+                        }
+                    } catch (productsError) {
+                        console.warn('[HomeScreen] ⚠️ Erreur vérification produits:', productsError);
+                    }
+                }
+
                 if (!hasExistingServiceWithProducts) {
                     console.log('[HomeScreen] ℹ️ Aucun service avec produits détecté → Formulaire COMPLET');
+                    console.log('[HomeScreen] 📊 Résumé vérification:', {
+                        hasExistingServiceWithProducts,
+                        firstServiceId,
+                        prestataireServicesCount: prestataireServicesResponse && Array.isArray(prestataireServicesResponse.data)
+                            ? prestataireServicesResponse.data.length
+                            : 0,
+                        lastServiceId: lastServiceResponse?.data?.id || lastServiceResponse?.data?.data?.id || null,
+                        myServicesCount: servicesResponse && Array.isArray(servicesResponse.data)
+                            ? servicesResponse.data.length
+                            : 0
+                    });
                 }
             } catch (error: any) {
                 console.error('[HomeScreen] ❌ Erreur vérification services:', error);
                 console.error('[HomeScreen] Détails erreur:', {
                     message: error?.message,
                     stack: error?.stack,
-                    response: error?.response
+                    response: error?.response?.data,
+                    status: error?.response?.status
                 });
                 // ✅ CORRECTION: En cas d'erreur, considérer qu'il n'y a pas de service avec produits et ouvrir le formulaire complet
                 hasExistingServiceWithProducts = false;
@@ -1103,9 +1228,9 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingHorizontal: width > 400 ? 24 : 16,
-        paddingTop: 8, // ✅ RÉDUIT: 16 → 8 pour mieux utiliser l'espace en haut
+        paddingTop: 4, // ✅ RÉDUIT: 8 → 4 pour maximiser l'espace d'affichage des produits
         paddingBottom: 150,
-        minHeight: height * 0.4, // ✅ Réduit car moins de contenu
+        minHeight: height * 0.5, // ✅ AUGMENTÉ: 0.4 → 0.5 pour plus d'espace d'affichage des produits
     },
     descriptionContainer: {
         marginBottom: 16,

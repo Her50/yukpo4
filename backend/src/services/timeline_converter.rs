@@ -25,7 +25,6 @@ pub fn convert_video_timeline_to_immersive(
 
     let mut immersive_scenes: Vec<ImmersiveScene> = Vec::new();
     let mut audio_cues: Vec<ImmersiveAudioCue> = Vec::new();
-    let mut current_frame: u32 = 0;
 
     for (idx, scene) in video_timeline.scenes.iter().enumerate() {
         let duration_frames = (scene.duration * fps as f64).round() as u32;
@@ -81,8 +80,6 @@ pub fn convert_video_timeline_to_immersive(
                 cue_type: infer_audio_cue_type(&scene.effects),
             });
         }
-
-        current_frame += duration_frames;
     }
 
     // Créer la timeline immersive

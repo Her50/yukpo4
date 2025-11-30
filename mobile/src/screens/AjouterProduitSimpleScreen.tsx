@@ -354,29 +354,63 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         }
     }
 
+    // ✅ CORRECTION CRITIQUE: Prioriser le prefill pour l'édition/duplication
+    // Si on est en mode edit ou duplicate, utiliser directement les valeurs du prefill
     const initialFormValues = {
-        nom_produit: prefill.nom_produit ?? nom_produit,
-        categorie_produit: prefill.categorie_produit ?? categorie_produit,
-        description_produit: prefill.description_produit ?? description_produit,
-        prix_produit: prefill.prix_produit ?? prix_produit,
-        devise_produit: initialCurrency,
-        variabilite_prix: initialPriceVariant,
-        price_variant: initialPriceVariant,
-        // ✅ CORRIGÉ: Utiliser initialProduitsValues construit avec la logique ci-dessus
-        produits: initialProduitsValues,
-        // ✅ CORRECTION: Utiliser sous_caracteristiques construit (avec fallback vers prefill)
-        sous_caracteristiques: sous_caracteristiques || prefill.sous_caracteristiques || {},
-        lieu_produit: prefill.lieu_produit ?? lieu_produit,
-        images: initialProductImages,
-        videos: initialProductVideos,
-        audios: initialProductAudios,
-        documents: initialProductDocuments,
+        // ✅ PRIORITÉ 1: prefill (données du produit existant pour édition/duplication)
+        // ✅ PRIORITÉ 2: suggestionData (données IA si disponibles)
+        nom_produit: (isEditing || isDuplicate) && prefill.nom_produit ? prefill.nom_produit : (prefill.nom_produit ?? nom_produit ?? ''),
+        categorie_produit: (isEditing || isDuplicate) && prefill.categorie_produit ? prefill.categorie_produit : (prefill.categorie_produit ?? categorie_produit ?? ''),
+        description_produit: (isEditing || isDuplicate) && prefill.description_produit ? prefill.description_produit : (prefill.description_produit ?? description_produit ?? ''),
+        prix_produit: (isEditing || isDuplicate) && prefill.prix_produit ? prefill.prix_produit : (prefill.prix_produit ?? prix_produit ?? ''),
+        devise_produit: (isEditing || isDuplicate) && prefill.devise_produit ? prefill.devise_produit : initialCurrency,
+        variabilite_prix: (isEditing || isDuplicate) && prefill.variabilite_prix ? prefill.variabilite_prix : (initialPriceVariant || prefill.price_variant || null),
+        price_variant: (isEditing || isDuplicate) && prefill.price_variant ? prefill.price_variant : (initialPriceVariant || prefill.variabilite_prix || null),
+        // ✅ CORRIGÉ: Pour produits, utiliser prefill.produits si disponible (mode edit/duplicate)
+        produits: (isEditing || isDuplicate) && prefill.produits && Array.isArray(prefill.produits) && prefill.produits.length > 0
+            ? prefill.produits
+            : initialProduitsValues,
+        // ✅ CORRECTION: Utiliser sous_caracteristiques depuis prefill en priorité pour edit/duplicate
+        sous_caracteristiques: (isEditing || isDuplicate) && prefill.sous_caracteristiques
+            ? prefill.sous_caracteristiques
+            : (sous_caracteristiques || prefill.sous_caracteristiques || {}),
+        lieu_produit: (isEditing || isDuplicate) && prefill.lieu_produit ? prefill.lieu_produit : (prefill.lieu_produit ?? lieu_produit ?? null),
+        // ✅ CRITIQUE: Pour les médias, utiliser prefill en priorité pour edit/duplicate
+        images: (isEditing || isDuplicate) && prefilledImages.length > 0 ? prefilledImages : initialProductImages,
+        videos: (isEditing || isDuplicate) && prefilledVideos.length > 0 ? prefilledVideos : initialProductVideos,
+        audios: (isEditing || isDuplicate) && prefilledAudios.length > 0 ? prefilledAudios : initialProductAudios,
+        documents: (isEditing || isDuplicate) && prefilledDocuments.length > 0 ? prefilledDocuments : initialProductDocuments,
         characteristic_vector: prefill.characteristic_vector ?? suggestionData?.characteristic_vector ?? null,
         combinaison_brute: prefill.combinaison_brute ?? suggestionData?.combinaison_brute ?? null,
-        // ✅ NOUVEAU: Initialiser product_vector et product_labels depuis suggestionData si disponibles
+        // ✅ NOUVEAU: Initialiser product_vector et product_labels depuis prefill en priorité
         product_vector: prefill.product_vector ?? (suggestionData.produits?.product_vector && Array.isArray(suggestionData.produits.product_vector) ? suggestionData.produits.product_vector : undefined),
         product_labels: prefill.product_labels ?? (suggestionData.produits?.product_labels && Array.isArray(suggestionData.produits.product_labels) ? suggestionData.produits.product_labels : undefined),
     };
+
+    // ✅ DEBUG: Logger le prefill pour vérifier qu'il contient bien les données
+    React.useEffect(() => {
+        if (isEditing || isDuplicate) {
+            console.log('[AjouterProduitSimple] 📝 Mode:', mode);
+            console.log('[AjouterProduitSimple] 📦 Prefill reçu:', {
+                nom_produit: prefill.nom_produit,
+                categorie_produit: prefill.categorie_produit,
+                description_produit: prefill.description_produit,
+                prix_produit: prefill.prix_produit,
+                devise_produit: prefill.devise_produit,
+                produits: prefill.produits,
+                images_count: Array.isArray(prefill.images) ? prefill.images.length : 0,
+                videos_count: Array.isArray(prefill.videos) ? prefill.videos.length : 0,
+                has_sous_caracteristiques: !!prefill.sous_caracteristiques,
+            });
+            console.log('[AjouterProduitSimple] 📝 Valeurs initiales formValues:', {
+                nom_produit: initialFormValues.nom_produit,
+                categorie_produit: initialFormValues.categorie_produit,
+                description_produit: initialFormValues.description_produit,
+                prix_produit: initialFormValues.prix_produit,
+                images_count: Array.isArray(initialFormValues.images) ? initialFormValues.images.length : 0,
+            });
+        }
+    }, [mode, prefill, initialFormValues]);
 
     const [formValues, setFormValues] = useState<any>(initialFormValues);
 

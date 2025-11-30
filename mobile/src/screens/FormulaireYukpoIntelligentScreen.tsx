@@ -175,7 +175,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const isEditingServiceInfo = mode === 'edit_service_info' && serviceId;
 
   // États locaux
-  const [activeStep, setActiveStep] = useState(1);
+  // ✅ CORRECTION: Passer directement à l'étape 2 (grand formulaire) au lieu de l'étape 1 (mini formulaire)
+  const [activeStep, setActiveStep] = useState(2);
   const [composants, setComposants] = useState<DynamicField[]>([]);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // ✅ NOUVEAU: Protection contre double soumission
@@ -273,6 +274,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [successData, setSuccessData] = useState<ServiceData | null>(null);
   // ✅ SUPPRIMÉ: products et setProducts - Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
+  const [suggestedProductCategories, setSuggestedProductCategories] = useState<Array<{ value: string; label: string; icon: string; confidence: number; reason?: string }>>([]); // ✅ NOUVEAU: Catégories produits suggérées
 
   // États pour la navigation par blocs
   const [currentBlock, setCurrentBlock] = useState(0);
@@ -1384,8 +1386,28 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // ✅ SUPPRIMÉ: Chargement produits - Les produits sont maintenant gérés via les champs dynamiques du formulaire
             // Les produits existants seront chargés automatiquement via les valeurs du formulaire
 
+            // ✅ CORRECTION: Préparer la suggestion pour le préchargement correct
+            const editSuggestion = {
+              data: serviceData.data || serviceData,
+              intention: 'modification_service_info',
+              confidence: 1.0
+            };
+
+            // ✅ CORRECTION: Traiter les données comme une suggestion pour pré-remplir correctement
+            // Cela va déclencher le useEffect qui traite suggestion.data
+            setSuggestion(editSuggestion);
+
             setValeursFormulaire(formValues);
             setActiveStep(2); // Aller directement au formulaire
+
+            // ✅ NOUVEAU: Trouver le bloc "Informations générales" et l'ouvrir automatiquement
+            setTimeout(() => {
+              const infoBlockIndex = blocks.findIndex(block => block.id === 'informations_generales' || block.id === 'informations-generales' || block.title?.toLowerCase().includes('information'));
+              if (infoBlockIndex !== -1) {
+                setCurrentBlock(infoBlockIndex);
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ Bloc Informations générales ouvert automatiquement');
+              }
+            }, 500); // Petit délai pour s'assurer que les blocs sont organisés
           }
         } catch (error: any) {
           console.error('[FormulaireYukpoIntelligentScreen] Erreur chargement service:', error);
@@ -1690,7 +1712,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
 
         // ✅ NOUVEAU: Charger les catégories de produits suggérées (matching local basé sur keywords + données IA)
-        if (initialValues.titre_service || initialValues.description || initialValues.category || suggestion?.data) {
+        // ✅ CORRECTION: Vérifier que setSuggestedProductCategories existe avant de l'utiliser
+        if (typeof setSuggestedProductCategories === 'function' && (initialValues.titre_service || initialValues.description || initialValues.category || suggestion?.data)) {
           try {
             const suggestions = getSuggestedProductCategories(
               initialValues.titre_service,
@@ -1712,7 +1735,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               category: initialValues.category
             });
             // ✅ CORRECTION: Ne pas bloquer l'utilisateur, continuer sans suggestions
-            setSuggestedProductCategories([]);
+            if (typeof setSuggestedProductCategories === 'function') {
+              setSuggestedProductCategories([]);
+            }
           }
         }
 
@@ -1743,7 +1768,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         setActiveStep(2); // Passer directement à l'étape 2 avec les données IA
         setCurrentBlock(0);
       } else {
-        console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, rester à l\'étape 1');
+        // ✅ CORRECTION: Passer directement à l'étape 2 même sans données IA (suppression du mini formulaire)
+        console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, passer directement à l\'étape 2');
+        setActiveStep(2);
+        setCurrentBlock(0);
       }
     } catch (error) {
       console.error('[FormulaireYukpoIntelligentScreen] ❌ ERREUR CRITIQUE dans useEffect suggestion:', error);
@@ -4863,7 +4891,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       <View style={styles.scrollView}>
         {/* Étape 1: Génération du formulaire */}
-        {activeStep === 1 && (
+        {/* ✅ SUPPRIMÉ: Étape 1 (mini formulaire) - On passe directement à l'étape 2 (grand formulaire) */}
+        {false && activeStep === 1 && (
           <ScrollView
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}

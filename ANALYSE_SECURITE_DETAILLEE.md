@@ -537,3 +537,5 @@ Votre application Yukpomnang présente **un niveau de sécurité moyen-élevé**
 
 *Rapport généré le 2025-01-27 - Analyse basée sur le code source actuel*
 
+
+

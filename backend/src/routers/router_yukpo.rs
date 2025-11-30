@@ -864,11 +864,15 @@ async fn handle_direct_search(
                     });
                 }
 
+                // ✅ OPTIMISÉ 2025-11-30: Extraire l'objet prestataires depuis le résultat
+                let prestataires = result.get("prestataires").cloned();
+                
                 // Construire la réponse avec résultats de recherche globale + méta-données analyse image
                 let response = serde_json::json!({
                     "status": "success",
                     "intention": "recherche_besoin",
                     "resultats": result.get("resultats"),
+                    "prestataires": prestataires.unwrap_or(json!({})), // ✅ NOUVEAU: Objet prestataires regroupé
                     "tokens_consumed": ai_cost.total_tokens + tokens_consumed_search,
                     "message": format!("Recherche par image + texte: {} résultats", results_count),
                     "search_method": if has_audio { "image_analysis_audio_then_global_search" } else { "image_analysis_then_global_search" },
@@ -917,10 +921,14 @@ async fn handle_direct_search(
                     )
                     .await?;
 
+                    // ✅ OPTIMISÉ 2025-11-30: Extraire l'objet prestataires depuis le résultat
+                    let prestataires = result.get("prestataires").cloned();
+                    
                     let response = serde_json::json!({
                         "status": "success",
                         "intention": "recherche_besoin",
                         "resultats": result,
+                        "prestataires": prestataires.unwrap_or(json!({})), // ✅ NOUVEAU: Objet prestataires regroupé
                         "tokens_consumed": tokens_consumed,
                         "message": "Recherche textuelle (analyse image échouée)",
                         "search_method": "text_fallback",
@@ -1032,10 +1040,14 @@ async fn handle_direct_search(
         "text"
     };
     
+    // ✅ OPTIMISÉ 2025-11-30: Extraire l'objet prestataires depuis le résultat (s'il existe)
+    let prestataires = result.get("prestataires").cloned();
+    
     let response = serde_json::json!({
         "status": "success",
         "intention": "recherche_besoin",
         "resultats": result,
+        "prestataires": prestataires.unwrap_or(json!({})), // ✅ NOUVEAU: Objet prestataires regroupé pour éviter fetchPrestatairesBatch
         "tokens_consumed": tokens_consumed,
         "message": if has_audio { "Recherche directe réussie (audio transcrit)" } else { "Recherche directe réussie" },
         "search_method": search_method,

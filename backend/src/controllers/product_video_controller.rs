@@ -7,6 +7,7 @@ use axum::{
 use log::{error, info, warn};
 use serde::Serialize;
 use serde_json::json;
+use sqlx::FromRow;
 use uuid::Uuid;
 
 use crate::{
@@ -164,4 +165,104 @@ pub async fn get_video_generation_job_status(
         .ok_or_else(|| AppError::NotFound("Job de génération introuvable".to_string()))?;
 
     Ok(Json(job))
+}
+
+/// ✅ NOUVEAU: Récupère toutes les vidéos générées par l'utilisateur
+#[derive(Debug, FromRow, Serialize)]
+struct UserVideoRow {
+    id: i32,
+    service_id: i32,
+    product_index: i32,
+    path: String,
+    ai_description: Option<String>,
+    ai_metadata: Option<serde_json::Value>,
+    created_at: chrono::DateTime<chrono::Utc>,
+    service_title: Option<String>,
+    product_name: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UserVideo {
+    pub id: i32,
+    pub service_id: i32,
+    pub product_index: i32,
+    pub video_url: String,
+    pub description: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub service_title: Option<String>,
+    pub product_name: Option<String>,
+}
+
+pub async fn get_my_videos(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!("[ProductVideoController] Récupération vidéos pour user_id={}", user.id);
+
+    let videos: Vec<UserVideoRow> = sqlx::query_as::<_, UserVideoRow>(
+        r#"
+        SELECT 
+            m.id,
+            m.service_id,
+            m.product_index,
+            m.path,
+            m.ai_description,
+            m.ai_metadata,
+            m.created_at,
+            s.data->>'titre' as service_title,
+            (
+                SELECT value->>'nom' 
+                FROM jsonb_array_elements(s.data->'listeproduit') AS value
+                WHERE (value->>'index')::int = m.product_index
+                LIMIT 1
+            ) as product_name
+        FROM media m
+        INNER JOIN services s ON s.id = m.service_id
+        WHERE s.user_id = $1
+        AND m.type = 'video_generated'
+        AND m.media_type = 'video'
+        ORDER BY m.created_at DESC
+        "#
+    )
+    .bind(user.id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|err| {
+        error!("[ProductVideoController] Erreur récupération vidéos: {err:?}");
+        AppError::Internal(format!("Erreur lors de la récupération des vidéos: {}", err))
+    })?;
+
+    info!("[ProductVideoController] ✅ {} vidéo(s) trouvée(s) pour user_id={}", videos.len(), user.id);
+
+    // Construire l'URL complète pour chaque vidéo
+    let api_base_url = state.config.api_base_url.clone();
+    let formatted_videos: Vec<UserVideo> = videos
+        .into_iter()
+        .map(|row| {
+            let video_url = if row.path.starts_with("http://") || row.path.starts_with("https://") {
+                row.path.clone()
+            } else {
+                format!("{}/{}", api_base_url.trim_end_matches('/'), row.path.trim_start_matches('/'))
+            };
+
+            UserVideo {
+                id: row.id,
+                service_id: row.service_id,
+                product_index: row.product_index,
+                video_url,
+                description: row.ai_description,
+                metadata: row.ai_metadata,
+                created_at: row.created_at,
+                service_title: row.service_title,
+                product_name: row.product_name,
+            }
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "data": formatted_videos,
+        "count": formatted_videos.len()
+    })))
 }

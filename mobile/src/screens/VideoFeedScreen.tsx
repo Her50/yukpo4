@@ -667,6 +667,33 @@ const VideoFeedScreen: React.FC = () => {
     const loadFeed = useCallback(async () => {
         try {
             setLoading(true);
+
+            // ✅ NOUVEAU: Charger les vidéos de l'utilisateur depuis le nouvel endpoint
+            let myVideos: FeedItem[] = [];
+            try {
+                const myVideosResponse = await apiGet('/api/videos/my-videos');
+                if (myVideosResponse.success && Array.isArray(myVideosResponse.data)) {
+                    myVideos = myVideosResponse.data.map((video: any) => ({
+                        id: `my-video-${video.id}`,
+                        titre: video.description || video.product_name || 'Ma vidéo',
+                        description: video.description || undefined,
+                        videoUrl: video.video_url,
+                        thumbnail: undefined,
+                        serviceId: video.service_id,
+                        contentId: `video_${video.id}`,
+                        prestataire: undefined,
+                        isSponsored: false,
+                        badge: 'Ma vidéo',
+                        likesCount: 0,
+                        savesCount: 0,
+                        audioLabel: 'Vidéo générée',
+                    } as FeedItem));
+                }
+            } catch (error) {
+                console.warn('[VideoFeedScreen] Erreur chargement mes vidéos:', error);
+                // Continuer même si l'endpoint échoue
+            }
+
             const categories = await userBehaviorService.getPreferredCategories(5);
 
             const params = new URLSearchParams();
@@ -680,19 +707,20 @@ const VideoFeedScreen: React.FC = () => {
 
             const response = await apiGet(`/api/content/mixed?${params.toString()}`);
 
+            let parsed: FeedItem[] = [];
             if (response.success && Array.isArray(response.data)) {
-                const parsed = processResponse(response.data);
-                setForYouSource(parsed);
-                const ordered = reorderFeed(parsed);
-                setFeed(ordered);
-                feedRef.current = ordered; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
-                if (isFollowingLane) {
-                    setActiveLane('foryou');
-                }
-            } else {
-                setForYouSource([]);
-                setFeed([]);
-                feedRef.current = []; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
+                parsed = processResponse(response.data);
+            }
+
+            // ✅ NOUVEAU: Combiner les vidéos de l'utilisateur avec le feed principal
+            // Les vidéos de l'utilisateur sont ajoutées en premier
+            const combinedFeed = [...myVideos, ...parsed];
+            setForYouSource(combinedFeed);
+            const ordered = reorderFeed(combinedFeed);
+            setFeed(ordered);
+            feedRef.current = ordered; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
+            if (isFollowingLane) {
+                setActiveLane('foryou');
             }
         } catch (error) {
             console.error('[VideoFeedScreen] loadFeed error', error);
@@ -1151,21 +1179,12 @@ const VideoFeedScreen: React.FC = () => {
 
     const handleOpenCreation = useCallback(
         async (source?: FeedItem) => {
-            const inventory = await ensureCreatorInventory();
-            if (!inventory || inventory.length === 0) {
-                return;
-            }
-            if (source?.serviceId) {
-                const match = inventory.find(
-                    (product) => product.serviceId === String(source.serviceId),
-                );
-                setCreationPrimaryProduct(match ?? null);
-            } else {
-                setCreationPrimaryProduct(null);
-            }
-            setCreationModalVisible(true);
+            // ✅ CORRECTION: Ouvrir directement VideoCreationIntroScreen (page d'introduction du montage)
+            // qui mène ensuite au VideoCreationWizardScreen (montage en 6 étapes)
+            // Même UX que le bouton vidéo dans MesProduitsScreen
+            (navigation as any).navigate('VideoCreationIntro');
         },
-        [ensureCreatorInventory],
+        [navigation],
     );
 
     const logLiveInteraction = useCallback(

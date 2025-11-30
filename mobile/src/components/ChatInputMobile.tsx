@@ -1195,7 +1195,7 @@ const styles = StyleSheet.create({
         marginBottom: 12, // ✅ Augmenté
         borderWidth: 2, // ✅ Rétabli à 2
         borderColor: '#E5E7EB',
-        minHeight: 160, // ✅ Augmenté de 110 à 160 comme demandé
+        minHeight: 120, // ✅ RÉDUIT: 160 → 120 pour libérer de l'espace vertical
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,

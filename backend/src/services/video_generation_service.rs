@@ -1084,10 +1084,30 @@ pub async fn generate_product_video(
             }
         }
 
-        let args = vec![
+        // ✅ CORRECTION: Détecter si le média est une vidéo ou une image pour utiliser la bonne option FFmpeg
+        let is_video = media.path.extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| {
+                let ext_lower = ext.to_lowercase();
+                ext_lower == "mp4" || ext_lower == "mov" || ext_lower == "avi" || 
+                ext_lower == "mkv" || ext_lower == "webm" || ext_lower == "m4v"
+            })
+            .unwrap_or(false);
+
+        let mut args = vec![
             "-y".to_string(),
-            "-loop".to_string(),
-            "1".to_string(),
+        ];
+
+        // ✅ CORRECTION: Utiliser -stream_loop -1 pour les vidéos, -loop 1 pour les images
+        if is_video {
+            args.push("-stream_loop".to_string());
+            args.push("-1".to_string());
+        } else {
+            args.push("-loop".to_string());
+            args.push("1".to_string());
+        }
+
+        args.extend(vec![
             "-i".to_string(),
             media.path.to_string_lossy().to_string(),
             "-t".to_string(),
@@ -1099,7 +1119,7 @@ pub async fn generate_product_video(
             "-pix_fmt".to_string(),
             "yuv420p".to_string(),
             slide_name.clone(),
-        ];
+        ]);
 
         run_ffmpeg(&session_dir, args).await?;
         slide_filenames.push(slide_name);

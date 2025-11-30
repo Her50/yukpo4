@@ -249,6 +249,16 @@ impl NativeSearchService {
         // Normaliser la requête
         let normalized_query = self.normalize_query_advanced(search_query);
         
+        // ✅ NOUVEAU 2025-11-30: Enrichir la requête avec les variations (plombier → plomberie)
+        // Cela permet au full-text search de matcher les variations
+        let expanded_query = self.expand_search_query_with_variations(&normalized_query);
+        if expanded_query != normalized_query {
+            log_info(&format!(
+                "[NativeSearch] Requête enrichie avec variations: '{}' → '{}'",
+                normalized_query, expanded_query
+            ));
+        }
+        
         // ✅ NOUVEAU 2025-11-29: Détecter la catégorie probable à partir de la requête
         // Exemple: "électricien" → "électricité"
         let detected_category = self.detect_category_from_query(&normalized_query);
@@ -260,10 +270,10 @@ impl NativeSearchService {
             ));
         }
 
-        // Recherche full-text principale avec filtrage GPS
+        // Recherche full-text principale avec filtrage GPS (utilise la requête enrichie)
         let mut fulltext_results = self
             .fulltext_search_with_gps(
-                &normalized_query,
+                &expanded_query, // ✅ NOUVEAU: Utiliser la requête enrichie avec variations
                 effective_category_filter,
                 location_or_input_filter, // ✅ Input complet pour pré-filtre lieu
                 gps_zone,
@@ -946,6 +956,15 @@ impl NativeSearchService {
 
             log_info(&format!("[NativeSearch] Utilisation de search_services_gps_final avec GPS: {} et rayon: {}km", gps_zone_val, radius));
 
+            // ✅ NOUVEAU 2025-11-30: Enrichir la requête avec les variations avant d'appeler la fonction SQL
+            let expanded_query = self.expand_search_query_with_variations(query);
+            if expanded_query != query {
+                log_info(&format!(
+                    "[NativeSearch] Requête enrichie pour search_services_gps_final (fulltext): '{}' → '{}'",
+                    query, expanded_query
+                ));
+            }
+
             // Appeler notre fonction PostgreSQL optimisée
             let sql = r#"
                 SELECT 
@@ -960,7 +979,7 @@ impl NativeSearchService {
             "#;
 
             // ✅ CORRECTION 2025-11-27 : Utiliser retry_query pour cohérence et meilleure gestion d'erreurs
-            let query_clone = query.to_string();
+            let query_clone = expanded_query.clone(); // ✅ NOUVEAU 2025-11-30: Utiliser la requête enrichie
             let gps_zone_val_clone = gps_zone_val.to_string();
             let pool_clone = self.pool.clone();
             let sql_static = sql.to_string();
@@ -1132,7 +1151,19 @@ impl NativeSearchService {
         //   CREATE INDEX IF NOT EXISTS idx_services_data_gin ON services USING GIN (data);
         //   CREATE INDEX IF NOT EXISTS idx_services_data_text ON services USING GIN (to_tsvector('french', COALESCE(data->>'titre_service'->>'valeur', '')));
         //   CREATE INDEX IF NOT EXISTS idx_autocomplete_characteristics_service_id ON autocomplete_characteristics(service_id) WHERE is_real_product = TRUE;
+        // ✅ NOUVEAU 2025-11-30: Enrichir la requête avec les variations
+        let expanded_query = self.expand_search_query_with_variations(query);
+        if expanded_query != query {
+            log_info(&format!(
+                "[NativeSearch] Requête enrichie pour recherche full-text: '{}' → '{}'",
+                query, expanded_query
+            ));
+        }
+        
         let partial_conditions = self.create_partial_match_conditions(query, "ape");
+
+        // ✅ NOUVEAU 2025-11-30: Utiliser la requête enrichie dans la requête SQL
+        let query_to_use = expanded_query; // Utiliser la requête enrichie
 
         let sql = format!(
             r#"
@@ -1187,6 +1218,9 @@ products_extracted AS (
         OR COALESCE(ape.data->>'titre_service', ape.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%'
         OR COALESCE(ape.data->>'description', ape.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%'
         OR COALESCE(ape.data->>'category', ape.data->'category'->>'valeur', ape.category, '') ILIKE '%' || $1 || '%'
+        -- ✅ NOUVEAU 2025-11-30: Trigram pour variations dans les champs service
+        OR similarity(LOWER(COALESCE(ape.data->>'titre_service', ape.data->'titre_service'->>'valeur', '')), LOWER($1)) > 0.6
+        OR similarity(LOWER(COALESCE(ape.data->>'category', ape.data->'category'->>'valeur', ape.category, '')), LOWER($1)) > 0.7
         -- ✅ Conditions partielles pour correspondances avec accents
         OR ({})
     )
@@ -1218,8 +1252,14 @@ products_scored AS (
                 WHEN unaccent_immutable(extract_all_product_text(product)) ILIKE '%' || unaccent_immutable($1) || '%' THEN 6.0
                 ELSE 0.0
             END +
-            -- ✅ GÉNÉRIQUE : Full-text search sur tout le texte du produit
-            ts_rank(to_tsvector('french', extract_all_product_text(product)), plainto_tsquery('french', $1)) * 10.0
+            -- ✅ GÉNÉRIQUE : Full-text search sur tout le texte du produit (avec requête enrichie)
+            ts_rank(to_tsvector('french', extract_all_product_text(product)), plainto_tsquery('french', $1)) * 10.0 +
+            -- ✅ NOUVEAU 2025-11-30: Trigram pour variations (plombier vs plomberie)
+            CASE 
+                WHEN similarity(LOWER(extract_all_product_text(product)), LOWER($1)) > 0.6 THEN 
+                    similarity(LOWER(extract_all_product_text(product)), LOWER($1)) * 8.0
+                ELSE 0.0
+            END
         ), 0.0) as product_score,
         COALESCE(SUM(
             CASE 
@@ -1261,11 +1301,22 @@ SELECT DISTINCT
     pe.gps,
     pe.category,
     (
-        -- Score SERVICE (réduit)
+        -- Score SERVICE (réduit) - avec requête enrichie et trigram
         (
             ts_rank(to_tsvector('french', COALESCE(pe.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.5 +
             ts_rank(to_tsvector('french', COALESCE(pe.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0 +
-            ts_rank(to_tsvector('french', COALESCE(pe.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0
+            ts_rank(to_tsvector('french', COALESCE(pe.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0 +
+            -- ✅ NOUVEAU 2025-11-30: Trigram pour variations
+            CASE 
+                WHEN similarity(LOWER(COALESCE(pe.data->'category'->>'valeur', pe.category, '')), LOWER($1)) > 0.7 THEN 
+                    similarity(LOWER(COALESCE(pe.data->'category'->>'valeur', pe.category, '')), LOWER($1)) * 9.0
+                ELSE 0.0
+            END +
+            CASE 
+                WHEN similarity(LOWER(COALESCE(pe.data->'titre_service'->>'valeur', '')), LOWER($1)) > 0.6 THEN 
+                    similarity(LOWER(COALESCE(pe.data->'titre_service'->>'valeur', '')), LOWER($1)) * 8.0
+                ELSE 0.0
+            END
         ) +
         (
             -- ✅ CORRIGÉ : Utiliser unaccent_immutable() pour utiliser les index full-text
@@ -1349,7 +1400,7 @@ LIMIT 100
         );
 
         // ✅ CORRECTION 2025-11-27 : Utiliser retry_query pour cohérence et meilleure gestion d'erreurs
-        let query_clone = query.to_string();
+        let query_clone = query_to_use.clone(); // ✅ NOUVEAU 2025-11-30: Utiliser la requête enrichie
         let category_filter_clone = category_filter.map(|s| s.to_string());
         let location_filter_clone = location_filter.map(|s| s.to_string());
         let sql_clone = sql.clone();
@@ -1358,7 +1409,7 @@ LIMIT 100
         let results = retry_query(
             &self.pool,
             move || {
-                let query = query_clone.clone();
+                let query = query_clone.clone(); // ✅ NOUVEAU: Contient déjà la requête enrichie
                 let category_filter = category_filter_clone.clone();
                 let location_filter = location_filter_clone.clone();
                 let sql = sql_clone.clone();
@@ -1367,7 +1418,7 @@ LIMIT 100
                     // ✅ CORRIGÉ: Utiliser les String directement pour éviter les problèmes de lifetime
                     // sqlx accepte String et Option<String> pour .bind()
                     sqlx::query(sql.as_str())
-                        .bind(query)
+                        .bind(query) // ✅ NOUVEAU: Contient la requête enrichie avec variations
                         .bind(category_filter)
                         .bind(location_filter)
                         .fetch_all(&pool)
@@ -1493,6 +1544,15 @@ LIMIT 100
                 gps_zone_val, radius
             ));
 
+            // ✅ NOUVEAU 2025-11-30: Enrichir la requête avec les variations
+            let expanded_query = self.expand_search_query_with_variations(query);
+            if expanded_query != query {
+                log_info(&format!(
+                    "[NativeSearch] Requête enrichie pour search_services_gps_final (trigram): '{}' → '{}'",
+                    query, expanded_query
+                ));
+            }
+
             // Appeler notre fonction PostgreSQL optimisée
             let sql = r#"
                 SELECT 
@@ -1507,7 +1567,7 @@ LIMIT 100
             "#;
 
             let results = sqlx::query(sql)
-                .bind(query)
+                .bind(&expanded_query) // ✅ NOUVEAU 2025-11-30: Utiliser la requête enrichie
                 .bind(gps_zone_val)
                 .bind(radius)
                 .bind(100i32) // ✅ CORRIGÉ: max_results (4ème paramètre requis)
@@ -1727,6 +1787,15 @@ LIMIT 100
                 gps_zone_val, radius
             ));
 
+            // ✅ NOUVEAU 2025-11-30: Enrichir la requête avec les variations
+            let expanded_query = self.expand_search_query_with_variations(query);
+            if expanded_query != query {
+                log_info(&format!(
+                    "[NativeSearch] Requête enrichie pour search_services_gps_final (keyword): '{}' → '{}'",
+                    query, expanded_query
+                ));
+            }
+
             // Appeler notre fonction PostgreSQL optimisée
             let sql = r#"
                 SELECT 
@@ -1741,7 +1810,7 @@ LIMIT 100
             "#;
 
             let results = sqlx::query(sql)
-                .bind(query)
+                .bind(&expanded_query) // ✅ NOUVEAU 2025-11-30: Utiliser la requête enrichie
                 .bind(gps_zone_val)
                 .bind(radius)
                 .bind(100i32) // ✅ CORRIGÉ: max_results (4ème paramètre requis)
@@ -1989,6 +2058,87 @@ LIMIT 100
             self.config.recency_boost
         } else {
             0.0
+        }
+    }
+
+    /// ✅ NOUVEAU 2025-11-30: Enrichir la requête avec les variations (profession ↔ activité)
+    /// Exemple: "plombier" → "plombier | plomberie"
+    /// Permet au full-text search de matcher les variations
+    fn expand_search_query_with_variations(&self, query: &str) -> String {
+        let query_lower = query.to_lowercase().trim();
+        let mut expanded_terms = vec![query_lower.to_string()];
+        
+        // Mapping bidirectionnel : profession ↔ activité
+        let variations = vec![
+            ("plombier", "plomberie"),
+            ("plomberie", "plombier"),
+            ("électricien", "électricité"),
+            ("électricité", "électricien"),
+            ("electricien", "électricité"), // Sans accent
+            ("menuisier", "menuiserie"),
+            ("menuiserie", "menuisier"),
+            ("maçon", "maçonnerie"),
+            ("maçonnerie", "maçon"),
+            ("macon", "maçonnerie"), // Sans accent
+            ("peintre", "peinture"),
+            ("peinture", "peintre"),
+            ("couvreur", "couverture"),
+            ("couverture", "couvreur"),
+            ("chauffeur", "transport"),
+            ("taxi", "transport"),
+            ("livreur", "livraison"),
+            ("livraison", "livreur"),
+            ("restaurant", "restauration"),
+            ("restauration", "restaurant"),
+            ("coiffeur", "coiffure"),
+            ("coiffure", "coiffeur"),
+            ("médecin", "santé"),
+            ("medecin", "santé"),
+            ("pharmacie", "santé"),
+            ("hôpital", "santé"),
+            ("hopital", "santé"),
+        ];
+        
+        // Pour chaque mot de la requête, chercher des variations
+        let words: Vec<&str> = query_lower.split_whitespace().collect();
+        for word in &words {
+            for (from, to) in &variations {
+                // Si le mot correspond exactement ou contient la variation
+                if word == from || word.contains(from) {
+                    // Remplacer dans la requête
+                    let expanded_word = word.replace(from, to);
+                    if expanded_word != *word {
+                        expanded_terms.push(expanded_word.clone());
+                    }
+                    // Ajouter aussi le terme de variation seul
+                    if !expanded_terms.contains(&to.to_string()) {
+                        expanded_terms.push(to.to_string());
+                    }
+                    // Si le mot contient la variation, ajouter aussi la version avec remplacement partiel
+                    if word.contains(from) {
+                        let replaced_query = query_lower.replace(from, to);
+                        if replaced_query != query_lower {
+                            expanded_terms.push(replaced_query);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Créer une requête enrichie avec OR pour full-text search PostgreSQL
+        // Format: "plombier | plomberie" (utilise l'opérateur | de tsquery)
+        // Dédupliquer et joindre avec |
+        use std::collections::HashSet;
+        let unique_terms: Vec<String> = expanded_terms
+            .into_iter()
+            .collect::<HashSet<String>>()
+            .into_iter()
+            .collect();
+        
+        if unique_terms.len() > 1 {
+            unique_terms.join(" | ") // Format: "plombier | plomberie" pour plainto_tsquery()
+        } else {
+            query.to_string() // Si pas de variations trouvées, retourner la requête originale
         }
     }
 

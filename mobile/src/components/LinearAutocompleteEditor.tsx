@@ -1738,6 +1738,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // Priorité 3: bestSuggestionCandidate normal
     // ✅ CORRIGÉ: Toujours privilégier preferredDraftCandidate s'il existe, car il vient directement de sousCaracteristiques
     // ✅ NOUVEAU: Afficher le tableau des sous-caractéristiques préférées d'abord pour validation
+    // ✅ CORRECTION 2025-11-29: Afficher le tableau EN PRIORITÉ même si des chips validés existent déjà
+    // Le tableau doit s'afficher en premier pour permettre la validation/modification avant d'afficher les chips
     const displayCandidate = preferredDraftCandidate && preferredDraftCandidate.rows.length > 0
         ? preferredDraftCandidate
         : (bestSuggestionCandidate?.isPreferred
@@ -2251,6 +2253,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
             {/* ✅ CORRECTION 2025-11-29: Afficher le tableau même si des chips existent déjà - forcer l'affichage pour validation */}
             {/* ✅ CRITIQUE: Le tableau doit TOUJOURS s'afficher au chargement si des sous-caractéristiques sont disponibles */}
+            {/* ✅ NOUVEAU: Afficher le tableau EN PREMIER, même si des chips validés existent déjà */}
             {(loadingSuggestions || loadingCombinationSuggestions || displayCandidate || combinationError || (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0)) && (
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
@@ -2423,8 +2426,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             )}
 
+            {/* ✅ NOUVEAU: Afficher les chips validés SEULEMENT si le tableau n'est pas affiché ou s'il a été validé */}
             {/* Vecteur affiché en chips */}
-            {chips.length > 0 ? (
+            {/* ✅ CORRECTION: Cacher les chips si le tableau est affiché et n'a pas encore été validé */}
+            {chips.length > 0 && !(preferredDraftCandidate && preferredDraftCandidate.rows.length > 0) && !displayCandidate ? (
                 <View style={[styles.vectorContainer, styles.vectorContainerActive]}>
                     <ScrollView
                         horizontal

@@ -57,6 +57,7 @@ pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consomma
 pub mod upload_routes; // ✅ NOUVEAU: Routes pour upload préalable de fichiers
 pub mod user_routes;
 pub mod vehicle_model_routes;
+pub mod video_routes; // ✅ NOUVEAU: Routes pour récupération des vidéos utilisateur
 pub mod weather_routes;
 pub mod webhook_routes;
 pub mod webrtc_routes; // ✅ Routes WebRTC pour appels // ✅ NOUVEAU 2025-11-06: Routes de debug pour vérification tables autocomplete/localisation

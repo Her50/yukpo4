@@ -570,18 +570,34 @@ pub async fn rechercher_besoin_direct(
         return Ok((json!({"resultats": [], "nombre_matchings": 0, "message": "Aucun résultat"}), 1));
     }
     
-    // ✅ BATCH QUERY 1: Récupérer les informations utilisateur pour tous les services en une seule requête
+    // ✅ BATCH QUERY 1: Récupérer les informations service ET utilisateur pour tous les services en une seule requête
     #[derive(sqlx::FromRow)]
-    struct UserInfoRow {
+    struct ServiceUserInfoRow {
         service_id: i32,
+        is_active: bool,
+        created_at: chrono::DateTime<chrono::Utc>,
         user_id: i32,
         nom_complet: Option<String>,
         avatar_url: Option<String>,
+        email: Option<String>,
+        is_provider: bool,
+        gps: Option<String>,
+        photo_profil: Option<String>,
     }
     
-    let user_info_map: HashMap<i32, (i32, Option<String>, Option<String>)> = sqlx::query_as::<_, UserInfoRow>(
+    let service_user_info_map: HashMap<i32, (bool, chrono::DateTime<chrono::Utc>, i32, Option<String>, Option<String>, Option<String>, bool, Option<String>, Option<String>)> = sqlx::query_as::<_, ServiceUserInfoRow>(
         r#"
-        SELECT s.id as service_id, u.id as user_id, u.nom_complet, u.avatar_url
+        SELECT 
+            s.id as service_id,
+            s.is_active,
+            s.created_at,
+            u.id as user_id,
+            u.nom_complet,
+            u.avatar_url,
+            u.email,
+            COALESCE(u.is_provider, false) as is_provider,
+            u.gps,
+            u.photo_profil
         FROM services s
         INNER JOIN users u ON u.id = s.user_id
         WHERE s.id = ANY($1::int[])
@@ -590,10 +606,21 @@ pub async fn rechercher_besoin_direct(
     .bind(&service_ids)
     .fetch_all(&pool)
     .await
-    .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur batch query user_info: {}", e)))?
+    .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur batch query service_user_info: {}", e)))?
     .into_iter()
-    .map(|row| (row.service_id, (row.user_id, row.nom_complet, row.avatar_url)))
+    .map(|row| (
+        row.service_id,
+        (row.is_active, row.created_at, row.user_id, row.nom_complet, row.avatar_url, row.email, row.is_provider, row.gps, row.photo_profil)
+    ))
     .collect();
+    
+    // Créer user_info_map pour compatibilité avec le code existant
+    let user_info_map: HashMap<i32, (i32, Option<String>, Option<String>)> = service_user_info_map
+        .iter()
+        .map(|(service_id, (_, _, user_id, nom_complet, avatar_url, _, _, _, _))| {
+            (*service_id, (*user_id, nom_complet.clone(), avatar_url.clone()))
+        })
+        .collect();
     
     // ✅ BATCH QUERY 2: Récupérer les informations produit pour tous les services en une seule requête
     #[derive(sqlx::FromRow)]
@@ -756,10 +783,20 @@ pub async fn rechercher_besoin_direct(
         let (product_vector, product_labels, location_vector, chosen_location, usage_count) = 
             product_info.unwrap_or((None, None, None, None, None));
 
-        // Construire le résultat enrichi
+        // ✅ OPTIMISÉ 2025-11-30: Récupérer les informations service complètes (id, is_active, created_at)
+        let (service_is_active, service_created_at, service_user_id) = service_user_info_map
+            .get(&service_id)
+            .map(|(is_active, created_at, user_id, _, _, _, _, _, _)| (*is_active, created_at.clone(), *user_id))
+            .unwrap_or((true, chrono::Utc::now(), 0));
+
+        // Construire le résultat enrichi avec TOUTES les données complètes
         let mut enriched_result = json!({
+            "id": service_id, // ✅ NOUVEAU: ID du service (comme get_service_by_id)
             "service_id": service_id,
             "data": matched_service.data,
+            "is_active": service_is_active, // ✅ NOUVEAU: Statut actif
+            "created_at": service_created_at.to_rfc3339(), // ✅ NOUVEAU: Date de création
+            "user_id": service_user_id, // ✅ NOUVEAU: User ID
             "score": matched_service.score,
             "semantic_score": matched_service.semantic_score,
             "interaction_score": matched_service.interaction_score,
@@ -970,18 +1007,54 @@ pub async fn rechercher_besoin_direct(
         enriched_results.push(enriched_result);
     }
 
+    // ✅ OPTIMISÉ 2025-11-30: Créer l'objet prestataires regroupé pour éviter fetchPrestatairesBatch
+    let mut prestataires_map = serde_json::Map::new();
+    let mut prestataires_seen = std::collections::HashSet::new();
+    
+    for (_service_id, (_, created_at, user_id, nom_complet, avatar_url, email, is_provider, gps, photo_profil)) in &service_user_info_map {
+        // Utiliser user_id comme clé pour éviter doublons
+        if !prestataires_seen.contains(user_id) {
+            prestataires_seen.insert(*user_id);
+            
+            let mut prestataire_obj = serde_json::Map::new();
+            prestataire_obj.insert("id".to_string(), json!(*user_id));
+            if let Some(ref nom) = nom_complet {
+                prestataire_obj.insert("nom_complet".to_string(), json!(nom));
+            }
+            if let Some(ref email_val) = email {
+                prestataire_obj.insert("email".to_string(), json!(email_val));
+            }
+            prestataire_obj.insert("is_provider".to_string(), json!(*is_provider));
+            if let Some(ref gps_val) = gps {
+                prestataire_obj.insert("gps".to_string(), json!(gps_val));
+            }
+            if let Some(ref avatar) = avatar_url {
+                prestataire_obj.insert("avatar_url".to_string(), json!(avatar));
+                prestataire_obj.insert("photo_profil".to_string(), json!(avatar)); // Alias pour compatibilité
+            }
+            if let Some(ref photo) = photo_profil {
+                prestataire_obj.insert("photo_profil".to_string(), json!(photo));
+            }
+            prestataire_obj.insert("created_at".to_string(), json!(created_at.to_rfc3339()));
+            
+            prestataires_map.insert(user_id.to_string(), json!(prestataire_obj));
+        }
+    }
+
     // Convertir en format de réponse
     let results_array: Vec<Value> = enriched_results;
 
     log_info(&format!(
-        "[RECHERCHE_DIRECTE] {} résultats convertis",
-        results_array.len()
+        "[RECHERCHE_DIRECTE] {} résultats convertis, {} prestataires uniques",
+        results_array.len(),
+        prestataires_map.len()
     ));
 
     let final_result = json!({
         "resultats": results_array,
         "nombre_matchings": results_array.len(),
-        "message": "Recherche directe PostgreSQL réussie"
+        "message": "Recherche directe PostgreSQL réussie",
+        "prestataires": json!(prestataires_map) // ✅ NOUVEAU: Objet prestataires regroupé
     });
 
     Ok((final_result, 1)) // 1 token pour la recherche directe

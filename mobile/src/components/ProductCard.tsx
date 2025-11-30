@@ -2009,8 +2009,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: '100%',
     alignSelf: 'stretch',
-    height: 280, // ✅ CORRIGÉ: Hauteur fixe pour éviter le débordement
-    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
+    height: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
+    maxHeight: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
   },
   cardContainerCompact: {
     borderRadius: 20,
@@ -2020,12 +2020,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.78)',
     height: '100%', // ✅ AJOUTÉ: Prendre toute la hauteur disponible
-    maxHeight: 280, // ✅ AJOUTÉ: Respecter la hauteur maximale
+    maxHeight: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 140, // ✅ AUGMENTÉ: 120 → 140 pour mieux afficher les médias
+    height: 120, // ✅ RÉDUIT: 140 → 120 pour libérer de l'espace vertical
     overflow: 'hidden',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,

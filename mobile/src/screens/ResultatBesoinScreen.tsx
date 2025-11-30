@@ -84,6 +84,11 @@ interface Product {
   devise?: string;
   image?: string;
   coordinates?: { lat: number; lng: number };
+  // ✅ OPTIMISÉ 2025-11-30: Données complètes du service (plus besoin de fetchServicesByIds)
+  id?: number;                      // ✅ NOUVEAU: ID du service (comme get_service_by_id)
+  is_active?: boolean;              // ✅ NOUVEAU: Statut actif
+  created_at?: string;              // ✅ NOUVEAU: Date de création
+  user_id?: number;                 // ✅ NOUVEAU: User ID
 }
 
 const buildSuggestionExample = (suggestion?: CombinationSuggestion | null): string | null => {
@@ -194,9 +199,9 @@ const extractSearchResults = (response: any): Product[] => {
       item?.data?.chosen_location ||
       location_vector[0]; // Utiliser le premier élément si chosen_location n'est pas disponible
 
-    // Construire l'objet Product avec les données enrichies
+    // ✅ OPTIMISÉ 2025-11-30: Construire l'objet Product avec TOUTES les données complètes
     const product: Product = {
-      service_id: item.service_id || item.id || 0,
+      service_id: item.service_id || item.id || 0, // ✅ Utilise maintenant item.id directement
       nom,
       product_vector: item.product_vector || item?.data?.product_vector || [],
       product_labels: item.product_labels || item?.data?.product_labels || [],
@@ -231,6 +236,12 @@ const extractSearchResults = (response: any): Product[] => {
         Array.isArray(item?.data?.videos) ? item.data.videos :
           Array.isArray(item?.data?.videos?.valeur) ? item.data.videos.valeur : [],
       coordinates: item.coordinates || item?.data?.coordinates,
+      // ✅ NOUVEAU: Ajouter les données complètes du service (id, is_active, created_at, user_id)
+      // Ces champs sont maintenant directement dans les résultats
+      id: item.id || item.service_id || undefined, // ✅ NOUVEAU: ID du service
+      is_active: item.is_active !== undefined ? item.is_active : true, // ✅ NOUVEAU: Statut actif
+      created_at: item.created_at, // ✅ NOUVEAU: Date de création
+      user_id: item.user_id || item.user?.id || item.prestataire?.user_id || undefined, // ✅ NOUVEAU: User ID
       // ✅ Ajouter les données brutes pour ProductCard (avec priorité aux données enrichies)
       ...item,
     };
@@ -1014,11 +1025,25 @@ const ResultatBesoinScreen: React.FC = () => {
 
       const extractedResults = extractSearchResults(apiResponse);
 
+      // ✅ OPTIMISÉ 2025-11-30: Extraire l'objet prestataires depuis la réponse (si présent)
+      // Il est déjà dans chaque résultat, mais on peut le garder en mémoire si nécessaire
+      const prestataires = apiResponse?.data?.prestataires || apiResponse?.prestataires;
+      if (prestataires) {
+        logger.log('[ResultatBesoinScreen] ✅ Objet prestataires reçu:', Object.keys(prestataires).length, 'prestataires');
+        // Les prestataires sont déjà dans les résultats enrichis, pas besoin de fetchPrestatairesBatch
+      }
+
       // ✅ OPTIMISATION: Sauvegarder dans le cache
       await CacheManager.set(searchCacheKey, extractedResults);
 
       if (extractedResults.length > 0) {
         logger.log('[ResultatBesoinScreen] ✅ Résultats trouvés:', extractedResults.length);
+        logger.log('[ResultatBesoinScreen] ✅ Données complètes:', {
+          avecId: extractedResults.some(r => r.id !== undefined),
+          avecIsActive: extractedResults.some(r => r.is_active !== undefined),
+          avecCreatedAt: extractedResults.some(r => r.created_at !== undefined),
+          avecUserId: extractedResults.some(r => r.user_id !== undefined),
+        });
         setResults(extractedResults);
         // ✅ Tracking métriques : Recherche avec résultats
         trackNavigation('search', {
