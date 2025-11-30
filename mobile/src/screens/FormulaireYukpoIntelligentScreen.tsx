@@ -4113,9 +4113,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 });
 
                 // ✅ NOUVEAU: Message informatif si payload volumineux
-                const payloadSizeMB = compressedMedia.totalSizeAfter / (1024 * 1024);
-                if (payloadSizeMB > 30) {
-                  console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Payload volumineux détecté:', payloadSizeMB.toFixed(2), 'MB');
+                const compressedMediaSizeMB = compressedMedia.totalSizeAfter / (1024 * 1024);
+                if (compressedMediaSizeMB > 30) {
+                  console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Payload volumineux détecté:', compressedMediaSizeMB.toFixed(2), 'MB');
                 }
 
                 console.log('[FormulaireYukpoIntelligentScreen] Création du service en cours...');
