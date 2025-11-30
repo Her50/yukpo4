@@ -232,23 +232,15 @@ const HomeScreen: React.FC = () => {
             return;
         }
 
+        // ✅ CORRIGÉ: Ne pas scroller automatiquement car les marges garantissent déjà la visibilité complète
+        // Les produits sont maintenant entièrement visibles grâce aux marges ajoutées (carouselWrapper)
+        // Le scroll automatique n'est plus nécessaire et pourrait décaler la vue
         // Ne pas scroller si l'utilisateur a déjà scrollé ou si le contenu n'est pas chargé
         if (!contentLoaded || hasUserScrolled) {
             return;
         }
 
-        // Attendre que le layout soit stabilisé, puis scroller vers le carousel
-        const timer = setTimeout(() => {
-            if (!hasUserScrolled && contentLoaded) {
-                scrollViewRef.current?.scrollTo({
-                    y: 100, // Scroll léger pour rendre le carousel visible
-                    animated: true,
-                });
-                console.log('[HomeScreen] 🎯 Scroll automatique vers le carousel au démarrage');
-            }
-        }, 1500); // 1.5 secondes pour laisser le temps au contenu de charger
-
-        return () => clearTimeout(timer);
+        // ✅ Plus de scroll automatique nécessaire - les marges garantissent la visibilité
     }, [contentLoaded, hasUserScrolled]); // Se déclenche une seule fois au mount du composant
 
     // ✅ CORRECTION: Détection GPS sécurisée avec timeout
@@ -397,48 +389,69 @@ const HomeScreen: React.FC = () => {
                 return; // Arrêter ici
             }
 
-            // Rediriger vers ResultatBesoin avec les résultats
-            // CORRECTION: Parser correctement la structure de réponse du backend
-            let results = [];
+            // ✅ CORRECTION FONDAMENTALE: Utiliser la même logique d'extraction que ResultatBesoinScreen
+            // pour garantir la cohérence et éviter les problèmes de format
+            let results: any[] = [];
 
-            // Structure de réponse du backend /api/search/direct:
-            // { "resultats": { "resultats": [...], "nombre_matchings": 5 } }
-            if (result?.resultats?.resultats && Array.isArray(result.resultats.resultats)) {
-                results = result.resultats.resultats;
-                console.log('[HomeScreen] ✅ Résultats trouvés dans result.resultats.resultats:', results.length);
-            }
-            // Fallback pour d'autres structures possibles
-            else if (result?.resultats && Array.isArray(result.resultats)) {
-                results = result.resultats;
-                console.log('[HomeScreen] ✅ Résultats trouvés dans result.resultats:', results.length);
-            }
-            else if (result?.results && Array.isArray(result.results)) {
-                results = result.results;
-                console.log('[HomeScreen] ✅ Résultats trouvés dans result.results:', results.length);
-            }
-            else if (result?.data?.resultats && Array.isArray(result.data.resultats)) {
-                results = result.data.resultats;
-                console.log('[HomeScreen] ✅ Résultats trouvés dans result.data.resultats:', results.length);
-            }
-            else if (result?.data && Array.isArray(result.data)) {
-                results = result.data;
-                console.log('[HomeScreen] ✅ Résultats trouvés dans result.data:', results.length);
-            }
-            else {
+            // ✅ FONCTION D'EXTRACTION UNIFIÉE (identique à ResultatBesoinScreen.extractSearchResults)
+            const extractResults = (response: any): any[] => {
+                if (!response) {
+                    return [];
+                }
+
+                const data = response?.data ?? response;
+                if (!data) {
+                    return [];
+                }
+
+                // Extraire le tableau de résultats
+                let resultsArray: any[] = [];
+
+                if (Array.isArray(data)) {
+                    resultsArray = data;
+                } else {
+                    const nestedCandidates = [
+                        data?.resultats?.resultats,
+                        data?.resultats,
+                        data?.data,
+                        data?.items,
+                        data?.results,
+                    ];
+
+                    for (const candidate of nestedCandidates) {
+                        // ✅ CORRECTION: Accepter même les tableaux vides pour cohérence avec ResultatBesoinScreen
+                        if (Array.isArray(candidate)) {
+                            resultsArray = candidate;
+                            break;
+                        }
+                    }
+                }
+
+                return resultsArray;
+            };
+
+            // ✅ Extraire les résultats avec la fonction unifiée
+            results = extractResults(result);
+
+            console.log('[HomeScreen] 📊 Extraction des résultats:', {
+                hasResult: !!result,
+                resultType: typeof result,
+                resultKeys: result ? Object.keys(result) : [],
+                resultsCount: results.length,
+                firstResult: results[0] || null
+            });
+
+            if (results.length === 0) {
                 console.warn('[HomeScreen] ⚠️ Aucun résultat trouvé dans la réponse API');
                 console.log('[HomeScreen] Structure complète de la réponse:', JSON.stringify(result, null, 2));
-                console.log('[HomeScreen] Types détectés:', {
-                    'result.resultats': typeof result?.resultats,
-                    'result.resultats.resultats': typeof result?.resultats?.resultats,
-                    'result.results': typeof result?.results,
-                    'result.data': typeof result?.data
-                });
+            } else {
+                console.log('[HomeScreen] ✅ Résultats extraits avec succès:', results.length);
             }
 
-            console.log('[HomeScreen] Résultats finaux extraits:', results);
-            console.log('[HomeScreen] Nombre de résultats:', results.length);
+            // ✅ CORRECTION FONDAMENTALE: Toujours naviguer vers ResultatBesoin, même avec 0 résultats
+            // L'écran doit s'afficher pour permettre à l'utilisateur de voir qu'il n'y a pas de résultats
+            // ou de réessayer avec d'autres termes
 
-            // Log avant navigation pour débogage
             console.log('[HomeScreen] ===== NAVIGATION VERS RÉSULTATS =====');
             console.log('[HomeScreen] Paramètres de navigation:', {
                 resultsCount: results.length,
@@ -446,33 +459,78 @@ const HomeScreen: React.FC = () => {
                 hasResults: results.length > 0,
                 firstResult: results[0] || null,
                 isImageSearch: result?.search_method === 'image_ai',
-                billing: result?.billing || null
-            });
-
-            (navigation as any).navigate('ResultatBesoin', {
-                results: results,
-                type: 'recherche_besoin',
-                suggestion: result,
-                imageSearch: result?.search_method === 'image_ai',
-                imageAnalysis: result?.image_analysis || null,
                 billing: result?.billing || null,
-                searchQuery: searchQuery // ✅ NOUVEAU PHASE 9: Passer la requête de recherche pour l'historique
+                searchQuery: searchQuery
             });
 
-            console.log('[HomeScreen] Navigation déclenchée ✅');
+            // ✅ CORRECTION: S'assurer que results est toujours un tableau (même vide)
+            const safeResults = Array.isArray(results) ? results : [];
+
+            try {
+                (navigation as any).navigate('ResultatBesoin', {
+                    results: safeResults, // ✅ Toujours un tableau, même vide
+                    type: 'recherche_besoin',
+                    suggestion: result,
+                    imageSearch: result?.search_method === 'image_ai',
+                    imageAnalysis: result?.image_analysis || null,
+                    billing: result?.billing || null,
+                    searchQuery: searchQuery, // ✅ NOUVEAU PHASE 9: Passer la requête de recherche pour l'historique
+                    hasError: false, // ✅ Indiquer qu'il n'y a pas d'erreur
+                    error: null
+                });
+
+                console.log('[HomeScreen] ✅ Navigation déclenchée avec succès vers ResultatBesoin');
+                console.log('[HomeScreen] ✅ Résultats passés:', safeResults.length);
+            } catch (navError: any) {
+                console.error('[HomeScreen] ❌ ERREUR CRITIQUE lors de la navigation:', {
+                    error: navError,
+                    message: navError?.message,
+                    stack: navError?.stack,
+                    resultsCount: safeResults.length
+                });
+                Alert.alert(
+                    'Erreur de navigation',
+                    'Impossible d\'ouvrir l\'écran de résultats. Veuillez réessayer.',
+                    [{ text: 'OK' }]
+                );
+            }
         } catch (error: any) {
             console.error('[HomeScreen] Erreur recherche:', error);
 
+            // ✅ CORRECTION: Extraire le message d'erreur
+            const errorMessage = error.message || 'Erreur inconnue';
+            const searchQuery = input.texte || input.text || '';
+
+            // ✅ NOUVEAU: Naviguer vers ResultatBesoinScreen même en cas d'erreur
+            // pour que l'utilisateur puisse voir l'écran de résultats (vide) et réessayer
+            console.log('[HomeScreen] ⚠️ Erreur détectée, navigation vers ResultatBesoin avec résultats vides');
+
             // Diagnostic détaillé de l'erreur
-            if (error.message?.includes('Token')) {
-                Alert.alert('Erreur d\'authentification', 'Votre session a expiré. Veuillez vous reconnecter.');
-            } else if (error.message?.includes('Network')) {
-                Alert.alert('Erreur réseau', 'Vérifiez votre connexion internet et réessayez.');
-            } else if (error.message?.includes('Aucun mot-clé')) {
-                Alert.alert('Recherche impossible', 'Veuillez être plus spécifique dans votre description. Essayez avec des mots-clés comme "restaurant", "plomberie", "informatique".');
+            let userFriendlyMessage = '';
+            if (errorMessage.includes('Token') || errorMessage.includes('authentification')) {
+                userFriendlyMessage = 'Erreur d\'authentification. Votre session a peut-être expiré.';
+            } else if (errorMessage.includes('Network') || errorMessage.includes('fetch')) {
+                userFriendlyMessage = 'Erreur réseau. Vérifiez votre connexion internet.';
+            } else if (errorMessage.includes('Timeout')) {
+                userFriendlyMessage = 'La recherche a pris trop de temps. Le serveur peut être surchargé.';
+            } else if (errorMessage.includes('Aucun mot-clé')) {
+                userFriendlyMessage = 'Veuillez être plus spécifique dans votre description.';
+            } else if (errorMessage.includes('500') || errorMessage.includes('Erreur HTTP: 500')) {
+                userFriendlyMessage = 'Erreur serveur. Veuillez réessayer dans quelques instants.';
             } else {
-                Alert.alert('Erreur', `Impossible de rechercher des services: ${error.message || 'Erreur inconnue'}`);
+                userFriendlyMessage = errorMessage;
             }
+
+            // ✅ Naviguer vers ResultatBesoinScreen avec résultats vides et message d'erreur
+            (navigation as any).navigate('ResultatBesoin', {
+                results: [], // Résultats vides
+                type: 'recherche_besoin',
+                error: userFriendlyMessage, // ✅ NOUVEAU: Passer le message d'erreur
+                searchQuery: searchQuery,
+                hasError: true, // ✅ NOUVEAU: Flag pour indiquer qu'il y a eu une erreur
+            });
+
+            console.log('[HomeScreen] Navigation vers ResultatBesoin avec erreur ✅');
         } finally {
             setLoading(false);
         }
@@ -809,26 +867,41 @@ const HomeScreen: React.FC = () => {
 
     // Gestion de la soumission (comme frontend - direct)
     const handleSubmit = async (input: any) => {
-        console.log('[HomeScreen] ===== SOUMISSION =====');
-        console.log('[HomeScreen] Mode actuel:', isCreateService ? 'CRÉATION' : 'RECHERCHE');
-        console.log('[HomeScreen] Données reçues:', {
-            texte: input.texte || input.text,
-            hasImages: (input.base64_image || []).length > 0,
-            hasAudio: (input.audio_base64 || []).length > 0,
-            hasGPS: !!input.gps_mobile
-        });
+        try {
+            console.log('[HomeScreen] ===== SOUMISSION =====');
+            console.log('[HomeScreen] Mode actuel:', isCreateService ? 'CRÉATION' : 'RECHERCHE');
+            console.log('[HomeScreen] Données reçues:', {
+                texte: input.texte || input.text,
+                texteLength: (input.texte || input.text || '').length,
+                hasImages: (input.base64_image || []).length > 0,
+                hasAudio: (input.audio_base64 || []).length > 0,
+                hasGPS: !!input.gps_mobile,
+                gps_mobile: input.gps_mobile
+            });
 
-        if (isCreateService) {
-            // Si la case est cochée, demander confirmation
-            console.log('[HomeScreen] → Demande de confirmation pour création de service');
-            setPendingInput(input);
-            setShowCreateServiceAlert(true);
-            return;
+            if (isCreateService) {
+                // Si la case est cochée, demander confirmation
+                console.log('[HomeScreen] → Demande de confirmation pour création de service');
+                setPendingInput(input);
+                setShowCreateServiceAlert(true);
+                return;
+            }
+
+            console.log('[HomeScreen] → Appel handleSearch');
+            // Par défaut: recherche directe
+            await handleSearch(input);
+            console.log('[HomeScreen] ✅ handleSearch terminé avec succès');
+        } catch (error: any) {
+            console.error('[HomeScreen] ❌ ERREUR CRITIQUE dans handleSubmit:', {
+                error: error,
+                message: error?.message,
+                stack: error?.stack,
+                input: input
+            });
+            // ✅ CORRECTION: Ne pas afficher d'alerte ici car handleSearch gère déjà les erreurs
+            // Mais s'assurer que l'erreur est bien propagée
+            throw error;
         }
-
-        console.log('[HomeScreen] → Appel handleSearch');
-        // Par défaut: recherche directe
-        await handleSearch(input);
     };
 
     // Fonction pour confirmer la création de service
@@ -1002,11 +1075,14 @@ const HomeScreen: React.FC = () => {
                         </View>
 
                         {/* ✅ NOUVEAU: Carousel mixte (publicités + produits organiques) */}
-                        <MixedContentCarousel
-                            userId={user?.id}
-                            userBehavior={userBehaviorCategories}
-                            publiciteFrequency={3} // 1 pub toutes les 3 cartes
-                        />
+                        {/* ✅ CORRECTION: Wrapper avec marges pour garantir visibilité complète des produits */}
+                        <View style={styles.carouselWrapper}>
+                            <MixedContentCarousel
+                                userId={user?.id}
+                                userBehavior={userBehaviorCategories}
+                                publiciteFrequency={3} // 1 pub toutes les 3 cartes
+                            />
+                        </View>
 
                         <GlobalPromoHighlights />
                     </View>
@@ -1228,8 +1304,8 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingHorizontal: width > 400 ? 24 : 16,
-        paddingTop: 4, // ✅ RÉDUIT: 8 → 4 pour maximiser l'espace d'affichage des produits
-        paddingBottom: 150,
+        paddingTop: 16, // ✅ AUGMENTÉ: 4 → 16 pour garantir marge supérieure suffisante
+        paddingBottom: 200, // ✅ AUGMENTÉ: 150 → 200 pour garantir marge inférieure suffisante (évite que la navigation cache les produits)
         minHeight: height * 0.5, // ✅ AUGMENTÉ: 0.4 → 0.5 pour plus d'espace d'affichage des produits
     },
     descriptionContainer: {
@@ -1808,6 +1884,11 @@ const styles = StyleSheet.create({
         paddingTop: 4, // ✅ RÉDUIT: 8 → 4 pour réduire l'espace en haut
         paddingBottom: 8, // ✅ RÉDUIT: 12 → 8 pour rapprocher le titre du carousel
         backgroundColor: 'transparent',
+    },
+    // ✅ NOUVEAU: Wrapper pour le carousel avec marges garantissant visibilité complète
+    carouselWrapper: {
+        marginTop: 20, // ✅ Marge supérieure pour voir le bord supérieur des produits
+        marginBottom: 40, // ✅ Marge inférieure pour voir le bord inférieur des produits (évite que la navigation cache)
     },
     carouselTitle: {
         fontSize: 20,

@@ -212,10 +212,21 @@ pub async fn get_my_videos(
             m.created_at,
             s.data->>'titre' as service_title,
             (
-                SELECT value->>'nom' 
-                FROM jsonb_array_elements(s.data->'listeproduit') AS value
-                WHERE (value->>'index')::int = m.product_index
-                LIMIT 1
+                SELECT (array_agg(elem->>'nom'))[1]
+                FROM (
+                    SELECT 
+                        jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                    THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits') = 'object' 
+                                    AND jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                    THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) WITH ORDINALITY AS t(elem, idx)
+                ) AS products_array
+                WHERE idx - 1 = m.product_index
             ) as product_name
         FROM media m
         INNER JOIN services s ON s.id = m.service_id

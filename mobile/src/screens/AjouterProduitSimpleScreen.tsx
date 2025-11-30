@@ -717,254 +717,26 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             return;
         }
 
-        setLoading(true);
-
+        // ✅ CORRECTION CRITIQUE: Afficher la confirmation IMMÉDIATEMENT (avant toute opération lourde)
+        // Cela permet à l'utilisateur de voir immédiatement le coût avant confirmation
+        // Le toast/Alert doit apparaître instantanément au clic
         try {
-            if (isEditing) {
-                if (productId === null || Number.isNaN(productId)) {
-                    setLoading(false);
-                    Alert.alert('Erreur', 'Identifiant du produit introuvable.');
-                    return;
-                }
-
-                if (productIndex === null || Number.isNaN(productIndex)) {
-                    setLoading(false);
-                    Alert.alert('Erreur', 'Index du produit introuvable.');
-                    return;
-                }
-            }
-
-            // ✅ ÉTAPE 1 : Construire les données COMPLÈTES du nouveau produit (IDENTIQUE AU GRAND FORMULAIRE)
-            const nouveauProduit: any = {};
-
-            // ✅ Liste complète des champs produits à extraire (IDENTIQUE AU GRAND FORMULAIRE)
-            const PRODUCT_FIELDS = [
-                'nom_produit',
-                'categorie_produit',
-                'description_produit',
-                'produits',  // Autocomplete caractéristiques
-                'prix',
-                'prix_produit',
-                'devise',
-                'devise_produit',
-                'lieu_produit',
-                'lieu_commercial',
-                'lieu_commercialisation',
-                'price_variant',   // ✅ Variations de prix
-                'variabilite_prix', // Alias de price_variant
-                'product_labels',   // ✅ Labels/tags
-                'images',           // ✅ Images produit
-                'videos',           // ✅ Vidéos produit
-                'audios',           // Éventuellement
-                'documents'         // Éventuellement
-            ];
-
-            PRODUCT_FIELDS.forEach(key => {
-                const value = formValues[key];
-                if (value !== undefined && value !== null && value !== '') {
-                    nouveauProduit[key] = value;
-                }
-            });
-
-            const combinationString = (() => {
-                if (Array.isArray(formValues.produits)) {
-                    const firstString = formValues.produits.find((entry: any) => typeof entry === 'string');
-                    if (typeof firstString === 'string') {
-                        return firstString;
-                    }
-                }
-                if (typeof formValues.produits === 'string') {
-                    return formValues.produits;
-                }
-                if (Array.isArray(formValues.nominalVector)) {
-                    const firstString = formValues.nominalVector.find((entry: any) => typeof entry === 'string');
-                    if (typeof firstString === 'string') {
-                        return firstString;
-                    }
-                }
-                return '';
-            })();
-
-            if (combinationString) {
-                nouveauProduit.combinaison_brute = combinationString;
-                const characteristicVector = combinationString
-                    .split(',')
-                    .map((part: string) => part.trim())
-                    .filter((part: string) => part.length > 0);
-                if (characteristicVector.length > 0) {
-                    nouveauProduit.characteristic_vector = characteristicVector;
-                }
-            }
-
-            if (!nouveauProduit.product_labels && formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object') {
-                nouveauProduit.product_labels = Object.keys(formValues.sous_caracteristiques || {});
-            }
-
-            if (!nouveauProduit.origine_champs) {
-                nouveauProduit.origine_champs = 'formulaire';
-            }
-
-            // ✅ NOUVEAU: Transformer variation_prix en format variants/has_variant pour ProductCard
-            // Le ProductCard cherche product.variants et product.has_variant
-            const priceVariant = nouveauProduit.variabilite_prix || nouveauProduit.price_variant || nouveauProduit.variation_prix;
-            if (priceVariant && typeof priceVariant === 'object' && !Array.isArray(priceVariant)) {
-                const modalites = priceVariant.modalites || priceVariant.valeur || priceVariant;
-                if (Array.isArray(modalites) && modalites.length > 0) {
-                    // Transformer les modalités en format variants
-                    const variants = modalites.map((modalite: any) => {
-                        const variant: any = {};
-                        if (modalite.valeur || modalite.value) {
-                            variant.value = modalite.valeur || modalite.value;
-                            variant.valeur = modalite.valeur || modalite.value;
-                        }
-                        if (modalite.prix !== undefined || modalite.price !== undefined) {
-                            variant.prix = modalite.prix || modalite.price;
-                        }
-                        if (modalite.devise || modalite.currency) {
-                            variant.devise = modalite.devise || modalite.currency;
-                        }
-                        if (modalite.stock !== undefined || modalite.quantite !== undefined) {
-                            variant.stock = modalite.stock || modalite.quantite;
-                        }
-                        if (modalite.image) {
-                            variant.image = modalite.image;
-                        }
-                        return variant;
-                    });
-
-                    nouveauProduit.has_variant = true;
-                    nouveauProduit.variants = variants;
-
-                    // Ajouter aussi variant_dimension si disponible
-                    if (priceVariant.variable) {
-                        nouveauProduit.variant_dimension = priceVariant.variable;
-                    }
-
-                    console.log('[AjouterProduitSimple] ✅ Variations de prix transformées en variants:', variants.length);
-                }
-            }
-
-            // ✅ NOUVEAU: Upload préalable des médias pour éviter payload trop volumineux
-            console.log('[AjouterProduitSimple] 📤 Début upload préalable des médias pour nouveau produit...');
-            try {
-                const { uploadFiles } = await import('../services/uploadApi');
-
-                // Collecter tous les médias du produit à uploader
-                const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
-
-                // Images produit
-                if (nouveauProduit.images && Array.isArray(nouveauProduit.images)) {
-                    nouveauProduit.images.forEach((img: string, idx: number) => {
-                        if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
-                            const mimeType = img.startsWith('data:')
-                                ? img.split(',')[0].split(':')[1].split(';')[0]
-                                : 'image/jpeg';
-                            filesToUpload.push({
-                                uri: img,
-                                type: mimeType,
-                                name: `prod_image_${idx}.jpg`
-                            });
-                        }
-                    });
-                }
-
-                // Vidéos produit
-                if (nouveauProduit.videos && Array.isArray(nouveauProduit.videos)) {
-                    nouveauProduit.videos.forEach((vid: string, idx: number) => {
-                        if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
-                            const mimeType = vid.startsWith('data:')
-                                ? vid.split(',')[0].split(':')[1].split(';')[0]
-                                : 'video/mp4';
-                            filesToUpload.push({
-                                uri: vid,
-                                type: mimeType,
-                                name: `prod_video_${idx}.mp4`
-                            });
-                        }
-                    });
-                }
-
-                // Uploader tous les fichiers
-                if (filesToUpload.length > 0) {
-                    console.log(`[AjouterProduitSimple] 📤 Upload de ${filesToUpload.length} fichier(s) pour nouveau produit...`);
-                    const uploadedFiles = await uploadFiles(filesToUpload);
-                    console.log('[AjouterProduitSimple] ✅ Upload réussi pour produit:', uploadedFiles.length, 'fichier(s)');
-
-                    // ✅ Remplacer base64 par URLs dans nouveauProduit
-                    // Images produit
-                    const imageUrls = uploadedFiles
-                        .filter(f => f.media_type === 'image')
-                        .map(f => f.url);
-                    if (imageUrls.length > 0) {
-                        nouveauProduit.imageUrls = imageUrls;
-                        console.log('[AjouterProduitSimple] ✅ Images produit uploadées:', imageUrls.length);
-                    }
-
-                    // Vidéos produit
-                    const videoUrls = uploadedFiles
-                        .filter(f => f.media_type === 'video')
-                        .map(f => f.url);
-                    if (videoUrls.length > 0) {
-                        nouveauProduit.videoUrls = videoUrls;
-                        console.log('[AjouterProduitSimple] ✅ Vidéos produit uploadées:', videoUrls.length);
-                    }
-                } else {
-                    console.log('[AjouterProduitSimple] ℹ️ Aucun média à uploader pour nouveau produit (déjà URLs ou vide)');
-                }
-            } catch (uploadError: any) {
-                console.warn('[AjouterProduitSimple] ⚠️ Erreur upload préalable produit, fallback base64:', uploadError.message);
-                // Fallback: continuer avec base64 si upload échoue (rétrocompatibilité)
-            }
-
-            console.log('[AjouterProduitSimple] 📦 Données du nouveau produit (complètes):', {
-                ...nouveauProduit,
-                images: nouveauProduit.images ? `${nouveauProduit.images.length} image(s)` : 'aucune',
-                videos: nouveauProduit.videos ? `${nouveauProduit.videos.length} vidéo(s)` : 'aucune',
-                has_variant: nouveauProduit.has_variant,
-                variants_count: nouveauProduit.variants ? nouveauProduit.variants.length : 0
-            });
-
-            if (isEditing) {
-                try {
-                    const response = await apiPatch(`/api/products/${productId}/update`, {
-                        service_id: String(serviceId),
-                        product_index: productIndex ?? 0,
-                        updated_product: nouveauProduit
-                    });
-
-                    if (!response.success) {
-                        throw new Error(response.error || response.message || 'Impossible de mettre à jour le produit');
-                    }
-
-                    Alert.alert(
-                        '✅ Produit mis à jour',
-                        'Les modifications ont été enregistrées avec succès.',
-                        [{ text: 'OK', onPress: () => navigation.goBack() }]
-                    );
-                } catch (error: any) {
-                    console.error('[AjouterProduitSimple] Erreur mise à jour produit:', error);
-                    Alert.alert('Erreur', error.message || 'Impossible de mettre à jour le produit');
-                } finally {
-                    setLoading(false);
-                }
-                return;
-            }
-
-            // ✅ ÉTAPE 2 : Vérifier le solde (coût fixe : 2000 FCFA pour ajout produit - IDENTIQUE AU GRAND FORMULAIRE)
+            // ✅ ÉTAPE 1 : Vérifier le solde RAPIDEMENT (sans upload médias)
             const COUT_AJOUT_PRODUIT = 2000;
-
-            console.log('💰 [AjouterProduitSimple] Vérification du solde pour ajout produit...');
+            console.log('💰 [AjouterProduitSimple] Vérification rapide du solde pour affichage coût...');
             const balanceResponse = await apiGet<{ tokens_balance: number }>('/api/users/balance');
 
             if (!balanceResponse.success) {
                 const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
                 console.error('💰 [AjouterProduitSimple] ❌ Erreur vérification solde:', errorMsg);
-                throw new Error(errorMsg);
+                Alert.alert('Erreur', errorMsg);
+                return;
             }
 
             if (!balanceResponse.data || typeof balanceResponse.data.tokens_balance === 'undefined') {
                 console.error('💰 [AjouterProduitSimple] ❌ Données solde invalides:', balanceResponse.data);
-                throw new Error('Données de solde invalides reçues du serveur');
+                Alert.alert('Erreur', 'Données de solde invalides reçues du serveur');
+                return;
             }
 
             const soldeActuel = balanceResponse.data.tokens_balance || 0;
@@ -977,11 +749,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     `Coût d'ajout de produit : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
                     [{ text: 'OK' }]
                 );
-                setLoading(false);
                 return;
             }
 
-            // ✅ ÉTAPE 3 : Demander confirmation avec affichage du coût (IDENTIQUE AU GRAND FORMULAIRE)
+            // ✅ ÉTAPE 2 : Afficher la confirmation IMMÉDIATEMENT (toast instantané)
             const actionTitle = isDuplicate ? '💰 Duplication de produit' : '💰 Ajout de produit';
             const confirmationMessage =
                 `Coût : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\n` +
@@ -995,11 +766,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 serviceId,
                 hasUser: !!user,
                 userId: user?.id,
-                productName: nouveauProduit.nom || nouveauProduit.nom_produit,
+                productName: formValues.nom_produit,
                 cost: COUT_AJOUT_PRODUIT,
                 balance: soldeActuel
             });
 
+            // ✅ AFFICHER L'ALERT IMMÉDIATEMENT (toast instantané)
             Alert.alert(
                 actionTitle,
                 confirmationMessage,
@@ -1009,16 +781,288 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         style: 'cancel',
                         onPress: () => {
                             console.log('[AjouterProduitSimple] ❌ Création annulée par l\'utilisateur');
-                            setLoading(false);
                         }
                     },
                     {
                         text: 'Confirmer',
                         onPress: async () => {
+                            // ✅ MAINTENANT on fait les opérations lourdes après confirmation
+                            setLoading(true);
+
                             try {
-                                console.log('[AjouterProduitSimple] ✅ Confirmation reçue, début création produit...');
-                                // ✅ ÉTAPE 4 : Appeler /api/services/{serviceId}/products (IDENTIQUE AU GRAND FORMULAIRE)
+                                if (isEditing) {
+                                    if (productId === null || Number.isNaN(productId)) {
+                                        setLoading(false);
+                                        Alert.alert('Erreur', 'Identifiant du produit introuvable.');
+                                        return;
+                                    }
+
+                                    if (productIndex === null || Number.isNaN(productIndex)) {
+                                        setLoading(false);
+                                        Alert.alert('Erreur', 'Index du produit introuvable.');
+                                        return;
+                                    }
+                                }
+
+                                // ✅ ÉTAPE 1 : Construire les données COMPLÈTES du nouveau produit (IDENTIQUE AU GRAND FORMULAIRE)
+                                const nouveauProduit: any = {};
+
+                                // ✅ Liste complète des champs produits à extraire (IDENTIQUE AU GRAND FORMULAIRE)
+                                const PRODUCT_FIELDS = [
+                                    'nom_produit',
+                                    'categorie_produit',
+                                    'description_produit',
+                                    'produits',  // Autocomplete caractéristiques
+                                    'prix',
+                                    'prix_produit',
+                                    'devise',
+                                    'devise_produit',
+                                    'lieu_produit',
+                                    'lieu_commercial',
+                                    'lieu_commercialisation',
+                                    'price_variant',   // ✅ Variations de prix
+                                    'variabilite_prix', // Alias de price_variant
+                                    'product_labels',   // ✅ Labels/tags
+                                    'images',           // ✅ Images produit
+                                    'videos',           // ✅ Vidéos produit
+                                    'audios',           // Éventuellement
+                                    'documents'         // Éventuellement
+                                ];
+
+                                PRODUCT_FIELDS.forEach(key => {
+                                    const value = formValues[key];
+                                    if (value !== undefined && value !== null && value !== '') {
+                                        nouveauProduit[key] = value;
+                                    }
+                                });
+
+                                const combinationString = (() => {
+                                    if (Array.isArray(formValues.produits)) {
+                                        const firstString = formValues.produits.find((entry: any) => typeof entry === 'string');
+                                        if (typeof firstString === 'string') {
+                                            return firstString;
+                                        }
+                                    }
+                                    if (typeof formValues.produits === 'string') {
+                                        return formValues.produits;
+                                    }
+                                    if (Array.isArray(formValues.nominalVector)) {
+                                        const firstString = formValues.nominalVector.find((entry: any) => typeof entry === 'string');
+                                        if (typeof firstString === 'string') {
+                                            return firstString;
+                                        }
+                                    }
+                                    return '';
+                                })();
+
+                                if (combinationString) {
+                                    nouveauProduit.combinaison_brute = combinationString;
+                                    const characteristicVector = combinationString
+                                        .split(',')
+                                        .map((part: string) => part.trim())
+                                        .filter((part: string) => part.length > 0);
+                                    if (characteristicVector.length > 0) {
+                                        nouveauProduit.characteristic_vector = characteristicVector;
+                                    }
+                                }
+
+                                if (!nouveauProduit.product_labels && formValues.sous_caracteristiques && typeof formValues.sous_caracteristiques === 'object') {
+                                    nouveauProduit.product_labels = Object.keys(formValues.sous_caracteristiques || {});
+                                }
+
+                                if (!nouveauProduit.origine_champs) {
+                                    nouveauProduit.origine_champs = 'formulaire';
+                                }
+
+                                // ✅ NOUVEAU: Transformer variation_prix en format variants/has_variant pour ProductCard
+                                // Le ProductCard cherche product.variants et product.has_variant
+                                const priceVariant = nouveauProduit.variabilite_prix || nouveauProduit.price_variant || nouveauProduit.variation_prix;
+                                if (priceVariant && typeof priceVariant === 'object' && !Array.isArray(priceVariant)) {
+                                    const modalites = priceVariant.modalites || priceVariant.valeur || priceVariant;
+                                    if (Array.isArray(modalites) && modalites.length > 0) {
+                                        // Transformer les modalités en format variants
+                                        const variants = modalites.map((modalite: any) => {
+                                            const variant: any = {};
+                                            if (modalite.valeur || modalite.value) {
+                                                variant.value = modalite.valeur || modalite.value;
+                                                variant.valeur = modalite.valeur || modalite.value;
+                                            }
+                                            if (modalite.prix !== undefined || modalite.price !== undefined) {
+                                                variant.prix = modalite.prix || modalite.price;
+                                            }
+                                            if (modalite.devise || modalite.currency) {
+                                                variant.devise = modalite.devise || modalite.currency;
+                                            }
+                                            if (modalite.stock !== undefined || modalite.quantite !== undefined) {
+                                                variant.stock = modalite.stock || modalite.quantite;
+                                            }
+                                            if (modalite.image) {
+                                                variant.image = modalite.image;
+                                            }
+                                            return variant;
+                                        });
+
+                                        nouveauProduit.has_variant = true;
+                                        nouveauProduit.variants = variants;
+
+                                        // Ajouter aussi variant_dimension si disponible
+                                        if (priceVariant.variable) {
+                                            nouveauProduit.variant_dimension = priceVariant.variable;
+                                        }
+
+                                        console.log('[AjouterProduitSimple] ✅ Variations de prix transformées en variants:', variants.length);
+                                    }
+                                }
+
+                                // ✅ CORRECTION CRITIQUE: Compresser les médias AVANT upload pour accélérer
+                                console.log('[AjouterProduitSimple] 🔄 Compression des médias avant upload...');
+                                let compressedMedia: any = null;
+                                try {
+                                    const { compressAllMedia } = await import('../utils/mediaCompression');
+
+                                    // Préparer les médias pour compression
+                                    const mediaForCompression = {
+                                        images: nouveauProduit.images && Array.isArray(nouveauProduit.images)
+                                            ? nouveauProduit.images.filter((img: string) => img && (img.startsWith('data:') || img.startsWith('file://')))
+                                            : [],
+                                        videos: nouveauProduit.videos && Array.isArray(nouveauProduit.videos)
+                                            ? nouveauProduit.videos.filter((vid: string) => vid && (vid.startsWith('data:') || vid.startsWith('file://')))
+                                            : [],
+                                    };
+
+                                    if (mediaForCompression.images.length > 0 || mediaForCompression.videos.length > 0) {
+                                        compressedMedia = await compressAllMedia(mediaForCompression);
+                                        console.log('[AjouterProduitSimple] ✅ Médias compressés:', {
+                                            before: `${(compressedMedia.totalSizeBefore / (1024 * 1024)).toFixed(2)} MB`,
+                                            after: `${(compressedMedia.totalSizeAfter / (1024 * 1024)).toFixed(2)} MB`,
+                                            saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
+                                        });
+
+                                        // ✅ Remplacer les médias originaux par les versions compressées
+                                        if (compressedMedia.images.length > 0) {
+                                            nouveauProduit.images = compressedMedia.images;
+                                        }
+                                        if (compressedMedia.videos.length > 0) {
+                                            nouveauProduit.videos = compressedMedia.videos;
+                                        }
+                                    }
+                                } catch (compressionError: any) {
+                                    console.warn('[AjouterProduitSimple] ⚠️ Erreur compression médias, continuation sans compression:', compressionError.message);
+                                    // Continuer sans compression si erreur
+                                }
+
+                                // ✅ NOUVEAU: Upload préalable des médias (compressés) pour éviter payload trop volumineux
+                                console.log('[AjouterProduitSimple] 📤 Début upload préalable des médias pour nouveau produit...');
+                                try {
+                                    const { uploadFiles } = await import('../services/uploadApi');
+
+                                    // Collecter tous les médias du produit à uploader (après compression)
+                                    const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
+
+                                    // Images produit (utiliser versions compressées si disponibles)
+                                    const imagesToUpload = compressedMedia?.images || nouveauProduit.images || [];
+                                    if (Array.isArray(imagesToUpload)) {
+                                        imagesToUpload.forEach((img: string, idx: number) => {
+                                            if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
+                                                const mimeType = img.startsWith('data:')
+                                                    ? img.split(',')[0].split(':')[1].split(';')[0]
+                                                    : 'image/jpeg';
+                                                filesToUpload.push({
+                                                    uri: img,
+                                                    type: mimeType,
+                                                    name: `prod_image_${idx}.jpg`
+                                                });
+                                            }
+                                        });
+                                    }
+
+                                    // Vidéos produit (utiliser versions compressées si disponibles)
+                                    const videosToUpload = compressedMedia?.videos || nouveauProduit.videos || [];
+                                    if (Array.isArray(videosToUpload)) {
+                                        videosToUpload.forEach((vid: string, idx: number) => {
+                                            if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
+                                                const mimeType = vid.startsWith('data:')
+                                                    ? vid.split(',')[0].split(':')[1].split(';')[0]
+                                                    : 'video/mp4';
+                                                filesToUpload.push({
+                                                    uri: vid,
+                                                    type: mimeType,
+                                                    name: `prod_video_${idx}.mp4`
+                                                });
+                                            }
+                                        });
+                                    }
+
+                                    // Uploader tous les fichiers
+                                    if (filesToUpload.length > 0) {
+                                        console.log(`[AjouterProduitSimple] 📤 Upload de ${filesToUpload.length} fichier(s) pour nouveau produit...`);
+                                        const uploadedFiles = await uploadFiles(filesToUpload);
+                                        console.log('[AjouterProduitSimple] ✅ Upload réussi pour produit:', uploadedFiles.length, 'fichier(s)');
+
+                                        // ✅ Remplacer base64 par URLs dans nouveauProduit
+                                        // Images produit
+                                        const imageUrls = uploadedFiles
+                                            .filter(f => f.media_type === 'image')
+                                            .map(f => f.url);
+                                        if (imageUrls.length > 0) {
+                                            nouveauProduit.imageUrls = imageUrls;
+                                            console.log('[AjouterProduitSimple] ✅ Images produit uploadées:', imageUrls.length);
+                                        }
+
+                                        // Vidéos produit
+                                        const videoUrls = uploadedFiles
+                                            .filter(f => f.media_type === 'video')
+                                            .map(f => f.url);
+                                        if (videoUrls.length > 0) {
+                                            nouveauProduit.videoUrls = videoUrls;
+                                            console.log('[AjouterProduitSimple] ✅ Vidéos produit uploadées:', videoUrls.length);
+                                        }
+                                    } else {
+                                        console.log('[AjouterProduitSimple] ℹ️ Aucun média à uploader pour nouveau produit (déjà URLs ou vide)');
+                                    }
+                                } catch (uploadError: any) {
+                                    console.warn('[AjouterProduitSimple] ⚠️ Erreur upload préalable produit, fallback base64:', uploadError.message);
+                                    // Fallback: continuer avec base64 si upload échoue (rétrocompatibilité)
+                                }
+
+                                console.log('[AjouterProduitSimple] 📦 Données du nouveau produit (complètes):', {
+                                    ...nouveauProduit,
+                                    images: nouveauProduit.images ? `${nouveauProduit.images.length} image(s)` : 'aucune',
+                                    videos: nouveauProduit.videos ? `${nouveauProduit.videos.length} vidéo(s)` : 'aucune',
+                                    has_variant: nouveauProduit.has_variant,
+                                    variants_count: nouveauProduit.variants ? nouveauProduit.variants.length : 0
+                                });
+
+                                if (isEditing) {
+                                    try {
+                                        const response = await apiPatch(`/api/products/${productId}/update`, {
+                                            service_id: String(serviceId),
+                                            product_index: productIndex ?? 0,
+                                            updated_product: nouveauProduit
+                                        });
+
+                                        if (!response.success) {
+                                            throw new Error(response.error || response.message || 'Impossible de mettre à jour le produit');
+                                        }
+
+                                        Alert.alert(
+                                            '✅ Produit mis à jour',
+                                            'Les modifications ont été enregistrées avec succès.',
+                                            [{ text: 'OK', onPress: () => navigation.goBack() }]
+                                        );
+                                    } catch (error: any) {
+                                        console.error('[AjouterProduitSimple] Erreur mise à jour produit:', error);
+                                        Alert.alert('Erreur', error.message || 'Impossible de mettre à jour le produit');
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                    return;
+                                }
+
+                                // ✅ ÉTAPE 4 : Appeler /api/services/{serviceId}/products
                                 const userId = parseInt(user?.id || '0', 10);
+                                const COUT_AJOUT_PRODUIT = 2000;
+                                const soldeActuel = balanceResponse.data.tokens_balance || 0;
 
                                 if (!userId || userId === 0) {
                                     throw new Error('ID utilisateur invalide');

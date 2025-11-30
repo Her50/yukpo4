@@ -1190,7 +1190,8 @@ WITH all_products_extracted AS (
     AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
 ),
 products_extracted AS (
-    -- ✅ Filtrer sur les PRODUITS qui matchent (GÉNÉRIQUE - utilise extract_all_product_text)
+    -- ✅ CORRIGÉ 2025-12-XX: Filtrer sur les PRODUITS qui matchent
+    -- Utilise extract_all_product_text ET autocomplete_characteristics.full_vector
     SELECT DISTINCT
         ape.service_id,
         ape.data,
@@ -1210,17 +1211,35 @@ products_extracted AS (
                 extract_all_product_text(product) ILIKE '%' || $1 || '%'
                 -- ✅ OU recherche dans les champs principaux (pour performance)
                 OR product->>'nom' ILIKE '%' || $1 || '%'
+                OR product->>'nom_produit' ILIKE '%' || $1 || '%'  -- ✅ NOUVEAU: Support nom_produit
                 OR product->>'categorie' ILIKE '%' || $1 || '%'
                 OR product->>'description' ILIKE '%' || $1 || '%'
             )
         )
+        -- ✅ NOUVEAU 2025-12-XX: Recherche dans autocomplete_characteristics.full_vector
+        -- Car certaines descriptions sont uniquement dans autocomplete_characteristics, pas dans services.data->'produits'
+        OR EXISTS (
+            SELECT 1 
+            FROM autocomplete_characteristics ac
+            WHERE ac.service_id = ape.service_id
+            AND ac.is_real_product = TRUE
+            AND ac.identifiant_base = 'produits'
+            AND EXISTS (
+                SELECT 1 FROM unnest(ac.full_vector) AS vec_val
+                WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
+            )
+        )
         -- ✅ OU recherche dans les champs service (pour services sans produits)
+        -- ✅ CORRIGÉ 2025-12-01: Utiliser ILIKE ET similarité pour trouver les variations (plombier/plomberie, photographe/photographie)
         OR COALESCE(ape.data->>'titre_service', ape.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%'
         OR COALESCE(ape.data->>'description', ape.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%'
         OR COALESCE(ape.data->>'category', ape.data->'category'->>'valeur', ape.category, '') ILIKE '%' || $1 || '%'
-        -- ✅ NOUVEAU 2025-11-30: Trigram pour variations dans les champs service
-        OR similarity(LOWER(COALESCE(ape.data->>'titre_service', ape.data->'titre_service'->>'valeur', '')), LOWER($1)) > 0.6
-        OR similarity(LOWER(COALESCE(ape.data->>'category', ape.data->'category'->>'valeur', ape.category, '')), LOWER($1)) > 0.7
+        -- ✅ CORRIGÉ 2025-12-01: Utiliser word_similarity() au lieu de similarity() pour trouver un mot dans une phrase
+        -- word_similarity() cherche le meilleur match dans la chaîne (ex: "plombier" dans "plomberie" = 0.556)
+        -- Seuil 0.6 pour éliminer au maximum les faux positifs
+        OR word_similarity(LOWER($1), LOWER(COALESCE(ape.data->'titre_service'->>'valeur', ape.data->>'titre_service', ''))) > 0.6
+        OR word_similarity(LOWER($1), LOWER(COALESCE(ape.data->'description'->>'valeur', ape.data->>'description', ''))) > 0.6
+        OR word_similarity(LOWER($1), LOWER(COALESCE(ape.data->'category'->>'valeur', ape.data->>'category', ape.category, ''))) > 0.6
         -- ✅ Conditions partielles pour correspondances avec accents
         OR ({})
     )
@@ -1254,10 +1273,11 @@ products_scored AS (
             END +
             -- ✅ GÉNÉRIQUE : Full-text search sur tout le texte du produit (avec requête enrichie)
             ts_rank(to_tsvector('french', extract_all_product_text(product)), plainto_tsquery('french', $1)) * 10.0 +
-            -- ✅ NOUVEAU 2025-11-30: Trigram pour variations (plombier vs plomberie)
+            -- ✅ CORRIGÉ 2025-12-01: Utiliser word_similarity() au lieu de similarity() pour trouver un mot dans une phrase
+            -- Seuil 0.6 pour éliminer au maximum les faux positifs
             CASE 
-                WHEN similarity(LOWER(extract_all_product_text(product)), LOWER($1)) > 0.6 THEN 
-                    similarity(LOWER(extract_all_product_text(product)), LOWER($1)) * 8.0
+                WHEN word_similarity(LOWER($1), LOWER(extract_all_product_text(product))) > 0.6 THEN 
+                    word_similarity(LOWER($1), LOWER(extract_all_product_text(product))) * 8.0
                 ELSE 0.0
             END
         ), 0.0) as product_score,
@@ -1277,19 +1297,34 @@ products_scored AS (
     GROUP BY pe.service_id
 ),
 autocomplete_scored AS (
-    -- ✅ OPTIMISÉ: Calculer les scores autocomplete en une seule passe
+    -- ✅ CORRIGÉ 2025-12-XX: Calculer les scores autocomplete en incluant full_vector
+    -- full_vector contient souvent plus d'informations que characteristic_vector
     SELECT 
         ac.service_id,
-        SUM(8.0 * (
-            SELECT COUNT(*)::REAL FROM unnest(ac.characteristic_vector) AS vec_val
-            WHERE vec_val ILIKE '%' || $1 || '%'
-        ) * LEAST(3.0, 1.0 + (ac.usage_count::REAL / 10.0))) as autocomplete_score
+        SUM(
+            -- Score basé sur characteristic_vector
+            8.0 * (
+                SELECT COUNT(*)::REAL FROM unnest(ac.characteristic_vector) AS vec_val
+                WHERE vec_val ILIKE '%' || $1 || '%'
+            ) * LEAST(3.0, 1.0 + (ac.usage_count::REAL / 10.0)) +
+            -- ✅ NOUVEAU: Score basé sur full_vector (priorité plus élevée car contient descriptions complètes)
+            12.0 * (
+                SELECT COUNT(*)::REAL FROM unnest(ac.full_vector) AS vec_val
+                WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
+            ) * LEAST(3.0, 1.0 + (ac.usage_count::REAL / 10.0))
+        ) as autocomplete_score
     FROM autocomplete_characteristics ac
     WHERE ac.identifiant_base LIKE 'produit%'
     AND ac.is_real_product = TRUE
-    AND EXISTS (
-        SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
-        WHERE vec_val ILIKE '%' || $1 || '%'
+    AND (
+        EXISTS (
+            SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
+            WHERE vec_val ILIKE '%' || $1 || '%'
+        )
+        OR EXISTS (
+            SELECT 1 FROM unnest(ac.full_vector) AS vec_val
+            WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
+        )
     )
     GROUP BY ac.service_id
 )
@@ -1306,15 +1341,17 @@ SELECT DISTINCT
             ts_rank(to_tsvector('french', COALESCE(pe.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.5 +
             ts_rank(to_tsvector('french', COALESCE(pe.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0 +
             ts_rank(to_tsvector('french', COALESCE(pe.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0 +
-            -- ✅ NOUVEAU 2025-11-30: Trigram pour variations
+            -- ✅ CORRIGÉ 2025-12-01: Utiliser word_similarity() au lieu de similarity() pour trouver un mot dans une phrase
+            -- word_similarity() cherche le meilleur match dans la chaîne (ex: "plombier" dans "plomberie" = 0.556)
+            -- Seuil 0.6 pour éliminer au maximum les faux positifs
             CASE 
-                WHEN similarity(LOWER(COALESCE(pe.data->'category'->>'valeur', pe.category, '')), LOWER($1)) > 0.7 THEN 
-                    similarity(LOWER(COALESCE(pe.data->'category'->>'valeur', pe.category, '')), LOWER($1)) * 9.0
+                WHEN word_similarity(LOWER($1), LOWER(COALESCE(pe.data->'category'->>'valeur', pe.category, ''))) > 0.6 THEN 
+                    word_similarity(LOWER($1), LOWER(COALESCE(pe.data->'category'->>'valeur', pe.category, ''))) * 9.0
                 ELSE 0.0
             END +
             CASE 
-                WHEN similarity(LOWER(COALESCE(pe.data->'titre_service'->>'valeur', '')), LOWER($1)) > 0.6 THEN 
-                    similarity(LOWER(COALESCE(pe.data->'titre_service'->>'valeur', '')), LOWER($1)) * 8.0
+                WHEN word_similarity(LOWER($1), LOWER(COALESCE(pe.data->'titre_service'->>'valeur', ''))) > 0.6 THEN 
+                    word_similarity(LOWER($1), LOWER(COALESCE(pe.data->'titre_service'->>'valeur', ''))) * 8.0
                 ELSE 0.0
             END
         ) +

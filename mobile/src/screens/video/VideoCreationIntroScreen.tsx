@@ -423,10 +423,50 @@ const VideoCreationIntroScreen: React.FC = () => {
                 return;
             }
 
-            // ✅ CORRIGÉ: Toujours afficher le sélecteur, même pour un seul produit
-            // Cela permet à l'utilisateur de voir et confirmer son choix avant de naviguer
-            setAvailableProducts(allProducts);
-            setShowProductSelector(true);
+            // ✅ CORRECTION 2025-12-01: Toujours ouvrir directement ProductVideoCreationModal
+            // L'étape 1 du modal permet déjà de sélectionner le produit, pas besoin du sélecteur intermédiaire
+            // Charger tous les produits de tous les services en ManagedProduct
+            const allManagedProducts: ManagedProduct[] = [];
+
+            userServices.forEach((service: any) => {
+                try {
+                    const serviceId = service.id || service.service_id;
+                    if (!serviceId) return;
+
+                    const produitsRaw = service.data?.produits ||
+                        service.produits ||
+                        service.data?.data?.produits ||
+                        (service.data && typeof service.data === 'object' && (service.data as any).produits);
+
+                    const produits = normalizeServiceProducts(produitsRaw);
+
+                    if (Array.isArray(produits) && produits.length > 0) {
+                        produits.forEach((product: any, index: number) => {
+                            const managedProduct = convertToManagedProduct(service, product, index);
+                            if (managedProduct) {
+                                allManagedProducts.push(managedProduct);
+                            }
+                        });
+                    }
+                } catch (serviceError) {
+                    console.error('[VideoCreationIntroScreen] ❌ Erreur traitement service pour modal:', serviceError);
+                }
+            });
+
+            if (allManagedProducts.length > 0) {
+                // Ouvrir directement le modal avec tous les produits disponibles
+                // L'utilisateur pourra sélectionner le produit à l'étape 1 du modal
+                setProductsForVideoCreation(allManagedProducts);
+                setShowVideoCreationModal(true);
+                return;
+            }
+
+            // Fallback: Si on ne peut pas charger les produits, afficher une erreur
+            Alert.alert(
+                'Erreur',
+                'Impossible de charger les produits. Veuillez réessayer.',
+                [{ text: 'OK' }]
+            );
             return;
         }
 

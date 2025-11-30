@@ -188,11 +188,14 @@ export const apiCall = async <T>(
     // - Upload 60-100 MB en 3G : 96-160s
     // - Traitement backend : 20-50s
     // 60s pour création-service (appel IA OpenAI peut prendre 15-30s)
+    // ✅ CORRECTION: 90s pour création produit (upload médias peut prendre du temps)
     const timeoutDuration = endpoint.includes('/services/create')
       ? 180000
       : endpoint.includes('/ia/creation-service')
         ? 60000
-        : 15000;
+        : endpoint.includes('/services/') && endpoint.includes('/products')
+          ? 90000  // ✅ 90s pour création/modification produit (upload médias)
+          : 15000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -1030,13 +1033,25 @@ export const mediaApi = {
       body: JSON.stringify(payload),
     });
   },
-  trackMediaView: async (mediaId: number, payload: { channel?: string; session_id?: string; metadata?: any }) => {
+  trackMediaView: async (mediaId: number | undefined | null, payload: { channel?: string; session_id?: string; metadata?: any }) => {
+    // ✅ CORRECTION 2025-12-01: Valider mediaId avant l'appel API pour éviter /api/media/undefined/track-view
+    if (!mediaId || mediaId === undefined || mediaId === null || isNaN(Number(mediaId))) {
+      console.warn('[API] trackMediaView: mediaId invalide, skip tracking', { mediaId });
+      return { success: false, error: 'mediaId invalide' };
+    }
+
     return apiCall(`/api/media/${mediaId}/track-view`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
-  trackMediaShare: async (mediaId: number, payload: { channel?: string; session_id?: string; metadata?: any }) => {
+  trackMediaShare: async (mediaId: number | undefined | null, payload: { channel?: string; session_id?: string; metadata?: any }) => {
+    // ✅ CORRECTION 2025-12-01: Valider mediaId avant l'appel API pour éviter /api/media/undefined/track-share
+    if (!mediaId || mediaId === undefined || mediaId === null || isNaN(Number(mediaId))) {
+      console.warn('[API] trackMediaShare: mediaId invalide, skip tracking', { mediaId });
+      return { success: false, error: 'mediaId invalide' };
+    }
+
     return apiCall(`/api/media/${mediaId}/track-share`, {
       method: 'POST',
       body: JSON.stringify(payload),

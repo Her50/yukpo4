@@ -1013,8 +1013,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        marginVertical: 8, // ✅ RÉDUIT: 16 → 8 pour mieux utiliser l'espace vertical
-        marginTop: 4, // ✅ RÉDUIT: Moins d'espace en haut
+        marginVertical: 0, // ✅ RÉDUIT: 8 → 0 car les marges sont gérées par le wrapper dans HomeScreen
+        marginTop: 0, // ✅ RÉDUIT: 4 → 0 car les marges sont gérées par le wrapper dans HomeScreen
         height: 320, // ✅ AJOUTÉ: Hauteur fixe pour le conteneur (280px cartes + 40px pour progress bars et pagination)
         maxHeight: 320, // ✅ AJOUTÉ: Hauteur maximale stricte
         overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement

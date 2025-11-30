@@ -131,6 +131,10 @@ export async function rechercherServices(input: any): Promise<any> {
     throw new Error('Token d\'authentification manquant');
   }
 
+  // ✅ CORRECTION: Ajouter un timeout pour éviter les connexions fermées et les attentes infinies
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s pour recherche (plus court que IA)
+
   try {
     console.log('[yukpoclient] Appel /api/search/direct...');
     const response = await fetch(`${API_BASE_URL}/api/search/direct`, {
@@ -139,11 +143,22 @@ export async function rechercherServices(input: any): Promise<any> {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(input)
+      body: JSON.stringify(input),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
-      throw new Error(`Erreur HTTP: ${response.status}`);
+      // ✅ AMÉLIORATION: Extraire le message d'erreur du backend si disponible
+      let errorMessage = `Erreur HTTP: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch (e) {
+        // Si le parsing JSON échoue, utiliser le message par défaut
+      }
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -173,6 +188,14 @@ export async function rechercherServices(input: any): Promise<any> {
     console.log('[yukpoclient] Retour du résultat complet');
     return result;
   } catch (error: any) {
+    clearTimeout(timeoutId);
+
+    // ✅ AMÉLIORATION: Gérer spécifiquement les erreurs de timeout
+    if (error.name === 'AbortError') {
+      console.error('[yukpoclient] Timeout lors de la recherche (30 secondes)');
+      throw new Error('Timeout: La recherche a pris trop de temps (30 secondes). Le serveur peut être surchargé. Veuillez réessayer.');
+    }
+
     console.error('[yukpoclient] Erreur recherche:', error);
     throw error;
   }

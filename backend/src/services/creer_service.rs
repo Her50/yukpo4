@@ -4847,6 +4847,26 @@ pub async fn save_autocomplete_combination(
                             first_product
                                 .insert("chosen_location".to_string(), serde_json::json!(chosen));
                         }
+                        
+                        // ✅ NOUVEAU 2025-12-XX: Extraire et sauvegarder la description depuis full_vector
+                        // La description est souvent le 3ème élément de full_vector (après nom et catégorie)
+                        // ou un élément long (> 50 caractères)
+                        if !first_product.contains_key("description") && !first_product.contains_key("description_produit") {
+                            if let Some(description) = full_vector.iter()
+                                .skip(2) // Après nom et catégorie
+                                .find(|s| s.len() > 50) // Description probablement longue
+                                .or_else(|| full_vector.iter().skip(2).next()) // Sinon prendre le 3ème élément
+                            {
+                                first_product.insert(
+                                    "description".to_string(),
+                                    serde_json::json!(description)
+                                );
+                                log::info!(
+                                    "[save_autocomplete_combination] ✅ Description sauvegardée dans produit: {}",
+                                    description.chars().take(50).collect::<String>()
+                                );
+                            }
+                        }
                     }
                 }
 

@@ -1585,6 +1585,11 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
         "désire",
         "aimerais",
         "aimerait",
+        "trouver",
+        "trouve",
+        "trouves",
+        "trouvez",
+        "trouvons",
         // Articles et déterminants
         "un",
         "une",

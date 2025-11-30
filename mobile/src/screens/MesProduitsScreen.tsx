@@ -23,6 +23,7 @@ import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
 import ServiceMediaGallery from '../components/ServiceMediaGallery';
 import ServiceTeamManager from '../components/ServiceTeamManager';
+import config from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch, apiPost, mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -43,6 +44,38 @@ const extractValue = (field: any): string | null => {
         return String(value);
     }
     return null;
+};
+
+// ✅ Helper pour construire l'URL complète d'un média
+// ✅ CORRIGÉ 2025-11-30: Utiliser l'endpoint /api/media/files pour les chemins uploads/
+const buildMediaUrl = (path?: string | null): string | null => {
+    if (!path || typeof path !== 'string') {
+        return null;
+    }
+    const trimmed = path.trim();
+    if (trimmed.length === 0) {
+        return null;
+    }
+    // Si c'est déjà une URL complète (http/https/data), retourner tel quel
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+        return trimmed;
+    }
+    // ✅ CORRIGÉ: Utiliser /api/media/files pour les chemins uploads/
+    if (trimmed.startsWith('uploads/') || trimmed.startsWith('/uploads/')) {
+        const cleanPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+        const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+        if (!base) {
+            return null;
+        }
+        return `${base}/api/media/files/${cleanPath}`;
+    }
+    // Pour les autres chemins, utiliser aussi /api/media/files
+    const cleanPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+    const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+    if (!base) {
+        return null;
+    }
+    return `${base}/api/media/files/${cleanPath}`;
 };
 
 const normalizeCategoryKey = (product: Record<string, any>): string | null => {
@@ -664,7 +697,12 @@ const MesProduitsScreen: React.FC = () => {
         console.log('[MesProduitsScreen] 🎬 Vidéo générée:', result);
 
         try {
-            await mediaApi.trackMediaView(result.media_id, { channel: 'studio_preview' });
+            // ✅ CORRECTION 2025-12-01: Vérifier que media_id existe avant d'appeler trackMediaView
+            if (result.media_id) {
+                await mediaApi.trackMediaView(result.media_id, { channel: 'studio_preview' });
+            } else {
+                console.warn('[MesProduitsScreen] media_id manquant dans result, skip tracking', result);
+            }
             if (Array.isArray(result.distribution_targets) && result.distribution_targets.length > 0) {
                 await Promise.all(
                     result.distribution_targets.map((target) =>
@@ -961,7 +999,7 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Modifier un produit (naviguer vers le service parent en mode édition)
-    const handleEditProduct = (product: ManagedProduct) => {
+    const handleEditProduct = async (product: ManagedProduct) => {
         const productIdForUpdate = resolveNumericId(product.rawProductId ?? product.id);
 
         if (productIdForUpdate === null) {
@@ -969,22 +1007,99 @@ const MesProduitsScreen: React.FC = () => {
             return;
         }
 
-        const prefill = buildProductPrefill(product);
-        const mediaData = {
-            base64_image: Array.isArray(prefill.images) ? prefill.images : [],
-            video_base64: Array.isArray(prefill.videos) ? prefill.videos : [],
-            audio_base64: Array.isArray(prefill.audios) ? prefill.audios : [],
-            doc_base64: Array.isArray(prefill.documents) ? prefill.documents : [],
-        };
+        try {
+            // ✅ CORRECTION CRITIQUE: Charger les médias depuis l'API avant de construire le prefill
+            let loadedImages: string[] = [];
+            let loadedVideos: string[] = [];
+            let loadedAudios: string[] = [];
+            let loadedDocuments: string[] = [];
 
-        navigation.navigate('AjouterProduitSimple' as never, {
-            mode: 'edit',
-            serviceId: product.serviceId,
-            productId: productIdForUpdate,
-            productIndex: product.product_index ?? 0,
-            prefill,
-            mediaData,
-        } as never);
+            if (typeof product.product_index === 'number' && product.serviceId) {
+                console.log('[MesProduitsScreen] 📥 Chargement des médias pour édition produit:', {
+                    serviceId: product.serviceId,
+                    productIndex: product.product_index
+                });
+
+                try {
+                    const mediaResponse = await mediaApi.getProductMedia(product.serviceId, product.product_index);
+                    if (mediaResponse.success && mediaResponse.data) {
+                        const entries = mediaResponse.data.data || mediaResponse.data;
+                        if (Array.isArray(entries)) {
+                            entries.forEach((entry: any) => {
+                                const mediaType = entry.media_type || entry.type || 'image';
+                                const path = entry.path || entry.url || entry.file_path;
+
+                                // ✅ Construire l'URL complète depuis le path
+                                const fullUrl = buildMediaUrl(path);
+
+                                if (fullUrl) {
+                                    if (mediaType === 'image') {
+                                        loadedImages.push(fullUrl);
+                                    } else if (mediaType === 'video') {
+                                        loadedVideos.push(fullUrl);
+                                    } else if (mediaType === 'audio') {
+                                        loadedAudios.push(fullUrl);
+                                    } else if (mediaType === 'document') {
+                                        loadedDocuments.push(fullUrl);
+                                    }
+                                }
+                            });
+
+                            console.log('[MesProduitsScreen] ✅ Médias chargés depuis API:', {
+                                images: loadedImages.length,
+                                videos: loadedVideos.length,
+                                audios: loadedAudios.length,
+                                documents: loadedDocuments.length
+                            });
+                        }
+                    }
+                } catch (mediaError) {
+                    console.warn('[MesProduitsScreen] ⚠️ Erreur chargement médias depuis API, utilisation médias du produit:', mediaError);
+                    // Continuer avec les médias du produit si l'API échoue
+                }
+            }
+
+            const prefill = buildProductPrefill(product);
+
+            // ✅ CORRECTION: Utiliser les médias chargés depuis l'API en priorité, sinon ceux du prefill
+            const finalImages = loadedImages.length > 0 ? loadedImages : (Array.isArray(prefill.images) ? prefill.images : []);
+            const finalVideos = loadedVideos.length > 0 ? loadedVideos : (Array.isArray(prefill.videos) ? prefill.videos : []);
+            const finalAudios = loadedAudios.length > 0 ? loadedAudios : (Array.isArray(prefill.audios) ? prefill.audios : []);
+            const finalDocuments = loadedDocuments.length > 0 ? loadedDocuments : (Array.isArray(prefill.documents) ? prefill.documents : []);
+
+            // Mettre à jour le prefill avec les médias chargés
+            prefill.images = finalImages;
+            prefill.videos = finalVideos;
+            prefill.audios = finalAudios;
+            prefill.documents = finalDocuments;
+
+            const mediaData = {
+                base64_image: finalImages,
+                video_base64: finalVideos,
+                audio_base64: finalAudios,
+                doc_base64: finalDocuments,
+            };
+
+            console.log('[MesProduitsScreen] 📦 Prefill final pour édition:', {
+                nom_produit: prefill.nom_produit,
+                images_count: finalImages.length,
+                videos_count: finalVideos.length,
+                audios_count: finalAudios.length,
+                documents_count: finalDocuments.length
+            });
+
+            navigation.navigate('AjouterProduitSimple' as never, {
+                mode: 'edit',
+                serviceId: product.serviceId,
+                productId: productIdForUpdate,
+                productIndex: product.product_index ?? 0,
+                prefill,
+                mediaData,
+            } as never);
+        } catch (error) {
+            console.error('[MesProduitsScreen] ❌ Erreur lors de l\'édition du produit:', error);
+            Alert.alert('Erreur', 'Impossible de charger les données du produit pour l\'édition');
+        }
     };
 
     const recordProductShare = async (product: ManagedProduct, channel: string) => {
@@ -1041,24 +1156,100 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Dupliquer un produit
-    const handleDuplicateProduct = (product: ManagedProduct) => {
-        const prefill = buildProductPrefill(product);
-        const originalName = prefill.nom_produit || product.nom || 'Produit';
-        prefill.nom_produit = `${originalName} (Copie)`;
+    const handleDuplicateProduct = async (product: ManagedProduct) => {
+        try {
+            // ✅ CORRECTION CRITIQUE: Charger les médias depuis l'API avant de construire le prefill
+            let loadedImages: string[] = [];
+            let loadedVideos: string[] = [];
+            let loadedAudios: string[] = [];
+            let loadedDocuments: string[] = [];
 
-        const mediaData = {
-            base64_image: Array.isArray(prefill.images) ? prefill.images : [],
-            video_base64: Array.isArray(prefill.videos) ? prefill.videos : [],
-            audio_base64: Array.isArray(prefill.audios) ? prefill.audios : [],
-            doc_base64: Array.isArray(prefill.documents) ? prefill.documents : [],
-        };
+            if (typeof product.product_index === 'number' && product.serviceId) {
+                console.log('[MesProduitsScreen] 📥 Chargement des médias pour duplication produit:', {
+                    serviceId: product.serviceId,
+                    productIndex: product.product_index
+                });
 
-        navigation.navigate('AjouterProduitSimple' as never, {
-            mode: 'duplicate',
-            serviceId: product.serviceId,
-            prefill,
-            mediaData,
-        } as never);
+                try {
+                    const mediaResponse = await mediaApi.getProductMedia(product.serviceId, product.product_index);
+                    if (mediaResponse.success && mediaResponse.data) {
+                        const entries = mediaResponse.data.data || mediaResponse.data;
+                        if (Array.isArray(entries)) {
+                            entries.forEach((entry: any) => {
+                                const mediaType = entry.media_type || entry.type || 'image';
+                                const path = entry.path || entry.url || entry.file_path;
+
+                                // ✅ Construire l'URL complète depuis le path
+                                const fullUrl = buildMediaUrl(path);
+
+                                if (fullUrl) {
+                                    if (mediaType === 'image') {
+                                        loadedImages.push(fullUrl);
+                                    } else if (mediaType === 'video') {
+                                        loadedVideos.push(fullUrl);
+                                    } else if (mediaType === 'audio') {
+                                        loadedAudios.push(fullUrl);
+                                    } else if (mediaType === 'document') {
+                                        loadedDocuments.push(fullUrl);
+                                    }
+                                }
+                            });
+
+                            console.log('[MesProduitsScreen] ✅ Médias chargés depuis API:', {
+                                images: loadedImages.length,
+                                videos: loadedVideos.length,
+                                audios: loadedAudios.length,
+                                documents: loadedDocuments.length
+                            });
+                        }
+                    }
+                } catch (mediaError) {
+                    console.warn('[MesProduitsScreen] ⚠️ Erreur chargement médias depuis API, utilisation médias du produit:', mediaError);
+                    // Continuer avec les médias du produit si l'API échoue
+                }
+            }
+
+            const prefill = buildProductPrefill(product);
+            const originalName = prefill.nom_produit || product.nom || 'Produit';
+            prefill.nom_produit = `${originalName} (Copie)`;
+
+            // ✅ CORRECTION: Utiliser les médias chargés depuis l'API en priorité, sinon ceux du prefill
+            const finalImages = loadedImages.length > 0 ? loadedImages : (Array.isArray(prefill.images) ? prefill.images : []);
+            const finalVideos = loadedVideos.length > 0 ? loadedVideos : (Array.isArray(prefill.videos) ? prefill.videos : []);
+            const finalAudios = loadedAudios.length > 0 ? loadedAudios : (Array.isArray(prefill.audios) ? prefill.audios : []);
+            const finalDocuments = loadedDocuments.length > 0 ? loadedDocuments : (Array.isArray(prefill.documents) ? prefill.documents : []);
+
+            // Mettre à jour le prefill avec les médias chargés
+            prefill.images = finalImages;
+            prefill.videos = finalVideos;
+            prefill.audios = finalAudios;
+            prefill.documents = finalDocuments;
+
+            const mediaData = {
+                base64_image: finalImages,
+                video_base64: finalVideos,
+                audio_base64: finalAudios,
+                doc_base64: finalDocuments,
+            };
+
+            console.log('[MesProduitsScreen] 📦 Prefill final pour duplication:', {
+                nom_produit: prefill.nom_produit,
+                images_count: finalImages.length,
+                videos_count: finalVideos.length,
+                audios_count: finalAudios.length,
+                documents_count: finalDocuments.length
+            });
+
+            navigation.navigate('AjouterProduitSimple' as never, {
+                mode: 'duplicate',
+                serviceId: product.serviceId,
+                prefill,
+                mediaData,
+            } as never);
+        } catch (error) {
+            console.error('[MesProduitsScreen] ❌ Erreur lors de la duplication du produit:', error);
+            Alert.alert('Erreur', 'Impossible de charger les données du produit pour la duplication');
+        }
     };
 
     // Promouvoir un produit

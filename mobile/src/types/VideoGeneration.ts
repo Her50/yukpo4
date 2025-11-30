@@ -137,6 +137,21 @@ export interface VideoGenerationPayload {
         media_id: number;
         scene_index: number;
     }> | null;
+    timeline?: {
+        total_duration: number;
+        scenes: Array<{
+            scene_index: number;
+            start_time: number;
+            duration: number;
+            media_id?: string;
+            media_url?: string;
+            text?: string;
+            text_position?: string;
+            transition?: string;
+            effects?: string[];
+            audio_cue?: number;
+        }>;
+    } | null;
 }
 
 export interface AIVideoBriefVariant {

@@ -1945,6 +1945,7 @@ async fn handle_reverse_geocode(
 }
 
 /// Servir les fichiers média
+/// ✅ CORRIGÉ 2025-11-30: Gérer les chemins avec ou sans préfixe uploads/services/
 async fn serve_media_file(Path(file_path): Path<String>) -> Result<Response<Body>, StatusCode> {
     info!("[serve_media_file] Demande fichier: {}", file_path);
 
@@ -1957,8 +1958,17 @@ async fn serve_media_file(Path(file_path): Path<String>) -> Result<Response<Body
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    // Construire le chemin complet
-    let full_path = format!("uploads/services/{}", file_path);
+    // ✅ CORRIGÉ: Gérer les chemins avec ou sans préfixe uploads/services/
+    let full_path = if file_path.starts_with("uploads/services/") {
+        // Le chemin contient déjà le préfixe, l'utiliser tel quel
+        file_path.clone()
+    } else if file_path.starts_with("uploads/") {
+        // Le chemin commence par uploads/ mais pas uploads/services/, l'utiliser tel quel
+        file_path.clone()
+    } else {
+        // Le chemin est relatif, ajouter le préfixe uploads/services/
+        format!("uploads/services/{}", file_path)
+    };
     info!("[serve_media_file] Chemin complet: {}", full_path);
 
     // Lire le fichier

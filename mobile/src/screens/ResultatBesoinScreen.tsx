@@ -312,6 +312,8 @@ const ResultatBesoinScreen: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [refreshing, setRefreshing] = useState(false); // ✅ NOUVEAU : Pull-to-refresh
   const [showSearchActions, setShowSearchActions] = useState(false);
+  // ✅ NOUVEAU : État pour gérer les erreurs de recherche
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // États filtrage et tri
   const [sortBy, setSortBy] = useState<SortOption>('pertinence');
@@ -633,52 +635,74 @@ const ResultatBesoinScreen: React.FC = () => {
     trackNavigation('view');
   }, []);
 
-  // ✅ NOUVEAU : Initialiser les résultats depuis les paramètres de route (quand on vient de HomeScreen)
+  // ✅ CORRECTION FONDAMENTALE : Initialiser les résultats depuis les paramètres de route
+  // CETTE FONCTION EST CRITIQUE - Elle doit TOUJOURS s'exécuter pour afficher l'écran
   useEffect(() => {
     try {
       const params = route.params as any;
-      if (!params) {
-        return;
-      }
 
       logger.log('[ResultatBesoinScreen] 📥 Paramètres de route reçus:', {
-        hasResults: !!params.results,
-        resultsCount: Array.isArray(params.results) ? params.results.length : 0,
-        hasSearchQuery: !!params.searchQuery,
-        searchQuery: params.searchQuery,
-        type: params.type
+        hasParams: !!params,
+        hasResults: !!params?.results,
+        resultsCount: Array.isArray(params?.results) ? params.results.length : 0,
+        resultsType: Array.isArray(params?.results) ? 'array' : typeof params?.results,
+        hasSearchQuery: !!params?.searchQuery,
+        searchQuery: params?.searchQuery,
+        type: params?.type,
+        hasError: !!params?.hasError,
+        error: params?.error
       });
 
-      // Initialiser les résultats si fournis
-      if (params.results) {
+      // ✅ CORRECTION FONDAMENTALE: S'assurer que loadingResults est à false pour afficher l'écran
+      setLoadingResults(false);
+
+      // ✅ NOUVEAU : Gérer les erreurs de recherche
+      if (params?.hasError && params?.error) {
+        setSearchError(params.error);
+        logger.warn('[ResultatBesoinScreen] ⚠️ Erreur de recherche reçue:', params.error);
+      } else {
+        setSearchError(null);
+      }
+
+      // ✅ CORRECTION FONDAMENTALE: Initialiser les résultats SI fournis, sinon laisser vide
+      // Mais TOUJOURS définir results pour que l'écran s'affiche
+      if (params?.results !== undefined) {
         let extractedResults: Product[] = [];
 
         // Si c'est déjà un tableau, l'utiliser directement
         if (Array.isArray(params.results)) {
           extractedResults = params.results as Product[];
           logger.log('[ResultatBesoinScreen] ✅ Résultats déjà en tableau:', extractedResults.length);
-        } else {
+        } else if (params.results && typeof params.results === 'object') {
           // Sinon, utiliser extractSearchResults pour parser la structure
           extractedResults = extractSearchResults(params.results);
           logger.log('[ResultatBesoinScreen] ✅ Résultats extraits depuis structure:', extractedResults.length);
-        }
-
-        if (extractedResults.length > 0) {
-          setResults(extractedResults);
-          logger.log('[ResultatBesoinScreen] ✅ Résultats initialisés:', extractedResults.length);
         } else {
-          logger.warn('[ResultatBesoinScreen] ⚠️ Aucun résultat valide trouvé dans route.params');
+          // Si params.results est null, undefined, ou autre chose, utiliser tableau vide
+          extractedResults = [];
+          logger.log('[ResultatBesoinScreen] ⚠️ params.results invalide, utilisation tableau vide');
         }
 
-        // Initialiser les filtres depuis la requête de recherche
-        if (params.searchQuery) {
-          const queryText = typeof params.searchQuery === 'string' ? params.searchQuery : '';
-          setSearchQuery(queryText);
-          const words = queryText.split(' ').filter(w => w.trim());
-          if (words.length > 0) {
-            setFilters(words);
-          }
+        // ✅ CORRECTION FONDAMENTALE: TOUJOURS définir les résultats (même vides) pour afficher l'écran
+        setResults(extractedResults);
+        logger.log('[ResultatBesoinScreen] ✅ Résultats définis:', extractedResults.length);
+      } else {
+        // ✅ Si pas de results dans params, initialiser avec tableau vide pour afficher l'écran
+        logger.log('[ResultatBesoinScreen] ⚠️ Pas de results dans params, initialisation avec tableau vide');
+        setResults([]);
+      }
+
+      // Initialiser les filtres depuis la requête de recherche
+      if (params?.searchQuery) {
+        const queryText = typeof params.searchQuery === 'string' ? params.searchQuery : '';
+        setSearchQuery(queryText);
+        const words = queryText.split(' ').filter(w => w.trim());
+        if (words.length > 0) {
+          setFilters(words);
         }
+      } else if (params?.results !== undefined) {
+        // ✅ Si on a des résultats mais pas de searchQuery, initialiser searchQuery vide
+        setSearchQuery('');
       }
     } catch (error) {
       // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
@@ -690,6 +714,9 @@ const ResultatBesoinScreen: React.FC = () => {
         params: route.params,
         error: error
       });
+      // ✅ CORRECTION FONDAMENTALE: Même en cas d'erreur, initialiser avec tableau vide pour afficher l'écran
+      setResults([]);
+      setLoadingResults(false);
     }
   }, [route.params]); // ✅ Exécuter une seule fois au montage ou quand les params changent
 
@@ -1732,11 +1759,26 @@ const ResultatBesoinScreen: React.FC = () => {
     if (searchQuery.length > 0) {
       return (
         <View style={styles.emptyState}>
-          <SafeIcon name="package-x" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>Aucun résultat</Text>
-          <Text style={styles.emptyText}>
-            Essayez avec d'autres mots-clés ou ajustez les filtres
+          <SafeIcon name={searchError ? "alert-circle" : "package-x"} size={64} color={searchError ? "#EF4444" : "#D1D5DB"} />
+          <Text style={styles.emptyTitle}>
+            {searchError ? "Erreur de recherche" : "Aucun résultat"}
           </Text>
+          <Text style={styles.emptyText}>
+            {searchError || "Essayez avec d'autres mots-clés ou ajustez les filtres"}
+          </Text>
+          {searchError && (
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                setSearchError(null);
+                if (searchQuery.trim()) {
+                  searchFinal(searchQuery);
+                }
+              }}
+            >
+              <Text style={styles.retryButtonText}>Réessayer</Text>
+            </TouchableOpacity>
+          )}
         </View>
       );
     }
@@ -1750,7 +1792,7 @@ const ResultatBesoinScreen: React.FC = () => {
         </Text>
       </View>
     );
-  }, [loadingResults, searchQuery.length, showSuggestions]);
+  }, [loadingResults, searchQuery.length, showSuggestions, searchError, searchFinal]);
 
   const listData = showSuggestions ? [] : filteredResults;
 
@@ -2639,6 +2681,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
+  },
+  // ✅ NOUVEAU : Styles pour bouton de réessai
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#6366F1',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   // ✅ NOUVEAU : Styles pour filtre par prix (de mobile2)
   filterGroupHeader: {

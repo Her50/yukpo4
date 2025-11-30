@@ -97,6 +97,7 @@ const DISTRIBUTION_OPTIONS = [
     { key: 'youtube', label: 'YouTube' },
 ];
 
+// ✅ CORRIGÉ 2025-11-30: Utiliser l'endpoint /api/media/files pour les chemins uploads/
 const buildMediaUrl = (path: string | undefined | null): string => {
     if (!path) {
         return '';
@@ -106,10 +107,17 @@ const buildMediaUrl = (path: string | undefined | null): string => {
         return path;
     }
 
-    const base = config.UPLOAD_BASE_URL ? config.UPLOAD_BASE_URL.replace(/\/$/, '') : '';
-    const sanitizedPath = path.replace(/^\//, '');
+    // ✅ CORRIGÉ: Utiliser /api/media/files pour les chemins uploads/
+    if (path.startsWith('uploads/') || path.startsWith('/uploads/')) {
+        const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+        const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+        return base ? `${base}/api/media/files/${cleanPath}` : cleanPath;
+    }
 
-    return base ? `${base}/${sanitizedPath}` : sanitizedPath;
+    // Pour les autres chemins, utiliser aussi /api/media/files
+    const cleanPath = path.replace(/^\//, '');
+    const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+    return base ? `${base}/api/media/files/${cleanPath}` : cleanPath;
 };
 
 const normalizeProductName = (product?: ManagedProduct | null): string => {
@@ -1923,7 +1931,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                         {isAttaching ? (
                                                             <ActivityIndicator size="small" color={modernColors.primary} />
                                                         ) : (
-                                                            <SafeIcon name="music" size={20} color={modernColors.primary} />
+                                                            <SafeIcon name="tablet" size={20} color={modernColors.primary} />
                                                         )}
                                                         <View style={{ flex: 1 }}>
                                                             <Text style={styles.audioChipText} numberOfLines={1}>
@@ -2063,7 +2071,80 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                 </NativeCard>
 
-                {/* ✅ AJOUTÉ: Prévisualisation de la timeline générée à l'étape 6 */}
+                {/* ✅ CORRIGÉ 2025-11-30: Prévisualisation de la timeline générée à l'étape 6 */}
+                {!generatedTimeline && !isGeneratingTimeline && (
+                    <NativeCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>🎬 Structure de la vidéo</Text>
+                            <TouchableOpacity
+                                style={styles.linkButton}
+                                onPress={async () => {
+                                    // Générer la timeline si elle n'existe pas
+                                    if (!selectedProduct || !briefVariants.length || !styleSuggestion) {
+                                        Alert.alert('Prérequis manquants', 'Générez d\'abord le brief et le style pour créer la timeline.');
+                                        return;
+                                    }
+                                    setIsGeneratingTimeline(true);
+                                    try {
+                                        const availableMedia = [
+                                            ...productMedia.map(m => ({
+                                                id: m.id.toString(),
+                                                url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,
+                                                media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
+                                            })),
+                                            ...serviceMedia.map(m => ({
+                                                id: m.id.toString(),
+                                                url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,
+                                                media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
+                                            })),
+                                        ];
+                                        const selectedBrief = briefVariants[0];
+                                        const timelineResponse = await mediaApi.generateVideoTimeline({
+                                            brief: {
+                                                script_outline: selectedBrief.script_outline || [],
+                                                headline: selectedBrief.headline,
+                                                call_to_action: selectedBrief.call_to_action,
+                                            },
+                                            style: {
+                                                effects: styleSuggestion.effects || [],
+                                                transitions: styleSuggestion.transitions || [],
+                                                color_palette: styleSuggestion.color_palette || undefined,
+                                            },
+                                            available_media: availableMedia,
+                                            duration_seconds: ensureNumber(duration, 28),
+                                            voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,
+                                            music_track_id: selectedMusicTrackId ?? undefined,
+                                            lang: subtitleLang || voiceoverLang || 'fr',
+                                        });
+                                        if (timelineResponse.success && timelineResponse.data) {
+                                            const responseData = timelineResponse.data as { success?: boolean; timeline?: VideoTimelineType };
+                                            if (responseData.timeline) {
+                                                setGeneratedTimeline(responseData.timeline);
+                                            }
+                                        }
+                                    } catch (error) {
+                                        console.error('[ProductVideoCreationModal] Erreur génération timeline:', error);
+                                        Alert.alert('Erreur', 'Impossible de générer la timeline. La vidéo sera créée avec le script texte.');
+                                    } finally {
+                                        setIsGeneratingTimeline(false);
+                                    }
+                                }}
+                            >
+                                {isGeneratingTimeline ? (
+                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                ) : (
+                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                                )}
+                                <Text style={styles.linkButtonText}>
+                                    {isGeneratingTimeline ? 'Génération…' : 'Générer la timeline'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.sectionSubtitle}>
+                            La timeline permet de visualiser la structure de votre vidéo avant la génération finale.
+                        </Text>
+                    </NativeCard>
+                )}
                 {generatedTimeline && !isEditingTimeline && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
@@ -2233,76 +2314,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </TouchableOpacity>
                     {showAdvancedOptions && (
                         <View style={styles.advancedOptionsContent}>
-                            {/* Estimation de coût */}
-                            <View style={styles.advancedSection}>
-                                <View style={styles.sectionHeader}>
-                                    <Text style={styles.advancedSectionTitle}>💰 Estimation du coût</Text>
-                                    <TouchableOpacity
-                                        style={styles.linkButton}
-                                        onPress={handleEstimateCost}
-                                        disabled={costLoading}
-                                    >
-                                        {costLoading ? (
-                                            <ActivityIndicator size="small" color={modernColors.primary} />
-                                        ) : (
-                                            <SafeIcon name="calculator" size={16} color={modernColors.primary} />
-                                        )}
-                                        <Text style={styles.linkButtonText}>
-                                            {costLoading ? 'Calcul…' : 'Estimer'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                                {showCostEstimation && costEstimation ? (
-                                    <View style={styles.costEstimationContainer}>
-                                        <View style={styles.costRow}>
-                                            <Text style={styles.costLabel}>Coût estimé :</Text>
-                                            <Text style={styles.costValue}>
-                                                {costEstimation.total_cost_fcfa?.toLocaleString('fr-FR') || costEstimation.required_fcfa?.toLocaleString('fr-FR') || 'N/A'} FCFA
-                                            </Text>
-                                        </View>
-                                        {costEstimation.breakdown && (
-                                            <View style={styles.costBreakdown}>
-                                                <View style={styles.costItem}>
-                                                    <Text style={styles.costItemLabel}>Coût tokens IA :</Text>
-                                                    <Text style={styles.costItemValue}>
-                                                        {costEstimation.breakdown.tokens_cost_usd.toFixed(2)} USD
-                                                    </Text>
-                                                </View>
-                                                {costEstimation.breakdown.audio_mastering_usd > 0 && (
-                                                    <View style={styles.costItem}>
-                                                        <Text style={styles.costItemLabel}>Mastering audio :</Text>
-                                                        <Text style={styles.costItemValue}>
-                                                            {costEstimation.breakdown.audio_mastering_usd.toFixed(2)} USD
-                                                        </Text>
-                                                    </View>
-                                                )}
-                                                {costEstimation.breakdown.broll_generation_usd > 0 && (
-                                                    <View style={styles.costItem}>
-                                                        <Text style={styles.costItemLabel}>Génération B-roll :</Text>
-                                                        <Text style={styles.costItemValue}>
-                                                            {costEstimation.breakdown.broll_generation_usd.toFixed(2)} USD
-                                                        </Text>
-                                                    </View>
-                                                )}
-                                            </View>
-                                        )}
-                                        {costEstimation.estimated_tokens && (
-                                            <Text style={styles.costHint}>
-                                                Tokens estimés : {costEstimation.estimated_tokens.toLocaleString('fr-FR')}
-                                            </Text>
-                                        )}
-                                        {costEstimation.affordable === false && (
-                                            <Text style={[styles.costHint, { color: '#EF4444', fontWeight: '600' }]}>
-                                                ⚠️ Solde insuffisant ({costEstimation.current_balance_fcfa?.toLocaleString('fr-FR') || 0} FCFA)
-                                            </Text>
-                                        )}
-                                    </View>
-                                ) : (
-                                    <Text style={styles.sectionSubtitle}>
-                                        Estimez le coût de génération avant de lancer la création.
-                                    </Text>
-                                )}
-                            </View>
+                            {/* ✅ SUPPRIMÉ 2025-11-30: Estimation de coût retirée des options - Affichée dans un toast au clic sur "Générer la vidéo" */}
 
                             {/* Chaînage de vidéos */}
                             <View style={styles.advancedSection}>
@@ -2692,49 +2704,143 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             ? Math.min(Math.max(parsedMusicVolume, 0.05), 0.7)
             : 0.28;
 
-        const payload = {
-            style: stylePreset,
-            duration_seconds: durationSeconds,
-            headline: headline.trim(),
-            call_to_action: callToAction.trim(),
-            include_price: includePrice,
-            include_promotion: includePromotion,
-            include_contact: includeContact,
-            selected_media_ids: Array.from(selectedMediaIds.values()),
-            related_product_indices: Array.from(selectedRelatedProducts.values()),
-            use_product_gallery: useProductGallery,
-            use_service_mediatech: useMediatechLibrary,
-            include_publicite_assets: includePubliciteAssets,
-            // ✅ CORRECTION: Activer la génération automatique d'images si aucune image n'est disponible
-            auto_generate_images: true,
-            publish_to_chat: publishToChat,
-            publish_to_product_card: publishToProductCard,
-            // ✅ NOUVEAU: Utiliser la timeline générée si disponible, sinon storyboard texte
-            timeline: generatedTimeline || undefined,
-            storyboard: generatedTimeline
-                ? undefined
-                : scriptNotes
-                    .split(/\r?\n/)
-                    .map((line) => line.trim())
-                    .filter((line) => line.length > 0),
-            music_mode: musicMode,
-            music_volume: musicMode === 'none' ? undefined : safeMusicVolume,
-            music_track_id: selectedMusicTrackId ?? undefined,
-            voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,
-            voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
-            voiceover_voice: voiceoverEnabled ? voiceoverLang : undefined,
-            subtitle_lang: subtitleLang,
-            generate_square_variant: generateSquareVariant,
-            generate_landscape_variant: generateLandscapeVariant,
-            distribute_channels: Array.from(selectedChannels.values()),
-            style_effects: selectedEffects.size > 0 ? Array.from(selectedEffects) : undefined,
-            style_transitions: selectedTransitions.size > 0 ? Array.from(selectedTransitions) : undefined,
-            style_overlay_tips: selectedOverlayTips.size > 0 ? Array.from(selectedOverlayTips) : undefined,
-            style_color_palette: colorPalette.trim().length > 0 ? colorPalette.trim() : undefined,
-            style_music_hint: styleMusicHint.trim().length > 0 ? styleMusicHint.trim() : undefined,
-            // ✅ NOUVEAU: Chaînage de vidéos (sessions liées)
-            linked_session_ids: selectedLinkedSessions.length > 0 ? selectedLinkedSessions : undefined,
-        };
+        // ✅ NOUVEAU 2025-11-30: Estimer le coût et afficher dans un toast avant de générer
+        try {
+            setCostLoading(true);
+            const serviceId = selectedProduct.serviceId;
+            if (!serviceId) {
+                Alert.alert('Service invalide', 'Impossible d\'estimer le coût.');
+                return;
+            }
+
+            const payloadForEstimation: VideoGenerationPayload = {
+                style: stylePreset,
+                duration_seconds: durationSeconds,
+                headline: headline.trim(),
+                call_to_action: callToAction.trim(),
+                include_price: includePrice,
+                include_promotion: includePromotion,
+                include_contact: includeContact,
+                selected_media_ids: Array.from(selectedMediaIds.values()),
+                related_product_indices: Array.from(selectedRelatedProducts.values()),
+                use_product_gallery: useProductGallery,
+                use_service_mediatech: useMediatechLibrary,
+                include_publicite_assets: includePubliciteAssets,
+                publish_to_chat: publishToChat,
+                publish_to_product_card: publishToProductCard,
+                timeline: generatedTimeline ? {
+                    total_duration: generatedTimeline.total_duration,
+                    scenes: generatedTimeline.scenes.map(s => ({
+                        scene_index: s.scene_index,
+                        start_time: s.start_time,
+                        duration: s.duration,
+                        media_id: s.media_id,
+                        media_url: s.media_url,
+                        text: s.text,
+                        text_position: s.text_position,
+                        transition: s.transition,
+                        effects: s.effects,
+                        audio_cue: s.audio_cue,
+                    }))
+                } : undefined,
+                storyboard: generatedTimeline
+                    ? undefined
+                    : scriptNotes
+                        .split(/\r?\n/)
+                        .map((line) => line.trim())
+                        .filter((line) => line.length > 0),
+                music_mode: musicMode,
+                music_volume: musicMode === 'none' ? undefined : safeMusicVolume,
+                music_track_id: selectedMusicTrackId ?? undefined,
+                voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,
+                voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
+                voiceover_voice: voiceoverEnabled ? voiceoverLang : undefined,
+                subtitle_lang: subtitleLang,
+                generate_square_variant: generateSquareVariant,
+                generate_landscape_variant: generateLandscapeVariant,
+                distribute_channels: Array.from(selectedChannels.values()),
+                style_effects: selectedEffects.size > 0 ? Array.from(selectedEffects) : undefined,
+                style_transitions: selectedTransitions.size > 0 ? Array.from(selectedTransitions) : undefined,
+                style_overlay_tips: selectedOverlayTips.size > 0 ? Array.from(selectedOverlayTips) : undefined,
+                style_color_palette: colorPalette.trim().length > 0 ? colorPalette.trim() : undefined,
+                style_music_hint: styleMusicHint.trim().length > 0 ? styleMusicHint.trim() : undefined,
+                // ✅ NOTE: linked_session_ids retiré car non supporté dans VideoGenerationPayload
+            };
+
+            const response = await iaApi.estimateVideoCost(serviceId, selectedProduct.product_index, payloadForEstimation);
+            const estimationResponse = response.data as VideoCostEstimateResponse | VideoCostEstimation | undefined;
+            const estimation =
+                estimationResponse && 'data' in estimationResponse
+                    ? estimationResponse.data
+                    : (estimationResponse as VideoCostEstimation | undefined);
+
+            setCostLoading(false);
+
+            if (!estimation) {
+                Alert.alert('Estimation impossible', 'Impossible d\'estimer le coût pour le moment. Réessayez plus tard.');
+                return;
+            }
+
+            // Construire le message d'estimation
+            const totalCost = estimation.total_cost_fcfa || estimation.required_fcfa || 0;
+            const currentBalance = estimation.current_balance_fcfa || 0;
+            const isAffordable = estimation.affordable !== false;
+
+            let costMessage = `💰 Estimation du coût de génération\n\n`;
+            costMessage += `Coût total : ${totalCost.toLocaleString('fr-FR')} FCFA\n`;
+            if (estimation.breakdown) {
+                costMessage += `\nDétail :\n`;
+                costMessage += `• Tokens IA : ${estimation.breakdown.tokens_cost_usd.toFixed(2)} USD\n`;
+                if (estimation.breakdown.audio_mastering_usd > 0) {
+                    costMessage += `• Mastering audio : ${estimation.breakdown.audio_mastering_usd.toFixed(2)} USD\n`;
+                }
+                if (estimation.breakdown.broll_generation_usd > 0) {
+                    costMessage += `• Génération B-roll : ${estimation.breakdown.broll_generation_usd.toFixed(2)} USD\n`;
+                }
+            }
+            costMessage += `\nSolde actuel : ${currentBalance.toLocaleString('fr-FR')} FCFA\n`;
+
+            if (!isAffordable) {
+                costMessage += `\n⚠️ Solde insuffisant !`;
+            }
+
+            // Afficher l'Alert avec confirmation
+            Alert.alert(
+                'Estimation du coût',
+                costMessage,
+                [
+                    {
+                        text: 'Annuler',
+                        style: 'cancel',
+                    },
+                    {
+                        text: isAffordable ? 'Confirmer et générer' : 'Recharger des tokens',
+                        onPress: async () => {
+                            if (!isAffordable) {
+                                // Rediriger vers la page de recharge
+                                Alert.alert('Solde insuffisant', 'Veuillez recharger vos tokens avant de générer la vidéo.');
+                                return;
+                            }
+                            // Continuer avec la génération
+                            await proceedWithVideoGeneration(payloadForEstimation);
+                        },
+                    },
+                ],
+                { cancelable: true }
+            );
+        } catch (error: any) {
+            setCostLoading(false);
+            console.error('[ProductVideoCreationModal] Erreur estimation coût:', error);
+            const message = error?.message || 'Erreur lors de l\'estimation du coût';
+            Alert.alert('Erreur d\'estimation', message);
+        }
+    };
+
+    // ✅ NOUVEAU 2025-11-30: Fonction séparée pour la génération effective de la vidéo
+    const proceedWithVideoGeneration = async (payload: VideoGenerationPayload) => {
+        if (!selectedProduct) {
+            return;
+        }
 
         setIsSubmitting(true);
 
@@ -3519,15 +3625,15 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between', // ✅ AJOUTÉ: Espacement uniforme entre les colonnes
     },
     styleChip: {
-        // ✅ CORRIGÉ: 2 colonnes avec gap de 12px
+        // ✅ CORRIGÉ 2025-11-30: 2 colonnes avec taille réduite pour meilleure UX
         // Calcul: (100% - 12px) / 2 ≈ 48% par colonne
         width: '48%', // ✅ Largeur fixe pour garantir 2 colonnes
         minWidth: 0, // ✅ AJOUTÉ: Permet au width de fonctionner correctement
-        borderRadius: 14,
+        borderRadius: 12, // ✅ Réduit de 14 à 12
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        padding: 12,
-        gap: 6,
+        padding: 10, // ✅ Réduit de 12 à 10
+        gap: 4, // ✅ Réduit de 6 à 4
         backgroundColor: '#F8FAFC',
     },
     styleChipSelected: {
@@ -3535,7 +3641,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#EEF2FF',
     },
     styleChipLabel: {
-        fontSize: 13,
+        fontSize: 12, // ✅ Réduit de 13 à 12
         fontWeight: '700',
         color: modernColors.text,
     },
@@ -3543,9 +3649,9 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
     },
     styleChipDescription: {
-        fontSize: 12,
+        fontSize: 11, // ✅ Réduit de 12 à 11
         color: modernColors.textSecondary,
-        lineHeight: 16,
+        lineHeight: 14, // ✅ Réduit de 16 à 14
     },
     voiceRow: {
         flexDirection: 'row',
@@ -3568,13 +3674,14 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between', // ✅ Espacement uniforme entre les colonnes
     },
     // ✅ AJOUTÉ: Style pour les cartes d'ambiances musicales en 2 colonnes
+    // ✅ CORRIGÉ 2025-11-30: Taille réduite pour meilleure UX
     audioChipGrid: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 14,
+        paddingHorizontal: 12, // ✅ Réduit de 14 à 12
+        paddingVertical: 8, // ✅ Réduit de 10 à 8
+        borderRadius: 12, // ✅ Réduit de 14 à 12
         borderWidth: 1,
         borderColor: '#E2E8F0',
         backgroundColor: '#F8FAFC',

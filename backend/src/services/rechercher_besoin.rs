@@ -426,10 +426,16 @@ pub async fn rechercher_besoin_direct(
         ));
     }
 
-    // Utiliser le premier mot-clé comme terme de recherche principal
-    let primary_keyword = &keywords[0];
+    // ✅ CORRIGÉ 2025-12-01: Utiliser TOUS les mots-clés combinés au lieu de seulement le premier
+    // Cela permet de trouver des services avec plusieurs mots-clés (ex: "photographe professionnel")
+    let primary_keyword = if keywords.len() == 1 {
+        keywords[0].clone()
+    } else {
+        // Combiner tous les mots-clés en une seule chaîne pour la recherche
+        keywords.join(" ")
+    };
     log_info(&format!(
-        "[RECHERCHE_DIRECTE] Mot-clé principal: '{}'",
+        "[RECHERCHE_DIRECTE] Terme de recherche (tous mots-clés combinés): '{}'",
         primary_keyword
     ));
 
@@ -471,10 +477,10 @@ pub async fn rechercher_besoin_direct(
         user_text
     ));
 
-    // Recherche native intelligente avec le mot-clé principal ET filtrage GPS + LIEU
+    // Recherche native intelligente avec TOUS les mots-clés combinés ET filtrage GPS + LIEU
     let native_results = match native_search
         .intelligent_search_with_location_prefilter(
-            primary_keyword,
+            &primary_keyword,
             user_text, // ✅ INPUT COMPLET pour pré-filtre lieu
             None,      // Pas de filtre de catégorie
             user_id,

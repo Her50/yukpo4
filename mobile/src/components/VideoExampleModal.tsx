@@ -375,6 +375,10 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
                                         source={{ uri: item.thumbnail }}
                                         style={styles.thumbnailImage}
                                         resizeMode="cover"
+                                        onError={() => {
+                                            // ✅ CORRECTION 2025-12-01: Gérer les erreurs 404 pour les thumbnails
+                                            console.warn('[VideoExampleModal] Erreur chargement thumbnail:', item.thumbnail);
+                                        }}
                                     />
                                     <View style={styles.thumbnailOverlay}>
                                         <ActivityIndicator size="large" color="#FFFFFF" />
@@ -396,6 +400,7 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
                             style={styles.video}
                             resizeMode={ResizeMode.CONTAIN}
                             shouldPlay={false}
+                            isLooping={false}
                             useNativeControls={true}
                             onError={(error) => handleVideoError(item.id, error)}
                             onLoad={() => handleVideoLoad(item.id)}

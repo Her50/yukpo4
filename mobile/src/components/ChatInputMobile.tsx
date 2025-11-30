@@ -126,11 +126,29 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     };
 
     const getSuggestionVector = (suggestion: any): string[] => {
+        // ✅ AMÉLIORATION: Essayer plusieurs sources pour le texte de recherche
         if (Array.isArray(suggestion?.full_vector) && suggestion.full_vector.length > 0) {
-            return suggestion.full_vector;
+            return suggestion.full_vector.filter((item: any) => item && typeof item === 'string' && item.trim().length > 0);
         }
         if (Array.isArray(suggestion?.product_vector) && suggestion.product_vector.length > 0) {
-            return suggestion.product_vector;
+            return suggestion.product_vector.filter((item: any) => item && typeof item === 'string' && item.trim().length > 0);
+        }
+        // ✅ FALLBACK: Utiliser d'autres champs si les vecteurs sont vides
+        if (suggestion?.combinaison_brute && typeof suggestion.combinaison_brute === 'string') {
+            return [suggestion.combinaison_brute];
+        }
+        if (suggestion?.full_text && typeof suggestion.full_text === 'string') {
+            return [suggestion.full_text];
+        }
+        if (suggestion?.title && typeof suggestion.title === 'string') {
+            return [suggestion.title];
+        }
+        if (suggestion?.nom && typeof suggestion.nom === 'string') {
+            return [suggestion.nom];
+        }
+        // ✅ DERNIER FALLBACK: Essayer de construire depuis product_labels
+        if (Array.isArray(suggestion?.product_labels) && suggestion.product_labels.length > 0) {
+            return suggestion.product_labels.filter((item: any) => item && typeof item === 'string' && item.trim().length > 0);
         }
         return [];
     };
@@ -760,42 +778,103 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 
     // Soumettre
     const handleSubmit = (overrideText?: string) => {
-        const finalText = (overrideText ?? text).trim();
-        const hasContent = finalText || images.length > 0 || documents.length > 0 ||
-            videos.length > 0 || excelFiles.length > 0 || audioBase64;
+        try {
+            const finalText = (overrideText ?? text).trim();
+            const hasContent = finalText || images.length > 0 || documents.length > 0 ||
+                videos.length > 0 || excelFiles.length > 0 || audioBase64;
 
-        if (!hasContent) {
-            Alert.alert('Erreur', 'Veuillez saisir du texte ou ajouter des médias');
-            return;
+            console.log('[ChatInputMobile] 🔍 handleSubmit appelé:', {
+                overrideText: overrideText,
+                finalText: finalText,
+                hasContent: hasContent,
+                textLength: finalText.length,
+                imagesCount: images.length,
+                documentsCount: documents.length
+            });
+
+            if (!hasContent) {
+                console.warn('[ChatInputMobile] ⚠️ Pas de contenu, abandon de la soumission');
+                Alert.alert('Erreur', 'Veuillez saisir du texte ou ajouter des médias');
+                return;
+            }
+
+            const input = buildInputPayload(overrideText);
+
+            console.log('[ChatInputMobile] 📦 Payload construit:', {
+                texte: input.texte,
+                texteLength: input.texte?.length || 0,
+                images: input.base64_image.length,
+                audios: input.audio_base64.length,
+                videos: input.video_base64.length,
+                documents: input.doc_base64.length,
+                excel: input.excel_base64.length,
+                logo: input.logo.length,
+                banner: input.banner.length,
+                gps: !!input.gps_fixe,
+                gps_mobile: input.gps_mobile
+            });
+
+            console.log('[ChatInputMobile] 📤 Appel onSubmit avec payload...');
+            onSubmit(input);
+            console.log('[ChatInputMobile] ✅ onSubmit appelé avec succès');
+            resetForm();
+        } catch (error: any) {
+            console.error('[ChatInputMobile] ❌ ERREUR CRITIQUE dans handleSubmit:', {
+                error: error,
+                message: error?.message,
+                stack: error?.stack,
+                overrideText: overrideText
+            });
+            Alert.alert('Erreur', `Une erreur est survenue lors de la soumission: ${error?.message || 'Erreur inconnue'}`);
         }
-
-        const input = buildInputPayload(overrideText);
-
-        console.log('[ChatInputMobile] Soumission complète:', {
-            texte: input.texte,
-            images: input.base64_image.length,
-            audios: input.audio_base64.length,
-            videos: input.video_base64.length,
-            documents: input.doc_base64.length,
-            excel: input.excel_base64.length,
-            logo: input.logo.length,
-            banner: input.banner.length,
-            gps: !!input.gps_fixe
-        });
-
-        onSubmit(input);
-        resetForm();
     };
 
     const handleSuggestionSelect = (suggestion: any) => {
-        const fullText = getSuggestionVector(suggestion).join(' ').trim();
-        if (!fullText) {
-            return;
+        try {
+            console.log('[ChatInputMobile] 🎯 handleSuggestionSelect appelé avec:', {
+                suggestion: suggestion,
+                hasFullVector: !!suggestion?.full_vector,
+                hasProductVector: !!suggestion?.product_vector,
+                fullVectorLength: Array.isArray(suggestion?.full_vector) ? suggestion.full_vector.length : 0,
+                productVectorLength: Array.isArray(suggestion?.product_vector) ? suggestion.product_vector.length : 0
+            });
+
+            const vector = getSuggestionVector(suggestion);
+            console.log('[ChatInputMobile] 📊 Vecteur extrait:', {
+                vectorLength: vector.length,
+                vector: vector
+            });
+
+            if (!vector || vector.length === 0) {
+                console.error('[ChatInputMobile] ❌ ERREUR: Vecteur vide ou invalide pour la suggestion:', suggestion);
+                Alert.alert('Erreur', 'Cette suggestion ne contient pas de données valides. Veuillez en sélectionner une autre.');
+                return;
+            }
+
+            const fullText = vector.join(' ').trim();
+            if (!fullText) {
+                console.error('[ChatInputMobile] ❌ ERREUR: Texte vide après jointure du vecteur');
+                Alert.alert('Erreur', 'Impossible d\'extraire le texte de cette suggestion.');
+                return;
+            }
+
+            console.log('[ChatInputMobile] ✅ Suggestion sélectionnée, texte final:', fullText);
+            setShowSuggestions(false);
+            setSuggestions([]);
+
+            // ✅ CORRECTION: Appeler handleSubmit avec le texte de la suggestion
+            console.log('[ChatInputMobile] 📤 Appel handleSubmit avec texte:', fullText);
+            handleSubmit(fullText);
+            console.log('[ChatInputMobile] ✅ handleSubmit appelé avec succès');
+        } catch (error: any) {
+            console.error('[ChatInputMobile] ❌ ERREUR CRITIQUE dans handleSuggestionSelect:', {
+                error: error,
+                message: error?.message,
+                stack: error?.stack,
+                suggestion: suggestion
+            });
+            Alert.alert('Erreur', `Une erreur est survenue lors de la sélection de la suggestion: ${error?.message || 'Erreur inconnue'}`);
         }
-        console.log('[ChatInputMobile] ✅ Suggestion sélectionnée:', fullText);
-        setShowSuggestions(false);
-        setSuggestions([]);
-        handleSubmit(fullText);
     };
 
     return (

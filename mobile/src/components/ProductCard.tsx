@@ -204,6 +204,7 @@ const getCountryFlag = (country?: string): string => {
 };
 
 // ✅ NOUVEAU 2025-11-26: Helper pour construire l'URL complète d'un média
+// ✅ CORRIGÉ 2025-11-30: Utiliser l'endpoint /api/media/files pour les chemins uploads/
 const buildMediaUrl = (path: string | undefined | null): string | undefined => {
   if (!path || typeof path !== 'string') return undefined;
 
@@ -217,14 +218,15 @@ const buildMediaUrl = (path: string | undefined | null): string | undefined => {
     return path;
   }
 
-  // Si c'est un chemin relatif (uploads/...), préfixer avec l'URL de l'API
+  // ✅ CORRIGÉ: Utiliser l'endpoint /api/media/files pour les chemins uploads/
   if (path.startsWith('uploads/') || path.startsWith('/uploads/')) {
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    return `${config.API_BASE_URL}${cleanPath}`;
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+    return `${config.API_BASE_URL}/api/media/files/${cleanPath}`;
   }
 
-  // Sinon, essayer de construire l'URL complète
-  return path.startsWith('/') ? `${config.API_BASE_URL}${path}` : `${config.API_BASE_URL}/${path}`;
+  // Pour les autres chemins relatifs, utiliser aussi /api/media/files
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${config.API_BASE_URL}/api/media/files/${cleanPath}`;
 };
 
 const firstNonEmptyString = (...values: any[]): string | undefined => {

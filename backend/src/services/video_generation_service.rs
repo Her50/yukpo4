@@ -519,6 +519,66 @@ pub async fn validate_video_generation_prerequisites(
     Ok(())
 }
 
+/// ✅ NOUVEAU 2025-11-30: S'assure que le produit existe dans products_lifecycle
+/// Crée l'entrée si elle n'existe pas déjà
+async fn ensure_product_in_lifecycle(
+    pool: &sqlx::PgPool,
+    service_id: i32,
+    product_index: i32,
+    service_data: &Value,
+    product_name: &str,
+    product_type: &str,
+) -> AppResult<()> {
+    // Vérifier si le produit existe déjà
+    let exists: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM products_lifecycle WHERE service_id = $1 AND product_index = $2"
+    )
+    .bind(service_id)
+    .bind(product_index)
+    .fetch_optional(pool)
+    .await
+    .map_err(|err| {
+        error!("[VideoGeneration] Erreur vérification products_lifecycle: {err:?}");
+        AppError::from(err)
+    })?;
+
+    if exists.is_some() {
+        debug!(
+            "[VideoGeneration] Produit {}:{} existe déjà dans products_lifecycle",
+            service_id, product_index
+        );
+        return Ok(()); // Déjà existant
+    }
+
+    // Créer l'entrée dans products_lifecycle
+    sqlx::query(
+        r#"
+        INSERT INTO products_lifecycle (
+            service_id, product_index, product_nom, product_type, is_active
+        )
+        VALUES ($1, $2, $3, $4, TRUE)
+        ON CONFLICT (service_id, product_index) DO NOTHING
+        "#
+    )
+    .bind(service_id)
+    .bind(product_index)
+    .bind(product_name)
+    .bind(product_type)
+    .execute(pool)
+    .await
+    .map_err(|err| {
+        error!("[VideoGeneration] Erreur création produit dans lifecycle: {err:?}");
+        AppError::from(err)
+    })?;
+
+    info!(
+        "[VideoGeneration] ✅ Produit {}:{} créé dans products_lifecycle (nom: {}, type: {})",
+        service_id, product_index, product_name, product_type
+    );
+
+    Ok(())
+}
+
 pub async fn generate_product_video(
     state: Arc<AppState>,
     user: &AuthenticatedUser,
@@ -603,6 +663,24 @@ pub async fn generate_product_video(
         ),
         None => None,
     };
+
+    // ✅ CORRIGÉ 2025-11-30: S'assurer que le produit existe dans products_lifecycle
+    // avant de charger le snapshot
+    if let Err(ensure_err) = ensure_product_in_lifecycle(
+        &state.pg,
+        service_id,
+        product_index,
+        &service_data,
+        &product_name,
+        &product_type,
+    )
+    .await
+    {
+        warn!(
+            "[VideoGeneration] ⚠️ Impossible de créer produit dans lifecycle: {} (continuer quand même)",
+            ensure_err
+        );
+    }
 
     let product_snapshot: Option<ProductConnectorSnapshot> = match state
         .commerce_connector

@@ -56,6 +56,7 @@ const EXCHANGE_RATES: { [key: string]: number } = {
 
 const PRICE_PER_DAY_FCFA = 500; // 500 FCFA par jour
 
+// ✅ CORRIGÉ 2025-11-30: Utiliser l'endpoint /api/media/files pour les chemins uploads/
 const buildMediaUrl = (path?: string | null): string | null => {
     if (!path || typeof path !== 'string') {
         return null;
@@ -67,11 +68,22 @@ const buildMediaUrl = (path?: string | null): string | null => {
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
         return trimmed;
     }
-    const base = (config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+    // ✅ CORRIGÉ: Utiliser /api/media/files pour les chemins uploads/
+    if (trimmed.startsWith('uploads/') || trimmed.startsWith('/uploads/')) {
+        const cleanPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+        const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+        if (!base) {
+            return null;
+        }
+        return `${base}/api/media/files/${cleanPath}`;
+    }
+    // Pour les autres chemins, utiliser aussi /api/media/files
+    const cleanPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+    const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
     if (!base) {
         return null;
     }
-    return `${base}/${trimmed.replace(/^\//, '')}`;
+    return `${base}/api/media/files/${cleanPath}`;
 };
 
 const stripDataUriPrefix = (value: string): string => value.replace(/^data:.*;base64,/, '');

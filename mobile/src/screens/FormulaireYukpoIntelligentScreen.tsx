@@ -3975,28 +3975,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ MODE CRÉATION : Vérification solde + Coût (SANS appel IA - déjà fait lors de la génération du formulaire)
       console.log('[FormulaireYukpoIntelligentScreen] 🆕 MODE CRÉATION - Utilisation des données du formulaire');
 
-      // ✅ CORRECTION 413: Compresser les médias AVANT l'envoi
-      console.log('[FormulaireYukpoIntelligentScreen] 🔄 Compression des médias...');
-      const compressedMedia = await getCompressedMedia();
-
-      console.log('[FormulaireYukpoIntelligentScreen] ✅ Médias compressés:', {
-        before: `${(compressedMedia.totalSizeBefore / (1024 * 1024)).toFixed(2)} MB`,
-        after: `${(compressedMedia.totalSizeAfter / (1024 * 1024)).toFixed(2)} MB`,
-        saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
-      });
-
-      // ✅ NOUVEAU: Message informatif si payload volumineux
-      const payloadSizeMB = compressedMedia.totalSizeAfter / (1024 * 1024);
-      if (payloadSizeMB > 30) {
-        const estimatedTime = Math.ceil((payloadSizeMB * 8) / 5 / 60); // Upload à 5 Mbps en minutes
-        Alert.alert(
-          '⏳ Upload en cours',
-          `Votre service contient ${payloadSizeMB.toFixed(0)} MB de données (${compressedMedia.images.length} images, ${compressedMedia.videos.length} vidéos).\n\n` +
-          `⏱️ Temps estimé : ${estimatedTime}-${estimatedTime + 2} minutes\n\n` +
-          `✅ Ne fermez pas l'application pendant l'upload.`,
-          [{ text: 'Compris, continuer' }]
-        );
-      }
+      // ✅ CORRECTION CRITIQUE: NE PAS compresser les médias AVANT la confirmation
+      // La compression prend beaucoup de temps et retarde l'affichage de l'Alert
+      // On compressera après confirmation pour que l'utilisateur voie immédiatement le coût
 
       // 💰 ÉTAPE 1 : Récupérer le coût depuis la suggestion IA initiale (si disponible)
       // Le formulaire a déjà été généré par l'IA via genererSuggestionsService, donc on récupère le coût déjà calculé
@@ -4119,6 +4100,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
               try {
                 setIsSubmitting(true);
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ Confirmation reçue, début création service...');
+
+                // ✅ CORRECTION CRITIQUE: Compresser les médias APRÈS confirmation (opération lourde)
+                console.log('[FormulaireYukpoIntelligentScreen] 🔄 Compression des médias...');
+                const compressedMedia = await getCompressedMedia();
+
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ Médias compressés:', {
+                  before: `${(compressedMedia.totalSizeBefore / (1024 * 1024)).toFixed(2)} MB`,
+                  after: `${(compressedMedia.totalSizeAfter / (1024 * 1024)).toFixed(2)} MB`,
+                  saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
+                });
+
+                // ✅ NOUVEAU: Message informatif si payload volumineux
+                const payloadSizeMB = compressedMedia.totalSizeAfter / (1024 * 1024);
+                if (payloadSizeMB > 30) {
+                  console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Payload volumineux détecté:', payloadSizeMB.toFixed(2), 'MB');
+                }
+
                 console.log('[FormulaireYukpoIntelligentScreen] Création du service en cours...');
 
                 // 🔧 ÉTAPE 3 : Construire les données structurées directement depuis le formulaire

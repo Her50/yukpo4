@@ -18,42 +18,49 @@ export interface UploadResponse {
 }
 
 /**
- * ✅ NOUVEAU: Upload préalable de fichiers
+ * ✅ NOUVEAU: Upload préalable de fichiers (OPTIMISÉ - TOUS LES FICHIERS EN UNE SEULE REQUÊTE)
+ * Le backend accepte plusieurs fichiers dans un multipart, donc on envoie tout en une fois
  * @param files Array de File objects ou URI React Native
  * @returns URLs des fichiers uploadés
  */
 export const uploadFiles = async (files: Array<{ uri: string; type: string; name?: string }>): Promise<UploadedFile[]> => {
     console.log('[uploadApi] 📤 Upload préalable de', files.length, 'fichier(s)');
 
-    // Créer FormData
-    const formData = new FormData();
-
-    // Ajouter les fichiers au FormData
-    files.forEach((file, index) => {
-        const fieldName = file.type.startsWith('image/') ? 'image' :
-            file.type.startsWith('video/') ? 'video' :
-                file.type.startsWith('audio/') ? 'audio' : 'file';
-
-        formData.append(fieldName, {
-            uri: file.uri,
-            type: file.type,
-            name: file.name || `file_${index}.${file.type.split('/')[1]}`,
-        } as any);
-    });
+    if (files.length === 0) {
+        return [];
+    }
 
     try {
         // Récupérer le token
         const token = await AsyncStorage.getItem('auth_token');
-
-        // Utiliser fetch directement pour FormData (apiCall ne gère pas bien FormData)
         const API_BASE_URL = config.API_BASE_URL;
 
+        // ✅ OPTIMISATION: Créer UN SEUL FormData avec TOUS les fichiers
+        // Le backend accepte plusieurs fichiers dans un multipart (media_controller.rs ligne 131)
+        const formData = new FormData();
+
+        // Ajouter tous les fichiers au FormData
+        files.forEach((file, index) => {
+            const fieldName = file.type.startsWith('image/') ? 'image' :
+                file.type.startsWith('video/') ? 'video' :
+                    file.type.startsWith('audio/') ? 'audio' : 'file';
+
+            formData.append(fieldName, {
+                uri: file.uri,
+                type: file.type,
+                name: file.name || `file_${index}.${file.type.split('/')[1] || 'bin'}`,
+            } as any);
+        });
+
+        console.log('[uploadApi] 📦 Envoi de tous les fichiers en une seule requête...');
+
+        // ✅ ENVOI UNIQUE: Tous les fichiers en une seule requête (beaucoup plus rapide)
         const response = await fetch(`${API_BASE_URL}/api/upload`, {
             method: 'POST',
             headers: {
                 ...(token && { Authorization: `Bearer ${token}` }),
                 'Accept': 'application/json',
-                // Ne pas définir Content-Type pour FormData (le navigateur le fait automatiquement)
+                // Ne pas définir Content-Type pour FormData (React Native le fait automatiquement)
             },
             body: formData,
         });
@@ -69,7 +76,7 @@ export const uploadFiles = async (files: Array<{ uri: string; type: string; name
             throw new Error(data.message || 'Erreur lors de l\'upload');
         }
 
-        console.log('[uploadApi] ✅ Fichiers uploadés:', data.files.length);
+        console.log('[uploadApi] ✅ Tous les fichiers uploadés en une seule requête:', data.files.length);
         return data.files;
     } catch (error: any) {
         console.error('[uploadApi] ❌ Erreur upload:', error);

@@ -84,23 +84,40 @@ pub async fn get_product_media(
 
     log_info(&format!("[MediaProduct] {} médias trouvés", rows.len()));
 
+    // ✅ CORRIGÉ 2025-11-30: Transformer les chemins en URLs complètes
+    let api_base_url = std::env::var("PUBLIC_BASE_URL")
+        .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+        .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
+
     // Convertir les résultats
     let media: Vec<ProductMediaItem> = rows
         .iter()
-        .map(|row| ProductMediaItem {
-            id: row.get("id"),
-            service_id: row.get("service_id"),
-            product_id: row.get("product_id"),
-            product_index: row.get("product_index"),
-            media_type: row.get("media_type"),
-            path: row.get("path"),
-            is_main_image: row.get("is_main_image"),
-            display_order: row.get("display_order"),
-            uploaded_at: row
-                .get::<DateTime<Utc>, _>("uploaded_at")
-                .to_rfc3339(),
-            ai_description: row.get("ai_description"),
-            ai_tags: row.get("ai_tags"),
+        .map(|row| {
+            let path: String = row.get("path");
+            // Si c'est déjà une URL complète, la retourner telle quelle
+            let full_url = if path.starts_with("http://") || path.starts_with("https://") {
+                path
+            } else {
+                // Construire l'URL complète avec l'endpoint /api/media/files
+                let clean_path = path.trim_start_matches('/');
+                format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path)
+            };
+
+            ProductMediaItem {
+                id: row.get("id"),
+                service_id: row.get("service_id"),
+                product_id: row.get("product_id"),
+                product_index: row.get("product_index"),
+                media_type: row.get("media_type"),
+                path: full_url,
+                is_main_image: row.get("is_main_image"),
+                display_order: row.get("display_order"),
+                uploaded_at: row
+                    .get::<DateTime<Utc>, _>("uploaded_at")
+                    .to_rfc3339(),
+                ai_description: row.get("ai_description"),
+                ai_tags: row.get("ai_tags"),
+            }
         })
         .collect();
 
@@ -150,9 +167,23 @@ pub async fn get_product_images(
         AppError::Internal(format!("Erreur récupération images: {}", e))
     })?;
 
+    // ✅ CORRIGÉ 2025-11-30: Transformer les chemins en URLs complètes
+    let api_base_url = std::env::var("PUBLIC_BASE_URL")
+        .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+        .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
+
     let images: Vec<String> = rows
         .iter()
-        .map(|row| row.get::<String, _>("path"))
+        .map(|row| {
+            let path: String = row.get("path");
+            // Si c'est déjà une URL complète, la retourner telle quelle
+            if path.starts_with("http://") || path.starts_with("https://") {
+                return path;
+            }
+            // Construire l'URL complète avec l'endpoint /api/media/files
+            let clean_path = path.trim_start_matches('/');
+            format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path)
+        })
         .collect();
 
     Ok(Json(serde_json::json!({
@@ -195,9 +226,23 @@ pub async fn get_product_videos(
         AppError::Internal(format!("Erreur récupération vidéos: {}", e))
     })?;
 
+    // ✅ CORRIGÉ 2025-11-30: Transformer les chemins en URLs complètes
+    let api_base_url = std::env::var("PUBLIC_BASE_URL")
+        .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+        .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
+
     let videos: Vec<String> = rows
         .iter()
-        .map(|row| row.get::<String, _>("path"))
+        .map(|row| {
+            let path: String = row.get("path");
+            // Si c'est déjà une URL complète, la retourner telle quelle
+            if path.starts_with("http://") || path.starts_with("https://") {
+                return path;
+            }
+            // Construire l'URL complète avec l'endpoint /api/media/files
+            let clean_path = path.trim_start_matches('/');
+            format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path)
+        })
         .collect();
 
     Ok(Json(serde_json::json!({

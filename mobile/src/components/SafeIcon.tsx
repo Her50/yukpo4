@@ -232,6 +232,20 @@ const iconToEmoji: { [key: string]: string } = {
     'images': '🖼️',
     'Images': '🖼️',
 
+    // ✅ Appareils
+    'tablet': '📱',
+    'Tablet': '📱',
+    'tablet-portrait': '📱',
+    'TabletPortrait': '📱',
+    'smartphone': '📱',
+    'Smartphone': '📱',
+    'phone': '📱',
+    'Phone': '📱',
+    'music': '🎵',
+    'Music': '🎵',
+    'headphones': '🎧',
+    'Headphones': '🎧',
+
     // ✅ Services spécialisés - Santé
     'pill': '💊',
     'Pill': '💊',

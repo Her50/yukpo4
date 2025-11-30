@@ -44,9 +44,9 @@ pub async fn track_view(
     State(state): State<Arc<AppState>>,
     Path(media_id): Path<String>,
     Extension(user): Extension<Option<AuthenticatedUser>>,
-    Json(payload): Json<EngagementPayload>,
+    payload: Result<Json<EngagementPayload>, axum::extract::JsonRejection>,
 ) -> AppResult<Json<serde_json::Value>> {
-    // ✅ CORRECTION: Validation améliorée pour gérer "undefined" et autres valeurs invalides
+    // ✅ CORRECTION 2025-12-01: Validation media_id AVANT le parsing JSON pour éviter 500
     let media_id_trimmed = media_id.trim();
     
     if media_id_trimmed.is_empty() || media_id_trimmed == "undefined" || media_id_trimmed == "null" {
@@ -55,6 +55,14 @@ pub async fn track_view(
             media_id
         )));
     }
+    
+    // ✅ CORRECTION 2025-12-01: Gérer l'erreur de parsing JSON gracieusement (retourner 400 au lieu de 500)
+    let payload = payload.map_err(|e| {
+        crate::core::types::AppError::BadRequest(format!(
+            "Payload JSON invalide: {}. Vérifiez que le body contient un JSON valide.",
+            e
+        ))
+    })?;
     
     // Valider que media_id est un entier valide
     let media_id_int = media_id_trimmed.parse::<i32>().map_err(|_| {
@@ -95,8 +103,15 @@ pub async fn track_share(
     State(state): State<Arc<AppState>>,
     Path(media_id): Path<i32>,
     Extension(user): Extension<Option<AuthenticatedUser>>,
-    Json(payload): Json<EngagementPayload>,
+    payload: Result<Json<EngagementPayload>, axum::extract::JsonRejection>,
 ) -> AppResult<Json<serde_json::Value>> {
+    // ✅ CORRECTION 2025-12-01: Gérer l'erreur de parsing JSON gracieusement (retourner 400 au lieu de 500)
+    let payload = payload.map_err(|e| {
+        crate::core::types::AppError::BadRequest(format!(
+            "Payload JSON invalide: {}. Vérifiez que le body contient un JSON valide.",
+            e
+        ))
+    })?;
     info!(
         "[MediaAnalytics] Tracking share media_id={} channel={:?}",
         media_id, payload.channel
