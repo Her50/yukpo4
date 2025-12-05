@@ -87,9 +87,10 @@ impl VideoQueueService {
 
     /// ✅ Enqueue un job de génération vidéo avec priorité
     pub async fn enqueue_job(&self, item: VideoJobQueueItem) -> AppResult<Uuid> {
+        let priority_for_log = item.priority;
         info!(
             "[VideoQueue] Enqueueing job {} with priority {:?}",
-            item.job_id, item.priority
+            item.job_id, priority_for_log
         );
 
         // ✅ Insertion dans la DB

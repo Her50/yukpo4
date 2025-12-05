@@ -68,7 +68,7 @@ impl RedisService {
 
         match result {
             Ok(value) => Ok(value),
-            Err(e) if e.is_connection_dropped() || e.is_connection_refused() => {
+            Err(e) if e.is_connection_dropped() || e.is_connection_refusal() => {
                 warn!("[Redis] Connection error, returning None: {}", e);
                 Ok(None)
             }
@@ -146,7 +146,7 @@ impl RedisService {
 
         match result {
             Ok(value) => Ok(value),
-            Err(e) if e.is_connection_dropped() || e.is_connection_refused() => {
+            Err(e) if e.is_connection_dropped() || e.is_connection_refusal() => {
                 warn!("[Redis] Connection error during BRPOP: {}", e);
                 Ok(None)
             }
