@@ -2180,7 +2180,6 @@ async fn handle_paginated_search(
                 false,                    // Cache hit sera déterminé par le service
             )
             .await;
-    }
 
     log_info(&format!(
         "[PAGINATED_SEARCH] ✅ Recherche paginée terminée en {:?}: {} résultats (has_more: {})",
